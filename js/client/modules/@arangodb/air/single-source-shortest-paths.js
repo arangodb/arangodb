@@ -35,6 +35,7 @@ const internal = require("internal");
 exports.single_source_shortest_paths_program = single_source_shortest_paths_program;
 exports.single_source_shortest_paths = single_source_shortest_paths;
 exports.test = test;
+exports.smallTest = testSmall;
 
 /*
 
@@ -46,121 +47,159 @@ exports.test = test;
 
 */
 function single_source_shortest_paths_program(
-  resultField,
-  startVertexId,
-  weightAttribute
+    resultField,
+    startVertexId,
+    weightAttribute
 ) {
-  return {
-    resultField: resultField,
-    maxGSS: 10000,
-    vertexAccumulators: {
-      distance: {
-        accumulatorType: "min",
-        valueType: "doubles",
-        storeSender: true,
-      },
-    },
-    phases: [
-      {
-        name: "main",
-        initProgram: [
-          "seq",
-          [
-            "if",
-            [
-              ["eq?", ["this-vertex-id"], startVertexId],
-              ["seq", ["accum-set!", "distance", 0], true],
-            ],
-            [true, ["seq",
-                    ["accum-clear!", "distance"],
-                    false]],
-          ],
+    return {
+        resultField: resultField,
+        maxGSS: 10000,
+        vertexAccumulators: {
+            distance: {
+                accumulatorType: "custom",
+                valueType: "slice",
+                customType: "my_min",
+                storeSender: true,
+            },
+        },
+        customAccumulators: {
+            "my_min": {
+                updateProgram: ["if",
+                    [
+                        ["or",
+                            ["not", ["attrib-get", ["current-value"], "isSet"]],
+                            ["gt?", ["attrib-get", ["current-value"], "value"], ["input-value"]]
+                        ],
+                        ["seq",
+                            ["this-set!",
+                                ["dict", ["isSet", true], ["value", ["input-value"]]]
+                            ],
+                            "hot"
+                        ]
+                    ],
+                    [true, "cold"]
+                ],
+                clearProgram: ["this-set!", {"isSet": false, "value": 0}],
+                getProgram: ["if",
+                    [
+                        ["attrib-get", ["current-value"], "isSet"],
+                        ["attrib-get", ["current-value"], "value"]
+                    ],
+                    [
+                        true,
+                        ["error", "accumulator undefined value"]
+                    ]
+                ],
+                setProgram: ["this-set!",
+                    ["dict", ["isSet", true], ["value", ["input-value"]]]
+                ]
+            }
+        },
+        phases: [
+            {
+                name: "main",
+                initProgram: [
+                    "seq",
+                    [
+                        "if",
+                        [
+                            ["eq?", ["this-vertex-id"], startVertexId],
+                            ["seq", ["accum-set!", "distance", 0], true],
+                        ],
+                        [true, ["seq",
+                            ["accum-clear!", "distance"],
+                            false]],
+                    ],
+                ],
+                updateProgram: [
+                    "seq",
+                    [
+                        "for-each",
+                        ["edge", ["this-outbound-edges"]],
+                        ["seq",
+                            [
+                                "send-to-accum",
+                                ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
+                                "distance",
+                                [
+                                    "+",
+                                    ["accum-ref", "distance"],
+                                    ["attrib-ref", ["quote", "document", weightAttribute], ["var-ref", "edge"]],
+                                ],
+                            ],
+                        ],
+                    ],
+                    false,
+                ],
+            },
         ],
-        updateProgram: [
-          "seq",
-          [
-            "for-each",
-            ["edge", ["this-outbound-edges"]],
-            ["seq",
-             [
-               "send-to-accum",
-               ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
-               "distance",
-               [
-                 "+",
-                 ["accum-ref", "distance"],
-                 ["attrib-ref", ["quote", "document", weightAttribute], ["var-ref", "edge"]],
-               ],
-             ],
-            ],
-          ],
-          false,
-        ],
-      },
-    ],
-  };
+    };
 }
 
 /* `single_source_shortest_path` executes the program
    returned by `single_source_shortest_path_program`
    on the graph identified by `graphName`. */
 function single_source_shortest_paths(
-  graphName,
-  resultField,
-  startVertexId,
-  weightAttribute
-) {
-  return pregel.start(
-    "air",
     graphName,
-    single_source_shortest_paths_program(
-      resultField,
-      startVertexId,
-      weightAttribute
-    )
-  );
+    resultField,
+    startVertexId,
+    weightAttribute
+) {
+    return pregel.start(
+        "air",
+        graphName,
+        single_source_shortest_paths_program(
+            resultField,
+            startVertexId,
+            weightAttribute
+        )
+    );
 }
 
 function exec_test_sssp_on_graph(graphSpec) {
-  // Find the ID of a vertex to start at.
-  const some_vertex = db
+    // Find the ID of a vertex to start at.
+    const some_vertex = db
         ._query(`FOR d IN @@V SORT RAND() LIMIT 1 RETURN d._id`,
-                { "@V": graphSpec.vname })
+            {"@V": graphSpec.vname})
         .toArray()[0];
 
-  internal.print("using " + some_vertex + " as start vertex.");
+    internal.print("using " + some_vertex + " as start vertex.");
 
-  testhelpers.wait_for_pregel(
-    "Air SSSP",
-    single_source_shortest_paths(
-      graphSpec.name,
-      "SSSP",
-      some_vertex,
-      "cost"
-    ));
+    testhelpers.wait_for_pregel(
+        "Air SSSP",
+        single_source_shortest_paths(
+            graphSpec.name,
+            "SSSP",
+            some_vertex,
+            "cost"
+        ));
 
-  testhelpers.wait_for_pregel(
-    "Native SSSP",
-    pregel.start("sssp", graphSpec.name, {
-    source: some_vertex,
-    maxGSS: 10000,
-  }));
+    testhelpers.wait_for_pregel(
+        "Native SSSP",
+        pregel.start("sssp", graphSpec.name, {
+            source: some_vertex,
+            maxGSS: 10000,
+        }));
 
-  return testhelpers.compare_pregel(db._query(`FOR d IN @@V
+    return testhelpers.compare_pregel(db._query(`FOR d IN @@V
                FILTER d.result != d.SSSP.distance
                RETURN d`, {"@V": graphSpec.vname}));
 }
 
 function exec_test_sssp(graphSpec) {
-  exec_test_sssp_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1));
-  exec_test_sssp_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9));
-  exec_test_sssp_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18));
+    exec_test_sssp_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1));
+    exec_test_sssp_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9));
+    exec_test_sssp_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18));
 
-  exec_test_sssp_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 1));
-  exec_test_sssp_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 9));
-  exec_test_sssp_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 18));
+    exec_test_sssp_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 1));
+    exec_test_sssp_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 9));
+    exec_test_sssp_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 18));
+}
+
+function testSmall() {
+    exec_test_sssp_on_graph(examplegraphs.create_line_graph("LineGraph100", 10, 1));
 }
 
 function test() {
-  exec_test_sssp();
+    exec_test_sssp();
 }
