@@ -378,6 +378,21 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
   });
 }
 
+EvalResult SpecialStr(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+  std::stringstream ss;
+
+  for (; paramIterator.valid(); paramIterator++) {
+    if ((*paramIterator).isString()) {
+      ss << (*paramIterator).copyString();
+    } else {
+      return EvalError(std::string{"`str` expecting string, not "} + (*paramIterator).typeName());
+    }
+  }
+
+  result.add(VPackValue(ss.str()));
+  return {};
+}
+
 EvalResult Evaluate(Machine& ctx, VPackSlice const slice, VPackBuilder& result) {
   if (slice.isArray()) {
     if (slice.isEmptyArray()) {
@@ -416,6 +431,8 @@ EvalResult Evaluate(Machine& ctx, VPackSlice const slice, VPackBuilder& result) 
         return SpecialForEach(ctx, paramIterator, result);
       } else if (functionSlice.isEqualString("let")) {
         return SpecialLet(ctx, paramIterator, result);
+      } else if (functionSlice.isEqualString("str")) {
+        return SpecialStr(ctx, paramIterator, result);
       } else {
         return Call(ctx, functionSlice, paramIterator, result);
       }

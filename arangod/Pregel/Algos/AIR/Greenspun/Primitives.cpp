@@ -24,6 +24,7 @@
 
 #include <Basics/VelocyPackHelper.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -234,7 +235,7 @@ EvalResult Prim_VarRef(Machine& ctx, VPackSlice const params, VPackBuilder& resu
   return EvalError("expecting a single string parameter, found " + params.toJson());
 }
 
-EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_VarSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (!params.isArray() && params.length() != 2) {
     return EvalError("expected exactly two parameters");
   }
@@ -245,25 +246,47 @@ EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& r
   }
 
   if (key.isString()) {
-    result.add(slice.get(key.stringRef()));
-  } else if (key.isArray()) {
-    std::vector<VPackStringRef> path;
-    for (auto&& pathStep : VPackArrayIterator(key)) {
-      if (!pathStep.isString()) {
-        return EvalError("expected string in key arrays");
-      }
-      path.emplace_back(pathStep.stringRef());
-    }
-    result.add(slice.get(path));
+    return ctx.setVariable(key.copyString(), slice);
   } else {
-    return EvalError("key is neither array nor string");
+    return EvalError("expect first parameter to be a string");
   }
   return {};
 }
 
-EvalResult Prim_AttribSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  // TODO: implement me
-  std::abort();
+EvalResult Prim_Dict(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  VPackObjectBuilder ob(&result);
+  for (auto&& pair : VPackArrayIterator(params)) {
+    if (pair.length() == 2) {
+      if (pair.at(0).isString()) {
+        result.add(pair.at(0).stringRef(), pair.at(1));
+        continue;
+      }
+    }
+
+    return EvalError("expected pairs of string and slice");
+  }
+  return {};
+}
+
+EvalResult MergeObjectSlice(VPackBuilder& result, VPackSlice const& sliceA,
+                            VPackSlice const& sliceB) {
+  VPackCollection::merge(result, sliceA, sliceB, true, false);
+  return {};
+}
+
+EvalResult Prim_MergeDict(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isArray() && params.length() != 2) {
+    return EvalError("expected exactly two parameters");
+  }
+
+  if (!params.at(0).isObject()) {
+    return EvalError("expected object, found: " + params.at(0).toJson());
+  }
+  if (!params.at(1).isObject()) {
+    return EvalError("expected object, found: " + params.at(1).toJson());
+  }
+
+  MergeObjectSlice(result, params.at(0), params.at(1));
   return {};
 }
 
@@ -296,9 +319,6 @@ EvalResult Prim_ListCat(Machine& ctx, VPackSlice const params, VPackBuilder& res
 
   return {};
 }
-
-// TODO: Only for debugging purpose. Can be removed later again.
-void print(std::string msg) { std::cout << " >> LOG: " << msg << std::endl; }
 
 EvalResult Prim_IntToStr(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.length() != 1) {
@@ -364,39 +384,105 @@ EvalResult Prim_PrintLn(Machine& ctx, VPackSlice const params, VPackBuilder& res
   return {};
 }
 
-EvalResult Prim_Error(Machine& ctx, VPackSlice const params,
-                      VPackBuilder& result) {
+EvalResult Prim_Error(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   return EvalError(paramsToString(params));
 }
 
-EvalResult Prim_List(Machine& ctx, VPackSlice const params,
-                     VPackBuilder& result) {
+EvalResult Prim_List(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   VPackArrayBuilder ab(&result);
   result.add(VPackArrayIterator(params));
   return {};
 }
 
-EvalResult Prim_Dict(Machine& ctx, VPackSlice const params,
-                     VPackBuilder& result) {
-  VPackObjectBuilder ob(&result);
-  for (auto&& pair : VPackArrayIterator(params)) {
-    if (pair.length() == 2) {
-      if (pair.at(0).isString()) {
-        result.add(pair.at(0).stringRef(), pair.at(1));
-        continue;
+EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isArray() && params.length() != 2) {
+    return EvalError("expected exactly two parameters");
+  }
+
+  auto&& [key, slice] = unpackTuple<VPackSlice, VPackSlice>(params);
+  if (!slice.isObject()) {
+    return EvalError("expect second parameter to be an object");
+  }
+
+  if (key.isString()) {
+    result.add(slice.get(key.stringRef()));
+  } else if (key.isArray()) {
+    std::vector<VPackStringRef> path;
+    for (auto&& pathStep : VPackArrayIterator(key)) {
+      if (!pathStep.isString()) {
+        return EvalError("expected string in key arrays");
       }
+      path.emplace_back(pathStep.stringRef());
     }
 
-    return EvalError("expected pairs of string and slice");
+    result.add(slice.get(path));
+  } else {
+    return EvalError("key is neither array nor string");
   }
   return {};
 }
 
-EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList,
-                     VPackBuilder& result) {
+EvalResult Prim_AttribSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isArray() && params.length() != 3) {
+    return EvalError("expected exactly three parameters");
+  }
+
+  auto&& obj = params.at(0);
+  auto&& key = params.at(1);
+  auto&& val = params.at(2);
+
+  if (!obj.isObject()) {
+    return EvalError("expect first parameter to be an object");
+  }
+
+  if (!key.isString() && !key.isArray()) {
+    return EvalError("expect second parameter to be an array or string");
+  }
+
+  if (key.isString()) {
+    VPackBuilder tmp;
+    {
+      VPackObjectBuilder ob(&tmp);
+      tmp.add(key.copyString(), val);
+    }
+    MergeObjectSlice(result, obj, tmp.slice());
+  } else if (key.isArray()) {
+    VPackBuilder tmp;
+    std::vector<VPackStringRef> path;
+    uint64_t length = key.length();
+    uint64_t iterationStep = 0;
+
+    tmp.openObject();
+    for (auto&& pathStep : VPackArrayIterator(key)) {
+      if (!pathStep.isString()) {
+        return EvalError("expected string in key arrays");
+      }
+      if (iterationStep < (length - 1)) {
+        tmp.add(pathStep.copyString(), VPackValue(VPackValueType::Object));
+      } else {
+        tmp.add(pathStep.copyString(), val);
+      }
+      iterationStep++;
+    }
+
+    for (uint64_t step = 0; step < (length - 1); step++) {
+      tmp.close();
+    }
+    tmp.close();
+
+    MergeObjectSlice(result, obj, tmp.slice());
+  } else {
+    return EvalError("key is neither array nor string");
+  }
+
+  return {};
+}
+
+EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
   VPackArrayIterator paramIterator(paramsList);
   if (!paramIterator.valid()) {
-    return EvalError("lambda requires two arguments: a list of argument names and a body");
+    return EvalError(
+        "lambda requires two arguments: a list of argument names and a body");
   }
 
   auto captures = *paramIterator++;
@@ -432,7 +518,7 @@ EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList,
     result.add("_call", body);
     {
       VPackObjectBuilder cob(&result, "_captures");
-      for (auto&& name : VPackArrayIterator (captures)) {
+      for (auto&& name : VPackArrayIterator(captures)) {
         result.add(name);
         if (auto res = ctx.getVariable(name.copyString(), result); res.fail()) {
           return res;
@@ -475,6 +561,11 @@ void RegisterAllPrimitives(Machine& ctx) {
 
   // Debug operators
   ctx.setFunction("print", Prim_PrintLn);
+  ctx.setFunction("error", Prim_Error);
+
+  // Constructors
+  ctx.setFunction("dict", Prim_Dict);
+  ctx.setFunction("dict-merge", Prim_MergeDict);
 
   // Lambdas
   ctx.setFunction("lambda", Prim_Lambda);
@@ -489,12 +580,12 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("attrib-get", Prim_AttribRef);
   ctx.setFunction("attrib-set", Prim_AttribSet);
 
+
   ctx.setFunction("var-ref", Prim_VarRef);
 
   // TODO: We can just register bind parameters as variables (or a variable)
   ctx.setFunction("bind-ref", Prim_VarRef);
 }
-
 
 }  // namespace greenspun
 }  // namespace arangodb

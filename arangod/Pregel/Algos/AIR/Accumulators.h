@@ -251,9 +251,10 @@ struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
   auto AIR_CurrentValue(greenspun::Machine& ctx, VPackSlice const slice, VPackBuilder& result) -> greenspun::EvalResult { return greenspun::EvalError("not implemented!"); }
   auto AIR_GetCurrentValue(greenspun::Machine& ctx, VPackSlice const slice, VPackBuilder& result) -> greenspun::EvalResult { return greenspun::EvalError("not implemented!"); }
   auto AIR_ThisSet(greenspun::Machine& ctx, VPackSlice const slice, VPackBuilder& result) -> greenspun::EvalResult { return greenspun::EvalError("not implemented!"); }
-  auto AIR_Parameters(greenspun::Machine& ctx, VPackSlice const slice, VPackBuilder& result) -> greenspun::EvalResult { return greenspun::EvalError("not implemented!"); }
+  auto AIR_Parameters(greenspun::Machine& ctx, VPackSlice const slice, VPackBuilder& result) -> greenspun::EvalResult;
 
   VPackBuilder _buffer;
+  VPackBuilder _parameters;
   CustomAccumulatorDefinition _definition;
   greenspun::Machine _machine;
 };

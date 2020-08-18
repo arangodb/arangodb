@@ -24,19 +24,27 @@
 
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
+const testhelpers = require("@arangodb/air/test-helpers");
 /*
 
 
 */
 exports.strongly_connected_components_program = strongly_connected_components_program;
 exports.strongly_connected_components = strongly_connected_components;
+exports.test = test;
 
 function strongly_connected_components_program(resultField) {
   return {
     resultField: resultField,
     // TODO: Karpott.
-    maxGSS: 5000,
+    maxGSS: 150,
     globalAccumulators: {
+      // converged is true iff all vertices have determined
+      // their SCC, that is if none have failed to obtain their SCC
+      //
+      // a vertex signals "false" if it has *not yet* determined its SCC
+      // i.e. not arrived at a state with min_f == min_b
+      //
       converged: {
         accumulatorType: "or",
         valueType: "bool",
@@ -67,160 +75,90 @@ function strongly_connected_components_program(resultField) {
     phases: [
       {
         name: "init",
-        initProgram: ["seq", ["accum-set!", "isDisabled", false], false],
-        onHalt: [
-          "seq",
-          ["accum-set!", "converged", false],
-          ["goto-phase", "broadcast"],
-        ],
-        updateProgram: false,
+        initProgram: ["seq",
+                      ["accum-set!", "isDisabled", false],
+                      "vote-halt"],
+        updateProgram: "vote-halt",
       },
       {
+        // Active vertices broadcast their pregel id to all their neighbours
         name: "broadcast",
-        initProgram: [
-          "seq",
-          ["accum-set!", "activeInbound", ["quote"]],
-          //["print", "isDisabled =", ["accum-ref", "isDisabled"]],
-          [
-            "if",
-            [
-              ["not", ["accum-ref", "isDisabled"]],
-              [
-                // can this be send-to-all-neighbours?
-                "for-each",
-                ["edge", ["this-outbound-edges"]],
-                [
-                  [
-                    "seq",
-                    //["print", ["vertex-unique-id"], "sending to vertex", ["attrib", "_to", ["var-ref", "edge"]], "with value", ["pregel-id"]],
-                    [
-                      "send-to-accum",
-                      ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
-                      "activeInbound",
-                      ["this-pregel-id"],
-                    ],
-                  ],
-                ],
-              ],
-            ],
-          ],
-          false,
-        ],
-        updateProgram: false,
+        initProgram: [ "seq",
+                       ["accum-set!", "activeInbound", ["quote"]],
+                       ["if",
+                        [ ["not", ["accum-ref", "isDisabled"]],
+                          ["send-to-all-neighbours", "activeInbound", ["this-pregel-id"]]],
+                        [true, "vote-halt"]], // else
+                       "vote-halt",
+                     ],
+        updateProgram: "vote-halt",
       },
       {
         name: "forward",
-        initProgram: [
-          "if",
-          [["accum-ref", "isDisabled"], false],
-          [
-            true, // else
-            ["seq", ["accum-set!", "forwardMin", ["this-unique-id"]], true],
-          ],
-        ],
+        initProgram: [ "seq",
+                       ["if",
+                        [["accum-ref", "isDisabled"], "vote-halt"],
+                        [true, // else
+                         ["seq",
+                          ["accum-set!", "forwardMin", ["this-unique-id"]],
+                          "vote-active"],
+                        ],
+                       ]],
         updateProgram: [
           "if",
-          [["accum-ref", "isDisabled"], false],
-          [
-            true, // else
-            [
-              "seq",
-              [
-                "for-each",
-                ["edge", ["this-outbound-edges"]],
-                ["seq",
-                  //["print", ["vertex-unique-id"], "sending to vertex", ["attrib", "_to", ["var-ref", "edge"]], "with value", ["accum-ref", "forwardMin"]],
-                  [
-                    "send-to-accum",
-                    ["attrib", "to-pregel-id", ["var-ref", "edge"]],
-                    "forwardMin",
-                    ["accum-ref", "forwardMin"],
-                  ],
-                ],
-              ],
-              false,
-            ],
-          ],
+          [["accum-ref", "isDisabled"], "vote-halt"],
+          [true, // else
+           ["seq",
+            ["send-to-all-neighbours", "forwardMin", ["accum-ref", "forwardMin"]],
+            "vote-halt"
+           ]],
         ],
       },
       {
         name: "backward",
+        // onHalt runs on the coordinator when all vertices have "vote-halt"-ed
+        // in backwards propagation
         onHalt: [
           "seq",
-          ["print", "converged has value", ["accum-ref", "converged"]],
-          [
-            "if",
-            [
-              ["accum-ref", "converged"],
-              ["seq", ["accum-set!", "converged", false], ["goto-phase", "broadcast"]],
-            ],
-            [true, ["finish"]],
+          ["if",
+/*           [ ["global-accum-ref", "converged"],
+             ["seq",
+              ["finish"] ] ], */
+           [true, ["seq",
+                   ["print", "going to broadcast"],
+                   ["goto-phase", "broadcast"]]],
           ],
         ],
-        initProgram: [
-          "if",
-          [
-            ["accum-ref", "isDisabled"],
-            ["seq", ["print", ["this-unique-id"], "isDisabled"], false],
-          ],
-          [
-            ["eq?", ["this-unique-id"], ["accum-ref", "forwardMin"]],
-            [
-              "seq",
-              ["print", ["this-unique-id"], " I am root of a SCC!"],
-              ["accum-set!", "backwardMin", ["accum-ref", "forwardMin"]],
-              true,
-            ],
-          ],
-          [
-            true,
-            [
-              "seq",
-              ["print", ["this-unique-id"], " I am _not_ root of a SCC"],
-              ["accum-clear!", "backwardMin"],
-              false,
-            ],
-          ],
-        ],
+        initProgram: ["seq",
+          ["if",
+           [["accum-ref", "isDisabled"], "vote-halt"],
+           [["eq?", ["this-unique-id"], ["accum-ref", "forwardMin"]],
+            ["seq",
+             ["accum-set!", "backwardMin", ["accum-ref", "forwardMin"]],
+             "vote-active"]],
+           [true, ["seq", "vote-halt"]],
+        ]],
         updateProgram: [
           "if",
-          [
-            ["accum-ref", "isDisabled"],
-            ["seq", ["print", "I am disabled"], false],
-          ],
-          [
-            ["eq?", ["accum-ref", "backwardMin"], ["accum-ref", "forwardMin"]],
-            [
-              "seq",
-              ["accum-set!", "isDisabled", true],
-              ["send-to-accum", "", "converged", true],
-              ["accum-set!", "mySCC", ["accum-ref", "forwardMin"]],
-              ["print", "I am done, my SCC id is", ["accum-ref", "forwardMin"]],
-              [
-                "for-each",
-                ["vertex", ["accum-ref", "activeInbound"]],
-                [
-                  "seq",
-                  [
-                    "print",
-                    ["this-unique-id"],
-                    "sending to vertex",
-                    ["var-ref", "vertex"],
-                    "with value",
-                    ["accum-ref", "backwardMin"],
-                  ],
-                  [
-                    "send-to-accum",
-                    ["attrib-ref", "pid", ["var-ref", "vertex"]],
-                    "backwardMin",
-                    ["accum-ref", "backwardMin"],
-                  ],
-                ],
-              ],
-              false,
+          [["accum-ref", "isDisabled"], "vote-halt"],
+          [["eq?", ["accum-ref", "backwardMin"], ["accum-ref", "forwardMin"]],
+            ["seq",
+             ["accum-set!", "isDisabled", true],
+             ["accum-set!", "mySCC", ["accum-ref", "forwardMin"]],
+             ["for-each",
+              ["vertex", ["accum-ref", "activeInbound"]],
+              ["seq", [
+                "send-to-accum",
+                ["var-ref", "vertex"],
+                "backwardMin",
+                ["accum-ref", "backwardMin"]]]],
+             ["send-to-global-accum", "converged", true],
+             "vote-halt",
             ],
           ],
-          [true, ["seq", ["print", "Was woken up, but min_f != min_b"], false]],
+          [true, ["seq",
+                  ["print", "?"],
+                  "vote-halt"]],
         ],
       },
     ],
@@ -236,19 +174,20 @@ function strongly_connected_components(graphName, resultField) {
 }
 
 function exec_test_scc_on_graph(graphSpec) {
-  wait_for_pregel(
+  return testhelpers.wait_for_pregel(
     "Air Strongly Connected Components",
     strongly_connected_components(graphSpec.name, "SCC")
   );
-
-  return pp.strongly_connected_components("Circle", "scc");
 }
 
 function exec_test_scc() {
-  exec_test_scc_on_graph(examplegraphs.create_circle("Circle", 5));
-  exec_test_scc_on_graph(
+//    exec_test_scc_on_graph(examplegraphs.create_complete_graph("testComplete_5shard", 5));
+  exec_test_scc_on_graph(examplegraphs.create_tadpole_graph("testTadpole_5shard", 5));
+//  exec_test_scc_on_graph(examplegraphs.create_disjoint_circle_and_complete_graph("testCircleComplete_1shard", 1));
+//  exec_test_scc_on_graph(examplegraphs.create_disjoint_circle_and_complete_graph("testCircleComplete_5shard", 5));
+/*  exec_test_scc_on_graph(
     examplegraphs.create_line_graph("LineGraph100", 100, 1)
-  );
+  ); */
 }
 
 function test() {

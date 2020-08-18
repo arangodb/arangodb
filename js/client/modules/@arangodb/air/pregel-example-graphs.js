@@ -27,11 +27,150 @@
 const internal = require("internal");
 const db = internal.db;
 const graphModule = require("@arangodb/smart-graph");
+const _ = require("lodash");
+
+// graph
+//
+// name
+// vertices list of objects with properties, will turn into documents
+// edges pairs of integers referring to docs in the list of vertices
+
+// add a sequence of edges specified by a sequence of vertices
+function add_arc(graph, vids) {
+  for (var i = 0; i < vids.length - 1; i++) {
+    graph.edges.push([vids[i], vids[i+1]]);
+  }
+}
+exports.add_arc = add_arc;
+
+// circle
+function add_circle(graph, vids) {
+  add_arc(graph, [...vids, vids[0]]);
+}
+exports.add_circle = add_circle;
+
+// complete graph
+function add_complete(graph, vids) {
+  for (i = 0; i < vids.length; i++) {
+    for (j = 0; j < vids.length; j++) {
+      if (i != j) {
+        graph.edges.push([vids[i], vids[j]]);
+      }
+    }
+  }
+}
+exports.add_complete = add_complete;
+
+function add_binary_tree(graph, vids) {
+  var i = 0;
+
+  while(i < vids.length) {
+    if(2*i + 1 < vids.length) {
+      graph.edges.push([vids[i], vids[2*i + 1]]);
+    }
+    if(2*i + 2 < vids.length) {
+      graph.edges.push([vids[i], vids[2*i + 2]]);
+    }
+    i = i+1;
+  }
+}
+exports.add_binary_tree = add_binary_tree;
+
+function create_graph_spec(name, smartGraphAttribute, numberOfShards) {
+  return {
+    name: name,
+    vname: name + "_V",
+    ename: name + "_E",
+    numberOfShards: numberOfShards,
+    smartGraphAttribute: smartGraphAttribute,
+    vertices: [],
+    edges: []
+  };
+}
+exports.create_graph_spec = create_graph_spec;
+
+function create_graph(graphSpec) {
+  try {
+    graphModule._drop(graphSpec.name, true);
+  } catch (e) {}
+  graphModule._create(
+    graphSpec.name,
+    [graphModule._relation(graphSpec.ename, graphSpec.vname, graphSpec.vname)],
+    [],
+    { smartGraphAttribute: graphSpec.smartGraphAttribute, numberOfShards: graphSpec.numberOfShards }
+  );
+
+  vids = db._collection(graphSpec.vname).save(graphSpec.vertices);
+
+  // TODO: edge weights/costs/docs?
+  const ecoll = db._collection(graphSpec.ename);
+  graphSpec.edges.forEach( function(e) {
+    edgeDoc = {_from: vids[e[0]]._id, _to: vids[e[1]]._id};
+    ecoll.save(edgeDoc);
+  });
+}
+exports.create_graph = create_graph;
+
+function create_disjoint_circle_and_complete_graph(name, shards) {
+  var spec = create_graph_spec(name, "id", shards);
+
+  for (var i = 0; i < 10; i++) {
+    spec.vertices.push({ "id": "A" + i});
+  }
+  add_circle(spec, _.range(10));
+
+  for (var i = 0; i < 10; i++) {
+    spec.vertices.push({ "id": "B" + i});
+  }
+  add_complete(spec, _.range(10,20));
+
+  create_graph(spec);
+
+  return spec;
+}
+exports.create_disjoint_circle_and_complete_graph = create_disjoint_circle_and_complete_graph;
+
+function create_circle_graph(name, shards) {
+  var spec = create_graph_spec(name, "id", shards);
+
+  for (var i = 0; i < 10; i++) {
+    spec.vertices.push({ "id": "A" + i});
+  }
+  add_circle(spec, _.range(10));
+  create_graph(spec);
+
+  return spec;
+}
+exports.create_circle_graph = create_circle_graph;
+
+function create_complete_graph(name, shards) {
+  var spec = create_graph_spec(name, "id", shards);
+
+  for (var i = 0; i < 10; i++) {
+    spec.vertices.push({ "id": "A" + i});
+  }
+  add_complete(spec, _.range(10));
+  create_graph(spec);
+
+  return spec;
+}
+exports.create_complete_graph = create_complete_graph;
+
+exports.create_tadpole_graph = function(name, shards) {
+  var spec = create_graph_spec(name, "id", shards);
+
+  for (var i = 0; i < 10; i++) {
+    spec.vertices.push({ "id": "A" + i});
+  }
+  add_arc(spec, [0,1,2,3,4]);
+  add_circle(spec, [4,5,6,7,8,9]);
+  create_graph(spec);
+
+  return spec;
+};
 
 // This should maybe also be using other example graphs from
 // for example the traversal suite.
-
-
 function createCircle(graphName, numberOfVertices, numberOfShards) {
   const vname = graphName + "_V";
   const ename = graphName + "_E";
@@ -120,7 +259,7 @@ function createPageRankGraph(graphName, numberOfVertices, numberOfShards) {
   var vids;
 
   // vertices data
-  let vertices = ['A', 'B', 'C', 'D', 'E']
+  let vertices = ['A', 'B', 'C', 'D', 'E'];
   vertices.forEach(function(v) {
     vs.push({
       name: v
@@ -134,7 +273,7 @@ function createPageRankGraph(graphName, numberOfVertices, numberOfShards) {
       _to: to,
       customSeed: customSeed
     });
-  }
+  };
   // A = 0, B = 1, C = 2, D = 3, E = 4
 
   // A -> B

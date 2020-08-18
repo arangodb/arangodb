@@ -75,6 +75,8 @@ class VertexComputation : public vertex_computation {
 
   greenspun::EvalResult air_sendToAccum(greenspun::Machine& ctx,
                                         VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_sendToGlobalAccum(greenspun::Machine& ctx,
+                                              VPackSlice const params, VPackBuilder& result);
   greenspun::EvalResult air_sendToAllNeighbours(greenspun::Machine& ctx,
                                                 VPackSlice const params,
                                                 VPackBuilder& result);

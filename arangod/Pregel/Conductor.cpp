@@ -69,7 +69,6 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
       _algorithm(AlgoRegistry::createAlgorithm(vocbase.server(), algoName, config)),
       _vertexCollections(vertexCollections),
       _edgeCollections(edgeCollections) {
-  LOG_DEVEL << "conductor: " << algoName;
   if (!config.isObject()) {
     _userParams.openObject();
     _userParams.close();

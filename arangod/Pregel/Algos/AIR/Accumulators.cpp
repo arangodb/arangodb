@@ -69,6 +69,9 @@ CustomAccumulator<VPackSlice>::CustomAccumulator(const VertexData& owner,
   _definition = defs.at(*options.customType);
   greenspun::InitMachine(_machine);
   SetupFunctions();
+  if (options.parameters) {
+    _parameters = *options.parameters;
+  }
 }
 
 auto CustomAccumulator<VPackSlice>::setBySliceWithResult(VPackSlice v)
@@ -107,6 +110,14 @@ void CustomAccumulator<VPackSlice>::SetupFunctions() {
   _machine.setFunctionMember("get-current-value", &CustomAccumulator<VPackSlice>::AIR_GetCurrentValue, this);
   _machine.setFunctionMember("this-set!", &CustomAccumulator<VPackSlice>::AIR_ThisSet, this);
   _machine.setFunctionMember("parameters", &CustomAccumulator<VPackSlice>::AIR_Parameters, this);
+}
+
+auto CustomAccumulator<VPackSlice>::AIR_Parameters(arangodb::greenspun::Machine& ctx,
+                                                   const VPackSlice slice,
+                                                   VPackBuilder& result)
+    -> arangodb::greenspun::EvalResult {
+  result.add(_parameters.slice());
+  return {};
 }
 
 CustomAccumulator<VPackSlice>::~CustomAccumulator() = default;

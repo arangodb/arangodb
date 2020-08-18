@@ -36,8 +36,9 @@ MasterContext::MasterContext(VertexAccumulators const* algorithm)
   _airMachine.setFunctionMember("goto-phase", &MasterContext::air_GotoPhase, this);
   _airMachine.setFunctionMember("finish", &MasterContext::air_Finish, this);
   _airMachine.setFunctionMember("vertex-count", &MasterContext::air_VertexCount, this);
-  _airMachine.setFunctionMember("accum-ref", &MasterContext::air_AccumRef, this);
-  _airMachine.setFunctionMember("accum-set!", &MasterContext::air_AccumSet, this);
+  _airMachine.setFunctionMember("global-accum-ref", &MasterContext::air_AccumRef, this);
+  _airMachine.setFunctionMember("global-accum-set!", &MasterContext::air_AccumSet, this);
+  _airMachine.setFunctionMember("global-accum-clear!", &MasterContext::air_AccumClear, this);
 }
 
 greenspun::EvalResult MasterContext::air_GotoPhase(greenspun::Machine& ctx,
@@ -102,6 +103,23 @@ greenspun::EvalResult MasterContext::air_AccumSet(greenspun::Machine& ctx,
   auto accum = getAggregator<VertexAccumulatorAggregator>(globalName);
   if (accum != nullptr) {
     return accum->getAccumulator().setBySliceWithResult(value);
+  }
+
+  return greenspun::EvalError("accumulator `" + std::string{accumId} +
+                              "` not found");
+}
+
+greenspun::EvalResult MasterContext::air_AccumClear(greenspun::Machine& ctx,
+                                                    VPackSlice const params,
+                                                    VPackBuilder& result) {
+  auto&& [accumId] = unpackTuple<std::string_view>(params);
+  std::string globalName = "[global]-";
+  globalName += accumId;
+  auto accum = getAggregator<VertexAccumulatorAggregator>(globalName);
+  if (accum != nullptr) {
+    LOG_DEVEL << "clearing accumulator " << accumId;
+    //accum->getAccumulator().clear();
+    return greenspun::EvalError("not implemented");
   }
 
   return greenspun::EvalError("accumulator `" + std::string{accumId} +

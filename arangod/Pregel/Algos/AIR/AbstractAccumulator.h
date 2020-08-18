@@ -28,6 +28,7 @@
 #define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ABSTRACT_ACCUMULATOR_H 1
 #include <Pregel/Algos/AIR/Greenspun/EvalResult.h>
 #include <numeric>
+#include <iostream>
 
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
@@ -69,6 +70,8 @@ struct AccumulatorBase {
   virtual const void* getValuePointer() const { return nullptr; }
   // Set the value from a value pointer.
   virtual void setValueFromPointer(const void*) { }
+
+  virtual void updateValueFromPointer(const void*) = 0;
 
   VertexData const& _owner;
 };
@@ -156,6 +159,10 @@ class Accumulator : public AccumulatorBase {
 
   void setValueFromPointer(const void * ptr) override {
     _value = *reinterpret_cast<data_type const*>(ptr);
+  }
+
+  void updateValueFromPointer(const void * ptr) override {
+    this->update(*reinterpret_cast<data_type const *>(ptr));
   }
 
  protected:

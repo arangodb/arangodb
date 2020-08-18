@@ -39,17 +39,17 @@ VertexAccumulatorAggregator::VertexAccumulatorAggregator(AccumulatorOptions cons
 
 /// @brief Used when updating aggregator value locally
 void VertexAccumulatorAggregator::aggregate(void const* valuePtr)  {
-  accumulator->setValueFromPointer(valuePtr);
+  accumulator->updateValueFromPointer(valuePtr);
 }
 
 /// @brief Used when updating aggregator value from remote
 void VertexAccumulatorAggregator::parseAggregate(arangodb::velocypack::Slice const& slice)  {
   LOG_DEVEL << accumulator.get()  << "parseAggregate = " << slice.toJson();
-  //accumulator->setBySlice(slice);
+  LOG_DEVEL << "NOT IMPLEMENTED";
+  //accumulator->updateByMessageSlice(slice);
 }
 
 void const* VertexAccumulatorAggregator::getAggregatedValue() const {
-  LOG_DEVEL << accumulator.get() << "VertexAccumulatorAggregator::getAggregatedValue";
   return accumulator->getValuePointer();
 }
 
@@ -57,6 +57,7 @@ void const* VertexAccumulatorAggregator::getAggregatedValue() const {
 void VertexAccumulatorAggregator::setAggregatedValue(arangodb::velocypack::Slice const& slice)  {
   LOG_DEVEL << accumulator.get() << "setAggregatedValue " << slice.toJson();
   //accumulator->setBySlice(slice);
+  LOG_DEVEL << "NOT IMPLEMENTED";
 }
 
 void VertexAccumulatorAggregator::serialize(std::string const& key,
@@ -69,7 +70,6 @@ void VertexAccumulatorAggregator::serialize(std::string const& key,
 }
 
 void VertexAccumulatorAggregator::reset()  {
-  LOG_DEVEL << accumulator.get() << "VertexAccumulatorAggregator::reset called " << permanent;
   if (!permanent) {
     LOG_DEVEL << "calling clear on accumulator";
     if (auto res = accumulator->clearWithResult(); res.fail()) {
