@@ -64,15 +64,15 @@
 #include "index/index_meta.hpp"
 #include "utils/automaton.hpp"
 #include "utils/directory_utils.hpp"
+#include "utils/fstext/fst_builder.hpp"
+#include "utils/fstext/fst_matcher.hpp"
+#include "utils/fstext/fst_table_matcher.hpp"
 #include "utils/timer_utils.hpp"
-#include "utils/fst.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
 #include "utils/frozen_attributes.hpp"
 #include "utils/string.hpp"
 #include "utils/log.hpp"
-#include "utils/fst_matcher.hpp"
-#include "utils/fst_table_matcher.hpp"
 
 NS_LOCAL
 
