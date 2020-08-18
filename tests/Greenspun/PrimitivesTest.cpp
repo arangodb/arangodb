@@ -1269,6 +1269,27 @@ TEST_CASE("Test [attrib-set] primitive", "[attrib-set]") {
     REQUIRE(result.slice().get("first").get("second").isString());
     REQUIRE(result.slice().get("first").get("second").toString() == "newWorld");
   }
+
+  SECTION("Set array value with path (array)") {
+    // ["attrib-set", dict, [path...], value]
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["attrib-set",
+        {"first": {"second": "oldWorld"}},
+        ["quote", "first", "second"], ["quote", "new", "world"]
+      ]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().isObject());
+    REQUIRE(result.slice().get("first").isObject());
+    REQUIRE(result.slice().get("first").get("second").isArray());
+    REQUIRE(result.slice().get("first").get("second").length() == 2);
+    REQUIRE(result.slice().get("first").get("second").at(0).copyString() == "new");
+    REQUIRE(result.slice().get("first").get("second").at(1).copyString() == "world");
+  }
 }
 
 // TODO: this is not a language primitive but part of `VertexComputation`
