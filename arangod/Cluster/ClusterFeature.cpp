@@ -443,25 +443,11 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-}
-
-void ClusterFeature::start() {
-  if (ServerState::instance()->isAgent() || _enableCluster) {
-    ClusterComm::initialize();
-  }
-
-  // return if cluster is disabled
-  if (!_enableCluster) {
-    startHeartbeatThread(nullptr, 5000, 5, std::string());
-    return;
-  }
-
   // if nonempty, it has already been set above
 
   // If we are a coordinator, we wait until at least one DBServer is there,
   // otherwise we can do very little, in particular, we cannot create
   // any collection:
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
   if (role == ServerState::ROLE_COORDINATOR) {
     double start = TRI_microtime();
 
@@ -487,6 +473,18 @@ void ClusterFeature::start() {
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
   }
+}
+
+void ClusterFeature::start() {
+  if (ServerState::instance()->isAgent() || _enableCluster) {
+    ClusterComm::initialize();
+  }
+
+  // return if cluster is disabled
+  if (!_enableCluster) {
+    startHeartbeatThread(nullptr, 5000, 5, std::string());
+    return;
+  }
 
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
 
@@ -500,6 +498,7 @@ void ClusterFeature::start() {
 
   std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
 
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
   std::string myId = ServerState::instance()->getId();
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
@@ -538,6 +537,17 @@ void ClusterFeature::start() {
         << "default value '" << _heartbeatInterval << " ms'";
   }
 
+  auto wait = std::chrono::milliseconds(100);
+  size_t n = 1;
+  while (!server().isStopping()) {
+    if (server().getFeature<DatabaseFeature>().lookupDatabase("_system") != nullptr) {
+      break;
+    }
+    std::this_thread::sleep_for(n*wait);
+    if (n < 10) {
+      ++n;
+    }
+  }
   startHeartbeatThread(_agencyCallbackRegistry.get(), _heartbeatInterval, 5, endpoints);
 
   comm.increment("Current/Version");
