@@ -61,7 +61,7 @@ arangosh> var pexec = pp.execute("WikiVoteGraph",
  * attrib-set-var! -- `["attrib-set-var!", varname, key, value]` - set variable at varname at key to value
  * attrib-set-var! -- `["attrib-set-var!", varname, [path...], value]` - set variable at varname at path to value
  
- * dict-merge- -- `["merge", dict, dict]` returns the merge of two dicts 
+ * dict-merge -- `["merge", dict, dict]` returns the merge of two dicts 
 
  * print -- `["print", expr ...]` print `expr` for each `expr`. 
 
