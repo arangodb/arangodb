@@ -2227,7 +2227,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
   }
 
   // optional (3 - First) argument defines transpositions
-  bool withTranspositions = false;
+  bool withTranspositions = true;
   if (3 - First < argc) {
     res = evaluateArg(withTranspositions, tmpValue, funcName, args, 3 - First, isFilter, ctx);
 
