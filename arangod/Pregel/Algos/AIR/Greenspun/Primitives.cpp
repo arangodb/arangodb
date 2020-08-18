@@ -477,8 +477,8 @@ EvalResult Prim_Apply(Machine& ctx, VPackSlice const paramsList, VPackBuilder& r
 
   auto functionSlice = paramsList.at(0);
   auto parameters = paramsList.at(1);
-  if (!paramsList.isArray()) {
-    return EvalError("expected list of parameters, found: " + paramsList.toJson());
+  if (!parameters.isArray()) {
+    return EvalError("expected list of parameters, found: " + parameters.toJson());
   }
 
   return EvaluateApply(ctx, functionSlice, VPackArrayIterator(parameters), result);

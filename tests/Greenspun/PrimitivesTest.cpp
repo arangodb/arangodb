@@ -1299,3 +1299,62 @@ TEST_CASE("Test [send-to-accum] primitive", "[send-to-accum]") {}
 TEST_CASE("Test [send-to-all-neighbours] primitive",
           "[send-to-all-neighbours]") {}
 TEST_CASE("Test [global-superstep] primitive", "[global-superstep]") {}
+
+TEST_CASE("Test [apply] primitive", "[apply]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("Apply sum") {
+    // ["attrib-set", dict, key, value]
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["apply", "+", ["quote", 1, 2, 3]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().getNumericValue<double>() == 6);
+  }
+
+  SECTION("Apply sum, unknown function") {
+    // ["attrib-set", dict, key, value]
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["apply", "function-not-found", ["quote", 1, 2, 3]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("Apply sum, no function type") {
+    // ["attrib-set", dict, key, value]
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["apply", 12, ["quote", 1, 2, 3]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("Apply sum, no argument list") {
+    // ["attrib-set", dict, key, value]
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["apply", "+", "string"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("Apply sum, lambda") {
+    // ["attrib-set", dict, key, value]
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["apply", ["lambda", ["quote"], ["quote", "x"], ["quote", "var-ref", "x"]], ["quote", 2]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(result.slice().getNumericValue<double>() == 2);
+  }
+}
