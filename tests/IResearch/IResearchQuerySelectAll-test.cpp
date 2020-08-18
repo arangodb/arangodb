@@ -398,8 +398,7 @@ TEST_F(IResearchQuerySelectAllTest, test) {
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase, queryString, {},
-        //"{ \"fullCount\": true }" // FIXME uncomment
-        "{ \"optimizer\" : { \"rules\": [ \"-sort-limit\"] }, \"fullCount\": "
+        "{ \"optimizer\" : { \"rules\": [ \"+sort-limit\"] }, \"fullCount\": "
         "true }");
     ASSERT_TRUE(queryResult.result.ok());
 

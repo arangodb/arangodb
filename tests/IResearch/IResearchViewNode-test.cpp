@@ -305,8 +305,8 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(&outVariable, setHere[0]);
     EXPECT_FALSE(node.options().forceSync);
 
-    EXPECT_EQ(2., node.getCost().estimatedCost);  // dependency is a singleton
-    EXPECT_EQ(1, node.getCost().estimatedNrItems);  // dependency is a singleton
+    EXPECT_EQ(1., node.getCost().estimatedCost);
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);
   }
 
   // with options
