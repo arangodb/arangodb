@@ -1338,6 +1338,52 @@ TEST_CASE("Test [array-ref] primitive", "[array-ref]") {
   }
 }
 
+TEST_CASE("Test [array-set] primitive", "[array-set]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("get with valid index") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["array-set", ["quote", 1, 2, 3, 4], 0, "newValue"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().isArray());
+    REQUIRE(result.slice().at(0).copyString() == "newValue");
+  }
+
+  SECTION("get with invalid index") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["array-set", ["quote", 1, 2, 3, 4], 6, 10]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("array not an array") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["array-set", "aString", 1, "peter"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("index not a number") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["array-set", ["quote", 1, 2, 3, 4], "notAValidIndex", "hehe"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+}
+
 // TODO: this is not a language primitive but part of `VertexComputation`
 TEST_CASE("Test [accum-ref] primitive", "[accumref]") {}
 TEST_CASE("Test [this] primitive", "[this]") {}
