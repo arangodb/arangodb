@@ -468,6 +468,22 @@ EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
   return {};
 }
 
+EvalResult EvaluateApply(Machine& ctx, VPackSlice const functionSlice, VPackArrayIterator paramIterator, VPackBuilder& result);
+
+EvalResult Prim_Apply(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  if (!paramsList.isArray() || paramsList.length() != 2) {
+    return EvalError("expected one function argument on one list of parameters");
+  }
+
+  auto functionSlice = paramsList.at(0);
+  auto parameters = paramsList.at(1);
+  if (!paramsList.isArray()) {
+    return EvalError("expected list of parameters, found: " + paramsList.toJson());
+  }
+
+  return EvaluateApply(ctx, functionSlice, VPackArrayIterator(parameters), result);
+}
+
 void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_type&& f) {
   ctx.setFunction(name, std::move(f));
 }
@@ -507,6 +523,7 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("list-cat", Prim_ListCat);
   ctx.setFunction("string-cat", Prim_StringCat);
   ctx.setFunction("int-to-str", Prim_IntToStr);
+  ctx.setFunction("apply", Prim_Apply);
 
   // Access operators
   ctx.setFunction("attrib-ref", Prim_AttribRef);

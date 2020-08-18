@@ -393,6 +393,50 @@ EvalResult SpecialStr(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
   return {};
 }
 
+EvalResult EvaluateApply(Machine& ctx, VPackSlice const functionSlice, ArrayIterator paramIterator, VPackBuilder& result) {
+  if (functionSlice.isString()) {
+    // check for special forms
+    if (functionSlice.isEqualString("if")) {
+      return SpecialIf(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("quote")) {
+      return SpecialQuote(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("cons")) {
+      return SpecialCons(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("and")) {
+      return SpecialAnd(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("or")) {
+      return SpecialOr(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("seq")) {
+      return SpecialSeq(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("match")) {
+      return SpecialMatch(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("for-each")) {
+      return SpecialForEach(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("let")) {
+      return SpecialLet(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("str")) {
+      return SpecialStr(ctx, paramIterator, result);
+    } else {
+      return Call(ctx, functionSlice, paramIterator, result);
+    }
+  } else if (functionSlice.isObject()) {
+    auto body = functionSlice.get("_call");
+    if (!body.isNone()) {
+      auto params = functionSlice.get("_params");
+      if (!params.isArray()) {
+        return EvalError("lambda params have to be an array, found: " + params.toJson());
+      }
+      auto captures = functionSlice.get("_captures");
+      if (!captures.isObject()) {
+        return EvalError("lambda captures have to be an object, found: " +
+                         params.toJson());
+      }
+      return LambdaCall(ctx, params, captures, paramIterator, body, result);
+    }
+  }
+  return EvalError("function is not a string, found " + functionSlice.toJson());
+}
+
 EvalResult Evaluate(Machine& ctx, VPackSlice const slice, VPackBuilder& result) {
   if (slice.isArray()) {
     if (slice.isEmptyArray()) {
@@ -411,47 +455,7 @@ EvalResult Evaluate(Machine& ctx, VPackSlice const slice, VPackBuilder& result) 
     }
     ++paramIterator;
     VPackSlice functionSlice = functionBuilder.slice();
-    if (functionSlice.isString()) {
-      // check for special forms
-      if (functionSlice.isEqualString("if")) {
-        return SpecialIf(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("quote")) {
-        return SpecialQuote(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("cons")) {
-        return SpecialCons(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("and")) {
-        return SpecialAnd(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("or")) {
-        return SpecialOr(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("seq")) {
-        return SpecialSeq(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("match")) {
-        return SpecialMatch(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("for-each")) {
-        return SpecialForEach(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("let")) {
-        return SpecialLet(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("str")) {
-        return SpecialStr(ctx, paramIterator, result);
-      } else {
-        return Call(ctx, functionSlice, paramIterator, result);
-      }
-    } else if (functionSlice.isObject()) {
-      auto body = functionSlice.get("_call");
-      if (!body.isNone()) {
-        auto params = functionSlice.get("_params");
-        if (!params.isArray()) {
-          return EvalError("lambda params have to be an array, found: " + params.toJson());
-        }
-        auto captures = functionSlice.get("_captures");
-        if (!captures.isObject()) {
-          return EvalError("lambda captures have to be an object, found: " +
-                           params.toJson());
-        }
-        return LambdaCall(ctx, params, captures, paramIterator, body, result);
-      }
-    }
-    return EvalError("function is not a string, found " + functionSlice.toJson());
+    return EvaluateApply(ctx, functionSlice, paramIterator, result);
   }
 
   result.add(slice);
