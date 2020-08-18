@@ -184,6 +184,17 @@ static VPackBuilder compareIndexes(std::string const& dbname, std::string const&
   return builder;
 }
 
+static std::string CreateLeaderString(std::string const& leaderId, bool shouldBeLeading) {
+  if (shouldBeLeading) {
+    return std::string();
+  }
+  TRI_ASSERT(!leaderId.empty());
+  if (leaderId.front() == UNDERSCORE[0]) {
+    return leaderId.substr(1);
+  }
+  return leaderId;
+}
+
 void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice const& ldb,
                      std::string const& dbname, std::string const& colname,
                      std::string const& shname, std::string const& serverId,
@@ -275,16 +286,7 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
       shouldResign = false;
     }
     if ((leading != shouldBeLeading && !shouldResign) || !leaderTouched) {
-      std::string newLeader = std::invoke([&]() {
-        if (shouldBeLeading) {
-          return std::string();
-        }
-        TRI_ASSERT(!leaderId.empty());
-        if (leaderId.front() == UNDERSCORE[0]) {
-          return leaderId.substr(1);
-        }
-        return leaderId;
-      });
+      std::string newLeader = CreateLeaderString(leaderId, shouldBeLeading);
       LOG_TOPIC("52412", DEBUG, Logger::MAINTENANCE)
           << "Triggering TakeoverShardLeadership job for shard " << dbname
           << "/" << colname << "/" << shname
@@ -328,7 +330,7 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
         }
       }
     }
-  } else {  // Create the sucker, if not a previous error stops us
+  } else {  // Create the collection, if not a previous error stops us
     if (errors.shards.find(dbname + "/" + colname + "/" + shname) ==
         errors.shards.end()) {
       auto props = createProps(cprops);  // Only once might need often!
@@ -338,7 +340,7 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
              {SHARD, shname},
              {DATABASE, dbname},
              {SERVER_ID, serverId},
-             {THE_LEADER, shouldBeLeading ? std::string() : leaderId}},
+             {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
             shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, std::move(props)));
     } else {
       LOG_TOPIC("c1d8e", DEBUG, Logger::MAINTENANCE)
