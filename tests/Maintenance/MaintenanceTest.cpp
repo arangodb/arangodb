@@ -28,6 +28,7 @@
 
 #include "gtest/gtest.h"
 
+#include "Agency/AgencyPaths.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Cluster/Maintenance.h"
 #include "Mocks/Servers.h"
@@ -88,6 +89,7 @@ std::string C("c");
 namespace arangodb {
 class LogicalCollection;
 }
+using namespace arangodb::maintenance;
 
 class SharedMaintenanceTest : public ::testing::Test {
  protected:
@@ -497,6 +499,9 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   arangodb::RocksDBEngine engine;  // arbitrary implementation that has index types registered
   arangodb::StorageEngine* origStorageEngine;
 
+
+
+
   MaintenanceTestActionPhaseOne()
       : SharedMaintenanceTest(),
         _dummy(loadResources()),
@@ -518,6 +523,124 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
 
   ~MaintenanceTestActionPhaseOne() {
     arangodb::EngineSelectorFeature::ENGINE = origStorageEngine;
+  }
+
+  auto dbName() const -> std::string {
+    // this is a database known in the test files
+    return "foo";
+  }
+
+  auto planId() const -> std::string {
+    // This is a gobal collection known in the test files.
+    // It is required to have 6 shards, 2 per DBServer
+    return "2010088";
+  }
+
+  enum class PLAN_LEADERSHIP_TYPE { SELF, RESIGNED_SELF, OTHER, RESIGNED_OTHER };
+
+  enum class CURRENT_LEADERSHIP_TYPE { SELF, OTHER, RESIGNED, REBOOTED };
+
+  auto getShardsForServer(std::string const& dbName, std::string const& planId,
+                          std::string const& serverId, Node const& plan)
+      -> std::unordered_set<std::string> {
+    auto path = arangodb::cluster::paths::aliases::plan()
+                    ->collections()
+                    ->database(dbName)
+                    ->collection(planId)
+                    ->shards();
+
+    auto vec = path->vec(2);
+    TRI_ASSERT(plan.has(vec));
+    auto const& shardList = plan(vec);
+    std::unordered_set<std::string> res;
+    for (auto const& [shard, servers] : shardList.children()) {
+      auto oldValue = servers->slice();
+      TRI_ASSERT(oldValue.isArray());
+      TRI_ASSERT(oldValue.length() == 2);
+      if (oldValue.at(0).isEqualString(serverId)) {
+        res.emplace(shard);
+      }
+    }
+    return res;
+  }
+
+  auto setLeaderShipPlan(std::string const& dbName, std::string const& planId,
+                         PLAN_LEADERSHIP_TYPE type, Node& plan) -> void {
+    // TODO SwitchCase of types
+    auto path = arangodb::cluster::paths::aliases::plan()
+                    ->collections()
+                    ->database(dbName)
+                    ->collection(planId)
+                    ->shards();
+
+    auto vec = path->vec(2);
+    ASSERT_TRUE(plan.has(vec)) << "The underlying test plan is modified, it "
+                                  "does not contain Database '"
+                               << dbName << "' and Collection '" << planId << "' anymore.";
+    auto& shardList = plan(vec);
+    for (auto& [shard, servers] : shardList.children()) {
+      auto oldValue = servers->slice();
+      ASSERT_TRUE(oldValue.isArray());
+      ASSERT_EQ(oldValue.length(), 2)
+          << "We assume to have one leader and one follower";
+      // We simulate a resign leader, this is indicated by appending an `_` in front of the server name.
+      VPackBuilder newValue;
+      {
+        VPackArrayBuilder guard(&newValue);
+        newValue.add(VPackValue("_" + oldValue.at(0).copyString()));
+        newValue.add(VPackValue(oldValue.at(1).copyString()));
+      }
+      *servers = newValue.slice();
+    }
+  }
+
+  // Will resign leadership on the given plan.
+  // The plan will be modified in-place
+  // Asserts that dbName and planId exists in plan
+  auto resignLeadershipPlan(std::string const& dbName, std::string const& planId, Node& plan) -> void {
+    return setLeaderShipPlan(dbName, planId, PLAN_LEADERSHIP_TYPE::RESIGNED_SELF, plan);
+  }
+
+  // Will take leadership in plan
+  // Asserts that dbName and planId exists in plan
+  // NOTE: The plan already contians leadersip of SELF so this is a noop besides assertions.
+  auto takeLeadershipPlan(std::string const& dbName, std::string const& planId, Node& plan) -> void {
+    return setLeaderShipPlan(dbName, planId, PLAN_LEADERSHIP_TYPE::SELF, plan);
+  }
+
+  // Another server will take leadership in plan
+  // Asserts that dbName and planId exists in plan
+  auto otherTakeLeadershipPlan(std::string const& dbName, std::string const& planId, Node& plan) -> void {
+    return setLeaderShipPlan(dbName, planId, PLAN_LEADERSHIP_TYPE::OTHER, plan);
+  }
+
+  // Another server will take resigned leadership in plan
+  // Asserts that dbName and planId exists in plan
+  auto otherTakeResignedLeadershipPlan(std::string const& dbName,
+                               std::string const& planId, Node& plan) -> void {
+    return setLeaderShipPlan(dbName, planId, PLAN_LEADERSHIP_TYPE::RESIGNED_OTHER, plan);
+  }
+
+  auto assertIsTakeoverLeadershipAction(ActionDescription const& action,
+                                        std::string const& dbName,
+                                        std::string const& planId) -> void {
+    ASSERT_EQ(action.name(), "TakeoverShardLeadership");
+    ASSERT_TRUE(action.has(DATABASE));
+    ASSERT_TRUE(action.has(COLLECTION));
+    ASSERT_TRUE(action.has(SHARD));
+    ASSERT_TRUE(action.has(THE_LEADER));
+    ASSERT_TRUE(action.has(LOCAL_LEADER));
+    ASSERT_TRUE(action.has(PLAN_RAFT_INDEX));
+    ASSERT_EQ(action.get(DATABASE), dbName);
+    ASSERT_EQ(action.get(COLLECTION), planId);
+  }
+
+    auto assertIsResignLeadershipAction(ActionDescription const& action,
+                                        std::string const& dbName) -> void {
+    ASSERT_EQ(action.name(), "ResignShardLeadership");
+    ASSERT_TRUE(action.has(DATABASE));
+    ASSERT_TRUE(action.has(SHARD));
+    ASSERT_EQ(action.get(DATABASE), dbName);
   }
 };
 
@@ -737,7 +860,7 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
   for (auto node : localNodes) {
     std::vector<std::shared_ptr<ActionDescription>> actions;
 
-    auto& collection = *node.second("foo").children().begin()->second;
+    auto& collection = *node.second(dbName()).children().begin()->second;
     auto& leader = collection("theLeader");
 
     bool check = false;
@@ -745,6 +868,7 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
       check = true;
       leader = v.slice();
     }
+    LOG_DEVEL << "check: " << check;
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
@@ -753,11 +877,33 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
     if (check) {
       ASSERT_EQ(actions.size(), 1);
       for (auto const& action : actions) {
-        ASSERT_EQ(action->name(), "TakeoverShardLeadership");
-        ASSERT_TRUE(action->has("shard"));
+        assertIsTakeoverLeadershipAction(*action, dbName(),
+                                         collection("planId").getString());
         ASSERT_EQ(action->get("shard"), collection("name").getString());
         ASSERT_TRUE(action->get("localLeader").empty());
       }
+    }
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne, resign_leadership_plan) {
+  plan = originalPlan;
+  resignLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto relevantShards = getShardsForServer(dbName(), planId(), node.first, originalPlan);
+    std::vector<std::shared_ptr<ActionDescription>> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
+                                         node.second.toBuilder().slice(),
+                                         node.first, errors, *feature, actions);
+
+    ASSERT_EQ(actions.size(), relevantShards.size());
+    for (auto const& action : actions) {
+      assertIsResignLeadershipAction(*action, dbName());
+      auto shardName = action->get(SHARD);
+      auto removed = relevantShards.erase(shardName);
+      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
     }
   }
 }
@@ -822,8 +968,7 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
                                          node.first, errors, *feature, actions);
 
     ASSERT_EQ(actions.size(), 1);
-    ASSERT_EQ(actions[0]->name(), "ResignShardLeadership");
-    ASSERT_EQ(actions[0]->get(DATABASE), dbname);
+    assertIsResignLeadershipAction(*actions[0], "_system");
     ASSERT_EQ(actions[0]->get(SHARD), shname);
   }
 }
