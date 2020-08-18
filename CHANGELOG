@@ -1,6 +1,8 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed too early access to vocbase for cluster-feature.
+
 * Fixed BTS-167: Lingering Queries - Canceled from the UI.
   This fixes queries not vanishing from the list of running queries in the web
   UI in case the query was canceled using the "Cancel" button in web UI's query
