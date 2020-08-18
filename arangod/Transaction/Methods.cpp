@@ -353,7 +353,8 @@ transaction::Methods::~Methods() {
     // store result in context
     _transactionContext->storeTransactionResult(_state->id(),
                                                 _state->wasRegistered(),
-                                                _state->isReadOnlyTransaction());
+                                                _state->isReadOnlyTransaction(),
+                                                _state->isFollowerTransaction());
 
     _state = nullptr;
   }
@@ -982,13 +983,11 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
+  ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     TRI_ASSERT(followers == nullptr);
     followers = collection->followers()->get();
-  }
 
-  ReplicationType replicationType = ReplicationType::NONE;
-  if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
@@ -1280,13 +1279,11 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
+  ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     TRI_ASSERT(followers == nullptr);
     followers = collection->followers()->get();
-  }
 
-  ReplicationType replicationType = ReplicationType::NONE;
-  if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
@@ -1501,13 +1498,12 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
   auto const& collection = trxColl->collection();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
-  if (_state->isDBServer()) {
-    TRI_ASSERT(followers == nullptr);
-    followers = collection->followers()->get();
-  }
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
+    TRI_ASSERT(followers == nullptr);
+    followers = collection->followers()->get();
+
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
@@ -1726,6 +1722,9 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
+    TRI_ASSERT(followers == nullptr);
+    followers = collection->followers()->get();
+
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
@@ -2334,7 +2333,7 @@ Future<Result> Methods::replicateOperations(
                             resp.response->statusCode() == fuerte::StatusOK;
         if (replicationWorked) {
           bool found;
-          std::string val = resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
+          resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
           replicationWorked = !found;
         }
         didRefuse = didRefuse || resp.response->statusCode() == fuerte::StatusNotAcceptable;
