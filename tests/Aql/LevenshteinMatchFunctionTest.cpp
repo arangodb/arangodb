@@ -137,7 +137,9 @@ TEST(LevenshteinMatchFunctionTest, test) {
   assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{4}), &Levenshtein);
   assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{4}));
   assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{4}), &Damerau);
+  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}));
   assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &Damerau);
+  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{6}));
   assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{6}), &Damerau);
   assertLevenshteinMatch(true, AqlValue(AqlValueHintNull{}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Levenshtein);
   assertLevenshteinMatch(false, AqlValue(AqlValueHintEmptyArray{}), AqlValue("aa"), AqlValue(AqlValueHintInt{1}), &Levenshtein);

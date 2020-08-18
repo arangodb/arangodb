@@ -1779,7 +1779,7 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx, transaction::Method
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
 
-  bool withTranspositionsValue = false;
+  bool withTranspositionsValue = true;
   int64_t maxDistanceValue = maxDistance.toInt64();
 
   if (args.size() > 3) {
