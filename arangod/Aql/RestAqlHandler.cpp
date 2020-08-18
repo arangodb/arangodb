@@ -275,8 +275,11 @@ void RestAqlHandler::setupClusterQuery() {
 
 // DELETE method for /_api/aql/kill/<queryId>, (internal)
 bool RestAqlHandler::killQuery(std::string const& idString) {
-  _qId = arangodb::basics::StringUtils::uint64(idString);
-  return _queryRegistry->destroyEngine(_qId, TRI_ERROR_QUERY_KILLED);
+  auto qid = arangodb::basics::StringUtils::uint64(idString);
+  if (qid != 0) {
+    return _queryRegistry->destroyEngine(qid, TRI_ERROR_QUERY_KILLED);
+  }
+  return false;
 }
 
 // PUT method for /_api/aql/<operation>/<queryId>, (internal)

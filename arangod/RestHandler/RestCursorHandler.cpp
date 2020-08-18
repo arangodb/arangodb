@@ -84,6 +84,11 @@ RestStatus RestCursorHandler::execute() {
 }
 
 RestStatus RestCursorHandler::continueExecute() {
+  if (wasCanceled()) {
+    generateError(rest::ResponseCode::GONE, TRI_ERROR_QUERY_KILLED);
+    return RestStatus::DONE;
+  }
+  
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
 
@@ -449,7 +454,9 @@ void RestCursorHandler::cancelQuery() {
   if (_query != nullptr) {
     // cursor is canceled. now remove the continue handler we may have
     // registered in the query
-     _query->sharedState()->resetWakeupHandler();
+    if (_query->sharedState()) {
+      _query->sharedState()->resetWakeupHandler();
+    }
     _query->kill();
     _queryKilled = true;
     _hasStarted = true;
