@@ -31,7 +31,7 @@
 #include "GeneralServer/RestHandler.h"
 
 #include <map>
-#include <mutex>
+#include <shared_mutex>
 
 namespace arangodb {
 
@@ -98,6 +98,31 @@ public:
   /// @brief Used exclusively in unit tests
   consensus::Store& store();
 
+  /**
+   * @brief        Get a list of planned changes and other databases and
+   *               the according RAFT index
+   *
+   * @param last   Last index known to the caller
+   * @param other  List of additional databases
+   *
+   * @return       The currently last noted RAFT index and  a velocypack
+   *               representation of planned and other desired databases
+   *                
+   */
+  std::tuple <consensus::query_t, consensus::index_t> const  plannedDBsChangedSince(
+    consensus::index_t const& last, std::vector<std::string> const& others) const;
+
+  /**
+   * @brief get a list of changes and other databases and the according RAFT index
+   * @param last   Last index known to the caller
+   * @param other  List of additional databases
+   * @return       The currently last noted RAFT index and  a velocypack
+   *               representation of planned and other desired databases
+   *                
+   */
+  std::tuple <consensus::query_t, consensus::index_t> const  currentDBsChangedSince(
+    consensus::index_t const& last, std::vector<std::string> const& others) const;
+  
 private:
 
   /// @brief invoke all callbacks
@@ -110,14 +135,14 @@ private:
   void invokeCallbackNoLock(uint64_t, std::string const& = std::string()) const;
 
   /// @brief handle callbacks for specific log document
-  void handleCallbacksNoLock(VPackSlice, std::unordered_set<uint64_t>&, std::vector<uint64_t>&);
+  void handleCallbacksNoLock(VPackSlice, std::unordered_set<uint64_t>&, std::vector<uint64_t>&, std::unordered_set<std::string>& plannedChanges, std::unordered_set<std::string>& currentChanges);
 
   /// @brief trigger all waiting call backs for index <= _commitIndex
   ///        caller must hold lock
   void triggerWaiting(consensus::index_t commitIndex);
 
   /// @brief Guard for _readDB
-  mutable std::mutex _storeLock;
+  mutable std::shared_mutex _storeLock;
 
   /// @brief Commit index
   consensus::index_t _commitIndex;
@@ -135,6 +160,13 @@ private:
   /// @brief Waiting room for indexes during office hours
   mutable std::mutex _waitLock;
   std::multimap<consensus::index_t, futures::Promise<arangodb::Result>> _waiting;
+
+  /// @ brief Index lock of planned changes
+  std::multimap<consensus::index_t, std::string> _plannedChanges;
+  
+  /// @ brief Index lock of current changes
+  std::multimap<consensus::index_t, std::string> _currentChanges;
+  
 };
 
 } // namespace

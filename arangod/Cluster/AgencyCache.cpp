@@ -22,6 +22,7 @@
 
 #include "AgencyCache.h"
 #include "Agency/AsyncAgencyComm.h"
+#include "Agency/AgencyStrings.h"
 #include "Agency/Node.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/RestHandler.h"
@@ -30,6 +31,22 @@
 
 using namespace arangodb;
 using namespace arangodb::consensus;
+
+namespace std {
+class shared_lock_guard {
+private:
+  std::shared_mutex& m;
+
+public:
+  explicit shared_lock_guard(std::shared_mutex& m_): m(m_) {
+    m.lock_shared();
+  }
+  shared_lock_guard(std::shared_mutex& m_, std::adopt_lock_t): m(m_) {}
+  ~shared_lock_guard() {
+    m.unlock_shared();
+  }
+};
+}
 
 AgencyCache::AgencyCache(
   application_features::ApplicationServer& server,
@@ -51,10 +68,11 @@ bool AgencyCache::start() {
   return true;
 }
 
+
 // Fill existing Builder from readDB, mainly /Plan /Current
 index_t AgencyCache::get(VPackBuilder& result, std::string const& path) const {
   result.clear();
-  std::lock_guard g(_storeLock);
+  std::shared_lock_guard g(_storeLock);
   if (_commitIndex > 0) {
     _readDB.get("arango/" + path, result, false);
   }
@@ -78,9 +96,8 @@ query_t AgencyCache::dump() const {
   }
 
   auto ret = std::make_shared<VPackBuilder>();
-  { 
-    VPackObjectBuilder o(ret.get());
-    std::lock_guard g(_storeLock);
+  { VPackObjectBuilder o(ret.get());
+    std::shared_lock_guard g(_storeLock);
     ret->add("index", VPackValue(_commitIndex));
     ret->add(VPackValue("cache"));
     _readDB.read(query, ret);
@@ -100,7 +117,7 @@ std::tuple<query_t, index_t> AgencyCache::read(std::vector<std::string> const& p
   }
 
   auto result = std::make_shared<arangodb::velocypack::Builder>();
-  std::lock_guard g(_storeLock);
+  std::shared_lock_guard g(_storeLock);
 
   if (_commitIndex > 0) {
     _readDB.read(query, result);
@@ -109,7 +126,7 @@ std::tuple<query_t, index_t> AgencyCache::read(std::vector<std::string> const& p
 }
 
 futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
-  std::lock_guard s(_storeLock);
+  std::shared_lock_guard s(_storeLock);
   if (index <= _commitIndex) {
     return futures::makeFuture(arangodb::Result());
   }
@@ -119,11 +136,11 @@ futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
 }
 
 index_t AgencyCache::index() const {
-  std::lock_guard g(_storeLock);
+  std::shared_lock_guard g(_storeLock);
   return _commitIndex;
 }
 
-void AgencyCache::handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uint64_t>& uniq, std::vector<uint64_t>& toCall) {
+void AgencyCache::handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uint64_t>& uniq, std::vector<uint64_t>& toCall, std::unordered_set<std::string>& plannedChanges, std::unordered_set<std::string>& currentChanges) {
 
   if (!slice.isObject()) {
     LOG_TOPIC("31514", DEBUG, Logger::CLUSTER) <<
@@ -151,8 +168,43 @@ void AgencyCache::handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uin
       }
     }
   }
+
+  std::unordered_set<std::string> dbs;
+  const char SLASH ('/');
+
   // Find keys, which are a prefix of a callback:
   for (auto const& k : keys) {
+
+    if (k.size() > 8) {
+      std::string relevant(k.substr(8));
+      auto rs = relevant.size();
+
+      if        (rs > strlen(PLAN_COLLECTIONS) &&
+                 relevant.substr(0, strlen(PLAN_COLLECTIONS)).compare(PLAN_COLLECTIONS) == 0) {auto tmp = relevant.substr(strlen(PLAN_COLLECTIONS));
+        plannedChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
+      } else if (rs > strlen(PLAN_DATABASES) &&
+                 relevant.substr(0, strlen(PLAN_DATABASES)).compare(PLAN_DATABASES) == 0) {
+        auto tmp = relevant.substr(strlen(PLAN_DATABASES));
+        plannedChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
+      } else if (rs > strlen(PLAN_VIEWS) &&
+                 relevant.substr(0, strlen(PLAN_VIEWS)).compare(PLAN_VIEWS) == 0) {
+        auto tmp = relevant.substr(strlen(PLAN_VIEWS));
+        plannedChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
+      } else if (rs > strlen(PLAN_ANALYZERS) &&
+                 relevant.substr(0, strlen(PLAN_ANALYZERS)).compare(PLAN_ANALYZERS) == 0) {
+        auto tmp = relevant.substr(strlen(PLAN_ANALYZERS));
+        plannedChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
+      } else if (rs > strlen(CURRENT_COLLECTIONS) &&
+                 relevant.substr(0, strlen(CURRENT_COLLECTIONS)).compare(CURRENT_COLLECTIONS) == 0) {
+        auto tmp = relevant.substr(strlen(CURRENT_COLLECTIONS));
+        currentChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
+      } else if (rs > strlen(CURRENT_COLLECTIONS) &&
+                 relevant.substr(0, strlen(CURRENT_DATABASES)).compare(CURRENT_DATABASES) == 0) {
+        auto tmp = relevant.substr(strlen(CURRENT_DATABASES));
+        currentChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
+      }
+    }
+
     auto it = _callbacks.lower_bound(k);
     while (it != _callbacks.end() && it->first.compare(0, k.size(), k) == 0) {
       if (uniq.emplace(it->second).second) {
@@ -257,9 +309,19 @@ void AgencyCache::run() {
                         _readDB.applyTransaction(i); // apply logs
                         _commitIndex = i.get("index").getNumber<uint64_t>();
                       }
+                      std::unordered_set<std::string> pc, cc;
                       {
                         std::lock_guard g(_callbacksLock);
-                        handleCallbacksNoLock(i.get("query"), uniq, toCall);
+                        handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
+                      }
+                      {
+                        std::lock_guard g(_storeLock);
+                        for (auto const& i : pc) {
+                          _plannedChanges.emplace(_commitIndex, i);
+                        }
+                        for (auto const& i : cc) {
+                          _currentChanges.emplace(_commitIndex, i);
+                        }
                       }
                     }
                   }
@@ -314,8 +376,10 @@ void AgencyCache::run() {
         "Caught an error while polling agency updates";
       increaseWaitTime();
     }
+
     // off to next round we go...
   }
+  
 }
 
 void AgencyCache::triggerWaiting(index_t commitIndex) {
@@ -425,14 +489,14 @@ void AgencyCache::beginShutdown() {
 }
 
 bool AgencyCache::has(std::string const& path) const {
-  std::lock_guard g(_storeLock);
+  std::shared_lock_guard g(_storeLock);
   return _readDB.has(AgencyCommHelper::path(path));
 }
 
 std::vector<bool> AgencyCache::has(std::vector<std::string> const& paths) const {
   std::vector<bool> ret;
   ret.reserve(paths.size());
-  std::lock_guard g(_storeLock);
+  std::shared_lock_guard g(_storeLock);
   for (auto const& i : paths) {
     ret.push_back(_readDB.has(i));
   }
@@ -468,4 +532,103 @@ void AgencyCache::invokeAllCallbacks() const {
     }
   }
   invokeCallbacks(toCall);
+}
+
+
+std::tuple <consensus::query_t, consensus::index_t> const AgencyCache::plannedDBsChangedSince(
+  consensus::index_t const& last, std::vector<std::string> const& others) const {
+
+  auto result = std::make_shared<arangodb::velocypack::Builder>();
+
+  std::vector<std::string> databases;
+  for (auto const& i : others) {
+    auto databasePath = AgencyCommHelper::path(PLAN_COLLECTIONS + i);
+    if (std::find(databases.begin(), databases.end(), databasePath) == databases.end()) {
+      databases.push_back(databasePath);
+    }
+  }
+
+  std::shared_lock_guard g(_storeLock);
+
+  std::multimap<consensus::index_t, std::string>::const_iterator it =
+    _plannedChanges.lower_bound(last);
+  if (it != _plannedChanges.end()) {
+    for (; it != _plannedChanges.end(); ++it) {
+      auto databasePath = AgencyCommHelper::path(PLAN_COLLECTIONS + it->second);
+      if (std::find(databases.begin(), databases.end(), databasePath) == databases.end()) {
+        databases.push_back(databasePath);
+      }
+    }
+    LOG_TOPIC("d5743", TRACE, Logger::CLUSTER) << "collecting " << databases << " from agency cache";
+  } else {
+    LOG_TOPIC("d5734", DEBUG, Logger::CLUSTER) << "no changed databases since " << last;
+    return std::tuple(std::move(result), _commitIndex);
+  }
+
+  if (databases.empty()) {
+    return std::tuple(std::move(result), _commitIndex);
+  }
+
+  auto query = std::make_shared<arangodb::velocypack::Builder>();
+  {
+    VPackArrayBuilder outer(query.get());
+    VPackArrayBuilder inner(query.get());
+    for (auto const& i : databases) {
+      query->add(VPackValue(i));
+    }
+  }
+  LOG_TOPIC("da567", TRACE, Logger::CLUSTER) << result->toJson() ;
+
+  return std::tuple(std::move(result), _commitIndex);
+
+}
+
+std::tuple <consensus::query_t, consensus::index_t> const AgencyCache::currentDBsChangedSince(
+  consensus::index_t const& last, std::vector<std::string> const& others) const {
+
+  std::pair<consensus::index_t, std::vector<std::string>> ret;
+
+  auto result = std::make_shared<arangodb::velocypack::Builder>();
+
+  std::vector<std::string> databases;
+  for (auto const& i : others) {
+    auto databasePath = AgencyCommHelper::path(CURRENT_COLLECTIONS + i);
+    if (std::find(databases.begin(), databases.end(), databasePath) == databases.end()) {
+      databases.push_back(databasePath);
+    }
+  }
+
+  std::shared_lock_guard g(_storeLock);
+
+  std::multimap<consensus::index_t, std::string>::const_iterator it =
+    _currentChanges.lower_bound(last);
+  if (it != _currentChanges.end()) {
+    for (; it != _currentChanges.end(); it++) {
+      auto databasePath = AgencyCommHelper::path(CURRENT_COLLECTIONS + it->second);
+      if (std::find(databases.begin(), databases.end(), databasePath) == databases.end()) {
+        databases.push_back(databasePath);
+      }
+    }
+    LOG_TOPIC("d5473", TRACE, Logger::CLUSTER) << "collecting " << databases << " from agency cache";
+  } else {
+    LOG_TOPIC("d5374", DEBUG, Logger::CLUSTER) << "no changed databases since " << last;
+    return std::tuple(std::move(result), _commitIndex);
+  }
+
+  if (databases.empty()) {
+    return std::tuple(std::move(result), _commitIndex);
+  }
+
+  auto query = std::make_shared<arangodb::velocypack::Builder>();
+  {
+    VPackArrayBuilder outer(query.get());
+    VPackArrayBuilder inner(query.get());
+    for (auto const& i : databases) {
+      query->add(VPackValue(i));
+    }
+  }
+  LOG_TOPIC("da657", TRACE, Logger::CLUSTER) << result->toJson() ;
+
+  return std::tuple(std::move(result), _commitIndex);
+
 }
