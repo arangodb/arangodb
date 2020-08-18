@@ -31,6 +31,7 @@
 using namespace arangodb::pregel::algos::accumulators;
 
 void VertexData::reset(AccumulatorsDeclaration const& accumulatorsDeclaration,
+                       CustomAccumulatorDefinitions const& customDefinitions,
                        std::string documentId, VPackSlice const& doc, std::size_t vertexId) {
   _documentId = documentId;
   _document.clear();
@@ -38,7 +39,7 @@ void VertexData::reset(AccumulatorsDeclaration const& accumulatorsDeclaration,
   _vertexId = vertexId;
 
   for (auto&& acc : accumulatorsDeclaration) {
-    _accumulators.emplace(acc.first, instantiateAccumulator(*this, acc.second));
+    _accumulators.emplace(acc.first, instantiateAccumulator(*this, acc.second, customDefinitions));
   }
 }
 

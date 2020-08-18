@@ -43,7 +43,8 @@ class VertexComputation : public vertex_computation {
   VertexAccumulators const& algorithm() const;
 
  private:
-  bool processIncomingMessages(MessageIterator<MessageData> const& incomingMessages);
+  greenspun::EvalResult clearAllAccumulators();
+  greenspun::EvalResultT<bool> processIncomingMessages(MessageIterator<MessageData> const& incomingMessages);
   greenspun::EvalResult runProgram(greenspun::Machine& ctx, VPackSlice program);
 
   void registerLocalFunctions();

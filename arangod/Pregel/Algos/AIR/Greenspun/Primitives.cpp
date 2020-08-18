@@ -36,6 +36,67 @@
 namespace arangodb {
 namespace greenspun {
 
+
+EvalResult Prim_Min(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  bool set = false;
+  auto tmp = double{0};
+  for (auto p : VPackArrayIterator(params)) {
+    if (p.isNumber<double>()) {
+      if (!set) {
+        tmp = p.getNumericValue<double>();
+        set = true;
+      } else {
+        tmp = std::min(tmp, p.getNumericValue<double>());
+      }
+    } else {
+      return EvalError("expected double, found: " + p.toJson());
+    }
+  }
+  if (set) {
+    result.add(VPackValue(tmp));
+  } else {
+    result.add(VPackSlice::noneSlice());
+  }
+  return {};
+}
+
+EvalResult Prim_Max(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  bool set = false;
+  auto tmp = double{0};
+  for (auto p : VPackArrayIterator(params)) {
+    if (p.isNumber<double>()) {
+      if (!set) {
+        tmp = p.getNumericValue<double>();
+        set = true;
+      } else {
+        tmp = std::max(tmp, p.getNumericValue<double>());
+      }
+    } else {
+      return EvalError("expected double, found: " + p.toJson());
+    }
+  }
+  if (set) {
+    result.add(VPackValue(tmp));
+  } else {
+    result.add(VPackSlice::noneSlice());
+  }
+  return {};
+}
+
+EvalResult Prim_Avg(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  auto tmp = double{0};
+  for (auto p : VPackArrayIterator(params)) {
+    if (p.isNumber<double>()) {
+      tmp += p.getNumericValue<double>();
+    } else {
+      return EvalError("expected double, found: " + p.toJson());
+    }
+  }
+  auto length = params.length();
+  result.add(VPackValue(length == 0 ? tmp : tmp / length));
+  return {};
+}
+
 EvalResult Prim_Banana(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto tmp = double{0};
   for (auto p : VPackArrayIterator(params)) {
@@ -171,24 +232,6 @@ EvalResult Prim_VarRef(Machine& ctx, VPackSlice const params, VPackBuilder& resu
     }
   }
   return EvalError("expecting a single string parameter, found " + params.toJson());
-}
-
-EvalResult Prim_VarSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  if (!params.isArray() && params.length() != 2) {
-    return EvalError("expected exactly two parameters");
-  }
-
-  auto&& [key, slice] = unpackTuple<VPackSlice, VPackSlice>(params);
-  if (!slice.isObject()) {
-    return EvalError("expect second parameter to be an object");
-  }
-
-  if (key.isString()) {
-    return ctx.setVariable(key.copyString(), slice);
-  } else {
-    return EvalError("expect first parameter to be a string");
-  }
-  return {};
 }
 
 EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
@@ -425,6 +468,11 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("lt?", Prim_CmpHuh<std::less<>>);
   ctx.setFunction("ne?", Prim_CmpHuh<std::not_equal_to<>>);
 
+  // Misc
+  ctx.setFunction("min", Prim_Min);
+  ctx.setFunction("max", Prim_Max);
+  ctx.setFunction("avg", Prim_Avg);
+
   // Debug operators
   ctx.setFunction("print", Prim_PrintLn);
 
@@ -438,10 +486,10 @@ void RegisterAllPrimitives(Machine& ctx) {
 
   // Access operators
   ctx.setFunction("attrib-ref", Prim_AttribRef);
-  ctx.setFunction("attrib-set!", Prim_AttribSet);
+  ctx.setFunction("attrib-get", Prim_AttribRef);
+  ctx.setFunction("attrib-set", Prim_AttribSet);
 
   ctx.setFunction("var-ref", Prim_VarRef);
-  ctx.setFunction("var-set!", Prim_VarSet);
 
   // TODO: We can just register bind parameters as variables (or a variable)
   ctx.setFunction("bind-ref", Prim_VarRef);

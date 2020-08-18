@@ -122,6 +122,7 @@ struct value_type_mapping<value_type_pair<Value, Type>, value_type_pair<Values, 
 using integral_restriction = type_list<int, double>;
 using bool_restriction = type_list<bool>;
 using no_restriction = type_any;
+using slice_restriction = type_list<VPackSlice>;
 
 using my_accum_mapping = accum_mapping<
     accum_value_pair<MinAccumulator, AccumulatorType::MIN, integral_restriction>,
@@ -130,7 +131,8 @@ using my_accum_mapping = accum_mapping<
     accum_value_pair<AndAccumulator, AccumulatorType::AND, bool_restriction>,
     accum_value_pair<OrAccumulator, AccumulatorType::OR, bool_restriction>,
     accum_value_pair<StoreAccumulator, AccumulatorType::STORE, no_restriction>,
-    accum_value_pair<ListAccumulator, AccumulatorType::LIST, no_restriction>
+    accum_value_pair<ListAccumulator, AccumulatorType::LIST, no_restriction>,
+    accum_value_pair<CustomAccumulator, AccumulatorType::CUSTOM, slice_restriction>
 >;
 
 using my_type_mapping = value_type_mapping<
@@ -142,19 +144,17 @@ using my_type_mapping = value_type_mapping<
 >;
 
 
-std::unique_ptr<AccumulatorBase> instantiateAccumulator(VertexData const& owner, AccumulatorOptions const& options) {
+std::unique_ptr<AccumulatorBase> instantiateAccumulator(VertexData const& owner, AccumulatorOptions const& options,
+                                                        CustomAccumulatorDefinitions const& customDefinitions) {
   auto ptr = my_type_mapping::invoke(options.valueType, [&](auto type_tag) -> std::unique_ptr<AccumulatorBase> {
     using used_type = decltype(type_tag);
     if constexpr (used_type::found) {
-        return my_accum_mapping::make_unique<typename used_type::type, AccumulatorBase>(options.type, owner, options);
+        return my_accum_mapping::make_unique<typename used_type::type, AccumulatorBase>(options.type, owner, options, customDefinitions);
     }
 
     return nullptr;
   });
 
-  if (ptr) {
-    ptr->clear();
-  }
   return ptr;
 }
 

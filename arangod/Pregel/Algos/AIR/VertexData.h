@@ -44,6 +44,7 @@ namespace accumulators {
 class VertexData {
  public:
   void reset(AccumulatorsDeclaration const& accumulatorsDeclaration,
+             CustomAccumulatorDefinitions const& customDefinitions,
              std::string documentId, VPackSlice const& doc, std::size_t vertexId);
 
   std::unique_ptr<AccumulatorBase> const& accumulatorByName(std::string_view name);

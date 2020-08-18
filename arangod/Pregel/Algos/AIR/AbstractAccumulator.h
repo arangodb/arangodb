@@ -26,12 +26,14 @@
 
 #ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ABSTRACT_ACCUMULATOR_H
 #define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ABSTRACT_ACCUMULATOR_H 1
+#include <Pregel/Algos/AIR/Greenspun/EvalResult.h>
 #include <numeric>
 
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
 
 #include "AccumulatorOptionsDeserializer.h"
+#include "MessageData.h"
 
 namespace arangodb {
 namespace pregel {
@@ -56,31 +58,17 @@ struct AccumulatorBase {
   };
 
   // Resets the accumulator to a well-known value
-  virtual void clear() = 0;
+  virtual auto clearWithResult() -> greenspun::EvalResult = 0;
 
-  // Set the accumulator's value by slice; it is the
-  // responsibility of the particular accumulator
-  // implementation to interpret the slice
-  virtual void setBySlice(VPackSlice) = 0;
-
-  // Update the accumulator's value by a message slice
-  // The accumulator can assume that the slice was builder
-  // by getIntoMessageSlice
-  virtual auto updateByMessageSlice(VPackSlice) -> UpdateResult = 0;
-
-  // Write all information that is needed to send an update
-  // The slice built here must be interpretable by
-  // updateByMessageSlice
-  virtual void getUpdateMessageIntoBuilder(VPackBuilder& builder) = 0;
-
-  // Get the value into a builder. The formatting of this result
-  // is entirely up to the accumulators implementation
-  virtual void getValueIntoBuilder(VPackBuilder& builder) = 0;
+  virtual void serializeIntoBuilder(VPackBuilder& result) = 0;
+  virtual auto setBySliceWithResult(VPackSlice v) -> greenspun::EvalResult = 0;
+  virtual auto getIntoBuilderWithResult(VPackBuilder& result) -> greenspun::EvalResult = 0;
+  virtual auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> = 0;
 
   // Returns a pointer to the value of this accumulator.
-  virtual const void* getValuePointer() const = 0;
+  virtual const void* getValuePointer() const { return nullptr; }
   // Set the value from a value pointer.
-  virtual void setValueFromPointer(const void*) = 0;
+  virtual void setValueFromPointer(const void*) { }
 
   VertexData const& _owner;
 };
@@ -90,19 +78,41 @@ class Accumulator : public AccumulatorBase {
  public:
   using data_type = T;
 
-  explicit Accumulator(VertexData const& owner, AccumulatorOptions const&)
+  explicit Accumulator(VertexData const& owner, AccumulatorOptions const&, CustomAccumulatorDefinitions const&)
       : AccumulatorBase(owner){};
   ~Accumulator() override = default;
 
   // Needed to implement set by slice and clear
-  virtual void set(data_type&& v) { _value = v; };
+  virtual void set(data_type v) { _value = std::move(v); };
 
-  void clear() override { this->set(T{}); }
+  auto clearWithResult() -> greenspun::EvalResult override {
+    this->clear();
+    return {};
+  }
+  virtual void clear() { this->set(T{}); }
+
+  auto setBySliceWithResult(VPackSlice v) -> greenspun::EvalResult override {
+    this->setBySlice(v);
+    return {};
+  }
+
+  auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> override {
+    return this->updateByMessageSlice(msg._value.slice());
+  }
+
+  auto getIntoBuilderWithResult(VPackBuilder& result) -> greenspun::EvalResult override {
+    this->getValueIntoBuilder(result);
+    return {};
+  }
+
+  void serializeIntoBuilder(VPackBuilder& result) override {
+    this->getValueIntoBuilder(result);
+  }
 
   // Needed to implement updates by slice
-  virtual UpdateResult update(data_type v) = 0;
+  virtual greenspun::EvalResultT<UpdateResult> update(data_type v) = 0;
 
-  void setBySlice(VPackSlice s) override {
+  virtual void setBySlice(VPackSlice s) {
     // TODO proper error handling here!
     if constexpr (std::is_same_v<T, bool>) {
       this->set(s.getBool());
@@ -113,7 +123,10 @@ class Accumulator : public AccumulatorBase {
     }
   }
 
-  UpdateResult updateByMessageSlice(VPackSlice s) override {
+  // Update the accumulator's value by a message slice
+  // The accumulator can assume that the slice was builder
+  // by getIntoMessageSlice
+  virtual greenspun::EvalResultT<UpdateResult> updateByMessageSlice(VPackSlice s) {
     if constexpr (std::is_same_v<T, bool>) {
       return this->update(s.getBool());
     } else if constexpr (std::is_arithmetic_v<T>) {
@@ -127,11 +140,9 @@ class Accumulator : public AccumulatorBase {
     }
   }
 
-  void getUpdateMessageIntoBuilder(VPackBuilder& builder) override {
-    getValueIntoBuilder(builder);
-  }
-
-  void getValueIntoBuilder(VPackBuilder& builder) override {
+  // Get the value into a builder. The formatting of this result
+  // is entirely up to the accumulators implementation
+  virtual void getValueIntoBuilder(VPackBuilder& builder) {
     if constexpr (std::is_same_v<T, VPackSlice>) {
       builder.add(_value);
     } else {
@@ -153,7 +164,8 @@ class Accumulator : public AccumulatorBase {
 };
 
 std::unique_ptr<AccumulatorBase> instantiateAccumulator(VertexData const& owner,
-                                                        AccumulatorOptions const& options);
+                                                        AccumulatorOptions const& options,
+                                                        CustomAccumulatorDefinitions const& customDefinitions);
 bool isValidAccumulatorOptions(AccumulatorOptions const& options);
 
 }  // namespace accumulators

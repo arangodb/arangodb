@@ -74,7 +74,6 @@ template <char const N[], typename T>
 struct factory_optional_value_parameter {
   using value_type = std::optional<T>;
   constexpr static auto name = N;
-  constexpr static auto default_value = value_type{};
 };
 
 template <const char N[], typename D, bool required>
@@ -86,8 +85,16 @@ struct factory_deserialized_parameter {
       "result type must be default constructible if it is not required");
 };
 
+template <const char N[], typename D>
+struct factory_optional_deserialized_parameter {
+  using value_type = std::optional<typename D::constructed_type>;
+  constexpr static auto name = N;
+};
+
 template <const char N[], bool required>
 using factory_builder_parameter = factory_deserialized_parameter<N, values::vpack_builder_deserializer, required>;
+template <const char N[]>
+using factory_optional_builder_parameter = factory_optional_deserialized_parameter<N, values::vpack_builder_deserializer>;
 
 /*
  * expected_value does not generate a additional parameter to the factory but instead
@@ -187,7 +194,7 @@ struct parameter_executor<factory_deserialized_parameter<N, D, required>, H> {
     auto value_slice = s.get(N);
     if (!value_slice.isNone()) {
       return ::arangodb::velocypack::deserializer::deserialize<D, hints::hint_list_empty, C>(
-                 value_slice, {}, std::forward<C>(c))
+          value_slice, {}, std::forward<C>(c))
           .map([](typename D::constructed_type&& t) {
             return std::make_pair(std::move(t), true);
           })
@@ -201,6 +208,34 @@ struct parameter_executor<factory_deserialized_parameter<N, D, required>, H> {
     } else {
       return result_type{std::make_pair(value_type{}, false)};
     }
+  }
+};
+
+template <char const N[], typename D, typename H>
+struct parameter_executor<factory_optional_deserialized_parameter<N, D>, H> {
+  using parameter_type = factory_optional_deserialized_parameter<N, D>;
+  using value_type = typename parameter_type::value_type;
+  using result_type = result<std::pair<value_type, bool>, deserialize_error>;
+  constexpr static bool has_value = true;
+
+  template <typename C>
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
+                     typename H::state_type hints, C&& c) -> result_type {
+    using namespace std::string_literals;
+
+    auto value_slice = s.get(N);
+    if (!value_slice.isNone()) {
+      return ::arangodb::velocypack::deserializer::deserialize<D, hints::hint_list_empty, C>(
+          value_slice, {}, std::forward<C>(c))
+          .map([](typename D::constructed_type&& t) {
+            return std::make_pair(value_type{std::move(t)}, true);
+          })
+          .wrap([](deserialize_error&& e) {
+            return std::move(e.wrap("when reading value of field "s + N).trace(N));
+          });
+    }
+
+    return result_type{std::make_pair(value_type{}, false)};
   }
 };
 

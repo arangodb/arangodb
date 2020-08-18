@@ -231,7 +231,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/WorkerConfig.cpp
   RestHandler/RestControlPregelHandler.cpp
   RestHandler/RestPregelHandler.cpp
-        Pregel/Reports.cpp Pregel/Reports.h)
+        Pregel/Reports.cpp Pregel/Reports.h Pregel/Algos/AIR/Accumulators.cpp)
 
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp

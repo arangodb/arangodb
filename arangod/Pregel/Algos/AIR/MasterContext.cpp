@@ -87,8 +87,7 @@ greenspun::EvalResult MasterContext::air_AccumRef(greenspun::Machine& ctx,
   globalName += accumId;
   auto accum = getAggregator<VertexAccumulatorAggregator>(globalName);
   if (accum != nullptr) {
-    accum->getAccumulator().getValueIntoBuilder(result);
-    return {};
+    return accum->getAccumulator().getIntoBuilderWithResult(result);
   }
   return greenspun::EvalError("global accumulator `" + std::string{accumId} +
                               "' not found");
@@ -102,8 +101,7 @@ greenspun::EvalResult MasterContext::air_AccumSet(greenspun::Machine& ctx,
   globalName += accumId;
   auto accum = getAggregator<VertexAccumulatorAggregator>(globalName);
   if (accum != nullptr) {
-    accum->getAccumulator().setBySlice(value);
-      return {};
+    return accum->getAccumulator().setBySliceWithResult(value);
   }
 
   return greenspun::EvalError("accumulator `" + std::string{accumId} +

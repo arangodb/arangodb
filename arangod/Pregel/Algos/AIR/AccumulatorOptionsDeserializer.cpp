@@ -44,6 +44,7 @@ constexpr const char accumulatorType_and[] = "and";
 constexpr const char accumulatorType_or[] = "or";
 constexpr const char accumulatorType_store[] = "store";
 constexpr const char accumulatorType_list[] = "list";
+constexpr const char accumulatorType_custom[] = "custom";
 
 using accumulator_type_deserializer = enum_deserializer<AccumulatorType,
     enum_member<AccumulatorType::MIN, values::string_value<accumulatorType_min>>,
@@ -52,7 +53,8 @@ using accumulator_type_deserializer = enum_deserializer<AccumulatorType,
     enum_member<AccumulatorType::AND, values::string_value<accumulatorType_and>>,
     enum_member<AccumulatorType::OR, values::string_value<accumulatorType_or>>,
     enum_member<AccumulatorType::STORE, values::string_value<accumulatorType_store>>,
-    enum_member<AccumulatorType::LIST, values::string_value<accumulatorType_list>>
+    enum_member<AccumulatorType::LIST, values::string_value<accumulatorType_list>>,
+    enum_member<AccumulatorType::CUSTOM, values::string_value<accumulatorType_custom>>
 >;
 
 constexpr const char accumulatorValueType_doubles[] = "doubles";
@@ -72,11 +74,16 @@ using accumulator_value_type_deserializer = enum_deserializer<AccumulatorValueTy
 constexpr const char accumulatorType[] = "accumulatorType";
 constexpr const char valueType[] = "valueType";
 constexpr const char storeSender[] = "storeSender";
+constexpr const char parameters[] = "parameters";
+constexpr const char customType[] = "customType";
 
 using accumulator_options_plan = parameter_list<
     factory_deserialized_parameter<accumulatorType, accumulator_type_deserializer, true>,
     factory_deserialized_parameter<valueType, accumulator_value_type_deserializer, true>,
-    factory_simple_parameter<storeSender, bool, false>>;
+    factory_simple_parameter<storeSender, bool, false>,
+    factory_optional_value_parameter<customType, std::string>,
+    factory_optional_builder_parameter<parameters>
+>;
 
 using accumulator_options_deserializer_base =
     utilities::constructing_deserializer<AccumulatorOptions, accumulator_options_plan>;
@@ -96,12 +103,31 @@ struct accumulator_options_validator {
 
 using accumulator_options_deserializer = validator::validate<accumulator_options_deserializer_base, accumulator_options_validator>;
 
+constexpr const char clearProgram[] = "clearProgram";
+constexpr const char updateProgram[] = "updateProgram";
+constexpr const char setProgram[] = "setProgram";
+constexpr const char getProgram[] = "getProgram";
+
+/*
+    VPackBuilder clearProgram;
+    VPackBuilder updateProgram;
+ */
+
+using custom_accumulator_definition_plan = parameter_list<
+    factory_builder_parameter<clearProgram, true>,
+    factory_builder_parameter<updateProgram, true>,
+    factory_builder_parameter<setProgram, false>,
+    factory_builder_parameter<getProgram, false>
+>;
+
+using custom_accumulator_definition_deserializer =
+    utilities::constructing_deserializer<CustomAccumulatorDefinition, custom_accumulator_definition_plan>;
+
 /* Algorithm Phase */
 
 constexpr const char name[] = "name";
 constexpr const char onHalt[] = "onHalt";
 constexpr const char initProgram[] = "initProgram";
-constexpr const char updateProgram[] = "updateProgram";
 
 using algorithm_phase_plan = parameter_list<
     factory_deserialized_parameter<name, values::value_deserializer<std::string>, true>,
@@ -115,6 +141,7 @@ using algorithm_phase_deserializer = utilities::constructing_deserializer<Algori
 constexpr const char resultField[] = "resultField";
 constexpr const char vertexAccumulators[] = "vertexAccumulators";
 constexpr const char globalAccumulators[] = "globalAccumulators";
+constexpr const char customAccumulators[] = "customAccumulators";
 constexpr const char bindings[] = "bindings";
 constexpr const char maxGSS[] = "maxGSS";
 constexpr const char phases[] = "phases";
@@ -129,6 +156,7 @@ using non_empty_array_deserializer = validate<
     array_deserializer<D, C>, utilities::not_empty_validator>;
 
 using accumulators_map_deserializer = map_deserializer<accumulator_options_deserializer, my_map>;
+using custom_accumulators_map_deserializer = map_deserializer<custom_accumulator_definition_deserializer, my_map>;
 using bindings_map_deserializer = map_deserializer<values::vpack_builder_deserializer, my_map>;
 using phases_deseriaizer = non_empty_array_deserializer<algorithm_phase_deserializer, my_vector>;
 
@@ -136,6 +164,7 @@ using vertex_accumulator_options_plan = parameter_list<
     factory_deserialized_parameter<resultField, values::value_deserializer<std::string>, true>,
     factory_deserialized_parameter<vertexAccumulators, accumulators_map_deserializer, false>,
     factory_deserialized_parameter<globalAccumulators, accumulators_map_deserializer, false>,
+    factory_deserialized_parameter<customAccumulators, custom_accumulators_map_deserializer, false>,
     factory_deserialized_parameter<bindings, bindings_map_deserializer, /* required */ false>, // will be default constructed as empty map
     factory_deserialized_parameter<phases, phases_deseriaizer, true>,
     factory_simple_parameter<maxGSS, uint64_t, false, values::numeric_value<uint64_t, 500>>>;
@@ -175,6 +204,9 @@ std::ostream& operator<<(std::ostream& os, AccumulatorType const& type) {
       break;
     case AccumulatorType::LIST:
       os << accumulatorType_list;
+      break;
+    case AccumulatorType::CUSTOM:
+      os << accumulatorType_custom;
       break;
   }
   return os;

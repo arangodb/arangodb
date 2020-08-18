@@ -101,8 +101,7 @@ greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
 
   if (auto iter = vertexData()._accumulators.find(accumId);
       iter != std::end(vertexData()._accumulators)) {
-    iter->second->getValueIntoBuilder(result);
-    return {};
+    return iter->second->getIntoBuilderWithResult(result);
   } else {
     std::string globalName = "[global]-";
     globalName += accumId;
@@ -110,8 +109,7 @@ greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
         dynamic_cast<VertexAccumulatorAggregator const*>(getReadAggregator(globalName));
 
     if (accum != nullptr) {
-      accum->getAccumulator().getValueIntoBuilder(result);
-      return {};
+      return accum->getAccumulator().getIntoBuilderWithResult(result);
     }
   }
   return greenspun::EvalError("accumulator `" + std::string{accumId} +
@@ -130,8 +128,7 @@ greenspun::EvalResult VertexComputation::air_accumSet(greenspun::Machine& ctx,
 
   if (auto iter = vertexData()._accumulators.find(std::string{accumId});
       iter != std::end(vertexData()._accumulators)) {
-    iter->second->setBySlice(value);
-    return {};
+    return iter->second->setBySliceWithResult(value);
   } else {
     std::string globalName = "[global]-";
     globalName += accumId;
@@ -139,8 +136,7 @@ greenspun::EvalResult VertexComputation::air_accumSet(greenspun::Machine& ctx,
     if (accum != nullptr) {
       LOG_DEVEL << "VertexComputation::air_accumSet " << accumId
                 << " with value " << value.toJson();
-      accum->getAccumulator().setBySlice(value);
-      return {};
+      return accum->getAccumulator().setBySliceWithResult(value);
     }
   }
 
@@ -159,15 +155,13 @@ greenspun::EvalResult VertexComputation::air_accumClear(greenspun::Machine& ctx,
 
   if (auto iter = vertexData()._accumulators.find(accumId);
       iter != std::end(vertexData()._accumulators)) {
-    iter->second->clear();
-    return {};
+    return iter->second->clearWithResult();
   } else {
     std::string globalName = "[global]-";
     globalName += accumId;
     auto accum = getAggregatedValue<VertexAccumulatorAggregator>(globalName);
     if (accum != nullptr) {
-      accum->getAccumulator().clear();
-      return {};
+      return accum->getAccumulator().clearWithResult();
     }
   }
   return greenspun::EvalError("accumulator `" + std::string{accumId} +
@@ -211,7 +205,7 @@ greenspun::EvalResult VertexComputation::air_sendToAccum(greenspun::Machine& ctx
       getWriteAggregator(globalName));
     if (accum != nullptr) {
       LOG_DEVEL << "update global accum " << accumId << " with value " << value.toJson();
-      accum->getAccumulator().updateByMessageSlice(value);
+      //accum->getAccumulator().updateByMessageSlice(value);
       return {};
     }
   }
@@ -365,19 +359,38 @@ VertexAccumulators const& VertexComputation::algorithm() const {
   return _algorithm;
 };
 
-bool VertexComputation::processIncomingMessages(MessageIterator<MessageData> const& incomingMessages) {
+greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(MessageIterator<MessageData> const& incomingMessages) {
   auto accumChanged = bool{false};
 
   std::cout << "vertex: " << vertexData()._vertexId << " processing messages" << std::endl;
 
   for (const MessageData* msg : incomingMessages) {
-    auto accumName = msg->_accumulatorName;
+    auto&& accumName = msg->_accumulatorName;
 
     auto&& accum = vertexData().accumulatorByName(accumName);
 
     std::cout << " incoming message: " << msg->_value.slice().toJson() << std::endl;
 
-    accumChanged |= accum->updateByMessageSlice(msg->_value.slice()) ==
+    auto res = accum->updateByMessage(*msg);
+    if (res.fail()) {
+      auto phase_index = *getAggregatedValue<uint32_t>("phase");
+      auto phase = _algorithm.options().phases.at(phase_index);
+      getReportManager()
+              .report(ReportLevel::ERROR)
+              .with("pregel-id", pregelId())
+              .with("vertex", vertexData()._documentId)
+              .with("phase", phase.name)
+              .with("global-superstep", globalSuperstep())
+              .with("phase-step", phaseGlobalSuperstep())
+              .with("message", msg->_value.toJson())
+              .with("sender", msg->_sender)
+              .with("accumulator", accumName)
+          << "in phase `" << phase.name << "` updating accumulator `"
+          << accumName << "` failed: " << res.error().toString();
+      return std::move(res.error());
+    }
+
+    accumChanged |= res.value() ==
                     AccumulatorBase::UpdateResult::CHANGED;
   }
 
@@ -444,6 +457,19 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
   std::size_t phaseStep = phaseGlobalSuperstep();
 
   if (phaseStep == 0) {
+    if (auto res = clearAllAccumulators(); res.fail()) {
+      getReportManager()
+          .report(ReportLevel::ERROR)
+          .with("pregel-id", pregelId())
+          .with("vertex", vertexData()._documentId)
+          .with("phase", phase.name)
+          .with("global-superstep", globalSuperstep())
+          .with("phase-step", phaseGlobalSuperstep())
+          << "in phase `" << phase.name
+          << "` initial reset failed: " << res.error().toString();
+      return;
+    }
+
     if (auto res = runProgram(_airMachine, phase.initProgram.slice()); res.fail()) {
       getReportManager()
               .report(ReportLevel::ERROR)
@@ -457,7 +483,12 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
     }
   } else {
     auto accumChanged = processIncomingMessages(incomingMessages);
-    if (!accumChanged && phaseStep != 1) {
+    if (accumChanged.fail()) {
+      voteHalt();
+      return;
+    }
+
+    if (!accumChanged.value() && phaseStep != 1) {
       voteHalt();
       LOG_DEVEL << "No accumulators changed, voting halt";
       return;
@@ -475,6 +506,16 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
           << "` update-program failed: " << res.error().toString();
     }
   }
+}
+
+greenspun::EvalResult VertexComputation::clearAllAccumulators() {
+  for (auto&& accum : vertexData()._accumulators) {
+    auto res = accum.second->clearWithResult();
+    if (res.fail()) {
+      return res.error().wrapMessage("during initial clear of accumulator `" + accum.first + "`");
+    }
+  }
+  return {};
 }
 
 }  // namespace arangodb::pregel::algos::accumulators
