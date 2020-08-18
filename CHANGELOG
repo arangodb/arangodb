@@ -9,6 +9,9 @@ devel
   has been corrected from the internal HTTP 500 error "Builder value not yet sealed"
   to the correct HTTP 400 "Bad parameter".
 
+* Fixed bad behaviour in agency supervision in some corner cases involving
+  already resigned leaders in Current.
+
 * Fixed a problem with potentially lost updates because a failover could
   happen at a wrong time or a restarted leader could come back at an
   unlucky time.
