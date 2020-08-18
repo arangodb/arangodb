@@ -5,6 +5,9 @@ v3.7.2 (XXXX-XX-XX)
   happen at a wrong time or a restarted leader could come back at an
   unlucky time.
 
+* Fixed bad behaviour in agency supervision in some corner cases involving
+  already resigned leaders in Current.
+
 * Fixed issue ES-664: the optimizer rule `inline-subqueries` must not pull out
   subqueries that contain a COLLECT statement if the subquery is itself called
   from within a loop. Otherwise the COLLECT will be applied to the values in the
