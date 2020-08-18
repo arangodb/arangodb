@@ -36,9 +36,9 @@ MasterContext::MasterContext(VertexAccumulators const* algorithm)
   _airMachine.setFunctionMember("goto-phase", &MasterContext::air_GotoPhase, this);
   _airMachine.setFunctionMember("finish", &MasterContext::air_Finish, this);
   _airMachine.setFunctionMember("vertex-count", &MasterContext::air_VertexCount, this);
-  _airMachine.setFunctionMember("accum-ref", &MasterContext::air_AccumRef, this);
-  _airMachine.setFunctionMember("accum-set!", &MasterContext::air_AccumSet, this);
-  _airMachine.setFunctionMember("accum-clear!", &MasterContext::air_AccumClear, this);
+  _airMachine.setFunctionMember("global-accum-ref", &MasterContext::air_AccumRef, this);
+  _airMachine.setFunctionMember("global-accum-set!", &MasterContext::air_AccumSet, this);
+  _airMachine.setFunctionMember("global-accum-clear!", &MasterContext::air_AccumClear, this);
 }
 
 greenspun::EvalResult MasterContext::air_GotoPhase(greenspun::Machine& ctx,
@@ -89,6 +89,11 @@ greenspun::EvalResult MasterContext::air_AccumRef(greenspun::Machine& ctx,
   auto accum = getAggregator<VertexAccumulatorAggregator>(globalName);
   if (accum != nullptr) {
     accum->getAccumulator().getValueIntoBuilder(result);
+
+    VPackBuilder ssandwich;
+    accum->getAccumulator().getValueIntoBuilder(ssandwich);
+    LOG_DEVEL << "reffed value: " << ssandwich.slice().toJson();
+
     return {};
   }
   return greenspun::EvalError("global accumulator `" + std::string{accumId} +
@@ -119,7 +124,11 @@ greenspun::EvalResult MasterContext::air_AccumClear(greenspun::Machine& ctx,
   globalName += accumId;
   auto accum = getAggregator<VertexAccumulatorAggregator>(globalName);
   if (accum != nullptr) {
+    LOG_DEVEL << "clearing accumulator " << accumId;
     accum->getAccumulator().clear();
+    VPackBuilder ssandwich;
+    accum->getAccumulator().getValueIntoBuilder(ssandwich);
+    LOG_DEVEL << "cleared value: " << ssandwich.slice().toJson();
     return {};
   }
 
