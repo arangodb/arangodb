@@ -338,7 +338,7 @@ class IResearchLink {
   IResearchLinkMeta const _meta; // how this collection should be indexed (read-only, set via init())
   std::mutex _commitMutex; // prevents data store sequential commits
   std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback; // for insert(...)/remove(...)
-  irs::index_writer::before_commit_f _before_commit;
+  irs::index_writer::payload_provider_t _before_commit;
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
   bool _createdInRecovery; // link was created based on recovery marker
 };  // IResearchLink
