@@ -1,6 +1,9 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed bad behaviour in agency supervision in some corner cases involving
+  already resigned leaders in Current.
+
 * Fixed issue ES-664: the optimizer rule `inline-subqueries` must pull out
   subqueries that contains a COLLECT statement if the subquery is itself called
   from within a loop. Otherwise the COLLECT will be applied to the values in the
