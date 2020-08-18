@@ -1290,8 +1290,8 @@ aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
   TRI_ASSERT(_sharedState);
   
   ::finishDBServerParts(*this, errorCode).thenValue([ss = _sharedState, this](Result r) {
-    LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES, r.fail())
-      << "received error from DBServer on query finalization: '" << r.errorMessage() << "'";
+    LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES, r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
+      << "received error from DBServer on query finalization: " << r.errorNumber() << ", '" << r.errorMessage() << "'";
     _sharedState->executeAndWakeup([&] {
       _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
       return true;

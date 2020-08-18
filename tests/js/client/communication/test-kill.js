@@ -213,7 +213,7 @@ function KillSuite () {
       db._drop("UnitTestsTemp");
     },
 
-    testWorkInParallel: function () {
+    testKillInParallel: function () {
       let queryCode = `
 let ERRORS = require('@arangodb').errors;
 try { 
@@ -255,6 +255,90 @@ queries.current().forEach(function(query) {
 
       // run the suite for a while...
       runTests(tests, 90);
+    },
+    
+    testCancelInParallel: function () {
+      let queryCode = `
+let result = arango.POST_RAW("/_api/cursor", {
+  query: "/*test*/ FOR doc IN UnitTestsTemp RETURN doc.value",
+}, { "x-arango-async": "store" });
+
+if (result.code !== 202) {
+  throw "invalid query return code: " + result.code;
+}
+let jobId = result.headers["x-arango-async-id"];
+let id = null;
+while (id === null) {
+  result = arango.PUT_RAW("/_api/job/" + encodeURIComponent(jobId), {});
+  if (result.code === 410 || result.code === 404) {
+    // killed
+    break;
+  } else if (result.code >= 200 && result.code <= 202) {
+    id = result.parsedBody.id;
+    break;
+  }
+  require("internal").sleep(0.1);
+}
+while (id !== null) {
+  result = arango.PUT_RAW("/_api/cursor/" + encodeURIComponent(id), {});
+  if (result.code === 410) {
+    // killed
+    break;
+  } else if (result.code >= 200 && result.code <= 204) {
+    if (!result.parsedBody.hasMore) {
+      break;
+    }
+    id = result.parsedBody.id;
+  } else {
+    throw "peng! " + JSON.stringify(result.parsedBody);
+  }
+}
+`;
+      
+      let cancelCode = `
+  let result = arango.GET("/_api/job/pending");
+  result.forEach(function(jobId) {
+    arango.DELETE("/_api/job/" + encodeURIComponent(jobId), {}); 
+  });
+  require("internal").sleep(0.01 + Math.random() * 0.09);
+`;
+      let tests = [
+        [ 'aql-1', queryCode ],
+        [ 'aql-2', queryCode ],
+        [ 'cancel-1', cancelCode ],
+        [ 'cancel-2', cancelCode ],
+      ];
+
+      // run the suite for a while...
+      runTests(tests, 30);
+  
+      // finally kill off all remaining pending jobs
+      let tries = 0;
+      while (tries++ < 60) {
+        let result = arango.GET("/_api/job/pending");
+        if (result.length === 0) {
+          break;
+        }
+        result.forEach(function(jobId) {
+          arango.DELETE("/_api/job/" + encodeURIComponent(jobId), {}); 
+        });
+        require("internal").sleep(1.0);
+      }
+      
+      // sleep again to make sure every killed query had a chance to finish
+      require("internal").sleep(3.0);
+      let killed = 0;
+      let queries = require("@arangodb/aql/queries").current().forEach(function(query) {
+        if (!query.query.match(/\/\*test-\d+\*\//)) {
+          return;
+        }
+        if (query.state.toLowerCase() === 'killed') {
+          ++killed;
+        }
+      });
+      if (killed > 0) {
+        throw "got " + killed + " queries in state killed, but expected none!";
+      }
     },
     
   };
