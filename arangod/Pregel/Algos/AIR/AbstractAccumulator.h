@@ -76,8 +76,6 @@ struct AccumulatorBase {
   virtual void setValueFromPointer(const void*) = 0;
   virtual auto updateValueFromPointer(const void*) -> UpdateResult = 0;
 
-  virtual void updateValueFromPointer(const void*) = 0;
-
   VertexData const& _owner;
 };
 
