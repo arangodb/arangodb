@@ -2115,16 +2115,9 @@ TEST_F(MoveShardTest, aborting_the_job_while_the_new_leader_is_already_in_place_
     auto writes = q->slice()[0][0];
     EXPECT_EQ(writes.get("/arango/Target/Pending/1").get("op").copyString(), "delete");
     EXPECT_EQ(q->slice()[0].length(), 2); // Precondition: to Server not leader yet
-    EXPECT_EQ(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString(), "delete");
     EXPECT_EQ(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString(), "delete");
-    EXPECT_EQ(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).typeName()), "array");
     // well apparently this job is not responsible to cleanup its mess
-    EXPECT_TRUE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).length() >= 3);
-    EXPECT_EQ(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[0].copyString(), SHARD_LEADER);
-    EXPECT_EQ(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[1].copyString(), SHARD_FOLLOWER1);
-    EXPECT_EQ(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[2].copyString(), FREE_SERVER);
     EXPECT_EQ(std::string(writes.get("/arango/Target/Failed/1").typeName()), "object");
-
     return fakeWriteResult;
   });
   AgentInterface& agent = mockAgent.get();
