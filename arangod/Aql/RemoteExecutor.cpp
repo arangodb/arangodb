@@ -338,7 +338,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaOldApi(AqlCallStack stack)
     // We do not need to count as softLimit will be overwritten, and hard cannot be set.
     if (stack.empty() && myCall.hasHardLimit() && !myCall.needsFullCount() && block != nullptr) {
       // However we can do a short-cut here to report DONE on hardLimit if we are on the top-level query.
-      myCall.didProduce(block->size());
+      myCall.didProduce(block->numRows());
       if (myCall.getLimit() == 0) {
         return {ExecutionState::DONE, SkipResult{}, std::move(block)};
       }

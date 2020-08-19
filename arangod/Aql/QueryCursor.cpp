@@ -346,9 +346,9 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
   auto const& vopts = _query->vpackOptions();
   while (rowsWritten < batchSize() && !_queryResults.empty()) {
     SharedAqlItemBlockPtr& block = _queryResults.front();
-    TRI_ASSERT(_queryResultPos < block->size());
+    TRI_ASSERT(_queryResultPos < block->numRows());
 
-    while (rowsWritten < batchSize() && _queryResultPos < block->size()) {
+    while (rowsWritten < batchSize() && _queryResultPos < block->numRows()) {
       AqlValue const& value = block->getValueReference(_queryResultPos, resultRegister);
       if (!value.isEmpty()) {  // ignore empty blocks (e.g. from UpdateBlock)
         value.toVelocyPack(&vopts, builder, /*resolveExternals*/false,
@@ -359,16 +359,16 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
       --_numBufferedRows;
     }
 
-    if (_queryResultPos == block->size()) {
+    if (_queryResultPos == block->numRows()) {
       // get next block
-      TRI_ASSERT(_queryResultPos == block->size());
+      TRI_ASSERT(_queryResultPos == block->numRows());
       _queryResults.pop_front();
       _queryResultPos = 0;
     }
   }
 
   TRI_ASSERT(_numBufferedRows > 0 || _queryResults.empty());
-  TRI_ASSERT(_queryResults.empty() || _queryResultPos < _queryResults.front()->size());
+  TRI_ASSERT(_queryResults.empty() || _queryResultPos < _queryResults.front()->numRows());
 
   builder.close();  // result
   
@@ -412,7 +412,7 @@ ExecutionState QueryStreamCursor::prepareDump() {
 
   _numBufferedRows = 0;
   for (auto const& it : _queryResults) {
-    _numBufferedRows += it->size();
+    _numBufferedRows += it->numRows();
   }
   _numBufferedRows -= _queryResultPos;
   
@@ -434,7 +434,7 @@ ExecutionState QueryStreamCursor::prepareDump() {
     TRI_ASSERT(resultBlock != nullptr || state == ExecutionState::DONE);
 
     if (resultBlock != nullptr) {
-      _numBufferedRows += resultBlock->size();
+      _numBufferedRows += resultBlock->numRows();
       _queryResults.push_back(std::move(resultBlock));
     }
   }

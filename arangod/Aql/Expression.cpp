@@ -611,6 +611,8 @@ AqlValue Expression::executeSimpleExpressionArray(AstNode const* node,
   if (n == 0) {
     return AqlValue(AqlValueHintEmptyArray());
   }
+    
+  auto const* vpackOptions = &trx->vpackOptions();
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -620,7 +622,7 @@ AqlValue Expression::executeSimpleExpressionArray(AstNode const* node,
     bool localMustDestroy = false;
     AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), /*resolveExternals*/false,
+    result.toVelocyPack(vpackOptions, *builder.get(), /*resolveExternals*/false,
                         /*allowUnindexed*/false);
   }
 
@@ -653,6 +655,7 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
   // unordered set for tracking unique object keys
   std::unordered_set<std::string> keys;
   bool const mustCheckUniqueness = node->mustCheckUniqueness();
+  auto const* vpackOptions = &trx->vpackOptions();
 
   transaction::BuilderLeaser builder(trx);
   builder->openObject();
@@ -732,7 +735,7 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
     bool localMustDestroy;
     AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), /*resolveExternals*/false,
+    result.toVelocyPack(vpackOptions, *builder.get(), /*resolveExternals*/false,
                         /*allowUnindexed*/false);
   }
 

@@ -177,6 +177,8 @@ VPackBuilder* transaction::Context::leaseBuilder() {
     return new VPackBuilder();
   }
 
+  TRI_ASSERT(!_builders.empty());
+
   // re-use an existing builder
   VPackBuilder* b = _builders.back();
   b->clear();

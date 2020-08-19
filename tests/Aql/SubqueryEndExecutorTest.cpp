@@ -60,9 +60,9 @@ class SubqueryEndExecutorTest : public ::testing::Test {
                       std::unordered_map<size_t, uint64_t> const& shadowRows) const {
     auto block = itemRow.stealBlock();
 
-    ASSERT_EQ(expectedStrings.size(), block->size());
+    ASSERT_EQ(expectedStrings.size(), block->numRows());
 
-    for (size_t rowIdx = 0; rowIdx < block->size(); rowIdx++) {
+    for (size_t rowIdx = 0; rowIdx < block->numRows(); rowIdx++) {
       if (block->isShadowRow(rowIdx)) {
         ShadowAqlItemRow shadow{block, rowIdx};
 
@@ -77,7 +77,7 @@ class SubqueryEndExecutorTest : public ::testing::Test {
             << "expected row " << rowIdx << " to be a shadow row";
 
         InputAqlItemRow input{block, rowIdx};
-        for (unsigned int colIdx = 0; colIdx < block->getNrRegs(); colIdx++) {
+        for (unsigned int colIdx = 0; colIdx < block->numRegisters(); colIdx++) {
           auto expected = VPackParser::fromJson(expectedStrings.at(rowIdx).at(colIdx));
           auto value = input.getValue(RegisterId{colIdx}).slice();
           EXPECT_TRUE(VelocyPackHelper::equal(value, expected->slice(), false))

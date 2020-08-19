@@ -86,7 +86,7 @@ class InputAqlItemRow {
    */
   AqlValue stealValue(RegisterId registerId);
 
-  RegisterCount getNrRegisters() const noexcept;
+  RegisterCount getNumRegisters() const noexcept;
 
   // This the old operator==. It tests if both rows refer to the _same_ block and
   // the _same_ index.

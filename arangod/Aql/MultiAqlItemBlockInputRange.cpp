@@ -36,7 +36,7 @@ using namespace arangodb::aql;
 namespace {
   static auto RowHasNonEmptyValue(ShadowAqlItemRow const& row) -> bool {
     if (row.isInitialized()) {
-      RegisterId const numRegisters = static_cast<RegisterId>(row.getNrRegisters());
+      RegisterId const numRegisters = static_cast<RegisterId>(row.getNumRegisters());
       for (RegisterId registerId = 0; registerId < numRegisters; ++registerId) {
         if (!row.getValue(registerId).isEmpty()) {
           return true;

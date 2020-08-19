@@ -308,7 +308,7 @@ struct ExecutorTestHelper {
         skippedTotal.merge(skipped, false);
         call.didSkip(skipped.getSkipCount());
         if (result != nullptr) {
-          call.didProduce(result->size());
+          call.didProduce(result->numRows());
           allResults.add(result);
         }
         call.resetSkipCount();

@@ -69,20 +69,20 @@ OutputAqlItemRow::OutputAqlItemRow(SharedAqlItemBlockPtr block, RegIdSet const& 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_block != nullptr) {
     for (auto const& reg : _outputRegisters) {
-      TRI_ASSERT(reg < _block->getNrRegs());
+      TRI_ASSERT(reg < _block->numRegisters());
     }
     // the block must have enough columns for the registers of both data rows,
     // and all the different shadow row depths
     if (_doNotCopyInputRow) {
       // pass-through case, we won't use _registersToKeep
       for (auto const& reg : _registersToClear) {
-        TRI_ASSERT(reg < _block->getNrRegs());
+        TRI_ASSERT(reg < _block->numRegisters());
       }
     } else {
       // copying (non-pass-through) case, we won't use _registersToClear
       for (auto const& stackEntry : _registersToKeep) {
         for (auto const& reg : stackEntry) {
-          TRI_ASSERT(reg < _block->getNrRegs());
+          TRI_ASSERT(reg < _block->numRegisters());
         }
       }
     }
@@ -110,7 +110,7 @@ template <class ItemRowType, class ValueType>
 void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId, ValueType& value) {
   TRI_ASSERT(isOutputRegister(registerId));
   // This is already implicitly asserted by isOutputRegister:
-  TRI_ASSERT(registerId < getNrRegisters());
+  TRI_ASSERT(registerId < getNumRegisters());
   TRI_ASSERT(_numValuesWritten < numRegistersToWrite());
   TRI_ASSERT(block().getValueReference(_baseIndex, registerId).isNone());
 
@@ -211,7 +211,7 @@ auto OutputAqlItemRow::fastForwardAllRows(InputAqlItemRow const& sourceRow, size
   // We only need to adjust internal indexes.
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // Safely assert that the API is not missused.
-  TRI_ASSERT(_baseIndex + rows <= _block->size());
+  TRI_ASSERT(_baseIndex + rows <= _block->numRows());
   for (size_t i = _baseIndex; i < _baseIndex + rows; ++i) {
     TRI_ASSERT(!_block->isShadowRow(i));
   }
@@ -232,7 +232,7 @@ void OutputAqlItemRow::copyBlockInternalRegister(InputAqlItemRow const& sourceRo
 #endif
   TRI_ASSERT(isOutputRegister(output));
   // This is already implicitly asserted by isOutputRegister:
-  TRI_ASSERT(output < getNrRegisters());
+  TRI_ASSERT(output < getNumRegisters());
   TRI_ASSERT(_numValuesWritten < numRegistersToWrite());
   TRI_ASSERT(block().getValueReference(_baseIndex, output).isNone());
 
@@ -461,7 +461,7 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
         TRI_ASSERT(sourceRow.isInitialized());
       }
 #endif
-      if (ignoreMissing && itemId >= sourceRow.getNrRegisters()) {
+      if (ignoreMissing && itemId >= sourceRow.getNumRegisters()) {
         continue;
       }
       if (ADB_LIKELY(!_allowSourceRowUninitialized || sourceRow.isInitialized())) {
@@ -524,8 +524,8 @@ auto constexpr OutputAqlItemRow::depthDelta(AdaptRowDepth adaptRowDepth)
   return static_cast<std::underlying_type_t<AdaptRowDepth>>(adaptRowDepth);
 }
 
-RegisterCount OutputAqlItemRow::getNrRegisters() const {
-  return block().getNrRegs();
+RegisterCount OutputAqlItemRow::getNumRegisters() const {
+  return block().numRegisters();
 }
 
 template void OutputAqlItemRow::copyRow<InputAqlItemRow>(InputAqlItemRow const& sourceRow,
