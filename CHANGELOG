@@ -474,6 +474,8 @@ v3.7.1-rc.1 (2020-07-24)
 v3.7.1-beta.1 (2020-06-07)
 --------------------------
 
+* Fixed issue #8941: `frontendConfig.basePath` is duplicated for users API call
+
 * Taken collection dropping from fast track in maintenance. This avoids blocking
   fast track maintenance threads when a shard cannot immediately be dropped
   because of some pending lock.
