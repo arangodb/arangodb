@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, fail*/
+/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotUndefined, fail*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for iresearch usage
@@ -46,10 +46,10 @@
     function getNodes(query, type, bindVars, options) {
       let stmt = db._createStatement(query);
       if (typeof bindVars === "object") {
-        stmt.bind(bindVars)
+        stmt.bind(bindVars);
       }
       if (typeof options === "object") {
-        stmt.setOptions(options)
+        stmt.setOptions(options);
       }
       return stmt.explain()
                  .plan

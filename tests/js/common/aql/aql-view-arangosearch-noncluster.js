@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, fail*/
+/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotUndefined, fail*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for iresearch usage
@@ -36,10 +36,10 @@ var ERRORS = require("@arangodb").errors;
 function getNodes(query, type, bindVars, options) {
   let stmt = db._createStatement(query);
   if (typeof bindVars === "object") {
-    stmt.bind(bindVars)
+    stmt.bind(bindVars);
   }
   if (typeof options === "object") {
-    stmt.setOptions(options)
+    stmt.setOptions(options);
   }
   return stmt.explain()
              .plan
@@ -816,7 +816,7 @@ function iResearchAqlTestSuite () {
                   "  FOR doc1 IN UnitTestsView SEARCH doc0.c == doc1.c && STARTS_WITH(doc1['a'], doc0.a) OPTIONS { waitForSync: true } " +
                   "FILTER doc1.c < 2 " +
                   "SORT doc1.c DESC, doc1.a, doc1.b " +
-                  "RETURN doc1"
+                  "RETURN doc1";
 
       var viewNodes = getNodes(query, "EnumerateViewNode");
       assertEqual(2, viewNodes.length);
