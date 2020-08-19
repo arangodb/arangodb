@@ -1,6 +1,11 @@
 devel
 -----
 
+* Introduce an internal high-water mark for the maximum row number that was
+  written to in an AqlItemBlock. Using this number several operations on the
+  whole block, such as cleaning up or copying can be made more efficient when
+  run on only partially filled blocks.
+
 * Fixed that dropping a vanished follower works again. An exception response
   to the replication request is now handled properly.
 
