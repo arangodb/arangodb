@@ -43,8 +43,6 @@ struct PregelID {
 
   PregelID() : key(""), shard(InvalidPregelShard) {}
   PregelID(PregelShard s, std::string const& k) : key(k), shard(s) {}
-  // PregelID(PregelShard s, std::string const& k) : shard(s),
-  // key(std::stoull(k)) {}
 
   bool operator==(const PregelID& rhs) const {
     return shard == rhs.shard && key == rhs.key;
@@ -61,18 +59,6 @@ struct PregelID {
   bool isValid() const { return shard != InvalidPregelShard && !key.empty(); }
 
   using VPackSlice = arangodb::velocypack::Slice;
-
-  static PregelID fromSlice(VPackSlice slice) {
-    if (slice.isObject()) {
-      VPackSlice key = slice.get("key");
-      VPackSlice shard = slice.get("shard");
-      if (key.isString() && shard.isNumber<PregelShard>()) {
-        return PregelID(shard.getNumber<PregelShard>(), key.copyString());
-      }
-    }
-
-    return {};
-  }
 };
 
 template <typename V, typename E>
@@ -142,61 +128,8 @@ class Vertex {
   PregelID pregelId() const {
     return PregelID(_shard, std::string(_key, _keyLength));
   }
-  /*std::string const& key() const {
-    return std::string(_key, _keySize);
-  };*/
 };
 
-// unused right now
-/*class LinkedListIterator {
- private:
-  intptr_t _begin, _end, _current;
-
-  VertexIterator(const VertexIterator&) = delete;
-  VertexIterator& operator=(const FileInfo&) = delete;
-
- public:
-  typedef VertexIterator iterator;
-  typedef const VertexIterator const_iterator;
-
-  VertexIterator(intptr_t beginPtr, intptr_t endPtr)
-      : _begin(beginPtr), _end(endPtr), _current(beginPtr) {}
-
-  iterator begin() { return VertexIterator(_begin, _end); }
-  const_iterator begin() const { return VertexIterator(_begin, _end); }
-  iterator end() {
-    auto it = VertexIterator(_begin, _end);
-    it._current = it._end;
-    return it;
-  }
-  const_iterator end() const {
-    auto it = VertexIterator(_begin, _end);
-    it._current = it._end;
-    return it;
-  }
-
-  // prefix ++
-  VertexIterator& operator++() {
-    VertexEntry* entry = (VertexEntry*)_current;
-    _current += entry->getSize();
-    return *this;
-  }
-
-  // postfix ++
-  VertexIterator& operator++(int) {
-    VertexEntry* entry = (VertexEntry*)_current;
-    _current += entry->getSize();
-    return *this;
-  }
-
-  VertexEntry* operator*() const {
-    return _current != _end ? (VertexEntry*)_current : nullptr;
-  }
-
-  bool operator!=(VertexIterator const& other) const {
-    return _current != other._current;
-  }
-};*/
 }  // namespace pregel
 }  // namespace arangodb
 
