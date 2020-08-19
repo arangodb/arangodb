@@ -38,6 +38,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
 
+#include "Cluster/ResignShardLeadership.h"
+
 #include <velocypack/Collection.h>
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
@@ -184,6 +186,17 @@ static VPackBuilder compareIndexes(std::string const& dbname, std::string const&
   return builder;
 }
 
+static std::string CreateLeaderString(std::string const& leaderId, bool shouldBeLeading) {
+  if (shouldBeLeading) {
+    return std::string();
+  }
+  TRI_ASSERT(!leaderId.empty());
+  if (leaderId.front() == UNDERSCORE[0]) {
+    return leaderId.substr(1);
+  }
+  return leaderId;
+}
+
 void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice const& ldb,
                      std::string const& dbname, std::string const& colname,
                      std::string const& shname, std::string const& serverId,
@@ -192,7 +205,6 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
                      MaintenanceFeature::errors_t& errors, MaintenanceFeature& feature,
                      std::vector<std::shared_ptr<ActionDescription>>& actions) {
   bool shouldBeLeading = serverId == leaderId;
-  bool shouldResign = UNDERSCORE + serverId == leaderId;
 
   commonShrds.emplace(shname);
 
@@ -200,7 +212,6 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
   if (lcol.isObject()) {  // Have local collection with that name
 
     std::string_view const localLeader = lcol.get(THE_LEADER).stringView();
-    bool const leaderTouched = localLeader != LEADER_NOT_YET_KNOWN;
     bool leading = localLeader.empty();
     auto const properties = compareRelevantProps(cprops, lcol);
 
@@ -258,37 +269,25 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
             << "for central " << dbname << "/" << colname << "- skipping";
       }
     }
-
-    // Handle leadership change, this is mostly about taking over leadership,
-    // but it also handles the case that in a failover scenario we used to
-    // be the leader and now somebody else is the leader. However, it does
-    // not handle the case of a controlled leadership resignation, see below
-    // in handleLocalShard for this.
-    if (shouldResign && !leading) {
-      // This case is a special one which is triggered if a server
-      // restarts, has `NOT_YET_TOUCHED` in its local shard as theLeader
-      // and finds a resignation sign. In that case, it should first officially
-      // take over leadership. In the following round it will then resign.
-      // This enables cleanOutServer jobs to continue to work in case of
-      // a leader restart.
-      shouldBeLeading = true;
-      shouldResign = false;
-    }
-    if ((leading != shouldBeLeading && !shouldResign) || !leaderTouched) {
+    /*
+    LOG_DEVEL_IF(dbname=="foo") << "Col: " << colname << " shard: " << shname;
+    LOG_DEVEL_IF(dbname=="foo") << std::boolalpha << "leading: " << leading << " should: " << shouldBeLeading << " resign: " << shouldResign;
+    LOG_DEVEL_IF(dbname=="foo") << "New leader: " << leaderId << " currentLeader: " << localLeader;
+    */
+    if (!leading && shouldBeLeading) {
       LOG_TOPIC("52412", DEBUG, Logger::MAINTENANCE)
           << "Triggering TakeoverShardLeadership job for shard " << dbname
           << "/" << colname << "/" << shname
           << ", local leader: " << lcol.get(THE_LEADER).copyString()
           << ", leader id: " << leaderId << ", my id: " << serverId
-          << ", should be leader: " << (shouldBeLeading ? std::string() : leaderId)
-          << ", leaderTouched = " << (leaderTouched ? "yes" : "no");
+          << ", should be leader: " << std::string();
       actions.emplace_back(std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{
               {NAME, TAKEOVER_SHARD_LEADERSHIP},
               {DATABASE, dbname},
               {COLLECTION, colname},
               {SHARD, shname},
-              {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
+              {THE_LEADER, std::string()},
               {LOCAL_LEADER, std::string(localLeader)},
               {OLD_CURRENT_COUNTER, "0"},   // legacy, no longer used
               {PLAN_RAFT_INDEX, std::to_string(planIndex)}},
@@ -318,7 +317,7 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
         }
       }
     }
-  } else {  // Create the sucker, if not a previous error stops us
+  } else {  // Create the collection, if not a previous error stops us
     if (errors.shards.find(dbname + "/" + colname + "/" + shname) ==
         errors.shards.end()) {
       auto props = createProps(cprops);  // Only once might need often!
@@ -328,7 +327,7 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
              {SHARD, shname},
              {DATABASE, dbname},
              {SERVER_ID, serverId},
-             {THE_LEADER, shouldBeLeading ? std::string() : leaderId}},
+             {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
             shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, std::move(props)));
     } else {
       LOG_TOPIC("c1d8e", DEBUG, Logger::MAINTENANCE)
@@ -343,58 +342,71 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
                       std::unordered_set<std::string>& commonShrds,
                       std::unordered_set<std::string>& indis, std::string const& serverId,
                       std::vector<std::shared_ptr<ActionDescription>>& actions) {
-  std::unordered_set<std::string>::const_iterator it;
+
+  std::unordered_set<std::string>::const_iterator it =
+      std::find(commonShrds.begin(), commonShrds.end(), colname);
+
+  auto localLeader = cprops.get(THE_LEADER).stringRef();
+  bool const isLeading = localLeader.empty();
+  if (it == commonShrds.end()) {
+    // This collection is not planned anymore, can drop it
+    actions.emplace_back(std::make_shared<ActionDescription>(
+        std::map<std::string, std::string>{{NAME, DROP_COLLECTION},
+                                           {DATABASE, dbname},
+                                           {COLLECTION, colname}},
+        isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY));
+    return;
+  }
+  // We dropped out before
+  TRI_ASSERT(it != commonShrds.end());
+  // The shard exists in both Plan and Local
+  commonShrds.erase(it);  // it not a common shard?
 
   std::string plannedLeader;
   if (shardMap.get(colname).isArray()) {
     plannedLeader = shardMap.get(colname)[0].copyString();
   }
-  bool const localLeader = cprops.get(THE_LEADER).stringRef().empty();
-  if (localLeader && plannedLeader == UNDERSCORE + serverId) {
+
+  bool const activeResign = isLeading && plannedLeader != serverId;
+  bool const adjustResignState =
+      (plannedLeader == UNDERSCORE + serverId &&
+       localLeader != ResignShardLeadership::LeaderNotYetKnownString) ||
+      (plannedLeader != serverId && localLeader == LEADER_NOT_YET_KNOWN);
+  /*
+  * We need to resign in the following cases:
+  * 1) (activeResign) We think we are the leader locally, but the plan says we are not. (including, we are resigned)
+  * 2) (adjustResignState) We are not leading, and not in resigned state, but the plan says we should be resigend.
+  *    - This triggers on rebooted servers, that were in resign process
+  *    - This triggers if the shard is moved from the server, before it actually took ownership. 
+  */
+
+  if (activeResign || adjustResignState) {
     actions.emplace_back(std::make_shared<ActionDescription>(
-          std::map<std::string, std::string>{{NAME, RESIGN_SHARD_LEADERSHIP}, {DATABASE, dbname}, {SHARD, colname}},
-          RESIGN_PRIORITY));
-  } else {
-    bool drop = false;
-    // check if shard is in plan, if not drop it
-    if (commonShrds.empty()) {
-      drop = true;
-    } else {
-      it = std::find(commonShrds.begin(), commonShrds.end(), colname);
-      if (it == commonShrds.end()) {
-        drop = true;
-      }
-    }
+        std::map<std::string, std::string>{{NAME, RESIGN_SHARD_LEADERSHIP},
+                                           {DATABASE, dbname},
+                                           {SHARD, colname}},
+        RESIGN_PRIORITY));
+  }
 
-    if (drop) {
-      actions.emplace_back(std::make_shared<ActionDescription>(
-            std::map<std::string, std::string>{{NAME, DROP_COLLECTION}, {DATABASE, dbname}, {COLLECTION, colname}},
-            localLeader ? LEADER_PRIORITY : FOLLOWER_PRIORITY));
-    } else {
-      // The shard exists in both Plan and Local
-      commonShrds.erase(it);  // it not a common shard?
+  // We only drop indexes, when collection is not being dropped already
+  if (cprops.hasKey(INDEXES)) {
+    if (cprops.get(INDEXES).isArray()) {
+      for (auto const& index : VPackArrayIterator(cprops.get(INDEXES))) {
+        VPackStringRef type = index.get(StaticStrings::IndexType).stringRef();
+        if (type != PRIMARY && type != EDGE) {
+          std::string const id = index.get(ID).copyString();
 
-      // We only drop indexes, when collection is not being dropped already
-      if (cprops.hasKey(INDEXES)) {
-        if (cprops.get(INDEXES).isArray()) {
-          for (auto const& index : VPackArrayIterator(cprops.get(INDEXES))) {
-            VPackStringRef type = index.get(StaticStrings::IndexType).stringRef();
-            if (type != PRIMARY && type != EDGE) {
-              std::string const id = index.get(ID).copyString();
-
-              // check if index is in plan
-              if (indis.find(colname + "/" + id) != indis.end() ||
-                  indis.find(id) != indis.end()) {
-                indis.erase(id);
-              } else {
-                actions.emplace_back(std::make_shared<ActionDescription>(
-                      std::map<std::string, std::string>{{NAME, DROP_INDEX},
-                       {DATABASE, dbname},
-                       {COLLECTION, colname},
-                       {"index", id}},
-                      INDEX_PRIORITY));
-              }
-            }
+          // check if index is in plan
+          if (indis.find(colname + "/" + id) != indis.end() ||
+              indis.find(id) != indis.end()) {
+            indis.erase(id);
+          } else {
+            actions.emplace_back(std::make_shared<ActionDescription>(
+                std::map<std::string, std::string>{{NAME, DROP_INDEX},
+                                                   {DATABASE, dbname},
+                                                   {COLLECTION, colname},
+                                                   {"index", id}},
+                INDEX_PRIORITY));
           }
         }
       }
