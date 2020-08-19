@@ -6024,7 +6024,7 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     *filter.mutable_field() = mangleStringIdentity("name");
     auto* opts = filter.mutable_options();
     opts->max_distance = 1;
-    opts->with_transpositions = false;
+    opts->with_transpositions = true;
     opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
     opts->max_terms = arangodb::iresearch::FilterConstants::DefaultLevenshteinTermsLimit;
 
@@ -6038,7 +6038,7 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
         expected);
   }
 
-  // LEVENSHTEIN_MATCH(d.name, 'foo', 1, 42)
+  // LEVENSHTEIN_MATCH(d.name, 'foo', 1, false, 42)
   {
     irs::Or expected;
     auto& filter = expected.add<irs::by_edit_distance>();
@@ -6086,6 +6086,10 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
         expected, &ctx);
     assertFilterSuccess(
         vocbase(),
+        "FOR d IN myView FILTER ANALYZER(LEVENSHTEIN_MATCH(d.name[_FORWARD_('foo')], 'fooo', 0), 'test_analyzer') RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
         "LET y='o' LET transp=true LET dist=1 LET x='foo' FOR d IN myView FILTER ANALYZER(LEVENSHTEIN_MATCH(d.name[x], CONCAT('foo', y), dist-1, transp), 'test_analyzer') RETURN d",
         expected,
         &ctx);
@@ -6120,19 +6124,11 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
         expected, &ctx);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER BOOST(ANALYZER(LEVENSHTEIN_MATCH(d.name[4], 'fooo', 2), 'test_analyzer'), 0.5) RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
-        vocbase(),
         "FOR d IN myView FILTER ANALYZER(BOOST(LEVENSHTEIN_MATCH(d.name[4], 'fooo', 2, false), 0.5), 'test_analyzer') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER BOOST(ANALYZER(LEVENSHTEIN_MATCH(d.name[_FORWARD_(4)], 'fooo', 2, false), 'test_analyzer'), 0.5) RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER BOOST(ANALYZER(LEVENSHTEIN_MATCH(d.name[_FORWARD_(4)], 'fooo', 2), 'test_analyzer'), 0.5) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
         vocbase(),

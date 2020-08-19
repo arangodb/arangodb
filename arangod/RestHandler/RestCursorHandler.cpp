@@ -84,6 +84,11 @@ RestStatus RestCursorHandler::execute() {
 }
 
 RestStatus RestCursorHandler::continueExecute() {
+  if (wasCanceled()) {
+    generateError(rest::ResponseCode::GONE, TRI_ERROR_QUERY_KILLED);
+    return RestStatus::DONE;
+  }
+  
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
 
