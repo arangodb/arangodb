@@ -1447,6 +1447,22 @@ TEST_CASE("Test [apply] primitive", "[apply]") {
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().getNumericValue<double>() == 2);
+  }
+
+  SECTION("Apply not reevaluate parameter") {
+    // ["attrib-set", dict, key, value]
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["apply", ["lambda", ["quote"], ["quote", "x"], 2], ["quote", ["error"]]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
     REQUIRE(result.slice().getNumericValue<double>() == 2);
   }
 }

@@ -533,7 +533,8 @@ EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
 }
 
 EvalResult EvaluateApply(Machine& ctx, VPackSlice const functionSlice,
-                         VPackArrayIterator paramIterator, VPackBuilder& result);
+                         VPackArrayIterator paramIterator, VPackBuilder& result,
+                         bool isEvaluateParameter);
 
 EvalResult Prim_Apply(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
   if (!paramsList.isArray() || paramsList.length() != 2) {
@@ -547,7 +548,79 @@ EvalResult Prim_Apply(Machine& ctx, VPackSlice const paramsList, VPackBuilder& r
     return EvalError("expected list of parameters, found: " + parameters.toJson());
   }
 
-  return EvaluateApply(ctx, functionSlice, VPackArrayIterator(parameters), result);
+  return EvaluateApply(ctx, functionSlice, VPackArrayIterator(parameters), result, false);
+}
+
+EvalResult Prim_Identity(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  if (!paramsList.isArray() || paramsList.length() != 1) {
+    return EvalError("expecting a single argument");
+  }
+
+  result.add(paramsList.at(0));
+  return {};
+}
+
+EvalResult Prim_Map(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  if (!paramsList.isArray() || paramsList.length() != 2) {
+    return EvalError("expecting to arguments, a function and a list");
+  }
+
+  auto functionSlice = paramsList.at(0);
+  auto list = paramsList.at(1);
+
+  if (list.isArray()) {
+    VPackArrayBuilder ab(&result);
+    for (VPackArrayIterator iter(list); iter.valid(); iter++) {
+      VPackBuilder parameter;
+      {
+        VPackArrayBuilder pb(&parameter);
+        parameter.add(VPackValue(iter.index()));
+        parameter.add(*iter);
+      }
+
+      auto res = EvaluateApply(ctx, functionSlice,
+                               VPackArrayIterator(parameter.slice()), result, false);
+      if (res.fail()) {
+        return res.error().wrapMessage("when mapping pair " + parameter.toJson());
+      }
+    }
+  } else if (list.isObject()) {
+    VPackObjectBuilder ob(&result);
+    for (VPackObjectIterator iter(list); iter.valid(); iter++) {
+      VPackBuilder parameter;
+      {
+        VPackArrayBuilder pb(&parameter);
+        parameter.add(iter.key());
+        parameter.add(iter.value());
+      }
+
+      VPackBuilder tempBuffer;
+
+      auto res = EvaluateApply(ctx, functionSlice, VPackArrayIterator(parameter.slice()), tempBuffer, false);
+      if (res.fail()) {
+        return res.error().wrapMessage("when mapping pair " + parameter.toJson());
+      }
+
+      result.add(iter.key());
+      result.add(tempBuffer.slice());
+    }
+  } else {
+    return EvalError("expected list, found: " + list.toJson());
+  }
+
+  return {};
+}
+
+EvalResult Prim_Filter(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  return EvalError("not implemented");
+}
+
+EvalResult Prim_Foldl(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  return EvalError("not implemented");
+}
+
+EvalResult Prim_Foldl1(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  return EvalError("not implemented");
 }
 
 void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_type&& f) {
@@ -589,7 +662,14 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("list-cat", Prim_ListCat);
   ctx.setFunction("string-cat", Prim_StringCat);
   ctx.setFunction("int-to-str", Prim_IntToStr);
+
+  // Functional stuff
+  ctx.setFunction("id", Prim_Identity);
   ctx.setFunction("apply", Prim_Apply);
+  ctx.setFunction("map", Prim_Map);  // ["map", <func(index, value) -> value>, <list>] or ["map", <func(key, value) -> value>, <dict>]
+  ctx.setFunction("filter", Prim_Filter);  // ["filter", <func(index, value) -> bool>, <list>] or ["map", <func(key, value) -> bool>, <dict>]
+  ctx.setFunction("foldl", Prim_Foldl);
+  ctx.setFunction("foldl1", Prim_Foldl1);
 
   // Access operators
   ctx.setFunction("attrib-ref", Prim_AttribRef);
