@@ -1083,6 +1083,7 @@ void AqlItemBlock::referenceValuesFromRow(size_t currentRow,
         ++_valueCount[a.data()].refCount;
       }
       _data[getAddress(currentRow, reg)] = a;
+      _numEffectiveRows = std::max<size_t>(_numEffectiveRows, currentRow + 1);
     }
   }
   // Copy over subqueryDepth
