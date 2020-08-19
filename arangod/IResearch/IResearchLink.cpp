@@ -329,15 +329,6 @@ IResearchLink::IResearchLink(arangodb::IndexId iid, LogicalCollection& collectio
     prev.reset();
   };
 
-  // initialize commit callback
-  _before_commit = [this](uint64_t tick, irs::bstring& out) {
-    _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t(tick)); // update last tick
-    tick = irs::numeric_utils::hton64(uint64_t(_lastCommittedTick)); // convert to BE
-
-    out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof(uint64_t));
-
-    return true;
-  };
 }
 
 IResearchLink::~IResearchLink() {
@@ -375,12 +366,6 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick) {
 
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
-  auto subscription = std::static_pointer_cast<IResearchFlushSubscription>(_flushSubscription);
-
-  if (!subscription) {
-    // already released
-    return;
-  }
   auto const lastCommittedTick = _lastCommittedTick;
   bool recoverCommittedTick = true;
   
@@ -408,7 +393,11 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick) {
     // update reader
     _dataStore._reader = reader;
 
-    subscription->tick(_lastCommittedTick);
+    auto subscription = std::static_pointer_cast<IResearchFlushSubscription>(_flushSubscription);
+
+    if (subscription) {
+      subscription->tick(_lastCommittedTick);
+    }
 
   } catch (std::exception const& e) {
     LOG_TOPIC("a3c57", ERR, iresearch::TOPIC)
@@ -1146,7 +1135,15 @@ Result IResearchLink::initDataStore(
   irs::index_writer::init_options options;
   options.lock_repository = false; // do not lock index, ArangoDB has its own lock
   options.comparator = sorted ? &_comparer : nullptr; // set comparator if requested
-  options.meta_payload_provider = _before_commit;
+  // initialize commit callback
+  options.meta_payload_provider = [this](uint64_t tick, irs::bstring& out) {
+    _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t(tick)); // update last tick
+    tick = irs::numeric_utils::hton64(uint64_t(_lastCommittedTick)); // convert to BE
+
+    out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof(uint64_t));
+
+    return true;
+  };
 
   // as meta is still not filled at this moment
   // we need to store all compression mapping there

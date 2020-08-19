@@ -432,7 +432,6 @@ class IRESEARCH_API index_writer
     size_t segment_memory_max{0};
   };
 
-
   ////////////////////////////////////////////////////////////////////////////
   /// @brief functor for creating payload. Operation tick is provided for 
   /// payload generation.
@@ -538,9 +537,10 @@ class IRESEARCH_API index_writer
   ////////////////////////////////////////////////////////////////////////////
   /// @brief Clears the existing index repository by staring an empty index.
   ///        Previously opened readers still remain valid.
+  /// @param truncate transaction tick
   /// @note call will rollback any opened transaction
   ////////////////////////////////////////////////////////////////////////////
-  void clear(uint64_t tick);
+  void clear(uint64_t tick = 0);
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief merges segments accepted by the specified defragment policty into
@@ -616,7 +616,6 @@ class IRESEARCH_API index_writer
     return comparator_;
   }
 
-  
   ////////////////////////////////////////////////////////////////////////////
   /// @brief begins the two-phase transaction
   /// @param payload arbitrary user supplied data to store in the index
@@ -816,6 +815,7 @@ class IRESEARCH_API index_writer
     size_t uncomitted_modification_queries_; // staring offset in 'modification_queries_' that is not part of the current flush_context
     segment_writer::ptr writer_;
     index_meta::index_segment_t writer_meta_; // the segment_meta this writer was initialized with
+
     DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator, const column_info_provider_t& column_info, const comparer* comparator);
     segment_context(directory& dir, segment_meta_generator_t&& meta_generator, const column_info_provider_t& column_info, const comparer* comparator);
 
