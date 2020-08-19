@@ -56,7 +56,14 @@ class IAggregator {
   virtual void serialize(std::string const& key,
                          arangodb::velocypack::Builder& builder) const = 0;
 
+  // Who called reset: was it the Worker, the Master, or do we not know/care
+  //(i.e. legacy behaviour).
+  enum class ResetBy { Worker, Master, Legacy };
+  virtual void reset(ResetBy who) {
+    reset();
+  };
   virtual void reset() = 0;
+
   virtual bool isConverging() const = 0;
 };
 

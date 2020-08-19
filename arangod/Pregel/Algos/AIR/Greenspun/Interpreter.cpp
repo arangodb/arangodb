@@ -269,10 +269,10 @@ EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator, VPackBuilde
   return runIterators(ctx, 0, runIterators);
 }
 
-EvalResult Call(Machine& ctx, VPackSlice const functionSlice,
-                ArrayIterator paramIterator, VPackBuilder& result) {
+EvalResult Call(Machine& ctx, VPackSlice const functionSlice, ArrayIterator paramIterator,
+                VPackBuilder& result, bool isEvaluateParameter) {
   VPackBuilder paramBuilder;
-  {
+  if (isEvaluateParameter) {
     VPackArrayBuilder builder(&paramBuilder);
     for (; paramIterator.valid(); ++paramIterator) {
       StackFrameGuard<false> guard(ctx);
@@ -282,14 +282,18 @@ EvalResult Call(Machine& ctx, VPackSlice const functionSlice,
         });
       }
     }
+  } else {
+    VPackArrayBuilder builder(&paramBuilder);
+    paramBuilder.add(paramIterator);
   }
   return Apply(ctx, functionSlice.copyString(), paramBuilder.slice(), result);
 }
 
 EvalResult LambdaCall(Machine& ctx, VPackSlice paramNames, VPackSlice captures,
-                      ArrayIterator paramIterator, VPackSlice body, VPackBuilder& result) {
+                      ArrayIterator paramIterator, VPackSlice body,
+                      VPackBuilder& result, bool isEvaluateParams) {
   VPackBuilder paramBuilder;
-  {
+  if (isEvaluateParams) {
     VPackArrayBuilder builder(&paramBuilder);
     for (; paramIterator.valid(); ++paramIterator) {
       StackFrameGuard<false> guard(ctx);
@@ -308,7 +312,8 @@ EvalResult LambdaCall(Machine& ctx, VPackSlice paramNames, VPackSlice captures,
   }
 
   StackFrameGuard<true, false> parameterFrameGuard(ctx);
-  VPackArrayIterator builderIter(paramBuilder.slice());
+  VPackArrayIterator builderIter =
+      (isEvaluateParams ? VPackArrayIterator(paramBuilder.slice()) : paramIterator);
   for (auto&& paramName : ArrayIterator(paramNames)) {
     if (!paramName.isString()) {
       return EvalError(
@@ -326,8 +331,13 @@ EvalResult LambdaCall(Machine& ctx, VPackSlice paramNames, VPackSlice captures,
     builderIter++;
   }
   return Evaluate(ctx, body, result).mapError([&](EvalError& err) {
+    VPackBuilder foo;
+    {
+      VPackArrayBuilder ab(&foo);
+      foo.add(isEvaluateParams ? VPackArrayIterator(paramBuilder.slice()) : paramIterator);
+    }
     err.wrapCall("<lambda>" + captures.toJson() + paramNames.toJson(),
-                 paramBuilder.slice());
+                 foo.slice());
   });
 }
 
@@ -385,12 +395,59 @@ EvalResult SpecialStr(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
     if ((*paramIterator).isString()) {
       ss << (*paramIterator).copyString();
     } else {
-      return EvalError(std::string{"`str` expecting string, not "} + (*paramIterator).typeName());
+      return EvalError(std::string{"`str` expecting string, not "} +
+                       (*paramIterator).typeName());
     }
   }
 
   result.add(VPackValue(ss.str()));
   return {};
+}
+
+EvalResult EvaluateApply(Machine& ctx, VPackSlice const functionSlice,
+                         ArrayIterator paramIterator, VPackBuilder& result,
+                         bool isEvaluateParameter) {
+  if (functionSlice.isString()) {
+    // check for special forms
+    if (functionSlice.isEqualString("if")) {
+      return SpecialIf(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("quote")) {
+      return SpecialQuote(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("cons")) {
+      return SpecialCons(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("and")) {
+      return SpecialAnd(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("or")) {
+      return SpecialOr(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("seq")) {
+      return SpecialSeq(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("match")) {
+      return SpecialMatch(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("for-each")) {
+      return SpecialForEach(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("let")) {
+      return SpecialLet(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("str")) {
+      return SpecialStr(ctx, paramIterator, result);
+    } else {
+      return Call(ctx, functionSlice, paramIterator, result, isEvaluateParameter);
+    }
+  } else if (functionSlice.isObject()) {
+    auto body = functionSlice.get("_call");
+    if (!body.isNone()) {
+      auto params = functionSlice.get("_params");
+      if (!params.isArray()) {
+        return EvalError("lambda params have to be an array, found: " + params.toJson());
+      }
+      auto captures = functionSlice.get("_captures");
+      if (!captures.isObject()) {
+        return EvalError("lambda captures have to be an object, found: " +
+                         params.toJson());
+      }
+      return LambdaCall(ctx, params, captures, paramIterator, body, result, isEvaluateParameter);
+    }
+  }
+  return EvalError("function is not a string, found " + functionSlice.toJson());
 }
 
 EvalResult Evaluate(Machine& ctx, VPackSlice const slice, VPackBuilder& result) {
@@ -411,47 +468,7 @@ EvalResult Evaluate(Machine& ctx, VPackSlice const slice, VPackBuilder& result) 
     }
     ++paramIterator;
     VPackSlice functionSlice = functionBuilder.slice();
-    if (functionSlice.isString()) {
-      // check for special forms
-      if (functionSlice.isEqualString("if")) {
-        return SpecialIf(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("quote")) {
-        return SpecialQuote(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("cons")) {
-        return SpecialCons(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("and")) {
-        return SpecialAnd(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("or")) {
-        return SpecialOr(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("seq")) {
-        return SpecialSeq(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("match")) {
-        return SpecialMatch(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("for-each")) {
-        return SpecialForEach(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("let")) {
-        return SpecialLet(ctx, paramIterator, result);
-      } else if (functionSlice.isEqualString("str")) {
-        return SpecialStr(ctx, paramIterator, result);
-      } else {
-        return Call(ctx, functionSlice, paramIterator, result);
-      }
-    } else if (functionSlice.isObject()) {
-      auto body = functionSlice.get("_call");
-      if (!body.isNone()) {
-        auto params = functionSlice.get("_params");
-        if (!params.isArray()) {
-          return EvalError("lambda params have to be an array, found: " + params.toJson());
-        }
-        auto captures = functionSlice.get("_captures");
-        if (!captures.isObject()) {
-          return EvalError("lambda captures have to be an object, found: " +
-                           params.toJson());
-        }
-        return LambdaCall(ctx, params, captures, paramIterator, body, result);
-      }
-    }
-    return EvalError("function is not a string, found " + functionSlice.toJson());
+    return EvaluateApply(ctx, functionSlice, paramIterator, result, true);
   }
 
   result.add(slice);
@@ -481,7 +498,7 @@ EvalResult Machine::getVariable(const std::string& name, VPackBuilder& result) {
 
 EvalResult Machine::setVariable(std::string const& name, VPackSlice value) {
   TRI_ASSERT(!variables.empty());
-  variables.back().bindings.operator[](name) = value; // insert or create
+  variables.back().bindings.operator[](name) = value;  // insert or create
   return {};
 }
 
@@ -522,8 +539,9 @@ EvalResult Machine::applyFunction(std::string function, VPackSlice const params,
 
   auto f = functions.find(function);
   if (f != functions.end()) {
-    return f->second(*this, params, result)
-      .mapError([&](EvalError& err) { err.wrapCall(function, params); });
+    return f->second(*this, params, result).mapError([&](EvalError& err) {
+      err.wrapCall(function, params);
+    });
   } else {
     return EvalError("function not found `" + function + "`");
   }

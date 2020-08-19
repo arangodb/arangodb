@@ -201,6 +201,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Algos/AIR/EdgeData.cpp
   Pregel/Algos/AIR/MessageData.cpp
   Pregel/Algos/AIR/MasterContext.cpp
+  Pregel/Algos/AIR/WorkerContext.cpp
   Pregel/Algos/AIR/AccumulatorAggregator.cpp
   Pregel/Algos/AsyncSCC.cpp
   Pregel/Algos/ConnectedComponents.cpp

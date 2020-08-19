@@ -117,9 +117,7 @@ greenspun::EvalResult MasterContext::air_AccumClear(greenspun::Machine& ctx,
   globalName += accumId;
   auto accum = getAggregator<VertexAccumulatorAggregator>(globalName);
   if (accum != nullptr) {
-    LOG_DEVEL << "clearing accumulator " << accumId;
-    //accum->getAccumulator().clear();
-    return greenspun::EvalError("not implemented");
+    return accum->getAccumulator().clearWithResult();
   }
 
   return greenspun::EvalError("accumulator `" + std::string{accumId} +
@@ -153,21 +151,26 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
   auto phase_index = *getAggregatedValue<uint32_t>("phase");
   auto phase = _algo->options().phases.at(phase_index);
 
+  if (getReportManager().getNumErrors() > 0) {
+    getReportManager().report(ReportLevel::INFO).with("phase", phase.name)
+        << "stopping because of previous errors";
+    return ContinuationResult::ERROR_ABORT;
+  }
+
   if (!phase.onHalt.isEmpty()) {
     VPackBuilder onHaltResult;
 
     userSelectedNext = ContinuationResult::DONT_CARE;
-    LOG_DEVEL << "evaluating user defined program: " << phase.onHalt.slice().toJson();
     auto res = greenspun::Evaluate(_airMachine, phase.onHalt.slice(), onHaltResult);
     if (res.fail()) {
-      LOG_TOPIC("ac23e", ERR, Logger::PREGEL)
+      getReportManager().report(ReportLevel::ERROR).with("phase", phase.name)
           << "onHalt program of phase `" << phase.name
           << "` returned and error: " << res.error().toString();
       return ContinuationResult::ABORT;
     }
 
     if (userSelectedNext == ContinuationResult::DONT_CARE) {
-      LOG_TOPIC("ac23e", ERR, Logger::PREGEL)
+      getReportManager().report(ReportLevel::ERROR).with("phase", phase.name)
           << "onHalt program of phase `" + phase.name +
                  "` did not specify how to continue";
       return ContinuationResult::ABORT;

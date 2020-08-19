@@ -43,10 +43,11 @@ void VertexAccumulatorAggregator::aggregate(void const* valuePtr)  {
 }
 
 /// @brief Used when updating aggregator value from remote
-void VertexAccumulatorAggregator::parseAggregate(arangodb::velocypack::Slice const& slice)  {
-  LOG_DEVEL << accumulator.get()  << "parseAggregate = " << slice.toJson();
+void VertexAccumulatorAggregator::parseAggregate(arangodb::velocypack::Slice const& slice) {
+  LOG_DEVEL << accumulator.get() << "parseAggregate = " << slice.toJson();
   LOG_DEVEL << "NOT IMPLEMENTED";
-  //accumulator->updateByMessageSlice(slice);
+  std::abort();  // handle return value
+  // accumulator->updateByMessageSlice(slice);
 }
 
 void const* VertexAccumulatorAggregator::getAggregatedValue() const {
@@ -69,12 +70,25 @@ void VertexAccumulatorAggregator::serialize(std::string const& key,
   builder.add(local.slice());
 }
 
-void VertexAccumulatorAggregator::reset()  {
-  if (!permanent) {
-    LOG_DEVEL << "calling clear on accumulator";
-    if (auto res = accumulator->clearWithResult(); res.fail()) {
-      LOG_DEVEL << res.error().toString();
+void VertexAccumulatorAggregator::reset() {
+  reset(IAggregator::ResetBy::Legacy);
+}
+
+void VertexAccumulatorAggregator::reset(IAggregator::ResetBy who) {
+  std::abort(); // handle return value of clearWithResult
+  switch(who) {
+  // The worker gets to just reset us
+  case IAggregator::ResetBy::Worker: {
+    accumulator->clearWithResult();
+  } break;
+  case IAggregator::ResetBy::Master: {
+  } break;
+  case IAggregator::ResetBy::Legacy: {
+    if (!permanent) {
+      LOG_DEVEL << "calling clear on accumulator";
+      accumulator->clearWithResult();
     }
+  } break;
   }
 }
 

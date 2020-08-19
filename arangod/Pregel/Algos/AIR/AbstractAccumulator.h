@@ -70,8 +70,9 @@ struct AccumulatorBase {
   virtual const void* getValuePointer() const { return nullptr; }
   // Set the value from a value pointer.
   virtual void setValueFromPointer(const void*) { }
-
-  virtual void updateValueFromPointer(const void*) = 0;
+  virtual auto updateValueFromPointer(const void*) -> greenspun::EvalResultT<UpdateResult> {
+    return UpdateResult::NO_CHANGE;
+  }
 
   VertexData const& _owner;
 };
@@ -115,29 +116,22 @@ class Accumulator : public AccumulatorBase {
   // Needed to implement updates by slice
   virtual greenspun::EvalResultT<UpdateResult> update(data_type v) = 0;
 
-  virtual void setBySlice(VPackSlice s) {
+    virtual greenspun::EvalResultT<UpdateResult> updateByMessageSlice(VPackSlice s) {
     // TODO proper error handling here!
     if constexpr (std::is_same_v<T, bool>) {
-      this->set(s.getBool());
+      return this->update(s.getBool());
     } else if constexpr (std::is_arithmetic_v<T>) {
-      this->set(s.getNumericValue<T>());
+      return this->update(s.getNumericValue<T>());
     } else {
       std::abort();
     }
   }
 
-  // Update the accumulator's value by a message slice
-  // The accumulator can assume that the slice was builder
-  // by getIntoMessageSlice
-  virtual greenspun::EvalResultT<UpdateResult> updateByMessageSlice(VPackSlice s) {
+  virtual void setBySlice(VPackSlice s) {
     if constexpr (std::is_same_v<T, bool>) {
-      return this->update(s.getBool());
+      this->set(s.getBool());
     } else if constexpr (std::is_arithmetic_v<T>) {
-      return this->update(s.getNumericValue<T>());
-    } else if constexpr (std::is_same_v<T, std::string>) {
-      return this->update(s.copyString());
-    } else if constexpr (std::is_same_v<T, VPackSlice>) {
-      return this->update(s);
+      this->set(s.getNumericValue<T>());
     } else {
       std::abort();
     }
@@ -161,8 +155,8 @@ class Accumulator : public AccumulatorBase {
     _value = *reinterpret_cast<data_type const*>(ptr);
   }
 
-  void updateValueFromPointer(const void * ptr) override {
-    this->update(*reinterpret_cast<data_type const *>(ptr));
+  auto updateValueFromPointer(const void * ptr) -> greenspun::EvalResultT<UpdateResult> override {
+    return update(*reinterpret_cast<data_type const*>(ptr));
   }
 
  protected:

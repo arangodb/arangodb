@@ -40,6 +40,7 @@
 #include "Pregel/Algos/AIR/MasterContext.h"
 #include "Pregel/Algos/AIR/MessageFormat.h"
 #include "Pregel/Algos/AIR/VertexComputation.h"
+#include "Pregel/Algos/AIR/WorkerContext.h"
 
 #include "Pregel/Algos/AIR/AccumulatorOptionsDeserializer.h"
 
@@ -49,7 +50,8 @@
 
 #include <set>
 
-#define LOG_VERTEXACC(logId, level) LOG_DEVEL << "[" << pregel_algorithm_name << "] "
+#define LOG_VERTEXACC(logId, level) \
+  LOG_DEVEL << "[" << pregel_algorithm_name << "] "
 
 // LOG_TOPIC(logId, level, Logger::QUERIES) << "[AIR] "
 
@@ -81,7 +83,7 @@ auto VertexAccumulators::createComputation(WorkerConfig const* config) const
 
 auto VertexAccumulators::inputFormat() const -> graph_format* {
   // TODO: The resultField needs to be configurable from the u
-  return new GraphFormat(_server, _options.resultField,
+  return new GraphFormat(_server, _options.resultField, _options.globalAccumulators,
                          _options.vertexAccumulators, _options.customAccumulators);
 }
 
@@ -127,6 +129,10 @@ bool VertexAccumulators::getBindParameter(std::string_view name, VPackBuilder& i
   return new MasterContext(this);
 }
 
+::arangodb::pregel::WorkerContext* VertexAccumulators::workerContext(VPackSlice userParams) const {
+  return new WorkerContext(this);
+}
+
 IAggregator* VertexAccumulators::aggregator(const std::string& name) const {
   if (name == "phase") {  // permanent value
     return new OverwriteAggregator<uint32_t>(0, true);
@@ -134,7 +140,8 @@ IAggregator* VertexAccumulators::aggregator(const std::string& name) const {
     return new OverwriteAggregator<uint64_t>(0, true);
   } else if (arangodb::basics::StringUtils::isPrefix(name, "[global]-")) {
     std::string realName = name.substr(9);
-    if (auto iter = _options.globalAccumulators.find(realName); iter != std::end(_options.globalAccumulators)) {
+    if (auto iter = _options.globalAccumulators.find(realName);
+        iter != std::end(_options.globalAccumulators)) {
       return new VertexAccumulatorAggregator(iter->second, _options.customAccumulators, true);
     }
   }

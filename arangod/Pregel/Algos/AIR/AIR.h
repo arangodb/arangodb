@@ -76,6 +76,7 @@ struct VertexAccumulators : public algorithm {
   bool getBindParameter(std::string_view, VPackBuilder& into) const;
 
   ::arangodb::pregel::MasterContext* masterContext(VPackSlice userParams) const override;
+  ::arangodb::pregel::WorkerContext* workerContext(VPackSlice userParams) const override;
 
   IAggregator* aggregator(std::string const& name) const override;
 

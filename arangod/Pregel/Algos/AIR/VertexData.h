@@ -43,13 +43,20 @@ namespace accumulators {
 // Vertex data has to be default constructible m(
 class VertexData {
  public:
-  void reset(AccumulatorsDeclaration const& accumulatorsDeclaration,
+  void reset(AccumulatorsDeclaration const& globalAccumulatorsDeclaration,
+             AccumulatorsDeclaration const& vertexAccumulatorsDeclaration,
              CustomAccumulatorDefinitions const& customDefinitions,
              std::string documentId, VPackSlice const& doc, std::size_t vertexId);
 
   std::unique_ptr<AccumulatorBase> const& accumulatorByName(std::string_view name);
 
-  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _accumulators;
+  // This only holds the *deltas* for the global accumulators, i.e.
+  // these accumulators are reset before every GSS, and their contents
+  // are sent back to the conductor at the end of every GSS
+  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _globalAccumulators;
+
+  // The vertex accumulators are *not* reset automatically
+  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _vertexAccumulators;
 
   std::string _documentId;
   // FIXME: YOLO. we copy the whole document, which is
