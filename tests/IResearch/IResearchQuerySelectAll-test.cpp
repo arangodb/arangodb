@@ -177,8 +177,8 @@ TEST_F(IResearchQuerySelectAllTest, test) {
         }
       }
       ASSERT_TRUE(viewNode.isObject());
-      ASSERT_EQ(102., viewNode.get("estimatedCost").getDouble());
-      ASSERT_EQ(101, viewNode.get("estimatedNrItems").getNumber<size_t>());
+      ASSERT_EQ(insertedDocs.size() + 1., viewNode.get("estimatedCost").getDouble());
+      ASSERT_EQ(insertedDocs.size(), viewNode.get("estimatedNrItems").getNumber<size_t>());
     }
 
     auto queryResult =

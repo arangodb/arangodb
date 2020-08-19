@@ -883,7 +883,10 @@ TEST_F(IResearchQueryJoinTest, test) {
       }
 
       ASSERT_TRUE(viewNode.isObject());
-      ASSERT_EQ(insertedDocsView.size()*insertedDocsCollection.size()+ 10., viewNode.get("estimatedCost").getDouble());
+      ASSERT_EQ(insertedDocsView.size()*insertedDocsCollection.size()
+                  + insertedDocsCollection.size() + 1. // cost of collection node
+                  + 1., // cost of singleton node
+                viewNode.get("estimatedCost").getDouble());
       ASSERT_EQ(insertedDocsView.size()*insertedDocsCollection.size(), viewNode.get("estimatedNrItems").getNumber<size_t>());
     }
 
