@@ -858,12 +858,7 @@ void ClusterInfo::loadPlan() {
 
       if (!vocbase) {
         // No database with this name found.
-        // We have an invalid state here.
-        LOG_TOPIC("f105f", WARN, Logger::AGENCY)
-            << "No database '" << databaseName << "' found,"
-            << " corresponding view will be ignored for now and the "
-            << "invalid information will be repaired. VelocyPack: "
-            << viewsSlice.toJson();
+        // Maybe database will come up later - ignore this for now
         planValid &= !viewsSlice.length();  // cannot find vocbase for defined views (allow empty views for missing vocbase)
 
         continue;
@@ -950,14 +945,8 @@ void ClusterInfo::loadPlan() {
 
       if (!vocbase) {
         // No database with this name found.
-        // We have an invalid state here.
-        LOG_TOPIC("e5a6b", WARN, Logger::AGENCY)
-          << "No database '" << databaseName << "' found,"
-          << " corresponding analyzer will be ignored for now and the "
-          << "invalid information will be repaired. VelocyPack: "
-          << analyzerSlice.toJson();
+        // Ignore for now. Maybe database wil come up later.
         planValid &= !analyzerSlice.length();  // cannot find vocbase for defined analyzers (allow empty analyzers for missing vocbase)
-
         continue;
       }
 
@@ -1058,14 +1047,8 @@ void ClusterInfo::loadPlan() {
 
       if (!vocbase) {
         // No database with this name found.
-        // We have an invalid state here.
-        LOG_TOPIC("83d4c", WARN, Logger::AGENCY)
-            << "No database '" << databaseName << "' found,"
-            << " corresponding collection will be ignored for now and the "
-            << "invalid information will be repaired. VelocyPack: "
-            << collectionsSlice.toJson();
+        // Ignore for now. Maybe database wil come up later.
         planValid &= !collectionsSlice.length();  // cannot find vocbase for defined collections (allow empty collections for missing vocbase)
-
         continue;
       }
          
@@ -1685,17 +1668,19 @@ AnalyzersRevision::Ptr ClusterInfo::getAnalyzersRevision(DatabaseID const& datab
 
 QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
     DatabaseID const& databaseID) {
-  if (!_planProt.isValid) {
-    loadPlan();
-  }
+
   AnalyzersRevision::Revision currentDbRevision{ AnalyzersRevision::MIN };
   AnalyzersRevision::Revision systemDbRevision{ AnalyzersRevision::MIN };
-  // no looping here. As if cluster is freshly updated some databases will
-  // never have revisions record (and they do not need one actually)
-  // so waiting them to apper is futile. Anyway if database has revision
-  // we will see it at best effort basis as soon as plan updates itself
-  // and some lag in revision appearing is expected (even with looping ) 
-  {
+
+  // read revisions if plan is already loaded.
+  // do not trigger plan load by ourselves as this will introduce
+  // cycling dependency between cluster and database features.
+  if (_planProt.isValid) {
+    // no looping here. As if cluster is freshly updated some databases will
+    // never have revisions record (and they do not need one actually)
+    // so waiting them to apper is futile. Anyway if database has revision
+    // we will see it at best effort basis as soon as plan updates itself
+    // and some lag in revision appearing is expected (even with looping )
     READ_LOCKER(readLocker, _planProt.lock);
     // look up database by id
     auto it = _dbAnalyzersRevision.find(databaseID);
@@ -1712,7 +1697,7 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
         systemDbRevision = sysIt->second->getRevision();
       }
     } else {
-      // micro-optimization. If we are querying system database 
+      // micro-optimization. If we are querying system database
       // than current always equal system. And all requests for revision
       // will be resolved only with systemDbRevision member. So we copy
       // current to system and set current to MIN. As MIN value is default
@@ -1721,7 +1706,6 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
       currentDbRevision = AnalyzersRevision::MIN;
     }
   }
-
   return QueryAnalyzerRevisions(currentDbRevision, systemDbRevision);
 }
 
