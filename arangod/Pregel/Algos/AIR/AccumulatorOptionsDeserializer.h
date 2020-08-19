@@ -75,6 +75,7 @@ struct CustomAccumulatorDefinition {
   VPackBuilder updateProgram;
   VPackBuilder setProgram;
   VPackBuilder getProgram;
+  VPackBuilder finalizeProgram;
 };
 
 // An accumulator declaration consists of a unique name

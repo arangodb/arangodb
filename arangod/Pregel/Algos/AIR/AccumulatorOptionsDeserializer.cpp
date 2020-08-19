@@ -110,17 +110,14 @@ constexpr const char clearProgram[] = "clearProgram";
 constexpr const char updateProgram[] = "updateProgram";
 constexpr const char setProgram[] = "setProgram";
 constexpr const char getProgram[] = "getProgram";
-
-/*
-    VPackBuilder clearProgram;
-    VPackBuilder updateProgram;
- */
+constexpr const char finalizeProgram[] = "finalizeProgram";
 
 using custom_accumulator_definition_plan = parameter_list<
     factory_builder_parameter<clearProgram, true>,
     factory_builder_parameter<updateProgram, true>,
     factory_builder_parameter<setProgram, false>,
-    factory_builder_parameter<getProgram, false>
+    factory_builder_parameter<getProgram, false>,
+    factory_builder_parameter<finalizeProgram, false>
 >;
 
 using custom_accumulator_definition_deserializer =

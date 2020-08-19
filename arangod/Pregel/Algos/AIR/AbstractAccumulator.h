@@ -62,6 +62,7 @@ struct AccumulatorBase {
   virtual auto clearWithResult() -> greenspun::EvalResult = 0;
 
   virtual void serializeIntoBuilder(VPackBuilder& result) = 0;
+  virtual auto finalizeIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult = 0;
   virtual auto setBySliceWithResult(VPackSlice v) -> greenspun::EvalResult = 0;
   virtual auto getIntoBuilderWithResult(VPackBuilder& result) -> greenspun::EvalResult = 0;
   virtual auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> = 0;
@@ -111,6 +112,11 @@ class Accumulator : public AccumulatorBase {
 
   void serializeIntoBuilder(VPackBuilder& result) override {
     this->getValueIntoBuilder(result);
+  }
+
+  auto finalizeIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override {
+    serializeIntoBuilder(result);
+    return {};
   }
 
   // Needed to implement updates by slice

@@ -24,15 +24,20 @@
 
 #include "Accumulators.h"
 #include <Basics/ScopeGuard.h>
+#include <Logger/LogMacros.h>
 
 using namespace arangodb::pregel::algos::accumulators;
 
 auto CustomAccumulator<VPackSlice>::updateByMessage(MessageData const& msg)
     -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> {
-  this->_msgPointer = &msg;
+  this->inputSlice = msg._value.slice();
+  this->inputSender = &msg._sender;
   TRI_DEFER({
-     this->_msgPointer = nullptr;
+     this->inputSender = nullptr;
+     this->inputSlice = VPackSlice::noneSlice();
   })
+
+  LOG_DEVEL << "CustomAccumulator<VPackSlice>::updateByMessage value = " << msg._value.toJson() << " sender = " << msg._sender;
 
   VPackBuilder result;
   auto res = greenspun::Evaluate(_machine, _definition.updateProgram.slice(), result);
@@ -58,6 +63,7 @@ auto CustomAccumulator<VPackSlice>::updateByMessage(MessageData const& msg)
 
 auto CustomAccumulator<VPackSlice>::clearWithResult() -> greenspun::EvalResult {
   VPackBuilder result;
+  LOG_DEVEL << "CustomAccumulator<VPackSlice>::clearWithResult";
   return greenspun::Evaluate(_machine, _definition.clearProgram.slice(), result).mapError([](auto& err) {
     err.wrapMessage("in clearProgram of custom accumulator");
   });
@@ -81,6 +87,12 @@ CustomAccumulator<VPackSlice>::CustomAccumulator(const VertexData& owner,
 
 auto CustomAccumulator<VPackSlice>::setBySliceWithResult(VPackSlice v)
     -> arangodb::greenspun::EvalResult {
+  LOG_DEVEL << "setBySliceWithResult";
+  inputSlice = v;
+  TRI_DEFER({
+      inputSlice = Slice::noneSlice();
+  })
+
   if (_definition.setProgram.isEmpty()) {
     _buffer.clear();
     _buffer.add(v);
@@ -168,22 +180,30 @@ auto CustomAccumulator<VPackSlice>::AIR_CurrentValue(arangodb::greenspun::Machin
 auto CustomAccumulator<VPackSlice>::AIR_InputValue(arangodb::greenspun::Machine& ctx,
                                                    VPackSlice slice, VPackBuilder& result)
     -> arangodb::greenspun::EvalResult {
-  if (_msgPointer == nullptr) {
-    return greenspun::EvalError("not in a message context");
-  }
-
-  result.add(_msgPointer->_value.slice());
+  result.add(inputSlice);
   return {};
 }
 
 auto CustomAccumulator<VPackSlice>::AIR_InputSender(arangodb::greenspun::Machine& ctx,
                                                     VPackSlice slice, VPackBuilder& result)
     -> arangodb::greenspun::EvalResult {
-  if (_msgPointer == nullptr) {
+  if (inputSender == nullptr) {
     return greenspun::EvalError("not in a message context");
   }
-  result.add(VPackValue(_msgPointer->_sender));
+  result.add(VPackValue(inputSender));
   return {};
+}
+
+arangodb::greenspun::EvalResult CustomAccumulator<VPackSlice>::finalizeIntoBuilder(VPackBuilder& result) {
+  if (_definition.finalizeProgram.isEmpty()) {
+    result.add(_value);
+    return {};
+  }
+
+  return greenspun::Evaluate(_machine, this->_definition.finalizeProgram.slice(), result)
+      .mapError([](auto& err) {
+        err.wrapMessage("in finalizeProgram of custom accumulator");
+      });
 }
 
 CustomAccumulator<VPackSlice>::~CustomAccumulator() = default;

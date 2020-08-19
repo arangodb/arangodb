@@ -60,7 +60,10 @@ bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
   VPackObjectBuilder guard(&b, _resultField);
   for (auto&& acc : ptr->_vertexAccumulators) {
     b.add(VPackValue(acc.first));
-    acc.second->serializeIntoBuilder(b);
+    if (auto res = acc.second->finalizeIntoBuilder(b); res.fail()) {
+      LOG_DEVEL << "finalize program failed: " << res.error().toString();
+      TRI_ASSERT(false);
+    }
   }
   return true;
 }

@@ -37,6 +37,47 @@ exports.single_source_shortest_paths = single_source_shortest_paths;
 exports.test = test;
 exports.smallTest = testSmall;
 
+function minAccumulator() {
+    return {
+        updateProgram: ["if",
+            [
+                ["or",
+                    ["not", ["attrib-get", "isSet", ["current-value"]]],
+                    ["gt?", ["attrib-get", "value", ["current-value"]], ["input-value"]]
+                ],
+                ["seq",
+                    ["this-set!",
+                        ["dict", ["list", "isSet", true], ["list", "value", ["input-value"]]]
+                    ],
+                    "hot"
+                ]
+            ],
+            [true, "cold"]
+        ],
+        clearProgram: ["this-set!", {"isSet": false, "value": 0}],
+        getProgram: ["if",
+            [
+                ["attrib-get", "isSet", ["current-value"]],
+                ["attrib-get", "value", ["current-value"]]
+            ],
+            [
+                true,
+                ["error", "accumulator undefined value"]
+            ]
+        ],
+        setProgram: ["this-set!",
+            ["dict", ["list", "isSet", true], ["list", "value", ["input-value"]]]
+        ],
+        finalizeProgram: ["if",
+            [
+                ["attrib-get", "isSet", ["current-value"]],
+                ["attrib-get", "value", ["current-value"]]
+            ],
+            [true, null]
+        ],
+    }
+}
+
 /*
 
   `single_source_shortest_path_program` returns an AIR program that performs a
@@ -63,37 +104,7 @@ function single_source_shortest_paths_program(
             },
         },
         customAccumulators: {
-            "my_min": {
-                updateProgram: ["if",
-                    [
-                        ["or",
-                            ["not", ["attrib-get", ["current-value"], "isSet"]],
-                            ["gt?", ["attrib-get", ["current-value"], "value"], ["input-value"]]
-                        ],
-                        ["seq",
-                            ["this-set!",
-                                ["dict", ["isSet", true], ["value", ["input-value"]]]
-                            ],
-                            "hot"
-                        ]
-                    ],
-                    [true, "cold"]
-                ],
-                clearProgram: ["this-set!", {"isSet": false, "value": 0}],
-                getProgram: ["if",
-                    [
-                        ["attrib-get", ["current-value"], "isSet"],
-                        ["attrib-get", ["current-value"], "value"]
-                    ],
-                    [
-                        true,
-                        ["error", "accumulator undefined value"]
-                    ]
-                ],
-                setProgram: ["this-set!",
-                    ["dict", ["isSet", true], ["value", ["input-value"]]]
-                ]
-            }
+            "my_min": minAccumulator()
         },
         phases: [
             {
@@ -104,7 +115,10 @@ function single_source_shortest_paths_program(
                         "if",
                         [
                             ["eq?", ["this-vertex-id"], startVertexId],
-                            ["seq", ["accum-set!", "distance", 0], true],
+                            ["seq",
+                                ["print", "I am the start vertex"],
+                                ["accum-set!", "distance", 0],
+                                true],
                         ],
                         [true, ["seq",
                             ["accum-clear!", "distance"],
@@ -117,6 +131,7 @@ function single_source_shortest_paths_program(
                         "for-each",
                         ["edge", ["this-outbound-edges"]],
                         ["seq",
+                            ["print", "Sending message"],
                             [
                                 "send-to-accum",
                                 ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],

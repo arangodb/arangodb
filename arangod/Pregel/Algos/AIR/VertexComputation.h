@@ -54,7 +54,7 @@ class VertexComputation : public vertex_computation {
   // the aggregators to be send off to the conductor
   void aggregateGlobalAccumulators();
 
-  greenspun::EvalResult clearAllAccumulators();
+  greenspun::EvalResult clearAllVertexAccumulators();
   greenspun::EvalResultT<bool> processIncomingMessages(MessageIterator<MessageData> const& incomingMessages);
 
   greenspun::EvalResult runProgram(greenspun::Machine& ctx, VPackSlice program);

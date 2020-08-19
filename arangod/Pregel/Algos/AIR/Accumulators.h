@@ -232,11 +232,10 @@ struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
 
   ~CustomAccumulator() override;
 
-  void set(VPackSlice v) override {}
-
   auto setBySliceWithResult(VPackSlice v) -> greenspun::EvalResult override;
   auto getIntoBuilderWithResult(VPackBuilder& result) -> greenspun::EvalResult override;
   void serializeIntoBuilder(VPackBuilder &result) override;
+  greenspun::EvalResult finalizeIntoBuilder(VPackBuilder &result) override;
 
   auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> override;
   auto clearWithResult() -> greenspun::EvalResult override;
@@ -253,7 +252,8 @@ struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
   auto AIR_ThisSet(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result) -> greenspun::EvalResult;
   auto AIR_Parameters(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result) -> greenspun::EvalResult;
 
-  MessageData const* _msgPointer;
+  VPackSlice inputSlice = VPackSlice::noneSlice();
+  std::string const* inputSender = nullptr;
 
   VPackBuilder _buffer;
   VPackBuilder _parameters;

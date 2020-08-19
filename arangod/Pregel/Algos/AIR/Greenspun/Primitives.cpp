@@ -721,6 +721,7 @@ void RegisterAllPrimitives(Machine& ctx) {
   // Constructors
   ctx.setFunction("dict", Prim_Dict);
   ctx.setFunction("dict-merge", Prim_MergeDict);
+  ctx.setFunction("list", Prim_List);
 
   // Lambdas
   ctx.setFunction("lambda", Prim_Lambda);

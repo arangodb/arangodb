@@ -39,14 +39,13 @@ VertexAccumulatorAggregator::VertexAccumulatorAggregator(AccumulatorOptions cons
 
 /// @brief Used when updating aggregator value locally
 void VertexAccumulatorAggregator::aggregate(void const* valuePtr)  {
-  accumulator->updateValueFromPointer(valuePtr);
+  TRI_ASSERT(accumulator->updateValueFromPointer(valuePtr).ok());
 }
 
 /// @brief Used when updating aggregator value from remote
 void VertexAccumulatorAggregator::parseAggregate(arangodb::velocypack::Slice const& slice) {
   LOG_DEVEL << accumulator.get() << "parseAggregate = " << slice.toJson();
-  LOG_DEVEL << "NOT IMPLEMENTED";
-  std::abort();  // handle return value
+  TRI_ASSERT(false);
   // accumulator->updateByMessageSlice(slice);
 }
 
@@ -57,8 +56,8 @@ void const* VertexAccumulatorAggregator::getAggregatedValue() const {
 /// @brief Value from superstep S-1 supplied by the conductor
 void VertexAccumulatorAggregator::setAggregatedValue(arangodb::velocypack::Slice const& slice)  {
   LOG_DEVEL << accumulator.get() << "setAggregatedValue " << slice.toJson();
-  //accumulator->setBySlice(slice);
-  LOG_DEVEL << "NOT IMPLEMENTED";
+  auto res = accumulator->setBySliceWithResult(slice);
+  TRI_ASSERT(res.ok());
 }
 
 void VertexAccumulatorAggregator::serialize(std::string const& key,
@@ -75,20 +74,23 @@ void VertexAccumulatorAggregator::reset() {
 }
 
 void VertexAccumulatorAggregator::reset(IAggregator::ResetBy who) {
-  std::abort(); // handle return value of clearWithResult
-  switch(who) {
-  // The worker gets to just reset us
-  case IAggregator::ResetBy::Worker: {
-    accumulator->clearWithResult();
-  } break;
-  case IAggregator::ResetBy::Master: {
-  } break;
-  case IAggregator::ResetBy::Legacy: {
-    if (!permanent) {
-      LOG_DEVEL << "calling clear on accumulator";
-      accumulator->clearWithResult();
-    }
-  } break;
+  greenspun::EvalResult res;
+  switch (who) {
+    // The worker gets to just reset us
+    case IAggregator::ResetBy::Worker: {
+      res = accumulator->clearWithResult();
+    } break;
+    case IAggregator::ResetBy::Master: {
+    } break;
+    case IAggregator::ResetBy::Legacy: {
+      if (!permanent) {
+        LOG_DEVEL << "calling clear on accumulator";
+        res = accumulator->clearWithResult();
+      }
+    } break;
+  }
+  if (res.fail()) {
+    TRI_ASSERT(false);
   }
 }
 

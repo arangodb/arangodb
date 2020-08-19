@@ -48,14 +48,14 @@ function wait_for_pregel(name, pid) {
   while (true) {
     var status = pregel.status(pid);
 
-    if (status.state === "done") {
+    if (status.state === "done" || status.state === "fatal error") {
       internal.print("  " + name + " done, returned with status: ");
       internal.print(JSON.stringify(status, null, 4));
       return status;
     } else {
       waited++;
       if (waited % 10 === 0) {
-        internal.print("waited" + waited * 10 + "seconds, not done yet, waiting some more");
+        internal.print("waited " + waited * 10 + " seconds, not done yet, waiting some more, status = " + status.state);
       }
     }
     internal.sleep(1);
