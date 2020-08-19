@@ -73,7 +73,7 @@ class Edge {
 
   static_assert(sizeof(std::string) > 2, "");
 
-  // these members are initialized by the GrapStore
+  // these members are initialized by the GraphStore
   char* _toKey;              // uint64_t
   uint16_t _toKeyLength;     // uint16_t
   PregelShard _targetShard;  // uint16_t
