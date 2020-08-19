@@ -1299,12 +1299,12 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
     return aql::CostEstimate::empty();
   }
 
+  TRI_ASSERT(_plan && _plan->getAst());
   transaction::Methods& trx = _plan->getAst()->query().trxForOptimization();
   if (trx.status() != transaction::Status::RUNNING) {
     return aql::CostEstimate::empty();
   }
 
-  TRI_ASSERT(_plan && _plan->getAst());
   auto const& collections = _plan->getAst()->query().collections();
 
   size_t estimatedNrItems = 0;
@@ -1331,7 +1331,6 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
     _view->visitCollections(visitor);
   }
 
-  TRI_ASSERT(!_dependencies.empty());
   aql::CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedNrItems *= estimatedNrItems;
   estimate.estimatedCost += estimate.estimatedNrItems;
