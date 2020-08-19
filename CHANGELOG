@@ -9,6 +9,9 @@ devel
   Supervision job would then leave the shard in a bad configuration
   with a resigned leader permanently in charge.
 
+* Fixed that dropping a vanished follower works again. An exception response
+  to the replication request is now handled properly.
+
 * Fixed bad behaviour in agency supervision in some corner cases involving
   already resigned leaders in Current.
 
