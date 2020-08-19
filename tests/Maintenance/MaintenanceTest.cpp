@@ -1272,9 +1272,15 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_current_reboot
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          current.toBuilder().slice(),
                                          server, errors, *feature, actions);
-
-    // Synchronize in Phase 2 is responsible for this.
-    ASSERT_EQ(actions.size(), 0);
+    
+    // We will just resign in this case to get a clear state.
+    ASSERT_EQ(actions.size(), 2);
+    for (auto const& action : actions) {
+      assertIsResignLeadershipAction(*action, dbName());
+      auto shardName = action->get(SHARD);
+      auto removed = relevantShards.erase(shardName);
+      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
+    }
   }
 }
 
@@ -1292,8 +1298,14 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_current
                                          current.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
-    // Synchronize in Phase 2 is responsible for this.
-    ASSERT_EQ(actions.size(), 0);
+    // We will just resign in this case to get a clear state.
+    ASSERT_EQ(actions.size(), 2);
+    for (auto const& action : actions) {
+      assertIsResignLeadershipAction(*action, dbName());
+      auto shardName = action->get(SHARD);
+      auto removed = relevantShards.erase(shardName);
+      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
+    }
   }
 }
 

@@ -351,8 +351,10 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
   auto localLeader = cprops.get(THE_LEADER).stringRef();
   bool const isLeading = localLeader.empty();
   bool const activeResign = isLeading && plannedLeader != serverId;
-  bool const adjustResignState = plannedLeader == UNDERSCORE + serverId &&
-                                 localLeader != ResignShardLeadership::LeaderNotYetKnownString;
+  bool const adjustResignState =
+      (plannedLeader == UNDERSCORE + serverId &&
+       localLeader != ResignShardLeadership::LeaderNotYetKnownString) ||
+      (plannedLeader != serverId && localLeader == LEADER_NOT_YET_KNOWN);
   /*
   * We need to resign in the following cases:
   * 1) (activeResign) We think we are the leader locally, but the plan says we are not. (including, we are resigned)
