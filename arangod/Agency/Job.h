@@ -156,7 +156,8 @@ struct Job {
   static std::string findNonblockedCommonHealthyInSyncFollower(Node const& snap,
                                                                std::string const& db,
                                                                std::string const& col,
-                                                               std::string const& shrd);
+                                                               std::string const& shrd,
+                                                               std::string const& serverToAvoid);
 
   JOB_STATUS _status;
   Node const& _snapshot;
