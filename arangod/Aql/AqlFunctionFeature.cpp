@@ -440,10 +440,12 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"DECODE_REV", ".", flags, &Functions::DecodeRev});
   add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable)});  // only function without a
                                                                             // C++ implementation
-  
   auto validationFlags = Function::makeFlags(FF::None);
   add({"SCHEMA_GET", ".", validationFlags, &Functions::SchemaGet});
   add({"SCHEMA_VALIDATE", ".,.", validationFlags, &Functions::SchemaValidate});
+
+  // Call AIR
+  add({"CALL_GREENSPUN", ".|+", Function::makeFlags(FF::CanRunOnDBServer), &Functions::CallGreenspun});
 
   // special flags:
   add({"VERSION", "", Function::makeFlags(FF::Deterministic), &Functions::Version});  // deterministic, not cacheable. only on

@@ -71,6 +71,7 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-vpack.h"
@@ -7654,6 +7655,7 @@ AqlValue Functions::DecodeRev(ExpressionContext* expressionContext,
   // buffer[23] is 'Z'
   buffer[24] = 0;
 
+
   transaction::BuilderLeaser builder(trx);
   builder->openObject();
   builder->add("date", VPackValue(buffer));
@@ -7812,6 +7814,32 @@ AqlValue Functions::Interleave(arangodb::aql::ExpressionContext* expressionConte
 
   builder->close();
   return AqlValue(builder->slice(), builder->size());
+}
+
+AqlValue Functions::CallGreenspun(arangodb::aql::ExpressionContext* expressionContext,
+                 transaction::Methods* trx, VPackFunctionParameters const& parameters) {
+  greenspun::Machine m;
+  greenspun::InitMachine(m);
+
+  transaction::BuilderLeaser programBuilder(trx);
+  transaction::BuilderLeaser paramBuilder(trx);
+  {
+    VPackArrayBuilder array(programBuilder.builder());
+    for (size_t p = 0; p<parameters.size(); p++) {
+      programBuilder->add(extractFunctionParameterValue(parameters, p).slice());
+    }
+  }
+
+  transaction::BuilderLeaser resultBuilder(trx);
+  auto result = greenspun::Evaluate(m, programBuilder->slice(), *resultBuilder.builder());
+
+  if (result) {
+    return AqlValue(resultBuilder->slice(), resultBuilder->size());
+  } else {
+    auto msg = result.error().toString();
+    expressionContext->registerError(TRI_ERROR_QUERY_PARSE, msg.data());
+    return AqlValue(AqlValueHintNull());
+  }
 }
 
 AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
