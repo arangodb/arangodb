@@ -80,7 +80,13 @@ inline void copyValueOver(arangodb::containers::HashSet<void*>& cache,
 
 /// @brief create the block
 AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, RegisterCount nrRegs)
-    : _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager), _refCount(0), _rowIndex(0), _shadowRows(nrItems) {
+    : _nrItems(nrItems), 
+      _nrRegs(nrRegs), 
+      _nrEffectiveItems(0),
+      _manager(manager), 
+      _refCount(0), 
+      _rowIndex(0), 
+      _shadowRows(nrItems) {
   TRI_ASSERT(nrItems > 0);  // empty AqlItemBlocks are not allowed!
   // check that the nrRegs value is somewhat sensible
   // this compare value is arbitrary, but having so many registers in a single
@@ -104,6 +110,9 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
 
   _nrItems = static_cast<size_t>(nrItems);
   _nrRegs = VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
+
+  // will be increased by later setValue() calls
+  _nrEffectiveItems = 0;
 
   _shadowRows.clear();
   _shadowRows.resize(_nrItems);
@@ -313,7 +322,7 @@ void AqlItemBlock::destroy() noexcept {
       eraseAll();
     } else {
       size_t totalUsed = 0;
-      size_t const n = numEntries();
+      size_t const n = numEffectiveEntries();
       for (size_t i = 0; i < n; i++) {
         auto& it = _data[i];
         if (it.requiresDestruction()) {
@@ -341,6 +350,7 @@ void AqlItemBlock::destroy() noexcept {
 
   rescale(0, 0);
   TRI_ASSERT(numEntries() == 0);
+  TRI_ASSERT(numEffectiveEntries() == 0);
 }
 
 /// @brief shrink the block to the specified number of rows
@@ -368,8 +378,8 @@ void AqlItemBlock::shrink(size_t nrItems) {
   _nrItems = nrItems;
 
   size_t totalUsed = 0;
-  size_t const n = numEntries();
-  for (size_t i = n; i < _data.size(); ++i) {
+  size_t const n = numEffectiveEntries();
+  for (size_t i = numEntries(); i < n; ++i) {
     AqlValue& a = _data[i];
     if (a.requiresDestruction()) {
       auto it = _valueCount.find(a.data());
@@ -388,7 +398,8 @@ void AqlItemBlock::shrink(size_t nrItems) {
     }
     a.erase();
   }
-          
+  
+  _nrEffectiveItems = std::min<size_t>(_nrEffectiveItems, _nrItems);
   decreaseMemoryUsage(totalUsed);
 }
 
@@ -430,6 +441,7 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterCount nrRegs) {
 
   _nrItems = nrItems;
   _nrRegs = nrRegs;
+  _nrEffectiveItems = std::min<size_t>(_nrEffectiveItems, _nrItems);
 }
 
 /// @brief clears out some columns (registers), this deletes the values if
@@ -438,7 +450,7 @@ void AqlItemBlock::clearRegisters(RegIdFlatSet const& toClear) {
   bool const checkShadowRows = hasShadowRows();
 
   size_t totalUsed = 0;
-  for (size_t i = 0; i < _nrItems; i++) {
+  for (size_t i = 0; i < _nrEffectiveItems; i++) {
     if (checkShadowRows && isShadowRow(i)) {
       // Do not clear shadow rows:
       // 1) our toClear set is only valid for data rows
@@ -641,6 +653,8 @@ SharedAqlItemBlockPtr AqlItemBlock::steal(std::vector<size_t> const& chosen,
   TRI_ASSERT(from < to && to <= chosen.size());
 
   SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _nrRegs)};
+  
+  to = std::min<size_t>(to, _nrEffectiveItems);
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
@@ -982,6 +996,7 @@ void AqlItemBlock::setValue(size_t index, RegisterId varNr, AqlValue const& valu
   }
 
   _data[getAddress(index, varNr)] = value;
+  _nrEffectiveItems = std::max<size_t>(_nrEffectiveItems, index + 1);
 }
 
 void AqlItemBlock::destroyValue(size_t index, RegisterId varNr) {
@@ -1023,7 +1038,7 @@ void AqlItemBlock::eraseValue(size_t index, RegisterId varNr) {
 }
 
 void AqlItemBlock::eraseAll() {
-  size_t const n = numEntries();
+  size_t const n = numEffectiveEntries();
   for (size_t i = 0; i < n; i++) {
     auto& it = _data[i];
     if (!it.isEmpty()) {
@@ -1046,7 +1061,7 @@ void AqlItemBlock::referenceValuesFromRow(size_t currentRow,
                                           RegIdFlatSet const& regs, size_t fromRow) {
   TRI_ASSERT(currentRow != fromRow);
 
-  for (auto const reg : regs) {
+  for (auto const& reg : regs) {
     TRI_ASSERT(reg < getNrRegs());
     if (getValueReference(currentRow, reg).isEmpty()) {
       // First update the reference count, if this fails, the value is empty
@@ -1056,6 +1071,7 @@ void AqlItemBlock::referenceValuesFromRow(size_t currentRow,
         ++_valueCount[a.data()].refCount;
       }
       _data[getAddress(currentRow, reg)] = a;
+      _nrEffectiveItems = std::max<size_t>(_nrEffectiveItems, currentRow + 1);
     }
   }
   // Copy over subqueryDepth
@@ -1104,6 +1120,8 @@ std::tuple<size_t, size_t> AqlItemBlock::getRelevantRange() const {
 }
 
 size_t AqlItemBlock::numEntries() const { return _nrRegs * _nrItems; }
+
+size_t AqlItemBlock::numEffectiveEntries() const { return _nrRegs * _nrEffectiveItems; }
 
 size_t AqlItemBlock::capacity() const noexcept { return _data.capacity(); }
 

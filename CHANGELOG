@@ -1,6 +1,11 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
 
+* Introduce an internal high-water mark for the maximum row number that was
+  written to in an AqlItemBlock. Using this number several operations on the
+  whole block, such as cleaning up or copying can be made more efficient when
+  run on only partially filled blocks.
+
 * Fixed a problem with potentially lost updates because a failover could happen
   at a wrong time or a restarted leader could come back at an unlucky time.
 
@@ -9,7 +14,7 @@ v3.7.2 (XXXX-XX-XX)
   UI in case the query was canceled using the "Cancel" button in web UI's query
   editor.
 
-* Fixed bad behaviour in agency supervision in some corner cases involving
+* Fixed bad behavior in agency supervision in some corner cases involving
   already resigned leaders in Current.
 
 * Fixed issue ES-664: the optimizer rule `inline-subqueries` must not pull out
