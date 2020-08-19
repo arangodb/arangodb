@@ -238,7 +238,7 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
 }
 
 Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
-                                 VPackSlice trxOpts) {
+                                 VPackSlice const trxOpts) {
   Result res;
   if (_disallowInserts) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
@@ -248,8 +248,6 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   if (!trxOpts.isObject() || !trxOpts.get("collections").isObject()) {
     return res.reset(TRI_ERROR_BAD_PARAMETER, "missing 'collections'");
   }
-
-  LOG_DEVEL << "CREATEMANAGED TRX CALLED WITH: " << trxOpts.toJson();
 
   // extract the properties from the object
   transaction::Options options;
@@ -321,22 +319,8 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   }
 
   // enforce size limit per DBServer
-  if (tid.isFollowerTransactionId()) {
-    // if we are a follower, we reuse the leader's max transaction size and slightly
-    // increase it. this is to ensure that the follower can process at least as many
-    // data as the leader, even if the data representation is slightly varied for
-    // network transport etc.
-    // note that this increase may overflow the value beyond what a uint64_t can hold
-    decltype(options.maxTransactionSize) adjustedSize = double(options.maxTransactionSize) * 1.25;
-    if (adjustedSize > options.maxTransactionSize) {
-      options.maxTransactionSize = adjustedSize;
-    }
-  } else {
-    options.maxTransactionSize =
-        std::min<size_t>(options.maxTransactionSize, Manager::maxTransactionSize);
-  }
-  
-  LOG_DEVEL << "EFFECTIVE MAX TRANSACTION SIZE: " << options.maxTransactionSize;
+  options.maxTransactionSize =
+      std::min<size_t>(options.maxTransactionSize, Manager::maxTransactionSize);
 
   std::shared_ptr<TransactionState> state;
   try {
@@ -417,9 +401,6 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   // start the transaction
   transaction::Hints hints;
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
-  if (tid.isFollowerTransactionId()) {
-    hints.set(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-  }
   try {
     res = state->beginTransaction(hints);  // registers with transaction manager
   } catch (basics::Exception const& ex) {

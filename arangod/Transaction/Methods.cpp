@@ -2335,22 +2335,8 @@ Future<Result> Methods::replicateOperations(
           bool found;
           resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
           replicationWorked = !found;
-          if (found) {
-            LOG_DEVEL << "oopsi, got error codes back!";
-          }
         }
         didRefuse = didRefuse || resp.response->statusCode() == fuerte::StatusNotAcceptable;
-          
-        if (!replicationWorked) {
-          ServerID const& deadFollower = (*followerList)[i];
-          LOG_DEVEL 
-              << "synchronous replication: dropping follower "
-              << deadFollower << " for shard " << collection->name() 
-              << ", status code: " << (int) resp.response->statusCode() 
-              << ", didRefuse: " << didRefuse 
-              << ", operation: " << (int) operation 
-              << ", data: " << resp.slice().toJson();
-        }
       }
 
       if (!replicationWorked) {
