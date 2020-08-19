@@ -37,7 +37,8 @@ namespace algos {
 namespace accumulators {
 
 struct VertexAccumulatorAggregator : IAggregator {
-  VertexAccumulatorAggregator(AccumulatorOptions const& opts, bool persists);
+  VertexAccumulatorAggregator(AccumulatorOptions const& opts,
+                              CustomAccumulatorDefinitions const& defs, bool persists);
   virtual ~VertexAccumulatorAggregator() = default;
 
   /// @brief Used when updating aggregator value locally

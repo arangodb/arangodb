@@ -1292,6 +1292,82 @@ TEST_CASE("Test [attrib-set] primitive", "[attrib-set]") {
   }
 }
 
+
+TEST_CASE("Test [min] primitive", "[min]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("empty min") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["min"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().isNone());
+  }
+
+  SECTION("single min") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["min", 1]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().getNumericValue<double>() == 1);
+  }
+
+  SECTION("double min") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["min", 1, 2]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().getNumericValue<double>() == 1);
+  }
+
+  SECTION("double min 2.0") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["min", 2, 1]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().getNumericValue<double>() == 1);
+  }
+
+  SECTION("triple min") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["min", 2, 1, 3]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().getNumericValue<double>() == 1);
+  }
+
+  SECTION("min fail") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["min", 1, "foo"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+}
+
 TEST_CASE("Test [array-ref] primitive", "[array-ref]") {
   Machine m;
   InitMachine(m);

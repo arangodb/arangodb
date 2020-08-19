@@ -29,8 +29,9 @@
 namespace arangodb::pregel::algos::accumulators {
 
 VertexAccumulatorAggregator::VertexAccumulatorAggregator(AccumulatorOptions const& opts,
+                                                         CustomAccumulatorDefinitions const& defs,
                                                          bool persists)
-    : fake(), accumulator(instantiateAccumulator(fake, opts)), permanent(persists) {
+    : fake(), accumulator(instantiateAccumulator(fake, opts, defs)), permanent(persists) {
   if (accumulator == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Failed to create global vertex accumulator.");
   }
@@ -38,12 +39,14 @@ VertexAccumulatorAggregator::VertexAccumulatorAggregator(AccumulatorOptions cons
 
 /// @brief Used when updating aggregator value locally
 void VertexAccumulatorAggregator::aggregate(void const* valuePtr)  {
-  accumulator->updateValueFromPointer(valuePtr);
+  TRI_ASSERT(accumulator->updateValueFromPointer(valuePtr).ok());
 }
 
 /// @brief Used when updating aggregator value from remote
-void VertexAccumulatorAggregator::parseAggregate(arangodb::velocypack::Slice const& slice)  {
-  accumulator->updateBySlice(slice);
+void VertexAccumulatorAggregator::parseAggregate(arangodb::velocypack::Slice const& slice) {
+  LOG_DEVEL << accumulator.get() << "parseAggregate = " << slice.toJson();
+  TRI_ASSERT(false);
+  // accumulator->updateByMessageSlice(slice);
 }
 
 void const* VertexAccumulatorAggregator::getAggregatedValue() const {
@@ -52,13 +55,16 @@ void const* VertexAccumulatorAggregator::getAggregatedValue() const {
 
 /// @brief Value from superstep S-1 supplied by the conductor
 void VertexAccumulatorAggregator::setAggregatedValue(arangodb::velocypack::Slice const& slice)  {
-  accumulator->setBySlice(slice);
+  LOG_DEVEL << accumulator.get() << "setAggregatedValue " << slice.toJson();
+  auto res = accumulator->setBySliceWithResult(slice);
+  TRI_ASSERT(res.ok());
 }
 
 void VertexAccumulatorAggregator::serialize(std::string const& key,
                                             arangodb::velocypack::Builder& builder) const  {
   VPackBuilder local;
-  accumulator->getValueIntoBuilder(local);
+  accumulator->serializeIntoBuilder(local);
+  LOG_DEVEL << accumulator.get() << "serialize into key " << key << " with value " << local.toJson();
   builder.add(VPackValue(key));
   builder.add(local.slice());
 }
@@ -68,19 +74,23 @@ void VertexAccumulatorAggregator::reset() {
 }
 
 void VertexAccumulatorAggregator::reset(IAggregator::ResetBy who) {
-  switch(who) {
-  // The worker gets to just reset us
-  case IAggregator::ResetBy::Worker: {
-    accumulator->clear();
-  } break;
-  case IAggregator::ResetBy::Master: {
-  } break;
-  case IAggregator::ResetBy::Legacy: {
-    if (!permanent) {
-      LOG_DEVEL << "calling clear on accumulator";
-      accumulator->clear();
-    }
-  } break;
+  greenspun::EvalResult res;
+  switch (who) {
+    // The worker gets to just reset us
+    case IAggregator::ResetBy::Worker: {
+      res = accumulator->clearWithResult();
+    } break;
+    case IAggregator::ResetBy::Master: {
+    } break;
+    case IAggregator::ResetBy::Legacy: {
+      if (!permanent) {
+        LOG_DEVEL << "calling clear on accumulator";
+        res = accumulator->clearWithResult();
+      }
+    } break;
+  }
+  if (res.fail()) {
+    TRI_ASSERT(false);
   }
 }
 

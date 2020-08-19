@@ -43,17 +43,17 @@ arangosh> var pexec = pp.execute("WikiVoteGraph",
  * if -- takes pairs `[cond, body]` of conditions `cond` and expression `body` and evaluates 
          the first `body` for which `cond` avaluates to `true`
  * quote --  `["quote", expr ...]` evaluates to `[expr ...]`
- * cons -- `["cons", val, [expr ...]` evaluates to `[val, expr ...]`
- * and -- `["and", expr ...] evaluates to false if one of `expr` evaluates to `false`. The arguments `expr` are evaluated in order, and evaluation is stopped once an `expr` evaluates to `false`.
- * or -- `["or", expr ...] evaluates to true if one of `expr` evaluates to `true`. The arguments `expr` are evaluated in order, and evaluation is stopped once an `expr` evaluates to `true`.
- * seq -- `["seq", expr ... lastexpr ]` evaluates `expr` in order, the value of a `seq` espression is `lastexpr`
- * match -- `["match", expr, [c, body] ...] evaluates `expr` to `val` and evaluates `body` for the first pair `[c, body]`, where `["eq?", val, c]` is `true`.
- * for-each -- ["for-each" [(v list) ...] body ...] binds `v` to elements of `list` in order and evaluates `body` with this binding.
+ * cons -- `["cons", val, [expr ...]]` evaluates to `[val, expr ...]`
+ * and -- `["and", expr ...]` evaluates to false if one of `expr` evaluates to `false`. The arguments `expr` are evaluated in order, and evaluation is stopped once an `expr` evaluates to `false`.
+ * or -- `["or", expr ...]` evaluates to true if one of `expr` evaluates to `true`. The arguments `expr` are evaluated in order, and evaluation is stopped once an `expr` evaluates to `true`.
+ * seq -- `["seq", expr ... lastexpr ]` evaluates `expr` in order, the value of a `seq` expression is `lastexpr`
+ * match -- `["match", expr, [c, body] ...]` evaluates `expr` to `val` and evaluates `body` for the first pair `[c, body]`, where `["eq?", val, c]` is `true`.
+ * for-each -- `["for-each" [(v list) ...] body ...]` binds `v` to elements of `list` in order and evaluates `body` with this binding.
 
 ### Language primitives
 
  * var-ref -- `["var-ref", name]` refer to variable `name` in current context
- * var-set!  -- `["var-set`, name, value]` set variable `name` in current context to `value`
+ * var-set!  -- `["var-set!", name, value]` set variable `name` in current context to `value`
 
  * attrib-ref -- `["attrib-ref", doc, key]`, `["attrib-ref", doc, [p ...]]`, in the first variant, extract attribute `key` from `doc`, in the second variant extract attribute with path `p/...` from doc
  * attrib-set -- `["attrib-set", dict, key, value]` - set dict at key to value 
@@ -80,6 +80,8 @@ arangosh> var pexec = pp.execute("WikiVoteGraph",
  * list-cat -- `["list-cat", list ...]` concatenates the lists `list ...` forming one list
  * string-cat -- `["string-cat", string ...]` concatenates the strings `string ...` forming one string
  * int-to-str -- `["int-to-str", val]` returns a string representation of the integer `val`
+
+ * min, max, avg -- 
 
 ### Foreign calls in Vertex Computation "context" [3]
 
@@ -110,6 +112,36 @@ They are "foreign calls" into the `VertexComputation` object.
  
  * `["goto-phase", phase]` -- sets the current phase to `phase`
  * `["finish"]` -- finishes the pregel computation
+ * `accum-ref`, `accum-set!`, `accum-clear!` as described above. For global accumulators only.
+
+### Foreign calls in _Custom Accumulator_ context
+
+ * `["parameters"]` -- returns the object passed as parameter to the accumulator definition
+ * `["current-value"]` -- returns the current value of the accumulator
+ * `["get-current-value"]` -- returns the current value but uses the getter
+ * `["input-value"]` -- returns the value
+ * `["input-sender"]` -- returns the _id_ of the sending vertex
+ * `["this-set!", value]` -- set the new value of the accumulator
+ * `["this-*-id]` -- id functions as described above
+ * `???` -- to be continued
+
+```json
+{
+  "minAccumulator": {
+    "clearProgram": {"isSet": false, "value": 0},
+    "updateProgram": ["dict",["isSet",true],["value",
+                      ["if",
+                        [
+                          ["attrib-get",["current-value"],"isSet"],
+                            ["min",["attrib-get",["current-value"],"value"],["update-value"]]
+                        ],[
+                          true,
+                          ["update-value"]]
+                      ]
+                     ]]
+  }
+}
+```
 
 ## Possible future developments/ROADMAP
 

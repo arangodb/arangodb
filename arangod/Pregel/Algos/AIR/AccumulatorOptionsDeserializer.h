@@ -48,6 +48,7 @@ enum class AccumulatorType {
   OR,
   STORE,
   LIST,
+  CUSTOM,
 };
 
 std::ostream& operator<<(std::ostream&, AccumulatorType const&);
@@ -65,12 +66,23 @@ struct AccumulatorOptions {
   AccumulatorType type;
   AccumulatorValueType valueType;
   bool storeSender;
+  std::optional<std::string> customType;
+  std::optional<VPackBuilder> parameters;
+};
+
+struct CustomAccumulatorDefinition {
+  VPackBuilder clearProgram;
+  VPackBuilder updateProgram;
+  VPackBuilder setProgram;
+  VPackBuilder getProgram;
+  VPackBuilder finalizeProgram;
 };
 
 // An accumulator declaration consists of a unique name
 // and a struct of options
 using AccumulatorsDeclaration = std::unordered_map<std::string, AccumulatorOptions>;
 using BindingDeclarations = std::unordered_map<std::string, VPackBuilder>;
+using CustomAccumulatorDefinitions = std::unordered_map<std::string, CustomAccumulatorDefinition>;
 
 struct AlgorithmPhase {
   std::string name;
@@ -86,6 +98,7 @@ struct VertexAccumulatorOptions {
   std::string resultField;
   AccumulatorsDeclaration vertexAccumulators;
   AccumulatorsDeclaration globalAccumulators;
+  CustomAccumulatorDefinitions customAccumulators;
   BindingDeclarations bindings;
   PhaseDeclarations phases;
   uint64_t maxGSS;

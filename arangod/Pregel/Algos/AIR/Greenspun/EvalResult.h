@@ -112,6 +112,10 @@ struct EvalResultT {
     return *this;
   }
 
+  EvalResultT<std::monostate> asResult() {
+      return map([](auto&&) -> std::monostate { return {}; });
+  };
+
   template<typename F>
   auto map(F&& f) && -> EvalResultT<std::invoke_result_t<F, T&&>> {
     if (hasValue()) {

@@ -83,8 +83,8 @@ auto VertexAccumulators::createComputation(WorkerConfig const* config) const
 
 auto VertexAccumulators::inputFormat() const -> graph_format* {
   // TODO: The resultField needs to be configurable from the u
-  return new GraphFormat(_server, _options.resultField,
-                         _options.globalAccumulators, _options.vertexAccumulators);
+  return new GraphFormat(_server, _options.resultField, _options.globalAccumulators,
+                         _options.vertexAccumulators, _options.customAccumulators);
 }
 
 message_format* VertexAccumulators::messageFormat() const {
@@ -142,7 +142,7 @@ IAggregator* VertexAccumulators::aggregator(const std::string& name) const {
     std::string realName = name.substr(9);
     if (auto iter = _options.globalAccumulators.find(realName);
         iter != std::end(_options.globalAccumulators)) {
-      return new VertexAccumulatorAggregator(iter->second, true);
+      return new VertexAccumulatorAggregator(iter->second, _options.customAccumulators, true);
     }
   }
   return nullptr;

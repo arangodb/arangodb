@@ -33,11 +33,13 @@ namespace accumulators {
 GraphFormat::GraphFormat(application_features::ApplicationServer& server,
                          std::string const& resultField,
                          AccumulatorsDeclaration const& globalAccumulatorDeclarations,
-                         AccumulatorsDeclaration const& vertexAccumulatorDeclarations)
+                         AccumulatorsDeclaration const& vertexAccumulatorDeclarations,
+                         CustomAccumulatorDefinitions customDefinitions)
     : graph_format(server),
       _resultField(resultField),
       _globalAccumulatorDeclarations(globalAccumulatorDeclarations),
-      _vertexAccumulatorDeclarations(vertexAccumulatorDeclarations){};
+      _vertexAccumulatorDeclarations(vertexAccumulatorDeclarations),
+      _customDefinitions(std::move(customDefinitions)) {}
 
 size_t GraphFormat::estimatedVertexSize() const { return sizeof(vertex_type); }
 size_t GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
@@ -46,7 +48,7 @@ size_t GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
 void GraphFormat::copyVertexData(std::string const& documentId,
                                  arangodb::velocypack::Slice vertexDocument,
                                  vertex_type& targetPtr) {
-  targetPtr.reset(_globalAccumulatorDeclarations, _vertexAccumulatorDeclarations, documentId, vertexDocument, _vertexIdRange++);
+  targetPtr.reset(_globalAccumulatorDeclarations, _vertexAccumulatorDeclarations,_customDefinitions,  documentId, vertexDocument, _vertexIdRange++);
 }
 
 void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_type& targetPtr) {
@@ -58,7 +60,10 @@ bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
   VPackObjectBuilder guard(&b, _resultField);
   for (auto&& acc : ptr->_vertexAccumulators) {
     b.add(VPackValue(acc.first));
-    acc.second->getValueIntoBuilder(b);
+    if (auto res = acc.second->finalizeIntoBuilder(b); res.fail()) {
+      LOG_DEVEL << "finalize program failed: " << res.error().toString();
+      TRI_ASSERT(false);
+    }
   }
   return true;
 }

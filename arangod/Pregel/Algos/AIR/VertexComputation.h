@@ -43,6 +43,7 @@ class VertexComputation : public vertex_computation {
   VertexAccumulators const& algorithm() const;
 
  private:
+
   // Reset the *local* data of all the global
   // accumulators. We do this in every GSS, and never
   // read from these inside a pregel program
@@ -53,7 +54,9 @@ class VertexComputation : public vertex_computation {
   // the aggregators to be send off to the conductor
   void aggregateGlobalAccumulators();
 
-  bool processIncomingMessages(MessageIterator<MessageData> const& incomingMessages);
+  greenspun::EvalResult clearAllVertexAccumulators();
+  greenspun::EvalResultT<bool> processIncomingMessages(MessageIterator<MessageData> const& incomingMessages);
+
   greenspun::EvalResult runProgram(greenspun::Machine& ctx, VPackSlice program);
 
   void registerLocalFunctions();
@@ -123,11 +126,6 @@ class VertexComputation : public vertex_computation {
 
   greenspun::EvalResult air_globalSuperstep(greenspun::Machine& ctx,
                                             VPackSlice const params, VPackBuilder& result);
-
-
-
-
-
 
  private:
   VertexAccumulators const& _algorithm;
