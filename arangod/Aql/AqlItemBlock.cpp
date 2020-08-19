@@ -483,39 +483,41 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
   auto const numRows = _numRows;
   auto const numRegs = _numRegisters;
   
-  // TODO: can we use numEffectiveRows here?
   SharedAqlItemBlockPtr res{aqlItemBlockManager().requestBlock(numRows, numRegs)};
 
   // these structs are used to pass in type information into the following lambda
   struct WithoutShadowRows {};
   struct WithShadowRows {};
+  
+  auto const numEffectiveRows = _numEffectiveRows;
 
   auto copyRows = [&](arangodb::containers::HashSet<void*>& cache, auto type) {
     constexpr bool checkShadowRows = std::is_same<decltype(type), WithShadowRows>::value;
     cache.reserve(_valueCount.size());
 
-    // TODO: can we use numEffectiveRows here?
     for (size_t row = 0; row < numRows; row++) {
       if (checkShadowRows && isShadowRow(row)) {
         // this is a shadow row. needs special handling
-        for (RegisterId col = 0; col < numRegs; col++) {
-          AqlValue a = stealAndEraseValue(row, col);
-          if (a.requiresDestruction()) {
-            AqlValueGuard guard{a, true};
-            auto [it, inserted] = cache.emplace(a.data());
-            res->setValue(row, col, AqlValue(a, (*it)));
-            if (inserted) {
-              // otherwise, destroy this; we used a cached value.
-              guard.steal();
+        if (row < numEffectiveRows) {
+          for (RegisterId col = 0; col < numRegs; col++) {
+            AqlValue a = stealAndEraseValue(row, col);
+            if (a.requiresDestruction()) {
+              AqlValueGuard guard{a, true};
+              auto [it, inserted] = cache.emplace(a.data());
+              res->setValue(row, col, AqlValue(a, (*it)));
+              if (inserted) {
+                // otherwise, destroy this; we used a cached value.
+                guard.steal();
+              }
+            } else {
+              res->setValue(row, col, a);
             }
-          } else {
-            res->setValue(row, col, a);
           }
-        } 
+        }
  
         // make it a shadow row
         res->copySubqueryDepthFromOtherBlock(row, *this, row, true);
-      } else {
+      } else if (row < numEffectiveRows) {
         // this is a normal row. 
         for (RegisterId col = 0; col < numRegs; col++) {
           ::copyValueOver(cache, _data[getAddress(row, col)], row, col, res);
