@@ -543,7 +543,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
 
   enum class PLAN_LEADERSHIP_TYPE { SELF, RESIGNED_SELF, OTHER, RESIGNED_OTHER };
 
-  enum class CURRENT_LEADERSHIP_TYPE { SELF, OTHER, RESIGNED, REBOOTED };
+  enum class LOCAL_LEADERSHIP_TYPE { SELF, OTHER, RESIGNED, REBOOTED };
 
   auto getShardsForServer(std::string const& dbName, std::string const& planId,
                           std::string const& serverId, Node const& plan)
@@ -658,31 +658,31 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     return setLeadershipPlan(dbName, planId, PLAN_LEADERSHIP_TYPE::RESIGNED_OTHER, plan);
   }
 
-  auto setLeadershipCurrent(std::string const& dbName,
+  auto setLeadershipLocal(std::string const& dbName,
                             std::unordered_set<std::string> const& shardNames,
-                            CURRENT_LEADERSHIP_TYPE type, Node& current) {
+                            LOCAL_LEADERSHIP_TYPE type, Node& local) {
     for (auto const& shardName : shardNames) {
       auto vec = {dbName, shardName, std::string(THE_LEADER)};
-      ASSERT_TRUE(current.has(vec))
+      ASSERT_TRUE(local.has(vec))
           << "The underlying test plan is modified, it "
              "does not contain Database '"
           << dbName << "' and Shard '" << shardName << "' anymore.";
-      auto& leaderInfo = current(vec);
+      auto& leaderInfo = local(vec);
       VPackBuilder newValue;
       switch (type) {
-        case CURRENT_LEADERSHIP_TYPE::SELF: {
+        case LOCAL_LEADERSHIP_TYPE::SELF: {
           newValue.add(VPackValue(""));
           break;
         }
-        case CURRENT_LEADERSHIP_TYPE::OTHER: {
+        case LOCAL_LEADERSHIP_TYPE::OTHER: {
           newValue.add(VPackValue(unusedServer()));
           break;
         }
-        case CURRENT_LEADERSHIP_TYPE::RESIGNED: {
+        case LOCAL_LEADERSHIP_TYPE::RESIGNED: {
           newValue.add(VPackValue(ResignShardLeadership::LeaderNotYetKnownString));
           break;
         }
-        case CURRENT_LEADERSHIP_TYPE::REBOOTED: {
+        case LOCAL_LEADERSHIP_TYPE::REBOOTED: {
           newValue.add(VPackValue(LEADER_NOT_YET_KNOWN));
           break;
         }
@@ -692,31 +692,31 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   }
 
   // Claim leadership of the given shards ourself.
-  auto takeLeadershipCurrent(std::string const& dbName,
+  auto takeLeadershipLocal(std::string const& dbName,
                              std::unordered_set<std::string> const& shardNames,
-                             Node& current) {
-    setLeadershipCurrent(dbName, shardNames, CURRENT_LEADERSHIP_TYPE::SELF, current);
+                             Node& local) {
+    setLeadershipLocal(dbName, shardNames, LOCAL_LEADERSHIP_TYPE::SELF, local);
   }
 
     // Resign leadership of the given shards ourself.
-  auto resignLeadershipCurrent(std::string const& dbName,
+  auto resignLeadershipLocal(std::string const& dbName,
                              std::unordered_set<std::string> const& shardNames,
-                             Node& current) {
-    setLeadershipCurrent(dbName, shardNames, CURRENT_LEADERSHIP_TYPE::RESIGNED, current);
+                             Node& local) {
+    setLeadershipLocal(dbName, shardNames, LOCAL_LEADERSHIP_TYPE::RESIGNED, local);
   }
 
   // Let other server claim leadership of the given shards ourself.
-  auto otherTakeLeadershipCurrent(std::string const& dbName,
+  auto otherTakeLeadershipLocal(std::string const& dbName,
                                   std::unordered_set<std::string> const& shardNames,
-                                  Node& current) {
-    setLeadershipCurrent(dbName, shardNames, CURRENT_LEADERSHIP_TYPE::OTHER, current);
+                                  Node& local) {
+    setLeadershipLocal(dbName, shardNames, LOCAL_LEADERSHIP_TYPE::OTHER, local);
   }
 
   // Claim leadership of the given shards ourself.
-  auto rebootLeadershipCurrent(std::string const& dbName,
+  auto rebootLeadershipLocal(std::string const& dbName,
                                std::unordered_set<std::string> const& shardNames,
-                               Node& current) {
-    setLeadershipCurrent(dbName, shardNames, CURRENT_LEADERSHIP_TYPE::REBOOTED, current);
+                               Node& local) {
+    setLeadershipLocal(dbName, shardNames, LOCAL_LEADERSHIP_TYPE::REBOOTED, local);
   }
 
   auto assertIsTakeoverLeadershipAction(ActionDescription const& action,
@@ -952,36 +952,36 @@ TEST_F(MaintenanceTestActionPhaseOne,
 }
 
 
-TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_current_self) {
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_self) {
   plan = originalPlan;
   takeLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, current]  : localNodes) {
+  for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
-    takeLeadershipCurrent(dbName(), relevantShards, current);
+    takeLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         current.toBuilder().slice(),
+                                         local.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
     ASSERT_EQ(actions.size(), 0);
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_current_self) {
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_self) {
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, current]  : localNodes) {
+  for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
-    takeLeadershipCurrent(dbName(), relevantShards, current);
+    takeLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         current.toBuilder().slice(),
+                                         local.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
     ASSERT_EQ(actions.size(), 2);
@@ -994,18 +994,18 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_current_
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_current_self) {
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_self) {
   plan = originalPlan;
   otherTakeLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, current]  : localNodes) {
+  for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
-    takeLeadershipCurrent(dbName(), relevantShards, current);
+    takeLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         current.toBuilder().slice(),
+                                         local.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
     ASSERT_EQ(actions.size(), 2);
@@ -1018,18 +1018,18 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_current_self) 
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_current_self) {
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_self) {
   plan = originalPlan;
   otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, current]  : localNodes) {
+  for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
-    takeLeadershipCurrent(dbName(), relevantShards, current);
+    takeLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         current.toBuilder().slice(),
+                                         local.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
     for (auto const& action : actions) {
@@ -1041,18 +1041,18 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_current
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_current_other) {
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_other) {
   plan = originalPlan;
   takeLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, current]  : localNodes) {
+  for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
-    otherTakeLeadershipCurrent(dbName(), relevantShards, current);
+    otherTakeLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         current.toBuilder().slice(),
+                                         local.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
     ASSERT_EQ(actions.size(), 2);
@@ -1067,18 +1067,18 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_current_other) 
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_current_other) {
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_other) {
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, current]  : localNodes) {
+  for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
-    otherTakeLeadershipCurrent(dbName(), relevantShards, current);
+    otherTakeLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         current.toBuilder().slice(),
+                                         local.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
     ASSERT_EQ(actions.size(), 2);
@@ -1091,54 +1091,54 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_current_
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_current_other) {
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_other) {
   plan = originalPlan;
   otherTakeLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, current]  : localNodes) {
+  for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
-    otherTakeLeadershipCurrent(dbName(), relevantShards, current);
+    otherTakeLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         current.toBuilder().slice(),
+                                         local.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
     ASSERT_EQ(actions.size(), 0);
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_current_other) {
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_other) {
   plan = originalPlan;
   otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, current]  : localNodes) {
+  for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
-    otherTakeLeadershipCurrent(dbName(), relevantShards, current);
+    otherTakeLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         current.toBuilder().slice(),
+                                         local.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
     ASSERT_EQ(actions.size(), 0);
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_current_resigned) {
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_resigned) {
   plan = originalPlan;
   takeLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, current]  : localNodes) {
+  for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
-    resignLeadershipCurrent(dbName(), relevantShards, current);
+    resignLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         current.toBuilder().slice(),
+                                         local.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
     ASSERT_EQ(actions.size(), 2);
@@ -1153,36 +1153,36 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_current_resigne
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_current_resigned) {
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_resigned) {
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, current]  : localNodes) {
+  for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
-    resignLeadershipCurrent(dbName(), relevantShards, current);
+    resignLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         current.toBuilder().slice(),
+                                         local.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
     ASSERT_EQ(actions.size(), 0);
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_current_resigned) {
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_resigned) {
   plan = originalPlan;
   otherTakeLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, current]  : localNodes) {
+  for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
-    resignLeadershipCurrent(dbName(), relevantShards, current);
+    resignLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         current.toBuilder().slice(),
+                                         local.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
     // Synchronize in Phase 2 is responsible for this.
@@ -1190,18 +1190,18 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_current_resign
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_current_resigned) {
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_resigned) {
   plan = originalPlan;
   otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, current]  : localNodes) {
+  for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
-    resignLeadershipCurrent(dbName(), relevantShards, current);
+    resignLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         current.toBuilder().slice(),
+                                         local.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
     // Synchronize in Phase 2 is responsible for this.
@@ -1209,18 +1209,18 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_current
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_current_reboot) {
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_reboot) {
   plan = originalPlan;
   takeLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, current]  : localNodes) {
+  for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
-    rebootLeadershipCurrent(dbName(), relevantShards, current);
+    rebootLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         current.toBuilder().slice(),
+                                         local.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
     ASSERT_EQ(actions.size(), 2);
@@ -1235,18 +1235,18 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_current_reboot)
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_current_reboot) {
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_reboot) {
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, current]  : localNodes) {
+  for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
-    rebootLeadershipCurrent(dbName(), relevantShards, current);
+    rebootLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         current.toBuilder().slice(),
+                                         local.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
     ASSERT_EQ(actions.size(), 2);
@@ -1259,18 +1259,18 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_current_
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_current_reboot) {
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_reboot) {
   plan = originalPlan;
   otherTakeLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, current]  : localNodes) {
+  for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
-    rebootLeadershipCurrent(dbName(), relevantShards, current);
+    rebootLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         current.toBuilder().slice(),
+                                         local.toBuilder().slice(),
                                          server, errors, *feature, actions);
     
     // We will just resign in this case to get a clear state.
@@ -1284,18 +1284,18 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_current_reboot
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_current_reboot) {
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_reboot) {
   plan = originalPlan;
   otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, current]  : localNodes) {
+  for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
-    rebootLeadershipCurrent(dbName(), relevantShards, current);
+    rebootLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         current.toBuilder().slice(),
+                                         local.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
     // We will just resign in this case to get a clear state.
