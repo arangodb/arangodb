@@ -300,12 +300,12 @@ bool MoveShard::start(bool&) {
 
   if (!_isLeader) {
     if (_remainsFollower) {
-      moveShardFinish(false,  false, "remainsFollower is invalid without isLeader");
+      finish("", "", false, "remainsFollower is invalid without isLeader");
       return false;
     }
   } else {
     if (_toServerIsFollower && !_remainsFollower) {
-      moveShardFinish(false, false, "remainsFollower must be true if the toServer is a follower");
+      finish("", "", false, "remainsFollower must be true if the toServer is a follower");
       return false;
     }
   }

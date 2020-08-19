@@ -283,7 +283,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
           << ", local leader: " << lcol.get(THE_LEADER).copyString()
           << ", leader id: " << leaderId << ", my id: " << serverId
           << ", should be leader: " << std::string();
-      actions.emplace_back(ActionDescription>(
+      actions.emplace_back(ActionDescription(
           std::map<std::string, std::string>{
               {NAME, TAKEOVER_SHARD_LEADERSHIP},
               {DATABASE, dbname},
@@ -291,9 +291,8 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
               {SHARD, shname},
               {THE_LEADER, std::string()},
               {LOCAL_LEADER, std::string(localLeader)},
-              {OLD_CURRENT_COUNTER, "0"},   // legacy, no longer used
-              {PLAN_RAFT_INDEX, std::to_string(planIndex)}},
-          LEADER_PRIORITY);
+              {OLD_CURRENT_COUNTER, "0"}},   // legacy, no longer used
+          LEADER_PRIORITY));
     }
 
     // Indexes
@@ -323,14 +322,14 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
     if (errors.shards.find(dbname + "/" + colname + "/" + shname) ==
         errors.shards.end()) {
       auto props = createProps(cprops);  // Only once might need often!
-      actions.emplace_back(ActionDescription>(
+      actions.emplace_back(ActionDescription(
             std::map<std::string, std::string>{{NAME, CREATE_COLLECTION},
              {COLLECTION, colname},
              {SHARD, shname},
              {DATABASE, dbname},
              {SERVER_ID, serverId},
              {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
-            shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, std::move(props));
+            shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, std::move(props)));
     } else {
       LOG_TOPIC("c1d8e", DEBUG, Logger::MAINTENANCE)
           << "Previous failure exists for creating local shard " << dbname << "/"
@@ -352,7 +351,7 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
   bool const isLeading = localLeader.empty();
   if (it == commonShrds.end()) {
     // This collection is not planned anymore, can drop it
-    actions.emplace_back(std::make_shared<ActionDescription>(
+    actions.emplace_back(ActionDescription(
         std::map<std::string, std::string>{{NAME, DROP_COLLECTION},
                                            {DATABASE, dbname},
                                            {COLLECTION, colname}},
@@ -383,11 +382,11 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
   */
 
   if (activeResign || adjustResignState) {
-    actions.emplace_back(ActionDescription>(
+    actions.emplace_back(ActionDescription(
         std::map<std::string, std::string>{{NAME, RESIGN_SHARD_LEADERSHIP},
                                            {DATABASE, dbname},
                                            {SHARD, colname}},
-        RESIGN_PRIORITY);
+        RESIGN_PRIORITY));
   }
 
   // We only drop indexes, when collection is not being dropped already
@@ -403,12 +402,12 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
               indis.find(id) != indis.end()) {
             indis.erase(id);
           } else {
-            actions.emplace_back(ActionDescription>(
+            actions.emplace_back(ActionDescription(
                 std::map<std::string, std::string>{{NAME, DROP_INDEX},
                                                    {DATABASE, dbname},
                                                    {COLLECTION, colname},
                                                    {"index", id}},
-                INDEX_PRIORITY);
+                INDEX_PRIORITY));
           }
         }
       }
