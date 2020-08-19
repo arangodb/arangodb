@@ -1,6 +1,23 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
 
+* Make UPSERT statement with collection bind parameter behave identical to its
+  non-bind parameter counterpart.
+
+  For example, the query 
+
+      FOR d IN ["key_1", "key_2", "key_3", "key_1"] 
+        UPSERT d INSERT d UPDATE d IN @@collection
+
+  would fail with "unique constraint violation" when used with a collection
+  bind parameter, but the equivalent query
+      
+      FOR d IN ["key_1", "key_2", "key_3", "key_1"] 
+        UPSERT d INSERT d UPDATE d IN collectionName
+
+  with a hard-coded collection name would succeed. This is now fixed so both
+  queries have the same behavior (no failure).
+
 * Fixed a problem with potentially lost updates because a failover could happen
   at a wrong time or a restarted leader could come back at an unlucky time.
 

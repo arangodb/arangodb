@@ -1326,10 +1326,39 @@ function aqlUpsertOptionsSuite() {
   };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
+function aqlUpsertReadCompleteInputSuite() {
 
+  return {
+    setUp: function () {
+      db._drop(collectionName);
+      db._create(collectionName, { numberOfShards: 3 });
+    },
+
+    tearDown: function () {
+      db._drop(collectionName);
+    },
+
+    testReadCompleteInput: function () {
+      const expected = [
+        collectionName + "/key_1",
+        collectionName + "/key_2",
+        collectionName + "/key_3",
+        collectionName + "/key_1",
+      ];
+      
+      const query1 = 'FOR d IN [ {_key: "key_1", value: 1}, {_key: "key_2", value: 2}, {_key: "key_3", value: 3}, {_key: "key_1", value: 1} ] UPSERT { _key: d._key } INSERT d UPDATE d IN ' + collectionName + ' RETURN NEW._id';
+
+      let result = db._query(query1).toArray();
+      assertEqual(expected, result);
+      
+      const query2 = 'FOR d IN [ {_key: "key_1", value: 1}, {_key: "key_2", value: 2}, {_key: "key_3", value: 3}, {_key: "key_1", value: 1} ] UPSERT { _key: d._key } INSERT d UPDATE d IN @@collection RETURN NEW._id';
+      result = db._query(query2, { "@collection": collectionName }).toArray();
+      assertEqual(expected, result);
+    },
+
+  };
+};
+    
 jsunity.run(aqlUpdateOptionsSuite);
 jsunity.run(aqlUpdateWithOptionsSuite);
 jsunity.run(aqlUpdateWithRevOptionsSuite);
@@ -1338,4 +1367,5 @@ jsunity.run(aqlReplaceWithOptionsSuite);
 jsunity.run(aqlReplaceWithRevOptionsSuite);
 jsunity.run(aqlRemoveOptionsSuite);
 jsunity.run(aqlUpsertOptionsSuite);
+jsunity.run(aqlUpsertReadCompleteInputSuite);
 return jsunity.done();
