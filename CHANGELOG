@@ -1,5 +1,9 @@
 devel
 -----
+* Removed triggering loadPlan from analyzers revisions loading for queries.
+
+* Removed verbose logging in case of vocbase missing for collections/views
+  during plan loading
 
 * Fixed that dropping a vanished follower works again. An exception response
   to the replication request is now handled properly.
