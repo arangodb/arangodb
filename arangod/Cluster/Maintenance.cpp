@@ -342,14 +342,31 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
                       std::unordered_set<std::string>& commonShrds,
                       std::unordered_set<std::string>& indis, std::string const& serverId,
                       std::vector<std::shared_ptr<ActionDescription>>& actions) {
-  std::unordered_set<std::string>::const_iterator it;
+
+  std::unordered_set<std::string>::const_iterator it =
+      std::find(commonShrds.begin(), commonShrds.end(), colname);
+
+  auto localLeader = cprops.get(THE_LEADER).stringRef();
+  bool const isLeading = localLeader.empty();
+  if (it == commonShrds.end()) {
+    // This collection is not planned anymore, can drop it
+    actions.emplace_back(std::make_shared<ActionDescription>(
+        std::map<std::string, std::string>{{NAME, DROP_COLLECTION},
+                                           {DATABASE, dbname},
+                                           {COLLECTION, colname}},
+        isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY));
+    return;
+  }
+  // We dropped out before
+  TRI_ASSERT(it != commonShrds.end());
+  // The shard exists in both Plan and Local
+  commonShrds.erase(it);  // it not a common shard?
 
   std::string plannedLeader;
   if (shardMap.get(colname).isArray()) {
     plannedLeader = shardMap.get(colname)[0].copyString();
   }
-  auto localLeader = cprops.get(THE_LEADER).stringRef();
-  bool const isLeading = localLeader.empty();
+
   bool const activeResign = isLeading && plannedLeader != serverId;
   bool const adjustResignState =
       (plannedLeader == UNDERSCORE + serverId &&
@@ -369,47 +386,27 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
                                            {DATABASE, dbname},
                                            {SHARD, colname}},
         RESIGN_PRIORITY));
-  } else {
-    bool drop = false;
-    // check if shard is in plan, if not drop it
-    if (commonShrds.empty()) {
-      drop = true;
-    } else {
-      it = std::find(commonShrds.begin(), commonShrds.end(), colname);
-      if (it == commonShrds.end()) {
-        drop = true;
-      }
-    }
+  }
 
-    if (drop) {
-      actions.emplace_back(std::make_shared<ActionDescription>(
-            std::map<std::string, std::string>{{NAME, DROP_COLLECTION}, {DATABASE, dbname}, {COLLECTION, colname}},
-            isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY));
-    } else {
-      // The shard exists in both Plan and Local
-      commonShrds.erase(it);  // it not a common shard?
+  // We only drop indexes, when collection is not being dropped already
+  if (cprops.hasKey(INDEXES)) {
+    if (cprops.get(INDEXES).isArray()) {
+      for (auto const& index : VPackArrayIterator(cprops.get(INDEXES))) {
+        VPackStringRef type = index.get(StaticStrings::IndexType).stringRef();
+        if (type != PRIMARY && type != EDGE) {
+          std::string const id = index.get(ID).copyString();
 
-      // We only drop indexes, when collection is not being dropped already
-      if (cprops.hasKey(INDEXES)) {
-        if (cprops.get(INDEXES).isArray()) {
-          for (auto const& index : VPackArrayIterator(cprops.get(INDEXES))) {
-            VPackStringRef type = index.get(StaticStrings::IndexType).stringRef();
-            if (type != PRIMARY && type != EDGE) {
-              std::string const id = index.get(ID).copyString();
-
-              // check if index is in plan
-              if (indis.find(colname + "/" + id) != indis.end() ||
-                  indis.find(id) != indis.end()) {
-                indis.erase(id);
-              } else {
-                actions.emplace_back(std::make_shared<ActionDescription>(
-                      std::map<std::string, std::string>{{NAME, DROP_INDEX},
-                       {DATABASE, dbname},
-                       {COLLECTION, colname},
-                       {"index", id}},
-                      INDEX_PRIORITY));
-              }
-            }
+          // check if index is in plan
+          if (indis.find(colname + "/" + id) != indis.end() ||
+              indis.find(id) != indis.end()) {
+            indis.erase(id);
+          } else {
+            actions.emplace_back(std::make_shared<ActionDescription>(
+                std::map<std::string, std::string>{{NAME, DROP_INDEX},
+                                                   {DATABASE, dbname},
+                                                   {COLLECTION, colname},
+                                                   {"index", id}},
+                INDEX_PRIORITY));
           }
         }
       }

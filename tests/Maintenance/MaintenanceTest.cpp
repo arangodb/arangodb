@@ -1331,10 +1331,8 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
     if (check) {
       ASSERT_EQ(actions.size(), 1);
       for (auto const& action : actions) {
-        assertIsTakeoverLeadershipAction(*action, dbName(),
-                                         collection("planId").getString());
+        assertIsResignLeadershipAction(*action, dbName());
         ASSERT_EQ(action->get("shard"), collection("name").getString());
-        ASSERT_TRUE(action->get("localLeader").empty());
       }
     }
   }
