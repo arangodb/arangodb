@@ -752,7 +752,7 @@ TEST_F(MaintenanceTestActionPhaseOne, in_sync_should_have_0_effects) {
 
     ASSERT_EQ(actions.size(), 0);
   }
-      }
+}
 
 TEST_F(MaintenanceTestActionPhaseOne, local_databases_one_more_empty_database_should_be_dropped) {
   std::vector<std::shared_ptr<ActionDescription>> actions;
@@ -1010,12 +1010,10 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_current_self) 
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
-      assertIsTakeoverLeadershipAction(*action, dbName(), planId());
+      assertIsResignLeadershipAction(*action, dbName());
       auto shardName = action->get(SHARD);
       auto removed = relevantShards.erase(shardName);
       EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
-      EXPECT_EQ(action->get(THE_LEADER), unusedServer());
-      EXPECT_EQ(action->get(LOCAL_LEADER), "");
     }
   }
 }
@@ -1034,14 +1032,11 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_current
                                          current.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
-    ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
-      assertIsTakeoverLeadershipAction(*action, dbName(), planId());
+      assertIsResignLeadershipAction(*action, dbName());
       auto shardName = action->get(SHARD);
       auto removed = relevantShards.erase(shardName);
       EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
-      EXPECT_EQ(action->get(THE_LEADER), unusedServer());
-      EXPECT_EQ(action->get(LOCAL_LEADER), "");
     }
   }
 }
@@ -1190,15 +1185,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_current_resign
                                          current.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
-    ASSERT_EQ(actions.size(), 2);
-    for (auto const& action : actions) {
-      assertIsTakeoverLeadershipAction(*action, dbName(), planId());
-      auto shardName = action->get(SHARD);
-      auto removed = relevantShards.erase(shardName);
-      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
-      EXPECT_EQ(action->get(THE_LEADER), unusedServer());
-      EXPECT_EQ(action->get(LOCAL_LEADER), ResignShardLeadership::LeaderNotYetKnownString);
-    }
+    // Synchronize in Phase 2 is responsible for this.
+    ASSERT_EQ(actions.size(), 0);
   }
 }
 
@@ -1216,15 +1204,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_current
                                          current.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
-    ASSERT_EQ(actions.size(), 2);
-    for (auto const& action : actions) {
-      assertIsTakeoverLeadershipAction(*action, dbName(), planId());
-      auto shardName = action->get(SHARD);
-      auto removed = relevantShards.erase(shardName);
-      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
-      EXPECT_EQ(action->get(THE_LEADER), unusedServer());
-      EXPECT_EQ(action->get(LOCAL_LEADER), ResignShardLeadership::LeaderNotYetKnownString);
-    }
+    // Synchronize in Phase 2 is responsible for this.
+    ASSERT_EQ(actions.size(), 0);
   }
 }
 
@@ -1292,15 +1273,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_current_reboot
                                          current.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
-    ASSERT_EQ(actions.size(), 2);
-    for (auto const& action : actions) {
-      assertIsTakeoverLeadershipAction(*action, dbName(), planId());
-      auto shardName = action->get(SHARD);
-      auto removed = relevantShards.erase(shardName);
-      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
-      EXPECT_EQ(action->get(THE_LEADER), unusedServer());
-      EXPECT_EQ(action->get(LOCAL_LEADER), LEADER_NOT_YET_KNOWN);
-    }
+    // Synchronize in Phase 2 is responsible for this.
+    ASSERT_EQ(actions.size(), 0);
   }
 }
 
@@ -1318,15 +1292,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_current
                                          current.toBuilder().slice(),
                                          server, errors, *feature, actions);
 
-    ASSERT_EQ(actions.size(), 2);
-    for (auto const& action : actions) {
-      assertIsTakeoverLeadershipAction(*action, dbName(), planId());
-      auto shardName = action->get(SHARD);
-      auto removed = relevantShards.erase(shardName);
-      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
-      EXPECT_EQ(action->get(THE_LEADER), unusedServer());
-      EXPECT_EQ(action->get(LOCAL_LEADER), LEADER_NOT_YET_KNOWN);
-    }
+    // Synchronize in Phase 2 is responsible for this.
+    ASSERT_EQ(actions.size(), 0);
   }
 }
 
