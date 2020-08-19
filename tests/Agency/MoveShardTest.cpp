@@ -2114,7 +2114,7 @@ TEST_F(MoveShardTest, aborting_the_job_while_the_new_leader_is_already_in_place_
 
     auto writes = q->slice()[0][0];
     EXPECT_EQ(writes.get("/arango/Target/Pending/1").get("op").copyString(), "delete");
-    EXPECT_EQ(q->slice()[0].length(), 2); // Precondition: to Server not leader yet
+    EXPECT_EQ(q->slice()[0].length(), 1);
     EXPECT_EQ(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString(), "delete");
     // well apparently this job is not responsible to cleanup its mess
     EXPECT_EQ(std::string(writes.get("/arango/Target/Failed/1").typeName()), "object");

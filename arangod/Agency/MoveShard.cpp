@@ -861,7 +861,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       LOG_TOPIC("72a82", INFO, Logger::SUPERVISION)
       << "MoveShard can no longer abort through reversion to where it "
          "started. Flight forward, leaving Plan as it is now.";
-      finish(_to, _shard, true, "job aborted (2) - new leader already in place: " + reason);
+      finish(_to, _shard, false, "job aborted (2) - new leader already in place: " + reason);
       return result;
 
     }
