@@ -157,8 +157,32 @@ TEST_F(IResearchQuerySelectAllTest, test) {
       expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
     }
 
+    std::string const queryString = "FOR d IN testView RETURN d";
+
+    // check node estimation
+    {
+      auto explanationResult =
+          arangodb::tests::explainQuery(vocbase, queryString);
+      ASSERT_TRUE(explanationResult.result.ok());
+      auto const explanationSlice = explanationResult.data->slice();
+      ASSERT_TRUE(explanationSlice.isObject());
+      auto const nodesSlice = explanationSlice.get("nodes");
+      ASSERT_TRUE(nodesSlice.isArray());
+      VPackSlice viewNode;
+      for (auto node : VPackArrayIterator(nodesSlice)) {
+        if ("EnumerateViewNode" == node.get("type").toString() &&
+            "testView" == node.get("view").toString()) {
+          viewNode = node;
+          break;
+        }
+      }
+      ASSERT_TRUE(viewNode.isObject());
+      ASSERT_EQ(102., viewNode.get("estimatedCost").getDouble());
+      ASSERT_EQ(101, viewNode.get("estimatedNrItems").getNumber<size_t>());
+    }
+
     auto queryResult =
-        arangodb::tests::executeQuery(vocbase, "FOR d IN testView RETURN d");
+        arangodb::tests::executeQuery(vocbase, queryString);
     ASSERT_TRUE(queryResult.result.ok());
 
     auto result = queryResult.data->slice();
