@@ -238,7 +238,7 @@ struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
   auto getIntoBuilderWithResult(VPackBuilder& result) -> greenspun::EvalResult override;
   void serializeIntoBuilder(VPackBuilder &result) override;
 
-  auto update(VPackSlice v) -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> override;
+  auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> override;
   auto clearWithResult() -> greenspun::EvalResult override;
 
   void setValueFromPointer(const void * ptr) override {}
@@ -246,12 +246,14 @@ struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
  private:
   void SetupFunctions();
 
-  auto AIR_InputSender(greenspun::Machine& ctx, VPackSlice const slice, VPackBuilder& result) -> greenspun::EvalResult { return greenspun::EvalError("not implemented!"); }
-  auto AIR_InputValue(greenspun::Machine& ctx, VPackSlice const slice, VPackBuilder& result) -> greenspun::EvalResult { return greenspun::EvalError("not implemented!"); }
-  auto AIR_CurrentValue(greenspun::Machine& ctx, VPackSlice const slice, VPackBuilder& result) -> greenspun::EvalResult { return greenspun::EvalError("not implemented!"); }
-  auto AIR_GetCurrentValue(greenspun::Machine& ctx, VPackSlice const slice, VPackBuilder& result) -> greenspun::EvalResult { return greenspun::EvalError("not implemented!"); }
-  auto AIR_ThisSet(greenspun::Machine& ctx, VPackSlice const slice, VPackBuilder& result) -> greenspun::EvalResult { return greenspun::EvalError("not implemented!"); }
-  auto AIR_Parameters(greenspun::Machine& ctx, VPackSlice const slice, VPackBuilder& result) -> greenspun::EvalResult;
+  auto AIR_InputSender(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result) -> greenspun::EvalResult;
+  auto AIR_InputValue(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result) -> greenspun::EvalResult;
+  auto AIR_CurrentValue(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result) -> greenspun::EvalResult;
+  auto AIR_GetCurrentValue(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result) -> greenspun::EvalResult;
+  auto AIR_ThisSet(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result) -> greenspun::EvalResult;
+  auto AIR_Parameters(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result) -> greenspun::EvalResult;
+
+  MessageData const* _msgPointer;
 
   VPackBuilder _buffer;
   VPackBuilder _parameters;

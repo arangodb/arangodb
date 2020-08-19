@@ -23,11 +23,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Accumulators.h"
+#include <Basics/ScopeGuard.h>
 
 using namespace arangodb::pregel::algos::accumulators;
 
-auto CustomAccumulator<VPackSlice>::update(VPackSlice v)
+auto CustomAccumulator<VPackSlice>::updateByMessage(MessageData const& msg)
     -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> {
+  this->_msgPointer = &msg;
+  TRI_DEFER({
+     this->_msgPointer = nullptr;
+  })
+
   VPackBuilder result;
   auto res = greenspun::Evaluate(_machine, _definition.updateProgram.slice(), result);
   if (res.fail()) {
@@ -52,10 +58,9 @@ auto CustomAccumulator<VPackSlice>::update(VPackSlice v)
 
 auto CustomAccumulator<VPackSlice>::clearWithResult() -> greenspun::EvalResult {
   VPackBuilder result;
-  return greenspun::Evaluate(_machine, _definition.clearProgram.slice(), result)
-      .mapError([](auto& err) {
-        err.wrapMessage("in clearProgram of custom accumulator");
-      });
+  return greenspun::Evaluate(_machine, _definition.clearProgram.slice(), result).mapError([](auto& err) {
+    err.wrapMessage("in clearProgram of custom accumulator");
+  });
 }
 
 void CustomAccumulator<VPackSlice>::serializeIntoBuilder(VPackBuilder& result) {
@@ -104,12 +109,17 @@ auto CustomAccumulator<VPackSlice>::getIntoBuilderWithResult(VPackBuilder& resul
 }
 
 void CustomAccumulator<VPackSlice>::SetupFunctions() {
-  _machine.setFunctionMember("input-sender", &CustomAccumulator<VPackSlice>::AIR_InputSender, this);
-  _machine.setFunctionMember("input-value", &CustomAccumulator<VPackSlice>::AIR_InputValue, this);
-  _machine.setFunctionMember("current-value", &CustomAccumulator<VPackSlice>::AIR_CurrentValue, this);
-  _machine.setFunctionMember("get-current-value", &CustomAccumulator<VPackSlice>::AIR_GetCurrentValue, this);
+  _machine.setFunctionMember("input-sender",
+                             &CustomAccumulator<VPackSlice>::AIR_InputSender, this);
+  _machine.setFunctionMember("input-value",
+                             &CustomAccumulator<VPackSlice>::AIR_InputValue, this);
+  _machine.setFunctionMember("current-value",
+                             &CustomAccumulator<VPackSlice>::AIR_CurrentValue, this);
+  _machine.setFunctionMember("get-current-value",
+                             &CustomAccumulator<VPackSlice>::AIR_GetCurrentValue, this);
   _machine.setFunctionMember("this-set!", &CustomAccumulator<VPackSlice>::AIR_ThisSet, this);
-  _machine.setFunctionMember("parameters", &CustomAccumulator<VPackSlice>::AIR_Parameters, this);
+  _machine.setFunctionMember("parameters",
+                             &CustomAccumulator<VPackSlice>::AIR_Parameters, this);
 }
 
 auto CustomAccumulator<VPackSlice>::AIR_Parameters(arangodb::greenspun::Machine& ctx,
@@ -117,6 +127,62 @@ auto CustomAccumulator<VPackSlice>::AIR_Parameters(arangodb::greenspun::Machine&
                                                    VPackBuilder& result)
     -> arangodb::greenspun::EvalResult {
   result.add(_parameters.slice());
+  return {};
+}
+
+auto CustomAccumulator<VPackSlice>::AIR_ThisSet(arangodb::greenspun::Machine& ctx,
+                                                const VPackSlice slice, VPackBuilder& result)
+    -> arangodb::greenspun::EvalResult {
+  if (!slice.isArray() || slice.length() != 1) {
+    return greenspun::EvalError("expected a single argument");
+  }
+
+  _buffer.clear();
+  _buffer.add(slice.at(0));
+  _value = _buffer.slice();
+  return {};
+}
+
+auto CustomAccumulator<VPackSlice>::AIR_GetCurrentValue(arangodb::greenspun::Machine& ctx,
+                                                        VPackSlice slice,
+                                                        VPackBuilder& result)
+    -> arangodb::greenspun::EvalResult {
+  if (!slice.isEmptyArray()) {
+    return greenspun::EvalError("expected no arguments");
+  }
+
+  return getIntoBuilderWithResult(result);
+}
+
+auto CustomAccumulator<VPackSlice>::AIR_CurrentValue(arangodb::greenspun::Machine& ctx,
+                                                     VPackSlice slice, VPackBuilder& result)
+    -> arangodb::greenspun::EvalResult {
+  if (!slice.isEmptyArray()) {
+    return greenspun::EvalError("expected no arguments");
+  }
+
+  result.add(_value);
+  return {};
+}
+
+auto CustomAccumulator<VPackSlice>::AIR_InputValue(arangodb::greenspun::Machine& ctx,
+                                                   VPackSlice slice, VPackBuilder& result)
+    -> arangodb::greenspun::EvalResult {
+  if (_msgPointer == nullptr) {
+    return greenspun::EvalError("not in a message context");
+  }
+
+  result.add(_msgPointer->_value.slice());
+  return {};
+}
+
+auto CustomAccumulator<VPackSlice>::AIR_InputSender(arangodb::greenspun::Machine& ctx,
+                                                    VPackSlice slice, VPackBuilder& result)
+    -> arangodb::greenspun::EvalResult {
+  if (_msgPointer == nullptr) {
+    return greenspun::EvalError("not in a message context");
+  }
+  result.add(VPackValue(_msgPointer->_sender));
   return {};
 }
 

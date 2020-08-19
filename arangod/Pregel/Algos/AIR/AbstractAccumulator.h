@@ -114,9 +114,11 @@ class Accumulator : public AccumulatorBase {
   }
 
   // Needed to implement updates by slice
-  virtual greenspun::EvalResultT<UpdateResult> update(data_type v) = 0;
+  virtual greenspun::EvalResultT<UpdateResult> update(data_type v) {
+      return greenspun::EvalError("not implemented");
+  }
 
-    virtual greenspun::EvalResultT<UpdateResult> updateByMessageSlice(VPackSlice s) {
+  virtual greenspun::EvalResultT<UpdateResult> updateByMessageSlice(VPackSlice s) {
     // TODO proper error handling here!
     if constexpr (std::is_same_v<T, bool>) {
       return this->update(s.getBool());
