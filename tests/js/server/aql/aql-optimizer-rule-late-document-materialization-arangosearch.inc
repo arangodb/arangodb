@@ -194,7 +194,7 @@
             // the other sort node should be limited but not have a materializer
             // BM25 node on single and TFIDF on cluster as for cluster
             // only first sort will be on DBServers
-            assertEqual(nodeDependency.limit, 0);
+            assertEqual(nodeDependency.limit, isCluster ? 0 : 4);
           }
           nodeDependency = node; // as we walk the plan this will be next node dependency
         });
@@ -300,7 +300,7 @@
         plan.nodes.forEach(function(node) {
           if( node.type === "MaterializeNode") {
             assertFalse(materializeNodeFound); // no double materialization
-            assertEqual(nodeDependency.limit, 0);
+            assertEqual(nodeDependency.limit, isCluster ? 0 : 3);
             materializeNodeFound = true;
           }
           nodeDependency = node;
@@ -325,7 +325,7 @@
         plan.nodes.forEach(function(node) {
           if( node.type === "MaterializeNode") {
             assertFalse(materializeNodeFound);
-            assertEqual(nodeDependency.limit, 0);
+            assertEqual(nodeDependency.limit, isCluster ? 0 : 3);
             materializeNodeFound = true;
           }
           nodeDependency = node;
@@ -341,7 +341,7 @@
         plan.nodes.forEach(function(node) {
           if( node.type === "MaterializeNode") {
             assertFalse(materializeNodeFound);
-            assertEqual(nodeDependency.limit, 0);
+            assertEqual(nodeDependency.limit, isCluster ? 0 : 5);
             materializeNodeFound = true;
           }
           nodeDependency = node;
