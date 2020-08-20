@@ -26,57 +26,53 @@ const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
 
-/*
-
-
-*/
 exports.vertex_degrees_program = vertex_degrees_program;
 exports.vertex_degrees = vertex_degrees;
 exports.test = test;
 
 /* returns a program that compputes the vertex degree of every vertex */
 function vertex_degrees_program(resultField) {
-    return {
-        resultField: resultField,
-        maxGSS: 2,
-        vertexAccumulators: {
-          outDegree: {
-            accumulatorType: "sum",
-            valueType: "ints",
-            storeSender: false
-          },
-          inDegree: {
-            accumulatorType: "sum",
-            valueType: "ints",
-            storeSender: false
-          }
-        },
-      phases: [ {
-        name: "main",
-        initProgram: [ "seq",
-                       // Set our out degree
-                       ["accum-set!", "outDegree", ["this-outbound-edges-count"]],
-                       // Init in degree to 0
-                       ["accum-set!", "inDegree", 0],
-                       ["send-to-all-neighbours", "inDegree", 1]
-                     ],
-        // Update program has to run once to accumulate the
-        // inDegrees that have been sent out in initProgram
-        updateProgram: [ "seq",
-                         false ]
-      } ] };
+  return {
+    resultField: resultField,
+    maxGSS: 2,
+    vertexAccumulators: {
+      outDegree: {
+        accumulatorType: "sum",
+        valueType: "ints",
+        storeSender: false
+      },
+      inDegree: {
+        accumulatorType: "sum",
+        valueType: "ints",
+        storeSender: false
+      }
+    },
+    phases: [{
+      name: "main",
+      initProgram: ["seq",
+        // Set our out degree
+        ["accum-set!", "outDegree", ["this-outbound-edges-count"]],
+        // Init in degree to 0
+        ["accum-set!", "inDegree", 0],
+        ["send-to-all-neighbours", "inDegree", 1]
+      ],
+      // Update program has to run once to accumulate the
+      // inDegrees that have been sent out in initProgram
+      updateProgram: ["seq",
+        false]
+    }]
+  };
 }
 
 function vertex_degrees(
+  graphName,
+  resultField) {
+  return pregel.start(
+    "air",
     graphName,
-    resultField) {
-    return pregel.start(
-        "air",
-        graphName,
-        vertex_degrees_program(resultField)
-    );
+    vertex_degrees_program(resultField)
+  );
 }
-
 
 
 /*
@@ -92,8 +88,10 @@ function exec_test_vertex_degrees_on_graph(graphSpec) {
       FILTER d.vertexDegrees.inDegree != inDegree || d.vertexDegrees.outDegree != outDegree
       RETURN { aql: { inDegree: inDegree, outDegree: outDegree },
                air: { inDegree: d.vertexDegrees.inDegree, outDegree: d.vertexDegrees.outDegree } }`,
-                                  { "@V": graphSpec.vname,
-                                    "@E": graphSpec.ename }));
+    {
+      "@V": graphSpec.vname,
+      "@E": graphSpec.ename
+    }));
 }
 
 function exec_test_vertex_degrees() {
