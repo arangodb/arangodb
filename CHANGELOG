@@ -1,6 +1,8 @@
 devel
 -----
 
+* Show optimizer rules with highest execution times in explain output.
+
 * Fixed that dropping a vanished follower works again. An exception response
   to the replication request is now handled properly.
 
