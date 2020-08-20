@@ -3,7 +3,7 @@ v3.6.6 (XXXX-XX-XX)
 
 * Fixed issue #12304: insert in transaction causing
   com.arangodb.ArangoDBException: Response: 500, Error: 4 - Builder value not
-  yet sealed 
+  yet sealed.
 
   This happened when too deeply-nested documents (more than 63 levels of
   nesting) were inserted. While indefinite nesting is still not supported, the
