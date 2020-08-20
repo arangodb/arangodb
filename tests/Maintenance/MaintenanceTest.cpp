@@ -29,6 +29,7 @@
 #include "gtest/gtest.h"
 
 #include "Cluster/Maintenance.h"
+#include "Cluster/ResignShardLeadership.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
@@ -68,234 +69,279 @@ char const* dbs2Str =
 #include "DBServer0003.json"
     ;
 
-std::map<std::string, std::string> matchShortLongIds(Node const& supervision) {
-  std::map<std::string, std::string> ret;
-  for (auto const& dbs : supervision("Health").children()) {
-    if (dbs.first.front() == 'P') {
-      ret.emplace((*dbs.second)("ShortName").getString(), dbs.first);
-    }
-  }
-  return ret;
-}
-
-Node createNodeFromBuilder(Builder const& builder) {
-  Builder opBuilder;
-  {
-    VPackObjectBuilder a(&opBuilder);
-    opBuilder.add("new", builder.slice());
-  }
-
-  Node node("");
-  node.handle<SET>(opBuilder.slice());
-  return node;
-}
-
-Builder createBuilder(char const* c) {
-  VPackOptions options;
-  options.checkAttributeUniqueness = true;
-  VPackParser parser(&options);
-  parser.parse(c);
-
-  Builder builder;
-  builder.add(parser.steal()->slice());
-  return builder;
-}
-
-Node createNode(char const* c) {
-  return createNodeFromBuilder(createBuilder(c));
-}
-
 // Random stuff
-std::random_device rd;
+std::random_device rd{};
 std::mt19937 g(rd());
-
-// Relevant agency
-Node plan("");
-Node originalPlan("");
-Node supervision("");
-Node current("");
 
 std::vector<std::string> const shortNames{"DBServer0001", "DBServer0002",
                                           "DBServer0003"};
-
-// map <shortId, UUID>
-std::map<std::string, std::string> dbsIds;
 
 std::string const PLAN_COL_PATH = "/Collections/";
 std::string const PLAN_DB_PATH = "/Databases/";
 
 size_t localId = 1016002;
 
-VPackBuilder createDatabase(std::string const& dbname) {
-  Builder builder;
-  {
-    VPackObjectBuilder o(&builder);
-    builder.add("id", VPackValue(std::to_string(localId++)));
-    builder.add("coordinator",
-                VPackValue("CRDN-42df19c3-73d5-48f4-b02e-09b29008eff8"));
-    builder.add(VPackValue("options"));
-    { VPackObjectBuilder oo(&builder); }
-    builder.add("name", VPackValue(dbname));
-  }
-  return builder;
-}
-
-void createPlanDatabase(std::string const& dbname, Node& plan) {
-  plan(PLAN_DB_PATH + dbname) = createDatabase(dbname).slice();
-}
-
-VPackBuilder createIndex(std::string const& type, std::vector<std::string> const& fields,
-                         bool unique, bool sparse, bool deduplicate) {
-  VPackBuilder index;
-  {
-    VPackObjectBuilder o(&index);
-    {
-      index.add("deduplicate", VPackValue(deduplicate));
-      index.add(VPackValue("fields"));
-      {
-        VPackArrayBuilder a(&index);
-        for (auto const& field : fields) {
-          index.add(VPackValue(field));
-        }
-      }
-      index.add("id", VPackValue(std::to_string(localId++)));
-      index.add("sparse", VPackValue(sparse));
-      index.add("type", VPackValue(type));
-      index.add("unique", VPackValue(unique));
-    }
-  }
-
-  return index;
-}
-
-void createPlanIndex(std::string const& dbname, std::string const& colname,
-                     std::string const& type, std::vector<std::string> const& fields,
-                     bool unique, bool sparse, bool deduplicate, Node& plan) {
-  VPackBuilder val;
-  {
-    VPackObjectBuilder o(&val);
-    val.add("new", createIndex(type, fields, unique, sparse, deduplicate).slice());
-  }
-  plan(PLAN_COL_PATH + dbname + "/" + colname + "/indexes").handle<PUSH>(val.slice());
-}
-
-void createCollection(std::string const& colname, VPackBuilder& col) {
-  VPackBuilder keyOptions;
-  {
-    VPackObjectBuilder o(&keyOptions);
-    keyOptions.add("lastValue", VPackValue(0));
-    keyOptions.add("type", VPackValue("traditional"));
-    keyOptions.add("allowUserKeys", VPackValue(true));
-  }
-
-  VPackBuilder shardKeys;
-  {
-    VPackArrayBuilder a(&shardKeys);
-    shardKeys.add(VPackValue("_key"));
-  }
-
-  VPackBuilder indexes;
-  {
-    VPackArrayBuilder a(&indexes);
-    indexes.add(createIndex("primary", {"_key"}, true, false, false).slice());
-  }
-
-  col.add("id", VPackValue(std::to_string(localId++)));
-  col.add("status", VPackValue(3));
-  col.add("keyOptions", keyOptions.slice());
-  col.add("cacheEnabled", VPackValue(false));
-  col.add("waitForSync", VPackValue(false));
-  col.add("type", VPackValue(2));
-  col.add("isSystem", VPackValue(true));
-  col.add("name", VPackValue(colname));
-  col.add("shardingStrategy", VPackValue("hash"));
-  col.add("statusString", VPackValue("loaded"));
-  col.add("shardKeys", shardKeys.slice());
-}
-
 std::string S("s");
 std::string C("c");
 
-void createPlanShards(size_t numberOfShards, size_t replicationFactor, VPackBuilder& col) {
-  auto servers = shortNames;
-  std::shuffle(servers.begin(), servers.end(), g);
 
-  col.add("numberOfShards", VPackValue(1));
-  col.add("replicationFactor", VPackValue(2));
-  col.add(VPackValue("shards"));
-  {
-    VPackObjectBuilder s(&col);
-    for (size_t i = 0; i < numberOfShards; ++i) {
-      col.add(VPackValue(S + std::to_string(localId++)));
-      {
-        VPackArrayBuilder a(&col);
-        size_t j = 0;
-        for (auto const& server : servers) {
-          if (j++ < replicationFactor) {
-            col.add(VPackValue(dbsIds[server]));
-          }
-        }
-      }
-    }
-  }
-}
-
-void createPlanCollection(std::string const& dbname, std::string const& colname,
-                          size_t numberOfShards, size_t replicationFactor, Node& plan) {
-  VPackBuilder tmp;
-  {
-    VPackObjectBuilder o(&tmp);
-    createCollection(colname, tmp);
-    tmp.add("isSmart", VPackValue(false));
-    tmp.add("deleted", VPackValue(false));
-    createPlanShards(numberOfShards, replicationFactor, tmp);
-  }
-
-  Slice col = tmp.slice();
-  auto id = col.get("id").copyString();
-  plan(PLAN_COL_PATH + dbname + "/" + col.get("id").copyString()) = col;
-}
-
-void createLocalCollection(std::string const& dbname, std::string const& colname, Node& node) {
-  size_t planId = std::stoull(colname);
-  VPackBuilder tmp;
-  {
-    VPackObjectBuilder o(&tmp);
-    createCollection(colname, tmp);
-    tmp.add("planId", VPackValue(colname));
-    tmp.add("theLeader", VPackValue(""));
-    tmp.add("globallyUniqueId",
-            VPackValue(C + colname + "/" + S + std::to_string(planId + 1)));
-    tmp.add("objectId", VPackValue("9031415"));
-  }
-  node(dbname + "/" + S + std::to_string(planId + 1)) = tmp.slice();
-}
-
-std::map<std::string, std::string> collectionMap(Node const& plan) {
-  std::map<std::string, std::string> ret;
-  auto const pb = plan("Collections").toBuilder();
-  auto const ps = pb.slice();
-  for (auto const& db : VPackObjectIterator(ps)) {
-    for (auto const& col : VPackObjectIterator(db.value)) {
-      ret.emplace(db.key.copyString() + "/" + col.value.get("name").copyString(),
-                  col.key.copyString());
-    }
-  }
-  return ret;
-}
 
 namespace arangodb {
 class LogicalCollection;
 }
+using namespace arangodb::maintenance;
 
-class MaintenanceTestActionDescription : public ::testing::Test {
+class SharedMaintenanceTest : public ::testing::Test {
  protected:
-  MaintenanceTestActionDescription() {
+  SharedMaintenanceTest() {
+    loadResources();
     plan = createNode(planStr);
     originalPlan = plan;
     supervision = createNode(supervisionStr);
     current = createNode(currentStr);
     dbsIds = matchShortLongIds(supervision);
+  }
+
+ protected:
+  // Relevant agency
+  Node plan{""};
+  Node originalPlan{""};
+  Node supervision{""};
+  Node current{""};
+
+
+
+  // map <shortId, UUID>
+  std::map<std::string, std::string> dbsIds;
+
+  /**
+   * @brief Helper methods
+   *
+   */
+ protected:
+#ifndef _WIN32
+  int loadResources(void) { return 0; }
+
+#else  // _WIN32
+  LPSTR getResource(int which) {
+    HRSRC myResource = ::FindResource(NULL, MAKEINTRESOURCE(which), RT_RCDATA);
+    HGLOBAL myResourceData = ::LoadResource(NULL, myResource);
+    return (LPSTR)::LockResource(myResourceData);
+  }
+  int loadResources(void) {
+    if ((planStr == nullptr) && (currentStr == nullptr) && (supervisionStr == nullptr) &&
+        (dbs0Str == nullptr) && (dbs1Str == nullptr) && (dbs2Str == nullptr)) {
+      planStr = getResource(IDS_PLAN);
+      currentStr = getResource(IDS_CURRENT);
+      dbs0Str = getResource(IDS_DBSERVER0001);
+      dbs1Str = getResource(IDS_DBSERVER0002);
+      dbs2Str = getResource(IDS_DBSERVER0003);
+      supervisionStr = getResource(IDS_SUPERVISION);
+    }
+    return 0;
+  }
+
+#endif  // _WIN32
+
+  std::map<std::string, std::string> matchShortLongIds(Node const& supervision) {
+    std::map<std::string, std::string> ret;
+    for (auto const& dbs : supervision("Health").children()) {
+      if (dbs.first.front() == 'P') {
+        ret.emplace((*dbs.second)("ShortName").getString(), dbs.first);
+      }
+    }
+    return ret;
+  }
+
+  Node createNodeFromBuilder(Builder const& builder) {
+    Builder opBuilder;
+    {
+      VPackObjectBuilder a(&opBuilder);
+      opBuilder.add("new", builder.slice());
+    }
+
+    Node node("");
+    node.handle<SET>(opBuilder.slice());
+    return node;
+  }
+
+  Builder createBuilder(char const* c) {
+    VPackOptions options;
+    options.checkAttributeUniqueness = true;
+    VPackParser parser(&options);
+    parser.parse(c);
+
+    Builder builder;
+    builder.add(parser.steal()->slice());
+    return builder;
+  }
+
+  Node createNode(char const* c) {
+    return createNodeFromBuilder(createBuilder(c));
+  }
+
+  VPackBuilder createDatabase(std::string const& dbname) {
+    Builder builder;
+    {
+      VPackObjectBuilder o(&builder);
+      builder.add("id", VPackValue(std::to_string(localId++)));
+      builder.add("coordinator",
+                  VPackValue("CRDN-42df19c3-73d5-48f4-b02e-09b29008eff8"));
+      builder.add(VPackValue("options"));
+      { VPackObjectBuilder oo(&builder); }
+      builder.add("name", VPackValue(dbname));
+    }
+    return builder;
+  }
+
+  void createPlanDatabase(std::string const& dbname, Node& plan) {
+    plan(PLAN_DB_PATH + dbname) = createDatabase(dbname).slice();
+  }
+
+  VPackBuilder createIndex(std::string const& type, std::vector<std::string> const& fields,
+                           bool unique, bool sparse, bool deduplicate) {
+    VPackBuilder index;
+    {
+      VPackObjectBuilder o(&index);
+      {
+        index.add("deduplicate", VPackValue(deduplicate));
+        index.add(VPackValue("fields"));
+        {
+          VPackArrayBuilder a(&index);
+          for (auto const& field : fields) {
+            index.add(VPackValue(field));
+          }
+        }
+        index.add("id", VPackValue(std::to_string(localId++)));
+        index.add("sparse", VPackValue(sparse));
+        index.add("type", VPackValue(type));
+        index.add("unique", VPackValue(unique));
+      }
+    }
+
+    return index;
+  }
+
+  void createPlanIndex(std::string const& dbname, std::string const& colname,
+                       std::string const& type, std::vector<std::string> const& fields,
+                       bool unique, bool sparse, bool deduplicate, Node& plan) {
+    VPackBuilder val;
+    {
+      VPackObjectBuilder o(&val);
+      val.add("new", createIndex(type, fields, unique, sparse, deduplicate).slice());
+    }
+    plan(PLAN_COL_PATH + dbname + "/" + colname + "/indexes").handle<PUSH>(val.slice());
+  }
+
+  void createCollection(std::string const& colname, VPackBuilder& col) {
+    VPackBuilder keyOptions;
+    {
+      VPackObjectBuilder o(&keyOptions);
+      keyOptions.add("lastValue", VPackValue(0));
+      keyOptions.add("type", VPackValue("traditional"));
+      keyOptions.add("allowUserKeys", VPackValue(true));
+    }
+
+    VPackBuilder shardKeys;
+    {
+      VPackArrayBuilder a(&shardKeys);
+      shardKeys.add(VPackValue("_key"));
+    }
+
+    VPackBuilder indexes;
+    {
+      VPackArrayBuilder a(&indexes);
+      indexes.add(createIndex("primary", {"_key"}, true, false, false).slice());
+    }
+
+    col.add("id", VPackValue(std::to_string(localId++)));
+    col.add("status", VPackValue(3));
+    col.add("keyOptions", keyOptions.slice());
+    col.add("cacheEnabled", VPackValue(false));
+    col.add("waitForSync", VPackValue(false));
+    col.add("type", VPackValue(2));
+    col.add("isSystem", VPackValue(true));
+    col.add("name", VPackValue(colname));
+    col.add("shardingStrategy", VPackValue("hash"));
+    col.add("statusString", VPackValue("loaded"));
+    col.add("shardKeys", shardKeys.slice());
+  }
+
+
+  void createPlanShards(size_t numberOfShards, size_t replicationFactor, VPackBuilder& col) {
+    auto servers = shortNames;
+    std::shuffle(servers.begin(), servers.end(), g);
+
+    col.add("numberOfShards", VPackValue(1));
+    col.add("replicationFactor", VPackValue(2));
+    col.add(VPackValue("shards"));
+    {
+      VPackObjectBuilder s(&col);
+      for (size_t i = 0; i < numberOfShards; ++i) {
+        col.add(VPackValue(S + std::to_string(localId++)));
+        {
+          VPackArrayBuilder a(&col);
+          size_t j = 0;
+          for (auto const& server : servers) {
+            if (j++ < replicationFactor) {
+              col.add(VPackValue(dbsIds[server]));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  void createPlanCollection(std::string const& dbname, std::string const& colname,
+                            size_t numberOfShards, size_t replicationFactor, Node& plan) {
+    VPackBuilder tmp;
+    {
+      VPackObjectBuilder o(&tmp);
+      createCollection(colname, tmp);
+      tmp.add("isSmart", VPackValue(false));
+      tmp.add("deleted", VPackValue(false));
+      createPlanShards(numberOfShards, replicationFactor, tmp);
+    }
+
+    Slice col = tmp.slice();
+    auto id = col.get("id").copyString();
+    plan(PLAN_COL_PATH + dbname + "/" + col.get("id").copyString()) = col;
+  }
+
+  void createLocalCollection(std::string const& dbname,
+                             std::string const& colname, Node& node) {
+    size_t planId = std::stoull(colname);
+    VPackBuilder tmp;
+    {
+      VPackObjectBuilder o(&tmp);
+      createCollection(colname, tmp);
+      tmp.add("planId", VPackValue(colname));
+      tmp.add("theLeader", VPackValue(""));
+      tmp.add("globallyUniqueId",
+              VPackValue(C + colname + "/" + S + std::to_string(planId + 1)));
+      tmp.add("objectId", VPackValue("9031415"));
+    }
+    node(dbname + "/" + S + std::to_string(planId + 1)) = tmp.slice();
+  }
+
+  std::map<std::string, std::string> collectionMap(Node const& plan) {
+    std::map<std::string, std::string> ret;
+    auto const pb = plan("Collections").toBuilder();
+    auto const ps = pb.slice();
+    for (auto const& db : VPackObjectIterator(ps)) {
+      for (auto const& col : VPackObjectIterator(db.value)) {
+        ret.emplace(db.key.copyString() + "/" + col.value.get("name").copyString(),
+                    col.key.copyString());
+      }
+    }
+    return ret;
+  }
+};
+
+class MaintenanceTestActionDescription : public SharedMaintenanceTest {
+
+ protected:
+  MaintenanceTestActionDescription() : SharedMaintenanceTest() {
   }
 };
 
@@ -303,7 +349,7 @@ TEST_F(MaintenanceTestActionDescription, construct_minimal_actiondescription) {
   ActionDescription desc(std::map<std::string, std::string>{{"name",
                                                              "SomeAction"}},
                          NORMAL_PRIORITY);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
 }
 
 TEST_F(MaintenanceTestActionDescription, construct_minimal_actiondescription_with_nullptr_props) {
@@ -314,50 +360,48 @@ TEST_F(MaintenanceTestActionDescription, construct_minimal_actiondescription_wit
 TEST_F(MaintenanceTestActionDescription, construct_minimal_actiondescription_with_empty_props) {
   std::shared_ptr<VPackBuilder> props;
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondescription) {
   std::shared_ptr<VPackBuilder> props;
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
   try {
     auto bogus = desc.get("bogus");
-    ASSERT_TRUE(bogus == "bogus");
-  } catch (std::out_of_range const& e) {
-  }
+    ASSERT_EQ(bogus, "bogus");
+  } catch (std::out_of_range const&) { }
   std::string value;
   auto res = desc.get("bogus", value);
   ASSERT_TRUE(value.empty());
-  ASSERT_TRUE(!res.ok());
+  ASSERT_FALSE(res.ok());
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondescription_2) {
   std::shared_ptr<VPackBuilder> props;
   ActionDescription desc({{"name", "SomeAction"}, {"bogus", "bogus"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
   try {
     auto bogus = desc.get("bogus");
-    ASSERT_TRUE(bogus == "bogus");
-  } catch (std::out_of_range const& e) {
-  }
+    ASSERT_EQ(bogus, "bogus");
+  } catch (std::out_of_range const&) { }
   std::string value;
   auto res = desc.get("bogus", value);
-  ASSERT_TRUE(value == "bogus");
+  ASSERT_EQ(value, "bogus");
   ASSERT_TRUE(res.ok());
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_properties_from_actiondescription) {
   std::shared_ptr<VPackBuilder> props;
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
-  ASSERT_TRUE(desc.properties() == nullptr);
+  ASSERT_EQ(desc.get("name"), "SomeAction");
+  ASSERT_EQ(desc.properties(), nullptr);
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_empty_properties_from_actiondescription) {
   auto props = std::make_shared<VPackBuilder>();
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->isEmpty());
 }
 
@@ -365,7 +409,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_empty_object_properties_from_a
   auto props = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder empty(props.get()); }
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().isEmptyObject());
 }
 
@@ -376,9 +420,9 @@ TEST_F(MaintenanceTestActionDescription, retrieve_string_value_from_actiondescri
     props->add("hello", VPackValue("world"));
   }
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().hasKey("hello"));
-  ASSERT_TRUE(desc.properties()->slice().get("hello").copyString() == "world");
+  ASSERT_EQ(desc.properties()->slice().get("hello").copyString(), "world");
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_double_value_from_actiondescriptions_properties) {
@@ -389,9 +433,9 @@ TEST_F(MaintenanceTestActionDescription, retrieve_double_value_from_actiondescri
     props->add("pi", VPackValue(3.14159265359));
   }
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().hasKey("pi"));
-  ASSERT_TRUE(desc.properties()->slice().get("pi").getNumber<double>() == pi);
+  ASSERT_EQ(desc.properties()->slice().get("pi").getNumber<double>(), pi);
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_integer_value_from_actiondescriptions_property) {
@@ -402,9 +446,9 @@ TEST_F(MaintenanceTestActionDescription, retrieve_integer_value_from_actiondescr
     props->add("one", VPackValue(one));
   }
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().hasKey("one"));
-  ASSERT_TRUE(desc.properties()->slice().get("one").getNumber<size_t>() == one);
+  ASSERT_EQ(desc.properties()->slice().get("one").getNumber<size_t>(), one);
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_array_value_from_actiondescriptions_properties) {
@@ -423,20 +467,21 @@ TEST_F(MaintenanceTestActionDescription, retrieve_array_value_from_actiondescrip
     }
   }
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().hasKey("array"));
   ASSERT_TRUE(desc.properties()->slice().get("array").isArray());
-  ASSERT_TRUE(desc.properties()->slice().get("array").length() == 3);
-  ASSERT_TRUE(desc.properties()->slice().get("array")[0].getNumber<double>() == pi);
-  ASSERT_TRUE(desc.properties()->slice().get("array")[1].getNumber<size_t>() == one);
-  ASSERT_TRUE(desc.properties()->slice().get("array")[2].copyString() == hello);
+  ASSERT_EQ(desc.properties()->slice().get("array").length(), 3);
+  ASSERT_EQ(desc.properties()->slice().get("array")[0].getNumber<double>(), pi);
+  ASSERT_EQ(desc.properties()->slice().get("array")[1].getNumber<size_t>(), one);
+  ASSERT_EQ(desc.properties()->slice().get("array")[2].copyString(), hello);
 }
 
-class MaintenanceTestActionPhaseOne : public ::testing::Test {
+class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
  protected:
+  int _dummy;
   std::shared_ptr<arangodb::options::ProgramOptions> po;
   arangodb::application_features::ApplicationServer as;
-  TestMaintenanceFeature feature;
+  std::unique_ptr<TestMaintenanceFeature> feature;
   MaintenanceFeature::errors_t errors;
 
   std::map<std::string, Node> localNodes;
@@ -444,22 +489,233 @@ class MaintenanceTestActionPhaseOne : public ::testing::Test {
   arangodb::MMFilesEngine engine;  // arbitrary implementation that has index types registered
   arangodb::StorageEngine* origStorageEngine;
 
+
+
+
   MaintenanceTestActionPhaseOne()
-      : po(std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
+      : SharedMaintenanceTest(),
+        _dummy(loadResources()),
+        po(std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                                std::string(),
                                                                "path")),
         as(po, nullptr),
-        feature(as),
         localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}},
         engine(as),
         origStorageEngine(arangodb::EngineSelectorFeature::ENGINE) {
+    feature = std::make_unique<TestMaintenanceFeature>(as);
+
     arangodb::EngineSelectorFeature::ENGINE = &engine;
   }
 
   ~MaintenanceTestActionPhaseOne() {
     arangodb::EngineSelectorFeature::ENGINE = origStorageEngine;
+  }
+
+  auto dbName() const -> std::string {
+    // this is a database known in the test files
+    return "foo";
+  }
+
+  auto planId() const -> std::string {
+    // This is a gobal collection known in the test files.
+    // It is required to have 6 shards, 2 per DBServer
+    return "2010088";
+  }
+
+  auto unusedServer() const -> std::string {
+    return "PRMR-deadbeef-1337-7331-abcd-123456789abc";
+  }
+
+  enum class PLAN_LEADERSHIP_TYPE { SELF, RESIGNED_SELF, OTHER, RESIGNED_OTHER };
+
+  enum class LOCAL_LEADERSHIP_TYPE { SELF, OTHER, RESIGNED, REBOOTED };
+
+  auto getShardsForServer(std::string const& dbName, std::string const& planId,
+                          std::string const& serverId, Node const& plan)
+      -> std::unordered_set<std::string> {
+    auto vec = std::vector<std::string>{"Collections", dbName, planId, "shards"};
+    TRI_ASSERT(plan.has(vec));
+    auto const& shardList = plan(vec);
+    std::unordered_set<std::string> res;
+    for (auto const& pair : shardList.children()) {
+      auto const& shard = pair.first;
+      auto const& servers = pair.second;
+      auto oldValue = servers->slice();
+      TRI_ASSERT(oldValue.isArray());
+      TRI_ASSERT(oldValue.length() == 2);
+      if (oldValue.at(0).isEqualString(serverId)) {
+        res.emplace(shard);
+      }
+    }
+    return res;
+  }
+
+  auto setLeadershipPlan(std::string const& dbName, std::string const& planId,
+                         PLAN_LEADERSHIP_TYPE type, Node& plan) -> void {
+    auto vec = std::vector<std::string>{"Collections", dbName, planId, "shards"};
+    ASSERT_TRUE(plan.has(vec)) << "The underlying test plan is modified, it "
+                                  "does not contain Database '"
+                               << dbName << "' and Collection '" << planId << "' anymore.";
+    auto& shardList = plan(vec);
+    for (auto& pair : shardList.children()) {
+      auto& servers = pair.second;
+      auto oldValue = servers->slice();
+      ASSERT_TRUE(oldValue.isArray());
+      ASSERT_TRUE(oldValue.length() == 2)
+          << "We assume to have one leader and one follower";
+      switch (type) {
+        case PLAN_LEADERSHIP_TYPE::SELF: {
+          // Nothing to do here, we are leader
+          break;
+        }
+        case PLAN_LEADERSHIP_TYPE::RESIGNED_SELF: {
+          // We simulate a resign leader, this is indicated by appending an `_` in front of the server name.
+          VPackBuilder newValue;
+          {
+            VPackArrayBuilder guard(&newValue);
+            newValue.add(VPackValue("_" + oldValue.at(0).copyString()));
+            newValue.add(VPackValue(oldValue.at(1).copyString()));
+          }
+          *servers = newValue.slice();
+          break;
+        }
+        case PLAN_LEADERSHIP_TYPE::OTHER: {
+          // We simulate we get told another leader is there.
+          VPackBuilder newValue;
+          {
+            VPackArrayBuilder guard(&newValue);
+            newValue.add(VPackValue(unusedServer()));
+            newValue.add(VPackValue(oldValue.at(0).copyString()));
+            newValue.add(VPackValue(oldValue.at(1).copyString()));
+          }
+          *servers = newValue.slice();
+          break;
+        }
+        case PLAN_LEADERSHIP_TYPE::RESIGNED_OTHER: {
+          // We simulate we get told another leader is there, and resigned, this is indicated by appending an `_` in front of the server name.
+          VPackBuilder newValue;
+          {
+            VPackArrayBuilder guard(&newValue);
+            newValue.add(VPackValue("_" + unusedServer()));
+            newValue.add(VPackValue(oldValue.at(0).copyString()));
+            newValue.add(VPackValue(oldValue.at(1).copyString()));
+          }
+          *servers = newValue.slice();
+          break;
+        }
+      }
+    }
+  }
+
+  // Will resign leadership on the given plan.
+  // The plan will be modified in-place
+  // Asserts that dbName and planId exists in plan
+  auto resignLeadershipPlan(std::string const& dbName, std::string const& planId, Node& plan) -> void {
+    return setLeadershipPlan(dbName, planId, PLAN_LEADERSHIP_TYPE::RESIGNED_SELF, plan);
+  }
+
+  // Will take leadership in plan
+  // Asserts that dbName and planId exists in plan
+  // NOTE: The plan already contians leadersip of SELF so this is a noop besides assertions.
+  auto takeLeadershipPlan(std::string const& dbName, std::string const& planId, Node& plan) -> void {
+    return setLeadershipPlan(dbName, planId, PLAN_LEADERSHIP_TYPE::SELF, plan);
+  }
+
+  // Another server will take leadership in plan
+  // Asserts that dbName and planId exists in plan
+  auto otherTakeLeadershipPlan(std::string const& dbName, std::string const& planId, Node& plan) -> void {
+    return setLeadershipPlan(dbName, planId, PLAN_LEADERSHIP_TYPE::OTHER, plan);
+  }
+
+  // Another server will take resigned leadership in plan
+  // Asserts that dbName and planId exists in plan
+  auto otherTakeResignedLeadershipPlan(std::string const& dbName,
+                               std::string const& planId, Node& plan) -> void {
+    return setLeadershipPlan(dbName, planId, PLAN_LEADERSHIP_TYPE::RESIGNED_OTHER, plan);
+  }
+
+  auto setLeadershipLocal(std::string const& dbName,
+                            std::unordered_set<std::string> const& shardNames,
+                            LOCAL_LEADERSHIP_TYPE type, Node& local) {
+    for (auto const& shardName : shardNames) {
+      auto vec = {dbName, shardName, std::string(THE_LEADER)};
+      ASSERT_TRUE(local.has(vec))
+          << "The underlying test plan is modified, it "
+             "does not contain Database '"
+          << dbName << "' and Shard '" << shardName << "' anymore.";
+      auto& leaderInfo = local(vec);
+      VPackBuilder newValue;
+      switch (type) {
+        case LOCAL_LEADERSHIP_TYPE::SELF: {
+          newValue.add(VPackValue(""));
+          break;
+        }
+        case LOCAL_LEADERSHIP_TYPE::OTHER: {
+          newValue.add(VPackValue(unusedServer()));
+          break;
+        }
+        case LOCAL_LEADERSHIP_TYPE::RESIGNED: {
+          newValue.add(VPackValue(ResignShardLeadership::LeaderNotYetKnownString));
+          break;
+        }
+        case LOCAL_LEADERSHIP_TYPE::REBOOTED: {
+          newValue.add(VPackValue(LEADER_NOT_YET_KNOWN));
+          break;
+        }
+      }
+      leaderInfo = newValue.slice();
+    }
+  }
+
+  // Claim leadership of the given shards ourself.
+  auto takeLeadershipLocal(std::string const& dbName,
+                             std::unordered_set<std::string> const& shardNames,
+                             Node& local) {
+    setLeadershipLocal(dbName, shardNames, LOCAL_LEADERSHIP_TYPE::SELF, local);
+  }
+
+    // Resign leadership of the given shards ourself.
+  auto resignLeadershipLocal(std::string const& dbName,
+                             std::unordered_set<std::string> const& shardNames,
+                             Node& local) {
+    setLeadershipLocal(dbName, shardNames, LOCAL_LEADERSHIP_TYPE::RESIGNED, local);
+  }
+
+  // Let other server claim leadership of the given shards ourself.
+  auto otherTakeLeadershipLocal(std::string const& dbName,
+                                  std::unordered_set<std::string> const& shardNames,
+                                  Node& local) {
+    setLeadershipLocal(dbName, shardNames, LOCAL_LEADERSHIP_TYPE::OTHER, local);
+  }
+
+  // Claim leadership of the given shards ourself.
+  auto rebootLeadershipLocal(std::string const& dbName,
+                               std::unordered_set<std::string> const& shardNames,
+                               Node& local) {
+    setLeadershipLocal(dbName, shardNames, LOCAL_LEADERSHIP_TYPE::REBOOTED, local);
+  }
+
+  auto assertIsTakeoverLeadershipAction(ActionDescription const& action,
+                                        std::string const& dbName,
+                                        std::string const& planId) -> void {
+    ASSERT_EQ(action.name(), "TakeoverShardLeadership");
+    ASSERT_TRUE(action.has(DATABASE));
+    ASSERT_TRUE(action.has(COLLECTION));
+    ASSERT_TRUE(action.has(SHARD));
+    ASSERT_TRUE(action.has(THE_LEADER));
+    ASSERT_TRUE(action.has(LOCAL_LEADER));
+    ASSERT_EQ(action.get(DATABASE), dbName);
+    ASSERT_EQ(action.get(COLLECTION), planId);
+  }
+
+  auto assertIsResignLeadershipAction(ActionDescription const& action,
+                                      std::string const& dbName) -> void {
+    ASSERT_EQ(action.name(), "ResignShardLeadership");
+    ASSERT_TRUE(action.has(DATABASE));
+    ASSERT_TRUE(action.has(SHARD));
+    ASSERT_EQ(action.get(DATABASE), dbName);
   }
 };
 
@@ -469,12 +725,12 @@ TEST_F(MaintenanceTestActionPhaseOne, in_sync_should_have_0_effects) {
   for (auto const& node : localNodes) {
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (actions.size() != 0) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
     }
-    ASSERT_TRUE(actions.size() == 0);
+    ASSERT_EQ(actions.size(), 0);
   }
 }
 
@@ -485,14 +741,14 @@ TEST_F(MaintenanceTestActionPhaseOne, local_databases_one_more_empty_database_sh
 
   arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                        localNodes.begin()->second.toBuilder().slice(),
-                                       localNodes.begin()->first, errors, feature, actions);
+                                       localNodes.begin()->first, errors, *feature, actions);
 
   if (actions.size() != 1) {
     std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
   }
-  ASSERT_TRUE(actions.size() == 1);
-  ASSERT_TRUE(actions.front().name() == "DropDatabase");
-  ASSERT_TRUE(actions.front().get("database") == "db3");
+  ASSERT_EQ(actions.size(), 1);
+  ASSERT_EQ(actions.front().name(), "DropDatabase");
+  ASSERT_EQ(actions.front().get("database"), "db3");
 }
 
 TEST_F(MaintenanceTestActionPhaseOne,
@@ -502,11 +758,11 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
   arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                        localNodes.begin()->second.toBuilder().slice(),
-                                       localNodes.begin()->first, errors, feature, actions);
+                                       localNodes.begin()->first, errors, *feature, actions);
 
-  ASSERT_TRUE(actions.size() == 1);
-  ASSERT_TRUE(actions.front().name() == "DropDatabase");
-  ASSERT_TRUE(actions.front().get("database") == "db3");
+  ASSERT_EQ(actions.size(), 1);
+  ASSERT_EQ(actions.front().name(), "DropDatabase");
+  ASSERT_EQ(actions.front().get("database"), "db3");
 }
 
 TEST_F(MaintenanceTestActionPhaseOne,
@@ -524,14 +780,14 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (actions.size() != 1) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
     }
-    ASSERT_TRUE(actions.size() == 1);
+    ASSERT_EQ(actions.size(), 1);
     for (auto const& action : actions) {
-      ASSERT_TRUE(action.name() == "CreateCollection");
+      ASSERT_EQ(action.name(), "CreateCollection");
     }
   }
 }
@@ -552,14 +808,14 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (actions.size() != 2) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
     }
-    ASSERT_TRUE(actions.size() == 2);
+    ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
-      ASSERT_TRUE(action.name() == "CreateCollection");
+      ASSERT_EQ(action.name(), "CreateCollection");
     }
   }
 }
@@ -578,7 +834,7 @@ TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_queues) {
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(), node.first,
-                                         errors, feature, actions);
+                                         errors, *feature, actions);
 
     size_t n = 0;
     for (auto const& shard : shards) {
@@ -590,9 +846,9 @@ TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_queues) {
     if (actions.size() != n) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
     }
-    ASSERT_TRUE(actions.size() == n);
+    ASSERT_EQ(actions.size(), n);
     for (auto const& action : actions) {
-      ASSERT_TRUE(action.name() == "EnsureIndex");
+      ASSERT_EQ(action.name(), "EnsureIndex");
     }
   }
 }
@@ -614,7 +870,7 @@ TEST_F(MaintenanceTestActionPhaseOne, remove_an_index_from_plan) {
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(), node.first,
-                                         errors, feature, actions);
+                                         errors, *feature, actions);
 
     size_t n = 0;
     for (auto const& shard : shards) {
@@ -626,9 +882,9 @@ TEST_F(MaintenanceTestActionPhaseOne, remove_an_index_from_plan) {
     if (actions.size() != n) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
     }
-    ASSERT_TRUE(actions.size() == n);
+    ASSERT_EQ(actions.size(), n);
     for (auto const& action : actions) {
-      ASSERT_TRUE(action.name() == "DropIndex");
+      ASSERT_EQ(action.name(), "DropIndex");
     }
   }
 }
@@ -642,16 +898,16 @@ TEST_F(MaintenanceTestActionPhaseOne, add_one_collection_to_local) {
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (actions.size() != 1) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
     }
-    ASSERT_TRUE(actions.size() == 1);
+    ASSERT_EQ(actions.size(), 1);
     for (auto const& action : actions) {
-      ASSERT_TRUE(action.name() == "DropCollection");
-      ASSERT_TRUE(action.get("database") == "_system");
-      ASSERT_TRUE(action.get("collection") == "s1111112");
+      ASSERT_EQ(action.name(), "DropCollection");
+      ASSERT_EQ(action.get("database"), "_system");
+      ASSERT_EQ(action.get("collection"), "s1111112");
     }
   }
 }
@@ -674,22 +930,412 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     /*
     if (actions.size() != 1) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
     }
-    ASSERT_TRUE(actions.size() == 1);
+    ASSERT_EQ(actions.size(), 1);
     for (auto const& action : actions) {
 
-      ASSERT_TRUE(action.name() == "UpdateCollection");
-      ASSERT_TRUE(action.get("shard") == shname);
-      ASSERT_TRUE(action.get("database") == dbname);
+      ASSERT_EQ(action.name(), "UpdateCollection");
+      ASSERT_EQ(action.get("shard"), shname);
+      ASSERT_EQ(action.get("database"), dbname);
       auto const props = action.properties();
 
     }
     */
+  }
+}
+
+
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_self) {
+  plan = originalPlan;
+  takeLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
+    auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
+    takeLeadershipLocal(dbName(), relevantShards, local);
+
+    std::vector<ActionDescription> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+                                         local.toBuilder().slice(),
+                                         server, errors, *feature, actions);
+
+    ASSERT_EQ(actions.size(), 0);
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_self) {
+  plan = originalPlan;
+  resignLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
+    auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
+    takeLeadershipLocal(dbName(), relevantShards, local);
+
+    std::vector<ActionDescription> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+                                         local.toBuilder().slice(),
+                                         server, errors, *feature, actions);
+
+    ASSERT_EQ(actions.size(), 2);
+    for (auto const& action : actions) {
+      assertIsResignLeadershipAction(action, dbName());
+      auto shardName = action.get(SHARD);
+      auto removed = relevantShards.erase(shardName);
+      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
+    }
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_self) {
+  plan = originalPlan;
+  otherTakeLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
+    auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
+    takeLeadershipLocal(dbName(), relevantShards, local);
+
+    std::vector<ActionDescription> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+                                         local.toBuilder().slice(),
+                                         server, errors, *feature, actions);
+
+    ASSERT_EQ(actions.size(), 2);
+    for (auto const& action : actions) {
+      assertIsResignLeadershipAction(action, dbName());
+      auto shardName = action.get(SHARD);
+      auto removed = relevantShards.erase(shardName);
+      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
+    }
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_self) {
+  plan = originalPlan;
+  otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
+    auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
+    takeLeadershipLocal(dbName(), relevantShards, local);
+
+    std::vector<ActionDescription> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+                                         local.toBuilder().slice(),
+                                         server, errors, *feature, actions);
+
+    for (auto const& action : actions) {
+      assertIsResignLeadershipAction(action, dbName());
+      auto shardName = action.get(SHARD);
+      auto removed = relevantShards.erase(shardName);
+      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
+    }
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_other) {
+  plan = originalPlan;
+  takeLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
+    auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
+    otherTakeLeadershipLocal(dbName(), relevantShards, local);
+
+    std::vector<ActionDescription> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+                                         local.toBuilder().slice(),
+                                         server, errors, *feature, actions);
+
+    ASSERT_EQ(actions.size(), 2);
+    for (auto const& action : actions) {
+      assertIsTakeoverLeadershipAction(action, dbName(), planId());
+      auto shardName = action.get(SHARD);
+      auto removed = relevantShards.erase(shardName);
+      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
+      EXPECT_EQ(action.get(THE_LEADER), "");
+      EXPECT_EQ(action.get(LOCAL_LEADER), unusedServer());
+    }
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_other) {
+  plan = originalPlan;
+  resignLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
+    auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
+    otherTakeLeadershipLocal(dbName(), relevantShards, local);
+
+    std::vector<ActionDescription> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+                                         local.toBuilder().slice(),
+                                         server, errors, *feature, actions);
+
+    ASSERT_EQ(actions.size(), 2);
+    for (auto const& action : actions) {
+      assertIsResignLeadershipAction(action, dbName());
+      auto shardName = action.get(SHARD);
+      auto removed = relevantShards.erase(shardName);
+      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
+    }
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_other) {
+  plan = originalPlan;
+  otherTakeLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
+    auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
+    otherTakeLeadershipLocal(dbName(), relevantShards, local);
+
+    std::vector<ActionDescription> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+                                         local.toBuilder().slice(),
+                                         server, errors, *feature, actions);
+
+    ASSERT_EQ(actions.size(), 0);
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_other) {
+  plan = originalPlan;
+  otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
+    auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
+    otherTakeLeadershipLocal(dbName(), relevantShards, local);
+
+    std::vector<ActionDescription> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+                                         local.toBuilder().slice(),
+                                         server, errors, *feature, actions);
+
+    ASSERT_EQ(actions.size(), 0);
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_resigned) {
+  plan = originalPlan;
+  takeLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
+    auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
+    resignLeadershipLocal(dbName(), relevantShards, local);
+
+    std::vector<ActionDescription> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+                                         local.toBuilder().slice(),
+                                         server, errors, *feature, actions);
+
+    ASSERT_EQ(actions.size(), 2);
+    for (auto const& action : actions) {
+      assertIsTakeoverLeadershipAction(action, dbName(), planId());
+      auto shardName = action.get(SHARD);
+      auto removed = relevantShards.erase(shardName);
+      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
+      EXPECT_EQ(action.get(THE_LEADER), "");
+      EXPECT_EQ(action.get(LOCAL_LEADER), ResignShardLeadership::LeaderNotYetKnownString);
+    }
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_resigned) {
+  plan = originalPlan;
+  resignLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
+    auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
+    resignLeadershipLocal(dbName(), relevantShards, local);
+
+    std::vector<ActionDescription> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+                                         local.toBuilder().slice(),
+                                         server, errors, *feature, actions);
+
+    ASSERT_EQ(actions.size(), 0);
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_resigned) {
+  plan = originalPlan;
+  otherTakeLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
+    auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
+    resignLeadershipLocal(dbName(), relevantShards, local);
+
+    std::vector<ActionDescription> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+                                         local.toBuilder().slice(),
+                                         server, errors, *feature, actions);
+
+    // Synchronize in Phase 2 is responsible for this.
+    ASSERT_EQ(actions.size(), 0);
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_resigned) {
+  plan = originalPlan;
+  otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
+    auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
+    resignLeadershipLocal(dbName(), relevantShards, local);
+
+    std::vector<ActionDescription> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+                                         local.toBuilder().slice(),
+                                         server, errors, *feature, actions);
+
+    // Synchronize in Phase 2 is responsible for this.
+    ASSERT_EQ(actions.size(), 0);
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_reboot) {
+  plan = originalPlan;
+  takeLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
+    auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
+    rebootLeadershipLocal(dbName(), relevantShards, local);
+
+    std::vector<ActionDescription> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+                                         local.toBuilder().slice(),
+                                         server, errors, *feature, actions);
+
+    ASSERT_EQ(actions.size(), 2);
+    for (auto const& action : actions) {
+      assertIsTakeoverLeadershipAction(action, dbName(), planId());
+      auto shardName = action.get(SHARD);
+      auto removed = relevantShards.erase(shardName);
+      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
+      EXPECT_EQ(action.get(THE_LEADER), "");
+      EXPECT_EQ(action.get(LOCAL_LEADER), LEADER_NOT_YET_KNOWN);
+    }
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_reboot) {
+  plan = originalPlan;
+  resignLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
+    auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
+    rebootLeadershipLocal(dbName(), relevantShards, local);
+
+    std::vector<ActionDescription> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+                                         local.toBuilder().slice(),
+                                         server, errors, *feature, actions);
+
+    ASSERT_EQ(actions.size(), 2);
+    for (auto const& action : actions) {
+      assertIsResignLeadershipAction(action, dbName());
+      auto shardName = action.get(SHARD);
+      auto removed = relevantShards.erase(shardName);
+      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
+    }
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_reboot) {
+  plan = originalPlan;
+  otherTakeLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
+    auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
+    rebootLeadershipLocal(dbName(), relevantShards, local);
+
+    std::vector<ActionDescription> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+                                         local.toBuilder().slice(),
+                                         server, errors, *feature, actions);
+    
+    // We will just resign in this case to get a clear state.
+    ASSERT_EQ(actions.size(), 2);
+    for (auto const& action : actions) {
+      assertIsResignLeadershipAction(action, dbName());
+      auto shardName = action.get(SHARD);
+      auto removed = relevantShards.erase(shardName);
+      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
+    }
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_reboot) {
+  plan = originalPlan;
+  otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
+    auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
+    rebootLeadershipLocal(dbName(), relevantShards, local);
+
+    std::vector<ActionDescription> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+                                         local.toBuilder().slice(),
+                                         server, errors, *feature, actions);
+
+    // We will just resign in this case to get a clear state.
+    ASSERT_EQ(actions.size(), 2);
+    for (auto const& action : actions) {
+      assertIsResignLeadershipAction(action, dbName());
+      auto shardName = action.get(SHARD);
+      auto removed = relevantShards.erase(shardName);
+      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
+    }
   }
 }
 
@@ -700,7 +1346,7 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
   for (auto node : localNodes) {
     std::vector<ActionDescription> actions;
 
-    auto& collection = *node.second("foo").children().begin()->second;
+    auto& collection = *node.second(dbName()).children().begin()->second;
     auto& leader = collection("theLeader");
 
     bool check = false;
@@ -711,19 +1357,39 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (check) {
       if (actions.size() != 1) {
         std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
       }
-      ASSERT_TRUE(actions.size() == 1);
+      ASSERT_EQ(actions.size(), 1);
       for (auto const& action : actions) {
-        ASSERT_TRUE(action.name() == "TakeoverShardLeadership");
-        ASSERT_TRUE(action.has("shard"));
-        ASSERT_TRUE(action.get("shard") == collection("name").getString());
-        ASSERT_TRUE(action.get("localLeader").empty());
+        assertIsResignLeadershipAction(action, dbName());
+        ASSERT_EQ(action.get("shard"), collection("name").getString());
       }
+    }
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne, resign_leadership_plan) {
+  plan = originalPlan;
+  resignLeadershipPlan(dbName(), planId(), plan);
+
+  for (auto node : localNodes) {
+    auto relevantShards = getShardsForServer(dbName(), planId(), node.first, originalPlan);
+    std::vector<ActionDescription> actions;
+    // every server is responsible for two shards of dbName() and planId()
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+                                         node.second.toBuilder().slice(),
+                                         node.first, errors, *feature, actions);
+
+    ASSERT_EQ(actions.size(), relevantShards.size());
+    for (auto const& action : actions) {
+      assertIsResignLeadershipAction(action, dbName());
+      auto shardName = action.get(SHARD);
+      auto removed = relevantShards.erase(shardName);
+      EXPECT_EQ(removed, 1) << "We created a JOB for a shard we do not expect " << shardName;
     }
   }
 }
@@ -740,11 +1406,11 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
-    ASSERT_TRUE(actions.size() == node.second("db3").children().size());
+    ASSERT_EQ(actions.size(), node.second("db3").children().size());
     for (auto const& action : actions) {
-      ASSERT_TRUE(action.name() == "DropCollection");
+      ASSERT_EQ(action.name(), "DropCollection");
     }
   }
 }
@@ -767,7 +1433,7 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
       Slice servers = shardBuilder.slice();
 
       ASSERT_TRUE(servers.isArray());
-      ASSERT_TRUE(servers.length() == 2);
+      ASSERT_EQ(servers.length(), 2);
       auto const leader = servers[0].copyString();
       auto const follower = servers[1].copyString();
 
@@ -785,15 +1451,14 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
-    if (actions.size() != 2) {
+    if (actions.size() != 1) {
       std::cout << actions << std::endl;
     }
-    ASSERT_TRUE(actions.size() == 1);
-    ASSERT_TRUE(actions[0].name() == "ResignShardLeadership");
-    ASSERT_TRUE(actions[0].get(DATABASE) == dbname);
-    ASSERT_TRUE(actions[0].get(SHARD) == shname);
+    ASSERT_EQ(actions.size(), 1);
+    assertIsResignLeadershipAction(actions[0], "_system");
+    ASSERT_EQ(actions[0].get(SHARD), shname);
   }
 }
 
@@ -815,26 +1480,27 @@ TEST_F(MaintenanceTestActionPhaseOne, removed_follower_in_plan_must_be_dropped) 
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (node.first == followerName) {
       // Must see an action dropping the shard
-      ASSERT_TRUE(actions.size() == 1);
-      ASSERT_TRUE(actions.front().name() == "DropCollection");
-      ASSERT_TRUE(actions.front().get(DATABASE) == dbname);
-      ASSERT_TRUE(actions.front().get(COLLECTION) == shname);
+      ASSERT_EQ(actions.size(), 1);
+      ASSERT_EQ(actions.front().name(), "DropCollection");
+      ASSERT_EQ(actions.front().get(DATABASE), dbname);
+      ASSERT_EQ(actions.front().get(COLLECTION), shname);
     } else if (node.first == leaderName) {
       // Must see an UpdateCollection action to drop the follower
-      ASSERT_TRUE(actions.size() == 1);
-      ASSERT_TRUE(actions.front().name() == "UpdateCollection");
-      ASSERT_TRUE(actions.front().get(DATABASE) == dbname);
-      ASSERT_TRUE(actions.front().get(SHARD) == shname);
-      ASSERT_TRUE(actions.front().get(FOLLOWERS_TO_DROP) == followerName);
+      ASSERT_EQ(actions.size(), 1);
+      ASSERT_EQ(actions.front().name(), "UpdateCollection");
+      ASSERT_EQ(actions.front().get(DATABASE), dbname);
+      ASSERT_EQ(actions.front().get(SHARD), shname);
+      ASSERT_EQ(actions.front().get(FOLLOWERS_TO_DROP), followerName);
     } else {
       // No actions required
-      ASSERT_TRUE(actions.size() == 0);
+      ASSERT_EQ(actions.size(), 0);
     }
   }
 }
 
-#endif
+#endif  // _WIN32
+

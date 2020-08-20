@@ -255,6 +255,12 @@ function moveShard (info) {
   var id;
   try {
     id = global.ArangoClusterInfo.uniqid();
+    var remainsFollower = info.remainsFollower;
+    if (remainsFollower === undefined) {
+      remainsFollower = isLeader;
+    } else if (!isLeader) {
+      remainsFollower = false;
+    }
     var todo = { 'type': 'moveShard',
       'database': info.database,
       'collection': collInfo.id,
@@ -265,7 +271,7 @@ function moveShard (info) {
       'timeCreated': (new Date()).toISOString(),
       'creator': ArangoServerState.id(),
       'isLeader': isLeader,
-      'remainsFollower': isLeader};
+      'remainsFollower': remainsFollower };
     global.ArangoAgency.set('Target/ToDo/' + id, todo);
   } catch (e1) {
     return {error: true, errorMessage: 'Cannot write to agency.'};
