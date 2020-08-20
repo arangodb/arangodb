@@ -1,5 +1,7 @@
 devel
 -----
+* Fix internal issue #742: Add tick storage in index meta payload after 
+  truncate operation
 
 * Fixed: During a move-shard job which moves the leader there is a
   situation in which the old owner of a shard can reclaim ownership
