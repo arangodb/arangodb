@@ -1052,7 +1052,7 @@ void AqlItemBlock::referenceValuesFromRow(size_t currentRow,
                                           RegIdFlatSet const& regs, size_t fromRow) {
   TRI_ASSERT(currentRow != fromRow);
 
-  for (auto const reg : regs) {
+  for (auto const& reg : regs) {
     TRI_ASSERT(reg < getNrRegs());
     if (getValueReference(currentRow, reg).isEmpty()) {
       // First update the reference count, if this fails, the value is empty
