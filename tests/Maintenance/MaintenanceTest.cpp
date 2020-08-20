@@ -68,17 +68,6 @@ char const* dbs1Str =
 char const* dbs2Str =
 #include "DBServer0003.json"
     ;
-#else  // _WIN32
-#include <Windows.h>
-#include "jsonresource.h"
-LPSTR planStr = nullptr;
-LPSTR currentStr = nullptr;
-LPSTR supervisionStr = nullptr;
-LPSTR dbs0Str = nullptr;
-LPSTR dbs1Str = nullptr;
-LPSTR dbs2Str = nullptr;
-
-#endif  // _WIN32
 
 // Random stuff
 std::random_device rd{};
@@ -1512,3 +1501,6 @@ TEST_F(MaintenanceTestActionPhaseOne, removed_follower_in_plan_must_be_dropped) 
     }
   }
 }
+
+#endif  // _WIN32
+
