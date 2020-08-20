@@ -1412,6 +1412,15 @@ TEST_CASE("Test [array-ref] primitive", "[array-ref]") {
     auto res = Evaluate(m, program->slice(), result);
     REQUIRE(res.fail());
   }
+
+  SECTION("index is a number but negative") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["array-ref", ["quote", 1, 2, 3, 4], -1]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
+  }
 }
 
 TEST_CASE("Test [array-set] primitive", "[array-set]") {

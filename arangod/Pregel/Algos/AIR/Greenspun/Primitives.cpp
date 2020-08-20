@@ -403,6 +403,10 @@ EvalResult checkArrayParams(VPackSlice const& arr, VPackSlice const& index) {
     return EvalError("expect second parameter to be a number");
   }
 
+  if (index.getInt() < 0) {
+    return EvalError("number cannot be less than zero");
+  }
+
   if (index.getUInt() > (arr.length() - 1)) {
     return EvalError("array index is out of bounds");
   }
