@@ -33,6 +33,7 @@ exports.test = test;
 /* returns a program that computes the vertex degree of every vertex */
 function vertex_degrees_program() {
   return {
+    resultField: "resultField", // TODO: to be removed later
     dataAccess: {
       vertexWriter: [
         "attrib-set", ["dict"], "scc", ["accum-ref", "outDegree"]
