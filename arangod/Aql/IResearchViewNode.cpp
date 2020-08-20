@@ -1307,8 +1307,8 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
   auto const& collections = _plan->getAst()->query().collections();
 
   size_t estimatedNrItems = 0;
-  auto visitor = [&trx, &estimatedNrItems, &collections](DataSourceId cid) -> bool {
-    auto const id = basics::StringUtils::itoa(cid.id());
+  auto visitor = [&trx, &estimatedNrItems, &collections](TRI_voc_cid_t cid) -> bool {
+    auto const id = basics::StringUtils::itoa(cid);
     auto const* collection = collections.get(id);
 
     if (collection) {
