@@ -285,7 +285,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
               {COLLECTION, colname},
               {SHARD, shname},
               {THE_LEADER, std::string()},
-              {LOCAL_LEADER, localLeader},
+              {LOCAL_LEADER, std::string(localLeader)},
               {OLD_CURRENT_COUNTER, std::to_string(feature.getCurrentCounter())}},
           LEADER_PRIORITY));
     }
