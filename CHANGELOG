@@ -1,6 +1,14 @@
 devel
 -----
 
+* Fixed issue #12304: insert in transaction causing com.arangodb.ArangoDBException: 
+  Response: 500, Error: 4 - Builder value not yet sealed. 
+
+  This happened when too deeply-nested documents (more than 63 levels of nesting)
+  were inserted. While indefinite nesting is still not supported, the error message
+  has been corrected from the internal HTTP 500 error "Builder value not yet sealed"
+  to the correct HTTP 400 "Bad parameter".
+
 * Show optimizer rules with highest execution times in explain output.
 
 * Fixed that dropping a vanished follower works again. An exception response

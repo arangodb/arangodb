@@ -922,11 +922,8 @@ AqlValue Expression::invokeV8Function(ExpressionContext* expressionContext,
   auto& trx = expressionContext->trx();
   transaction::BuilderLeaser builder(&trx);
 
-  int res = TRI_V8ToVPack(isolate, *builder.get(), result, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  // can throw
+  TRI_V8ToVPack(isolate, *builder.get(), result, false);
 
   mustDestroy = true;  // builder = dynamic data
   return AqlValue(builder->slice(), builder->size());
