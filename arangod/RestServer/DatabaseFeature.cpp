@@ -1037,8 +1037,9 @@ std::string DatabaseFeature::translateCollectionName(std::string const& dbName,
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR);
     CollectionNameResolver resolver(*vocbase);
 
-    return resolver.getCollectionNameCluster(NumberUtils::atoi_zero<TRI_voc_cid_t>(
-        collectionName.data(), collectionName.data() + collectionName.size()));
+    return resolver.getCollectionNameCluster(
+        DataSourceId{NumberUtils::atoi_zero<DataSourceId::BaseType>(
+            collectionName.data(), collectionName.data() + collectionName.size())});
   } else {
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
     auto collection = vocbase->lookupCollection(collectionName);

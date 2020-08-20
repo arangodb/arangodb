@@ -88,8 +88,7 @@ std::shared_ptr<arangodb::LogicalCollection> GetCollectionFromArgument(
 
   // number
   if (val->IsNumber() || val->IsNumberObject()) {
-    uint64_t cid = TRI_ObjectToUInt64(isolate, val, true);
-
+    arangodb::DataSourceId cid{TRI_ObjectToUInt64(isolate, val, true)};
     return vocbase.lookupCollection(cid);
   }
 
@@ -234,10 +233,7 @@ static int V8ToVPackNoKeyRevId(v8::Isolate* isolate, VPackBuilder& builder,
     if (strcmp(*str, "_key") != 0 && strcmp(*str, "_rev") != 0 &&
         strcmp(*str, "_id") != 0) {
       builder.add(VPackValue(*str));
-      int res = TRI_V8ToVPack(isolate, builder, o->Get(context, key).FromMaybe(v8::Local<v8::Value>()), false);
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
-      }
+      TRI_V8ToVPack(isolate, builder, o->Get(context, key).FromMaybe(v8::Local<v8::Value>()), false);
     }
   }
   return TRI_ERROR_NO_ERROR;
@@ -1007,10 +1003,7 @@ static void JS_GetResponsibleShardVocbaseCol(v8::FunctionCallbackInfo<v8::Value>
     builder.add(StaticStrings::KeyString, VPackValue(TRI_ObjectToString(isolate, args[0])));
     builder.close();
   } else {
-    int res = TRI_V8ToVPack(isolate, builder, args[0], false);
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
+    TRI_V8ToVPack(isolate, builder, args[0], false);
   }
   if (!builder.slice().isObject()) {
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleShard(<object>)");
@@ -1120,10 +1113,12 @@ static void JS_PlanIdVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args)
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    TRI_V8_RETURN(TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->id()));
+    TRI_V8_RETURN(
+        TRI_V8UInt64String<DataSourceId::BaseType>(isolate, collection->id().id()));
   }
 
-  TRI_V8_RETURN(TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->planId()));
+  TRI_V8_RETURN(
+      TRI_V8UInt64String<DataSourceId::BaseType>(isolate, collection->planId().id()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1149,22 +1144,13 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
 
     if (par->IsObject()) {
       VPackBuilder builder;
-      {
-        int res = TRI_V8ToVPack(isolate, builder, args[0], false);
-        if (res != TRI_ERROR_NO_ERROR) {
-          TRI_V8_THROW_EXCEPTION(res);
-        }
-      }
-
+      TRI_V8ToVPack(isolate, builder, args[0], false);
       TRI_ASSERT(builder.isClosed());
 
       auto res = methods::Collections::updateProperties(*consoleColl, builder.slice());
       if (res.fail() && ServerState::instance()->isCoordinator()) {
         TRI_V8_THROW_EXCEPTION(res);
       }
-
-      // TODO Review
-      // TODO API compatibility, for now we ignore if persisting fails...
     }
   }
 
@@ -1695,10 +1681,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   VPackBuilder paramBuilder;
   if (argLength >= 4 && args[3]->IsObject()) {
-    int res = TRI_V8ToVPack(isolate, paramBuilder, args[3], false);
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
+    TRI_V8ToVPack(isolate, paramBuilder, args[3], false);
   }
 
   auto& vocbase = GetContextVocBase(isolate);
@@ -1842,9 +1825,8 @@ static void JS_RevisionVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
     TRI_V8_THROW_EXCEPTION(res.result);
   }
 
-  TRI_voc_rid_t rid =
-      res.slice().isNumber() ? res.slice().getNumber<TRI_voc_rid_t>() : 0;
-  std::string ridString = TRI_RidToString(rid);
+  RevisionId rid = RevisionId::fromSlice(res.slice());
+  std::string ridString = rid.toString();
   TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, ridString));
   TRI_V8_TRY_CATCH_END
 }
@@ -1983,12 +1965,8 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   VPackBuilder builder(&vpackOptions);
 
   auto doOneDocument = [&](v8::Handle<v8::Value> obj) -> void {
-    int res = TRI_V8ToVPack(isolate, builder, obj, true);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
+    TRI_V8ToVPack(isolate, builder, obj, true);
+    
     if (isEdgeCollection && oldEdgeSignature) {
       // Just insert from and to. Check is done later.
       std::string tmpId(ExtractIdString(isolate, args[0]));
@@ -2135,7 +2113,7 @@ static void JS_StatusVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args)
                   .server()
                   .getFeature<arangodb::ClusterFeature>()
                   .clusterInfo()
-                  .getCollectionNT(databaseName, std::to_string(collection->id()));
+                  .getCollectionNT(databaseName, std::to_string(collection->id().id()));
     if (ci != nullptr) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->status()));
     } else {
@@ -2219,7 +2197,7 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
                   .server()
                   .getFeature<ClusterFeature>()
                   .clusterInfo()
-                  .getCollectionNT(databaseName, std::to_string(collection->id()));
+                  .getCollectionNT(databaseName, std::to_string(collection->id().id()));
     if (ci != nullptr) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->type()));
     } else {

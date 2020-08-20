@@ -184,7 +184,8 @@ enum ScopedValueType {
   SCOPED_VALUE_TYPE_DOUBLE,
   SCOPED_VALUE_TYPE_STRING,
   SCOPED_VALUE_TYPE_ARRAY,
-  SCOPED_VALUE_TYPE_RANGE
+  SCOPED_VALUE_TYPE_RANGE,
+  SCOPED_VALUE_TYPE_OBJECT
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,7 +198,7 @@ struct AqlValueTraits {
     underlying_t const typeIndex =
         value.isNull(false) + 2 * value.isBoolean() + 3 * value.isNumber() +
         4 * value.isString() + 5 * value.isArray() +
-        value.isRange();  // isArray() returns `true` in case of range too
+        value.isRange() + 7 * value.isObject();  // isArray() returns `true` in case of range too
 
     return static_cast<ScopedValueType>(typeIndex);
   }
@@ -222,6 +223,8 @@ struct AqlValueTraits {
         return SCOPED_VALUE_TYPE_ARRAY;
       case aql::NODE_TYPE_RANGE:
         return SCOPED_VALUE_TYPE_RANGE;
+      case aql::NODE_TYPE_OBJECT:
+        return SCOPED_VALUE_TYPE_OBJECT;
       default:
         return SCOPED_VALUE_TYPE_INVALID;
     }
@@ -270,8 +273,11 @@ class ScopedAqlValue : private irs::util::noncopyable {
 
   ~ScopedAqlValue() noexcept { destroy(); }
 
-  bool isConstant() const noexcept { return _node->isConstant(); }
-
+  bool isConstant() const { return _node->isConstant(); }
+  bool isObject() const noexcept { return _type == SCOPED_VALUE_TYPE_OBJECT; }
+  bool isArray() const noexcept { return _type == SCOPED_VALUE_TYPE_ARRAY; }
+  bool isDouble() const noexcept { return _type == SCOPED_VALUE_TYPE_DOUBLE; }
+  bool isString() const noexcept { return _type == SCOPED_VALUE_TYPE_STRING; }
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief executes expression specified in the given `node`
   /// @returns true if expression has been executed, false otherwise
@@ -323,6 +329,11 @@ class ScopedAqlValue : private irs::util::noncopyable {
     return _node->isConstant() ? nullptr : _value.range();
   }
 
+  VPackSlice slice() const {
+    TRI_ASSERT(_executed);
+    return _node->isConstant() ? _node->computeValue() : _value.slice();
+  }
+
   size_t size() const {
     return _node->isConstant() ? _node->numMembers() : _value.length();
   }
@@ -331,7 +342,8 @@ class ScopedAqlValue : private irs::util::noncopyable {
     _node->isConstant()
         ? _node->toVelocyPackValue(builder)
         : _value.toVelocyPack(static_cast<velocypack::Options const*>(nullptr),
-                              builder, false);
+                              builder, /*resoveExternals*/false,
+                              /*allowUnindexed*/false);
   }
 
  private:

@@ -26,10 +26,11 @@
 
 #include <memory>
 
+#include <utils/type_id.hpp>
 #include "Basics/Result.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
-#include <utils/type_id.hpp>
 
 namespace arangodb {
 namespace application_features {
@@ -139,11 +140,11 @@ struct IResearchLinkHelper {
   /// @param links the link modification definitions, null link == link removal
   /// @param stale links to remove if there is no creation definition in 'links'
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result updateLinks( // update links
-      std::unordered_set<TRI_voc_cid_t>& modified, // odified cids
-      arangodb::LogicalView& view, // modified view
-      arangodb::velocypack::Slice const& links, // link definitions to apply
-      std::unordered_set<TRI_voc_cid_t> const& stale = {} //stale view links
+  static arangodb::Result updateLinks(             // update links
+      std::unordered_set<DataSourceId>& modified,  // modified cids
+      arangodb::LogicalView& view,                 // modified view
+      arangodb::velocypack::Slice const& links,    // link definitions to apply
+      std::unordered_set<DataSourceId> const& stale = {}  // stale view links
   );
 
  private:

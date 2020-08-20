@@ -36,10 +36,10 @@ namespace arangodb {
 namespace transaction {
   
 SmartContext::SmartContext(TRI_vocbase_t& vocbase,
-                           TRI_voc_tid_t globalId,
+                           TransactionId globalId,
                            std::shared_ptr<TransactionState> state)
   : Context(vocbase), _globalId(globalId), _state(std::move(state)) {
-  TRI_ASSERT(_globalId != 0);
+  TRI_ASSERT(_globalId.isSet());
 }
   
 SmartContext::~SmartContext() {
@@ -74,13 +74,13 @@ CollectionNameResolver const& transaction::SmartContext::resolver() {
   return *_resolver;
 }
 
-TRI_voc_tid_t transaction::SmartContext::generateId() const {
+TransactionId transaction::SmartContext::generateId() const {
   return _globalId;
 }
   
 //  ============= ManagedContext =============
   
-ManagedContext::ManagedContext(TRI_voc_tid_t globalId,
+ManagedContext::ManagedContext(TransactionId globalId,
                                std::shared_ptr<TransactionState> state,
                                bool responsibleForCommit, bool cloned)
   : SmartContext(state->vocbase(), globalId, state),

@@ -26,8 +26,9 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/ResourceUsage.h"
+#include "Containers/SmallVector.h"
 
-#include <set>
+#include <limits>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -62,7 +63,7 @@ class AqlItemBlock {
   // needed for testing only
   friend class BlockCollector;
   friend class SharedAqlItemBlockPtr;
-
+  
  public:
   AqlItemBlock() = delete;
   AqlItemBlock(AqlItemBlock const&) = delete;
@@ -75,20 +76,47 @@ class AqlItemBlock {
 
   SerializationFormat getFormatType() const;
 
+  /// @brief auxiliary struct to track how often the same AqlValue is
+  /// present in an AqlItemBlock, and how much dynamic memory on instance
+  /// of the item uses
+  struct ValueInfo {
+    ValueInfo() noexcept 
+        : refCount(0), memoryUsage(0) {}
+    ValueInfo(ValueInfo&& other) noexcept = default;
+    ValueInfo& operator=(ValueInfo&& other) noexcept = default;
+
+    /// @brief set the memory usage for the item, expects refCount to be 
+    /// exactly 1
+    void setMemoryUsage(size_t value) noexcept {
+      TRI_ASSERT(value > 0);
+      TRI_ASSERT(refCount == 1);
+      TRI_ASSERT(memoryUsage == 0);
+      // In theory, there can be items consuming more than 4 GB here.
+      // This case will be very rare and likely will cause a lot of other 
+      // issues upfront. If we get such huge value, we count it as using
+      // 4 GB of memory and ignore the rest.
+      if (ADB_UNLIKELY(value > std::numeric_limits<uint32_t>::max())) {
+        memoryUsage = std::numeric_limits<uint32_t>::max();
+      } else {
+        memoryUsage = static_cast<uint32_t>(value);
+      }
+    }
+
+    /// @brief how many occurrences of the item are in use in this
+    /// AqlItemBlock? it is expected to be 1 or more. the caller that sets
+    /// the ref count to 0 is expected to remove the item from the
+    /// _valueCount map completely
+    uint32_t refCount;
+    uint32_t memoryUsage;
+  };
+  
+  using ShadowRowIterator = std::vector<uint32_t>::const_iterator;
+
  protected:
   /// @brief destroy the block
   /// Should only ever be deleted by AqlItemManager::returnBlock, so the
   /// destructor is protected.
   ~AqlItemBlock();
-
- private:
-  void destroy() noexcept;
-
-  ResourceMonitor& resourceMonitor() noexcept;
-
-  void increaseMemoryUsage(size_t value);
-
-  void decreaseMemoryUsage(size_t value) noexcept;
 
  public:
   /// @brief getValue, get the value of a register
@@ -118,18 +146,22 @@ class AqlItemBlock {
       throw;
     }
 
-    try {
-      // Now update the reference count, if this fails, we'll roll it back
-      if (value->requiresDestruction()) {
-        if (++_valueCount[*value] == 1) {
-          increaseMemoryUsage(value->memoryUsage());
+    // Now update the reference count, if this fails, we'll roll it back
+    if (value->requiresDestruction()) {
+      try {
+        // note: this may create a new entry in _valueCount, which is fine
+        auto& valueInfo = _valueCount[value->data()];
+        if (++valueInfo.refCount == 1) {
+          size_t memoryUsage = value->memoryUsage();
+          increaseMemoryUsage(memoryUsage);
+          valueInfo.setMemoryUsage(memoryUsage);
         }
+      } catch (...) {
+        // invoke dtor
+        value->~AqlValue();
+        _data[address].destroy();
+        throw;
       }
-    } catch (...) {
-      // invoke dtor
-      value->~AqlValue();
-      _data[address].destroy();
-      throw;
     }
   }
 
@@ -205,7 +237,7 @@ class AqlItemBlock {
    *
    * @return SharedAqlItemBlockPtr A block where all the slices are contained in the order of the list
    */
-  auto slice(std::vector<std::pair<size_t, size_t>> const& ranges) const -> SharedAqlItemBlockPtr;
+  auto slice(arangodb::containers::SmallVector<std::pair<size_t, size_t>> const& ranges) const -> SharedAqlItemBlockPtr;
 
   /// @brief create an AqlItemBlock with a single row, with copies of the
   /// specified registers from the current block
@@ -251,29 +283,25 @@ class AqlItemBlock {
   /// information only. It should not be handed to any non-subquery executor.
   bool isShadowRow(size_t row) const;
 
-  /// @brief get the ShadowRowDepth as AqlValue
+  /// @brief get the ShadowRowDepth 
   /// Does only work if this row is a shadow row
-  /// Asserts on Maintainer, returns NULL on production
-  AqlValue const& getShadowRowDepth(size_t row) const;
-
-  /// @brief Set the ShadowRowDepth with the given AqlValue
-  /// Transforms this row into a ShadowRow, if it was a DataRow before
-  /// will also overwrite any former value, if set.
-  void setShadowRowDepth(size_t row, AqlValue const& other);
+  /// Asserts on Maintainer, returns 0 on production
+  size_t getShadowRowDepth(size_t row) const;
 
   /// @brief Transform the given row into a ShadowRow.
-  /// namely adding the `0` depth value to.
-  void makeShadowRow(size_t row);
+  void makeShadowRow(size_t row, size_t depth);
 
   /// @brief Transform the given row into a DataRow.
-  /// namely overwrite the depth value with NULL.
   void makeDataRow(size_t row);
-
-  /// @brief Return the indexes of shadowRows within this block.
-  std::set<size_t> const& getShadowRowIndexes() const noexcept;
+  
+  /// @brief Return the indexes of ShadowRows within this block, starting at lower.
+  std::pair<ShadowRowIterator, ShadowRowIterator> getShadowRowIndexesFrom(size_t lower) const noexcept;
 
   /// @brief Quick test if we have any ShadowRows within this block;
   bool hasShadowRows() const noexcept;
+
+  /// @brief return the number of ShadowRows
+  size_t numShadowRows() const noexcept;
 
   /// @brief Moves all values *from* source *to* this block.
   /// Returns the row index of the last written row plus one (may equal size()).
@@ -281,9 +309,6 @@ class AqlItemBlock {
   /// number of registers.
   /// The source block will be cleared after this.
   size_t moveOtherBlockHere(size_t targetRow, AqlItemBlock& source);
-
-  void copySubQueryDepthFromOtherBlock(size_t targetRow, AqlItemBlock const& source,
-                                       size_t sourceRow);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 // MaintainerMode method to validate if ShadowRows organization are consistent.
@@ -299,13 +324,19 @@ class AqlItemBlock {
   size_t decrRefCount() const noexcept;
 
  private:
-  // This includes the amount of internal registers that are not visible to the outside.
-  RegisterCount internalNrRegs() const noexcept;
+  void destroy() noexcept;
+
+  ResourceMonitor& resourceMonitor() noexcept;
+
+  void increaseMemoryUsage(size_t value);
+
+  void decreaseMemoryUsage(size_t value) noexcept;
+
+  void copySubqueryDepthFromOtherBlock(size_t targetRow, AqlItemBlock const& source,
+                                       size_t sourceRow, bool forceShadowRow);
 
   /// @brief get the computed address within the data vector
   size_t getAddress(size_t index, RegisterId varNr) const noexcept;
-
-  size_t getSubqueryDepthAddress(size_t index) const noexcept;
 
   void copySubqueryDepth(size_t currentRow, size_t fromRow);
 
@@ -320,7 +351,9 @@ class AqlItemBlock {
   /// setValue above puts values in the map and increases the count if they
   /// are already there, eraseValue decreases the count. One can ask the
   /// count with valueCount.
-  std::unordered_map<AqlValue, uint32_t> _valueCount;
+  /// note: only AqlValues that point to dynamically allocated memory
+  /// should be added to this map. Other types (VPACK_INLINE) are not supported.
+  std::unordered_map<void const*, ValueInfo> _valueCount;
 
   /// @brief _nrItems, number of rows
   size_t _nrItems = 0;
@@ -335,14 +368,63 @@ class AqlItemBlock {
   /// the _manager when it reaches 0.
   mutable size_t _refCount = 0;
 
-  /// @brief A list of indexes with all shadowRows within
-  /// this ItemBlock. Used to easier split data based on them.
-  std::set<size_t> _shadowRowIndexes;
-
   /// @brief current row index we want to read from. This will be increased
   /// after getRelevantRange function will be called, which will return a tuple
   /// of the old _rowIndex and the newly calculated _rowIndex - 1
   size_t _rowIndex;
+  
+  /// @brief a helper class that manages the storage of shadow rows
+  /// in an AqlItemBlock
+  class ShadowRows {
+   public:
+    /// @brief create a shadow row manager for at most nrItems rows
+    explicit ShadowRows(size_t nrItems);
+
+    /// @brief whether or not there are any shadow rows
+    bool empty() const noexcept;
+
+    /// @brief return the number of shadow rows
+    size_t size() const noexcept;
+    
+    /// @brief whether or not the row is a shadow row
+    bool is(size_t row) const noexcept;
+    
+    /// @brief get the shadow row depth for row
+    size_t getDepth(size_t row) const noexcept;
+
+    /// @brief clear all shadow rows
+    void clear() noexcept;
+    
+    /// @brief resize the container to at most nrItems items
+    void resize(size_t nrItems);
+    
+    /// @brief make a shadow row
+    void make(size_t row, size_t depth);
+    
+    /// @brief make a data row
+    void clear(size_t row);
+    
+    /// @brief clear all shadow rows from row to the end
+    void clearFrom(size_t row);
+    
+    /// @brief return the indexes of ShadowRows, starting at lower
+    std::pair<ShadowRowIterator, ShadowRowIterator> getIndexesFrom(size_t lower) const noexcept;
+
+   private:
+    /// @brief A list of indexes with all ShadowRows within
+    /// this ItemBlock. Used to easier split data based on them.
+    std::vector<uint32_t> _indexes;
+
+    /// @brief all shadow row depths. a value of 0 means "no shadow row",
+    /// values of 1 and higher indicate the actual shadow row depths plus one.
+    /// the vector is lazily allocated and only populated when needed
+    std::vector<uint16_t> _depths;
+
+    /// @brief maximum size of _depths
+    size_t _nrItems;
+  };
+
+  ShadowRows _shadowRows;
 };
 
 }  // namespace aql

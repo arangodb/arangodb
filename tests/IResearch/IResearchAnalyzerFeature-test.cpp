@@ -1313,8 +1313,8 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
     // simulate heartbeat thread
     // We need this call BEFORE creation of collection if at all
     {
-      auto const colPath =
-          "/Current/Collections/_system/" + std::to_string(logicalCollection->id());
+      auto const colPath = "/Current/Collections/_system/" +
+                           std::to_string(logicalCollection->id().id());
       auto const colValue =
           VPackParser::fromJson(
               "{ \"same-as-dummy-shard-id\": { \"indexes\": [ { \"id\": \"43\" "
@@ -1324,7 +1324,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
                       .successful());
       auto const dummyPath = "/Plan/Collections";
       auto const dummyValue = VPackParser::fromJson(
-          "{ \"_system\": { \"" + std::to_string(logicalCollection->id()) +
+          "{ \"_system\": { \"" + std::to_string(logicalCollection->id().id()) +
           "\": { \"name\": \"testCollection\", "
           "\"shards\": { \"same-as-dummy-shard-id\": [ "
           "\"same-as-dummy-shard-server\" ] } } } }");
@@ -2872,17 +2872,13 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // empty nested array
   {
     VPackFunctionParametersWrapper args;
-    auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
-    VPackBuilder builder(*buffer);
+    arangodb::velocypack::Buffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
     builder.openArray();
     builder.openArray();
     builder.close();
     builder.close();
-    auto bufOwner = true;
-    auto aqlValue = arangodb::aql::AqlValue(buffer.get(), bufOwner);
-    if (!bufOwner) {
-      buffer.release();
-    }
+    auto aqlValue = arangodb::aql::AqlValue(std::move(buffer));
     args->push_back(std::move(aqlValue));
     auto result = AqlValueWrapper(impl(nullptr, &trx, *args));
     EXPECT_TRUE(result->isArray());
@@ -2898,8 +2894,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // non-empty nested array
   {
     VPackFunctionParametersWrapper args;
-    auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
-    VPackBuilder builder(*buffer);
+    arangodb::velocypack::Buffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
     builder.openArray();
     builder.openArray();
     builder.openArray();
@@ -2907,11 +2903,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     builder.close();
     builder.close();
     builder.close();
-    auto bufOwner = true;
-    auto aqlValue = arangodb::aql::AqlValue(buffer.get(), bufOwner);
-    if (!bufOwner) {
-      buffer.release();
-    }
+    auto aqlValue = arangodb::aql::AqlValue(std::move(buffer));
     args->push_back(std::move(aqlValue));
     auto result = AqlValueWrapper(impl(nullptr, &trx, *args));
     EXPECT_TRUE(result->isArray());
@@ -2933,18 +2925,14 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
 
   // array of bools
   {
-    auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
-    VPackBuilder builder(*buffer);
+    arangodb::velocypack::Buffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
     builder.openArray();
     builder.add(arangodb::velocypack::Value(true));
     builder.add(arangodb::velocypack::Value(false));
     builder.add(arangodb::velocypack::Value(true));
     builder.close();
-    auto bufOwner = true;
-    auto aqlValue = arangodb::aql::AqlValue(buffer.get(), bufOwner);
-    if (!bufOwner) {
-      buffer.release();
-    }
+    auto aqlValue = arangodb::aql::AqlValue(std::move(buffer));
     VPackFunctionParametersWrapper args;
     args->push_back(std::move(aqlValue));
     irs::string_ref analyzer("text_en");
@@ -2985,8 +2973,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // [ [[]], [['test', 123.4, true]], 123, 123.4, true, null, false, 'jumps', ['quick', 'dog'] ]
   {
     VPackFunctionParametersWrapper args;
-    auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
-    VPackBuilder builder(*buffer);
+    arangodb::velocypack::Buffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
     builder.openArray();
     // [[]]
     builder.openArray();
@@ -3018,11 +3006,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
 
     builder.close();
 
-    auto bufOwner = true;
-    auto aqlValue = arangodb::aql::AqlValue(buffer.get(), bufOwner);
-    if (!bufOwner) {
-      buffer.release();
-    }
+    auto aqlValue = arangodb::aql::AqlValue(std::move(buffer));
     args->push_back(std::move(aqlValue));
     irs::string_ref analyzer("text_en");
     args->emplace_back(analyzer.c_str(), analyzer.size());

@@ -31,7 +31,6 @@
 #include "VocBase/LogicalDataSource.h"
 
 #include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
 
 namespace arangodb {
 
@@ -72,7 +71,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
 
 /// @brief get the underlying transaction collection
 TransactionCollection* SingleCollectionTransaction::resolveTrxCollection() {
-  TRI_ASSERT(_cid > 0);
+  TRI_ASSERT(_cid.isSet());
 
   if (_trxCollection == nullptr) {
     _trxCollection = _state->collection(_cid, _accessType);
@@ -96,9 +95,9 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
   TRI_ASSERT(_documentCollection != nullptr);
   return _documentCollection;
 }
-  
-TRI_voc_cid_t SingleCollectionTransaction::addCollectionAtRuntime(std::string const& name,
-                                                                  AccessMode::Type type) {
+
+DataSourceId SingleCollectionTransaction::addCollectionAtRuntime(std::string const& name,
+                                                                 AccessMode::Type type) {
   TRI_ASSERT(!name.empty());
   if ((name[0] < '0' || name[0] > '9') && 
       name != resolveTrxCollection()->collectionName()) {

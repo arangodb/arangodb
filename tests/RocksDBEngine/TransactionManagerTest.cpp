@@ -48,9 +48,9 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
   EXPECT_TRUE(tm.holdTransactions(500) );
   tm.releaseTransactions();
 
-  tm.registerTransaction(static_cast<TRI_voc_tid_t>(1), false);
+  tm.registerTransaction(static_cast<TransactionId>(1), false, false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
-  tm.unregisterTransaction(static_cast<TRI_voc_tid_t>(1), false);
+  tm.unregisterTransaction(static_cast<TransactionId>(1), false, false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
 
   EXPECT_TRUE(tm.holdTransactions(500) );
@@ -78,7 +78,7 @@ TEST(RocksDBTransactionManager, test_overlapping) {
       cv.notify_all();
     }
 
-    tm.registerTransaction(static_cast<TRI_voc_tid_t>(1), false);
+    tm.registerTransaction(static_cast<TransactionId>(1), false, false);
     EXPECT_EQ(tm.getActiveTransactionCount(), 1);
   };
 
@@ -92,6 +92,6 @@ TEST(RocksDBTransactionManager, test_overlapping) {
 
   reader.join();
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
-  tm.unregisterTransaction(static_cast<TRI_voc_tid_t>(1), false);
+  tm.unregisterTransaction(static_cast<TransactionId>(1), false, false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
 }

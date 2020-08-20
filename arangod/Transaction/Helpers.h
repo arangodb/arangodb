@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
@@ -82,12 +83,12 @@ VPackSlice extractToFromDocument(VPackSlice);
 /// this is an optimized version used when loading collections, WAL
 /// collection and compaction
 void extractKeyAndRevFromDocument(VPackSlice slice, VPackSlice& keySlice,
-                                  TRI_voc_rid_t& revisionId);
+                                  RevisionId& revisionId);
 
 velocypack::StringRef extractCollectionFromId(velocypack::StringRef id);
 
 /// @brief extract _rev from a database document
-TRI_voc_rid_t extractRevFromDocument(VPackSlice slice);
+RevisionId extractRevFromDocument(VPackSlice slice);
 VPackSlice extractRevSliceFromDocument(VPackSlice slice);
 
 OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count,
@@ -147,23 +148,7 @@ class BuilderLeaser {
   transaction::Context* _transactionContext;
   arangodb::velocypack::Builder* _builder;
 };
-
-inline bool isCoordinatorTransactionId(TRI_voc_tid_t tid) {
-  return (tid % 4) == 0;
-}
-
-inline bool isFollowerTransactionId(TRI_voc_tid_t tid) {
-  return (tid % 4) == 2;
-}
-
-inline bool isLeaderTransactionId(TRI_voc_tid_t tid) { return (tid % 4) == 1; }
-
-inline bool isChildTransactionId(TRI_voc_tid_t tid) {
-  return isLeaderTransactionId(tid) || isFollowerTransactionId(tid);
-}
-
-inline bool isLegacyTransactionId(TRI_voc_tid_t tid) { return (tid % 4) == 3; }
-
+  
 }  // namespace transaction
 }  // namespace arangodb
 

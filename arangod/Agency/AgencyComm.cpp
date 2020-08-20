@@ -771,7 +771,10 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
 }
 
 AgencyCommResult AgencyComm::dump() {
-  std::string url = AgencyComm::AGENCY_URL_PREFIX + "/state";
+  // We only get the dump from the leader, else its snapshot might be wrong
+  // or at least outdated. If there is no leader, one has to contact the
+  // agency directly with `/_api/agency/state`.
+  std::string url = AgencyComm::AGENCY_URL_PREFIX + "/state?redirectToLeader=true";
 
   AgencyCommResult result =
       sendWithFailover(arangodb::rest::RequestType::GET,

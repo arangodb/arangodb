@@ -85,7 +85,7 @@ class IResearchView final: public arangodb::LogicalView {
   class Snapshot : public irs::index_reader {
    public:
     // @return cid of the sub-reader at operator['offset'] or 0 if undefined
-    virtual TRI_voc_cid_t cid(size_t offset) const noexcept = 0;
+    virtual DataSourceId cid(size_t offset) const noexcept = 0;
   };
 
   /// @enum snapshot getting mode
@@ -155,7 +155,7 @@ class IResearchView final: public arangodb::LogicalView {
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
   Snapshot const* snapshot(transaction::Methods& trx, SnapshotMode mode = SnapshotMode::Find,
-                           ::arangodb::containers::HashSet<TRI_voc_cid_t> const* shards = nullptr,
+                           ::arangodb::containers::HashSet<DataSourceId> const* shards = nullptr,
                            void const* key = nullptr) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -163,7 +163,7 @@ class IResearchView final: public arangodb::LogicalView {
   ///        IDs
   /// @return success == view does not track collection
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result unlink(TRI_voc_cid_t cid) noexcept;
+  arangodb::Result unlink(DataSourceId cid) noexcept;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief visit all collection IDs that were added to the view
@@ -218,7 +218,7 @@ class IResearchView final: public arangodb::LogicalView {
   struct ViewFactory; // forward declaration
 
   AsyncViewPtr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
-  std::unordered_map<TRI_voc_cid_t, AsyncLinkPtr> _links; // registered links (value may be nullptr on single-server if link did not come up yet) FIXME TODO maybe this should be asyncSelf?
+  std::unordered_map<DataSourceId, AsyncLinkPtr> _links;  // registered links (value may be nullptr on single-server if link did not come up yet) FIXME TODO maybe this should be asyncSelf?
   IResearchViewMeta _meta; // the view configuration
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member '_meta', '_links'
   std::mutex _updateLinksLock; // prevents simultaneous 'updateLinks'
@@ -228,7 +228,6 @@ class IResearchView final: public arangodb::LogicalView {
   IResearchView( // constructor
     TRI_vocbase_t& vocbase, // view vocbase
     arangodb::velocypack::Slice const& info, // view definition
-    uint64_t planVersion, // view plan version
     IResearchViewMeta&& meta // view meta
   );
 

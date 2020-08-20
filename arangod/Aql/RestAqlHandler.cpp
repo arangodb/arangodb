@@ -29,10 +29,10 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/BlocksWithClients.h"
+#include "Aql/ClusterQuery.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -161,12 +161,7 @@ void RestAqlHandler::setupClusterQuery() {
                   "body must be an object with attribute \"variables\"");
     return;
   }
-  // If we have a new format then it has to be included here.
-  // If not default to classic (old coordinator will not send it)
-  auto format = static_cast<SerializationFormat>(
-      VelocyPackHelper::getNumericValue<SerializationFormatType>(
-          querySlice, StaticStrings::SerializationFormat,
-          static_cast<SerializationFormatType>(SerializationFormat::CLASSIC)));
+  
   // Now we need to create shared_ptr<VPackBuilder>
   // That contains the old-style cluster snippet in order
   // to prepare create a Query object.
@@ -218,7 +213,6 @@ void RestAqlHandler::setupClusterQuery() {
   }
   collectionBuilder.close();
   
-  
   // simon: making this write breaks queries where DOCUMENT function
   // is used in a coordinator-snippet above a DBServer-snippet
   AccessMode::Type access = AccessMode::Type::READ;
@@ -243,7 +237,7 @@ void RestAqlHandler::setupClusterQuery() {
     generateError(revisionRes);
     return;
   }
-  q->prepareClusterQuery(format, querySlice, collectionBuilder.slice(),
+  q->prepareClusterQuery(querySlice, collectionBuilder.slice(),
                          variablesSlice, snippetsSlice,
                          traverserSlice, answerBuilder, analyzersRevision);
 
@@ -256,9 +250,13 @@ void RestAqlHandler::setupClusterQuery() {
 }
 
 // DELETE method for /_api/aql/kill/<queryId>, (internal)
+// simon: only used for <= 3.6
 bool RestAqlHandler::killQuery(std::string const& idString) {
-  _qId = arangodb::basics::StringUtils::uint64(idString);
-  return _queryRegistry->destroyEngine(_qId, TRI_ERROR_QUERY_KILLED);
+  auto qid = arangodb::basics::StringUtils::uint64(idString);
+  if (qid != 0) {
+    return _queryRegistry->destroyEngine(qid, TRI_ERROR_QUERY_KILLED);
+  }
+  return false;
 }
 
 // PUT method for /_api/aql/<operation>/<queryId>, (internal)
@@ -359,7 +357,7 @@ RestStatus RestAqlHandler::execute() {
         return RestStatus::DONE;
       }
       if (suffixes[0] == "finish") {
-        handleFinishQuery(suffixes[1]);
+        return handleFinishQuery(suffixes[1]);
       } else if (suffixes[0] == "kill" && killQuery(suffixes[1])) {
         VPackBuilder answerBody;
         {
@@ -396,6 +394,8 @@ RestStatus RestAqlHandler::continueExecute() {
     TRI_ASSERT(suffixes.size() == 2);
     TRI_ASSERT(_engine != nullptr);
     return useQuery(suffixes[0], suffixes[1]);
+  } else if (type == rest::RequestType::DELETE_REQ && suffixes[0] == "finish") {
+    return RestStatus::DONE; // uses futures
   }
   generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                 "continued non-continuable method for /_api/aql");
@@ -719,36 +719,6 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     }
     answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
     answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
-  } else if (operation == "shutdown") { // simon: only used in 3.6,
-    // 3.7 uses DELETE /_api/aql/finish
-    int errorCode = VelocyPackHelper::getNumericValue<int>(querySlice, StaticStrings::Code,
-                                                           TRI_ERROR_INTERNAL);
-
-    auto [state, res] = _engine->shutdown(errorCode);
-    if (state == ExecutionState::WAITING) {
-      return RestStatus::WAITING;
-    }
-
-    // return statistics
-    answerBuilder.add(VPackValue("stats"));
-    
-    ExecutionStats stats;
-    _engine->collectExecutionStats(stats);
-    stats.toVelocyPack(answerBuilder, _engine->getQuery().queryOptions().fullCount);
-    
-    // return warnings if present
-    _engine->getQuery().warnings().toVelocyPack(answerBuilder);
-    _engine->sharedState()->resetWakeupHandler();
-
-    // return the engine to the registry
-    _engine = nullptr;
-    _queryRegistry->closeEngine(_qId);
-
-    // delete the engine from the registry
-    _queryRegistry->destroyEngine(_qId, errorCode); // will destroy the query in the end
-    _qId = 0;
-    answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
-    answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return RestStatus::DONE;
@@ -767,40 +737,39 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
 }
 
 // handle query finalization for all engines
-void RestAqlHandler::handleFinishQuery(std::string const& idString) {
+RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
   auto qid = arangodb::basics::StringUtils::uint64(idString);
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
   if (!success) {
-    return;
+    return RestStatus::DONE;
   }
   
   int errorCode = VelocyPackHelper::getNumericValue<int>(querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
-  
-  auto query = _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
+  std::unique_ptr<ClusterQuery> query = _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
   if (!query) {
     // this may be a race between query garbage collection and the client
-    // shutting down the query. it is debatable whether this is an actual error 
+    // shutting down the query. it is debatable whether this is an actual error
     // if we only want to abort the query...
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-    return;
+    return RestStatus::DONE;
   }
+  
+  auto f = query->finalizeClusterQuery(errorCode);
+
+  return waitForFuture(std::move(f)
+                       .thenValue([me = shared_from_this(), this,
+                                   q = std::move(query)](Result res) {
+    VPackBufferUInt8 buffer;
+    VPackBuilder answerBuilder(buffer);
+    answerBuilder.openObject(/*unindexed*/true);
+    answerBuilder.add(VPackValue("stats"));
+    q->executionStats().toVelocyPack(answerBuilder, q->queryOptions().fullCount);
+    q->warnings().toVelocyPack(answerBuilder);
+    answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
+    answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
+    answerBuilder.close();
     
-  ExecutionStats stats;
-  auto res = query->finalizeClusterQuery(stats, errorCode);
-  
-  VPackBufferUInt8 buffer;
-  VPackBuilder answerBuilder(buffer);
-  answerBuilder.openObject(/*unindexed*/true);
-  answerBuilder.add(VPackValue("stats"));
-  
-  stats.toVelocyPack(answerBuilder, query->queryOptions().fullCount);
-  // return warnings if present
-  query->warnings().toVelocyPack(answerBuilder);
-  
-  answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
-  answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
-  answerBuilder.close();
-  
-  generateResult(rest::ResponseCode::OK, std::move(buffer));
+    generateResult(rest::ResponseCode::OK, std::move(buffer));
+  }));
 }

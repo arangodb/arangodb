@@ -649,16 +649,13 @@ void ExecutionNode::cloneRegisterPlan(ExecutionNode* dependency) {
 }
 
 bool ExecutionNode::isEqualTo(ExecutionNode const& other) const {
-  std::function<bool(ExecutionNode* const, ExecutionNode* const)> comparator =
-      [](ExecutionNode* const l, ExecutionNode* const r) {
-        return l->isEqualTo(*r);
-      };
-
   return ((this->getType() == other.getType()) && (_id == other._id) &&
           (_depth == other._depth) &&
           (isInSplicedSubquery() == other.isInSplicedSubquery()) &&
           (std::equal(_dependencies.begin(), _dependencies.end(),
-                      other._dependencies.begin(), comparator)));
+                      other._dependencies.begin(), [](ExecutionNode* const l, ExecutionNode* const r) {
+            return l->isEqualTo(*r);
+          })));
 }
 
 /// @brief invalidate the cost estimation for the node and its dependencies

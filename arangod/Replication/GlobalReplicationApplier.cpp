@@ -101,9 +101,9 @@ std::shared_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer() co
 }
 
 std::shared_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(
-    TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) const {
+    TRI_voc_tick_t initialTick, bool useTick) const {
   return std::make_shared<arangodb::GlobalTailingSyncer>(_configuration, initialTick,
-                                                         useTick, barrierId);
+                                                         useTick);
 }
 
 std::string GlobalReplicationApplier::getStateFilename() const {

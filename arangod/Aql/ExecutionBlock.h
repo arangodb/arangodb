@@ -86,15 +86,10 @@ class ExecutionBlock {
   ///    possibly repeat many times:
   ///      initializeCursor(...)   (optionally with bind parameters)
   ///      // use cursor functionality
-  ///    then the ExecutionEngine automatically calls
-  ///      shutdown()
   ///    DESTRUCTOR
 
   /// @brief initializeCursor, could be called multiple times
   [[nodiscard]] virtual std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input);
-
-  /// @brief shutdown, will be called exactly once for the whole query
-  [[nodiscard]] virtual std::pair<ExecutionState, Result> shutdown(int errorCode);
 
   [[nodiscard]] ExecutionState getHasMoreState();
 
@@ -137,10 +132,6 @@ class ExecutionBlock {
   /// @brief the execution engine
   ExecutionEngine* _engine;
 
-  /// @brief the Result returned during the shutdown phase. Is kept for multiple
-  ///        waiting phases.
-  Result _shutdownResult;
-
   /// @brief the execution state of the dependency
   ///        used to determine HASMORE or DONE better
   ExecutionState _upstreamState;
@@ -160,7 +151,7 @@ class ExecutionBlock {
   std::vector<ExecutionBlock*> _dependencies;
 
   /// @brief position in the dependencies while iterating through them
-  ///        used in initializeCursor and shutdown.
+  ///        used in initializeCursor .
   ///        Needs to be set to .end() everytime we modify _dependencies
   std::vector<ExecutionBlock*>::iterator _dependencyPos;
   

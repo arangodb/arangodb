@@ -23,10 +23,6 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_META_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_META_H 1
 
-#include "Basics/ReadWriteLock.h"
-#include "Basics/Result.h"
-#include "VocBase/voc-types.h"
-
 #include <mutex>
 #include <map>
 #include <set>
@@ -35,6 +31,12 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
+#include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
+#include "VocBase/Identifiers/RevisionId.h"
+#include "VocBase/Identifiers/TransactionId.h"
+#include "VocBase/voc-types.h"
 
 namespace rocksdb {
 class DB;
@@ -55,9 +57,9 @@ struct RocksDBMetadata final {
     rocksdb::SequenceNumber _committedSeq; /// safe sequence number for recovery
     uint64_t _added; /// number of added documents
     uint64_t _removed; /// number of removed documents
-    TRI_voc_rid_t _revisionId; /// @brief last used revision id
+    RevisionId _revisionId;  /// @brief last used revision id
 
-    DocCount(rocksdb::SequenceNumber sq, uint64_t added, uint64_t removed, TRI_voc_rid_t rid)
+    DocCount(rocksdb::SequenceNumber sq, uint64_t added, uint64_t removed, RevisionId rid)
         : _committedSeq(sq), _added(added), _removed(removed), _revisionId(rid) {}
 
     explicit DocCount(arangodb::velocypack::Slice const&);
@@ -80,7 +82,7 @@ struct RocksDBMetadata final {
    * @param  seq   The sequence number immediately prior to call
    * @return       May return error if we fail to allocate and place blocker
    */
-  Result placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq);
+  Result placeBlocker(TransactionId trxId, rocksdb::SequenceNumber seq);
 
   /**
    * @brief Update a blocker to allow proper commit/serialize semantics
@@ -92,7 +94,7 @@ struct RocksDBMetadata final {
    * @param  seq   The sequence number from the internal snapshot
    * @return       May return error if we fail to allocate and place blocker
    */
-  Result updateBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq);
+  Result updateBlocker(TransactionId trxId, rocksdb::SequenceNumber seq);
 
   /**
    * @brief Removes an existing transaction blocker
@@ -104,7 +106,7 @@ struct RocksDBMetadata final {
    * @param trxId Identifier for active transaction (should match input to
    *              earlier `placeBlocker` call)
    */
-  void removeBlocker(TRI_voc_tid_t trxId);
+  void removeBlocker(TransactionId trxId);
 
   /// @brief returns the largest safe seq to squash updates against
   rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber maxCommitSeq) const;
@@ -113,7 +115,7 @@ struct RocksDBMetadata final {
   DocCount& countUnsafe() { return _count; }
 
   /// @brief buffer a counter adjustment
-  void adjustNumberDocuments(rocksdb::SequenceNumber seq, TRI_voc_rid_t revId, int64_t adj);
+  void adjustNumberDocuments(rocksdb::SequenceNumber seq, RevisionId revId, int64_t adj);
 
   /// @brief serialize the collection metadata
   arangodb::Result serializeMeta(rocksdb::WriteBatch&, LogicalCollection&,
@@ -128,8 +130,8 @@ struct RocksDBMetadata final {
   uint64_t numberDocuments() const {
     return _numberDocuments.load(std::memory_order_acquire);
   }
-  
-  TRI_voc_rid_t revisionId() const {
+
+  RevisionId revisionId() const {
     return _revisionId.load(std::memory_order_acquire);
   }
 
@@ -154,15 +156,15 @@ public:
 
   mutable arangodb::basics::ReadWriteLock _blockerLock;
   /// @brief blocker identifies a transaction being committed
-  std::map<TRI_voc_tid_t, rocksdb::SequenceNumber> _blockers;
-  std::set<std::pair<rocksdb::SequenceNumber, TRI_voc_tid_t>> _blockersBySeq;
+  std::map<TransactionId, rocksdb::SequenceNumber> _blockers;
+  std::set<std::pair<rocksdb::SequenceNumber, TransactionId>> _blockersBySeq;
 
   DocCount _count;  /// @brief document count struct
 
   /// document counter adjustment
   struct Adjustment {
     /// @brief last used revision id
-    TRI_voc_rid_t revisionId;
+    RevisionId revisionId;
     /// @brief number of added / removed documents
     int64_t adjustment;
   };
@@ -175,7 +177,7 @@ public:
   
   // below values are updated immediately, but are not serialized
   std::atomic<uint64_t> _numberDocuments;
-  std::atomic<TRI_voc_rid_t> _revisionId;
+  std::atomic<RevisionId> _revisionId;
 };
 }  // namespace arangodb
 

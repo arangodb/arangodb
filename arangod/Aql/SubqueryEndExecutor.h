@@ -32,7 +32,6 @@
 #include "Aql/Stats.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace aql {
@@ -78,6 +77,8 @@ class SubqueryEndExecutor {
   SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos);
   ~SubqueryEndExecutor();
 
+  void initializeCursor();
+
   // produceRows accumulates all input rows it can get into _accumulator, which
   // will then be read out by ExecutionBlockImpl
   // TODO: can the production of output be moved to produceRows again?
@@ -112,7 +113,7 @@ class SubqueryEndExecutor {
   // control of it to hand over to an AqlValue
   class Accumulator {
    public:
-    explicit Accumulator(VPackOptions const* options);
+    explicit Accumulator(velocypack::Options const* options);
     void reset();
 
     void addValue(AqlValue const& value);
@@ -122,9 +123,9 @@ class SubqueryEndExecutor {
     size_t numValues() const noexcept;
 
    private:
-    VPackOptions const* const _options;
-    std::unique_ptr<arangodb::velocypack::Buffer<uint8_t>> _buffer{nullptr};
-    std::unique_ptr<VPackBuilder> _builder{nullptr};
+    velocypack::Options const* const _options;
+    arangodb::velocypack::Buffer<uint8_t> _buffer;
+    velocypack::Builder _builder;
     size_t _numValues{0};
   };
 

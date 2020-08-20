@@ -1,10 +1,137 @@
 devel
 -----
+* Fix internal issue #742: Add tick storage in index meta payload after 
+  truncate operation
+
+* Fixed: During a move-shard job which moves the leader there is a
+  situation in which the old owner of a shard can reclaim ownership
+  (after having resigned already), with a small race where it allows to
+  write documents only locally, but then continue the move-shard to a
+  server without those documents. An additional bug in the MoveShard
+  Supervision job would then leave the shard in a bad configuration
+  with a resigned leader permanently in charge.
+
+* Fixed issue #12304: insert in transaction causing com.arangodb.ArangoDBException: 
+  Response: 500, Error: 4 - Builder value not yet sealed. 
+
+  This happened when too deeply-nested documents (more than 63 levels of nesting)
+  were inserted. While indefinite nesting is still not supported, the error message
+  has been corrected from the internal HTTP 500 error "Builder value not yet sealed"
+  to the correct HTTP 400 "Bad parameter".
+
+* Show optimizer rules with highest execution times in explain output.
+
+* Fixed that dropping a vanished follower works again. An exception response
+  to the replication request is now handled properly.
+
+* Fixed bad behaviour in agency supervision in some corner cases involving
+  already resigned leaders in Current.
+
+* Fixed a problem with potentially lost updates because a failover could
+  happen at a wrong time or a restarted leader could come back at an
+  unlucky time.
+
+* Fixed issue BTS-168: Fixed undefined behaviour that did trigger
+  segfaults on cluster startups. It is only witnessed for
+  MacOS based builds. The issue could be triggered by any network connection.
+  This behaviour is not part of any released version.
+
+* Fixed issue ES-664: the optimizer rule `inline-subqueries` must pull out
+  subqueries that contains a COLLECT statement if the subquery is itself called
+	from within a loop. Otherwise the COLLECT will be applied to the values in the
+	outer FOR loop, which can produce a different result.
+
+* Fixed a blockage on hotbackup when writes are happening concurrently, since
+  followers could no longer replicate leader transactions.
+
+* Updated arangosync to 0.7.9.
+
+* Fixed hotbackup S3 credentials validation and error reporting for upload
+  and download.
+
+* Make AQL user-defined functions (UDFs) work in a cluster in case the UDF runs
+  an AQL query inside its own function code (BTS-159).
+
+* Fix: writeConcern is now honored correctly (ES-655).
+
+* Fix: The 'sorted' COLLECT variant would return undefined instead of null when
+  grouping by a null value.
+
+* Hard-code returned "planVersion" attribute of collections to a value of 1.
+  Before 3.7, the most recent Plan version from the agency was returned inside
+  "planVersion".
+  In 3.7, the attribute contained the Plan version that was in use when the 
+  in-memory LogicalCollection object was last constructed. The object was
+  always reconstructed in case the underlying Plan data for the collection
+  changed or when a collection contained links to arangosearch views.
+  This made the attribute relatively useless for any real-world use cases, and
+  so we are now hard-coding it to simplify the internal code. Using the attribute
+  in client applications is also deprecated.
+
+* Slightly improve the performance of cluster DDL maintenance operations.
+
+* Don't prevent concurrent synchronization of different shards from the same
+  database. Previously only one shard was synchronized at a time per database.
+
+* Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late materialzation
+  after OneShard optimization
+  
+* Improve performance of many non-subquery AQL queries, by optimizing away
+  some storage overhead for subquery context data.
+
+* Improve performance of internal cluster Plan and Current reload operations. 
+
+* Fixed issue #12349: arangosh compact Arangoerror 404.
+
+* Wait until restore task queue is idle before shutting down.
+
+* Fix a race problem in the unit tests w.r.t. PlanSyncer.
+
+* Always fetch data for /_api/cluster/agency-dump from leader of the agency.
+  Add option "redirectToLeader=true" to internal /_api/agency/state API.
+
+* Fixed issue #12297: ArangoDB 3.6.5 Swagger Error?
+  This issue caused the Swagger UI for displaying the APIs of user-defined Foxx
+  services to remain invisible in the web UI, because of a JavaScript exception.
+  This PR fixes the JavaScript exception, so the services API is displayed
+  again properly.
+
+* Fixed issue #12248: Web UI on 3.6.5: 404 error on adding new index.
+  This issue caused "404: not found" errors when creating indexes via the web
+  UI. The indexes were created successfully despite the error message popping
+  up. This fix removes the misleading unconditional error message.
+
+* Slightly improved the performance of some k-shortest-path queries.
+
+* Added startup option `--rocksdb.encryption-key-rotation` to activate/deactivate
+  the encryption key rotation REST API. The API is disabled by default.
+
+* Add internal caching for LogicalCollection objects inside ClusterInfo::loadPlan.
+  This allows avoiding the recreation of LogicalCollection objects that did not
+  change from one loadPlan run to the next. It reduces CPU usage considerably on
+  both Coordinators and DB-servers.
+
+* Fixed undefined behavior in AQL COLLECT with multiple group variables (issue
+  #12267).
+  If you are grouping on "large" values that occur multiple times in different
+  groups, and two different groups with the same large value are written to
+  different batches in the output then the memory could be invalid.
+  e.g. the following query is affected:
+  ```
+  FOR d IN documents
+  FOR batchSizeFiller IN 1..1001
+  COLLECT largeVal = d.largeValue, t = batchSizeFiller
+  RETURN 1
+  ```
 
 * Revive faster out-of-range comparator for secondary index scans that do a full 
   collection index scan for index types "hash", "skiplist", "persistent". 
 
 * Fixed internal issue #733: Primary sort compression in views now used properly.
+
+* Errors with error code 1200 (Arango conflict) will now get the HTTP response 
+  code 409 (Conflict) instead of 412 (Precondition failed), unless "if-match" header
+  was used in `_api/document` or `_api/gharial`.
 
 * Fix spurious lock timeout errors when restoring collections.
 

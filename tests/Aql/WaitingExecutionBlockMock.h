@@ -70,8 +70,6 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
                             WaitingBehaviour variant = WaitingBehaviour::ALWAYS,
                             size_t subqueryDepth = 0);
 
-  virtual std::pair<arangodb::aql::ExecutionState, Result> shutdown(int errorCode) override;
-
   /**
    * @brief Initialize the cursor. Return values will be alternating.
    *

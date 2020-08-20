@@ -26,9 +26,13 @@
 #include "utils/utf8_utils.hpp"
 
 TEST(utf8_utils_test, static_const) {
-  ASSERT_EQ(4, size_t(irs::utf8_utils::MAX_CODE_POINT_SIZE));
-  ASSERT_EQ(0, size_t(irs::utf8_utils::MIN_CODE_POINT));
-  ASSERT_EQ(0x10FFFF, size_t(irs::utf8_utils::MAX_CODE_POINT));
+  static_assert(4 == irs::utf8_utils::MAX_CODE_POINT_SIZE);
+  static_assert(0 == irs::utf8_utils::MIN_CODE_POINT);
+  static_assert(0x10FFFF == irs::utf8_utils::MAX_CODE_POINT);
+  static_assert(0x80 == irs::utf8_utils::MIN_2BYTES_CODE_POINT);
+  static_assert(0x800 == irs::utf8_utils::MIN_3BYTES_CODE_POINT);
+  static_assert(0x10000 == irs::utf8_utils::MIN_4BYTES_CODE_POINT);
+  static_assert(std::numeric_limits<uint32_t>::max() == irs::utf8_utils::INVALID_CODE_POINT);
 }
 
 TEST(utf8_utils_test, test) {

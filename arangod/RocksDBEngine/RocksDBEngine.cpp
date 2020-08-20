@@ -889,12 +889,12 @@ std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
 }
 
 std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
-    TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, transaction::Options const& options) {
+    TRI_vocbase_t& vocbase, TransactionId tid, transaction::Options const& options) {
   return std::make_shared<RocksDBTransactionState>(vocbase, tid, options);
 }
 
 std::unique_ptr<TransactionCollection> RocksDBEngine::createTransactionCollection(
-    TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) {
+    TransactionState& state, DataSourceId cid, AccessMode::Type accessType) {
   return std::unique_ptr<TransactionCollection>(
       new RocksDBTransactionCollection(&state, cid, accessType));
 }
@@ -965,7 +965,7 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
   result.close();
 }
 
-void RocksDBEngine::getCollectionInfo(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+void RocksDBEngine::getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
                                       arangodb::velocypack::Builder& builder,
                                       bool includeIndexes, TRI_voc_tick_t maxTick) {
   builder.openObject();
@@ -1206,7 +1206,7 @@ Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& s
 }
 
 int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
-                                               TRI_voc_cid_t cid, VPackSlice const& slice,
+                                               DataSourceId cid, VPackSlice const& slice,
                                                RocksDBLogValue&& logValue) {
   rocksdb::DB* db = _db->GetRootDB();
 
@@ -1258,13 +1258,13 @@ TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
 
 void RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
                                      LogicalCollection const& collection) {
-  const TRI_voc_cid_t cid = collection.id();
-  TRI_ASSERT(cid != 0);
+  const DataSourceId cid = collection.id();
+  TRI_ASSERT(cid.isSet());
 
   auto builder = collection.toVelocyPackIgnore(
       {"path", "statusString"},
       LogicalDataSource::Serialization::PersistenceWithInProgress);
-  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
+  TRI_UpdateTickServer(cid.id());
 
   int res =
       writeCreateCollectionMarker(vocbase.id(), cid, builder.slice(),
@@ -1440,7 +1440,7 @@ arangodb::Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
   return arangodb::Result(res);
 }
 
-Result RocksDBEngine::createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
+Result RocksDBEngine::createView(TRI_vocbase_t& vocbase, DataSourceId id,
                                  arangodb::LogicalView const& view) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC("0bad8", DEBUG, Logger::ENGINES) << "RocksDBEngine::createView";
@@ -1567,20 +1567,22 @@ void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
 }
 
 void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
-                                         TRI_voc_cid_t cid) {
+                                         DataSourceId cid) {
   if (objectId != 0) {
     WRITE_LOCKER(guard, _mapLock);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto it = _collectionMap.find(objectId);
     if (it != _collectionMap.end()) {
       if (it->second.first != did || it->second.second != cid) {
-        LOG_TOPIC("80e81", ERR, Logger::FIXME) 
-            << "trying to add objectId: " << objectId << ", did: " << did << ", cid: " << cid 
-            << ", found in map: did: " << it->second.first << ", cid: " << it->second.second
-            << ", map contains " << _collectionMap.size() << " entries";
+        LOG_TOPIC("80e81", ERR, Logger::FIXME)
+            << "trying to add objectId: " << objectId << ", did: " << did
+            << ", cid: " << cid.id() << ", found in map: did: " << it->second.first
+            << ", cid: " << it->second.second.id() << ", map contains "
+            << _collectionMap.size() << " entries";
         for (auto const& it : _collectionMap) {
-          LOG_TOPIC("77de9", ERR, Logger::FIXME) 
-              << "- objectId: " << it.first << " => (did: " << it.second.first << ", cid: " << it.second.second << ")";
+          LOG_TOPIC("77de9", ERR, Logger::FIXME)
+              << "- objectId: " << it.first << " => (did: " << it.second.first
+              << ", cid: " << it.second.second.id() << ")";
         }
       }
       TRI_ASSERT(it->second.first == did);
@@ -1591,8 +1593,8 @@ void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
   }
 }
 
-std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> RocksDBEngine::collectionMappings() const {
-  std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> res;
+std::vector<std::pair<TRI_voc_tick_t, DataSourceId>> RocksDBEngine::collectionMappings() const {
+  std::vector<std::pair<TRI_voc_tick_t, DataSourceId>> res;
   READ_LOCKER(guard, _mapLock);
   for (auto const& it : _collectionMap) {
     res.emplace_back(it.second.first, it.second.second);
@@ -1601,7 +1603,7 @@ std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> RocksDBEngine::collectionM
 }
 
 void RocksDBEngine::addIndexMapping(uint64_t objectId, TRI_voc_tick_t did,
-                                    TRI_voc_cid_t cid, IndexId iid) {
+                                    DataSourceId cid, IndexId iid) {
   if (objectId != 0) {
     WRITE_LOCKER(guard, _mapLock);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1627,7 +1629,7 @@ RocksDBEngine::CollectionPair RocksDBEngine::mapObjectToCollection(uint64_t obje
   READ_LOCKER(guard, _mapLock);
   auto it = _collectionMap.find(objectId);
   if (it == _collectionMap.end()) {
-    return {0, 0};
+    return {0, DataSourceId::none()};
   }
   return it->second;
 }
@@ -2410,8 +2412,9 @@ Result RocksDBEngine::lastLogger(TRI_vocbase_t& vocbase,
   size_t chunkSize = 32 * 1024 * 1024;  // TODO: determine good default value?
 
   builder.openArray();
-  RocksDBReplicationResult rep = rocksutils::tailWal(&vocbase, tickStart, tickEnd, chunkSize,
-                                                     includeSystem, 0, builder);
+  RocksDBReplicationResult rep =
+      rocksutils::tailWal(&vocbase, tickStart, tickEnd, chunkSize,
+                          includeSystem, DataSourceId::none(), builder);
   builder.close();
 
   return std::move(rep).result();

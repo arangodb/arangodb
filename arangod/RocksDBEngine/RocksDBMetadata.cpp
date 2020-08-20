@@ -62,7 +62,7 @@ RocksDBMetadata::DocCount::DocCount(VPackSlice const& slice)
       TRI_ASSERT(array.size() == 4);
       this->_removed = (*(++array)).getUInt();
     }
-    this->_revisionId = (*(++array)).getUInt();
+    this->_revisionId = RevisionId{(*(++array)).getUInt()};
   }
 }
 
@@ -71,12 +71,14 @@ void RocksDBMetadata::DocCount::toVelocyPack(VPackBuilder& b) const {
   b.add(VPackValue(_committedSeq));
   b.add(VPackValue(_added));
   b.add(VPackValue(_removed));
-  b.add(VPackValue(_revisionId));
+  b.add(VPackValue(_revisionId.id()));
   b.close();
 }
 
 RocksDBMetadata::RocksDBMetadata()
-  : _count(0, 0, 0, 0), _numberDocuments(0), _revisionId(0) {}
+    : _count(0, 0, 0, RevisionId::none()),
+      _numberDocuments(0),
+      _revisionId(RevisionId::none()) {}
 
 /**
  * @brief Place a blocker to allow proper commit/serialize semantics
@@ -90,7 +92,7 @@ RocksDBMetadata::RocksDBMetadata()
  * @param  seq   The sequence number immediately prior to call
  * @return       May return error if we fail to allocate and place blocker
  */
-Result RocksDBMetadata::placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq) {
+Result RocksDBMetadata::placeBlocker(TransactionId trxId, rocksdb::SequenceNumber seq) {
   return basics::catchToResult([&]() -> Result {
     Result res;
     WRITE_LOCKER(locker, _blockerLock);
@@ -117,7 +119,7 @@ Result RocksDBMetadata::placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumbe
  * @param  seq   The sequence number from the internal snapshot
  * @return       May return error if we fail to allocate and place blocker
  */
-Result RocksDBMetadata::updateBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq) {
+Result RocksDBMetadata::updateBlocker(TransactionId trxId, rocksdb::SequenceNumber seq) {
   return basics::catchToResult([&]() -> Result {
     Result res;
     WRITE_LOCKER(locker, _blockerLock);
@@ -153,7 +155,7 @@ Result RocksDBMetadata::updateBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumb
  * @param trxId Identifier for active transaction (should match input to
  *              earlier `placeBlocker` call)
  */
-void RocksDBMetadata::removeBlocker(TRI_voc_tid_t trxId) {
+void RocksDBMetadata::removeBlocker(TransactionId trxId) {
   WRITE_LOCKER(locker, _blockerLock);
   auto it = _blockers.find(trxId);
   if (ADB_LIKELY(_blockers.end() != it)) {
@@ -199,7 +201,7 @@ bool RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumber commitSeq) {
     } else if (it->second.adjustment < 0) {
       _count._removed += -(it->second.adjustment);
     }
-    if (it->second.revisionId != 0) {
+    if (it->second.revisionId.isSet()) {
       _count._revisionId = it->second.revisionId;
     }
     it = _stagedAdjs.erase(it);
@@ -211,14 +213,14 @@ bool RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumber commitSeq) {
 
 /// @brief buffer a counter adjustment
 void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
-                                            TRI_voc_rid_t revId, int64_t adj) {
+                                            RevisionId revId, int64_t adj) {
   TRI_ASSERT(seq != 0 && (adj || revId));
   TRI_ASSERT(seq > _count._committedSeq);
   std::lock_guard<std::mutex> guard(_bufferLock);
   _bufferedAdjs.try_emplace(seq, Adjustment{revId, adj});
 
   // update immediately to ensure the user sees a correct value
-  if (revId != 0) {
+  if (revId.isSet()) {
     _revisionId.store(revId);
   }
   if (adj < 0) {
@@ -468,12 +470,13 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
       return rocksutils::convertStatus(s);
     } else if (s.IsNotFound()) {
       LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
-          << "no revision tree found for collection with id '" << coll.id()
+          << "no revision tree found for collection with id '" << coll.id().id()
           << "', rebuilding";
       Result res = rcoll->rebuildRevisionTree();
       if (res.fail()) {
         LOG_TOPIC("ecdbd", WARN, Logger::ENGINES)
-            << "failed to rebuild revision tree for collection '" << coll.id() << "'";
+            << "failed to rebuild revision tree for collection '"
+            << coll.id().id() << "'";
       }
     } else {
       auto tree = containers::RevisionTree::fromBuffer(
@@ -489,11 +492,12 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
       } else {
         LOG_TOPIC("dcd99", ERR, Logger::ENGINES)
             << "unsupported revision tree format in collection "
-            << "with id '" << coll.id() << "', rebuilding";
+            << "with id '" << coll.id().id() << "', rebuilding";
         Result res = rcoll->rebuildRevisionTree();
         if (res.fail()) {
           LOG_TOPIC("ecdbf", WARN, Logger::ENGINES)
-              << "failed to rebuild revision tree for collection '" << coll.id() << "'";
+              << "failed to rebuild revision tree for collection '"
+              << coll.id().id() << "'";
         }
       }
     }
@@ -525,7 +529,7 @@ void RocksDBMetadata::loadInitialNumberDocuments() {
     VPackSlice countSlice = RocksDBValue::data(value);
     return RocksDBMetadata::DocCount(countSlice);
   }
-  return DocCount(0, 0, 0, 0);
+  return DocCount(0, 0, 0, RevisionId::none());
 }
 
 /// @brief remove collection metadata

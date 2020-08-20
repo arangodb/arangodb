@@ -215,7 +215,7 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   Result modifyVertexDefinition(graph::Graph& graph, VertexDefinitionAction action,
                                 std::string vertexDefinitionName);
 
-  std::optional<TRI_voc_rid_t> handleRevision() const;
+  std::optional<RevisionId> handleRevision() const;
 
  private:
   graph::GraphManager _gmngr;

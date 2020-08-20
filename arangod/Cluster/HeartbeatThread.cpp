@@ -95,8 +95,10 @@ class HeartbeatBackgroundJobThread : public Thread {
   /// @brief asks the thread to stop, but does not wait.
   //////////////////////////////////////////////////////////////////////////////
   void stop() {
-    std::unique_lock<std::mutex> guard(_mutex);
-    _stop = true;
+    {
+      std::unique_lock<std::mutex> guard(_mutex);
+      _stop = true;
+    }
     _condition.notify_one();
   }
 
@@ -108,6 +110,7 @@ class HeartbeatBackgroundJobThread : public Thread {
     std::unique_lock<std::mutex> guard(_mutex);
     _anotherRun.store(true, std::memory_order_release);
     if (_sleeping.load(std::memory_order_acquire)) {
+      guard.unlock();
       _condition.notify_one();
     }
   }
@@ -999,7 +1002,7 @@ void HeartbeatThread::runSingleServer() {
             applier->reconfigure(config);
 
             // reads ticks from configuration, check again next time
-            applier->startTailing(0, false, 0);
+            applier->startTailing(/*initialTick*/0, /*useTick*/false);
             continue;
           }
         }

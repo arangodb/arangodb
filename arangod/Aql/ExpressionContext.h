@@ -31,7 +31,6 @@ struct TRI_vocbase_t;
 namespace arangodb {
 struct ValidatorBase;
 namespace transaction {
-class BufferCache ;
 class Methods;
 }
 namespace velocypack {

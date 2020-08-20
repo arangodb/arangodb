@@ -43,14 +43,6 @@ RegisterCount ShadowAqlItemRow::getNrRegisters() const noexcept {
 bool ShadowAqlItemRow::isRelevant() const noexcept { return getDepth() == 0; }
 
 bool ShadowAqlItemRow::isInitialized() const {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_block != nullptr) {
-    // The value needs to always be a positive integer.
-    auto depthVal = block().getShadowRowDepth(_baseIndex);
-    TRI_ASSERT(depthVal.isNumber());
-    TRI_ASSERT(depthVal.toInt64() >= 0);
-  }
-#endif
   return _block != nullptr;
 }
 
@@ -73,16 +65,14 @@ AqlValue ShadowAqlItemRow::stealAndEraseValue(RegisterId registerId) {
   return block().stealAndEraseValue(_baseIndex, registerId);
 }
 
-AqlValue const& ShadowAqlItemRow::getShadowDepthValue() const {
+size_t ShadowAqlItemRow::getShadowDepthValue() const {
   TRI_ASSERT(isInitialized());
   return block().getShadowRowDepth(_baseIndex);
 }
 
 uint64_t ShadowAqlItemRow::getDepth() const {
   TRI_ASSERT(isInitialized());
-  auto value = block().getShadowRowDepth(_baseIndex);
-  TRI_ASSERT(value.toInt64() >= 0);
-  return static_cast<uint64_t>(value.toInt64());
+  return static_cast<uint64_t>(block().getShadowRowDepth(_baseIndex));
 }
 
 AqlItemBlock& ShadowAqlItemRow::block() noexcept {

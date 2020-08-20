@@ -281,7 +281,7 @@ irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeatu
   dataPath += std::to_string(link.collection().vocbase().id());
   dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
   dataPath += "-";
-  dataPath += std::to_string(link.collection().id());  // has to be 'id' since this can be a per-shard collection
+  dataPath += std::to_string(link.collection().id().id());  // has to be 'id' since this can be a per-shard collection
   dataPath += "_";
   dataPath += std::to_string(link.id().id());
 
@@ -329,15 +329,6 @@ IResearchLink::IResearchLink(arangodb::IndexId iid, LogicalCollection& collectio
     prev.reset();
   };
 
-  // initialize commit callback
-  _before_commit = [this](uint64_t tick, irs::bstring& out) {
-    _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t(tick)); // update last tick
-    tick = irs::numeric_utils::hton64(uint64_t(_lastCommittedTick)); // convert to BE
-
-    out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof(uint64_t));
-
-    return true;
-  };
 }
 
 IResearchLink::~IResearchLink() {
@@ -358,8 +349,12 @@ bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
   return _meta == meta;
 }
 
-void IResearchLink::afterTruncate() {
+void IResearchLink::afterTruncate(TRI_voc_tick_t tick) {
   SCOPED_LOCK(_asyncSelf->mutex());  // '_dataStore' can be asynchronously modified
+
+  TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
   if (!*_asyncSelf) {
     // the current link is no longer valid (checked after ReadLock acquisition)
@@ -371,9 +366,39 @@ void IResearchLink::afterTruncate() {
 
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
+  auto const lastCommittedTick = _lastCommittedTick;
+  bool recoverCommittedTick = true;
+  
+  auto lastCommittedTickGuard = irs::make_finally([lastCommittedTick, this, &recoverCommittedTick]()->void {
+      if (recoverCommittedTick) {
+        _lastCommittedTick = lastCommittedTick;
+      }
+    });
+
   try {
-    _dataStore._writer->clear();
-    _dataStore._reader = _dataStore._reader.reopen();
+    _dataStore._writer->clear(tick);
+    recoverCommittedTick = false; //_lastCommittedTick now updated and data is written to storage
+
+    // get new reader
+    auto reader = _dataStore._reader.reopen();
+
+    if (!reader) {
+      // nothing more to do
+      LOG_TOPIC("1c2c1", WARN, iresearch::TOPIC)
+        << "failed to update snapshot after truncate "
+        << ", reuse the existing snapshot for arangosearch link '" << id() << "'";
+      return;
+    }
+
+    // update reader
+    _dataStore._reader = reader;
+
+    auto subscription = std::static_pointer_cast<IResearchFlushSubscription>(_flushSubscription);
+
+    if (subscription) {
+      subscription->tick(_lastCommittedTick);
+    }
+
   } catch (std::exception const& e) {
     LOG_TOPIC("a3c57", ERR, iresearch::TOPIC)
         << "caught exception while truncating arangosearch link '" << id()
@@ -605,7 +630,7 @@ Result IResearchLink::commitUnsafe(bool wait) {
 
     try {
       // _lastCommittedTick is being updated in '_before_commit'
-      _dataStore._writer->commit(_before_commit);
+      _dataStore._writer->commit();
     } catch (...) {
       // restore last committed tick in case of any error
       _lastCommittedTick = lastCommittedTick;
@@ -1110,6 +1135,15 @@ Result IResearchLink::initDataStore(
   irs::index_writer::init_options options;
   options.lock_repository = false; // do not lock index, ArangoDB has its own lock
   options.comparator = sorted ? &_comparer : nullptr; // set comparator if requested
+  // initialize commit callback
+  options.meta_payload_provider = [this](uint64_t tick, irs::bstring& out) {
+    _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t(tick)); // update last tick
+    tick = irs::numeric_utils::hton64(uint64_t(_lastCommittedTick)); // convert to BE
+
+    out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof(uint64_t));
+
+    return true;
+  };
 
   // as meta is still not filled at this moment
   // we need to store all compression mapping there
@@ -1155,7 +1189,7 @@ Result IResearchLink::initDataStore(
   }
 
   if (!_dataStore._reader) {
-    _dataStore._writer->commit(_before_commit); // initialize 'store'
+    _dataStore._writer->commit(); // initialize 'store'
     _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory));
   }
 
@@ -1500,8 +1534,9 @@ Result IResearchLink::insert(
       return {TRI_ERROR_INTERNAL,
               "failed to store state into a TransactionState for insert into "
               "arangosearch link '" +
-                  std::to_string(id().id()) + "', tid '" + std::to_string(state.id()) +
-                  "', revision '" + std::to_string(documentId.id()) + "'"};
+                  std::to_string(id().id()) + "', tid '" +
+                  std::to_string(state.id().id()) + "', revision '" +
+                  std::to_string(documentId.id()) + "'"};
     }
   }
 
@@ -1645,8 +1680,9 @@ Result IResearchLink::remove(
       return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
               "failed to lock arangosearch link while removing a document from "
               "arangosearch link '" +
-                  std::to_string(id().id()) + "', tid '" + std::to_string(state.id()) +
-                  "', revision '" + std::to_string(documentId.id()) + "'"};
+                  std::to_string(id().id()) + "', tid '" +
+                  std::to_string(state.id().id()) + "', revision '" +
+                  std::to_string(documentId.id()) + "'"};
     }
 
     TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
@@ -1662,8 +1698,9 @@ Result IResearchLink::remove(
       return {TRI_ERROR_INTERNAL,
               "failed to store state into a TransactionState for remove from "
               "arangosearch link '" +
-                  std::to_string(id().id()) + "', tid '" + std::to_string(state.id()) +
-                  "', revision '" + std::to_string(documentId.id()) + "'"};
+                  std::to_string(id().id()) + "', tid '" +
+                  std::to_string(state.id().id()) + "', revision '" +
+                  std::to_string(documentId.id()) + "'"};
     }
   }
 

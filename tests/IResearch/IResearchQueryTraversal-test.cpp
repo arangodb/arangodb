@@ -205,8 +205,8 @@ TEST_F(IResearchQueryTraversalTest, test) {
         "\"testCollection1\": { \"includeAllFields\": true }"
         "}}");
     EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
-    std::set<TRI_voc_cid_t> cids;
-    impl->visitCollections([&cids](TRI_voc_cid_t cid) -> bool {
+    std::set<arangodb::DataSourceId> cids;
+    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
       return true;
     });
@@ -234,8 +234,8 @@ TEST_F(IResearchQueryTraversalTest, test) {
         "\"edges\": { \"includeAllFields\": true }"
         "}}");
     EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
-    std::set<TRI_voc_cid_t> cids;
-    impl->visitCollections([&cids](TRI_voc_cid_t cid) -> bool {
+    std::set<arangodb::DataSourceId> cids;
+    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
       return true;
     });

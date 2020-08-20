@@ -498,6 +498,7 @@ RestAdminClusterHandler::MoveShardContext::fromVelocyPack(VPackSlice slice) {
     auto shard = slice.get("shard");
     auto fromServer = slice.get("fromServer");
     auto toServer = slice.get("toServer");
+    auto remainsFollower = slice.get("remainsFollower");
 
     bool valid = collection.isString() && shard.isString() &&
                  fromServer.isString() && toServer.isString();
@@ -508,7 +509,8 @@ RestAdminClusterHandler::MoveShardContext::fromVelocyPack(VPackSlice slice) {
                                                 collection.copyString(),
                                                 shard.copyString(),
                                                 fromServer.copyString(),
-                                                toServer.copyString(), std::string{});
+                                                toServer.copyString(), std::string{},
+                                                remainsFollower.isNone() || remainsFollower.isTrue());
     }
   }
 
@@ -632,7 +634,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
                    builder.add("fromServer", VPackValue(ctx->fromServer));
                    builder.add("toServer", VPackValue(ctx->toServer));
                    builder.add("isLeader", VPackValue(isLeader));
-                   builder.add("remainsFollower", VPackValue(isLeader));
+                   builder.add("remainsFollower", isLeader ? VPackValue(ctx->remainsFollower) : VPackValue(false));
                    builder.add("creator", VPackValue(ServerState::instance()->getId()));
                    builder.add("timeCreated", VPackValue(timepointToString(
                                                   std::chrono::system_clock::now())));
@@ -675,7 +677,8 @@ RestStatus RestAdminClusterHandler::handlePostMoveShard(std::unique_ptr<MoveShar
     return RestStatus::DONE;
   }
 
-  ctx->collectionID = TRI_RidToString(collection->planId());
+  // base64-encode collection id with RevisionId
+  ctx->collectionID = RevisionId{collection->planId().id()}.toString();
   auto planPath = arangodb::cluster::paths::root()->arango()->plan();
 
   VPackBuffer<uint8_t> trx;
@@ -1586,7 +1589,8 @@ void RestAdminClusterHandler::getShardDistribution(
     if (!collection->distributeShardsLike().empty()) {
       continue;
     }
-    std::string collectionID = TRI_RidToString(collection->planId());
+    // base64-encode collection id with RevisionId
+    std::string collectionID = RevisionId{collection->planId().id()}.toString();
     auto shardIds = collection->shardIds();
     for (auto const& shard : *shardIds) {
       for (size_t i = 0; i < shard.second.size(); i++) {

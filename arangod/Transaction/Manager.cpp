@@ -88,24 +88,39 @@ struct MGMethods final : arangodb::transaction::Methods {
 Manager::Manager(ManagerFeature& feature)
   : _feature(feature),
     _nrRunning(0),
+    _nrReadLocked(0),
     _disallowInserts(false),
     _writeLockHeld(false),
     _streamingLockTimeout(feature.streamingLockTimeout()) {}
 
-void Manager::registerTransaction(TRI_voc_tid_t /*transactionId*/, bool isReadOnlyTransaction) {
-  if (!isReadOnlyTransaction) {
+void Manager::registerTransaction(TransactionId transactionId,
+                                  bool isReadOnlyTransaction,
+                                  bool isFollowerTransaction) {
+  // If isFollowerTransaction is set then either the transactionId should be
+  // an isFollowerTransactionId or it should be a legacy transactionId:
+  TRI_ASSERT(!isFollowerTransaction ||
+             transactionId.isFollowerTransactionId() ||
+             transactionId.isLegacyTransactionId());
+  if (!isReadOnlyTransaction && !isFollowerTransaction) {
+    LOG_TOPIC("ccdea", TRACE, Logger::TRANSACTIONS) << "Acquiring read lock for tid " << transactionId.id();
     _rwLock.lockRead();
+    _nrReadLocked.fetch_add(1, std::memory_order_relaxed);
+    LOG_TOPIC("ccdeb", TRACE, Logger::TRANSACTIONS) << "Got read lock for tid " << transactionId.id() << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
   }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
 }
 
 // unregisters a transaction
-void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction) {
+void Manager::unregisterTransaction(TransactionId transactionId,
+                                    bool isReadOnlyTransaction,
+                                    bool isFollowerTransaction) {
   // always perform an unlock when we leave this function
-  auto guard = scopeGuard([this, &isReadOnlyTransaction]() {
-    if (!isReadOnlyTransaction) {
+  auto guard = scopeGuard([this, transactionId, &isReadOnlyTransaction, &isFollowerTransaction]() {
+    if (!isReadOnlyTransaction && !isFollowerTransaction) {
       _rwLock.unlockRead();
+      _nrReadLocked.fetch_sub(1, std::memory_order_relaxed);
+      LOG_TOPIC("ccded", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId.id() << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
     }
   });
 
@@ -158,7 +173,7 @@ Manager::ManagedTrx::~ManagedTrx() {
   try {
     transaction::Options opts;
     auto ctx =
-        std::make_shared<transaction::ManagedContext>(2, state, /*responsibleForCommit*/true);
+        std::make_shared<transaction::ManagedContext>(TransactionId{2}, state, /*responsibleForCommit*/true);
     MGMethods trx(ctx, opts);  // own state now
     TRI_ASSERT(trx.state()->status() == transaction::Status::RUNNING);
     TRI_ASSERT(trx.isMainTransaction());
@@ -191,13 +206,13 @@ void Manager::registerAQLTrx(std::shared_ptr<TransactionState> const& state) {
     auto it = buck._managed.try_emplace(tid, MetaType::StandaloneAQL, ttl, state);
     if (!it.second) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
-                                     std::string("transaction ID ") + std::to_string(tid) +
+                                     std::string("transaction ID ") + std::to_string(tid.id()) +
                                          "' already used (while registering AQL trx)");
     }
   }
 }
 
-void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
+void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
   const size_t bucket = getBucket(tid);
   WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
@@ -222,7 +237,7 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
   buck._managed.erase(it);  // unlocking not necessary
 }
 
-Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
                                  VPackSlice const trxOpts) {
   Result res;
   if (_disallowInserts) {
@@ -275,7 +290,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
 }
 
 /// @brief create managed transaction
-Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
                                  std::vector<std::string> const& readCollections,
                                  std::vector<std::string> const& writeCollections,
                                  std::vector<std::string> const& exclusiveCollections,
@@ -287,7 +302,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   }
 
   LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
-      << "managed trx creating: '" << tid << "'";
+      << "managed trx creating: '" << tid.id() << "'";
 
   const size_t bucket = getBucket(tid);
 
@@ -298,7 +313,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                       std::string("transaction ID '") + std::to_string(tid) +
+                       std::string("transaction ID '") + std::to_string(tid.id()) +
                        "' already used, (before creating).");
     }
   }
@@ -322,14 +337,14 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   CollectionNameResolver resolver(vocbase);
   auto lockCols = [&](std::vector<std::string> const& cols, AccessMode::Type mode) {
     for (auto const& cname : cols) {
-      TRI_voc_cid_t cid = 0;
+      DataSourceId cid = DataSourceId::none();
       if (state->isCoordinator()) {
         cid = resolver.getCollectionIdCluster(cname);
       } else {  // only support local collections / shards
         cid = resolver.getCollectionIdLocal(cname);
       }
 
-      if (cid == 0) {
+      if (cid.empty()) {
         // not found
         res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
@@ -408,7 +423,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     auto it = _transactions[bucket]._managed.try_emplace(tid, MetaType::Managed, ttl, std::move(state));
     if (!it.second) {
       return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                       std::string("transaction ID '") + std::to_string(tid) +
+                       std::string("transaction ID '") + std::to_string(tid.id()) +
                            "' already used, (while creating)");
     }
   }
@@ -419,7 +434,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
 }
 
 /// @brief lease the transaction, increases nesting
-std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid,
+std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TransactionId tid,
                                                                AccessMode::Type mode) {
   TRI_ASSERT(mode != AccessMode::Type::NONE);
   if (_disallowInserts.load(std::memory_order_acquire)) {
@@ -471,7 +486,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
         break;
       }
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
-                                     std::string("cannot read-lock, transaction '") + std::to_string(tid) +
+                                     std::string("cannot read-lock, transaction '") + std::to_string(tid.id()) +
                                           "' is already in use");
     }
     
@@ -492,7 +507,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
 
     if (!ServerState::isDBServer(role) && std::chrono::steady_clock::now() > endTime) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
-                                     std::string("cannot write-lock, transaction '") + std::to_string(tid) +
+                                     std::string("cannot write-lock, transaction '") + std::to_string(tid.id()) +
                                          "' is already in use");
     } else if ((i % 32) == 0) {
       LOG_TOPIC("9e972", DEBUG, Logger::TRANSACTIONS) << "waiting on trx write-lock " << tid;
@@ -513,7 +528,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
   return nullptr;
 }
 
-void Manager::returnManagedTrx(TRI_voc_tid_t tid) noexcept {
+void Manager::returnManagedTrx(TransactionId tid) noexcept {
   const size_t bucket = getBucket(tid);
   WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
@@ -541,7 +556,7 @@ void Manager::returnManagedTrx(TRI_voc_tid_t tid) noexcept {
 }
 
 /// @brief get the transasction state
-transaction::Status Manager::getManagedTrxStatus(TRI_voc_tid_t tid) const {
+transaction::Status Manager::getManagedTrxStatus(TransactionId tid) const {
   size_t bucket = getBucket(tid);
   READ_LOCKER(writeLocker, _transactions[bucket]._lock);
 
@@ -561,7 +576,7 @@ transaction::Status Manager::getManagedTrxStatus(TRI_voc_tid_t tid) const {
   }
 }
 
-Result Manager::statusChangeWithTimeout(TRI_voc_tid_t tid, transaction::Status status) {
+Result Manager::statusChangeWithTimeout(TransactionId tid, transaction::Status status) {
   double startTime = 0.0;
   constexpr double maxWaitTime = 2.0;
   Result res;
@@ -581,21 +596,21 @@ Result Manager::statusChangeWithTimeout(TRI_voc_tid_t tid, transaction::Status s
   return res;
 }
 
-Result Manager::commitManagedTrx(TRI_voc_tid_t tid) {
+Result Manager::commitManagedTrx(TransactionId tid) {
   return statusChangeWithTimeout(tid, transaction::Status::COMMITTED);
 }
 
-Result Manager::abortManagedTrx(TRI_voc_tid_t tid) {
+Result Manager::abortManagedTrx(TransactionId tid) {
   return statusChangeWithTimeout(tid, transaction::Status::ABORTED);
 }
 
-Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
+Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
                                   bool clearServers) {
   TRI_ASSERT(status == transaction::Status::COMMITTED ||
              status == transaction::Status::ABORTED);
 
   LOG_TOPIC("7bd2f", DEBUG, Logger::TRANSACTIONS)
-      << "managed trx '" << tid << " updating to '" << status << "'";
+      << "managed trx '" << tid << " updating to '" << (status == transaction::Status::COMMITTED ? "COMMITED" : "ABORTED") << "'";
 
   Result res;
   size_t const bucket = getBucket(tid);
@@ -609,7 +624,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
     auto it = buck._managed.find(tid);
     if (it == buck._managed.end() || !::authorized(it->second.user)) {
       return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
-                       std::string("transaction '") + std::to_string(tid) +
+                       std::string("transaction '") + std::to_string(tid.id()) +
                            "' not found");
     }
 
@@ -617,7 +632,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
     TRY_WRITE_LOCKER(tryGuard, mtrx.rwlock);
     if (!tryGuard.isLocked()) {
       LOG_TOPIC("dfc30", DEBUG, Logger::TRANSACTIONS) << "transaction '" << tid << "' is in use";
-      return res.reset(TRI_ERROR_LOCKED, std::string("read lock failed, transaction '") + std::to_string(tid) +
+      return res.reset(TRI_ERROR_LOCKED, std::string("read lock failed, transaction '") + std::to_string(tid.id()) +
                                              "' is in use");
     }
     TRI_ASSERT(tryGuard.isLocked());
@@ -698,7 +713,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
 }
 
 /// @brief calls the callback function for each managed transaction
-void Manager::iterateManagedTrx(std::function<void(TRI_voc_tid_t, ManagedTrx const&)> const& callback) const {
+void Manager::iterateManagedTrx(std::function<void(TransactionId, ManagedTrx const&)> const& callback) const {
 
   // iterate over all active transactions
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
@@ -717,10 +732,10 @@ void Manager::iterateManagedTrx(std::function<void(TRI_voc_tid_t, ManagedTrx con
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
   bool didWork = false;
-  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type a1;
-  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64> toAbort{a1};
-  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type a2;
-  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64> toErase{a2};
+  ::arangodb::containers::SmallVector<TransactionId, 64>::allocator_type::arena_type a1;
+  ::arangodb::containers::SmallVector<TransactionId, 64> toAbort{a1};
+  ::arangodb::containers::SmallVector<TransactionId, 64>::allocator_type::arena_type a2;
+  ::arangodb::containers::SmallVector<TransactionId, 64> toErase{a2};
 
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
     if (abortAll) {
@@ -764,7 +779,7 @@ bool Manager::garbageCollect(bool abortAll) {
     }
   }
 
-  for (TRI_voc_tid_t tid : toAbort) {
+  for (TransactionId tid : toAbort) {
     LOG_TOPIC("6fbaf", INFO, Logger::TRANSACTIONS) << "garbage collecting "
                                                    << "transaction: '" << tid << "'";
     Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
@@ -781,7 +796,7 @@ bool Manager::garbageCollect(bool abortAll) {
     didWork = true;
   }
   
-  for (TRI_voc_tid_t tid : toErase) {
+  for (TransactionId tid : toErase) {
     size_t const bucket = getBucket(tid);
     WRITE_LOCKER(locker, _transactions[bucket]._lock);
     _transactions[bucket]._managed.erase(tid);
@@ -797,8 +812,8 @@ bool Manager::garbageCollect(bool abortAll) {
 
 /// @brief abort all transactions matching
 bool Manager::abortManagedTrx(std::function<bool(TransactionState const&, std::string const&)> cb) {
-  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type arena;
-  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64> toAbort{arena};
+  ::arangodb::containers::SmallVector<TransactionId, 64>::allocator_type::arena_type arena;
+  ::arangodb::containers::SmallVector<TransactionId, 64> toAbort{arena};
 
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
     READ_LOCKER(locker, _transactions[bucket]._lock);
@@ -818,7 +833,7 @@ bool Manager::abortManagedTrx(std::function<bool(TransactionState const&, std::s
     }
   }
 
-  for (TRI_voc_tid_t tid : toAbort) {
+  for (TransactionId tid : toAbort) {
     Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
     if (res.fail()) {
       LOG_TOPIC("2bf48", INFO, Logger::TRANSACTIONS) << "error aborting "
@@ -903,10 +918,10 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
   }
 
   // merge with local transactions
-  iterateManagedTrx([&builder](TRI_voc_tid_t tid, ManagedTrx const& trx) {
+  iterateManagedTrx([&builder](TransactionId tid, ManagedTrx const& trx) {
     if (::authorized(trx.user)) {
       builder.openObject(true);
-      builder.add("id", VPackValue(std::to_string(tid)));
+      builder.add("id", VPackValue(std::to_string(tid.id())));
       builder.add("state", VPackValue(transaction::statusString(trx.state->status())));
       builder.close();
     }

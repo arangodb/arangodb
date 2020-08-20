@@ -2524,7 +2524,7 @@ struct Shower final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUn
     }
   }
 
-  static LoggerStream& logNode(LoggerStream& log, ExecutionNode const& node) {
+  static LoggerStreamBase& logNode(LoggerStreamBase& log, ExecutionNode const& node) {
     return log << "[" << node.id() << "]" << detailedNodeType(node);
   }
 

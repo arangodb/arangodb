@@ -70,8 +70,8 @@ arangodb::velocypack::StringRef const databaseRef("database");
 arangodb::velocypack::StringRef const globallyUniqueIdRef("globallyUniqueId");
 
 /// @brief extract the collection id from VelocyPack
-TRI_voc_cid_t getCid(arangodb::velocypack::Slice const& slice) {
-  return arangodb::basics::VelocyPackHelper::extractIdValue(slice);
+arangodb::DataSourceId getCid(arangodb::velocypack::Slice const& slice) {
+  return arangodb::DataSourceId{arangodb::basics::VelocyPackHelper::extractIdValue(slice)};
 }
 
 /// @brief extract the collection name from VelocyPack
@@ -81,7 +81,7 @@ std::string getCName(arangodb::velocypack::Slice const& slice) {
 
 /// @brief extract the collection by either id or name, may return nullptr!
 std::shared_ptr<arangodb::LogicalCollection> getCollectionByIdOrName(
-    TRI_vocbase_t& vocbase, TRI_voc_cid_t cid, std::string const& name) {
+    TRI_vocbase_t& vocbase, arangodb::DataSourceId cid, std::string const& name) {
   auto idCol = vocbase.lookupCollection(cid);
   std::shared_ptr<arangodb::LogicalCollection> nameCol;
 
@@ -149,12 +149,12 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       // document exists. if yes, we don't try an insert (which would fail anyway) but carry 
       // on with a replace.
       if (keySlice.isString()) {
-        std::pair<arangodb::LocalDocumentId, TRI_voc_rid_t> lookupResult;
+        std::pair<arangodb::LocalDocumentId, arangodb::RevisionId> lookupResult;
         if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult).ok()) {
           // determine if we already have this revision or need to replace the
           // one we have
-          TRI_voc_rid_t rid = arangodb::transaction::helpers::extractRevFromDocument(slice);
-          if (rid != 0 && rid == lookupResult.second) {
+          arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(slice);
+          if (rid.isSet() && rid == lookupResult.second) {
             // we already have exactly this document, don't replace, just
             // consider it already applied and bail
             return {};
@@ -490,11 +490,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
   _state.master.endpoint = _state.applier._endpoint;
 }
 
-Syncer::~Syncer() {
-  if (!_state.isChildSyncer) {
-    _state.barrier.remove(_state.connection);
-  }
-}
+Syncer::~Syncer() = default;
 
 /// @brief request location rewriter (injects database name)
 std::string Syncer::rewriteLocation(void* data, std::string const& location) {
@@ -509,14 +505,6 @@ std::string Syncer::rewriteLocation(void* data, std::string const& location) {
     return "/_db/" + s->_state.databaseName + location;
   }
   return "/_db/" + s->_state.databaseName + "/" + location;
-}
-
-/// @brief steal the barrier id from the syncer
-TRI_voc_tick_t Syncer::stealBarrier() {
-  auto id = _state.barrier.id;
-  _state.barrier.id = 0;
-  _state.barrier.updateTime = 0;
-  return id;
 }
 
 void Syncer::setAborted(bool value) { _state.connection.setAborted(value); }
@@ -563,9 +551,9 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
     TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
   // extract "cid"
-  TRI_voc_cid_t cid = ::getCid(slice);
+  DataSourceId cid = ::getCid(slice);
 
-  if (!_state.master.simulate32Client() || cid == 0) {
+  if (!_state.master.simulate32Client() || cid.empty()) {
     VPackSlice uuid;
 
     if ((uuid = slice.get(::cuidRef)).isString()) {
@@ -575,7 +563,7 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
     }
   }
 
-  if (cid == 0) {
+  if (cid.empty()) {
     LOG_TOPIC("fbf1a", ERR, Logger::REPLICATION)
         << "Invalid replication response: Was unable to resolve"
         << " collection from marker: " << slice.toJson();
