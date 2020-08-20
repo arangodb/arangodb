@@ -651,6 +651,21 @@ std::vector<bool> Store::read(query_t const& queries, query_t& result) const {
   return success;
 }
 
+void Store::read(
+  query_t const& queries, std::vector<query_t>& results) const {
+
+  if (queries->slice().isArray()) {
+    for (auto const& query : VPackArrayIterator(queries->slice())) {
+      query_t result{};
+      read(query, *result);
+      results.emplace_back(std::move(result));
+    }
+  } else {
+    LOG_TOPIC("fec72", ERR, Logger::AGENCY) << "Read queries to stores must be arrays";
+  }
+
+}
+
 /// Read single query into ret
 bool Store::read(VPackSlice const& query, Builder& ret) const {
   bool success = true;

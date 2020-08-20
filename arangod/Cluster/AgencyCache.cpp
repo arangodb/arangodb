@@ -535,10 +535,11 @@ void AgencyCache::invokeAllCallbacks() const {
 }
 
 
-std::tuple <consensus::query_t, consensus::index_t> const AgencyCache::plannedDBsChangedSince(
+std::tuple <std::vector<consensus::query_t>, consensus::index_t> const
+AgencyCache::plannedDBsChangedSince(
   consensus::index_t const& last, std::vector<std::string> const& others) const {
 
-  auto result = std::make_shared<arangodb::velocypack::Builder>();
+  std::vector<consensus::query_t> result;
 
   std::vector<std::string> databases;
   for (auto const& i : others) {
@@ -577,18 +578,19 @@ std::tuple <consensus::query_t, consensus::index_t> const AgencyCache::plannedDB
       query->add(VPackValue(i));
     }
   }
-  LOG_TOPIC("da567", TRACE, Logger::CLUSTER) << result->toJson() ;
+  if (_commitIndex > 0) {
+    _readDB.read(query, result);
+  }
 
   return std::tuple(std::move(result), _commitIndex);
 
 }
 
-std::tuple <consensus::query_t, consensus::index_t> const AgencyCache::currentDBsChangedSince(
+std::tuple <std::vector<consensus::query_t>, consensus::index_t> const
+AgencyCache::currentDBsChangedSince(
   consensus::index_t const& last, std::vector<std::string> const& others) const {
 
-  std::pair<consensus::index_t, std::vector<std::string>> ret;
-
-  auto result = std::make_shared<arangodb::velocypack::Builder>();
+  std::vector<consensus::query_t> result;
 
   std::vector<std::string> databases;
   for (auto const& i : others) {
@@ -627,8 +629,9 @@ std::tuple <consensus::query_t, consensus::index_t> const AgencyCache::currentDB
       query->add(VPackValue(i));
     }
   }
-  LOG_TOPIC("da657", TRACE, Logger::CLUSTER) << result->toJson() ;
+  if (_commitIndex > 0) {
+    _readDB.read(query, result);
+  }
 
   return std::tuple(std::move(result), _commitIndex);
-
 }

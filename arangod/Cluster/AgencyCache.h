@@ -109,7 +109,8 @@ public:
    *               representation of planned and other desired databases
    *                
    */
-  std::tuple <consensus::query_t, consensus::index_t> const  plannedDBsChangedSince(
+  std::tuple <std::vector<consensus::query_t>, consensus::index_t> const
+  plannedDBsChangedSince(
     consensus::index_t const& last, std::vector<std::string> const& others) const;
 
   /**
@@ -120,7 +121,8 @@ public:
    *               representation of planned and other desired databases
    *                
    */
-  std::tuple <consensus::query_t, consensus::index_t> const  currentDBsChangedSince(
+  std::tuple <std::vector<consensus::query_t>, consensus::index_t> const
+  currentDBsChangedSince(
     consensus::index_t const& last, std::vector<std::string> const& others) const;
   
 private:
