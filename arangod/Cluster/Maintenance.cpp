@@ -205,7 +205,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
 
   if (ldb.hasKey(shname)) {  // Have local collection with that name
     auto const lcol = ldb.get(shname);
-    StringRef const localLeader = lcol.get(THE_LEADER).copyString()
+    std::string const localLeader = lcol.get(THE_LEADER).copyString();
     bool leading = localLeader.empty();
     auto const properties = compareRelevantProps(cprops, lcol);
 

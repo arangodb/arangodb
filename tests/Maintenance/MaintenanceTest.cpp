@@ -28,8 +28,6 @@
 
 #include "gtest/gtest.h"
 
-#include "Agency/AgencyPaths.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "MMFiles/MMFilesEngine.h"
@@ -517,7 +515,6 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}},
         engine(as),
         origStorageEngine(arangodb::EngineSelectorFeature::ENGINE) {
-    as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
     feature = std::make_unique<TestMaintenanceFeature>(as);
 
     arangodb::EngineSelectorFeature::ENGINE = &engine;
@@ -549,17 +546,13 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   auto getShardsForServer(std::string const& dbName, std::string const& planId,
                           std::string const& serverId, Node const& plan)
       -> std::unordered_set<std::string> {
-    auto path = arangodb::cluster::paths::aliases::plan()
-                    ->collections()
-                    ->database(dbName)
-                    ->collection(planId)
-                    ->shards();
-
-    auto vec = path->vec(2);
+    auto vec = std::vector<std::string>{"Collections", dbName, planId, "shards"};
     TRI_ASSERT(plan.has(vec));
     auto const& shardList = plan(vec);
     std::unordered_set<std::string> res;
-    for (auto const& [shard, servers] : shardList.children()) {
+    for (auto const& pair : shardList.children()) {
+      auto const& shard = pair.first;
+      auto const& servers = pair.second;
       auto oldValue = servers->slice();
       TRI_ASSERT(oldValue.isArray());
       TRI_ASSERT(oldValue.length() == 2);
@@ -572,21 +565,16 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
 
   auto setLeadershipPlan(std::string const& dbName, std::string const& planId,
                          PLAN_LEADERSHIP_TYPE type, Node& plan) -> void {
-    auto path = arangodb::cluster::paths::aliases::plan()
-                    ->collections()
-                    ->database(dbName)
-                    ->collection(planId)
-                    ->shards();
-
-    auto vec = path->vec(2);
+    auto vec = std::vector<std::string>{"Collections", dbName, planId, "shards"};
     ASSERT_TRUE(plan.has(vec)) << "The underlying test plan is modified, it "
                                   "does not contain Database '"
                                << dbName << "' and Collection '" << planId << "' anymore.";
     auto& shardList = plan(vec);
-    for (auto& [shard, servers] : shardList.children()) {
+    for (auto& pair : shardList.children()) {
+      auto& servers = pair.second;
       auto oldValue = servers->slice();
       ASSERT_TRUE(oldValue.isArray());
-      ASSERT_EQ(oldValue.length(), 2)
+      ASSERT_TRUE(oldValue.length() == 2)
           << "We assume to have one leader and one follower";
       switch (type) {
         case PLAN_LEADERSHIP_TYPE::SELF: {
@@ -977,7 +965,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_self) {
   plan = originalPlan;
   takeLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, local]  : localNodes) {
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     takeLeadershipLocal(dbName(), relevantShards, local);
 
@@ -995,7 +985,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_se
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, local]  : localNodes) {
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     takeLeadershipLocal(dbName(), relevantShards, local);
 
@@ -1019,7 +1011,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_self) {
   plan = originalPlan;
   otherTakeLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, local]  : localNodes) {
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     takeLeadershipLocal(dbName(), relevantShards, local);
 
@@ -1043,7 +1037,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_s
   plan = originalPlan;
   otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, local]  : localNodes) {
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     takeLeadershipLocal(dbName(), relevantShards, local);
 
@@ -1066,7 +1062,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_other) {
   plan = originalPlan;
   takeLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, local]  : localNodes) {
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     otherTakeLeadershipLocal(dbName(), relevantShards, local);
 
@@ -1092,7 +1090,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_ot
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, local]  : localNodes) {
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     otherTakeLeadershipLocal(dbName(), relevantShards, local);
 
@@ -1116,7 +1116,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_other) {
   plan = originalPlan;
   otherTakeLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, local]  : localNodes) {
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     otherTakeLeadershipLocal(dbName(), relevantShards, local);
 
@@ -1134,7 +1136,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_o
   plan = originalPlan;
   otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, local]  : localNodes) {
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     otherTakeLeadershipLocal(dbName(), relevantShards, local);
 
@@ -1152,7 +1156,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_resigned)
   plan = originalPlan;
   takeLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, local]  : localNodes) {
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     resignLeadershipLocal(dbName(), relevantShards, local);
 
@@ -1178,7 +1184,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_re
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, local]  : localNodes) {
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     resignLeadershipLocal(dbName(), relevantShards, local);
 
@@ -1196,7 +1204,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_resigned
   plan = originalPlan;
   otherTakeLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, local]  : localNodes) {
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     resignLeadershipLocal(dbName(), relevantShards, local);
 
@@ -1215,7 +1225,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_r
   plan = originalPlan;
   otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, local]  : localNodes) {
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     resignLeadershipLocal(dbName(), relevantShards, local);
 
@@ -1234,7 +1246,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_reboot) {
   plan = originalPlan;
   takeLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, local]  : localNodes) {
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     rebootLeadershipLocal(dbName(), relevantShards, local);
 
@@ -1260,7 +1274,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_re
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, local]  : localNodes) {
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     rebootLeadershipLocal(dbName(), relevantShards, local);
 
@@ -1284,7 +1300,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_reboot) 
   plan = originalPlan;
   otherTakeLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, local]  : localNodes) {
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     rebootLeadershipLocal(dbName(), relevantShards, local);
 
@@ -1309,7 +1327,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_r
   plan = originalPlan;
   otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
 
-  for (auto [server, local]  : localNodes) {
+  for (auto node : localNodes) {
+    auto& server = node.first;
+    auto& local = node.second;
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     rebootLeadershipLocal(dbName(), relevantShards, local);
 
