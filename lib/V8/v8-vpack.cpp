@@ -421,7 +421,7 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
     uint32_t const n = names->Length();
     
     if (context.level + 1 > ::maxRecursion) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "too much nesting in input value"); 
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "input value is nested too deep"); 
     }
       
     AddValue<VPackValue, inObject>(context, attributeName, VPackValue(VPackValueType::Object));
