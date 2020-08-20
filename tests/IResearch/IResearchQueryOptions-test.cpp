@@ -305,6 +305,28 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
     std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs{
         {"A", &insertedDocs[1]}};
 
+    // check node estimation
+    {
+      auto explanationResult =
+          arangodb::tests::explainQuery(vocbase, query);
+      ASSERT_TRUE(explanationResult.result.ok());
+      auto const explanationSlice = explanationResult.data->slice();
+      ASSERT_TRUE(explanationSlice.isObject());
+      auto const nodesSlice = explanationSlice.get("nodes");
+      ASSERT_TRUE(nodesSlice.isArray());
+      VPackSlice viewNode;
+      for (auto node : VPackArrayIterator(nodesSlice)) {
+        if ("EnumerateViewNode" == node.get("type").toString() &&
+            "testView" == node.get("view").toString()) {
+          viewNode = node;
+          break;
+        }
+      }
+      ASSERT_TRUE(viewNode.isObject());
+      ASSERT_EQ(insertedDocs.size()/2 + 1., viewNode.get("estimatedCost").getDouble());
+      ASSERT_EQ(insertedDocs.size()/2, viewNode.get("estimatedNrItems").getNumber<size_t>());
+    }
+
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
 
@@ -441,6 +463,28 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
 
     EXPECT_TRUE(arangodb::tests::assertRules(
         vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+
+    // check node estimation
+    {
+      auto explanationResult =
+          arangodb::tests::explainQuery(vocbase, query);
+      ASSERT_TRUE(explanationResult.result.ok());
+      auto const explanationSlice = explanationResult.data->slice();
+      ASSERT_TRUE(explanationSlice.isObject());
+      auto const nodesSlice = explanationSlice.get("nodes");
+      ASSERT_TRUE(nodesSlice.isArray());
+      VPackSlice viewNode;
+      for (auto node : VPackArrayIterator(nodesSlice)) {
+        if ("EnumerateViewNode" == node.get("type").toString() &&
+            "testView" == node.get("view").toString()) {
+          viewNode = node;
+          break;
+        }
+      }
+      ASSERT_TRUE(viewNode.isObject());
+      ASSERT_EQ(insertedDocs.size() + 1., viewNode.get("estimatedCost").getDouble());
+      ASSERT_EQ(insertedDocs.size(), viewNode.get("estimatedNrItems").getNumber<size_t>());
+    }
 
     std::map<irs::string_ref, std::vector<arangodb::ManagedDocumentResult const*>> expectedDocs{
         {"A", {&insertedDocs[0], &insertedDocs[1]}}};
