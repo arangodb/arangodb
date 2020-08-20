@@ -97,15 +97,18 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
     std::string fromServer;
     std::string toServer;
     std::string collectionID;
+    bool remainsFollower;
 
     MoveShardContext(std::string database, std::string collection, std::string shard,
-                     std::string from, std::string to, std::string collectionID)
+                     std::string from, std::string to, std::string collectionID,
+                     bool remainsFollower)
         : database(std::move(database)),
           collection(std::move(collection)),
           shard(std::move(shard)),
           fromServer(std::move(from)),
           toServer(std::move(to)),
-          collectionID(std::move(collectionID)) {}
+          collectionID(std::move(collectionID)),
+          remainsFollower(true) {}
 
     static std::unique_ptr<MoveShardContext> fromVelocyPack(arangodb::velocypack::Slice slice);
   };
