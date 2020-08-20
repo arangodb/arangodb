@@ -1876,14 +1876,14 @@ function iResearchAqlTestSuite () {
     },
 
     testLevenshteinMatch0 : function() {
-      var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lazi', 0), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
+      var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lazi', 0, false), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
       assertEqual(2, res.length);
       assertEqual("full", res[0].name);
       assertEqual("half", res[1].name);
     },
 
     testLevenshteinMatch1 : function() {
-      var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lzi', 1), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
+      var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lzi', 1, false), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
       assertEqual(2, res.length);
       assertEqual("full", res[0].name);
       assertEqual("half", res[1].name);
@@ -1891,6 +1891,13 @@ function iResearchAqlTestSuite () {
 
     testLevenshteinDamerauMatch1 : function() {
       var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lzai', 1, true), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
+      assertEqual(2, res.length);
+      assertEqual("full", res[0].name);
+      assertEqual("half", res[1].name);
+    },
+
+    testLevenshteinDamerauMatch1Default : function() {
+      var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lzai', 1), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
       assertEqual(2, res.length);
       assertEqual("full", res[0].name);
       assertEqual("half", res[1].name);
@@ -1992,6 +1999,14 @@ function iResearchAqlTestSuite () {
     testPhraseInRangeViaArray : function () {
       var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, [{IN_RANGE: ['quic', 'ruick', false, true]}, 'brown'], 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
       assertEqual(1, result.length);
+    },
+    
+    testVolatileFilter : function() {
+      let result = db._query("FOR doc IN AnotherUnitTestsCollection LET kk = NOEVAL(doc.id) "
+                             + " FOR c IN UnitTestsWithArrayView SEARCH c.c == kk SORT c.c RETURN c ").toArray();
+      assertEqual(2, result.length);
+      assertEqual(result[0].c, 0);
+      assertEqual(result[1].c, 1);
     }
   };
 }

@@ -78,9 +78,6 @@ class Action {
   /// @brief is object in a usable condition
   bool ok() const { return (nullptr != _action.get() && _action->ok()); };
 
-  /// @brief kill action with signal
-  arangodb::Result kill(Signal const& signal);
-
   /// @brief check progress
   arangodb::Result progress(double& progress);
 

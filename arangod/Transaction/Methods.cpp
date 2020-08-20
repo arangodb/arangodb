@@ -353,7 +353,8 @@ transaction::Methods::~Methods() {
     // store result in context
     _transactionContext->storeTransactionResult(_state->id(),
                                                 _state->wasRegistered(),
-                                                _state->isReadOnlyTransaction());
+                                                _state->isReadOnlyTransaction(),
+                                                _state->isFollowerTransaction());
 
     _state = nullptr;
   }
@@ -982,13 +983,11 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
+  ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     TRI_ASSERT(followers == nullptr);
     followers = collection->followers()->get();
-  }
 
-  ReplicationType replicationType = ReplicationType::NONE;
-  if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
@@ -999,11 +998,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       if (!followerInfo->allowedToWrite()) {
         // We cannot fulfill minimum replication Factor.
         // Reject write.
-        LOG_TOPIC("d7306", ERR, Logger::REPLICATION)
-            << "Less than writeConcern ("
-            << basics::StringUtils::itoa(collection->writeConcern())
-            << ") followers in sync. Shard  " << collection->name()
-            << " is temporarily in read-only mode.";
         return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
       }
 
@@ -1285,13 +1279,11 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
+  ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     TRI_ASSERT(followers == nullptr);
     followers = collection->followers()->get();
-  }
 
-  ReplicationType replicationType = ReplicationType::NONE;
-  if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
@@ -1302,11 +1294,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       if (!followerInfo->allowedToWrite()) {
         // We cannot fulfill minimum replication Factor.
         // Reject write.
-        LOG_TOPIC("2e35a", ERR, Logger::REPLICATION)
-            << "Less than writeConcern ("
-            << basics::StringUtils::itoa(collection->writeConcern())
-            << ") followers in sync. Shard  " << collection->name()
-            << " is temporarily in read-only mode.";
         return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
       }
 
@@ -1511,13 +1498,12 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
   auto const& collection = trxColl->collection();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
-  if (_state->isDBServer()) {
-    TRI_ASSERT(followers == nullptr);
-    followers = collection->followers()->get();
-  }
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
+    TRI_ASSERT(followers == nullptr);
+    followers = collection->followers()->get();
+
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
@@ -1528,11 +1514,6 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       if (!followerInfo->allowedToWrite()) {
         // We cannot fulfill minimum replication Factor.
         // Reject write.
-        LOG_TOPIC("f1f8e", ERR, Logger::REPLICATION)
-            << "Less than writeConcern ("
-            << basics::StringUtils::itoa(collection->writeConcern())
-            << ") followers in sync. Shard  " << collection->name()
-            << " is temporarily in read-only mode.";
         return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
       }
 
@@ -1741,6 +1722,9 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
+    TRI_ASSERT(followers == nullptr);
+    followers = collection->followers()->get();
+
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
@@ -1752,11 +1736,6 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       if (!followerInfo->allowedToWrite()) {
         // We cannot fulfill minimum replication Factor.
         // Reject write.
-        LOG_TOPIC("7c1d4", ERR, Logger::REPLICATION)
-            << "Less than writeConcern ("
-            << basics::StringUtils::itoa(collection->writeConcern())
-            << ") followers in sync. Shard  " << collection->name()
-            << " is temporarily in read-only mode.";
         return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options));
       }
 
@@ -2354,7 +2333,7 @@ Future<Result> Methods::replicateOperations(
                             resp.response->statusCode() == fuerte::StatusOK;
         if (replicationWorked) {
           bool found;
-          std::string val = resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
+          resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
           replicationWorked = !found;
         }
         didRefuse = didRefuse || resp.response->statusCode() == fuerte::StatusNotAcceptable;

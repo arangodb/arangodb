@@ -243,6 +243,9 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result batchFinish();
 
   Configuration _config;
+
+  /// @brief whether or not we are a coordinator/dbserver
+  bool const _isClusterRole;
 };
 
 }  // namespace arangodb

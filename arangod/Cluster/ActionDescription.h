@@ -35,8 +35,6 @@
 namespace arangodb {
 namespace maintenance {
 
-enum Signal { GRACEFUL, IMMEDIATE };
-
 //
 // state accessor and set functions
 //  (some require time checks and/or combination tests)

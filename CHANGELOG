@@ -1,13 +1,68 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
 
-* Fixed issue #12304: insert in transaction causing com.arangodb.ArangoDBException: 
-  Response: 500, Error: 4 - Builder value not yet sealed. 
+* Fixed issue #12304: insert in transaction causing
+  com.arangodb.ArangoDBException: Response: 500, Error: 4 - Builder value not
+  yet sealed.
 
-  This happened when too deeply-nested documents (more than 63 levels of nesting)
-  were inserted. While indefinite nesting is still not supported, the error message
-  has been corrected from the internal HTTP 500 error "Builder value not yet sealed"
-  to the correct HTTP 400 "Bad parameter".
+  This happened when too deeply-nested documents (more than 63 levels of
+  nesting) were inserted. While indefinite nesting is still not supported, the
+  error message has been corrected from the internal HTTP 500 error "Builder
+  value not yet sealed" to the correct HTTP 400 "Bad parameter".
+
+* Fixed: During a move-shard job which moves the leader there is a
+  situation in which the old owner of a shard can reclaim ownership
+  (after having resigned already), with a small race where it allows to
+  write documents only locally, but then continue the move-shard to a
+  server without those documents. An additional bug in the MoveShard
+  Supervision job would then leave the shard in a bad configuration
+  with a resigned leader permanently in charge.
+
+* Fixed a problem with potentially lost updates because a failover could happen
+  at a wrong time or a restarted leader could come back at an unlucky time.
+
+* Fixed BTS-167: Lingering Queries - Canceled from the UI.
+  This fixes queries not vanishing from the list of running queries in the web
+  UI in case the query was canceled using the "Cancel" button in web UI's query
+  editor.
+
+* Fixed bad behaviour in agency supervision in some corner cases involving
+  already resigned leaders in Current.
+
+* Fixed issue ES-664: the optimizer rule `inline-subqueries` must not pull out
+  subqueries that contain a COLLECT statement if the subquery is itself called
+  from within a loop. Otherwise the COLLECT will be applied to the values in the
+  outer FOR loop, which can produce a different result.
+
+* Fixed that dropping a vanished follower works again. An exception response
+  to the replication request is now handled properly.
+
+* Make AQL user-defined functions (UDFs) work in a cluster in case the UDF runs
+  an AQL query inside its own function code (BTS-159).
+
+* Fixed hotbackup S3 credentials validation and error reporting for upload and
+  download.
+
+* Fixed a blockage on hotbackup when writes are happening concurrently, since
+  followers could no longer replicate leader transactions.
+
+* Fix: The 'sorted' COLLECT variant would return undefined instead of null when
+  grouping by a null value.
+
+* Fix: writeConcern is now honored correctly (ES-655).
+
+* Fixed internal issue #739: ArangoSearch filter volatility takes into account
+  calculation nodes dependencies.
+
+* Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late
+  materialzation after OneShard optimization.
+
+* Slightly improve the performance of cluster DDL maintenance operations.
+
+* Added AQL functions `IS_IPV4`, `IPV4_TO_NUMBER`, `IPV4_FROM_NUMBER` for IPv4
+  address checks and conversions.
+
+* Added AQL function `PRODUCT` to calculate the product of an array.
 
 * Improve performance of internal cluster Plan and Current reload operations.
 
@@ -435,6 +490,8 @@ v3.7.1-rc.1 (2020-07-24)
 
 v3.7.1-beta.1 (2020-06-07)
 --------------------------
+
+* Fixed issue #8941: `frontendConfig.basePath` is duplicated for users API call
 
 * Taken collection dropping from fast track in maintenance. This avoids blocking
   fast track maintenance threads when a shard cannot immediately be dropped

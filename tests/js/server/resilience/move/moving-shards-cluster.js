@@ -35,6 +35,7 @@ const _ = require("lodash");
 const wait = require("internal").wait;
 const supervisionState = require("@arangodb/cluster").supervisionState;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const errors = require("internal").errors;
 
 // in the `useData` case, use this many documents:
 const numDocuments = 1000;
@@ -406,7 +407,28 @@ function MovingShardsSuite ({useData}) {
       var res = request({ method: "PUT",
                           url: url + "/_admin/cluster/numberOfServers",
                           body: JSON.stringify(body) });
-      return res;
+      // To ensure that all our favourite Coordinator0001 has actually
+      // updated its agencyCache to reflect the newly empty CleanedServers
+      // list, we ask him to create a collection with replicationFactor
+      // numberOfDBServers. If this works, we can get rid of the collection
+      // again and all is well. If it does not work, we have to wait a bit
+      // longer:
+      for (var count = 0; count < 120; ++count) {
+        try {
+          var c = db._create("collectionProbe", {replicationFactor:numberOfDBServers});
+          c.drop();
+          return res;
+        } catch(err2) {
+          if (err2.errorNum !== errors.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code) {
+            console.error("Got unexpected error from collection probe: ", err2.stack);
+            return false;
+          }
+        }
+        console.log("Collection probe unsuccessful for replicationFactor=", numberOfDBServers, " count=", count);
+        wait(0.5);
+      }
+      console.error("Could not successfully create collection probe for 60s, giving up!");
+      return false;
     }
     catch (err) {
       console.error(
