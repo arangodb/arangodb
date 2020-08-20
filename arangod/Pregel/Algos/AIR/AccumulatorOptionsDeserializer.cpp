@@ -173,7 +173,6 @@ using non_empty_array_deserializer = validate<
     array_deserializer<D, C>, utilities::not_empty_validator>;
 
 using accumulators_map_deserializer = map_deserializer<accumulator_options_deserializer, my_map>;
-//using data_access_map_deserializer = map_deserializer<data_access_options_deserializer, my_map>; // TODO REMOVE ME
 using custom_accumulators_map_deserializer = map_deserializer<custom_accumulator_definition_deserializer, my_map>;
 using bindings_map_deserializer = map_deserializer<values::vpack_builder_deserializer, my_map>;
 using phases_deserializer = non_empty_array_deserializer<algorithm_phase_deserializer, my_vector>;
