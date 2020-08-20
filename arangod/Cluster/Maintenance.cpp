@@ -269,18 +269,13 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
             << "for central " << dbname << "/" << colname << "- skipping";
       }
     }
-    /*
-    LOG_DEVEL_IF(dbname=="foo") << "Col: " << colname << " shard: " << shname;
-    LOG_DEVEL_IF(dbname=="foo") << std::boolalpha << "leading: " << leading << " should: " << shouldBeLeading << " resign: " << shouldResign;
-    LOG_DEVEL_IF(dbname=="foo") << "New leader: " << leaderId << " currentLeader: " << localLeader;
-    */
     if (!leading && shouldBeLeading) {
       LOG_TOPIC("52412", DEBUG, Logger::MAINTENANCE)
           << "Triggering TakeoverShardLeadership job for shard " << dbname
           << "/" << colname << "/" << shname
           << ", local leader: " << lcol.get(THE_LEADER).copyString()
           << ", leader id: " << leaderId << ", my id: " << serverId
-          << ", should be leader: " << std::string();
+          << ", should be leader: ";
       actions.emplace_back(std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{
               {NAME, TAKEOVER_SHARD_LEADERSHIP},
