@@ -408,6 +408,9 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
 
     accumChanged |= res.value() == AccumulatorBase::UpdateResult::CHANGED;
   }
+  if (accumChanged) {
+    LOG_DEVEL << "Accumulators changed";
+  }
   return accumChanged;
 }
 

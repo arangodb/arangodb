@@ -37,13 +37,87 @@ exports.single_source_shortest_paths = single_source_shortest_paths;
 exports.test = test;
 exports.smallTest = testSmall;
 
-function minAccumulator() {
+
+function foldAccumulator(foldOp, test) {
+    const inContext = function(func) {
+        return [
+            "let",
+            [
+                ["current", ["attrib-get", "value", ["current-value"]]],
+                ["value", ["input-value"]]
+            ],
+            func
+        ]
+    }
+
+    return {
+        updateProgram: ["if",
+            [
+                ["not", ["attrib-get", "isSet", ["current-value"]]],
+                ["seq",
+                    ["this-set!",
+                        ["dict", ["list", "isSet", true], ["list", "value", ["input-value"]]]
+                    ],
+                    "hot"
+                ]
+            ],
+            [
+                inContext(test),
+                ["seq",
+                    ["this-set!",
+                        ["dict",
+                            ["list", "isSet", true],
+                            ["list", "value",
+                                [
+                                    "let",
+                                    [
+                                        ["current", ["attrib-get", "value", ["current-value"]]],
+                                        ["value", ["input-value"]]
+                                    ],
+                                    inContext(foldOp)
+                                ]
+                            ]]
+                    ],
+                    "hot"
+                ]
+            ],
+            [true, "cold"]
+        ],
+        clearProgram:
+            ["this-set!", {"isSet": false, "value": 0}],
+        getProgram:
+            ["if",
+                [
+                    ["attrib-get", "isSet", ["current-value"]],
+                    ["attrib-get", "value", ["current-value"]]
+                ],
+                [
+                    true,
+                    ["error", "accumulator undefined value"]
+                ]
+            ],
+        setProgram:
+            ["this-set!",
+                ["dict", ["list", "isSet", true], ["list", "value", ["input-value"]]]
+            ],
+        finalizeProgram:
+            ["if",
+                [
+                    ["attrib-get", "isSet", ["current-value"]],
+                    ["attrib-get", "value", ["current-value"]]
+                ],
+                [true, null]
+            ],
+    }
+}
+
+function cmpAccumulator2(cmp) {
     return {
         updateProgram: ["if",
             [
                 ["or",
                     ["not", ["attrib-get", "isSet", ["current-value"]]],
-                    ["gt?", ["attrib-get", "value", ["current-value"]], ["input-value"]]
+                    [cmp, ["input-value"], ["attrib-get", "value", ["current-value"]]]
                 ],
                 ["seq",
                     ["this-set!",
@@ -78,6 +152,14 @@ function minAccumulator() {
     }
 }
 
+
+function cmpAccumulator(cmp) {
+    return foldAccumulator(["input-value"], [cmp, ["var-ref", "value"], ["var-ref", "current"]]);
+}
+
+const minAccumulator = cmpAccumulator("lt?");
+const maxAccumulator = cmpAccumulator("gt?");
+
 /*
 
   `single_source_shortest_path_program` returns an AIR program that performs a
@@ -104,7 +186,7 @@ function single_source_shortest_paths_program(
             },
         },
         customAccumulators: {
-            "my_min": minAccumulator()
+            "my_min": minAccumulator
         },
         phases: [
             {
@@ -116,7 +198,6 @@ function single_source_shortest_paths_program(
                         [
                             ["eq?", ["this-vertex-id"], startVertexId],
                             ["seq",
-                                ["print", "I am the start vertex"],
                                 ["accum-set!", "distance", 0],
                                 true],
                         ],
@@ -131,7 +212,6 @@ function single_source_shortest_paths_program(
                         "for-each",
                         ["edge", ["this-outbound-edges"]],
                         ["seq",
-                            ["print", "Sending message"],
                             [
                                 "send-to-accum",
                                 ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
@@ -139,7 +219,7 @@ function single_source_shortest_paths_program(
                                 [
                                     "+",
                                     ["accum-ref", "distance"],
-                                    ["attrib-ref", ["quote", "document", weightAttribute], ["var-ref", "edge"]],
+                                    1,//["attrib-ref", ["quote", "document", weightAttribute], ["var-ref", "edge"]],
                                 ],
                             ],
                         ],
@@ -174,7 +254,7 @@ function single_source_shortest_paths(
 function exec_test_sssp_on_graph(graphSpec) {
     // Find the ID of a vertex to start at.
     const some_vertex = db
-        ._query(`FOR d IN @@V SORT RAND() LIMIT 1 RETURN d._id`,
+        ._query(`FOR d IN @@V SORT d.id LIMIT 535, 1 RETURN d._id`,
             {"@V": graphSpec.vname})
         .toArray()[0];
 
@@ -212,7 +292,9 @@ function exec_test_sssp(graphSpec) {
 }
 
 function testSmall() {
-    exec_test_sssp_on_graph(examplegraphs.create_line_graph("LineGraph100", 10, 1));
+    //exec_test_sssp_on_graph(examplegraphs.create_complete_graph("LineGraph100", 5));
+
+    exec_test_sssp_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 1));
 }
 
 function test() {

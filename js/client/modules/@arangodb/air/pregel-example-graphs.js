@@ -146,10 +146,10 @@ exports.create_circle_graph = create_circle_graph;
 function create_complete_graph(name, shards) {
   var spec = create_graph_spec(name, "id", shards);
 
-  for (var i = 0; i < 10; i++) {
+  for (var i = 0; i < 100; i++) {
     spec.vertices.push({ "id": "A" + i});
   }
-  add_complete(spec, _.range(10));
+  add_complete(spec, _.range(100));
   create_graph(spec);
 
   return spec;
@@ -236,6 +236,42 @@ function createLineGraph(graphName, numberOfVertices, numberOfShards) {
       cost: 1,
     });
   };
+
+  db._collection(ename).save(es);
+
+  return { name: graphName, vname: vname, ename: ename };
+}
+
+function createStarGraph(graphName, numberOfVertices, numberOfShards) {
+  const vname = graphName + "_V";
+  const ename = graphName + "_E";
+
+  try {
+    graphModule._drop(graphName, true);
+  } catch (e) {}
+  graphModule._create(
+      graphName,
+      [graphModule._relation(ename, vname, vname)],
+      [],
+      { smartGraphAttribute: "id", numberOfShards: numberOfShards }
+  );
+
+  var vs = [];
+  var vids;
+
+  for (let i = 0; i < numberOfVertices; i++) {
+    vs.push({ id: "" + i });
+  }
+  vids = db._collection(vname).save(vs);
+
+  var es = [];
+  for (let i = 1; i < numberOfVertices - 1; i++) {
+    es.push({
+      _from: vids[0]._id,
+      _to: vids[i+1]._id,
+      cost: 1,
+    });
+  }
 
   db._collection(ename).save(es);
 

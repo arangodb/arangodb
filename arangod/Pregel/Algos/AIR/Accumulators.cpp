@@ -37,7 +37,7 @@ auto CustomAccumulator<VPackSlice>::updateByMessage(MessageData const& msg)
      this->inputSlice = VPackSlice::noneSlice();
   })
 
-  LOG_DEVEL << "CustomAccumulator<VPackSlice>::updateByMessage value = " << msg._value.toJson() << " sender = " << msg._sender;
+  LOG_DEVEL << "CustomAccumulator<VPackSlice>::updateByMessage value = " << msg._value.toJson() << " sender = " << msg._sender << " current value = " << _value.toJson();
 
   VPackBuilder result;
   auto res = greenspun::Evaluate(_machine, _definition.updateProgram.slice(), result);
@@ -45,6 +45,7 @@ auto CustomAccumulator<VPackSlice>::updateByMessage(MessageData const& msg)
     return res.error().wrapMessage("in updateProgram of custom accumulator");
   }
 
+  LOG_DEVEL << "CustomAccumulator<VPackSlice>::updateByMessage result = " << result.toJson() << " value = " << _value.toJson();
   auto resultSlice = result.slice();
   if (resultSlice.isString()) {
     if (resultSlice.isEqualString("hot")) {
