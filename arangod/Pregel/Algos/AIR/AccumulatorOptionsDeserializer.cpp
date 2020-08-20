@@ -173,7 +173,7 @@ using non_empty_array_deserializer = validate<
     array_deserializer<D, C>, utilities::not_empty_validator>;
 
 using accumulators_map_deserializer = map_deserializer<accumulator_options_deserializer, my_map>;
-using data_access_map_deserializer = map_deserializer<data_access_options_deserializer, my_map>;
+//using data_access_map_deserializer = map_deserializer<data_access_options_deserializer, my_map>; // TODO REMOVE ME
 using custom_accumulators_map_deserializer = map_deserializer<custom_accumulator_definition_deserializer, my_map>;
 using bindings_map_deserializer = map_deserializer<values::vpack_builder_deserializer, my_map>;
 using phases_deserializer = non_empty_array_deserializer<algorithm_phase_deserializer, my_vector>;
@@ -183,7 +183,7 @@ using vertex_accumulator_options_plan = parameter_list<
     factory_deserialized_parameter<vertexAccumulators, accumulators_map_deserializer, false>,
     factory_deserialized_parameter<globalAccumulators, accumulators_map_deserializer, false>,
     factory_deserialized_parameter<customAccumulators, custom_accumulators_map_deserializer, false>,
-    factory_deserialized_parameter<dataAccess, data_access_map_deserializer , false>,
+    factory_deserialized_parameter<dataAccess, data_access_options_deserializer, false>,
     factory_deserialized_parameter<bindings, bindings_map_deserializer, /* required */ false>, // will be default constructed as empty map
     factory_deserialized_parameter<phases, phases_deserializer, true>,
     factory_simple_parameter<maxGSS, uint64_t, false, values::numeric_value<uint64_t, 500>>>;

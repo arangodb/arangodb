@@ -89,7 +89,7 @@ struct CustomAccumulatorDefinition {
 using AccumulatorsDeclaration = std::unordered_map<std::string, AccumulatorOptions>;
 using BindingDeclarations = std::unordered_map<std::string, VPackBuilder>;
 using CustomAccumulatorDefinitions = std::unordered_map<std::string, CustomAccumulatorDefinition>;
-using DataAccessDefinitions = std::unordered_map<std::string, DataAccessDefinition>;
+using DataAccessDefinitions = DataAccessDefinition;
 
 struct AlgorithmPhase {
   std::string name;

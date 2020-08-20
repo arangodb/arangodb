@@ -49,8 +49,9 @@ size_t GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
 void GraphFormat::copyVertexData(std::string const& documentId,
                                  arangodb::velocypack::Slice vertexDocument,
                                  vertex_type& targetPtr) {
-  targetPtr.reset(_globalAccumulatorDeclarations, _vertexAccumulatorDeclarations,
-                  _customDefinitions, documentId, vertexDocument, _vertexIdRange++);
+  targetPtr.reset(_globalAccumulatorDeclarations,
+                  _vertexAccumulatorDeclarations, _customDefinitions,
+                  _dataAccess, documentId, vertexDocument, _vertexIdRange++);
 }
 
 void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_type& targetPtr) {
@@ -61,20 +62,28 @@ bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
                                       const vertex_type* ptr, size_t size) const {
   VPackObjectBuilder guard(&b, _resultField);
 
-  // machine -> register lambda method
   // (example: accum-ref -> vertex type (ptr))
-  greenspun::Machine m; // todo: (member graph format)
+  greenspun::Machine m;  // todo: (member graph format)
   InitMachine(m);
 
   m.setFunction("accum-ref",
                 [ptr](greenspun::Machine& ctx, VPackSlice const paramsList,
-                   VPackBuilder& result) -> greenspun::EvalResult {
-// serializeIntoBuilder (method of <abstract> accumulators bsp.: accum-ref -> vertex computation.cpp)
+                      VPackBuilder& result) -> greenspun::EvalResult {
+                  // serializeIntoBuilder (method of <abstract> accumulators bsp.: accum-ref -> vertex computation.cpp)
                   // ptr->_vertexAccumulators.at().
-std::cout << ptr->_vertexId << std::endl;
-                  return {}; });
+                  std::cout << ptr->_vertexId << std::endl;
+
+                  return {};
+                });
+
+  std::cout << "Size is: " << ptr->_vertexAccumulators.size() << std::endl;
+  if (ptr->_dataAccess.writeVertex.has_value()) {
+    std::cout << ptr->_dataAccess.writeVertex->toString() << std::endl;
+  }
+  // auto res = Evaluate(m, program->slice(), result);
 
   for (auto&& acc : ptr->_vertexAccumulators) {
+    // this will be obsolete soon
     b.add(VPackValue(acc.first));
     if (auto res = acc.second->finalizeIntoBuilder(b); res.fail()) {
       LOG_DEVEL << "finalize program failed: " << res.error().toString();
