@@ -48,8 +48,8 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 OutputAqlItemRow::OutputAqlItemRow(SharedAqlItemBlockPtr block, RegIdSet const& outputRegisters,
-                                   const RegIdFlatSetStack& registersToKeep,
-                                   const RegIdFlatSet& registersToClear,
+                                   RegIdFlatSetStack const& registersToKeep,
+                                   RegIdFlatSet const& registersToClear,
                                    AqlCall clientCall, CopyRowBehavior copyRowBehavior)
     : _block(std::move(block)),
       _baseIndex(0),
@@ -426,36 +426,22 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
   // The exceptions are SubqueryStart and SubqueryEnd nodes, where the depth
   // of all rows increases or decreases, respectively. In these cases, we have
   // to adapt the depth by plus one or minus one, respectively.
-  auto const rowDepth = std::invoke([&sourceRow]() -> size_t {
-    static bool constexpr isShadowRow =
-        std::is_same_v<std::decay_t<ItemRowType>, ShadowAqlItemRow>;
-    auto const baseRowDepth = std::invoke([&sourceRow]() -> size_t {
-      if constexpr (isShadowRow) {
-        return sourceRow.getDepth() + 1;
-      } else {
-        (void)sourceRow;
-        return 0;
-      }
-    });
-    auto constexpr delta = depthDelta(adaptRowDepth);
-    static_assert(isShadowRow || delta >= 0);
-    return baseRowDepth + delta;
-  });
-  auto const& regsToKeep = std::invoke([this, rowDepth] {
-    if (registersToKeep().size() == 1) {
-      // 3.6 compatibility mode for rolling upgrades. This can be removed in 3.8!
-      return registersToKeep().back();
-    }
-
-    auto const roffset = rowDepth + 1;
-
-    TRI_ASSERT(roffset <= registersToKeep().size());
-    auto idx = registersToKeep().size() - roffset;
-    return registersToKeep().at(idx);
-  });
+  static bool constexpr isShadowRow =
+      std::is_same_v<std::decay_t<ItemRowType>, ShadowAqlItemRow>;
+  size_t baseRowDepth = 0;
+  if constexpr (isShadowRow) {
+    baseRowDepth = sourceRow.getDepth() + 1;
+  }
+  auto constexpr delta = depthDelta(adaptRowDepth);
+  size_t const rowDepth = baseRowDepth + delta;
+    
+  auto const roffset = rowDepth + 1;
+  TRI_ASSERT(roffset <= registersToKeep().size());
+  auto idx = registersToKeep().size() - roffset;
+  auto const& regsToKeep = registersToKeep().at(idx);
 
   if (mustClone) {
-    for (auto itemId : regsToKeep) {
+    for (auto const& itemId : regsToKeep) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       if (!_allowSourceRowUninitialized) {
         TRI_ASSERT(sourceRow.isInitialized());
