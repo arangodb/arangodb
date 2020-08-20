@@ -1,7 +1,0 @@
-
-#define IDS_CURRENT 1
-#define IDS_DBSERVER0001 2
-#define IDS_DBSERVER0002 3
-#define IDS_DBSERVER0003 4
-#define IDS_PLAN 5
-#define IDS_SUPERVISION 6
