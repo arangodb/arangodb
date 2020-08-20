@@ -1206,9 +1206,11 @@ index_writer::index_writer(
     const segment_options& segment_limits,
     const comparer* comparator,
     const column_info_provider_t& column_info,
+    const payload_provider_t& meta_payload_provider,
     index_meta&& meta,
     committed_state_t&& committed_state)
   : column_info_(column_info),
+    meta_payload_provider_(meta_payload_provider),
     comparator_(comparator),
     cached_readers_(dir),
     codec_(codec),
@@ -1237,7 +1239,7 @@ index_writer::index_writer(
   flush_context_pool_[flush_context_pool_.size() - 1].next_context_ = &flush_context_pool_[0];
 }
 
-void index_writer::clear() {
+void index_writer::clear(uint64_t tick) {
   SCOPED_LOCK(commit_lock_);
 
   if (!pending_state_
@@ -1261,6 +1263,10 @@ void index_writer::clear() {
 
   // setup new meta
   pending_meta.update_generation(meta_); // clone index metadata generation
+  pending_meta.payload_buf_.clear();
+  if (meta_payload_provider_ && meta_payload_provider_(tick, pending_meta.payload_buf_)) {
+    pending_meta.payload_ = pending_meta.payload_buf_;
+  }
   pending_meta.seg_counter_.store(meta_.counter()); // ensure counter() >= max(seg#)
 
   // rollback already opened transaction if any
@@ -1361,6 +1367,7 @@ index_writer::ptr index_writer::make(
     segment_options(opts),
     opts.comparator,
     opts.column_info ? opts.column_info : DEFAULT_COLUMN_INFO,
+    opts.meta_payload_provider,
     std::move(meta),
     std::move(comitted_state)
   );
@@ -1888,7 +1895,7 @@ index_writer::active_segment_context index_writer::get_segment_context(
   return active_segment_context(segment_ctx, segments_active_);
 }
 
-index_writer::pending_context_t index_writer::flush_all(const before_commit_f& before_commit) {
+index_writer::pending_context_t index_writer::flush_all() {
   REGISTER_TIMER_DETAILED();
   bool modified = !type_limits<type_t::index_gen_t>::valid(meta_.last_gen_);
   sync_context to_sync;
@@ -2345,7 +2352,7 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
   }
 
   pending_meta->payload_buf_.clear();
-  if (before_commit && before_commit(max_tick, pending_meta->payload_buf_)) {
+  if (meta_payload_provider_ && meta_payload_provider_(max_tick, pending_meta->payload_buf_)) {
     pending_meta->payload_ = pending_meta->payload_buf_;
   }
 
@@ -2359,7 +2366,7 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
   return pending_context;
 }
 
-bool index_writer::start(const before_commit_f& before_commit) {
+bool index_writer::start() {
   assert(!commit_lock_.try_lock()); // already locked
 
   REGISTER_TIMER_DETAILED();
@@ -2370,7 +2377,7 @@ bool index_writer::start(const before_commit_f& before_commit) {
     return false;
   }
 
-  auto to_commit = flush_all(before_commit);
+  auto to_commit = flush_all();
 
   if (!to_commit) {
     // nothing to commit, no transaction started
