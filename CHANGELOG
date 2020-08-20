@@ -1,6 +1,14 @@
 devel
 -----
 
+* Show optimizer rules with highest execution times in explain output.
+
+* Fixed that dropping a vanished follower works again. An exception response
+  to the replication request is now handled properly.
+
+* Fixed bad behaviour in agency supervision in some corner cases involving
+  already resigned leaders in Current.
+
 * Fixed a problem with potentially lost updates because a failover could
   happen at a wrong time or a restarted leader could come back at an
   unlucky time.
