@@ -724,7 +724,6 @@ void ClusterInfo::loadPlan() {
             << "Views in the plan is not a valid json object."
             << " Views will be ignored for now and the invalid information"
             << " will be repaired. VelocyPack: " << viewsSlice.toJson();
-        TRI_ASSERT(false);
         continue;
       }
 
@@ -740,7 +739,6 @@ void ClusterInfo::loadPlan() {
             << "invalid information will be repaired. VelocyPack: "
             << viewsSlice.toJson();
         planValid &= !viewsSlice.length();  // cannot find vocbase for defined views (allow empty views for missing vocbase)
-        TRI_ASSERT(false);
         continue;
       }
 
@@ -752,7 +750,6 @@ void ClusterInfo::loadPlan() {
               << "View entry is not a valid json object."
               << " The view will be ignored for now and the invalid "
               << "information will be repaired. VelocyPack: " << viewSlice.toJson();
-          TRI_ASSERT(false);
           continue;
         }
 
@@ -770,7 +767,6 @@ void ClusterInfo::loadPlan() {
                 << "'. The view will be ignored for now and the invalid "
                 << "information will be repaired. VelocyPack: " << viewSlice.toJson();
             planValid = false;  // view creation failure
-            TRI_ASSERT(false);
             continue;
           }
 

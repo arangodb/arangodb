@@ -1,8 +1,7 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
-* Lowering verbosity of useless log messages. Detection raised instead
-  with maintainer mode assertions.
+* Lowering verbosity of log messages in loadPlan.
 
 * Fixed too early access to vocbase for cluster-feature.
 
