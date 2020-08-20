@@ -43,8 +43,22 @@ struct WorkerContext : public ::arangodb::pregel::WorkerContext {
   WorkerContext(VertexAccumulators const* algorithm);
 
   void preGlobalSuperstep(uint64_t gss) override;
+  void getUpdateMessagesIntoBuilder(VPackBuilder& builder) override;
 private:
+
+  AccumulatorMap const& globalAccumulatorsUpdates();
+  AccumulatorMap const& globalAccumulators();
+
   VertexAccumulators const* _algo;
+
+  // This only holds the *deltas* for the global accumulators, i.e.
+  // these accumulators are reset before every GSS, and their contents
+  // are sent back to the conductor at the end of every GSS
+  AccumulatorMap _globalAccumulatorsUpdates;
+
+  // This map contains the values of the global accumulators
+  // from the last GSS
+  AccumulatorMap _globalAccumulators;
 };
 
 }  // namespace accumulators

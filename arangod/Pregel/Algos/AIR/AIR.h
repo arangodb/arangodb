@@ -59,6 +59,8 @@ using message_format = MessageFormat<message_type>;
 using vertex_computation = VertexComputation<vertex_type, edge_type, message_type>;
 using message_combiner = MessageCombiner<message_type>;
 
+using AccumulatorMap = std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>>;
+
 struct VertexAccumulators : public algorithm {
  public:
   explicit VertexAccumulators(application_features::ApplicationServer& server,

@@ -32,10 +32,33 @@ namespace arangodb::pregel::algos::accumulators {
 WorkerContext::WorkerContext(VertexAccumulators const* algorithm)
     : _algo(algorithm) {
   (void)_algo;
+
+  auto const& customDefinitions = algorithm->options().customDefinitions;
+  auto const& globalAccumulatorsDeclarations = algorithm->options().globalAccumulatorsDeclarations;
+
+  for (auto&& acc : globalAccumulatorsDeclaration) {
+    _globalAccumulators.emplace(acc.first, instantiateAccumulator(*this, acc.second, customDefinitions));
+  }
+}
+
+AccumulatorMap const& WorkerContext::globalAccumulators() {
+  return _globalAccumulators;
 }
 
 void WorkerContext::preGlobalSuperstep(uint64_t gss) {
-  getWriteAggregators().resetValues(IAggregator::ResetBy::Worker);
+  for (auto&& acc : globalAccumulators()) {
+    auto res = acc.second.clearWithResult();
+    // TODO: report error if res.ok is false
+    (void)res;
+  }
+}
+
+void WorkerContext::getUpdateMessagesIntoBuilder(VPackBuilder& builder) override {
+  VPackObjectBuilder guard(builder);
+  for (auto&& acc : globalAccumulators()) {
+    builder.add(VPackValue(acc.first));
+    res = acc.second.serializeWithResult(builder);
+  }
 }
 
 }  // namespace arangodb::pregel::algos::accumulators

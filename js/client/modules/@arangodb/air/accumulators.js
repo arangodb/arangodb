@@ -63,5 +63,47 @@ function minAccumulator() {
     };
 }
 
+function maxAccumulator() {
+    return {
+        updateProgram: ["if",
+            [
+                ["or",
+                    ["not", ["attrib-get", "isSet", ["current-value"]]],
+                    ["lt?", ["attrib-get", "value", ["current-value"]], ["input-value"]]
+                ],
+                ["seq",
+                    ["this-set!",
+                        ["dict", ["list", "isSet", true], ["list", "value", ["input-value"]]]
+                    ],
+                    "hot"
+                ]
+            ],
+            [true, "cold"]
+        ],
+        clearProgram: ["this-set!", {"isSet": false, "value": 0}],
+        getProgram: ["if",
+            [
+                ["attrib-get", "isSet", ["current-value"]],
+                ["attrib-get", "value", ["current-value"]]
+            ],
+            [
+                true,
+                ["error", "accumulator undefined value"]
+            ]
+        ],
+        setProgram: ["this-set!",
+            ["dict", ["list", "isSet", true], ["list", "value", ["input-value"]]]
+        ],
+        finalizeProgram: ["if",
+            [
+                ["attrib-get", "isSet", ["current-value"]],
+                ["attrib-get", "value", ["current-value"]]
+            ],
+            [true, null]
+        ],
+    };
+}
+
 
 exports.minAccumulator = minAccumulator;
+exports.maxAccumulator = maxAccumulator;

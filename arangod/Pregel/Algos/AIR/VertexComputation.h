@@ -43,17 +43,6 @@ class VertexComputation : public vertex_computation {
   VertexAccumulators const& algorithm() const;
 
  private:
-
-  // Reset the *local* data of all the global
-  // accumulators. We do this in every GSS, and never
-  // read from these inside a pregel program
-  void clearGlobalAccumulators();
-
-  // After the pregel program ran, aggregate the
-  // values in the global accumulators into
-  // the aggregators to be send off to the conductor
-  void aggregateGlobalAccumulators();
-
   greenspun::EvalResult clearAllVertexAccumulators();
   greenspun::EvalResultT<bool> processIncomingMessages(MessageIterator<MessageData> const& incomingMessages);
 

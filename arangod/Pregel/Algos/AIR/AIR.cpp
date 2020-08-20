@@ -60,16 +60,9 @@ using namespace arangodb::pregel;
 
 namespace arangodb::pregel::algos::accumulators {
 
-/*
-std::ostream& arangodb::pregel::algos::operator<<(std::ostream& os, VertexData
-const& vertexData) { os << vertexData.toString(); return os;
-}
-*/
-
 VertexAccumulators::VertexAccumulators(application_features::ApplicationServer& server,
                                        VPackSlice userParams)
     : Algorithm(server, pregel_algorithm_name) {
-  LOG_VERTEXACC("", DEBUG) << "parsing user parameters";
   parseUserParams(userParams);
 }
 
