@@ -30,12 +30,12 @@ exports.vertex_degrees_program = vertex_degrees_program;
 exports.vertex_degrees = vertex_degrees;
 exports.test = test;
 
-/* returns a program that compputes the vertex degree of every vertex */
+/* returns a program that computes the vertex degree of every vertex */
 function vertex_degrees_program() {
   return {
     dataAccess: {
       vertexWriter: [
-        "attrib-set", ["dict"], "scc", ["accum-ref", "forwardMin"]
+        "attrib-set", ["dict"], "scc", ["accum-ref", "outDegree"]
       ]
     },
     maxGSS: 2,
