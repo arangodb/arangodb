@@ -31,9 +31,13 @@ exports.vertex_degrees = vertex_degrees;
 exports.test = test;
 
 /* returns a program that compputes the vertex degree of every vertex */
-function vertex_degrees_program(resultField) {
+function vertex_degrees_program() {
   return {
-    resultField: resultField,
+    dataAccess: {
+      vertexWriter: [
+        "attrib-set", ["dict"], "scc", ["accum-ref", "forwardMin"]
+      ]
+    },
     maxGSS: 2,
     vertexAccumulators: {
       outDegree: {
