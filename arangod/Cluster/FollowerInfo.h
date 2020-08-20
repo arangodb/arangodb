@@ -30,6 +30,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -199,12 +200,29 @@ class FollowerInfo {
       }
       READ_LOCKER(readLockerData, _dataLock);
       TRI_ASSERT(_docColl != nullptr);
+      if (!_theLeaderTouched) {
+        // prevent writes before `TakeoverShardLeadership` has run
+        LOG_TOPIC("7c1d4", INFO, Logger::REPLICATION)
+            << "Shard "
+            << _docColl->name() << " is temporarily in read-only mode, since we have not yet run TakeoverShardLeadership since the last restart.";
+        return false;
+      }
       if (_followers->size() + 1 < _docColl->writeConcern()) {
         // We know that we still do not have enough followers
+        LOG_TOPIC("d7306", ERR, Logger::REPLICATION)
+            << "Shard " << _docColl->name() << " is temporarily in read-only mode, since we have less than writeConcern ("
+            << basics::StringUtils::itoa(_docColl->writeConcern())
+            << ") replicas in sync.";
         return false;
       }
     }
-    return updateFailoverCandidates();
+    bool res = updateFailoverCandidates();
+    if (!res) {
+      LOG_TOPIC("2e35a", ERR, Logger::REPLICATION)
+          << "Shard "
+          << _docColl->name() << " is temporarily in read-only mode, since we could not update the failover candidates in the agency.";
+    }
+    return res;
   }
 
   //////////////////////////////////////////////////////////////////////////////

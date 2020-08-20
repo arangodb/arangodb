@@ -537,6 +537,17 @@ void ClusterFeature::start() {
         << "default value '" << _heartbeatInterval << " ms'";
   }
 
+  auto wait = std::chrono::milliseconds(100);
+  size_t n = 1;
+  while (!server().isStopping()) {
+    if (server().getFeature<DatabaseFeature>().lookupDatabase("_system") != nullptr) {
+      break;
+    }
+    std::this_thread::sleep_for(n*wait);
+    if (n < 10) {
+      ++n;
+    }
+  }
   startHeartbeatThread(_agencyCallbackRegistry.get(), _heartbeatInterval, 5, endpoints);
 
   comm.increment("Current/Version");

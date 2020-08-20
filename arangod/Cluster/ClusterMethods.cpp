@@ -863,7 +863,7 @@ network::Headers getForwardableRequestHeaders(arangodb::GeneralRequest* request)
     std::string const& key = (*it).first;
 
     // ignore the following headers
-    if (key != "x-arango-async" && key != "authorization" &&
+    if (key != StaticStrings::Async && key != "authorization" &&
         key != "content-length" && key != "connection" && key != "expect" &&
         key != "host" && key != "origin" && key != StaticStrings::HLCHeader &&
         key != StaticStrings::ErrorCodes &&

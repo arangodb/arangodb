@@ -186,33 +186,33 @@ void ClusterCommResult::setDestination(ClusterInfo& ci, std::string const& dest,
 /// @brief stringify the internal error state
 std::string ClusterCommResult::stringifyErrorMessage() const {
   // append status string
-  std::string result(stringifyStatus(status));
+  std::string msg(stringifyStatus(status));
 
   if (!serverID.empty()) {
-    result.append(", cluster node: '");
-    result.append(serverID);
-    result.push_back('\'');
+    msg.append(", cluster node: '");
+    msg.append(serverID);
+    msg.push_back('\'');
   }
 
   if (!shardID.empty()) {
-    result.append(", shard: '");
-    result.append(shardID);
-    result.push_back('\'');
+    msg.append(", shard: '");
+    msg.append(shardID);
+    msg.push_back('\'');
   }
 
   if (!endpoint.empty()) {
-    result.append(", endpoint: '");
-    result.append(endpoint);
-    result.push_back('\'');
+    msg.append(", endpoint: '");
+    msg.append(endpoint);
+    msg.push_back('\'');
   }
 
   if (!errorMessage.empty()) {
-    result.append(", error: '");
-    result.append(errorMessage);
-    result.push_back('\'');
+    msg.append(", error: '");
+    msg.append(errorMessage);
+    msg.push_back('\'');
   }
 
-  return result;
+  return msg;
 }
 
 /// @brief return an error code for a result

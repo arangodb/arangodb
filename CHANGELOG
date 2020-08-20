@@ -1,13 +1,36 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
-* Fixed issue #12304: insert in transaction causing com.arangodb.ArangoDBException: 
-  Response: 500, Error: 4 - Builder value not yet sealed 
+* Fixed issue #12304: insert in transaction causing
+  com.arangodb.ArangoDBException: Response: 500, Error: 4 - Builder value not
+  yet sealed 
 
-  This happened when too deeply-nested documents (more than 63 levels of nesting)
-  were inserted. While indefinite nesting is still not supported, the error message
-  has been corrected from the internal HTTP 500 error "Builder value not yet sealed"
-  to the correct HTTP 400 "Bad parameter".
+  This happened when too deeply-nested documents (more than 63 levels of
+  nesting) were inserted. While indefinite nesting is still not supported, the
+  error message has been corrected from the internal HTTP 500 error "Builder
+  value not yet sealed" to the correct HTTP 400 "Bad parameter".
+
+* Lowering verbosity of log messages in loadPlan.
+
+* Fixed: During a MoveShard job which moves the leader there is a situation in
+  which the old owner of a shard can reclaim ownership (after having resigned
+  already), with a small race where it allows to write documents only locally,
+  but then continue the move-shard to a server without those documents. An
+  additional bug in the MoveShard Supervision job would then leave the shard in
+  a bad configuration with a resigned leader permanently in charge.
+
+* Fixed too early access to vocbase for cluster-feature.
+
+* Fixed a problem with potentially lost updates because a failover could happen
+  at a wrong time or a restarted leader could come back at an unlucky time.
+
+* Fixed BTS-167: Lingering Queries - Canceled from the UI.
+  This fixes queries not vanishing from the list of running queries in the web
+  UI in case the query was canceled using the "Cancel" button in web UI's query
+  editor.
+
+* Fixed bad behaviour in agency supervision in some corner cases involving
+  already resigned leaders in Current.
 
 * Fixed internal issue #748: Fixed reading of primary sort values for late
   materialization (of ArangoSearch views).

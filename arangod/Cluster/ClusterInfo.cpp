@@ -720,11 +720,10 @@ void ClusterInfo::loadPlan() {
       auto const& viewsSlice = databasePairSlice.value;
 
       if (!viewsSlice.isObject()) {
-        LOG_TOPIC("0ee7f", INFO, Logger::AGENCY)
+        LOG_TOPIC("0ee7f", DEBUG, Logger::AGENCY)
             << "Views in the plan is not a valid json object."
             << " Views will be ignored for now and the invalid information"
             << " will be repaired. VelocyPack: " << viewsSlice.toJson();
-
         continue;
       }
 
@@ -734,13 +733,12 @@ void ClusterInfo::loadPlan() {
       if (!vocbase) {
         // No database with this name found.
         // We have an invalid state here.
-        LOG_TOPIC("f105f", WARN, Logger::AGENCY)
+        LOG_TOPIC("f105f", DEBUG, Logger::AGENCY)
             << "No database '" << databaseName << "' found,"
             << " corresponding view will be ignored for now and the "
             << "invalid information will be repaired. VelocyPack: "
             << viewsSlice.toJson();
         planValid &= !viewsSlice.length();  // cannot find vocbase for defined views (allow empty views for missing vocbase)
-
         continue;
       }
 
@@ -748,11 +746,10 @@ void ClusterInfo::loadPlan() {
         auto const& viewSlice = viewPairSlice.value;
 
         if (!viewSlice.isObject()) {
-          LOG_TOPIC("2487b", INFO, Logger::AGENCY)
+          LOG_TOPIC("2487b", DEBUG, Logger::AGENCY)
               << "View entry is not a valid json object."
               << " The view will be ignored for now and the invalid "
               << "information will be repaired. VelocyPack: " << viewSlice.toJson();
-
           continue;
         }
 
@@ -786,7 +783,7 @@ void ClusterInfo::loadPlan() {
           // This should not happen in healthy situations.
           // If it happens in unhealthy situations the
           // cluster should not fail.
-          LOG_TOPIC("ec9e6", ERR, Logger::AGENCY)
+          LOG_TOPIC("ec9e6", DEBUG, Logger::AGENCY)
               << "Failed to load information for view '" << viewId
               << "': " << ex.what() << ". invalid information in Plan. The "
               << "view will be ignored for now and the invalid "
@@ -804,7 +801,6 @@ void ClusterInfo::loadPlan() {
               << ". invalid information in Plan. The view will "
               << "be ignored for now and the invalid information will "
               << "be repaired. VelocyPack: " << viewSlice.toJson();
-
           TRI_ASSERT(false);
           continue;
         }
