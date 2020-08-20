@@ -1,6 +1,14 @@
 devel
 -----
 
+* Renamed "master" to "leader" and "slave" to "follower" in replication messages.
+  This will change the contents of replication log messages as well the string
+  contents of replication-related error messages.
+
+  This change also renames the API endpoint `/_api/replication/make-slave` to 
+  `/_api/replication/make-follower`. The API is still available under the old
+  name, but using it is deprecated.
+
 * Fixed that dropping a vanished follower works again. An exception response
   to the replication request is now handled properly.
 

@@ -89,8 +89,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
   didTimeout = false;
 
   setAborted(false);
-  // fetch master state just once
-  Result r = _state.master.getState(_state.connection, _state.isChildSyncer);
+  // fetch leader state just once
+  Result r = _state.leader.getState(_state.connection, _state.isChildSyncer);
   if (r.fail()) {
     return r;
   }
@@ -160,8 +160,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     if (!found) {
       until = fromTick;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from master at ") +
-                        _state.master.endpoint + ": required header " +
+                    std::string("got invalid response from leader at ") +
+                        _state.leader.endpoint + ": required header " +
                         StaticStrings::ReplicationHeaderLastIncluded +
                         " is missing");
     }
@@ -179,10 +179,10 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
       return Result(
           TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
           std::string("required follow tick value '") + StringUtils::itoa(lastIncludedTick) +
-              "' is not present (anymore?) on master at " + _state.master.endpoint +
-              ". Last tick available on master is '" + StringUtils::itoa(lastIncludedTick) +
+              "' is not present (anymore?) on leader at " + _state.leader.endpoint +
+              ". Last tick available on leader is '" + StringUtils::itoa(lastIncludedTick) +
               "'. It may be required to do a full resync and increase the "
-              "number of historic logfiles on the master.");
+              "number of historic logfiles on the leader.");
     }
 
     ApplyStats applyStats;
@@ -244,14 +244,14 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
     return false;
   }
 
-  if (_state.master.majorVersion < 3 ||
-      (_state.master.majorVersion == 3 && _state.master.minorVersion <= 2)) {
+  if (_state.leader.majorVersion < 3 ||
+      (_state.leader.majorVersion == 3 && _state.leader.minorVersion <= 2)) {
     // globallyUniqueId only exists in 3.3 and higher
     return false;
   }
 
   if (!_queriedTranslations) {
-    // no translations yet... query master inventory to find names of all
+    // no translations yet... query leader inventory to find names of all
     // collections
     try {
       VPackBuilder inventoryResponse;
@@ -261,7 +261,7 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
       _queriedTranslations = true;
       if (res.fail()) {
         LOG_TOPIC("89080", ERR, Logger::REPLICATION)
-            << "got error while fetching master inventory for collection name "
+            << "got error while fetching leader inventory for collection name "
                "translations: "
             << res.errorMessage();
         return false;

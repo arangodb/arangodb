@@ -5,10 +5,10 @@
 @RESTHEADER{PUT /_api/replication/sync, Synchronize data from a remote endpoint, handleCommandSync}
 
 @RESTBODYPARAM{endpoint,string,required,string}
-the master endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
+the leader endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
 
 @RESTBODYPARAM{database,string,optional,string}
-the database name on the master (if not specified, defaults to the
+the database name on the leader (if not specified, defaults to the
 name of the local current database).
 
 @RESTBODYPARAM{username,string,optional,string}
@@ -41,7 +41,7 @@ collections will be synchronized.
 
 @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
 the maximum wait time (in seconds) that the initial synchronization will
-wait for a response from the master when fetching initial collection data.
+wait for a response from the leader when fetching initial collection data.
 This wait time can be used to control after what time the initial synchronization
 will give up waiting for a response and fail.
 This value will be ignored if set to *0*.

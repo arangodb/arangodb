@@ -188,7 +188,7 @@ GraphFormat<SCCValue, int8_t>* AsyncSCC::inputFormat() const {
 }
 
 struct ASCCMasterContext : public MasterContext {
-  ASCCMasterContext() {}  // TODO use _threashold
+  ASCCMasterContext() {}  // TODO use _threshold
   void preGlobalSuperstep() override {
     if (globalSuperstep() == 0) {
       enterNextGlobalSuperstep();

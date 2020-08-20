@@ -462,7 +462,7 @@ SyncerId newSyncerId() {
 }
 
 Syncer::SyncerState::SyncerState(Syncer* syncer, ReplicationApplierConfiguration const& configuration)
-    : syncerId{newSyncerId()}, applier{configuration}, connection{syncer, configuration}, master{configuration} {}
+    : syncerId{newSyncerId()}, applier{configuration}, connection{syncer, configuration}, leader{configuration} {}
 
 Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     : _state{this, configuration} {
@@ -487,7 +487,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
   _state.localServerId = ServerIdFeature::getId();
   _state.localServerIdString = basics::StringUtils::itoa(_state.localServerId.id());
 
-  _state.master.endpoint = _state.applier._endpoint;
+  _state.leader.endpoint = _state.applier._endpoint;
 }
 
 Syncer::~Syncer() = default;
@@ -553,7 +553,7 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
   // extract "cid"
   DataSourceId cid = ::getCid(slice);
 
-  if (!_state.master.simulate32Client() || cid.empty()) {
+  if (!_state.leader.simulate32Client() || cid.empty()) {
     VPackSlice uuid;
 
     if ((uuid = slice.get(::cuidRef)).isString()) {
@@ -639,13 +639,13 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   auto col = resolveCollection(vocbase, slice);
 
   if (col != nullptr && col->type() == type &&
-      (!_state.master.simulate32Client() || col->name() == name)) {
+      (!_state.leader.simulate32Client() || col->name() == name)) {
     // collection already exists. TODO: compare attributes
     return Result();
   }
 
   bool forceRemoveCid = false;
-  if (col != nullptr && _state.master.simulate32Client()) {
+  if (col != nullptr && _state.leader.simulate32Client()) {
     forceRemoveCid = true;
     LOG_TOPIC("01f9f", INFO, Logger::REPLICATION)
         << "would have got a wrong collection!";
@@ -657,7 +657,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
 
   if (col != nullptr) {
     if (col->system()) {
-      TRI_ASSERT(!_state.master.simulate32Client() || col->guid() == col->name());
+      TRI_ASSERT(!_state.leader.simulate32Client() || col->guid() == col->name());
       SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
                                       *col, AccessMode::Type::WRITE);
       trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
@@ -689,7 +689,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   s.openObject();
   s.add(StaticStrings::DataSourceSystem, VPackValue(true));
 
-  if ((uuid.isString() && !_state.master.simulate32Client()) || forceRemoveCid) {  // need to use cid for 3.2 master
+  if ((uuid.isString() && !_state.leader.simulate32Client()) || forceRemoveCid) {  // need to use cid for 3.2 leader
     // if we received a globallyUniqueId from the remote, then we will always
     // use this id so we can discard the "cid" and "id" values for the
     // collection
