@@ -36,8 +36,8 @@
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
-/// @brief maximum object nesting depth
-static int const MaxLevels = 64;
+/// @brief maximum array/object nesting depth
+static int const MaxLevels = 80;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a VelocyValueType::String into a V8 object
@@ -341,10 +341,18 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
   if (parameter->IsArray()) {
     v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(parameter);
 
+    if (++context.level > MaxLevels) {
+      // too much recursion - roll back level increase and return null and an error instead
+      --context.level;
+      AddValue<VPackValue, inObject>(context, attributeName, VPackValue(VPackValueType::Null));
+      return TRI_ERROR_BAD_PARAMETER;
+    }
+
     AddValue<VPackValue, inObject>(context, attributeName,
                                    VPackValue(VPackValueType::Array));
     uint32_t const n = array->Length();
 
+    int res = TRI_ERROR_NO_ERROR;
     for (uint32_t i = 0; i < n; ++i) {
       v8::Handle<v8::Value> value = array->Get(context.context, i).FromMaybe(v8::Local<v8::Value>());
       if (value->IsUndefined()) {
@@ -352,25 +360,20 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
         continue;
       }
 
-      if (++context.level > MaxLevels) {
-        // too much recursion
-        return TRI_ERROR_BAD_PARAMETER;
-      }
-
-      int res = V8ToVPack<performAllChecks, false>(context, value, arangodb::velocypack::StringRef(),
-                                                   convertFunctionsToNull);
-
-      --context.level;
+      res = V8ToVPack<performAllChecks, false>(context, value, arangodb::velocypack::StringRef(),
+                                               convertFunctionsToNull);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        return res;
+        break;
       }
     }
+      
+    --context.level;
 
     if (!context.keepTopLevelOpen || context.level > 0) {
       context.builder.close();
     }
-    return TRI_ERROR_NO_ERROR;
+    return res;
   }
 
   if (parameter->IsObject()) {
@@ -443,9 +446,18 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
 
     v8::Handle<v8::Array> names = o->GetOwnPropertyNames(context.context).FromMaybe(v8::Local<v8::Array>());
     uint32_t const n = names->Length();
+    
+    if (++context.level > MaxLevels) {
+      // too much recursion - roll back level increase and return null and an error instead
+      --context.level;
+      AddValue<VPackValue, inObject>(context, attributeName, VPackValue(VPackValueType::Null));
+      return TRI_ERROR_BAD_PARAMETER;
+    }
 
     AddValue<VPackValue, inObject>(context, attributeName,
                                    VPackValue(VPackValueType::Object));
+
+    int res = TRI_ERROR_NO_ERROR;
 
     for (uint32_t i = 0; i < n; ++i) {
       // process attribute name
@@ -454,7 +466,8 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
       v8::String::Utf8Value str(context.isolate, key);
 
       if (*str == nullptr) {
-        return TRI_ERROR_OUT_OF_MEMORY;
+        res = TRI_ERROR_OUT_OF_MEMORY;
+        break;
       }
 
       v8::Handle<v8::Value> value = o->Get(context.context, key).FromMaybe(v8::Handle<v8::Value>());
@@ -463,26 +476,21 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
         continue;
       }
 
-      if (++context.level > MaxLevels) {
-        // too much recursion
-        return TRI_ERROR_BAD_PARAMETER;
-      }
-
-      int res = V8ToVPack<performAllChecks, true>(context, value,
-                                                  arangodb::velocypack::StringRef(*str, str.length()),
-                                                  convertFunctionsToNull);
-
-      --context.level;
+      res = V8ToVPack<performAllChecks, true>(context, value,
+                                              arangodb::velocypack::StringRef(*str, str.length()),
+                                              convertFunctionsToNull);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        return res;
+        break;
       }
     }
+    
+    --context.level;
 
     if (!context.keepTopLevelOpen || context.level > 0) {
       context.builder.close();
     }
-    return TRI_ERROR_NO_ERROR;
+    return res;
   }
 
   return TRI_ERROR_BAD_PARAMETER;

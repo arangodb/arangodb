@@ -1,8 +1,17 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
 
-* Fix internal issue #742: Add tick storage in index meta payload after 
-  truncate operation
+* Fixed internal issue #742: Add tick storage in index meta payload for
+  ArangoSearch view links after collection truncate operation.
+
+* Fixed issue #12304: insert in transaction causing
+  com.arangodb.ArangoDBException: Response: 500, Error: 4 - Builder value not
+  yet sealed.
+
+  This happened when too deeply-nested documents (more than 63 levels of
+  nesting) were inserted. While indefinite nesting is still not supported, the
+  error message has been corrected from the internal HTTP 500 error "Builder
+  value not yet sealed" to the correct HTTP 400 "Bad parameter".
 
 * Fixed: During a move-shard job which moves the leader there is a
   situation in which the old owner of a shard can reclaim ownership
