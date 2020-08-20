@@ -271,18 +271,13 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
             << "for central " << dbname << "/" << colname << "- skipping";
       }
     }
-    /*
-    LOG_DEVEL_IF(dbname=="foo") << "Col: " << colname << " shard: " << shname;
-    LOG_DEVEL_IF(dbname=="foo") << std::boolalpha << "leading: " << leading << " should: " << shouldBeLeading << " resign: " << shouldResign;
-    LOG_DEVEL_IF(dbname=="foo") << "New leader: " << leaderId << " currentLeader: " << localLeader;
-    */
     if (!leading && shouldBeLeading) {
       LOG_TOPIC("52412", DEBUG, Logger::MAINTENANCE)
           << "Triggering TakeoverShardLeadership job for shard " << dbname
           << "/" << colname << "/" << shname
           << ", local leader: " << lcol.get(THE_LEADER).copyString()
           << ", leader id: " << leaderId << ", my id: " << serverId
-          << ", should be leader: " << std::string();
+          << ", should be leader: ";
       actions.emplace_back(ActionDescription(
           std::map<std::string, std::string>{
               {NAME, TAKEOVER_SHARD_LEADERSHIP},
@@ -290,8 +285,8 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
               {COLLECTION, colname},
               {SHARD, shname},
               {THE_LEADER, std::string()},
-              {LOCAL_LEADER, std::string(localLeader)},
-              {OLD_CURRENT_COUNTER, "0"}},   // legacy, no longer used
+              {LOCAL_LEADER, localLeader},
+              {OLD_CURRENT_COUNTER, std::to_string(feature.getCurrentCounter())}},
           LEADER_PRIORITY));
     }
 
