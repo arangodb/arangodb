@@ -298,9 +298,16 @@ bool MoveShard::start(bool&) {
     return false;
   }
 
-  if (!_isLeader && _remainsFollower) {
-    finish("", "", false, "remainsFollower is invalid without isLeader");
-    return false;
+  if (!_isLeader) {
+    if (_remainsFollower) {
+      finish("", "", false, "remainsFollower is invalid without isLeader");
+      return false;
+    }
+  } else {
+    if (_toServerIsFollower && !_remainsFollower) {
+      finish("", "", false, "remainsFollower must be true if the toServer is a follower");
+      return false;
+    }
   }
 
   // Compute group to move shards together:
@@ -541,6 +548,12 @@ JOB_STATUS MoveShard::pendingLeader() {
 
     // We need to switch leaders:
     {
+      // First make sure that the server we want to go to is still in Current
+      // for all shards. This is important, since some transaction which the leader
+      // has still executed before its resignation might have dropped a follower
+      // for some shard, and this could have been our new leader. In this case we
+      // must abort and go back to the original leader, which is still perfectly
+      // safe.
       for (auto const& sh : shardsLikeMe) {
         auto const shardPath = curColPrefix + _database + "/" + sh.collection + "/" + sh.shard;
         auto const tmp = _snapshot.hasAsArray(shardPath + "/servers");
@@ -563,6 +576,7 @@ JOB_STATUS MoveShard::pendingLeader() {
           return FAILED;
         }
       }
+
       VPackArrayBuilder trxArray(&trx);
       {
         VPackObjectBuilder trxObject(&trx);
@@ -838,18 +852,19 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
   std::vector<Job::shard_t> shardsLikeMe =
     clones(_snapshot, _database, _collection, _shard);
 
+  // If we move the leader: Once the toServer has been put into the Plan
+  // as leader, we always abort by moving forwards:
   // We can no longer abort by reverting to where we started, if any of the
   // shards of the distributeShardsLike group has already gone to new leader
   if (_isLeader) {
-    for (auto const& i : shardsLikeMe) {
-      auto const& cur = _snapshot.hasAsArray(
-        curColPrefix + _database + "/" + i.collection + "/" + i.shard + "/" + "servers");
-      if (cur.second && cur.first[0].copyString() == _to) {
-        LOG_TOPIC("72a82", INFO, Logger::SUPERVISION) <<
-          "MoveShard can no longer abort through reversion to where it started. Flight forward";
-        finish(_to, _shard, true, "job aborted (2) - new leader already in place: " + reason);
-        return result;
-      }
+    auto const& plan = _snapshot.hasAsArray(planColPrefix + _database + "/" + _collection + "/shards/" + _shard);
+    if (plan.second && plan.first[0].copyString() == _to) {
+      LOG_TOPIC("72a82", INFO, Logger::SUPERVISION)
+      << "MoveShard can no longer abort through reversion to where it "
+         "started. Flight forward, leaving Plan as it is now.";
+      finish(_to, _shard, false, "job aborted (2) - new leader already in place: " + reason);
+      return result;
+
     }
   }
 
@@ -888,7 +903,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
                          {
                            VPackArrayBuilder guard(&trx);
                            for (auto const& srv : VPackArrayIterator(plan)) {
-                             if (false == srv.isEqualString(_to)) {
+                             if (!srv.isEqualString(_to)) {
                                trx.add(srv);
                              }
                            }
@@ -905,17 +920,8 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
     }
     {
       VPackObjectBuilder preconditionObj(&trx);
-      if (_isLeader) { // Precondition, that current is still as in snapshot
-        // Current preconditions for all shards
-        doForAllShards(
-          _snapshot, _database, shardsLikeMe,
-          [&trx](
-            Slice plan, Slice current, std::string& planPath, std::string& curPath) {
-            // Current still as is
-            trx.add(curPath, current);
-          });
-        addPreconditionJobStillInPending(trx, _jobId);
-      }
+      // If the collection is gone in the meantime, we do nothing here, but the
+      // round will move the job to Finished anyway:
       addPreconditionCollectionStillThere(trx, _database, _collection);
     }
 
@@ -927,16 +933,25 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
                     std::string("Lost leadership"));
     return result;
   } else if (res.indices[0] == 0) {
+    // Precondition failed
     if (_isLeader) {
       // Tough luck. Things have changed. We'll move on
-      LOG_TOPIC("513e6", INFO, Logger::SUPERVISION) <<
-        "MoveShard can no longer abort through reversion to where it started. Flight forward";
-      finish(_to, _shard, true, "job aborted (4) - new leader already in place: " + reason);
+      LOG_TOPIC("513e6", INFO, Logger::SUPERVISION)
+          << "Precondition failed on MoveShard::abort() for shard " << _shard << " of collection " << _collection
+          << ", if the collection has been deleted in the meantime, the job will be finished soon, if this message repeats, tell us.";
+      result = Result(
+          TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
+          std::string("Precondition failed while aborting moveShard job ") + _jobId);
       return result;
+      // We intentionally do not move the job object to Failed or Finished here! The failed
+      // precondition can either be one of the read locks, which suggests a fundamental problem,
+      // and in which case we will log this message in every round of the supervision.
+      // Or the collection has been dropped since we took the snapshot, in this case we
+      // will move the job to Finished in the next round.
     }
     result = Result(
-    TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
-    std::string("Precondition failed while aborting moveShard job ") + _jobId);
+        TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
+        std::string("Precondition failed while aborting moveShard job ") + _jobId);
   }
 
   return result;

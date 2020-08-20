@@ -1,6 +1,14 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed: During a move-shard job which moves the leader there is a
+  situation in which the old owner of a shard can reclaim ownership
+  (after having resigned already), with a small race where it allows to
+  write documents only locally, but then continue the move-shard to a
+  server without those documents. An additional bug in the MoveShard
+  Supervision job would then leave the shard in a bad configuration
+  with a resigned leader permanently in charge.
+
 * Fixed a problem with potentially lost updates because a failover could happen
   at a wrong time or a restarted leader could come back at an unlucky time.
 
