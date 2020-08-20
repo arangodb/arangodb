@@ -92,11 +92,7 @@ static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   query_t query = std::make_shared<Builder>();
-  int res = TRI_V8ToVPack(isolate, *query, args[0], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  TRI_V8ToVPack(isolate, *query, args[0], false);
 
   read_ret_t ret = agent->read(query);
 
@@ -125,11 +121,7 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   query_t query = std::make_shared<Builder>();
-  int res = TRI_V8ToVPack(isolate, *query, args[0], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  TRI_V8ToVPack(isolate, *query, args[0], false);
 
   write_ret_t ret = agent->write(query);
 

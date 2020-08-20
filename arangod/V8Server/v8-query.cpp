@@ -409,11 +409,7 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bindVars->add("@collection", VPackValue(collection->name()));
 
   VPackBuilder keys;
-  int res = TRI_V8ToVPack(isolate, keys, args[0], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  TRI_V8ToVPack(isolate, keys, args[0], false);
 
   bindVars->add(VPackValue("keys"));
   arangodb::aql::BindParameters::stripCollectionNames(keys.slice(), collection->name(),
@@ -458,10 +454,7 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bindVars->add("@collection", VPackValue(collection->name()));
   bindVars->add(VPackValue("keys"));
 
-  int res = TRI_V8ToVPack(isolate, *(bindVars.get()), args[0], false);
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  TRI_V8ToVPack(isolate, *(bindVars.get()), args[0], false);
   bindVars->close();
 
   std::string const queryString(

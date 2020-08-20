@@ -136,18 +136,10 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const key = TRI_ObjectToString(isolate, args[0]);
 
   VPackBuilder oldBuilder;
-  int res = TRI_V8ToVPack(isolate, oldBuilder, args[1], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <oldValue> to VPack");
-  }
+  TRI_V8ToVPack(isolate, oldBuilder, args[1], false);
 
   VPackBuilder newBuilder;
-  res = TRI_V8ToVPack(isolate, newBuilder, args[2], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <newValue> to VPack");
-  }
+  TRI_V8ToVPack(isolate, newBuilder, args[2], false);
 
   double ttl = 0.0;
   if (args.Length() > 3) {
@@ -315,11 +307,7 @@ static void JS_APIAgency(std::string const& envelope,
   }
 
   VPackBuilder builder;
-  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert query to JSON");
-  }
+  TRI_V8ToVPack(isolate, builder, args[0], false);
 
   TRI_GET_GLOBALS();
   AgencyComm comm(v8g->_server);
@@ -404,11 +392,7 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const key = TRI_ObjectToString(isolate, args[0]);
 
   VPackBuilder builder;
-  int res = TRI_V8ToVPack(isolate, builder, args[1], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert <value> to JSON");
-  }
+  TRI_V8ToVPack(isolate, builder, args[1], false);
 
   double ttl = 0.0;
   if (args.Length() > 2) {
@@ -903,11 +887,7 @@ static void JS_GetResponsibleShardClusterInfo(v8::FunctionCallbackInfo<v8::Value
   }
 
   VPackBuilder builder;
-  int res = TRI_V8ToVPack(isolate, builder, args[1], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  TRI_V8ToVPack(isolate, builder, args[1], false);
 
   ShardID shardId;
   CollectionID collectionId = TRI_ObjectToString(isolate, args[0]);
@@ -922,8 +902,8 @@ static void JS_GetResponsibleShardClusterInfo(v8::FunctionCallbackInfo<v8::Value
 
   bool usesDefaultShardingAttributes;
 
-  res = collInfo->getResponsibleShard(builder.slice(), documentIsComplete,
-                                      shardId, usesDefaultShardingAttributes);
+  int res = collInfo->getResponsibleShard(builder.slice(), documentIsComplete,
+                                          shardId, usesDefaultShardingAttributes);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
