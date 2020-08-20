@@ -426,6 +426,12 @@ class IRESEARCH_API index_writer
     size_t segment_memory_max{0};
   };
 
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief functor for creating payload. Operation tick is provided for 
+  /// payload generation.
+  ////////////////////////////////////////////////////////////////////////////
+  using payload_provider_t = std::function<bool(uint64_t, bstring&)>;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief options the the writer should use after creation
   //////////////////////////////////////////////////////////////////////////////
@@ -434,6 +440,11 @@ class IRESEARCH_API index_writer
     /// @brief returns column info the writer should use for columnstore
     ////////////////////////////////////////////////////////////////////////////
     column_info_provider_t column_info;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief Provides payload for index_meta created by writer
+    ////////////////////////////////////////////////////////////////////////////
+    payload_provider_t meta_payload_provider;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief comparator defines physical order of documents in each segment
@@ -520,9 +531,10 @@ class IRESEARCH_API index_writer
   ////////////////////////////////////////////////////////////////////////////
   /// @brief Clears the existing index repository by staring an empty index.
   ///        Previously opened readers still remain valid.
+  /// @param truncate transaction tick
   /// @note call will rollback any opened transaction
   ////////////////////////////////////////////////////////////////////////////
-  void clear();
+  void clear(uint64_t tick = 0);
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief merges segments accepted by the specified defragment policty into
@@ -598,17 +610,15 @@ class IRESEARCH_API index_writer
     return comparator_;
   }
 
-  typedef std::function<bool(uint64_t, bstring&)> before_commit_f;
-
   ////////////////////////////////////////////////////////////////////////////
   /// @brief begins the two-phase transaction
   /// @param payload arbitrary user supplied data to store in the index
   /// @returns true if transaction has been sucessflully started
   ////////////////////////////////////////////////////////////////////////////
-  bool begin(const before_commit_f& before_commit = {}) {
+  bool begin() {
     SCOPED_LOCK(commit_lock_);
 
-    return start(before_commit);
+    return start();
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -627,10 +637,10 @@ class IRESEARCH_API index_writer
   /// @note that if begin() has been already called commit() is
   /// relatively lightweight operation 
   ////////////////////////////////////////////////////////////////////////////
-  void commit(const before_commit_f& before_commit = {}) {
+  void commit() {
     SCOPED_LOCK(commit_lock_);
 
-    start(before_commit);
+    start();
     finish();
   }
 
@@ -1007,21 +1017,23 @@ class IRESEARCH_API index_writer
     const segment_options& segment_limits,
     const comparer* comparator,
     const column_info_provider_t& column_info,
+    const payload_provider_t& meta_payload_provider,
     index_meta&& meta,
     committed_state_t&& committed_state
   );
 
-  pending_context_t flush_all(const before_commit_f& before_commit);
+  pending_context_t flush_all();
 
   flush_context_ptr get_flush_context(bool shared = true);
   active_segment_context get_segment_context(flush_context& ctx); // return a usable segment or a nullptr segment if retry is required (e.g. no free segments available)
 
-  bool start(const before_commit_f& before_commit); // starts transaction
+  bool start(); // starts transaction
   void finish(); // finishes transaction
   void abort(); // aborts transaction
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   column_info_provider_t column_info_;
+  payload_provider_t meta_payload_provider_; // provides payload for new segments
   const comparer* comparator_;
   readers_cache cached_readers_; // readers by segment name
   format::ptr codec_;

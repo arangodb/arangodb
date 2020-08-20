@@ -321,7 +321,7 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
 
 void IResearchRocksDBRecoveryHelper::LogData(
     const rocksdb::Slice& blob,
-    rocksdb::SequenceNumber /*tick*/) {
+    rocksdb::SequenceNumber tick) {
   RocksDBLogType const type = RocksDBLogValue::type(blob);
 
   switch (type) {
@@ -342,7 +342,7 @@ void IResearchRocksDBRecoveryHelper::LogData(
       if (coll != nullptr) {
         auto const links = lookupLinks(*coll);
         for (auto link : links) {
-          link->afterTruncate(/*tick*/ 0);  // tick isn't used for links
+          link->afterTruncate(tick);
         }
       }
 
