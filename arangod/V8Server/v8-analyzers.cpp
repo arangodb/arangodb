@@ -322,10 +322,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
       propertiesSlice = propertiesBuilder.slice();
     } else if (args[2]->IsObject()) {
       auto value = args[2]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
-      auto res = TRI_V8ToVPack(isolate, propertiesBuilder, value, false);
-      if (TRI_ERROR_NO_ERROR != res) {
-        TRI_V8_THROW_EXCEPTION(res);
-      }
+      TRI_V8ToVPack(isolate, propertiesBuilder, value, false);
       propertiesSlice = propertiesBuilder.slice();
     } else if (!args[2]->IsNull()) {
       TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");

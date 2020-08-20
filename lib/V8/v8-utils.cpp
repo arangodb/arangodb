@@ -4928,11 +4928,7 @@ static void JS_V8ToVPack(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   VPackBuilder builder;
-  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  TRI_V8ToVPack(isolate, builder, args[0], false);
 
   VPackSlice slice = builder.slice();
 
