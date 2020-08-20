@@ -565,7 +565,7 @@ JOB_STATUS MoveShard::pendingLeader() {
 
     // We need to switch leaders:
     {
-      // First make sure that the server we want to go to is still a failoverCandidate
+      // First make sure that the server we want to go to is still in Current
       // for all shards. This is important, since some transaction which the leader
       // has still executed before its resignation might have dropped a follower
       // for some shard, and this could have been our new leader. In this case we
