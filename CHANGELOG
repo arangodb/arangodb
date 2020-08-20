@@ -1,6 +1,9 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
+* Fix internal issue #742: Add tick storage in index meta payload after 
+  truncate operation
+
 * Fixed too early access to vocbase for cluster-feature.
 
 * Fixed a problem with potentially lost updates because a failover could happen
