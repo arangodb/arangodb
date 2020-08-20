@@ -52,10 +52,14 @@ class Path {
     return stream;
   }
 
-  std::vector<std::string> vec() const {
+  std::vector<std::string> vec(size_t skip = 0) const {
     std::vector<std::string> res;
-    forEach([&res](const char* component) {
-      res.emplace_back(std::string{component});
+    forEach([&res, &skip](const char* component) {
+      if (skip == 0) {
+        res.emplace_back(std::string{component});
+      } else {
+        skip--;
+      }
     });
     return res;
   }

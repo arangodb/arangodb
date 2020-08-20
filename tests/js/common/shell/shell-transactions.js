@@ -44,19 +44,162 @@ function TransactionsInvocationsSuite() {
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
-
-    setUp: function () {
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
-
     tearDown: function () {
       internal.wait(0);
+    },
+    
+    testNestingLevelArrayOk: function () {
+      let params = { doc: [] };
+      let level = 0;
+      let start = params.doc;
+      while (level < 64) {
+        start.push([]);
+        start = start[0];
+        ++level;
+      }
+
+      let obj = {
+        collections: {},
+        action: function (params) {
+          return params.doc;
+        },
+        params
+      };
+
+      let result = db._executeTransaction(obj);
+      assertEqual(params.doc, result);
+    },
+    
+    testNestingLevelArrayBorderline: function () {
+      let params = { doc: [] };
+      let level = 0;
+      let start = params.doc;
+      while (level < 77) {
+        start.push([]);
+        start = start[0];
+        ++level;
+      }
+
+      let obj = {
+        collections: {},
+        action: function (params) {
+          return params.doc;
+        },
+        params
+      };
+
+      let result = db._executeTransaction(obj);
+      assertEqual(params.doc, result);
+    },
+    
+    testNestingLevelArrayTooDeep: function () {
+      if (!global.ARANGOSH_PATH) {
+        // we are arangod... in this case the JS -> JSON -> JS 
+        // conversion will not take place, and we will not run into
+        // an error here
+        return;
+      }
+
+      let params = { doc: [] };
+      let level = 0;
+      let start = params.doc;
+      while (level < 100) {
+        start.push([]);
+        start = start[0];
+        ++level;
+      }
+
+      let obj = {
+        collections: {},
+        action: function (params) {
+          return params.doc;
+        },
+        params
+      };
+
+      try {
+        db._executeTransaction(obj);
+        fail();
+      } catch (err) {
+        assertEqual(arangodb.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+    
+    testNestingLevelObjectOk: function () {
+      let params = { doc: {} };
+      let level = 0;
+      let start = params.doc;
+      while (level < 64) {
+        start.doc = {};
+        start = start.doc;
+        ++level;
+      }
+
+      let obj = {
+        collections: {},
+        action: function (params) {
+          return params.doc;
+        },
+        params
+      };
+
+      let result = db._executeTransaction(obj);
+      assertEqual(params.doc, result);
+    },
+    
+    testNestingLevelObjectBorderline: function () {
+      let params = { doc: {} };
+      let level = 0;
+      let start = params.doc;
+      while (level < 77) {
+        start.doc = {};
+        start = start.doc;
+        ++level;
+      }
+
+      let obj = {
+        collections: {},
+        action: function (params) {
+          return params.doc;
+        },
+        params
+      };
+
+      let result = db._executeTransaction(obj);
+      assertEqual(params.doc, result);
+    },
+    
+    testNestingLevelObjectTooDeep: function () {
+      if (!global.ARANGOSH_PATH) {
+        // we are arangod... in this case the JS -> JSON -> JS 
+        // conversion will not take place, and we will not run into
+        // an error here
+        return;
+      }
+
+      let params = { doc: {} };
+      let level = 0;
+      let start = params.doc;
+      while (level < 100) {
+        start.doc = {};
+        start = start.doc;
+        ++level;
+      }
+
+      let obj = {
+        collections: {},
+        action: function (params) {
+          return params.doc;
+        },
+        params
+      };
+
+      try {
+        db._executeTransaction(obj);
+        fail();
+      } catch (err) {
+        assertEqual(arangodb.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
     },
 
     testErrorHandling: function () {
@@ -99,8 +242,7 @@ function TransactionsInvocationsSuite() {
         assertEqual(arangodb.ERROR_BAD_PARAMETER, err.errorNum);
       }
     },
-
-
+    
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief execute a transaction with a string action
     ////////////////////////////////////////////////////////////////////////////////
@@ -151,8 +293,7 @@ function TransactionsInvocationsSuite() {
           action: null,
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -167,8 +308,7 @@ function TransactionsInvocationsSuite() {
           collections: {}
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -184,8 +324,7 @@ function TransactionsInvocationsSuite() {
           action: "return 11;"
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -201,8 +340,7 @@ function TransactionsInvocationsSuite() {
           action: "function () { "
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -218,8 +356,7 @@ function TransactionsInvocationsSuite() {
           action: null,
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
