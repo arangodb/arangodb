@@ -1,7 +1,7 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
-* Fixed: During a move-shard job which moves the leader there is a situation in
+* Fixed: During a MoveShard job which moves the leader there is a situation in
   which the old owner of a shard can reclaim ownership (after having resigned
   already), with a small race where it allows to write documents only locally,
   but then continue the move-shard to a server without those documents. An
