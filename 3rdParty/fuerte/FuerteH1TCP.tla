@@ -152,6 +152,7 @@ process(fuerte = "fuertethread") {
             alarm := "readAlarm";
           } else {
             iocontext := Tail(iocontext);
+            alarm := "off";
             call shutdownConnection();
           };
         };
