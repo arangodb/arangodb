@@ -35,9 +35,9 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/TimedAction.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -117,7 +117,17 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
       _nextId(0),
       _stopping(false),
       _gcFinished(false),
-      _dynamicContextCreationBlockers(0) {
+      _dynamicContextCreationBlockers(0),
+      _contextsCreated(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_v8_context_created", 0, "V8 contexts created")),
+      _contextsDestroyed(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_v8_context_destroyed", 0, "V8 contexts destroyed")),
+      _contextsEntered(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_v8_context_entered", 0, "V8 context enter events")),
+      _contextsExited(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_v8_context_exited", 0, "V8 context exit events")),
+      _contextsEnterFailures(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_v8_context_enter_failures", 0, "V8 context enter failures")) {
   setOptional(true);
   startsAfter<ClusterFeaturePhase>();
 
@@ -404,6 +414,7 @@ void V8DealerFeature::start() {
         delete context;
         throw;
       }
+      ++_contextsCreated;
     }
 
     TRI_ASSERT(_contexts.size() > 0);
@@ -575,6 +586,7 @@ V8Context* V8DealerFeature::addContext() {
     // context has not been added to the global list of contexts yet
     loadJavaScriptFileInContext(database.get(), "server/initialize.js", context, nullptr);
 
+    ++_contextsCreated;
     return context;
   } catch (...) {
     delete context;
@@ -900,13 +912,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
     return nullptr;
   }
 
-  TimedAction exitWhenNoContext(
-      [](double waitTime) {
-        LOG_TOPIC("e1807", WARN, arangodb::Logger::V8)
-            << "giving up waiting for unused V8 context after "
-            << Logger::FIXED(waitTime) << " s";
-      },
-      60);
+  double const startTime = TRI_microtime();
 
   V8Context* context = nullptr;
 
@@ -957,6 +963,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
           // oops
           delete context;
           context = nullptr;
+          ++_contextsDestroyed;
           continue;
         }
 
@@ -971,6 +978,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
           _contexts.pop_back();
           TRI_ASSERT(context != nullptr);
           delete context;
+          ++_contextsDestroyed;
         }
 
         guard.broadcast();
@@ -978,12 +986,24 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
       }
 
       TRI_ASSERT(guard.isLocked());
-      guard.wait(100000);
 
-      if (exitWhenNoContext.tick()) {
+      constexpr double maxWaitTime = 60.0;
+      if (TRI_microtime() - startTime >= maxWaitTime) {
         vocbase->release();
+        
+        LOG_TOPIC("e1807", WARN, arangodb::Logger::V8)
+            << "giving up waiting for unused V8 context after "
+            << Logger::FIXED(maxWaitTime) << " s - "
+            << "contexts: " << _contexts.size() << "/" << _nrMaxContexts 
+            << ", idle: " << _idleContexts.size() 
+            << ", busy: " << _busyContexts.size() 
+            << ", dirty: " << _dirtyContexts.size() 
+            << ", in flight: " << _nrInflightContexts;
+        ++_contextsEnterFailures;
         return nullptr;
       }
+      
+      guard.wait(100000);
     }
 
     TRI_ASSERT(guard.isLocked());
@@ -1013,6 +1033,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
   context->assertLocked();
 
   prepareLockedContext(vocbase, context, securityContext);
+  
+  ++_contextsEntered;
   return context;
 }
 
@@ -1172,6 +1194,8 @@ void V8DealerFeature::exitContext(V8Context* context) {
         << "returned dirty V8 context #" << context->id() << " back into free";
     guard.broadcast();
   }
+
+  ++_contextsExited;
 }
 
 void V8DealerFeature::defineContextUpdate(
@@ -1494,21 +1518,22 @@ V8DealerFeature::Statistics V8DealerFeature::getCurrentContextNumbers() {
           _idleContexts.size(), _nrMaxContexts};
 }
 
-std::vector<V8DealerFeature::MemoryStatistics> V8DealerFeature::getCurrentMemoryNumbers() {
-  std::vector<V8DealerFeature::MemoryStatistics> result;
+std::vector<V8DealerFeature::DetailedContextStatistics> V8DealerFeature::getCurrentContextDetails() {
+  std::vector<V8DealerFeature::DetailedContextStatistics> result;
   {
     CONDITION_LOCKER(guard, _contextCondition);
     result.reserve(_contexts.size());
     for (auto oneCtx : _contexts) {
       auto isolate = oneCtx->_isolate;
       TRI_GET_GLOBALS();
-      result.push_back(MemoryStatistics
+      result.push_back(DetailedContextStatistics
                        {
                         v8g->_id,
                         v8g->_lastMaxTime,
                         v8g->_countOfTimes,
                         v8g->_heapMax,
-                        v8g->_heapLow
+                        v8g->_heapLow,
+                        oneCtx->invocations()
                        });
     }
   }
@@ -1627,6 +1652,7 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   LOG_TOPIC("34c28", TRACE, arangodb::Logger::V8) << "closed V8 context #" << context->id();
 
   delete context;
+  ++_contextsDestroyed;
 }
 
 V8ContextGuard::V8ContextGuard(TRI_vocbase_t* vocbase,

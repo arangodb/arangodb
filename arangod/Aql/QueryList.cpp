@@ -57,7 +57,7 @@ QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string&& queryString,
 
 /// @brief create a query list
 QueryList::QueryList(QueryRegistryFeature& feature, TRI_vocbase_t*)
-    : _lock(),
+    : _queryRegistryFeature(feature),
       _current(),
       _slow(),
       _slowCount(0),
@@ -130,6 +130,8 @@ void QueryList::remove(Query* query) {
     // check if we need to push the query into the list of slow queries
     if (now - started >= threshold && !query->killed()) {
       // yes.
+  
+      _queryRegistryFeature.trackSlowQuery();
 
       TRI_IF_FAILURE("QueryList::remove") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
