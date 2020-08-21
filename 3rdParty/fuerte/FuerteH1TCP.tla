@@ -287,7 +287,7 @@ startConnectionBegin(self) == /\ pc[self] = "startConnectionBegin"
                                         /\ active
                                         /\ asyncRunning = "none"
                                         /\ alarm = "off", 
-                                        "Failure of assertion at line 28, column 3.")
+                                        "Failure of assertion at line 27, column 3.")
                               /\ state' = "Connecting"
                               /\ alarm' = "connectAlarm"
                               /\ asyncRunning' = "connect"
@@ -299,10 +299,10 @@ startConnectionBegin(self) == /\ pc[self] = "startConnectionBegin"
 startConnection(self) == startConnectionBegin(self)
 
 asyncWriteNextRequestBegin(self) == /\ pc[self] = "asyncWriteNextRequestBegin"
-                                    /\ Assert(/\ state \in {"Connected", "Closed"}
-                                              
+                                    /\ Assert(/\ active
+                                              /\ state = "Connected"
                                               /\ asyncRunning = "none", 
-                                              "Failure of assertion at line 44, column 3.")
+                                              "Failure of assertion at line 41, column 3.")
                                     /\ pc' = [pc EXCEPT ![self] = "check1"]
                                     /\ UNCHANGED << state, active, queueSize, 
                                                     alarm, asyncRunning, 
@@ -435,7 +435,7 @@ loop == /\ pc["fuertethread"] = "loop"
 activate == /\ pc["fuertethread"] = "activate"
             /\ IF Len(iocontext) >= 1 /\ Head(iocontext) = "activate"
                   THEN /\ Assert(state /= "Connecting", 
-                                 "Failure of assertion at line 115, column 11.")
+                                 "Failure of assertion at line 112, column 11.")
                        /\ iocontext' = Tail(iocontext)
                        /\ IF state = "Created"
                              THEN /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "startConnection",
@@ -465,10 +465,12 @@ connectDone == /\ pc["fuertethread"] = "connectDone"
                /\ IF /\ Len(iocontext) >= 1
                      /\ Head(iocontext) \in {"connect", "connectBAD"}
                      THEN /\ Assert(state \in {"Connecting", "Created", "Closed"}, 
-                                    "Failure of assertion at line 130, column 11.")
+                                    "Failure of assertion at line 127, column 11.")
                           /\ alarm' = "off"
                           /\ IF Head(iocontext) = "connect" /\ state = "Connecting"
-                                THEN /\ iocontext' = Tail(iocontext)
+                                THEN /\ Assert(active, 
+                                               "Failure of assertion at line 130, column 13.")
+                                     /\ iocontext' = Tail(iocontext)
                                      /\ state' = "Connected"
                                      /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "asyncWriteNextRequest",
                                                                                         pc        |->  "loop" ] >>
@@ -490,7 +492,7 @@ writeDone == /\ pc["fuertethread"] = "writeDone"
                    /\ Head(iocontext) \in {"write", "writeBAD"}
                    THEN /\ Assert(/\ state \in {"Connected", "Closed"}
                                   /\ writing, 
-                                  "Failure of assertion at line 147, column 11.")
+                                  "Failure of assertion at line 145, column 11.")
                         /\ writing' = FALSE
                         /\ IF Head(iocontext) = "write" /\ state = "Connected"
                               THEN /\ iocontext' = Tail(iocontext)
@@ -500,12 +502,12 @@ writeDone == /\ pc["fuertethread"] = "writeDone"
                                    /\ pc' = [pc EXCEPT !["fuertethread"] = "loop"]
                                    /\ stack' = stack
                               ELSE /\ iocontext' = Tail(iocontext)
+                                   /\ alarm' = "off"
                                    /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "shutdownConnection",
                                                                                       pc        |->  "loop" ] >>
                                                                                   \o stack["fuertethread"]]
                                    /\ pc' = [pc EXCEPT !["fuertethread"] = "shutdownConnectionBegin"]
-                                   /\ UNCHANGED << alarm, asyncRunning, 
-                                                   reading >>
+                                   /\ UNCHANGED << asyncRunning, reading >>
                    ELSE /\ pc' = [pc EXCEPT !["fuertethread"] = "loop"]
                         /\ UNCHANGED << alarm, asyncRunning, iocontext, 
                                         reading, writing, stack >>
@@ -515,7 +517,7 @@ readDone == /\ pc["fuertethread"] = "readDone"
             /\ IF /\ Len(iocontext) >= 1
                   /\ Head(iocontext) \in {"read", "readBAD"}
                   THEN /\ Assert(state \in {"Connected", "Closed"}, 
-                                 "Failure of assertion at line 164, column 11.")
+                                 "Failure of assertion at line 163, column 11.")
                        /\ alarm' = "off"
                        /\ reading' = FALSE
                        /\ IF Head(iocontext) = "read" /\ state = "Connected"
@@ -712,6 +714,6 @@ NoSleepingBarber == /\ NothingForgottenOnQueue
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 21 15:07:40 CEST 2020 by neunhoef
+\* Last modified Fri Aug 21 16:03:16 CEST 2020 by neunhoef
 \* Last modified Wed Jul 22 12:06:32 CEST 2020 by simon
 \* Created Mi 22. Apr 22:46:19 CEST 2020 by neunhoef
