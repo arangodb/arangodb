@@ -22,8 +22,7 @@ variables   \* VERIFIED
 
 procedure startConnection() {   \* VERIFIED
 (* This is called whenever the connection was created and the first request is queued. 
-Therefore we know that the state is "Created" and we
-   are active and no alarm is set. *)
+   Therefore we know that the state is "Created" and we are active and no alarm is set. *)
  startConnectionBegin:
   assert /\ state = "Created"
          /\ active
@@ -37,9 +36,7 @@ Therefore we know that the state is "Created" and we
 
 procedure asyncWriteNextRequest() {     \* VERIFIED
 (* This is called whenever we are active and potentially want to continue
-   writing. It can also be called if we are in the "Closed" state. In this
-   case the purpose is to reset the `active` flag, which is exclusively
-   done in this procedure. *)
+   writing. *)
  asyncWriteNextRequestBegin:
   assert /\ active
          /\ state = "Connected"
