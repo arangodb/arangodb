@@ -1,5 +1,9 @@
 devel
 -----
+
+* Fixed issue BTS-169: cost estimation for LIMIT nodes showed wrong number of
+  estimated items.
+
 * Fix internal issue #742: Add tick storage in index meta payload after 
   truncate operation
 
