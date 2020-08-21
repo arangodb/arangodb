@@ -242,7 +242,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_grantCollection)
                       ->CallAsFunction(context, arangoUsers,
@@ -250,9 +250,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
                                        grantArgs.data());
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                     tryCatch.Exception(), false)));
-    auto slice = responce.slice();
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -286,7 +285,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_revokeCollection)
                       ->CallAsFunction(context, arangoUsers,
@@ -294,9 +293,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
                                        revokeArgs.data());
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                     tryCatch.Exception(), false)));
-    auto slice = responce.slice();
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -336,7 +334,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_grantCollection)
                       ->CallAsFunction(context, arangoUsers,
@@ -381,7 +379,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_revokeCollection)
                       ->CallAsFunction(context, arangoUsers,
@@ -424,7 +422,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_grantCollection)
                       ->CallAsFunction(context, arangoUsers,
@@ -432,9 +430,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
                                        grantArgs.data());
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                     tryCatch.Exception(), false)));
-    auto slice = responce.slice();
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -476,7 +473,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_revokeCollection)
                       ->CallAsFunction(context, arangoUsers,
@@ -484,9 +481,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
                                        revokeArgs.data());
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                     tryCatch.Exception(), false)));
-    auto slice = responce.slice();
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -526,7 +522,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_grantCollection)
                       ->CallAsFunction(context, arangoUsers,
@@ -571,7 +567,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_revokeCollection)
                       ->CallAsFunction(context, arangoUsers,

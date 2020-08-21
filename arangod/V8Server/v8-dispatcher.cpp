@@ -211,14 +211,11 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto parameters = std::make_shared<VPackBuilder>();
 
   if (TRI_HasProperty(context, isolate, obj, "params")) {
-    int res = TRI_V8ToVPack(isolate, *parameters,
-                            obj->Get(TRI_IGETC,
-                                     TRI_V8_ASCII_STRING(isolate, "params"))
-                                .FromMaybe(v8::Local<v8::Value>()),
-                            false);
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
+    TRI_V8ToVPack(isolate, *parameters,
+                  obj->Get(TRI_IGETC,
+                           TRI_V8_ASCII_STRING(isolate, "params"))
+                      .FromMaybe(v8::Local<v8::Value>()),
+                  false);
   }
 
   command = "(function (params) { " + command + " } )(params);";
