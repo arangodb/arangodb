@@ -36,7 +36,7 @@ specified, the allowed values are *include* or *exclude*.
 @RESTBODYPARAM{restrictCollections,array,optional,string}
 an optional array of collections for use with
 *restrictType*. If *restrictType* is *include*, only the specified collections
-will be sychronised. If *restrictType* is *exclude*, all but the specified
+will be synchronized. If *restrictType* is *exclude*, all but the specified
 collections will be synchronized.
 
 @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
@@ -70,7 +70,7 @@ attributes:
   was started. Use this value as the *from* value when starting the continuous
   synchronization later.
 
-WARNING: calling this method will sychronize data from the collections found
+WARNING: calling this method will synchronize data from the collections found
 on the remote endpoint to the local ArangoDB database. All data in the local
 collections will be purged and replaced with data from the endpoint.
 
