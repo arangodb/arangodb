@@ -1236,21 +1236,21 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
   }
 
   TRI_ASSERT(_plan && _plan->getAst());
-  transaction::Methods& trx = _plan->getAst()->query().trxForOptimization();
-  if (trx.status() != transaction::Status::RUNNING) {
+  transaction::Methods* trx = _plan->getAst()->query()->trx();
+  if (trx->status() != transaction::Status::RUNNING) {
     return aql::CostEstimate::empty();
   }
 
-  auto const& collections = _plan->getAst()->query().collections();
+  auto const collections = _plan->getAst()->query()->collections();
 
   size_t estimatedNrItems = 0;
-  auto visitor = [&trx, &estimatedNrItems, &collections](DataSourceId cid) -> bool {
-    auto const id = basics::StringUtils::itoa(cid.id());
-    auto const* collection = collections.get(id);
+  auto visitor = [&trx, &estimatedNrItems, &collections](TRI_voc_cid_t cid) -> bool {
+    auto const id = basics::StringUtils::itoa(cid);
+    auto const* collection = collections->get(id);
 
     if (collection) {
       // FIXME better to gather count for multiple collections at once
-      estimatedNrItems += collection->count(&trx, transaction::CountType::TryCache);
+      estimatedNrItems += collection->count(trx);
     } else {
       LOG_TOPIC("ee276", WARN, arangodb::iresearch::TOPIC)
           << "collection with id '" << id << "' is not registered with the query";
