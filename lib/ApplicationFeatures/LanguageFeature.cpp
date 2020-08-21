@@ -32,6 +32,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/directories.h"
 #include "Basics/error.h"
+#include "Basics/exitcodes.h"
 #include "Basics/files.h"
 #include "Basics/memory.h"
 #include "Logger/LogMacros.h"
@@ -47,7 +48,7 @@ void setCollator(std::string const& language, void* icuDataPtr) {
   if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language, icuDataPtr)) {
     LOG_TOPIC("01490", FATAL, arangodb::Logger::FIXME)
         << "error setting collator language to '" << language << "'";
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
   }
 }
 
