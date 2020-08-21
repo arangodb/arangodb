@@ -30,6 +30,7 @@
 const cn = "UnitTestsAhuacatlUpsert";
 const db = require("@arangodb").db;
 const jsunity = require("jsunity");
+const isCluster = require("internal").isCluster();
 const debugLogging = false;
 
 
@@ -51,11 +52,19 @@ class UpsertTestCase {
     this._intermediateCommit = this._isBitSet(5);
     this._updateOnly = this._isBitSet(6);
     this._index = this._isBitSet(7);
+
+
+    // Cluster only
+    // Make sure those are the highest bits
+    // as the single server will simply not set them
+    this._multipleShards = this._isBitSet(8);
+    this._shardKey = this._isBitSet(9);
+    this._satellite = this._isBitSet(10);
   }
 
   isValidCombination() {
-    if (this._inSubqueryLoop) {
-      // Testing Purposes takes to long now.
+    if (isCluster && this._inSubqueryLoop) {
+      // This does not work in cluster due to timeout.
       return false;
     }
     if (this._inSubqueryLoop && this._largeLoop) {
@@ -68,6 +77,15 @@ class UpsertTestCase {
     }
     if (this._uniqueIndex && this._index) {
       // We can either have unique or non-unique or no index.
+      return false;
+    }
+    if (this._satellite && (this._multipleShards || this._shardKey)) {
+      // Shardkey or more then one shard are irrelavant for satellites
+      return false;
+    }
+    if (this._uniqueIndex && this._multipleShards && !this._shardKey) {
+      // We can only have a uniqueIndex on the shardKey, if we have
+      // more then 1 shard.
       return false;
     }
     return true;
@@ -98,6 +116,15 @@ class UpsertTestCase {
     if (this._intermediateCommit) {
       nameFlags.push("intermediateCommit");
     }
+    if (this._satellite) {
+      nameFlags.push("Satellite");
+    }
+    if (this._multipleShards) {
+      nameFlags.push("5_shards");
+    }
+    if (this._shardKey) {
+      nameFlags.push("ShardByValue");
+    }
     if (!this._activateOptimizerRules) {
       nameFlags.push("NoOpt");
     }
@@ -123,6 +150,18 @@ class UpsertTestCase {
 
 
   _prepareData() {
+    {
+      const collectionOptions = {};
+      collectionOptions.numberOfShards = this._multipleShards ? 5 : 1;
+      if (this._shardKey) {
+        collectionOptions.shardKeys = ["value"];
+      }
+      if (this._satellite) {
+        collectionOptions.replicationFactor = "satellite";
+      }
+      db._create(cn, collectionOptions);
+    }
+    
     if (this._uniqueIndex) {
       this._col().ensureUniqueConstraint("value");
     }
@@ -267,10 +306,9 @@ function aqlUpsertCombinationSuite () {
   };
 
   const testSuite = {
-    setUp : () => {
-      clear();
-      db._create(cn, { numberOfShards: 5 });
-    },
+    // Every test will create the Collection
+    // As the cluster test require special sharding
+    setUp : clear,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
@@ -280,6 +318,10 @@ function aqlUpsertCombinationSuite () {
   };
   
   let testFlags = 8;
+  if (isCluster) {
+    // Sharding Mechanism
+    testFlags += 3;
+  }
   const numTests = Math.pow(2, testFlags);
   for (let i = 0; i < numTests; ++i) {
     const tCase = new UpsertTestCase(i);
