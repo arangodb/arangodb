@@ -458,29 +458,6 @@ void H2Connection<SocketType::Ssl>::finishConnect() {
 // Writing data
 // ------------------------------------
 
-// Thread-Safe: activate the writer loop (if off and items are queud)
-//template <SocketType T>
-//void H2Connection<T>::startWriting() {
-//  FUERTE_ASSERT(this->_state.load(std::memory_order_acquire) ==
-//                Connection::State::Connected);
-//  FUERTE_LOG_HTTPTRACE << "startWriting: this=" << this << "\n";
-//  bool tmp = _signaledWrite.load();
-//  if (!tmp && !_signaledWrite.exchange(true)) {
-//    this->_io_context->post([self = Connection::shared_from_this(), this] {
-//      _signaledWrite.store(false);
-//      // we have been in a race with shutdownConnection()
-//      Connection::State state = this->_state.load();
-//      if (state != Connection::State::Connected) {
-//        if (state == Connection::State::Disconnected) {
-//          this->startConnection();
-//        }
-//      } else {
-//        this->doWrite();
-//      }
-//    });
-//  }
-//}
-
 // queue the response onto the session, call only on IO thread
 template <SocketType T>
 void H2Connection<T>::queueHttp2Requests() {
