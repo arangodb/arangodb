@@ -1,4 +1,4 @@
-v3.7.2 (XXXX-XX-XX)
+v3.7.2 (2020-08-21)
 -------------------
 
 * Fixed internal issue #744: LIMIT with only offset and constrained heap
