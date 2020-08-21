@@ -50,10 +50,20 @@ void MessageData::toVelocyPack(VPackBuilder& builder) const {
   auto guard = VPackObjectBuilder{&builder};
 
   builder.add(VPackValue("accumulatorName"));
-  builder.add(VPackValue(_accumulatorName));
+  builder.add(VPackValue(accumulatorName()));
   builder.add(VPackValue("sender"));
-  builder.add(VPackValue(_sender));
+  builder.add(VPackValue(sender()));
   builder.add(VPackValue("value"));
-  builder.add(_value.slice());
+  builder.add(value().slice());
+}
+
+auto MessageData::accumulatorName() const -> std::string const& {
+  return _accumulatorName;
+};
+auto MessageData::sender() const -> std::string const& {
+  return _sender;
+}
+auto MessageData::value() const -> VPackBuilder const& {
+  return _value;
 }
 

@@ -106,7 +106,7 @@ greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
 
   if (auto iter = vertexData()._vertexAccumulators.find(accumId);
       iter != std::end(vertexData()._vertexAccumulators)) {
-    return iter->second->getIntoBuilderWithResult(result);
+    return iter->second->getValueIntoBuilder(result);
   }
   return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                               "` not found");
@@ -124,7 +124,7 @@ greenspun::EvalResult VertexComputation::air_accumSet(greenspun::Machine& ctx,
 
   if (auto iter = vertexData()._vertexAccumulators.find(std::string{accumId});
       iter != std::end(vertexData()._vertexAccumulators)) {
-    return iter->second->setBySliceWithResult(value);
+    return iter->second->setBySlice(value);
   }
   return greenspun::EvalError("accumulator `" + std::string{accumId} +
                               "` not found");
@@ -141,7 +141,7 @@ greenspun::EvalResult VertexComputation::air_accumClear(greenspun::Machine& ctx,
 
   if (auto iter = vertexData()._vertexAccumulators.find(accumId);
       iter != std::end(vertexData()._vertexAccumulators)) {
-    return iter->second->clearWithResult();
+    return iter->second->clear();
   }
   return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                               "` not found");
@@ -376,7 +376,7 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
     auto&& accumName = msg->_accumulatorName;
     auto&& accum = vertexData().accumulatorByName(accumName);
 
-    auto res = accum->updateByMessage(*msg);
+    auto res = accum->updateBySlice(msg->_value.slice());
     if (res.fail()) {
       auto phase_index = *getAggregatedValue<uint32_t>("phase");
       auto phase = _algorithm.options().phases.at(phase_index);
@@ -393,6 +393,10 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
           << "in phase `" << phase.name << "` updating accumulator `"
           << accumName << "` failed: " << res.error().toString();
       return std::move(res.error());
+    }
+
+    if(res.value() == AccumulatorBase::UpdateResult::CHANGED) {
+      accum->setSender(msg->_sender);
     }
 
     accumChanged |= res.value() == AccumulatorBase::UpdateResult::CHANGED;
@@ -519,7 +523,7 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
 
 greenspun::EvalResult VertexComputation::clearAllVertexAccumulators() {
   for (auto&& accum : vertexData()._vertexAccumulators) {
-    auto res = accum.second->clearWithResult();
+    auto res = accum.second->clear();
     if (res.fail()) {
       return res.error().wrapMessage("during initial clear of accumulator `" +
                                      accum.first + "`");

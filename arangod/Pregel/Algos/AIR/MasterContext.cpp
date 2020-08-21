@@ -38,7 +38,7 @@ MasterContext::MasterContext(VertexAccumulators const* algorithm)
   for (auto&& decl : globalAccumulatorsDeclarations) {
     auto [acc, ignore] = _globalAccumulators.emplace(decl.first, instantiateAccumulator(decl.second, customDefinitions));
     // TODO: Clear could fail :/
-    acc->second->clearWithResult();
+    acc->second->clear();
   }
 
   InitMachine(_airMachine);
@@ -96,7 +96,7 @@ greenspun::EvalResult MasterContext::air_AccumRef(greenspun::Machine& ctx,
   auto&& [accumId] = unpackTuple<std::string_view>(params);
 
   if (auto iter = _globalAccumulators.find(accumId); iter != std::end(_globalAccumulators)) {
-    auto inner = iter->second->getIntoBuilderWithResult(result);
+    auto inner = iter->second->getValueIntoBuilder(result);
     if (!inner) {
       return inner.error();
     } else {
@@ -130,7 +130,7 @@ greenspun::EvalResult MasterContext::air_AccumClear(greenspun::Machine& ctx,
   auto&& [accumId] = unpackTuple<std::string_view>(params);
 
   if (auto iter = _globalAccumulators.find(accumId); iter != std::end(_globalAccumulators)) {
-    auto inner = iter->second->clearWithResult();
+    auto inner = iter->second->clear();
     if (!inner) {
       return inner.error();
     } else {
@@ -221,7 +221,7 @@ void MasterContext::preGlobalSuperstepMessage(VPackBuilder& msg) {
       for (auto&& acc : globalAccumulators()) {
         msg.add(VPackValue(acc.first));
 
-        if(auto result = acc.second->getIntoBuilderWithResult(msg); result.fail()) {
+        if(auto result = acc.second->getValueIntoBuilder(msg); result.fail()) {
           LOG_DEVEL << "AIR MasterContext, error serializing global accumulator "
                     << acc.first << " " << result.error().toString();
         }
@@ -279,7 +279,7 @@ void MasterContext::serializeValues(VPackBuilder& msg) {
       for (auto&& acc : globalAccumulators()) {
         msg.add(VPackValue(acc.first));
 
-        if(auto result = acc.second->getIntoBuilderWithResult(msg); result.fail()) {
+        if(auto result = acc.second->getValueIntoBuilder(msg); result.fail()) {
           LOG_DEVEL << "AIR MasterContext, error serializing global accumulator "
                     << acc.first << " " << result.error().toString();
         }
