@@ -1,6 +1,9 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed internal issue #744: LIMIT with only offset and constrained heap
+  optimization will use estimation value for ArangoSearch views.
+
 * Make UPSERT statement with collection bind parameter behave identical to its
   non-bind parameter counterpart.
 
