@@ -30,20 +30,78 @@
 const cn = "UnitTestsAhuacatlUpsert";
 const db = require("@arangodb").db;
 const jsunity = require("jsunity");
+const debugLogging = false;
+
+
 
 class UpsertTestCase {
   constructor(flags) {
-    // TODO parse flags
     this._flags = flags;
     this._expectedResult = new Map();
+    this._differentValues = 10;
+    // We will have 1 full batch of 1000 rows (500 data, 500 shadow)
+    // and a second batch with fewer docs.
+    this._subqueryRuns = 510;
+    // Flag parsing, requires _flags to be set
+    this._activateOptimizerRules = this._isBitSet(0);
+    this._triggerInsert = this._isBitSet(1);
+    this._largeLoop = this._isBitSet(2);
+    this._uniqueIndex = this._isBitSet(3);
+    this._inSubqueryLoop = this._isBitSet(4);
+    this._intermediateCommit = this._isBitSet(5);
+    this._updateOnly = this._isBitSet(6);
+    this._index = this._isBitSet(7);
+  }
+
+  isValidCombination() {
+    if (this._inSubqueryLoop) {
+      // Testing Purposes takes to long now.
+      return false;
+    }
+    if (this._inSubqueryLoop && this._largeLoop) {
+      // This will generate 5mio operations, that is too much to test
+      return false;
+    }
+    if (this._updateOnly && this._triggerInsert) {
+      // A variant that inserts documents, cannot be translated into an update only statement
+      return false;
+    }
+    if (this._uniqueIndex && this._index) {
+      // We can either have unique or non-unique or no index.
+      return false;
+    }
+    return true;
   }
 
   /*
    * Public Methods
    */
   name() {
-    // TODO generate name
-    return `test_${this._flags}`;
+    const nameFlags = ["test", `${this._docsPerLoop()}`];
+    if (this._inSubqueryLoop) {
+      nameFlags.push(`${this._subqueryRuns}_subqueries`);
+    }
+    if (this._triggerInsert) {
+      nameFlags.push("Insert");
+    } else if (this._updateOnly) {
+      nameFlags.push("PlainUpdate");
+    } else {
+      nameFlags.push("UpsertUpdate");
+    }
+
+    if (this._uniqueIndex) {
+      nameFlags.push("UniqueIndex");
+    }
+    if (this._index) {
+      nameFlags.push("Indexed");
+    }
+    if (this._intermediateCommit) {
+      nameFlags.push("intermediateCommit");
+    }
+    if (!this._activateOptimizerRules) {
+      nameFlags.push("NoOpt");
+    }
+    return nameFlags.join("_");
   }
 
 
@@ -65,32 +123,138 @@ class UpsertTestCase {
 
 
   _prepareData() {
-
+    if (this._uniqueIndex) {
+      this._col().ensureUniqueConstraint("value");
+    }
+    if (!this._triggerInsert) {
+      const docs = [];
+      for (let value = 0; value < this._differentValues; ++value) {
+        docs.push({
+          value,
+          count: 1
+        });
+      }
+      this._col().save(docs);
+      assertEqual(this._col().count(), this._differentValues, this._col().toArray());
+    } else {
+      assertEqual(this._col().count(), 0);
+    }
   }
 
   _validateResult() {
     const expected = this._generateExpectedResult();
-    for (const doc of this._col().toArray()) {
+    if (debugLogging) {
+      for (const [value, count] of expected.entries()) {
+        require("internal").print(`${value} => ${count}`);
+      }
+    }
+    const allDocs = this._col().toArray();
+    if (debugLogging) {
+      require("internal").print(allDocs);
+    }
+    assertEqual(allDocs.length, 10, "More documents than expected, INSERT triggered to often");
+    for (const doc of allDocs) {
+      if (debugLogging) {
+        require("internal").print(doc);
+      }
+
       assertTrue(expected.has(doc.value));
-      assertEqua(expected[doc.value], doc.count);
+      assertEqual(expected.get(doc.value), doc.count);
     }
 
   }
 
   _generateQuery() {
-    return "RETURN 1";
+    let modificationPart;
+    if (this._updateOnly) {
+      // This performs the same operations as upsert does
+      // However the guarantee here is that we do not read our own writes.
+      modificationPart = `
+        FOR base IN 0..${this._docsPerLoop() - 1}
+        LET value = base % ${this._differentValues}
+        LET search = FIRST((
+          FOR tmp IN ${cn}
+            FILTER tmp.value == value
+            RETURN tmp
+        ))
+        UPDATE search WITH {count: search.count + 1} IN ${cn}
+      `;
+    } else {
+      modificationPart = `
+      FOR base IN 0..${this._docsPerLoop() - 1}
+      LET value = base % ${this._differentValues}
+        UPSERT { value } INSERT {value, count: 1} UPDATE {count: OLD.count + 1} IN ${cn}
+      `;
+    }
+    if (this._inSubqueryLoop) {
+      return `
+        FOR k IN 1..${this._subqueryRuns}
+          LET sub = (
+            ${modificationPart}
+          )
+          RETURN k
+      `;
+    }
+    return modificationPart;
   }
 
   _options() {
-    return {optimizer: {rules: ["+all"]}};
+    const options = {};
+    if (this._activateOptimizerRules) {
+      options.optimizer = {rules: ["+all"]};
+    } else {
+      options.optimizer = {rules: ["-all"]};
+    }
+    if (this._intermediateCommit) {
+      // Intermediate commit is intentionally
+      // not equal to the amount of different documents,
+      // to make sure we are not miscounting even if we commit in between batches
+      options.intermediateCommitCount = this._differentValues + 1;
+    }
+    if (true && debugLogging) {
+      options.profile = 4;
+    }
+    return options;
   }
 
   _generateExpectedResult() {
-
+    const expected = new Map();
+    if (this._updateOnly) {
+      // This does not allow to read your own write.
+      // Hence we can ONLY update from 1 => 2
+      // And we will do so in all queries.
+      for (let value = 0; value < this._differentValues; ++value) {
+        expected.set(value, 2);
+      }
+      return expected;
+    }
+    const initValue = this._triggerInsert ? 0 : 1;
+    for (let value = 0; value < this._differentValues; ++value) {
+      expected.set(value, initValue);
+    }
+    for (let j = 0; j < (this._inSubqueryLoop ? this._subqueryRuns : 1); ++j) {
+      for (let i = 0; i < this._docsPerLoop(); ++i) {
+        const value = i % this._differentValues;
+        expected.set(value, expected.get(value) + 1);
+      }
+    }
+    return expected;
   }
 
   _col() {
     return db._collection(cn);
+  }
+
+  _isBitSet(bit) {
+    return (this._flags >> bit) & 1 === 1;
+  }
+
+  _docsPerLoop() {
+    if (this._largeLoop) {
+      // This is above 1000 which is current Batchsize. adjust if necessary.
+      return 1010;
+    }
+    return 20;
   }
 
 
@@ -114,11 +278,17 @@ function aqlUpsertCombinationSuite () {
 
     tearDown : clear
   };
-  for (let i = 0; i < 1; ++i) {
+  
+  let testFlags = 8;
+  const numTests = Math.pow(2, testFlags);
+  for (let i = 0; i < numTests; ++i) {
     const tCase = new UpsertTestCase(i);
-    testSuite[tCase.name()] = () => {
-      tCase.runTest();
+    if (tCase.isValidCombination()) {
+      testSuite[tCase.name()] = () => {
+        tCase.runTest();
+      };
     }
+
   }  
   return testSuite;
 }
