@@ -70,7 +70,6 @@ bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
     m.setFunction("accum-ref",
                   [ptr](greenspun::Machine& ctx, VPackSlice const params,
                         VPackBuilder& tmpBuilder) -> greenspun::EvalResult {
-                    // serializeIntoBuilder (method of <abstract> accumulators bsp.: accum-ref -> vertex computation.cpp)
                     auto res = greenspun::extract<std::string>(params);
                     if (res.fail()) {
                       return std::move(res).error();
