@@ -25,6 +25,12 @@ devel
   This will change the contents of replication log messages as well the string
   contents of replication-related error messages.
 
+The messages of the error codes 1402, 1403 and 1404 were also changed accordingly,
+as well as the identifiers:
+- `TRI_ERROR_REPLICATION_MASTER_ERROR` renamed to `TRI_ERROR_REPLICATION_LEADER_ERROR`
+- `TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE` renamed to `TRI_ERROR_REPLICATION_LEADER_INCOMPATIBLE`
+- `TRI_ERROR_REPLICATION_MASTER_CHANGE` renamed to `TRI_ERROR_REPLICATION_LEADER_CHANGE`
+
   This change also renames the API endpoint `/_api/replication/make-slave` to 
   `/_api/replication/make-follower`. The API is still available under the old
   name, but using it is deprecated.
