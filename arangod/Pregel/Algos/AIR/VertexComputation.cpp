@@ -150,7 +150,6 @@ greenspun::EvalResult VertexComputation::air_accumClear(greenspun::Machine& ctx,
 greenspun::EvalResult VertexComputation::air_sendToAccum(greenspun::Machine& ctx,
                                                          VPackSlice const params,
                                                          VPackBuilder& result) {
-  LOG_DEVEL << "air_sendToAccum " << params.toJson();
 
   auto res = greenspun::extract<VPackSlice, std::string, VPackSlice>(params);
   if (res.fail()) {
@@ -382,7 +381,6 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
     MessageIterator<MessageData> const& incomingMessages) {
   auto accumChanged = bool{false};
 
-  LOG_DEVEL << "VertexComputation::processIncomingMessages " << incomingMessages.size();
   for (const MessageData* msg : incomingMessages) {
     auto&& accumName = msg->_accumulatorName;
     auto&& accum = vertexData().accumulatorByName(accumName);
@@ -407,9 +405,6 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
     }
 
     accumChanged |= res.value() == AccumulatorBase::UpdateResult::CHANGED;
-  }
-  if (accumChanged) {
-    LOG_DEVEL << "Accumulators changed";
   }
   return accumChanged;
 }
@@ -468,10 +463,10 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
   auto phase_index = *getAggregatedValue<uint32_t>("phase");
   auto phase = _algorithm.options().phases.at(phase_index);
 
-  LOG_DEVEL << "running phase " << phase.name
+  /*LOG_DEVEL << "running phase " << phase.name
             << " superstep = " << phaseGlobalSuperstep()
             << " global superstep = " << globalSuperstep() << " at vertex "
-            << vertexData()._vertexId;
+            << vertexData()._vertexId;*/
 
   std::size_t phaseStep = phaseGlobalSuperstep();
 
@@ -513,7 +508,6 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
 
     if (!accumChanged.value() && phaseStep != 1) {
       voteHalt();
-      LOG_DEVEL << "No accumulators changed, voting halt";
       return;
     }
 

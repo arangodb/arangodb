@@ -37,15 +37,12 @@ auto CustomAccumulator<VPackSlice>::updateByMessage(MessageData const& msg)
      this->inputSlice = VPackSlice::noneSlice();
   })
 
-  LOG_DEVEL << "CustomAccumulator<VPackSlice>::updateByMessage value = " << msg._value.toJson() << " sender = " << msg._sender << " current value = " << _value.toJson();
-
   VPackBuilder result;
   auto res = greenspun::Evaluate(_machine, _definition.updateProgram.slice(), result);
   if (res.fail()) {
     return res.error().wrapMessage("in updateProgram of custom accumulator");
   }
 
-  LOG_DEVEL << "CustomAccumulator<VPackSlice>::updateByMessage result = " << result.toJson() << " value = " << _value.toJson();
   auto resultSlice = result.slice();
   if (resultSlice.isString()) {
     if (resultSlice.isEqualString("hot")) {
@@ -64,7 +61,6 @@ auto CustomAccumulator<VPackSlice>::updateByMessage(MessageData const& msg)
 
 auto CustomAccumulator<VPackSlice>::clearWithResult() -> greenspun::EvalResult {
   VPackBuilder result;
-  LOG_DEVEL << "CustomAccumulator<VPackSlice>::clearWithResult";
   return greenspun::Evaluate(_machine, _definition.clearProgram.slice(), result).mapError([](auto& err) {
     err.wrapMessage("in clearProgram of custom accumulator");
   });
@@ -88,7 +84,6 @@ CustomAccumulator<VPackSlice>::CustomAccumulator(const VertexData& owner,
 
 auto CustomAccumulator<VPackSlice>::setBySliceWithResult(VPackSlice v)
     -> arangodb::greenspun::EvalResult {
-  LOG_DEVEL << "setBySliceWithResult";
   inputSlice = v;
   TRI_DEFER({
       inputSlice = Slice::noneSlice();

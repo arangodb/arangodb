@@ -99,6 +99,9 @@ bool ValueConsideredFalse(VPackSlice const value);
 EvalResult Evaluate(Machine& ctx, VPackSlice slice, VPackBuilder& result);
 void InitMachine(Machine& ctx);
 
+std::string paramsToString(const VPackArrayIterator iter);
+std::string paramsToString(VPackSlice const params);
+
 }  // namespace greenspun
 }  // namespace arangodb
 

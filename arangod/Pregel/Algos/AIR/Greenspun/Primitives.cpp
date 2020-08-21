@@ -23,20 +23,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <Basics/VelocyPackHelper.h>
-#include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
 
-#include "Extractor.h"
 #include "Interpreter.h"
 #include "Primitives.h"
 
-namespace arangodb {
-namespace greenspun {
-
+namespace arangodb::greenspun {
 
 EvalResult Prim_Min(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   bool set = false;
@@ -357,26 +353,7 @@ EvalResult Prim_Not(Machine& ctx, VPackSlice const params, VPackBuilder& result)
   return {};
 }
 
-// TODO: Ugly
-namespace {
-std::string paramsToString(VPackSlice const params) {
-  std::stringstream ss;
 
-  for (auto&& p : VPackArrayIterator(params)) {
-    if (p.isString()) {
-      ss << p.stringView();
-    } else if (p.isNumber()) {
-      ss << p.getNumber<double>();
-    } else if (p.isBool()) {
-      ss << std::boolalpha << p.getBool();
-    } else {
-      ss << p.toJson();
-    }
-    ss << " ";
-  }
-  return ss.str();
-}
-}  // namespace
 
 EvalResult Prim_PrintLn(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   std::cerr << paramsToString(params) << std::endl;
@@ -757,5 +734,4 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("bind-ref", Prim_VarRef);
 }
 
-}  // namespace greenspun
 }  // namespace arangodb
