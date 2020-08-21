@@ -79,8 +79,8 @@ class InitialSyncer : public Syncer {
  public:
   virtual Result run(bool incremental) = 0;
 
-  /// @brief return the last log tick of the master at start
-  TRI_voc_tick_t getLastLogTick() const { return _state.master.lastLogTick; }
+  /// @brief return the last log tick of the leader at start
+  TRI_voc_tick_t getLastLogTick() const { return _state.leader.lastLogTick; }
 
   /// @brief return the collections that were synced
   std::map<DataSourceId, std::string> const& getProcessedCollections() const {

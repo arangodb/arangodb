@@ -117,10 +117,7 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
 
   VPackBuilder extras;
   if (args.Length() >= 4) {
-    int r = TRI_V8ToVPackSimple(isolate, extras, args[3]);
-    if (r != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(r);
-    }
+    TRI_V8ToVPack(isolate, extras, args[3], false, false);
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -165,10 +162,7 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   VPackBuilder extras;
   if (args.Length() >= 4) {
-    int r = TRI_V8ToVPackSimple(isolate, extras, args[3]);
-    if (r != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(r);
-    }
+    TRI_V8ToVPack(isolate, extras, args[3], false, false);
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -444,10 +438,7 @@ static void JS_UpdateConfigData(v8::FunctionCallbackInfo<v8::Value> const& args)
   VPackBuilder merge;
   if (args.Length() > 2) {
     VPackBuilder value;
-    int res = TRI_V8ToVPackSimple(isolate, value, args[2]);
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
+    TRI_V8ToVPack(isolate, value, args[2], false, false);
     merge.add(key, value.slice());
   } else {
     merge.add(key, VPackSlice::nullSlice());

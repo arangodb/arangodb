@@ -160,11 +160,11 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
   v8::Handle<v8::Object> obj =
       args[2]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   VPackBuilder properties;
-  int res = TRI_V8ToVPack(isolate, properties, obj, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    events::CreateView(vocbase.name(), name, res);
-    TRI_V8_THROW_EXCEPTION(res);
+  try {
+    TRI_V8ToVPack(isolate, properties, obj, false);
+  } catch (arangodb::basics::Exception const& ex) {
+    events::CreateView(vocbase.name(), name, ex.code());
+    throw;
   }
 
   // ...........................................................................
@@ -546,15 +546,8 @@ static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& 
   // check if we want to change some parameters
   if (args.Length() > 0 && args[0]->IsObject()) {
     arangodb::velocypack::Builder builder;
-
-    {
-      auto res = TRI_V8ToVPack(isolate, builder, args[0], false);
-
-      if (TRI_ERROR_NO_ERROR != res) {
-        TRI_V8_THROW_EXCEPTION(res);
-      }
-    }
-
+    TRI_V8ToVPack(isolate, builder, args[0], false);
+    
     bool partialUpdate = true;  // partial update by default
 
     if (args.Length() > 1) {
