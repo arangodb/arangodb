@@ -1224,7 +1224,7 @@ size_t AqlItemBlock::moveOtherBlockHere(size_t const targetRow, AqlItemBlock& so
   }
   source.eraseAll();
 
-  TRI_ASSERT(thisRow == targetRow + numRows);
+  TRI_ASSERT(thisRow == targetRow + effectiveRows);
 
   return targetRow + numRows;
 }
