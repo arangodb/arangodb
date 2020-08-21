@@ -268,6 +268,14 @@ EvalResult Prim_Dict(Machine& ctx, VPackSlice const params, VPackBuilder& result
   return {};
 }
 
+    EvalResult Prim_DictKeys(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+        if (!params.isArray() && params.length() != 2) {
+            return EvalError("expected exactly two parameters");
+        }
+
+        return {};
+    }
+
 EvalResult MergeObjectSlice(VPackBuilder& result, VPackSlice const& sliceA,
                             VPackSlice const& sliceB) {
   VPackCollection::merge(result, sliceA, sliceB, true, false);
@@ -725,6 +733,8 @@ void RegisterAllPrimitives(Machine& ctx) {
   // Constructors
   ctx.setFunction("dict", Prim_Dict);
   ctx.setFunction("dict-merge", Prim_MergeDict);
+  ctx.setFunction("dict-keys", Prim_DictKeys);
+  // TODO: "dict-directory"
   ctx.setFunction("list", Prim_List);
 
   // Lambdas
