@@ -105,6 +105,9 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
   if (numRows <= 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
   }
+  
+  TRI_ASSERT(_shadowRows.empty());
+  TRI_ASSERT(_numEffectiveRows == 0);
 
   _numRows = static_cast<size_t>(numRows);
   _numRegisters = VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
@@ -350,6 +353,7 @@ void AqlItemBlock::destroy() noexcept {
   rescale(0, 0);
   TRI_ASSERT(numEntries() == 0);
   TRI_ASSERT(numEffectiveEntries() == 0);
+  TRI_ASSERT(_shadowRows.empty());
 }
 
 /// @brief shrink the block to the specified number of rows
@@ -370,11 +374,16 @@ void AqlItemBlock::shrink(size_t numRows) {
 
   decreaseMemoryUsage(sizeof(AqlValue) * (_numRows - numRows) * _numRegisters);
 
+  // adjust the size of the block
+  _numRows = numRows;
+
   // remove the shadow row indices pointing to now invalid rows.
   _shadowRows.resize(numRows);
 
-  // adjust the size of the block
-  _numRows = numRows;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto const [shadowRowsBegin, shadowRowsEnd] = _shadowRows.getIndexesFrom(_numRows);
+  TRI_ASSERT(shadowRowsBegin == shadowRowsEnd);
+#endif
 
   size_t totalUsed = 0;
   size_t const n = numEffectiveEntries();
@@ -495,29 +504,27 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
     constexpr bool checkShadowRows = std::is_same<decltype(type), WithShadowRows>::value;
     cache.reserve(_valueCount.size());
 
-    for (size_t row = 0; row < numRows; row++) {
+    for (size_t row = 0; row < numEffectiveRows; row++) {
       if (checkShadowRows && isShadowRow(row)) {
         // this is a shadow row. needs special handling
-        if (row < numEffectiveRows) {
-          for (RegisterId col = 0; col < numRegs; col++) {
-            AqlValue a = stealAndEraseValue(row, col);
-            if (a.requiresDestruction()) {
-              AqlValueGuard guard{a, true};
-              auto [it, inserted] = cache.emplace(a.data());
-              res->setValue(row, col, AqlValue(a, (*it)));
-              if (inserted) {
-                // otherwise, destroy this; we used a cached value.
-                guard.steal();
-              }
-            } else {
-              res->setValue(row, col, a);
+        for (RegisterId col = 0; col < numRegs; col++) {
+          AqlValue a = stealAndEraseValue(row, col);
+          if (a.requiresDestruction()) {
+            AqlValueGuard guard{a, true};
+            auto [it, inserted] = cache.emplace(a.data());
+            res->setValue(row, col, AqlValue(a, (*it)));
+            if (inserted) {
+              // otherwise, destroy this; we used a cached value.
+              guard.steal();
             }
+          } else {
+            res->setValue(row, col, a);
           }
         }
  
         // make it a shadow row
         res->copySubqueryDepthFromOtherBlock(row, *this, row, true);
-      } else if (row < numEffectiveRows) {
+      } else {
         // this is a normal row. 
         for (RegisterId col = 0; col < numRegs; col++) {
           ::copyValueOver(cache, _data[getAddress(row, col)], row, col, res);
@@ -591,11 +598,9 @@ auto AqlItemBlock::slice(arangodb::containers::SmallVector<std::pair<size_t, siz
   for (auto const& [from, to] : ranges) {
     size_t const effectiveTo = std::min<size_t>(to, _numEffectiveRows);
 
-    for (size_t row = from; row < to; row++, targetRow++) {
-      if (row < effectiveTo) {
-        for (RegisterId col = 0; col < _numRegisters; col++) {
-          ::copyValueOver(cache, _data[getAddress(row, col)], targetRow, col, res);
-        }
+    for (size_t row = from; row < effectiveTo; row++, targetRow++) {
+      for (RegisterId col = 0; col < _numRegisters; col++) {
+        ::copyValueOver(cache, _data[getAddress(row, col)], targetRow, col, res);
       }
       res->copySubqueryDepthFromOtherBlock(targetRow, *this, row, false);
     }
@@ -637,13 +642,11 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
   size_t const effectiveTo = std::min<size_t>(to, _numEffectiveRows);
 
   size_t resultRow = 0;
-  for (size_t chosenIdx = from; chosenIdx < to; ++chosenIdx, ++resultRow) {
+  for (size_t chosenIdx = from; chosenIdx < effectiveTo; ++chosenIdx, ++resultRow) {
     size_t const row = chosen[chosenIdx];
 
-    if (row < effectiveTo) {
-      for (RegisterId col = 0; col < _numRegisters; col++) {
-        ::copyValueOver(cache, _data[getAddress(row, col)], resultRow, col, res);
-      }
+    for (RegisterId col = 0; col < _numRegisters; col++) {
+      ::copyValueOver(cache, _data[getAddress(row, col)], resultRow, col, res);
     }
     res->copySubqueryDepthFromOtherBlock(resultRow, *this, row, false);
   }
@@ -1148,6 +1151,7 @@ size_t AqlItemBlock::getShadowRowDepth(size_t row) const {
 }
 
 void AqlItemBlock::makeShadowRow(size_t row, size_t depth) {
+  _numEffectiveRows = std::max<size_t>(_numEffectiveRows, row + 1);
   _shadowRows.make(row, depth);
   TRI_ASSERT(isShadowRow(row));
 }
@@ -1207,18 +1211,16 @@ size_t AqlItemBlock::moveOtherBlockHere(size_t const targetRow, AqlItemBlock& so
   auto const effectiveRows = source._numEffectiveRows;
 
   size_t thisRow = targetRow;
-  for (size_t sourceRow = 0; sourceRow < numRows; ++sourceRow, ++thisRow) {
-    if (sourceRow < effectiveRows) {
-      for (RegisterId col = 0; col < nrRegs; ++col) {
-        // copy over value
-        AqlValue const& a = source.getValueReference(sourceRow, col);
-        if (!a.isEmpty()) {
-          setValue(thisRow, col, a);
-        }
+  for (size_t sourceRow = 0; sourceRow < effectiveRows; ++sourceRow, ++thisRow) {
+    for (RegisterId col = 0; col < nrRegs; ++col) {
+      // copy over value
+      AqlValue const& a = source.getValueReference(sourceRow, col);
+      if (!a.isEmpty()) {
+        setValue(thisRow, col, a);
       }
-      _numEffectiveRows = std::max<size_t>(_numEffectiveRows, thisRow + 1);
     }
     copySubqueryDepthFromOtherBlock(thisRow, source, sourceRow, false);
+    _numEffectiveRows = std::max<size_t>(_numEffectiveRows, thisRow + 1);
   }
   source.eraseAll();
 
