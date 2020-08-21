@@ -120,6 +120,7 @@ class GeneralConnection : public fuerte::Connection {
   
   void startConnection() {
     // start connecting only if state is disconnected
+    FUERTE_ASSERT(this->_active.load());
     Connection::State exp = Connection::State::Created;
     if (_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
       FUERTE_LOG_DEBUG << "startConnection: this=" << this << "\n";

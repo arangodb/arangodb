@@ -279,8 +279,7 @@ void H1Connection<ST>::asyncWriteNextRequest() {
   FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: this=" << this << "\n";
   FUERTE_ASSERT(this->_active.load());
   auto state = this->_state.load();
-  FUERTE_ASSERT(state == Connection::State::Connected ||
-                state == Connection::State::Closed);
+  FUERTE_ASSERT(state == Connection::State::Connected);
   FUERTE_ASSERT(_item == nullptr);
 
   RequestItem* ptr = nullptr;
@@ -335,10 +334,11 @@ template <SocketType ST>
 void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
                                           size_t nwrite) {
   FUERTE_ASSERT(this->_writing);
-  // In the TLS case a connection can go to Failed state essentially at any time
+  // A connection can go to Closed state essentially at any time
   // and in this case _active will already be false if we get back here. Therefore
   // we cannot assert on it being true, which would otherwise be correct.
-  FUERTE_ASSERT(this->_state != Connection::State::Connecting);
+  FUERTE_ASSERT(this->_state == Connection::State::Connected ||
+                this->_state == Connection::State::Closed);
   this->_writing = false;       // indicate that no async write is ongoing any more
   this->_proto.timer.cancel();  // cancel alarm for timeout
 
@@ -382,7 +382,6 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     FUERTE_LOG_DEBUG << "asyncReadCallback: Error while reading from socket: '"
                      << ec.message() << "' , this=" << this << "\n";
     
-    // Restart connection, will invoke _item cb
     this->shutdownConnection(this->translateError(ec, Error::ReadError));
     return;
   }
