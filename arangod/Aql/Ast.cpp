@@ -46,6 +46,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Containers/SmallVector.h"
 #include "Graph/Graph.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -1600,6 +1601,8 @@ void Ast::injectBindParameters(BindParameters& parameters,
           // check if the collection was used in a data-modification query
           bool isWriteCollection = false;
 
+          bool const isMMFiles = EngineSelectorFeature::isMMFiles();
+
           arangodb::velocypack::StringRef paramRef(param);
           arangodb::velocypack::StringRef nameRef(name, l);
 
@@ -1614,7 +1617,8 @@ void Ast::injectBindParameters(BindParameters& parameters,
               TRI_ASSERT(newNode == nullptr);
               isWriteCollection = true;
               break;
-            } else if (c->type == NODE_TYPE_COLLECTION &&
+            } else if (!isMMFiles &&
+                c->type == NODE_TYPE_COLLECTION &&
                 nameRef == arangodb::velocypack::StringRef(c->getStringValue(),
                                                            c->getStringLength())) {
               // bind parameter was already replaced with a proper collection node 
