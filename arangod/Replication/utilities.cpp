@@ -49,14 +49,14 @@
 struct TRI_vocbase_t;
 
 namespace {
-/// @brief handle the state response of the master
-arangodb::Result handleMasterStateResponse(arangodb::replutils::Connection& connection,
-                                           arangodb::replutils::MasterInfo& master,
+/// @brief handle the state response of the leader
+arangodb::Result handleLeaderStateResponse(arangodb::replutils::Connection& connection,
+                                           arangodb::replutils::LeaderInfo& leader,
                                            arangodb::velocypack::Slice const& slice) {
   using arangodb::Result;
   using arangodb::velocypack::Slice;
 
-  std::string const endpointString = " from endpoint '" + master.endpoint + "'";
+  std::string const endpointString = " from endpoint '" + leader.endpoint + "'";
 
   // process "state" section
   Slice const state = slice.get("state");
@@ -112,16 +112,16 @@ arangodb::Result handleMasterStateResponse(arangodb::replutils::Connection& conn
   }
 
   // validate all values we got
-  std::string const masterIdString(serverId.copyString());
-  arangodb::ServerId const masterId{arangodb::basics::StringUtils::uint64(masterIdString)};
-  if (masterId.empty()) {
-    // invalid master id
+  std::string const leaderIdString(serverId.copyString());
+  arangodb::ServerId const leaderId{arangodb::basics::StringUtils::uint64(leaderIdString)};
+  if (leaderId.empty()) {
+    // invalid leader id
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("invalid server id in response") + endpointString);
   }
 
-  if (masterIdString == connection.localServerId()) {
-    // master and replica are the same instance. this is not supported.
+  if (leaderIdString == connection.localServerId()) {
+    // leader and replica are the same instance. this is not supported.
     return Result(TRI_ERROR_REPLICATION_LOOP,
                   std::string("got same server id (") +
                       connection.localServerId() + ")" + endpointString +
@@ -143,25 +143,25 @@ arangodb::Result handleMasterStateResponse(arangodb::replutils::Connection& conn
 
   if (major != 3) {
     // we can connect to 3.x only
-    return Result(TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE,
-                  std::string("got incompatible master version") +
+    return Result(TRI_ERROR_REPLICATION_LEADER_INCOMPATIBLE,
+                  std::string("got incompatible leader version") +
                       endpointString + ": '" + versionString + "'");
   }
 
-  master.majorVersion = major;
-  master.minorVersion = minor;
-  master.serverId = masterId;
-  master.lastLogTick = lastLogTick;
-  master.lastUncommittedLogTick = lastUncommittedLogTick;
-  master.active = running;
-  master.engine = engineString;
+  leader.majorVersion = major;
+  leader.minorVersion = minor;
+  leader.serverId = leaderId;
+  leader.lastLogTick = lastLogTick;
+  leader.lastUncommittedLogTick = lastUncommittedLogTick;
+  leader.active = running;
+  leader.engine = engineString;
 
   LOG_TOPIC("6c920", INFO, arangodb::Logger::REPLICATION)
-      << "connected to master at " << master.endpoint << ", id "
-      << master.serverId.id() << ", version " << master.majorVersion << "."
-      << master.minorVersion << ", last log tick " << master.lastLogTick
-      << ", last uncommitted log tick " << master.lastUncommittedLogTick
-      << ", engine " << master.engine;
+      << "connected to leader at " << leader.endpoint << ", id "
+      << leader.serverId.id() << ", version " << leader.majorVersion << "."
+      << leader.minorVersion << ", last log tick " << leader.lastLogTick
+      << ", last uncommitted log tick " << leader.lastUncommittedLogTick
+      << ", engine " << leader.engine;
 
   return Result();
 }
@@ -247,7 +247,7 @@ constexpr double BatchInfo::DefaultTimeout;
 /// @param patchCount try to patch count of this collection
 ///        only effective with the incremental sync (optional)
 Result BatchInfo::start(replutils::Connection const& connection,
-                        replutils::ProgressInfo& progress, replutils::MasterInfo& master,
+                        replutils::ProgressInfo& progress, replutils::LeaderInfo& leader,
                         SyncerId const syncerId, std::string const& patchCount) {
   // TODO make sure all callers verify not child syncer
   if (!connection.valid()) {
@@ -322,7 +322,7 @@ Result BatchInfo::start(replutils::Connection const& connection,
                   "start batch lastTick is missing in response");
   }
 
-  master.lastLogTick = basics::StringUtils::uint64(lastTick);
+  leader.lastLogTick = basics::StringUtils::uint64(lastTick);
   updateTime = now;
 
   return Result();
@@ -422,14 +422,14 @@ Result BatchInfo::finish(replutils::Connection const& connection,
   }
 }
 
-MasterInfo::MasterInfo(ReplicationApplierConfiguration const& applierConfig) {
+LeaderInfo::LeaderInfo(ReplicationApplierConfiguration const& applierConfig) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _force32mode = applierConfig._force32mode;
 #endif
 }
 
-/// @brief get master state
-Result MasterInfo::getState(replutils::Connection& connection, bool isChildSyncer) {
+/// @brief get leader state
+Result LeaderInfo::getState(replutils::Connection& connection, bool isChildSyncer) {
   if (isChildSyncer) {
     TRI_ASSERT(endpoint.empty());
     TRI_ASSERT(serverId.isSet());
@@ -471,16 +471,16 @@ Result MasterInfo::getState(replutils::Connection& connection, bool isChildSynce
 
   if (!slice.isObject()) {
     LOG_TOPIC("22327", DEBUG, Logger::REPLICATION)
-        << "syncer::getMasterState - state is not an object";
+        << "syncer::getLeaderState - state is not an object";
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from master at ") +
+                  std::string("got invalid response from leader at ") +
                       endpoint + ": invalid JSON");
   }
 
-  return ::handleMasterStateResponse(connection, *this, slice);
+  return ::handleLeaderStateResponse(connection, *this, slice);
 }
 
-bool MasterInfo::simulate32Client() const {
+bool LeaderInfo::simulate32Client() const {
   TRI_ASSERT(!endpoint.empty() && serverId.isSet() && majorVersion != 0);
   bool is33 = (majorVersion > 3 || (majorVersion == 3 && minorVersion >= 3));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -514,13 +514,13 @@ Result buildHttpError(httpclient::SimpleHttpResult* response,
                  response->getBody().toString();
     }
     return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                  std::string("could not connect to master at ") +
+                  std::string("could not connect to leader at ") +
                       connection.endpoint() + " for URL " + url + ": " + errorMsg);
   }
 
   TRI_ASSERT(response->wasHttpError());
-  return Result(TRI_ERROR_REPLICATION_MASTER_ERROR,
-                std::string("got invalid response from master at ") +
+  return Result(TRI_ERROR_REPLICATION_LEADER_ERROR,
+                std::string("got invalid response from leader at ") +
                     connection.endpoint() + " for URL " + url + ": HTTP " +
                     basics::StringUtils::itoa(response->getHttpReturnCode()) +
                     ": " + response->getHttpReturnMessage() + " - " +

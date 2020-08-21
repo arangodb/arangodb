@@ -189,7 +189,7 @@ GraphFormat<SCCValue, int8_t>* SCC::inputFormat() const {
 }
 
 struct SCCMasterContext : public MasterContext {
-  SCCMasterContext() {}  // TODO use _threashold
+  SCCMasterContext() {}  // TODO use _threshold
   void preGlobalSuperstep() override {
     if (globalSuperstep() == 0) {
       aggregate<uint32_t>(kPhase, SCCPhase::TRANSPOSE);
