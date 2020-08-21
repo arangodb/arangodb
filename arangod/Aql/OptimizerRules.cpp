@@ -779,14 +779,6 @@ std::string getSingleShardId(arangodb::aql::ExecutionPlan const* plan,
 
 bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
                                  arangodb::aql::LimitNode& limitNode) {
-  auto const* loop = sortNode.getLoop();
-  if (loop && arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
-    // since currently view node doesn't provide any
-    // useful estimation, we apply heap optimization
-    // unconditionally
-    return true;
-  }
-
   size_t input = sortNode.getCost().estimatedNrItems;
   size_t output = limitNode.limit() + limitNode.offset();
 

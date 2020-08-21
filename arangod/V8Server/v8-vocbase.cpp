@@ -588,11 +588,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (args[1]->IsObject()) {
       bindVars.reset(new VPackBuilder);
 
-      int res = TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        TRI_V8_THROW_EXCEPTION(res);
-      }
+      TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
     }
   }
 
@@ -603,10 +599,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (!args[2]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
-    int res = TRI_V8ToVPack(isolate, *options, args[2], false);
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
+    TRI_V8ToVPack(isolate, *options, args[2], false);
   }
 
   // bind parameters will be freed by the query later
@@ -682,11 +675,11 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto queryBuilder = std::make_shared<VPackBuilder>();
-  int res = TRI_V8ToVPack(isolate, *queryBuilder, args[0], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    events::QueryDocument(vocbase.name(), VPackSlice(), res);
-    TRI_V8_THROW_EXCEPTION(res);
+  try {
+    TRI_V8ToVPack(isolate, *queryBuilder, args[0], false);
+  } catch (arangodb::basics::Exception const& ex) {
+    events::QueryDocument(vocbase.name(), VPackSlice(), ex.code());
+    throw;
   }
 
   auto options = std::make_shared<VPackBuilder>();
@@ -698,10 +691,11 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
 
-    res = TRI_V8ToVPack(isolate, *options, args[1], false);
-    if (res != TRI_ERROR_NO_ERROR) {
-      events::QueryDocument(vocbase.name(), queryBuilder->slice(), res);
-      TRI_V8_THROW_EXCEPTION(res);
+    try {
+      TRI_V8ToVPack(isolate, *options, args[1], false);
+    } catch (arangodb::basics::Exception const& ex) {
+      events::QueryDocument(vocbase.name(), queryBuilder->slice(), ex.code());
+      throw;
     }
   }
 
@@ -815,11 +809,11 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
     if (args[1]->IsObject()) {
       bindVars.reset(new VPackBuilder);
-      int res = TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        events::QueryDocument(vocbase.name(), queryString, "", res);
-        TRI_V8_THROW_EXCEPTION(res);
+      try {
+        TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
+      } catch (arangodb::basics::Exception const& ex) {
+        events::QueryDocument(vocbase.name(), queryString, "", ex.code());
+        throw;
       }
     }
   }
@@ -835,11 +829,12 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
 
-    int res = TRI_V8ToVPack(isolate, *options, args[2], false);
-    if (res != TRI_ERROR_NO_ERROR) {
+    try {
+      TRI_V8ToVPack(isolate, *options, args[2], false);
+    } catch (arangodb::basics::Exception const& ex) {
       events::QueryDocument(vocbase.name(), queryString,
-                            (bindVars ? bindVars->slice().toJson() : ""), res);
-      TRI_V8_THROW_EXCEPTION(res);
+                            (bindVars ? bindVars->slice().toJson() : ""), ex.code());
+      throw;
     }
   }
 
@@ -1186,12 +1181,7 @@ static void JS_QueryCachePropertiesAql(v8::FunctionCallbackInfo<v8::Value> const
 
   if (args.Length() == 1) {
     // called with options
-    int res = TRI_V8ToVPack(isolate, builder, args[0], false);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
-
+    TRI_V8ToVPack(isolate, builder, args[0], false);
     queryCache->properties(builder.slice());
   }
 
@@ -1697,7 +1687,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                        "user is not an object");
       }
 
-      TRI_V8ToVPackSimple(isolate, users, user);
+      TRI_V8ToVPack(isolate, users, user, false, false);
     }
   }
 

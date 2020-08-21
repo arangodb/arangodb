@@ -111,6 +111,28 @@ auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
   return req;
 }
 
+/// @brief Function to produce a response object from thin air:
+static std::unique_ptr<fuerte::Response> buildResponse(fuerte::StatusCode statusCode, Result const& res) {
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
+  {
+    VPackObjectBuilder guard(&builder);
+    auto errorNum = res.errorNumber();
+    builder.add(StaticStrings::Error, VPackValue(errorNum != TRI_ERROR_NO_ERROR));
+    builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
+    if (errorNum != TRI_ERROR_NO_ERROR) {
+      builder.add(StaticStrings::ErrorMessage, VPackValue(res.errorMessage()));
+    }
+    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(statusCode)));
+  }
+  fuerte::ResponseHeader responseHeader;
+  responseHeader.responseCode = statusCode;
+  responseHeader.contentType(ContentType::VPack);
+  auto resp = std::make_unique<fuerte::Response>(responseHeader);
+  resp->setPayload(std::move(buffer), 0);
+  return resp;
+}
+
 /// @brief send a request to a given destination
 FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
                       std::string path, velocypack::Buffer<uint8_t> payload,
@@ -135,8 +157,10 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     arangodb::network::EndpointSpec spec;
     int res = resolveDestination(*pool->config().clusterInfo, dest, spec);
     if (res != TRI_ERROR_NO_ERROR) {
-      return futures::makeFuture<network::Response>(
-          arangodb::basics::Exception(res, __FILE__, __LINE__));
+      // We fake a successful request with statusCode 503 and a backend not available
+      // error here:
+      auto resp = buildResponse(fuerte::StatusServiceUnavailable, Result{res});
+      return futures::makeFuture(Response{std::move(dest), Error::NoError, std::move(resp), std::move(req)});
     }
     TRI_ASSERT(!spec.endpoint.empty());
 
@@ -234,6 +258,13 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
   // scheduler requests that are due
   void startRequest() {
+    if (ADB_UNLIKELY(!_pool)) {
+      LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION)
+          << "connection pool unavailable";
+      callResponse(Error::Canceled, nullptr, std::move(_request));
+      return;
+    }
+
     auto now = std::chrono::steady_clock::now();
     if (now > _endTime || _pool->config().clusterInfo->server().isStopping()) {
       callResponse(Error::Timeout, nullptr, std::move(_request));
@@ -243,14 +274,10 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     arangodb::network::EndpointSpec spec;
     int res = resolveDestination(*_pool->config().clusterInfo, _destination, spec);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
-      errorResponse(Result{res}, __FILE__, __LINE__);
-      return;
-    }
-
-    if (!_pool) {
-      LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION)
-          << "connection pool unavailable";
-      callResponse(Error::Canceled, nullptr, std::move(_request));
+      // We fake a successful request with statusCode 503 and a backend not available
+      // error here:
+      auto resp = buildResponse(fuerte::StatusServiceUnavailable, Result{res});
+      callResponse(Error::NoError, std::move(resp), std::move(_request));
       return;
     }
 
@@ -349,25 +376,6 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       default:  // a "proper error" which has to be returned to the client
         callResponse(err, std::move(res), std::move(req));
         return true; // done
-    }
-  }
-
-  void errorResponse(arangodb::Result&& result, char const* file, int line) {
-    TRI_ASSERT(result.fail());
-    Scheduler* sch = SchedulerFeature::SCHEDULER;
-    if (_options.skipScheduler || sch == nullptr) {
-      _promise.setException(arangodb::basics::Exception(std::move(result), file, line));
-      return;
-    }
-
-    bool queued =
-        sch->queue(RequestLane::CLUSTER_INTERNAL, [self = shared_from_this(), result]() {
-          self->_promise.setException(
-              arangodb::basics::Exception(std::move(result), __FILE__, __LINE__));
-        });
-    if (ADB_UNLIKELY(!queued)) {
-      // Unable to queue the error, so handle it here, do not drop it over to the queue error.
-      _promise.setException(arangodb::basics::Exception(std::move(result), __FILE__, __LINE__));
     }
   }
 
