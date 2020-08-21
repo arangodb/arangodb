@@ -175,8 +175,6 @@ process(fuerte = "fuertethread") {
       or cancellation:   \* VERIFIED
         if (/\ Len(iocontext) >= 1 /\ Head(iocontext) = "cancel") {
           iocontext := Tail(iocontext);
-          \* Note that we *do not* set active to FALSE here, since we want
-          \* to interfere as little as possible with the active business.
           alarm := "off";
           call shutdownConnection();
         };
