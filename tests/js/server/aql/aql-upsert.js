@@ -38,7 +38,6 @@ const debugLogging = false;
 class UpsertTestCase {
   constructor(flags) {
     this._flags = flags;
-    this._expectedResult = new Map();
     this._differentValues = 10;
     // We will have 1 full batch of 1000 rows (500 data, 500 shadow)
     // and a second batch with fewer docs.
