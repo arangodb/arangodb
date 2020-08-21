@@ -34,6 +34,7 @@
 #include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 extern const char* ARGV0;  // defined in main.cpp
 
