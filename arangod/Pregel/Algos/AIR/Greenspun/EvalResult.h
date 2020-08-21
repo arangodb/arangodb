@@ -112,8 +112,8 @@ struct EvalResultT {
     return *this;
   }
 
-  EvalResultT<std::monostate> asResult() {
-      return map([](auto&&) -> std::monostate { return {}; });
+  EvalResultT<std::monostate> asResult() && {
+      return std::move(*this).map([](auto&&) -> std::monostate { return {}; });
   };
 
   template<typename F>

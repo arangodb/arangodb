@@ -29,6 +29,7 @@
 
 #include <iostream>
 
+#include "Extractor.h"
 #include "Interpreter.h"
 #include "Primitives.h"
 
@@ -665,6 +666,32 @@ EvalResult Prim_Foldl1(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
   return EvalError("not implemented");
 }
 
+EvalResult Prim_EmptyArrayHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  auto res = extract<VPackSlice>(paramsList);
+  if (!res) {
+    return std::move(res).asResult();
+  }
+
+  auto&& [array] = res.value();
+  result.add(VPackValue(array.isEmptyArray()));
+  return {};
+}
+
+EvalResult Prim_ArrayLength(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  auto res = extract<VPackSlice>(paramsList);
+  if (!res) {
+    return std::move(res).asResult();
+  }
+
+  auto&& [array] = res.value();
+  if (!array.isArray()) {
+    return EvalError("expected array, found " + array.toJson());
+  }
+
+  result.add(VPackValue(array.length()));
+  return {};
+}
+
 void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_type&& f) {
   ctx.setFunction(name, std::move(f));
 }
@@ -726,6 +753,9 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("attrib-set", Prim_AttribSet);
   ctx.setFunction("array-ref", Prim_ArrayRef);
   ctx.setFunction("array-set", Prim_ArraySet);
+
+  ctx.setFunction("array-empty?", Prim_EmptyArrayHuh);
+  ctx.setFunction("array-length", Prim_ArrayLength);
 
 
   ctx.setFunction("var-ref", Prim_VarRef);

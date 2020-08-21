@@ -1551,3 +1551,22 @@ TEST_CASE("Test [apply] primitive", "[apply]") {
     REQUIRE(result.slice().getNumericValue<double>() == 2);
   }
 }
+
+TEST_CASE("Test [quasi-quote] primitive", "[quasi-quote]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("quasi-quote") {
+    // ["attrib-set", dict, key, value]
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["array-empty?", ["quasi-quote"]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().isTrue());
+  }
+}
