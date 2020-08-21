@@ -108,6 +108,9 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
   }
 
+  TRI_ASSERT(_shadowRows.empty());
+  TRI_ASSERT(_nrEffectiveItems == 0);
+
   _nrItems = static_cast<size_t>(nrItems);
   _nrRegs = VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
 
@@ -351,6 +354,7 @@ void AqlItemBlock::destroy() noexcept {
   rescale(0, 0);
   TRI_ASSERT(numEntries() == 0);
   TRI_ASSERT(numEffectiveEntries() == 0);
+  TRI_ASSERT(_shadowRows.empty());
 }
 
 /// @brief shrink the block to the specified number of rows
@@ -376,6 +380,11 @@ void AqlItemBlock::shrink(size_t nrItems) {
 
   // adjust the size of the block
   _nrItems = nrItems;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto const [shadowRowsBegin, shadowRowsEnd] = _shadowRows.getIndexesFrom(_nrItems);
+  TRI_ASSERT(shadowRowsBegin == shadowRowsEnd);
+#endif
 
   size_t totalUsed = 0;
   size_t const n = numEffectiveEntries();
@@ -487,6 +496,8 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
   auto const numRegs = getNrRegs();
   
   SharedAqlItemBlockPtr res{aqlItemBlockManager().requestBlock(numRows, numRegs)};
+  
+  auto const numEffectiveRows = _nrEffectiveItems;
 
   // these structs are used to pass in type information into the following lambda
   struct WithoutShadowRows {};
@@ -496,7 +507,7 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
     constexpr bool checkShadowRows = std::is_same<decltype(type), WithShadowRows>::value;
     cache.reserve(_valueCount.size());
 
-    for (size_t row = 0; row < numRows; row++) {
+    for (size_t row = 0; row < numEffectiveRows; row++) {
       if (checkShadowRows && isShadowRow(row)) {
         // this is a shadow row. needs special handling
         for (RegisterId col = 0; col < numRegs; col++) {
@@ -588,7 +599,9 @@ auto AqlItemBlock::slice(arangodb::containers::SmallVector<std::pair<size_t, siz
   SharedAqlItemBlockPtr res{_manager.requestBlock(numRows, _nrRegs)};
   size_t targetRow = 0;
   for (auto const& [from, to] : ranges) {
-    for (size_t row = from; row < to; row++, targetRow++) {
+    size_t const effectiveTo = std::min<size_t>(to, _nrEffectiveItems);
+    
+    for (size_t row = from; row < effectiveTo; row++, targetRow++) {
       for (RegisterId col = 0; col < _nrRegs; col++) {
         ::copyValueOver(cache, _data[getAddress(row, col)], targetRow, col, res);
       }
@@ -628,9 +641,11 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
   SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _nrRegs)};
+    
+  size_t const effectiveTo = std::min<size_t>(to, _nrEffectiveItems);
 
   size_t resultRowIdx = 0;
-  for (size_t chosenIdx = from; chosenIdx < to; ++chosenIdx, ++resultRowIdx) {
+  for (size_t chosenIdx = from; chosenIdx < effectiveTo; ++chosenIdx, ++resultRowIdx) {
     size_t const rowIdx = chosen[chosenIdx];
     for (RegisterId col = 0; col < _nrRegs; col++) {
       ::copyValueOver(cache, _data[getAddress(rowIdx, col)], resultRowIdx, col, res);
@@ -1136,6 +1151,7 @@ size_t AqlItemBlock::getShadowRowDepth(size_t row) const {
 }
 
 void AqlItemBlock::makeShadowRow(size_t row, size_t depth) {
+  _nrEffectiveItems = std::max<size_t>(_nrEffectiveItems, row + 1);
   _shadowRows.make(row, depth);
   TRI_ASSERT(isShadowRow(row));
 }
@@ -1191,9 +1207,11 @@ size_t AqlItemBlock::moveOtherBlockHere(size_t const targetRow, AqlItemBlock& so
   TRI_ASSERT(getNrRegs() == source.getNrRegs());
   auto const n = source.size();
   auto const nrRegs = getNrRegs();
+   
+  auto const effectiveRows = source._nrEffectiveItems;
 
   size_t thisRow = targetRow;
-  for (size_t sourceRow = 0; sourceRow < n; ++sourceRow, ++thisRow) {
+  for (size_t sourceRow = 0; sourceRow < effectiveRows; ++sourceRow, ++thisRow) {
     for (RegisterId col = 0; col < nrRegs; ++col) {
       // copy over value
       AqlValue const& a = source.getValueReference(sourceRow, col);
@@ -1202,10 +1220,11 @@ size_t AqlItemBlock::moveOtherBlockHere(size_t const targetRow, AqlItemBlock& so
       }
     }
     copySubqueryDepthFromOtherBlock(thisRow, source, sourceRow, false);
+    _nrEffectiveItems = std::max<size_t>(_nrEffectiveItems, thisRow + 1);
   }
   source.eraseAll();
 
-  TRI_ASSERT(thisRow == targetRow + n);
+  TRI_ASSERT(thisRow == targetRow + effectiveRows);
 
   return targetRow + n;
 }
