@@ -48,16 +48,69 @@ GraphFormat::GraphFormat(application_features::ApplicationServer& server,
 size_t GraphFormat::estimatedVertexSize() const { return sizeof(vertex_type); }
 size_t GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
 
+void filterDocumentData(VPackBuilder& tmpBuilder, VPackSlice const& arraySlice,
+                        arangodb::velocypack::Slice& document) {
+  for (auto&& key : VPackArrayIterator(arraySlice)) {
+    if (key.isString()) {
+      {
+        VPackObjectBuilder ob(&tmpBuilder);
+        tmpBuilder.add(key.copyString(), document.get(key.stringRef()));
+      }
+    } else if (key.isArray()) {
+      std::vector<VPackStringRef> path;
+      size_t pathLength = key.length();
+      size_t iterationStep = 0;
+
+      tmpBuilder.openObject();
+      for (auto&& pathStep : VPackArrayIterator(key)) {
+        if (!pathStep.isString()) {
+          TRI_ASSERT(false);  // TODO: Add type checking in deserializer
+        }
+        // build up path - will change in every iteration step
+        path.emplace_back(pathStep.stringRef());
+
+        if (iterationStep < (pathLength - 1)) {
+          tmpBuilder.add(pathStep.copyString(), VPackValue(VPackValueType::Object));
+        } else {
+          tmpBuilder.add(pathStep.copyString(), document.get(path));
+        }
+
+        // get slice of each document depth
+        path.emplace_back(pathStep.stringRef());
+        iterationStep++;
+      }
+
+      // now close all opened objects
+      for (size_t step = 0; step < (pathLength - 1); step++) {
+        tmpBuilder.close();
+      }
+    } else {
+      TRI_ASSERT(false);
+    }
+  }
+}
+
 // Extract vertex data from vertex document into target
 void GraphFormat::copyVertexData(std::string const& documentId,
                                  arangodb::velocypack::Slice vertexDocument,
                                  vertex_type& targetPtr) {
-  targetPtr.reset(_globalAccumulatorDeclarations,
-                  _vertexAccumulatorDeclarations, _customDefinitions,
-                  _dataAccess, documentId, vertexDocument, _vertexIdRange++);
+  if (targetPtr._dataAccess.readVertex->slice().isArray()) {
+    // copy only specified keys/key-paths to document
+    VPackBuilder tmpBuilder;
+    filterDocumentData(tmpBuilder, targetPtr._dataAccess.readVertex->slice(), vertexDocument);
+    targetPtr.reset(_globalAccumulatorDeclarations, _vertexAccumulatorDeclarations,
+                    _customDefinitions, _dataAccess, documentId,
+                    tmpBuilder.slice(), _vertexIdRange++);
+  } else {
+    // copy all
+    targetPtr.reset(_globalAccumulatorDeclarations,
+                    _vertexAccumulatorDeclarations, _customDefinitions,
+                    _dataAccess, documentId, vertexDocument, _vertexIdRange++);
+  }
 }
 
 void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_type& targetPtr) {
+  // TODO: implement filtering
   targetPtr.reset(edgeDocument);
 }
 
