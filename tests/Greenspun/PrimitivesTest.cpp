@@ -1557,8 +1557,7 @@ TEST_CASE("Test [quasi-quote] primitive", "[quasi-quote]") {
   InitMachine(m);
   VPackBuilder result;
 
-  SECTION("quasi-quote") {
-    // ["attrib-set", dict, key, value]
+  SECTION("quasi-quote empty") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["array-empty?", ["quasi-quote"]]
     )aql");
@@ -1568,5 +1567,91 @@ TEST_CASE("Test [quasi-quote] primitive", "[quasi-quote]") {
       FAIL(res.error().toString());
     }
     REQUIRE(result.slice().isTrue());
+  }
+
+  SECTION("quasi-quote single") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["array-length", ["quasi-quote", 1]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().getNumber<double>() == 1);
+  }
+
+  SECTION("quasi-quote unquote") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["quasi-quote", ["unquote", ["+", 1, 2]]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().at(0).getNumber<double>() == 3);
+  }
+
+  SECTION("quasi-quote unquote multiple params") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["quasi-quote", ["unquote", ["+", 1, 2], 5]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("quasi-quote unquote multiple params") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["quasi-quote", ["unquote", ["+", 1, 2], 5]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("quasi-quote unquote no params") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["quasi-quote", ["unquote"]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("quasi-quote unquote quasi-quote") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["quasi-quote",
+        ["unquote",
+          ["array-length",
+            ["quasi-quote",
+              ["unquote",
+                ["+", 1, 2]
+              ],
+              2
+            ]
+          ]
+        ]
+      ]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().at(0).getNumber<double>() == 2);
+  }
+
+  SECTION("quasi-quote unquote quasi-quote") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["quasi-quote", ["foo"], ["unquote", ["list", 1, 2]], ["unquote-splice", ["list", 1, 2]]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().toJson() == R"=([["foo"],[1,2],1,2])=");
   }
 }

@@ -402,33 +402,34 @@ EvalResult Evaluate(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& res
 
 EvalResult SpecialQuasiQuote(Machine& ctx, ArrayIterator other, VPackBuilder& result) {
 
-  if (!other.valid()) {
-    return EvalError("expected at least one parameter");
+  if (other.valid()) {
+    Slice first = *other;
+    if (first.isString() && first.isEqualString("unquote")) {
+      other++;
+      if (!other.valid() || !other.isLast()) {
+        return EvalError("expected one parameter for unquote");
+      }
+      return Evaluate(ctx, *other, result);
+    } else if (first.isString() && first.isEqualString("unquote-splice")) {
+      other++;
+      if (!other.valid() || !other.isLast()) {
+        return EvalError("expected one parameter for unquote");
+      }
+      VPackBuilder tempResult;
+      if (auto res = Evaluate(ctx, *other, tempResult); res.fail()) {
+        return res;
+      }
+      auto tempSlice = tempResult.slice();
+      if (tempSlice.isArray()) {
+        result.add(VPackArrayIterator (tempSlice));
+      } else {
+        result.add(tempSlice);
+      }
+      return {};
+    }
   }
 
-  Slice first = *other;
-  if (first.isString() && first.isEqualString("unquote")) {
-    other++;
-    if (!other.valid() || !other.isLast()) {
-      return EvalError("expected one parameter for unquote");
-    }
-    return Evaluate(ctx, *other, result);
-  } else if (first.isString() && first.isEqualString("unquote-splice")) {
-    other++;
-    if (!other.valid() || !other.isLast()) {
-      return EvalError("expected one parameter for unquote");
-    }
-    VPackBuilder tempResult;
-    if (auto res = Evaluate(ctx, *other, tempResult); res.fail()) {
-      return res;
-    }
-    auto tempSlice = tempResult.slice();
-    if (tempSlice.isArray()) {
-      result.add(VPackArrayIterator (tempSlice));
-    } else {
-      result.add(tempSlice);
-    }
-  } else {
+  {
     VPackArrayBuilder ab(&result);
 
     for(; other.valid(); other++) {
