@@ -32,8 +32,6 @@
 #include <Pregel/Algos/AIR/AIR.h>
 #include <Pregel/Algos/AIR/Greenspun/Primitives.h>
 
-#include "AccumulatorAggregator.h"
-
 namespace arangodb {
 namespace pregel {
 namespace algos {
@@ -43,22 +41,27 @@ struct WorkerContext : public ::arangodb::pregel::WorkerContext {
   WorkerContext(VertexAccumulators const* algorithm);
 
   void preGlobalSuperstep(uint64_t gss) override;
-  void getUpdateMessagesIntoBuilder(VPackBuilder& builder) override;
+  void preGlobalSuperstepMasterMessage(VPackSlice msg) override;
+  void postGlobalSuperstep(uint64_t gss) override;
+  void postGlobalSuperstepMasterMessage(VPackBuilder& msg) override;
+
+  greenspun::EvalResult sendToGlobalAccumulator(std::string accumId, VPackSlice value) const;
+  greenspun::EvalResult getGlobalAccumulator(std::string accumId, VPackBuilder result) const;
 private:
 
-  AccumulatorMap const& globalAccumulatorsUpdates();
-  AccumulatorMap const& globalAccumulators();
+  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const& globalAccumulatorsUpdates();
+  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const& globalAccumulators();
 
   VertexAccumulators const* _algo;
 
   // This only holds the *deltas* for the global accumulators, i.e.
   // these accumulators are reset before every GSS, and their contents
   // are sent back to the conductor at the end of every GSS
-  AccumulatorMap _globalAccumulatorsUpdates;
+  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _globalAccumulators;
 
   // This map contains the values of the global accumulators
   // from the last GSS
-  AccumulatorMap _globalAccumulators;
+  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _globalAccumulatorsUpdates;
 };
 
 }  // namespace accumulators

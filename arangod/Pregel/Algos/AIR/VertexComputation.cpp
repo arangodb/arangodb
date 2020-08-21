@@ -28,10 +28,10 @@
 #include <Pregel/Algos/AIR/Greenspun/Interpreter.h>
 #include <Pregel/Graph.h>
 
-#include "AccumulatorAggregator.h"
-
 #include "Greenspun/Extractor.h"
 #include "Greenspun/Primitives.h"
+
+#include "WorkerContext.h"
 
 using namespace arangodb::pregel;
 
@@ -207,14 +207,6 @@ greenspun::EvalResult VertexComputation::air_globalAccumRef(greenspun::Machine& 
 
   auto&& [accumId] = res.value();
 
-  std::string globalName = "[global]-";
-  globalName += accumId;
-  auto accum =
-      dynamic_cast<VertexAccumulatorAggregator const*>(getReadAggregator(globalName));
-
-  if (accum != nullptr) {
-    return accum->getAccumulator().getIntoBuilderWithResult(result);
-  }
   return greenspun::EvalError("global accumulator `" + std::string{accumId} +
                               "` not found");
 }
@@ -228,17 +220,12 @@ greenspun::EvalResult VertexComputation::air_sendToGlobalAccum(greenspun::Machin
   }
   auto&& [accumId, value] = res.value();
 
-  std::string globalName = "[global]-";
-  globalName += accumId;
-  auto accum = dynamic_cast<VertexAccumulatorAggregator*>(getWriteAggregator(globalName));
-
-  if (accum != nullptr) {
-    accum->parseAggregate(value);
-    return {};
+  auto inner = workerContext().sendToGlobalAccumulator(accumId, value);
+  if (!inner) {
+    return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
+                                "` not found");
   }
-
-  return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
-                              "` not found");
+  return {};
 }
 
 /*  Graph stuff */
@@ -376,6 +363,10 @@ greenspun::EvalResult VertexComputation::air_globalSuperstep(greenspun::Machine&
 VertexAccumulators const& VertexComputation::algorithm() const {
   return _algorithm;
 };
+
+WorkerContext const& VertexComputation::workerContext() const {
+  return *static_cast<WorkerContext const *>(context());
+}
 
 greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
     MessageIterator<MessageData> const& incomingMessages) {

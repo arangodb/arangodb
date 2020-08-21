@@ -46,7 +46,7 @@ template <typename T>
 class Accumulator;
 
 struct AccumulatorBase {
-  AccumulatorBase(VertexData const& owner) : _owner(owner){};
+  AccumulatorBase() {};
   virtual ~AccumulatorBase() = default;
   template <typename T>
   Accumulator<T>* castAccumulatorType() {
@@ -66,6 +66,7 @@ struct AccumulatorBase {
   virtual auto setBySliceWithResult(VPackSlice v) -> greenspun::EvalResult = 0;
   virtual auto getIntoBuilderWithResult(VPackBuilder& result) -> greenspun::EvalResult = 0;
   virtual auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> = 0;
+  virtual auto updateBySlice(VPackSlice v) -> greenspun::EvalResultT<UpdateResult> = 0;
 
   // Returns a pointer to the value of this accumulator.
   virtual const void* getValuePointer() const { return nullptr; }
@@ -74,8 +75,6 @@ struct AccumulatorBase {
   virtual auto updateValueFromPointer(const void*) -> greenspun::EvalResultT<UpdateResult> {
     return UpdateResult::NO_CHANGE;
   }
-
-  VertexData const& _owner;
 };
 
 template <typename T>
@@ -83,8 +82,7 @@ class Accumulator : public AccumulatorBase {
  public:
   using data_type = T;
 
-  explicit Accumulator(VertexData const& owner, AccumulatorOptions const&, CustomAccumulatorDefinitions const&)
-      : AccumulatorBase(owner){};
+  explicit Accumulator( AccumulatorOptions const&, CustomAccumulatorDefinitions const&){};
   ~Accumulator() override = default;
 
   // Needed to implement set by slice and clear
@@ -135,6 +133,10 @@ class Accumulator : public AccumulatorBase {
     }
   }
 
+  virtual greenspun::EvalResultT<UpdateResult> updateBySlice(VPackSlice s) override {
+    return updateByMessageSlice(s);
+  }
+
   virtual void setBySlice(VPackSlice s) {
     if constexpr (std::is_same_v<T, bool>) {
       this->set(s.getBool());
@@ -172,8 +174,7 @@ class Accumulator : public AccumulatorBase {
   std::string _sender;
 };
 
-std::unique_ptr<AccumulatorBase> instantiateAccumulator(VertexData const& owner,
-                                                        AccumulatorOptions const& options,
+std::unique_ptr<AccumulatorBase> instantiateAccumulator(AccumulatorOptions const& options,
                                                         CustomAccumulatorDefinitions const& customDefinitions);
 bool isValidAccumulatorOptions(AccumulatorOptions const& options);
 

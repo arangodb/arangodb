@@ -90,7 +90,7 @@ function global_accumulators_test(graphName, resultField) {
 }
 
 function checkVertexCount(graphSpec, presult) {
-  const agg_numberOfVertices = presult.aggregators["[global]-numberOfVertices"];
+  const agg_numberOfVertices = presult.masterContext.globalAccumulatorValues.numberOfVertices;
   const exp_numberOfVertices = presult.vertexCount;
 
   if (agg_numberOfVertices !== exp_numberOfVertices) {

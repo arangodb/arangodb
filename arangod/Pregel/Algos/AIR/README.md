@@ -1,3 +1,21 @@
+# AIR Pregel Algorithm architecture
+
+
+## EdgeData
+
+## VertexData
+
+## MessageData
+
+## GraphFormat
+
+## VertexComputation
+
+## MasterContext 
+
+## WorkerContext
+
+
 # AIR (Arango Intermediate Representation)
 
 The code contained in this directory is part of a project to provide users with

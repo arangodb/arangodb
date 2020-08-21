@@ -36,17 +36,21 @@ namespace pregel {
 namespace algos {
 namespace accumulators {
 
+struct WorkerContext;
+
 class VertexComputation : public vertex_computation {
  public:
   explicit VertexComputation(VertexAccumulators const& algorithm);
   void compute(MessageIterator<message_type> const& messages) override;
   VertexAccumulators const& algorithm() const;
+  WorkerContext const& workerContext() const;
 
  private:
   greenspun::EvalResult clearAllVertexAccumulators();
   greenspun::EvalResultT<bool> processIncomingMessages(MessageIterator<MessageData> const& incomingMessages);
 
   greenspun::EvalResult runProgram(greenspun::Machine& ctx, VPackSlice program);
+
 
   void registerLocalFunctions();
 

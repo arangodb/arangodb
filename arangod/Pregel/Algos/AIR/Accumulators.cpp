@@ -70,10 +70,9 @@ void CustomAccumulator<VPackSlice>::serializeIntoBuilder(VPackBuilder& result) {
   Accumulator::serializeIntoBuilder(result);
 }
 
-CustomAccumulator<VPackSlice>::CustomAccumulator(const VertexData& owner,
-                                                 const AccumulatorOptions& options,
+CustomAccumulator<VPackSlice>::CustomAccumulator(const AccumulatorOptions& options,
                                                  const CustomAccumulatorDefinitions& defs)
-    : Accumulator<VPackSlice>(owner, options, defs) {
+    : Accumulator<VPackSlice>(options, defs) {
   _definition = defs.at(*options.customType);
   greenspun::InitMachine(_machine);
   SetupFunctions();

@@ -31,6 +31,16 @@ namespace arangodb::pregel::algos::accumulators {
 
 MasterContext::MasterContext(VertexAccumulators const* algorithm)
     : _algo(algorithm) {
+  CustomAccumulatorDefinitions const& customDefinitions = _algo->options().customAccumulators;
+  AccumulatorsDeclaration const& globalAccumulatorsDeclarations =
+      _algo->options().globalAccumulators;
+
+  for (auto&& decl : globalAccumulatorsDeclarations) {
+    auto [acc, ignore] = _globalAccumulators.emplace(decl.first, instantiateAccumulator(decl.second, customDefinitions));
+    // TODO: Clear could fail :/
+    acc->second->clearWithResult();
+  }
+
   InitMachine(_airMachine);
 
   _airMachine.setFunctionMember("goto-phase", &MasterContext::air_GotoPhase, this);
@@ -84,28 +94,33 @@ greenspun::EvalResult MasterContext::air_AccumRef(greenspun::Machine& ctx,
                                                   VPackSlice const params,
                                                   VPackBuilder& result) {
   auto&& [accumId] = unpackTuple<std::string_view>(params);
-  std::string globalName = "[global]-";
-  globalName += accumId;
-  auto accum = getAggregator<VertexAccumulatorAggregator>(globalName);
-  if (accum != nullptr) {
-    return accum->getAccumulator().getIntoBuilderWithResult(result);
+
+  if (auto iter = _globalAccumulators.find(accumId); iter != std::end(_globalAccumulators)) {
+    auto inner = iter->second->getIntoBuilderWithResult(result);
+    if (!inner) {
+      return inner.error();
+    } else {
+      return {};
+    }
   }
   return greenspun::EvalError("global accumulator `" + std::string{accumId} +
-                              "' not found");
+                              "` not found");
 }
 
 greenspun::EvalResult MasterContext::air_AccumSet(greenspun::Machine& ctx,
                                                   VPackSlice const params,
                                                   VPackBuilder& result) {
   auto&& [accumId, value] = unpackTuple<std::string_view, VPackSlice>(params);
-  std::string globalName = "[global]-";
-  globalName += accumId;
-  auto accum = getAggregator<VertexAccumulatorAggregator>(globalName);
-  if (accum != nullptr) {
-    return accum->getAccumulator().setBySliceWithResult(value);
-  }
 
-  return greenspun::EvalError("accumulator `" + std::string{accumId} +
+  if (auto iter = _globalAccumulators.find(accumId); iter != std::end(_globalAccumulators)) {
+    auto inner = iter->second->updateBySlice(value);
+    if (!inner) {
+      return inner.error();
+    } else {
+      return {};
+    }
+  }
+  return greenspun::EvalError("global accumulator `" + std::string{accumId} +
                               "` not found");
 }
 
@@ -113,14 +128,16 @@ greenspun::EvalResult MasterContext::air_AccumClear(greenspun::Machine& ctx,
                                                     VPackSlice const params,
                                                     VPackBuilder& result) {
   auto&& [accumId] = unpackTuple<std::string_view>(params);
-  std::string globalName = "[global]-";
-  globalName += accumId;
-  auto accum = getAggregator<VertexAccumulatorAggregator>(globalName);
-  if (accum != nullptr) {
-    return accum->getAccumulator().clearWithResult();
-  }
 
-  return greenspun::EvalError("accumulator `" + std::string{accumId} +
+  if (auto iter = _globalAccumulators.find(accumId); iter != std::end(_globalAccumulators)) {
+    auto inner = iter->second->clearWithResult();
+    if (!inner) {
+      return inner.error();
+    } else {
+      return {};
+    }
+  }
+  return greenspun::EvalError("global accumulator `" + std::string{accumId} +
                               "` not found");
 }
 
@@ -191,6 +208,88 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
     aggregate<uint64_t>("phase-first-step", globalSuperstep() + 1);
     return ContinuationResult::ACTIVATE_ALL;
   }
+}
+
+void MasterContext::preGlobalSuperstepMessage(VPackBuilder& msg) {
+  // Send the current values of all global accumulators to the workers
+  // where they will be received and passed to WorkerContext in preGlobalSuperstepMessage
+  {
+    VPackObjectBuilder msgGuard(&msg);
+    {
+      VPackObjectBuilder valuesGuard(&msg, "globalAccumulatorValues");
+
+      for (auto&& acc : globalAccumulators()) {
+        msg.add(VPackValue(acc.first));
+
+        if(auto result = acc.second->getIntoBuilderWithResult(msg); result.fail()) {
+          LOG_DEVEL << "AIR MasterContext, error serializing global accumulator "
+                    << acc.first << " " << result.error().toString();
+        }
+      }
+    }
+  }
+}
+
+bool MasterContext::postGlobalSuperstepMessage(VPackSlice workerMsgs) {
+  if (!workerMsgs.isArray()) {
+    LOG_DEVEL << "AIR MasterContext received invalid message from conductor: " << workerMsgs.toJson() << " expecting array of objects";
+    return false;
+  }
+
+  for(auto&& msg : VPackArrayIterator(workerMsgs)) {
+    if (!msg.isObject()) {
+      LOG_DEVEL << "AIR MasterContext received invalid message from worker: " << msg.toJson() << " expecting object; stopping.";
+      return false;
+    }
+
+    auto accumulatorUpdate = msg.get("globalAccumulatorUpdates");
+    if (!accumulatorUpdate.isObject()) {
+      LOG_DEVEL << "AIR MasterContext did not receive globalAccumulatorUpdates from worker.";
+      continue;
+    }
+    for (auto&& upd : VPackObjectIterator(accumulatorUpdate)) {
+      if (!upd.key.isString()) {
+        LOG_DEVEL << "AIR MasterContext received invalid key from worker: " << upd .key.toJson() << " expecting string.";
+        return false;
+      }
+
+      auto accumName = upd.key.copyString();
+      if (auto iter = globalAccumulators().find(accumName); iter != std::end(globalAccumulators())) {
+        auto res = iter->second->updateBySlice(upd.value);
+        if (!res) {
+          LOG_DEVEL << "AIR MasterContext could not update global accumulator " << accumName << ", " << res.error().toString();
+          return false;
+        }
+      } else {
+        LOG_DEVEL << "AIR MasterContext received update for unknown global accumulator " << accumName;
+      }
+    }
+  }
+
+  return true;
+}
+
+
+void MasterContext::serializeValues(VPackBuilder& msg) {
+  {
+    VPackObjectBuilder msgGuard(&msg);
+    {
+      VPackObjectBuilder valuesGuard(&msg, "globalAccumulatorValues");
+
+      for (auto&& acc : globalAccumulators()) {
+        msg.add(VPackValue(acc.first));
+
+        if(auto result = acc.second->getIntoBuilderWithResult(msg); result.fail()) {
+          LOG_DEVEL << "AIR MasterContext, error serializing global accumulator "
+                    << acc.first << " " << result.error().toString();
+        }
+      }
+    }
+  }
+}
+
+std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const& MasterContext::globalAccumulators() {
+  return _globalAccumulators;
 }
 
 }  // namespace arangodb::pregel::algos::accumulators

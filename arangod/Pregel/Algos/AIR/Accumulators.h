@@ -227,8 +227,7 @@ struct CustomAccumulator;
 template<>
 struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
  public:
-  CustomAccumulator(VertexData const& owner, AccumulatorOptions const& options,
-                    CustomAccumulatorDefinitions const& defs);
+  CustomAccumulator(AccumulatorOptions const& options, CustomAccumulatorDefinitions const& defs);
 
   ~CustomAccumulator() override;
 

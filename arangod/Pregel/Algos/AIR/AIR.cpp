@@ -131,12 +131,6 @@ IAggregator* VertexAccumulators::aggregator(const std::string& name) const {
     return new OverwriteAggregator<uint32_t>(0, true);
   } else if (name == "phase-first-step") {
     return new OverwriteAggregator<uint64_t>(0, true);
-  } else if (arangodb::basics::StringUtils::isPrefix(name, "[global]-")) {
-    std::string realName = name.substr(9);
-    if (auto iter = _options.globalAccumulators.find(realName);
-        iter != std::end(_options.globalAccumulators)) {
-      return new VertexAccumulatorAggregator(iter->second, _options.customAccumulators, true);
-    }
   }
   return nullptr;
 }

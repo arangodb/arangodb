@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GraphFormat.h"
+#include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
 
 namespace arangodb {
 namespace pregel {
@@ -48,7 +49,7 @@ size_t GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
 void GraphFormat::copyVertexData(std::string const& documentId,
                                  arangodb::velocypack::Slice vertexDocument,
                                  vertex_type& targetPtr) {
-  targetPtr.reset(_globalAccumulatorDeclarations, _vertexAccumulatorDeclarations,_customDefinitions,  documentId, vertexDocument, _vertexIdRange++);
+  targetPtr.reset(_vertexAccumulatorDeclarations,_customDefinitions,  documentId, vertexDocument, _vertexIdRange++);
 }
 
 void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_type& targetPtr) {
