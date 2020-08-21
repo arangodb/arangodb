@@ -102,6 +102,12 @@ class Utils {
   /// Holds aggregated values
   static std::string const aggregatorValuesKey;
 
+  /// Dict of messages sent from WorkerContext to MasterContext after every GSS
+  static std::string const workerToMasterMessagesKey;
+
+  /// Dict of messages sent from MasterContext to all WorkerContexts before every GSS
+  static std::string const masterToWorkerMessagesKey;
+
   /// Communicates the # of active vertices to the conductor
   static std::string const activeCountKey;
 

@@ -149,20 +149,33 @@ bool Conductor::_startGlobalStep() {
   _statistics.resetActiveCount();
   _totalVerticesCount = 0;  // might change during execution
   _totalEdgesCount = 0;
+
+  VPackBuilder messagesFromWorkers;
+
+  {
+    // TODO: lock?
+    VPackArrayBuilder guard(&messagesFromWorkers);
   // we are explicitly expecting an response containing the aggregated
   // values as well as the count of active vertices
   int res = _sendToAllDBServers(Utils::prepareGSSPath, b, [&](VPackSlice const& payload) {
     _aggregators->aggregateValues(payload);
+
+    // TODO: locking necessary?
+    messagesFromWorkers.add(payload.get(Utils::workerToMasterMessagesKey));
+
     _statistics.accumulateActiveCounts(payload);
     _totalVerticesCount += payload.get(Utils::vertexCountKey).getUInt();
     _totalEdgesCount += payload.get(Utils::edgeCountKey).getUInt();
   });
+
+
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::IN_ERROR;
     LOG_TOPIC("04189", ERR, Logger::PREGEL)
         << "Seems there is at least one worker out of order";
     // the recovery mechanisms should take care of this
     return false;
+  }
   }
 
   // workers are done if all messages were processed and no active vertices
@@ -175,6 +188,7 @@ bool Conductor::_startGlobalStep() {
     _masterContext->_globalSuperstep = _globalSuperstep - 1;
     _masterContext->_enterNextGSS = false;
     _masterContext->_reports = &_reports;
+    _masterContext->postGlobalSuperstepMessage(messagesFromWorkers.slice());
     proceed = _masterContext->postGlobalSuperstep();
     if (!proceed) {
       LOG_TOPIC("0aa8e", DEBUG, Logger::PREGEL)
@@ -214,11 +228,14 @@ bool Conductor::_startGlobalStep() {
     }
     return false;
   }
+
+  VPackBuilder toWorkerMessages;
   if (_masterContext) {
     _masterContext->_globalSuperstep = _globalSuperstep;
     _masterContext->_vertexCount = _totalVerticesCount;
     _masterContext->_edgeCount = _totalEdgesCount;
     _masterContext->preGlobalSuperstep();
+    _masterContext->preGlobalSuperstepMessage(toWorkerMessages);
   }
 
   b.clear();
@@ -228,14 +245,17 @@ bool Conductor::_startGlobalStep() {
   b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
   b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
   b.add(Utils::activateAllKey, VPackValue(activateAll));
+
+  b.add(Utils::masterToWorkerMessagesKey, toWorkerMessages.slice());
   _aggregators->serializeValues(b);
+
   b.close();
   LOG_TOPIC("d98de", DEBUG, Logger::PREGEL) << b.toString();
 
   _stepStartTimeSecs = TRI_microtime();
 
   // start vertex level operations, does not get a response
-  res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
+  int res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::IN_ERROR;
     LOG_TOPIC("f34bb", ERR, Logger::PREGEL)
@@ -817,6 +837,9 @@ VPackBuilder Conductor::toVelocyPack() const {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));
   }
+  result.add(VPackValue("masterContext"));
+  _masterContext->serializeValues(result);
+
   result.close();
   return result;
 }

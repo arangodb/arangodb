@@ -58,9 +58,10 @@ class WorkerContext {
 
   virtual void preApplication() {}
   virtual void preGlobalSuperstep(uint64_t gss) {}
+  virtual void preGlobalSuperstepMasterMessage(VPackSlice msg) {};
   virtual void postGlobalSuperstep(uint64_t gss) {}
+  virtual void postGlobalSuperstepMasterMessage(VPackBuilder& msg) {};
   virtual void postApplication() {}
-  virtual void getUpdateMessagesIntoBuilder(VPackBuilder& builder) {};
 
  public:
   WorkerContext()
