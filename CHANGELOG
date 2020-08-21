@@ -9,14 +9,16 @@ v3.6.6 (XXXX-XX-XX)
       FOR d IN ["key_1", "key_2", "key_3", "key_1"] 
         UPSERT d INSERT d UPDATE d IN @@collection
 
-  would fail with "unique constraint violation" when used with a collection
-  bind parameter, but the equivalent query
-      
+  would fail with "unique constraint violation" when used with a collection bind
+  parameter, but the equivalent query
+
       FOR d IN ["key_1", "key_2", "key_3", "key_1"] 
         UPSERT d INSERT d UPDATE d IN collectionName
 
   with a hard-coded collection name would succeed. This is now fixed so both
   queries have the same behavior (no failure) in single server.
+
+* Updated arangosync to 0.7.10.
 
 * Fixed internal issue #742: Add tick storage in index meta payload for
   ArangoSearch view links after collection truncate operation.
@@ -62,8 +64,6 @@ v3.6.6 (XXXX-XX-XX)
   subqueries that contain a COLLECT statement if the subquery is itself called
   from within a loop. Otherwise the COLLECT will be applied to the values in the
   outer FOR loop, which can produce a different result.
-
-* Updated arangosync to 0.7.9.
 
 * Fixed hotbackup S3 credentials validation and error reporting for upload
   and download (BTS-162).
