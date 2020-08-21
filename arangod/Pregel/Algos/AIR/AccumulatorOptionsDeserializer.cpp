@@ -178,7 +178,7 @@ using bindings_map_deserializer = map_deserializer<values::vpack_builder_deseria
 using phases_deserializer = non_empty_array_deserializer<algorithm_phase_deserializer, my_vector>;
 
 using vertex_accumulator_options_plan = parameter_list<
-    factory_deserialized_parameter<resultField, values::value_deserializer<std::string>, true>,
+    factory_deserialized_parameter<resultField, values::value_deserializer<std::string>, false>,
     factory_deserialized_parameter<vertexAccumulators, accumulators_map_deserializer, false>,
     factory_deserialized_parameter<globalAccumulators, accumulators_map_deserializer, false>,
     factory_deserialized_parameter<customAccumulators, custom_accumulators_map_deserializer, false>,
