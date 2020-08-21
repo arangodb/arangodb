@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GraphFormat.h"
+#include "Pregel/Algos/AIR/Greenspun/Extractor.h"
 #include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
 
 namespace arangodb {
@@ -35,12 +36,14 @@ GraphFormat::GraphFormat(application_features::ApplicationServer& server,
                          std::string const& resultField,
                          AccumulatorsDeclaration const& globalAccumulatorDeclarations,
                          AccumulatorsDeclaration const& vertexAccumulatorDeclarations,
-                         CustomAccumulatorDefinitions customDefinitions)
+                         CustomAccumulatorDefinitions customDefinitions,
+                         DataAccessDefinition const& dataAccess)
     : graph_format(server),
       _resultField(resultField),
       _globalAccumulatorDeclarations(globalAccumulatorDeclarations),
       _vertexAccumulatorDeclarations(vertexAccumulatorDeclarations),
-      _customDefinitions(std::move(customDefinitions)) {}
+      _customDefinitions(std::move(customDefinitions)),
+      _dataAccess(dataAccess) {}
 
 size_t GraphFormat::estimatedVertexSize() const { return sizeof(vertex_type); }
 size_t GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
@@ -60,36 +63,56 @@ void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_ty
 
 bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
                                       const vertex_type* ptr, size_t size) const {
-  VPackObjectBuilder guard(&b, _resultField);
+  if (ptr->_dataAccess.writeVertex->slice().isArray()) {
+    greenspun::Machine m;
+    InitMachine(m);
 
-  // (example: accum-ref -> vertex type (ptr))
-  greenspun::Machine m;  // todo: (member graph format)
-  InitMachine(m);
+    m.setFunction("accum-ref",
+                  [ptr](greenspun::Machine& ctx, VPackSlice const params,
+                        VPackBuilder& tmpBuilder) -> greenspun::EvalResult {
+                    // serializeIntoBuilder (method of <abstract> accumulators bsp.: accum-ref -> vertex computation.cpp)
+                    auto res = greenspun::extract<std::string>(params);
+                    if (res.fail()) {
+                      return std::move(res).error();
+                    }
 
-  m.setFunction("accum-ref",
-                [ptr](greenspun::Machine& ctx, VPackSlice const paramsList,
-                      VPackBuilder& result) -> greenspun::EvalResult {
-                  // serializeIntoBuilder (method of <abstract> accumulators bsp.: accum-ref -> vertex computation.cpp)
-                  // ptr->_vertexAccumulators.at().
-                  std::cout << ptr->_vertexId << std::endl;
+                    auto&& [accumId] = res.value();
 
-                  return {};
-                });
+                    if (auto iter = ptr->_vertexAccumulators.find(accumId);
+                        iter != std::end(ptr->_vertexAccumulators)) {
+                      return iter->second->getIntoBuilderWithResult(tmpBuilder);
+                    }
+                    return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
+                                                "` not found");
+                  });
 
-  std::cout << "Size is: " << ptr->_vertexAccumulators.size() << std::endl;
-  if (ptr->_dataAccess.writeVertex.has_value()) {
-    std::cout << ptr->_dataAccess.writeVertex->toString() << std::endl;
-  }
-  // auto res = Evaluate(m, program->slice(), result);
-
-  for (auto&& acc : ptr->_vertexAccumulators) {
-    // this will be obsolete soon
-    b.add(VPackValue(acc.first));
-    if (auto res = acc.second->finalizeIntoBuilder(b); res.fail()) {
+    VPackBuilder tmpBuilder;
+    auto res = Evaluate(m, ptr->_dataAccess.writeVertex->slice(), tmpBuilder);
+    if (res.fail()) {
       LOG_DEVEL << "finalize program failed: " << res.error().toString();
       TRI_ASSERT(false);
     }
+
+    if (tmpBuilder.slice().isObject()) {
+      for (auto&& entry : VPackObjectIterator(tmpBuilder.slice())) {
+        b.add(entry.key);
+        b.add(entry.value);
+      }
+    } else {
+      return false;  // will not write as tmpBuilder is not a valid (object) result
+    }
+  } else {
+    VPackObjectBuilder guard(&b, _resultField);
+    for (auto&& acc : ptr->_vertexAccumulators) {
+      // this will be obsolete soon
+      b.add(VPackValue(acc.first));
+      if (auto res = acc.second->finalizeIntoBuilder(b); res.fail()) {
+        LOG_DEVEL << "finalize program failed: " << res.error().toString();
+        TRI_ASSERT(false);
+      }
+    }
   }
+
   return true;
 }
 

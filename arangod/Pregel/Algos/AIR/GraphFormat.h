@@ -41,7 +41,8 @@ struct GraphFormat final : public graph_format {
                        std::string const& resultField,
                        AccumulatorsDeclaration const& globalAccumulatorDeclarations,
                        AccumulatorsDeclaration const& vertexAccumulatorDeclarations,
-                       CustomAccumulatorDefinitions customDefinitions);
+                       CustomAccumulatorDefinitions customDefinitions,
+                       DataAccessDefinition const& dataAccess);
 
   std::string const _resultField;
 
