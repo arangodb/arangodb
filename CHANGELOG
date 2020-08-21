@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to 0.7.10.
+
 * Make UPSERT statement with collection bind parameter behave identical to its
   non-bind parameter counterpart.
 
@@ -9,8 +11,8 @@ devel
       FOR d IN ["key_1", "key_2", "key_3", "key_1"] 
         UPSERT d INSERT d UPDATE d IN @@collection
 
-  would fail with "unique constraint violation" when used with a collection
-  bind parameter, but the equivalent query
+  would fail with "unique constraint violation" when used with a collection bind
+  parameter, but the equivalent query
       
       FOR d IN ["key_1", "key_2", "key_3", "key_1"] 
         UPSERT d INSERT d UPDATE d IN collectionName
