@@ -36,6 +36,7 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Graph.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -1604,6 +1605,8 @@ void Ast::injectBindParameters(BindParameters& parameters,
           arangodb::velocypack::StringRef paramRef(param);
           arangodb::velocypack::StringRef nameRef(name, l);
 
+          bool const isMMFiles = EngineSelectorFeature::isMMFiles();
+
           AstNode* newNode = nullptr;
           for (auto const& it : _writeCollections) {
             auto const& c = it.first;
@@ -1614,7 +1617,8 @@ void Ast::injectBindParameters(BindParameters& parameters,
               TRI_ASSERT(newNode == nullptr);
               isWriteCollection = true;
               break;
-            } else if (c->type == NODE_TYPE_COLLECTION &&
+            } else if (!isMMFiles &&
+                c->type == NODE_TYPE_COLLECTION &&
                 nameRef == arangodb::velocypack::StringRef(c->getStringValue(),
                                                            c->getStringLength())) {
               // bind parameter was already replaced with a proper collection node 
