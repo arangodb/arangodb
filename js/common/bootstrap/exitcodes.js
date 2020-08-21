@@ -23,7 +23,7 @@
     "EXIT_RECOVERY"                : { "code" : 23, "message" : "recovery failed" },
     "EXIT_DB_NOT_EMPTY"            : { "code" : 24, "message" : "database not empty" },
     "EXIT_UNSUPPORTED_STORAGE_ENGINE" : { "code" : 25, "message" : "unsupported storage engine" },
-    "EXIT_ICU_INITIALIZATION_FAILED" : { "code" : 26, "message" : "failed to initialize the ICU library" }
+    "EXIT_ICU_INITIALIZATION_FAILED" : { "code" : 26, "message" : "failed to initialize ICU library" }
   };
 }());
 

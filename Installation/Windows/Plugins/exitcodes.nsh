@@ -91,7 +91,7 @@ ${Switch} $1
   ${Break}
 
   ${Case} 26 # EXIT_ICU_INITIALIZATION_FAILED
-    MessageBox MB_ICONEXCLAMATION '$2:$\r$\n>> failed to initialize the ICU library <<$\r$\n"Will be returned if the ICU_DATA environment variable is misleading, or icudtl.dat isn't found"$\r$\n$3'
+    MessageBox MB_ICONEXCLAMATION '$2:$\r$\n>> failed to initialize ICU library <<$\r$\n"Will be returned if icudtl.dat is not found, of the wrong version or invalid. Check for an incorrectly set ICU_DATA environment variable"$\r$\n$3'
   ${Break}
 
   ${Default}

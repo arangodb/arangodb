@@ -85,9 +85,9 @@ constexpr int TRI_EXIT_DB_NOT_EMPTY                                             
 constexpr int TRI_EXIT_UNSUPPORTED_STORAGE_ENGINE                               = 25;
 
 /// 26: EXIT_ICU_INITIALIZATION_FAILED
-/// failed to initialize the ICU library
-/// Will be returned if the ICU_DATA environment variable is misleading, or
-/// icudtl.dat isn't found
+/// failed to initialize ICU library
+/// Will be returned if icudtl.dat is not found, of the wrong version or
+/// invalid. Check for an incorrectly set ICU_DATA environment variable
 constexpr int TRI_EXIT_ICU_INITIALIZATION_FAILED                                = 26;
 
 
