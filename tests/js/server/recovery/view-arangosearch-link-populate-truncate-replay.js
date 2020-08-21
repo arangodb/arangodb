@@ -54,7 +54,7 @@ function runSetup () {
   c.save({ name: "crashme" }, { waitForSync: true });
   internal.debugSetFailAt("ArangoSearchTruncateFailure");
   c.truncate();
-  internal.debugTerminate('crashing server');
+  internal.debugSegfault('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
