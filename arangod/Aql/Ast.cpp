@@ -1647,7 +1647,7 @@ void Ast::injectBindParameters(BindParameters& parameters,
 
                 if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
                     paramRef == arangodb::velocypack::StringRef(c->getStringValue(), c->getStringLength())) {
-                  c = node;
+                  c = newNode;
                   // no break here. replace all occurrences
                 }
               }
