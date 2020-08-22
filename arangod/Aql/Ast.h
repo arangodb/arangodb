@@ -586,6 +586,8 @@ class Ast {
   std::vector<AstNode*> _queries;
 
   /// @brief which collection is going to be modified in the query
+  /// maps from NODE_TYPE_COLLECTION/NODE_TYPE_PARAMETER_DATASOURCE to 
+  /// whether the collection is used in exclusive mode
   std::vector<std::pair<AstNode const*, bool>> _writeCollections;
 
   /// @brief whether or not function calls may access collection data

@@ -278,7 +278,7 @@ std::string const RestReplicationHandler::RestoreIndexes = "restore-indexes";
 std::string const RestReplicationHandler::RestoreData = "restore-data";
 std::string const RestReplicationHandler::RestoreView = "restore-view";
 std::string const RestReplicationHandler::Sync = "sync";
-std::string const RestReplicationHandler::MakeSlave = "make-slave";
+std::string const RestReplicationHandler::MakeFollower = "make-follower";
 std::string const RestReplicationHandler::ServerId = "server-id";
 std::string const RestReplicationHandler::ApplierConfig = "applier-config";
 std::string const RestReplicationHandler::ApplierStart = "applier-start";
@@ -498,7 +498,8 @@ RestStatus RestReplicationHandler::execute() {
       }
 
       handleCommandSync();
-    } else if (command == MakeSlave) {
+    } else if (command == MakeFollower ||
+               command == "make-slave" /*deprecated*/) {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
@@ -507,7 +508,7 @@ RestStatus RestReplicationHandler::execute() {
         return RestStatus::DONE;
       }
 
-      handleCommandMakeSlave();
+      handleCommandMakeFollower();
     } else if (command == ServerId) {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
@@ -739,10 +740,10 @@ ResultT<std::pair<std::string, bool>> RestReplicationHandler::forwardingTarget()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_makeSlave
+/// @brief was docuBlock JSF_put_api_replication_makeFollower
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandMakeSlave() {
+void RestReplicationHandler::handleCommandMakeFollower() {
   bool isGlobal = false;
   ReplicationApplier* applier = getApplier(isGlobal);
   if (applier == nullptr) {
