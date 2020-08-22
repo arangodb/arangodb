@@ -414,7 +414,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
             auto& resultBuilder = *queryResult.data;
             auto& vpackOpts = vpackOptions();
 
-            size_t const n = block->size();
+            size_t const n = block->numRows();
 
             for (size_t i = 0; i < n; ++i) {
               AqlValue const& val = block->getValueReference(i, resultRegister);
@@ -616,7 +616,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
         }
 
         if (!_queryOptions.silent) {
-          size_t const n = value->size();
+          size_t const n = value->numRows();
 
           auto const& vpackOpts = vpackOptions();
           for (size_t i = 0; i < n; ++i) {

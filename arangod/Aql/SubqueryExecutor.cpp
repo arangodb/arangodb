@@ -152,7 +152,7 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
         if (_infos.returnsData()) {
           TRI_ASSERT(_subqueryResults != nullptr);
           INTERNAL_LOG_SQ << uint64_t(this)
-                       << " store subquery result for writing " << block->size();
+                       << " store subquery result for writing " << block->numRows();
           _subqueryResults->emplace_back(std::move(block));
         }
       }

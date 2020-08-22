@@ -198,7 +198,7 @@ TEST_P(IdExecutorTestCombiner, test_produce_datarange_constFetcher) {
   auto result = outputRow.stealBlock();
   if (input > 0) {
     ASSERT_NE(result, nullptr);
-    ASSERT_EQ(result->size(), input);
+    ASSERT_EQ(result->numRows(), input);
     for (size_t i = 0; i < input; ++i) {
       auto val = result->getValueReference(i, 0);
       ASSERT_TRUE(val.isNumber());
@@ -278,7 +278,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
                                                       std::move(executorInfos)};
   auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
 
-  for (size_t i = 0; i < inputBlock->size(); ++i) {
+  for (size_t i = 0; i < inputBlock->numRows(); ++i) {
     InputAqlItemRow input{inputBlock, i};
     ASSERT_TRUE(input.isInitialized());
     {
@@ -304,7 +304,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
       EXPECT_EQ(state, ExecutionState::DONE);
       EXPECT_EQ(skipped.getSkipCount(), 0);
       ASSERT_NE(block, nullptr);
-      EXPECT_EQ(block->size(), 1);
+      EXPECT_EQ(block->numRows(), 1);
       auto const& val = block->getValueReference(0, 0);
       ASSERT_TRUE(val.isNumber());
       EXPECT_EQ(static_cast<size_t>(val.toInt64()), i);
@@ -322,7 +322,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_skip) {
                                                       std::move(executorInfos)};
   auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
 
-  for (size_t i = 0; i < inputBlock->size(); ++i) {
+  for (size_t i = 0; i < inputBlock->numRows(); ++i) {
     InputAqlItemRow input{inputBlock, i};
     ASSERT_TRUE(input.isInitialized());
     {
@@ -364,7 +364,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_fullCount) {
                                                       std::move(executorInfos)};
   auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
 
-  for (size_t i = 0; i < inputBlock->size(); ++i) {
+  for (size_t i = 0; i < inputBlock->numRows(); ++i) {
     InputAqlItemRow input{inputBlock, i};
     ASSERT_TRUE(input.isInitialized());
     {

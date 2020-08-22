@@ -174,9 +174,9 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
   if (newBlock != nullptr) {
     // Assert that the block has enough registers. This must be guaranteed by
     // the register planning.
-    TRI_ASSERT(newBlock->getNrRegs() == _registerInfos.numberOfOutputRegisters());
+    TRI_ASSERT(newBlock->numRegisters() == _registerInfos.numberOfOutputRegisters());
     // Check that all output registers are empty.
-    size_t const n = newBlock->size();
+    size_t const n = newBlock->numRows();
     auto const& regs = _registerInfos.getOutputRegisters();
     if (!regs.empty()) {
       bool const hasShadowRows = newBlock->hasShadowRows();
