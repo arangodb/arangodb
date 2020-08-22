@@ -3199,7 +3199,7 @@ arangodb::Result fromFuncStartsWith(
   auto minMatchCount = FilterConstants::DefaultStartsWithMinMatchCount;
   bool const isMultiPrefix = prefixesValue.isArray();
   if (isMultiPrefix) {
-    auto size = prefixesValue.size();
+    auto const size = prefixesValue.size();
     if (size > 0) {
       prefixes.reserve(size);
       for (size_t i = 0; i < size; ++i) {
@@ -3235,7 +3235,7 @@ arangodb::Result fromFuncStartsWith(
     auto& value = prefixes.back();
 
     if (!prefixesValue.getString(value.second)) {
-      return error::invalidAttribute(funcName, currentArgNum + 1);
+      return error::invalidArgument(funcName, currentArgNum + 1);
     }
   } else {
     return error::invalidArgument(funcName, currentArgNum + 1);
