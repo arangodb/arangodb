@@ -992,7 +992,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
         vocbase->release();
         
         LOG_TOPIC("e1807", WARN, arangodb::Logger::V8)
-            << "giving up waiting for unused V8 context after "
+            << "giving up waiting for unused V8 context for '"
+            << securityContext.typeName() << "' operation after "
             << Logger::FIXED(maxWaitTime) << " s - "
             << "contexts: " << _contexts.size() << "/" << _nrMaxContexts 
             << ", idle: " << _idleContexts.size() 
@@ -1033,7 +1034,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
   context->assertLocked();
 
   prepareLockedContext(vocbase, context, securityContext);
-  
+ 
   ++_contextsEntered;
   return context;
 }
