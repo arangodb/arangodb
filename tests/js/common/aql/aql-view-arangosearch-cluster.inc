@@ -452,6 +452,15 @@
         assertEqual(result[1].c, 0);
       },
 
+      testStartsWithFilterArrayWithoutMinMatchCountViaReference : function () {
+        var result = db._query("LET x = NOOPT(['fo', 'g']) FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, x) OPTIONS { waitForSync : true } RETURN doc").toArray();
+  
+        assertEqual(result.length, 10);
+        result.forEach(function(res) {
+          assertEqual(res.a, 'foo');
+        });
+      },
+
       testStartsWithFilterArrayWithoutMinMatchCount : function () {
         var result = db._query("FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, ['fo', 'g']) OPTIONS { waitForSync : true } RETURN doc").toArray();
 
