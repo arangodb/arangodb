@@ -35,6 +35,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -75,6 +76,7 @@ class FlushFeatureTest
                           false);  // required for ClusterFeature::prepare()
     features.emplace_back(server.addFeature<arangodb::ClusterFeature>(), false);  // required for V8DealerFeature::prepare()
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);  // required for MMFilesWalRecoverState constructor
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false); 
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
 
