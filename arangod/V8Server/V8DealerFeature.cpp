@@ -988,8 +988,11 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
       TRI_ASSERT(guard.isLocked());
 
       constexpr double maxWaitTime = 60.0;
-      if (TRI_microtime() - startTime >= maxWaitTime) {
+      double const now = TRI_microtime();
+      if (now - startTime >= maxWaitTime) {
         vocbase->release();
+        
+        ++_contextsEnterFailures;
         
         LOG_TOPIC("e1807", WARN, arangodb::Logger::V8)
             << "giving up waiting for unused V8 context for '"
@@ -999,8 +1002,18 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
             << ", idle: " << _idleContexts.size() 
             << ", busy: " << _busyContexts.size() 
             << ", dirty: " << _dirtyContexts.size() 
-            << ", in flight: " << _nrInflightContexts;
-        ++_contextsEnterFailures;
+            << ", in flight: " << _nrInflightContexts
+            << " - context overview following...";
+
+        size_t i = 0;
+        for (auto const& it : _contexts) {
+          ++i;
+          LOG_TOPIC("74439", WARN, arangodb::Logger::V8)
+              << "- context #" << it->id() 
+              << " (" << i << "/" << _contexts.size() << ")"
+              << ": acquired: " << Logger::FIXED(now - it->acquired()) << " s ago" 
+              << ", performing '" << it->description() << "' operation";
+        }
         return nullptr;
       }
       
@@ -1027,6 +1040,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
 
     // should not fail because we reserved enough space beforehand
     _busyContexts.emplace(context);
+  
+    context->setDescription(securityContext.typeName(), TRI_microtime());
   }
 
   TRI_ASSERT(context != nullptr);
@@ -1163,6 +1178,8 @@ void V8DealerFeature::exitContext(V8Context* context) {
 
     context->unlockAndExit();
     CONDITION_LOCKER(guard, _contextCondition);
+    
+    context->clearDescription();
 
     if (performGarbageCollection && (forceGarbageCollection || !_idleContexts.empty())) {
       // only add the context to the dirty list if there is at least one other
@@ -1185,6 +1202,8 @@ void V8DealerFeature::exitContext(V8Context* context) {
   } else {
     context->unlockAndExit();
     CONDITION_LOCKER(guard, _contextCondition);
+
+    context->clearDescription();
 
     _busyContexts.erase(context);
     // note that re-adding the context here should not fail as we reserved
