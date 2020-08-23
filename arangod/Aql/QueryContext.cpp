@@ -33,6 +33,7 @@
 #include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/AqlFeature.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -57,6 +58,9 @@ QueryContext::QueryContext(TRI_vocbase_t& vocbase)
   if (!AqlFeature::lease()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
+
+  // store name of user that started the query
+  _user = ExecContext::current().user();
 }
 
 /// @brief destroys a query

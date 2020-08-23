@@ -82,6 +82,9 @@ class QueryContext {
 
   /// @brief return the names of collections used in the query
   std::vector<std::string> collectionNames() const;
+
+  /// @brief return the user that started the query
+  std::string const& user() const { return _user; }
   
   /// warnings access is thread safe
   QueryWarnings& warnings() { return _warnings; }
@@ -133,7 +136,7 @@ public:
  protected:
   
   const TRI_voc_tick_t _queryId;
-  
+
   /// @brief current resources and limits used by query
   ResourceMonitor _resourceMonitor;
   
@@ -145,6 +148,9 @@ public:
 
   /// @brief pointer to vocbase the query runs in
   TRI_vocbase_t& _vocbase;
+  
+  /// @brief user that started the query
+  std::string _user;
 
   /// @brief graphs used in query, identified by name
   std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;

@@ -48,11 +48,14 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string&& queryString,
+QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string const& database,
+                               std::string const& user, std::string&& queryString,
                                std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
                                double started, double runTime,
                                QueryExecutionState::ValueType state, bool stream)
     : id(id),
+      database(database),
+      user(user),
       queryString(std::move(queryString)),
       bindParameters(bindParameters),
       started(started),
@@ -65,6 +68,8 @@ void QueryEntryCopy::toVelocyPack(velocypack::Builder& out) const {
 
   out.add(VPackValue(VPackValueType::Object));
   out.add("id", VPackValue(basics::StringUtils::itoa(id)));
+  out.add("database", VPackValue(database));
+  out.add("user", VPackValue(user));
   out.add("query", VPackValue(queryString));
   if (bindParameters != nullptr && !bindParameters->slice().isNone()) {
     out.add("bindVars", bindParameters->slice());
@@ -180,9 +185,10 @@ void QueryList::remove(Query* query) {
 
       LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
           << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
-          << bindParameters << ", took: " << Logger::FIXED(elapsed) << " s";
+          << bindParameters << ", database: " << query->vocbase().name()
+          << ", user: " << query->user() << ", took: " << Logger::FIXED(elapsed) << " s";
 
-      _slow.emplace_back(query->id(), std::move(q),
+      _slow.emplace_back(query->id(), query->vocbase().name(), query->user(), std::move(q),
                          _trackBindVars ? query->bindParameters() : nullptr,
                          now - elapsed, /* start timestamp */ 
                          elapsed /* run time */,
@@ -276,7 +282,8 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
       // the elapsed time since query start. this is not 100% accurrate, but
       // best effort, and saves us from bookkeeping the start timestamp of the 
       // query inside the Query object.
-      result.emplace_back(query->id(), extractQueryString(query, maxLength),
+      result.emplace_back(query->id(), query->vocbase().name(), query->user(),
+                          extractQueryString(query, maxLength),
                           _trackBindVars ? query->bindParameters() : nullptr,
                           now - elapsed /* start timestamp */, 
                           elapsed /* run time */,
