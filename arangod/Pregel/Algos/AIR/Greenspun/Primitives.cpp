@@ -266,7 +266,7 @@ EvalResult Prim_Dict(Machine& ctx, VPackSlice const params, VPackBuilder& result
 }
 
 EvalResult Prim_DictKeys(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  if (!params.isArray() && params.length() != 1) {
+  if (params.length() != 1) {
     return EvalError("expected exactly one parameter");
   }
 
