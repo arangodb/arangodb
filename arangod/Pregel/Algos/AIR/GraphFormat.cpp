@@ -23,164 +23,158 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GraphFormat.h"
-<<<<<<< HEAD
+
 #include "Pregel/Algos/AIR/Greenspun/Extractor.h"
-=======
->>>>>>> 1a5c82940122c1ce08139d5b729be5948c49db8f
-    #include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
+#include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
 
-    namespace arangodb {
-  namespace pregel {
-  namespace algos {
-  namespace accumulators {
+namespace arangodb {
+namespace pregel {
+namespace algos {
+namespace accumulators {
 
-  // Graph Format
-  GraphFormat::GraphFormat(application_features::ApplicationServer& server,
-                           std::string const& resultField,
-                           AccumulatorsDeclaration const& globalAccumulatorDeclarations,
-                           AccumulatorsDeclaration const& vertexAccumulatorDeclarations,
-                           CustomAccumulatorDefinitions customDefinitions,
-                           DataAccessDefinition const& dataAccess)
-      : graph_format(server),
-        _resultField(resultField),
-        _globalAccumulatorDeclarations(globalAccumulatorDeclarations),
-        _vertexAccumulatorDeclarations(vertexAccumulatorDeclarations),
-        _customDefinitions(std::move(customDefinitions)),
-        _dataAccess(dataAccess) {}
+// Graph Format
+GraphFormat::GraphFormat(application_features::ApplicationServer& server,
+                         std::string const& resultField,
+                         AccumulatorsDeclaration const& globalAccumulatorDeclarations,
+                         AccumulatorsDeclaration const& vertexAccumulatorDeclarations,
+                         CustomAccumulatorDefinitions customDefinitions,
+                         DataAccessDefinition const& dataAccess)
+    : graph_format(server),
+      _resultField(resultField),
+      _globalAccumulatorDeclarations(globalAccumulatorDeclarations),
+      _vertexAccumulatorDeclarations(vertexAccumulatorDeclarations),
+      _customDefinitions(std::move(customDefinitions)),
+      _dataAccess(dataAccess) {}
 
-  size_t GraphFormat::estimatedVertexSize() const {
-    return sizeof(vertex_type);
-  }
-  size_t GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
+size_t GraphFormat::estimatedVertexSize() const { return sizeof(vertex_type); }
+size_t GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
 
-  void filterDocumentData(VPackBuilder& tmpBuilder, VPackSlice const& arraySlice,
-                          arangodb::velocypack::Slice& document) {
-    for (auto&& key : VPackArrayIterator(arraySlice)) {
-      if (key.isString()) {
-        {
-          VPackObjectBuilder ob(&tmpBuilder);
-          tmpBuilder.add(key.copyString(), document.get(key.stringRef()));
-        }
-      } else if (key.isArray()) {
-        std::vector<VPackStringRef> path;
-        size_t pathLength = key.length();
-        size_t iterationStep = 0;
-
-        tmpBuilder.openObject();
-        for (auto&& pathStep : VPackArrayIterator(key)) {
-          if (!pathStep.isString()) {
-            TRI_ASSERT(false);  // TODO: Add type checking in deserializer
-          }
-          // build up path - will change in every iteration step
-          path.emplace_back(pathStep.stringRef());
-
-          if (iterationStep < (pathLength - 1)) {
-            tmpBuilder.add(pathStep.copyString(), VPackValue(VPackValueType::Object));
-          } else {
-            tmpBuilder.add(pathStep.copyString(), document.get(path));
-          }
-
-          // get slice of each document depth
-          path.emplace_back(pathStep.stringRef());
-          iterationStep++;
-        }
-
-        // now close all opened objects
-        for (size_t step = 0; step < (pathLength - 1); step++) {
-          tmpBuilder.close();
-        }
-      } else {
-        TRI_ASSERT(false);
+void filterDocumentData(VPackBuilder& tmpBuilder, VPackSlice const& arraySlice,
+                        arangodb::velocypack::Slice& document) {
+  for (auto&& key : VPackArrayIterator(arraySlice)) {
+    if (key.isString()) {
+      {
+        VPackObjectBuilder ob(&tmpBuilder);
+        tmpBuilder.add(key.copyString(), document.get(key.stringRef()));
       }
-    }
-  }
+    } else if (key.isArray()) {
+      std::vector<VPackStringRef> path;
+      size_t pathLength = key.length();
+      size_t iterationStep = 0;
 
-  // Extract vertex data from vertex document into target
-  void GraphFormat::copyVertexData(std::string const& documentId,
-                                   arangodb::velocypack::Slice vertexDocument,
-                                   vertex_type& targetPtr) {
-    if (targetPtr._dataAccess.readVertex->slice().isArray()) {
-      // copy only specified keys/key-paths to document
-      VPackBuilder tmpBuilder;
-      filterDocumentData(tmpBuilder, targetPtr._dataAccess.readVertex->slice(), vertexDocument);
-      targetPtr.reset(_vertexAccumulatorDeclarations, _customDefinitions, _dataAccess,
-                      documentId, tmpBuilder.slice(), _vertexIdRange++);
+      tmpBuilder.openObject();
+      for (auto&& pathStep : VPackArrayIterator(key)) {
+        if (!pathStep.isString()) {
+          TRI_ASSERT(false);  // TODO: Add type checking in deserializer
+        }
+        // build up path - will change in every iteration step
+        path.emplace_back(pathStep.stringRef());
+
+        if (iterationStep < (pathLength - 1)) {
+          tmpBuilder.add(pathStep.copyString(), VPackValue(VPackValueType::Object));
+        } else {
+          tmpBuilder.add(pathStep.copyString(), document.get(path));
+        }
+
+        // get slice of each document depth
+        path.emplace_back(pathStep.stringRef());
+        iterationStep++;
+      }
+
+      // now close all opened objects
+      for (size_t step = 0; step < (pathLength - 1); step++) {
+        tmpBuilder.close();
+      }
     } else {
-      // copy all
-      targetPtr.reset(_vertexAccumulatorDeclarations, _customDefinitions,
-                      _dataAccess, documentId, vertexDocument, _vertexIdRange++);
+      TRI_ASSERT(false);
     }
   }
+}
 
-  void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument,
-                                 edge_type& targetPtr) {
-    // TODO: implement filtering
-    targetPtr.reset(edgeDocument);
+// Extract vertex data from vertex document into target
+void GraphFormat::copyVertexData(std::string const& documentId,
+                                 arangodb::velocypack::Slice vertexDocument,
+                                 vertex_type& targetPtr) {
+  if (targetPtr._dataAccess.readVertex->slice().isArray()) {
+    // copy only specified keys/key-paths to document
+    VPackBuilder tmpBuilder;
+    filterDocumentData(tmpBuilder, targetPtr._dataAccess.readVertex->slice(), vertexDocument);
+    targetPtr.reset(_vertexAccumulatorDeclarations, _customDefinitions,
+                    _dataAccess, documentId, tmpBuilder.slice(), _vertexIdRange++);
+  } else {
+    // copy all
+    targetPtr.reset(_vertexAccumulatorDeclarations, _customDefinitions,
+                    _dataAccess, documentId, vertexDocument, _vertexIdRange++);
   }
+}
 
-  bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
-                                        const vertex_type* ptr, size_t size) const {
-    if (ptr->_dataAccess.writeVertex->slice().isArray()) {
-      greenspun::Machine m;
-      InitMachine(m);
+void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_type& targetPtr) {
+  // TODO: implement filtering
+  targetPtr.reset(edgeDocument);
+}
 
-      m.setFunction("accum-ref",
-                    [ptr](greenspun::Machine& ctx, VPackSlice const params,
-                          VPackBuilder& tmpBuilder) -> greenspun::EvalResult {
-                      auto res = greenspun::extract<std::string>(params);
-                      if (res.fail()) {
-                        return std::move(res).error();
-                      }
+bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
+                                      const vertex_type* ptr, size_t size) const {
+  if (ptr->_dataAccess.writeVertex->slice().isArray()) {
+    greenspun::Machine m;
+    InitMachine(m);
 
-                      auto&& [accumId] = res.value();
+    m.setFunction("accum-ref",
+                  [ptr](greenspun::Machine& ctx, VPackSlice const params,
+                        VPackBuilder& tmpBuilder) -> greenspun::EvalResult {
+                    auto res = greenspun::extract<std::string>(params);
+                    if (res.fail()) {
+                      return std::move(res).error();
+                    }
 
-                      if (auto iter = ptr->_vertexAccumulators.find(accumId);
-                          iter != std::end(ptr->_vertexAccumulators)) {
-                        return iter->second->getIntoBuilderWithResult(tmpBuilder);
-                      }
-                      return greenspun::EvalError("vertex accumulator `" +
-                                                  std::string{accumId} +
-                                                  "` not found");
-                    });
+                    auto&& [accumId] = res.value();
 
-      VPackBuilder tmpBuilder;
-      auto res = Evaluate(m, ptr->_dataAccess.writeVertex->slice(), tmpBuilder);
-      if (res.fail()) {
+                    if (auto iter = ptr->_vertexAccumulators.find(accumId);
+                        iter != std::end(ptr->_vertexAccumulators)) {
+                      return iter->second->getValueIntoBuilder(tmpBuilder);
+                    }
+                    return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
+                                                "` not found");
+                  });
+
+    VPackBuilder tmpBuilder;
+    auto res = Evaluate(m, ptr->_dataAccess.writeVertex->slice(), tmpBuilder);
+    if (res.fail()) {
+      LOG_DEVEL << "finalize program failed: " << res.error().toString();
+      TRI_ASSERT(false);
+    }
+
+    if (tmpBuilder.slice().isObject()) {
+      for (auto&& entry : VPackObjectIterator(tmpBuilder.slice())) {
+        b.add(entry.key);
+        b.add(entry.value);
+      }
+    } else {
+      return false;  // will not write as tmpBuilder is not a valid (object) result
+    }
+  } else {
+    VPackObjectBuilder guard(&b, _resultField);
+    for (auto&& acc : ptr->_vertexAccumulators) {
+      // this will be obsolete soon
+      b.add(VPackValue(acc.first));
+      if (auto res = acc.second->finalizeIntoBuilder(b); res.fail()) {
         LOG_DEVEL << "finalize program failed: " << res.error().toString();
         TRI_ASSERT(false);
       }
-
-      if (tmpBuilder.slice().isObject()) {
-        for (auto&& entry : VPackObjectIterator(tmpBuilder.slice())) {
-          b.add(entry.key);
-          b.add(entry.value);
-        }
-      } else {
-        return false;  // will not write as tmpBuilder is not a valid (object) result
-      }
-    } else {
-      VPackObjectBuilder guard(&b, _resultField);
-      for (auto&& acc : ptr->_vertexAccumulators) {
-        // this will be obsolete soon
-        b.add(VPackValue(acc.first));
-        if (auto res = acc.second->finalizeIntoBuilder(b); res.fail()) {
-          LOG_DEVEL << "finalize program failed: " << res.error().toString();
-          TRI_ASSERT(false);
-        }
-      }
     }
-
-    return true;
   }
 
-  bool GraphFormat::buildEdgeDocument(arangodb::velocypack::Builder& b,
-                                      const edge_type* ptr, size_t size) const {
-    // FIXME
-    // std::abort();
-    return false;
-  }
+  return true;
+}
 
-  }  // namespace accumulators
-  }  // namespace algos
-  }  // namespace pregel
+bool GraphFormat::buildEdgeDocument(arangodb::velocypack::Builder& b,
+                                    const edge_type* ptr, size_t size) const {
+  // FIXME
+  // std::abort();
+  return false;
+}
+
+}  // namespace accumulators
+}  // namespace algos
+}  // namespace pregel
 }  // namespace arangodb
