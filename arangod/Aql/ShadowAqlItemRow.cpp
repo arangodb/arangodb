@@ -32,12 +32,12 @@ using namespace arangodb::aql;
 ShadowAqlItemRow::ShadowAqlItemRow(SharedAqlItemBlockPtr block, size_t baseIndex)
     : _block(std::move(block)), _baseIndex(baseIndex) {
   TRI_ASSERT(isInitialized());
-  TRI_ASSERT(_baseIndex < _block->size());
+  TRI_ASSERT(_baseIndex < _block->numRows());
   TRI_ASSERT(_block->isShadowRow(_baseIndex));
 }
 
-RegisterCount ShadowAqlItemRow::getNrRegisters() const noexcept {
-  return block().getNrRegs();
+RegisterCount ShadowAqlItemRow::getNumRegisters() const noexcept {
+  return block().numRegisters();
 }
 
 bool ShadowAqlItemRow::isRelevant() const noexcept { return getDepth() == 0; }
@@ -54,13 +54,13 @@ bool ShadowAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other, size_
 
 AqlValue const& ShadowAqlItemRow::getValue(RegisterId registerId) const {
   TRI_ASSERT(isInitialized());
-  TRI_ASSERT(registerId < getNrRegisters());
+  TRI_ASSERT(registerId < getNumRegisters());
   return block().getValueReference(_baseIndex, registerId);
 }
 
 AqlValue ShadowAqlItemRow::stealAndEraseValue(RegisterId registerId) {
   TRI_ASSERT(isInitialized());
-  TRI_ASSERT(registerId < getNrRegisters());
+  TRI_ASSERT(registerId < getNumRegisters());
   // caller needs to take immediate ownership.
   return block().stealAndEraseValue(_baseIndex, registerId);
 }
@@ -95,8 +95,8 @@ bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other,
   if (!isInitialized() || !other.isInitialized()) {
     return isInitialized() == other.isInitialized();
   }
-  TRI_ASSERT(getNrRegisters() == other.getNrRegisters());
-  if (getNrRegisters() != other.getNrRegisters()) {
+  TRI_ASSERT(getNumRegisters() == other.getNumRegisters());
+  if (getNumRegisters() != other.getNumRegisters()) {
     return false;
   }
   if (getDepth() != other.getDepth()) {
@@ -105,7 +105,7 @@ bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other,
   auto const eq = [options](auto left, auto right) {
     return 0 == AqlValue::Compare(options, left, right, false);
   };
-  for (RegisterId i = 0; i < getNrRegisters(); ++i) {
+  for (RegisterId i = 0; i < getNumRegisters(); ++i) {
     if (!eq(getValue(i), other.getValue(i))) {
       return false;
     }

@@ -235,7 +235,7 @@ class KShortestPathsExecutorTest
     auto block = buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix));
 
     // We should always only call the finder at most for all input rows
-    ASSERT_LE(calledWith.size(), block->size());
+    ASSERT_LE(calledWith.size(), block->numRows());
 
     auto blockIndex = size_t{0};
     for (auto const& input : calledWith) {
@@ -282,7 +282,7 @@ class KShortestPathsExecutorTest
     auto expectedRowsIndex = size_t{skippedInitial};
     for (auto const& block : results) {
       if (block != nullptr) {
-        for (size_t blockIndex = 0; blockIndex < block->size(); ++blockIndex, ++expectedRowsIndex) {
+        for (size_t blockIndex = 0; blockIndex < block->numRows(); ++blockIndex, ++expectedRowsIndex) {
           AqlValue value =
               block->getValue(blockIndex, executorInfos.getOutputRegister());
           EXPECT_TRUE(value.isArray());

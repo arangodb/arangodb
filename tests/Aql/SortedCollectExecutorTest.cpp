@@ -244,7 +244,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_2) {
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(),
+      itemBlockManager.requestBlock(inputBlock->numRows(),
                                     registerInfos.numberOfOutputRegisters());
   OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
@@ -265,7 +265,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_2) {
     auto [state, stats, upstreamCall] = testee.produceRows(inputRange, result);
     ASSERT_EQ(ExecutorState::DONE, state);
     ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
-    ASSERT_EQ(inputBlock->size(), result.numRowsWritten());
+    ASSERT_EQ(inputBlock->numRows(), result.numRowsWritten());
     ASSERT_FALSE(result.produced());
   }
 
@@ -297,7 +297,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_3) {
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(),
+      itemBlockManager.requestBlock(inputBlock->numRows(),
                                     registerInfos.numberOfOutputRegisters());
   OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
@@ -349,7 +349,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_4) {
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(),
+      itemBlockManager.requestBlock(inputBlock->numRows(),
                                     registerInfos.numberOfOutputRegisters());
   OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
@@ -426,7 +426,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(),
+      itemBlockManager.requestBlock(inputBlock->numRows(),
                                     registerInfos.numberOfOutputRegisters());
   OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
@@ -527,7 +527,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(),
+      itemBlockManager.requestBlock(inputBlock->numRows(),
                                     registerInfos.numberOfOutputRegisters());
   OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
@@ -706,7 +706,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_2) {
 
   {
     SharedAqlItemBlockPtr outputBlock =
-        itemBlockManager.requestBlock(inputBlock->size(),
+        itemBlockManager.requestBlock(inputBlock->numRows(),
                                       registerInfos.numberOfOutputRegisters());
     OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                             registerInfos.registersToKeep(),
@@ -828,7 +828,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
 
   {
     SharedAqlItemBlockPtr outputBlock =
-        itemBlockManager.requestBlock(inputBlock->size(),
+        itemBlockManager.requestBlock(inputBlock->numRows(),
                                       registerInfos.numberOfOutputRegisters());
     OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                             registerInfos.registersToKeep(),
@@ -843,7 +843,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
 
   {
     SharedAqlItemBlockPtr outputBlock =
-        itemBlockManager.requestBlock(inputBlock->size(),
+        itemBlockManager.requestBlock(inputBlock->numRows(),
                                       registerInfos.numberOfOutputRegisters());
     OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                             registerInfos.registersToKeep(),
@@ -900,7 +900,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_5) {
 
   {
     SharedAqlItemBlockPtr outputBlock =
-        itemBlockManager.requestBlock(inputBlock->size(),
+        itemBlockManager.requestBlock(inputBlock->numRows(),
                                       registerInfos.numberOfOutputRegisters());
     OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
                             registerInfos.registersToKeep(),
