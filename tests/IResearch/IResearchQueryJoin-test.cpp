@@ -466,6 +466,7 @@ TEST_F(IResearchQueryJoinTest, test) {
   }
 
   std::deque<arangodb::ManagedDocumentResult> insertedDocsView;
+  std::deque<arangodb::ManagedDocumentResult> insertedDocsCollection;
 
   // populate view with the data
   {
@@ -502,8 +503,6 @@ TEST_F(IResearchQueryJoinTest, test) {
     }
 
     // insert into collection_3
-    std::deque<arangodb::ManagedDocumentResult> insertedDocsCollection;
-
     {
       irs::utf8_path resource;
       resource /= irs::string_ref(arangodb::tests::testResourceDir);
@@ -864,6 +863,32 @@ TEST_F(IResearchQueryJoinTest, test) {
         arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
         arangodb::velocypack::Slice(insertedDocsView[1].vpack()),
         arangodb::velocypack::Slice(insertedDocsView[0].vpack())};
+
+    // check node estimation
+    {
+      auto explanationResult =
+          arangodb::tests::explainQuery(vocbase, query);
+      ASSERT_TRUE(explanationResult.result.ok());
+      auto const explanationSlice = explanationResult.data->slice();
+      ASSERT_TRUE(explanationSlice.isObject());
+      auto const nodesSlice = explanationSlice.get("nodes");
+      ASSERT_TRUE(nodesSlice.isArray());
+      VPackSlice viewNode;
+      for (auto node : VPackArrayIterator(nodesSlice)) {
+        if ("EnumerateViewNode" == node.get("type").toString() &&
+            "testView" == node.get("view").toString()) {
+          viewNode = node;
+          break;
+        }
+      }
+
+      ASSERT_TRUE(viewNode.isObject());
+      ASSERT_EQ(insertedDocsView.size()*insertedDocsCollection.size()
+                  + insertedDocsCollection.size() + 1. // cost of collection node
+                  + 1., // cost of singleton node
+                viewNode.get("estimatedCost").getDouble());
+      ASSERT_EQ(insertedDocsView.size()*insertedDocsCollection.size(), viewNode.get("estimatedNrItems").getNumber<size_t>());
+    }
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
