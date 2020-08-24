@@ -84,7 +84,7 @@ class QueryContext {
   std::vector<std::string> collectionNames() const;
 
   /// @brief return the user that started the query
-  std::string const& user() const { return _user; }
+  virtual std::string const& user() const;
   
   /// warnings access is thread safe
   QueryWarnings& warnings() { return _warnings; }
@@ -125,7 +125,7 @@ class QueryContext {
   virtual bool isModificationQuery() const noexcept = 0;
   virtual bool isAsyncQuery() const noexcept = 0;
   
-public:
+ public:
   
   virtual void enterV8Context();
   
@@ -149,9 +149,6 @@ public:
   /// @brief pointer to vocbase the query runs in
   TRI_vocbase_t& _vocbase;
   
-  /// @brief user that started the query
-  std::string _user;
-
   /// @brief graphs used in query, identified by name
   std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;
 

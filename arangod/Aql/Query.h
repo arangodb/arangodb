@@ -289,6 +289,9 @@ class Query : public QueryContext {
 
   /// @brief hash for this query. will be calculated only once when needed
   mutable uint64_t _queryHash = DontCache;
+
+  /// @brief user that started the query
+  std::string _user;
   
   /// Track in which phase of execution we are, in order to implement
   /// repeatability.

@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
@@ -33,7 +34,6 @@
 #include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/AqlFeature.h"
-#include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -58,9 +58,6 @@ QueryContext::QueryContext(TRI_vocbase_t& vocbase)
   if (!AqlFeature::lease()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-
-  // store name of user that started the query
-  _user = ExecContext::current().user();
 }
 
 /// @brief destroys a query
@@ -84,6 +81,11 @@ Collections const& QueryContext::collections() const {
 std::vector<std::string> QueryContext::collectionNames() const {
   TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
   return _collections.collectionNames();
+}
+
+/// @brief return the user that started the query
+std::string const& QueryContext::user() const {
+  return StaticStrings::Empty;
 }
 
 /// @brief look up a graph either from our cache list or from the _graphs
