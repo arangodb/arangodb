@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed issue #12507: SegFault when using an AQL for loop through edges.
+
 * Add attributes `database` and `user` when tracking current and slow AQL queries.
   `database` contains the name of the database the query is/was running in, `user`
   contains the name of the user that started the query.

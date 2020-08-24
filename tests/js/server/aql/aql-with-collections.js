@@ -177,8 +177,23 @@ function queryWithCollectionsTestSuite () {
 
     testWithSingleBindWrongType : function () {
       var query = "WITH @col FOR i IN 1..10 RETURN i";
+      
+      var result = AQL_EXECUTE(query, { "col" : "UnitTestsCollection1" }).json; 
+      assertEqual(10, result.length);
+      
+      var collections = AQL_PARSE(query).collections; 
+      assertEqual([ ], collections);
 
-      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code, query);
+     // assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code, query);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with one collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testWithMissing : function () {
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, "WITH @@col FOR i IN 1..10 RETURN i");
+      assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, "WITH @col FOR i IN 1..10 RETURN i");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
