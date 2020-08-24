@@ -1,6 +1,11 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
 
+* Make the `IS_IPV4` AQL function behave identical on MacOS as on other
+  platforms. It previously allowed leading zeros in octets on MacOS,
+  whereas on other platforms they were disallowed.
+  Now this is disallowed on MacOS as well.
+
 * Fixed internal issue #744: LIMIT with only offset and constrained heap
   optimization will use estimation value for ArangoSearch views.
 
