@@ -213,6 +213,45 @@ function ahuacatlQueryEdgesTestSuite () {
 /// @brief checks edges / vertex combination
 ////////////////////////////////////////////////////////////////////////////////
 
+    testEdgesInInclVerticesNonCollectionBind : function () {
+      "use strict";
+      let actual;
+      let query = `WITH ${vn} FOR v, e IN INBOUND @start @col SORT e.what RETURN v._key`;
+
+      let bindVars = {
+        "col": "UnitTestsAhuacatlEdge",
+      };
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v1";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, []);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v2";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v1", "v4"]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v3";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v1", "v2", "v6", "v7"]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v8";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+      
+      bindVars.start = "UnitTestsAhuacatlVertex/thefox";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+     
+      bindVars.start = "thefox/thefox";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks edges / vertex combination
+////////////////////////////////////////////////////////////////////////////////
+
     testEdgesInInclVertices : function () {
       "use strict";
       let actual;
@@ -242,6 +281,48 @@ function ahuacatlQueryEdgesTestSuite () {
       actual = getQueryResults(query, bindVars);
       assertEqual(actual, [ ]);
      
+      bindVars.start = "thefox/thefox";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks edges / vertex combination
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesOutInclVerticesNonCollectionBind : function () {
+      "use strict";
+      let actual;
+      let query = `WITH ${vn} FOR v, e IN OUTBOUND @start @col SORT e.what RETURN v._key`;
+
+      let bindVars = {
+        "col": "UnitTestsAhuacatlEdge",
+      };
+     
+      bindVars.start = "UnitTestsAhuacatlVertex/v1";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v2", "v3"]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v2";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v3"]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v3";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v4", "v6", "v7"]);
+      
+      bindVars.start = "UnitTestsAhuacatlVertex/v8";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v5";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+      
+      bindVars.start = "UnitTestsAhuacatlVertex/thefox";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+      
       bindVars.start = "thefox/thefox";
       actual = getQueryResults(query, bindVars);
       assertEqual(actual, [ ]);

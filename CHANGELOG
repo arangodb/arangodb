@@ -1,6 +1,8 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #12507: SegFault when using an AQL for loop through edges.
+
 * Fixed internal issue #744: LIMIT with only offset and constrained heap
   optimization will use estimation value for ArangoSearch views.
 
