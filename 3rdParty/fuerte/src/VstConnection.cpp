@@ -139,7 +139,6 @@ void VstConnection<ST>::sendAuthenticationRequest() {
    vst::message::prepareForNetwork(_vstVersion, item->_messageID, item->_buffer,
                                    /*payload*/ asio_ns::const_buffer(), buffers);
 
-  RequestItem* ptr = item.get();
   _messages.emplace(item->_messageID, std::move(item));  // add message to store
   _numMessages.fetch_add(1, std::memory_order_relaxed);
 
