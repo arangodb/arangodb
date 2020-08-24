@@ -40,7 +40,7 @@ class BlockCollector;
 class SharedAqlItemBlockPtr;
 enum class SerializationFormat;
 
-// an <AqlItemBlock> is a <nrItems>x<nrRegs> vector of <AqlValue>s (not
+// an <AqlItemBlock> is a <numRows>x<numRegisters> vector of <AqlValue>s (not
 // pointers). The size of an <AqlItemBlock> is the number of items.
 // Entries in a given column (i.e. all the values of a given register
 // for all items in the block) have the same type and belong to the
@@ -70,7 +70,7 @@ class AqlItemBlock {
   AqlItemBlock& operator=(AqlItemBlock const&) = delete;
 
   /// @brief create the block
-  AqlItemBlock(AqlItemBlockManager&, size_t nrItems, RegisterCount nrRegs);
+  AqlItemBlock(AqlItemBlockManager&, size_t numRows, RegisterCount numRegisters);
 
   void initFromSlice(arangodb::velocypack::Slice);
 
@@ -163,6 +163,7 @@ class AqlItemBlock {
         throw;
       }
     }
+    _numEffectiveRows = std::max<size_t>(_numEffectiveRows, index + 1);
   }
 
   /// @brief eraseValue, erase the current value of a register and freeing it
@@ -190,11 +191,11 @@ class AqlItemBlock {
 
   AqlValue stealAndEraseValue(size_t index, RegisterId varNr);
 
-  /// @brief getter for _nrRegs
-  RegisterCount getNrRegs() const noexcept;
+  /// @brief getter for _numRegisters
+  RegisterCount numRegisters() const noexcept;
 
-  /// @brief getter for _nrItems
-  size_t size() const noexcept;
+  /// @brief getter for _numRows
+  size_t numRows() const noexcept;
 
   /// @brief get the relevant consumable range of the block
   std::tuple<size_t, size_t> getRelevantRange() const;
@@ -203,18 +204,21 @@ class AqlItemBlock {
   /// must be / in- or decreased appropriately as well.
   /// All entries _data[i] for numEntries() <= i < _data.size() always have to
   /// be erased, i.e. empty / none!
-  size_t numEntries() const;
+  size_t numEntries() const noexcept;
+  
+  /// @brief Effective number of entries in the matrix. 
+  size_t numEffectiveEntries() const noexcept;
 
   size_t capacity() const noexcept;
 
   /// @brief shrink the block to the specified number of rows
   /// the superfluous rows are cleaned
-  void shrink(size_t nrItems);
+  void shrink(size_t numRows);
 
   /// @brief rescales the block to the specified dimensions
   /// note that the block should be empty before rescaling to prevent
   /// losses of still managed AqlValues
-  void rescale(size_t nrItems, RegisterCount nrRegs);
+  void rescale(size_t numRows, RegisterCount numRegisters);
 
   /// @brief clears out some columns (registers), this deletes the values if
   /// necessary, using the reference count.
@@ -268,9 +272,9 @@ class AqlItemBlock {
                     arangodb::velocypack::Builder&) const;
 
   /// @brief Creates a human-readable velocypack of the block. Adds an object
-  /// `{nrItems, nrRegs, matrix}` to the builder.
+  /// `{numRows, numRegisters, matrix}` to the builder.
   ///
-  // `matrix` is an array of rows (of length nrItems). Each entry is an array
+  // `matrix` is an array of rows (of length numRows). Each entry is an array
   // (of length nrRegs+1 (sic)). The first entry contains the shadow row depth,
   // or `null` for data rows. The entries with indexes 1..nrRegs contain the
   // registers 0..nrRegs-1, respectively.
@@ -341,8 +345,8 @@ class AqlItemBlock {
   void copySubqueryDepth(size_t currentRow, size_t fromRow);
 
  private:
-  /// @brief _data, the actual data as a single vector of dimensions _nrItems
-  /// times _nrRegs
+  /// @brief _data, the actual data as a single vector of dimensions _numRows
+  /// times _numRegisters
   std::vector<AqlValue> _data;
 
   /// @brief _valueCount, since we have to allow for identical AqlValues
@@ -355,12 +359,15 @@ class AqlItemBlock {
   /// should be added to this map. Other types (VPACK_INLINE) are not supported.
   std::unordered_map<void const*, ValueInfo> _valueCount;
 
-  /// @brief _nrItems, number of rows
-  size_t _nrItems = 0;
+  /// @brief _numRows, number of rows
+  size_t _numRows = 0;
 
-  /// @brief _nrRegs, number of columns
-  RegisterCount _nrRegs = 0;
-
+  /// @brief _numRegisters, number of columns
+  RegisterCount _numRegisters = 0;
+  
+  /// @brief (highest) number of rows that have been written to
+  size_t _numEffectiveRows = 0;
+  
   /// @brief manager for this item block
   AqlItemBlockManager& _manager;
 
@@ -377,8 +384,8 @@ class AqlItemBlock {
   /// in an AqlItemBlock
   class ShadowRows {
    public:
-    /// @brief create a shadow row manager for at most nrItems rows
-    explicit ShadowRows(size_t nrItems);
+    /// @brief create a shadow row manager for at most numRows rows
+    explicit ShadowRows(size_t numRows);
 
     /// @brief whether or not there are any shadow rows
     bool empty() const noexcept;
@@ -395,8 +402,8 @@ class AqlItemBlock {
     /// @brief clear all shadow rows
     void clear() noexcept;
     
-    /// @brief resize the container to at most nrItems items
-    void resize(size_t nrItems);
+    /// @brief resize the container to at most numRows items
+    void resize(size_t numRows);
     
     /// @brief make a shadow row
     void make(size_t row, size_t depth);
@@ -421,7 +428,7 @@ class AqlItemBlock {
     std::vector<uint16_t> _depths;
 
     /// @brief maximum size of _depths
-    size_t _nrItems;
+    size_t _numRows;
   };
 
   ShadowRows _shadowRows;

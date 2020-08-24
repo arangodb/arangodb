@@ -314,7 +314,7 @@ class ShortestPathExecutorTest
     auto block = buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix));
 
     // We should always only call the finder at most for all input rows
-    ASSERT_LE(pathsQueriedBetween.size(), block->size());
+    ASSERT_LE(pathsQueriedBetween.size(), block->numRows());
 
     auto blockIndex = size_t{0};
     for (auto const& input : pathsQueriedBetween) {
@@ -375,7 +375,7 @@ class ShortestPathExecutorTest
     for (auto const& block : results) {
       if (block != nullptr) {
         ASSERT_NE(block, nullptr);
-        for (size_t blockIndex = 0; blockIndex < block->size(); ++blockIndex, ++expectedRowsIndex) {
+        for (size_t blockIndex = 0; blockIndex < block->numRows(); ++blockIndex, ++expectedRowsIndex) {
           if (executorInfos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
             AqlValue value =
                 block->getValue(blockIndex, executorInfos.getOutputRegister(
