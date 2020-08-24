@@ -1,6 +1,11 @@
 devel
 -----
 
+* Make the `IS_IPV4` AQL function behave identical on MacOS as on other
+  platforms. It previously allowed leading zeros in octets on MacOS,
+  whereas on other platforms they were disallowed.
+  Now this is disallowed on MacOS as well.
+
 * Introduce an internal high-water mark for the maximum row number that was
   written to in an AqlItemBlock. Using this number several operations on the
   whole block, such as cleaning up or copying can be made more efficient when

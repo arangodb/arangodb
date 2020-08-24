@@ -4703,7 +4703,9 @@ AqlValue Functions::IpV4ToNumber(ExpressionContext* expressionContext, transacti
 #ifdef __APPLE__
     // inet_pton on MacOS accepts leading zeros...
     // inet_pton on Linux and Windows doesn't
-    if (result == 1 && std::regex_match(&buffer[0], buffer + l, ::ipV4LeadingZerosRegex, std::regex_constants::match_any)) {
+    // this is the least intrusive solution, but it is not efficient.
+    if (result == 1 && 
+        std::regex_match(&buffer[0], buffer + l, ::ipV4LeadingZerosRegex, std::regex_constants::match_any)) {
       result = 0;
     }
 #endif
@@ -4754,6 +4756,7 @@ AqlValue Functions::IsIpV4(ExpressionContext* expressionContext, transaction::Me
 #ifdef __APPLE__
       // inet_pton on MacOS accepts leading zeros...
       // inet_pton on Linux and Windows doesn't
+      // this is the least intrusive solution, but it is not efficient.
       if (std::regex_match(&buffer[0], buffer + l, ::ipV4LeadingZerosRegex, std::regex_constants::match_any)) {
         return AqlValue(AqlValueHintBool(false));
       }
