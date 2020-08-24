@@ -265,13 +265,24 @@ EvalResult Prim_Dict(Machine& ctx, VPackSlice const params, VPackBuilder& result
   return {};
 }
 
-    EvalResult Prim_DictKeys(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-        if (!params.isArray() && params.length() != 2) {
-            return EvalError("expected exactly two parameters");
-        }
+EvalResult Prim_DictKeys(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isArray() && params.length() != 1) {
+    return EvalError("expected exactly one parameter");
+  }
 
-        return {};
-    }
+  auto obj = params.at(0);
+  if (!obj.isObject()) {
+    return EvalError("expected object, found: " + params.at(0).toJson());
+  }
+
+  result.openArray();
+  for (VPackObjectIterator iter(params.at(0)); iter.valid(); iter++) {
+    result.add(iter.key());
+  }
+  result.close();
+
+  return {};
+}
 
 EvalResult MergeObjectSlice(VPackBuilder& result, VPackSlice const& sliceA,
                             VPackSlice const& sliceB) {
@@ -361,8 +372,6 @@ EvalResult Prim_Not(Machine& ctx, VPackSlice const params, VPackBuilder& result)
   result.add(VPackValue(ValueConsideredFalse(params.at(0))));
   return {};
 }
-
-
 
 EvalResult Prim_PrintLn(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   std::cerr << paramsToString(params) << std::endl;
@@ -647,7 +656,8 @@ EvalResult Prim_Map(Machine& ctx, VPackSlice const paramsList, VPackBuilder& res
 
       VPackBuilder tempBuffer;
 
-      auto res = EvaluateApply(ctx, functionSlice, VPackArrayIterator(parameter.slice()), tempBuffer, false);
+      auto res = EvaluateApply(ctx, functionSlice,
+                               VPackArrayIterator(parameter.slice()), tempBuffer, false);
       if (res.fail()) {
         return res.error().wrapMessage("when mapping pair " + parameter.toJson());
       }
@@ -767,11 +777,10 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("array-empty?", Prim_EmptyArrayHuh);
   ctx.setFunction("array-length", Prim_ArrayLength);
 
-
   ctx.setFunction("var-ref", Prim_VarRef);
 
   // TODO: We can just register bind parameters as variables (or a variable)
   ctx.setFunction("bind-ref", Prim_VarRef);
 }
 
-}  // namespace arangodb
+}  // namespace arangodb::greenspun
