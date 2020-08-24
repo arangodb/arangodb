@@ -2893,13 +2893,14 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
 
   if (!toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
-    if (nodes.size() > 1) {
+    TRI_ASSERT(nodes.size() >= toUnlink.size());
+    if (nodes.size() - toUnlink.size() > 0) {
       // need to rerun the rule because removing calculations may unlock
       // removal of further calculations
       opt->addPlanAndRerun(std::move(plan), rule, true);
     } else {
       // no need to rerun the rule
-      opt->addPlanAndRerun(std::move(plan), rule, true);
+      opt->addPlan(std::move(plan), rule, true);
     }
   } else {
     opt->addPlan(std::move(plan), rule, false);
