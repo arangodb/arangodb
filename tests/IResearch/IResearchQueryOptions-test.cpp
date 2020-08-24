@@ -315,8 +315,15 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
       ASSERT_TRUE(nodesSlice.isArray());
       VPackSlice viewNode;
       for (auto node : VPackArrayIterator(nodesSlice)) {
-        if ("EnumerateViewNode" == node.get("type").toString() &&
-            "testView" == node.get("view").toString()) {
+        auto const nodeType = arangodb::iresearch::getStringRef(node.get("type"));
+
+        if ("EnumerateViewNode" != nodeType) {
+          continue;
+        }
+
+        auto const viewName = arangodb::iresearch::getStringRef(node.get("view"));
+
+        if ("testView" == viewName) {
           viewNode = node;
           break;
         }
@@ -474,8 +481,15 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
       ASSERT_TRUE(nodesSlice.isArray());
       VPackSlice viewNode;
       for (auto node : VPackArrayIterator(nodesSlice)) {
-        if ("EnumerateViewNode" == node.get("type").toString() &&
-            "testView" == node.get("view").toString()) {
+        auto const nodeType = arangodb::iresearch::getStringRef(node.get("type"));
+
+        if ("EnumerateViewNode" != nodeType) {
+          continue;
+        }
+
+        auto const viewName = arangodb::iresearch::getStringRef(node.get("view"));
+
+        if ("testView" == viewName) {
           viewNode = node;
           break;
         }
