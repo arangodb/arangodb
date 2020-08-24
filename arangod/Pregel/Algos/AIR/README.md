@@ -1,3 +1,21 @@
+# AIR Pregel Algorithm architecture
+
+
+## EdgeData
+
+## VertexData
+
+## MessageData
+
+## GraphFormat
+
+## VertexComputation
+
+## MasterContext 
+
+## WorkerContext
+
+
 # AIR (Arango Intermediate Representation)
 
 The code contained in this directory is part of a project to provide users with
@@ -43,12 +61,15 @@ arangosh> var pexec = pp.execute("WikiVoteGraph",
  * if -- takes pairs `[cond, body]` of conditions `cond` and expression `body` and evaluates 
          the first `body` for which `cond` avaluates to `true`
  * quote --  `["quote", expr ...]` evaluates to `[expr ...]`
+ * quote-splice -- `["foo", ["quote-splice", expr ...]]` evaluates to `["foo", expr ...]`
  * cons -- `["cons", val, [expr ...]]` evaluates to `[val, expr ...]`
  * and -- `["and", expr ...]` evaluates to false if one of `expr` evaluates to `false`. The arguments `expr` are evaluated in order, and evaluation is stopped once an `expr` evaluates to `false`.
  * or -- `["or", expr ...]` evaluates to true if one of `expr` evaluates to `true`. The arguments `expr` are evaluated in order, and evaluation is stopped once an `expr` evaluates to `true`.
  * seq -- `["seq", expr ... lastexpr ]` evaluates `expr` in order, the value of a `seq` expression is `lastexpr`
  * match -- `["match", expr, [c, body] ...]` evaluates `expr` to `val` and evaluates `body` for the first pair `[c, body]`, where `["eq?", val, c]` is `true`.
  * for-each -- `["for-each" [(v list) ...] body ...]` binds `v` to elements of `list` in order and evaluates `body` with this binding.
+ * quasi-quote/unquote/unquote-splice -- like `quote` but can be unquoted using `unquote/unquote-splice`. For example 
+ `["quasi-quote", ["foo"], ["unquote", ["list", 1, 2]], ["unquote-splice", ["list", 1, 2]]]` evaluates to `[["foo"],[1,2],1,2]`.
 
 ### Language primitives
 

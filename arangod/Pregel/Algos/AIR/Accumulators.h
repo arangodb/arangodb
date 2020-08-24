@@ -48,8 +48,8 @@ class MinAccumulator : public Accumulator<T> {
     }
     return AccumulatorBase::UpdateResult::NO_CHANGE;
   }
-  auto clear() -> void override {
-    this->set(std::numeric_limits<T>::max());
+  auto clear() -> greenspun::EvalResult override {
+    return this->set(std::numeric_limits<T>::max());
   }
 };
 
@@ -64,8 +64,8 @@ class MaxAccumulator : public Accumulator<T> {
     }
     return AccumulatorBase::UpdateResult::NO_CHANGE;
   }
-  auto clear() -> void override {
-    this->set(std::numeric_limits<T>::min());
+  auto clear() -> greenspun::EvalResult override {
+    return this->set(std::numeric_limits<T>::min());
   }
 };
 
@@ -79,9 +79,7 @@ class SumAccumulator : public Accumulator<T> {
     return old == this->_value ? AccumulatorBase::UpdateResult::NO_CHANGE
                                : AccumulatorBase::UpdateResult::CHANGED;
   }
-  auto clear() -> void override {
-    this->set(T{0});
-  }
+  auto clear() -> greenspun::EvalResult override { return this->set(T{0}); }
 };
 
 template <typename T>
@@ -94,8 +92,9 @@ class AndAccumulator : public Accumulator<T> {
     return old == this->_value ? AccumulatorBase::UpdateResult::NO_CHANGE
                                : AccumulatorBase::UpdateResult::CHANGED;
   }
-  auto clear() -> void override {
+  auto clear() -> greenspun::EvalResult override {
     this->set(true);
+    return {};
   }
 };
 
@@ -109,8 +108,9 @@ class OrAccumulator : public Accumulator<T> {
     return old == this->_value ? AccumulatorBase::UpdateResult::NO_CHANGE
                                : AccumulatorBase::UpdateResult::CHANGED;
   }
-  auto clear() -> void override {
+  auto clear() -> greenspun::EvalResult override {
     this->set(false);
+    return {};
   }
 };
 
@@ -128,25 +128,20 @@ template <>
 class StoreAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
  public:
   using Accumulator<VPackSlice>::Accumulator;
-  void set(VPackSlice v) override {
+  auto set(VPackSlice v) -> greenspun::EvalResult override {
     _buffer.clear();
     _buffer.add(v);
     _value = _buffer.slice();
+    return {};
   }
   auto update(VPackSlice v) -> greenspun::EvalResultT<UpdateResult> override {
     this->set(std::move(v));
     return UpdateResult::CHANGED;
   }
-  auto clear() -> void override {
+  auto clear() -> greenspun::EvalResult override {
     _buffer.clear();
     _value = _buffer.slice();
-  }
-
-  void setValueFromPointer(const void * ptr) override {
-    auto slice = *reinterpret_cast<VPackSlice const*>(ptr);
-    _buffer.clear();
-    _buffer.add(slice);
-    _value = _buffer.slice();
+    return {};
   }
 
  private:
@@ -160,30 +155,32 @@ class ListAccumulator : public Accumulator<T> {
     _list.emplace_back(std::move(v));
     return AccumulatorBase::UpdateResult::CHANGED;
   }
-  auto clear() -> void override {
+  auto clear() -> greenspun::EvalResult override {
     _list.clear();
+    return {};
   }
-  void getValueIntoBuilder(VPackBuilder& builder) override {
+  auto getValueIntoBuilder(VPackBuilder& builder) -> greenspun::EvalResult override {
     VPackArrayBuilder array(&builder);
     for (auto&& p : _list) {
       builder.add(VPackValue(p));
     }
+    return {};
   }
-  void setBySlice(VPackSlice s) override {
+  auto setBySlice(VPackSlice s) -> greenspun::EvalResult override {
     _list.clear();
     if (s.isArray()) {
       for (auto&& p : velocypack::ArrayIterator(s)) {
         if constexpr (std::is_same_v<T, std::string>) {
           _list.emplace_back(p.stringView());
         } else {
-          std::abort();
+          return greenspun::EvalError{"not implemented"};
         }
       }
+      return {};
+    } else {
+      auto msg = std::string{"setBySlice expected an array, got "} + s.typeName();
+      return greenspun::EvalError{msg};
     }
-  }
-
-  const void* getValuePointer() const override {
-    return &_list;
   }
 
  private:
@@ -197,63 +194,72 @@ class ListAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
     _list.emplace_back().add(v);
     return AccumulatorBase::UpdateResult::CHANGED;
   }
-  auto clear() -> void override {
+  auto clear() -> greenspun::EvalResult override {
     _list.clear();
+    return {};
   }
-  void getValueIntoBuilder(VPackBuilder& builder) override {
+  auto getValueIntoBuilder(VPackBuilder& builder) -> greenspun::EvalResult override {
     VPackArrayBuilder array(&builder);
     for (auto&& p : _list) {
       builder.add(p.slice());
     }
+    return {};
   }
-  void setBySlice(VPackSlice s) override {
+  auto setBySlice(VPackSlice s) -> greenspun::EvalResult override {
     _list.clear();
     if (s.isArray()) {
       for (auto&& p : velocypack::ArrayIterator(s)) {
         _list.emplace_back().add(p);
       }
+      return {};
+    } else {
+      auto msg = std::string{"setBySlice expected an array, but got "} + s.typeName();
+      return greenspun::EvalError{msg};
     }
   }
-
-  const void* getValuePointer() const override {
-    return &_list;
+  auto updateBySlice(VPackSlice v)
+      -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> override {
+    return update(v);
   }
+
  private:
   std::vector<VPackBuilder> _list;
 };
 
-template<typename>
+template <typename>
 struct CustomAccumulator;
-template<>
+template <>
 struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
  public:
-  CustomAccumulator(VertexData const& owner, AccumulatorOptions const& options,
+  CustomAccumulator(AccumulatorOptions const& options,
                     CustomAccumulatorDefinitions const& defs);
 
   ~CustomAccumulator() override;
 
-  auto setBySliceWithResult(VPackSlice v) -> greenspun::EvalResult override;
-  auto getIntoBuilderWithResult(VPackBuilder& result) -> greenspun::EvalResult override;
-  void serializeIntoBuilder(VPackBuilder &result) override;
-  greenspun::EvalResult finalizeIntoBuilder(VPackBuilder &result) override;
+  auto setBySlice(VPackSlice v) -> greenspun::EvalResult override;
+  auto updateBySlice(VPackSlice s) -> greenspun::EvalResultT<UpdateResult> override;
+  auto getValueIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override;
+  greenspun::EvalResult finalizeIntoBuilder(VPackBuilder& result) override;
 
-  auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> override;
-  auto clearWithResult() -> greenspun::EvalResult override;
-
-  void setValueFromPointer(const void * ptr) override {}
+  auto clear() -> greenspun::EvalResult override;
 
  private:
   void SetupFunctions();
 
-  auto AIR_InputSender(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result) -> greenspun::EvalResult;
-  auto AIR_InputValue(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result) -> greenspun::EvalResult;
-  auto AIR_CurrentValue(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result) -> greenspun::EvalResult;
-  auto AIR_GetCurrentValue(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result) -> greenspun::EvalResult;
-  auto AIR_ThisSet(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result) -> greenspun::EvalResult;
-  auto AIR_Parameters(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result) -> greenspun::EvalResult;
+  auto AIR_InputSender(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result)
+      -> greenspun::EvalResult;
+  auto AIR_InputValue(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result)
+      -> greenspun::EvalResult;
+  auto AIR_CurrentValue(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result)
+      -> greenspun::EvalResult;
+  auto AIR_GetCurrentValue(greenspun::Machine& ctx, VPackSlice slice,
+                           VPackBuilder& result) -> greenspun::EvalResult;
+  auto AIR_ThisSet(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result)
+      -> greenspun::EvalResult;
+  auto AIR_Parameters(greenspun::Machine& ctx, VPackSlice slice, VPackBuilder& result)
+      -> greenspun::EvalResult;
 
   VPackSlice inputSlice = VPackSlice::noneSlice();
-  std::string const* inputSender = nullptr;
 
   VPackBuilder _buffer;
   VPackBuilder _parameters;

@@ -45,6 +45,10 @@ struct MessageData {
   void fromVelocyPack(VPackSlice slice);
   void toVelocyPack(VPackBuilder& b) const;
 
+  auto accumulatorName() const -> std::string const&;
+  auto sender() const -> std::string const&;
+  auto value() const -> VPackBuilder const&;
+
   std::string _accumulatorName;
 
   // We copy the value :/ is this necessary?

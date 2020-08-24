@@ -649,7 +649,7 @@ GraphFormat<DMIDValue, float>* DMID::inputFormat() const {
 }
 
 struct DMIDMasterContext : public MasterContext {
-  DMIDMasterContext() {}  // TODO use _threashold
+  DMIDMasterContext() {}  // TODO use _threshold
 
   void preGlobalSuperstep() override {
     /**

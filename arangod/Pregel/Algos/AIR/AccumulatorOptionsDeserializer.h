@@ -33,7 +33,8 @@
 #include <map>
 #include <string>
 
-#include <VPackDeserializer/deserializer.h>
+#include <VPackDeserializer/errors.h>
+#include <VPackDeserializer/types.h>
 
 namespace arangodb {
 namespace pregel {

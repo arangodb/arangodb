@@ -39,12 +39,9 @@ function strongly_connected_components_program(resultField) {
     // TODO: Karpott.
     maxGSS: 150,
     globalAccumulators: {
-      // converged is true iff all vertices have determined
-      // their SCC, that is if none have failed to obtain their SCC
-      //
-      // a vertex signals "false" if it has *not yet* determined its SCC
-      // i.e. not arrived at a state with min_f == min_b
-      //
+      // Converged is signalle by a vetex that found
+      // that its min_f = min_b and hence determined its
+      // SCC
       converged: {
         accumulatorType: "or",
         valueType: "bool",
@@ -92,6 +89,9 @@ function strongly_connected_components_program(resultField) {
                        "vote-halt",
                      ],
         updateProgram: "vote-halt",
+        onHalt: ["seq",
+                 ["global-accum-clear!", "converged"],
+                 ["goto-phase", "forward"]]
       },
       {
         name: "forward",
@@ -118,14 +118,15 @@ function strongly_connected_components_program(resultField) {
         name: "backward",
         // onHalt runs on the coordinator when all vertices have "vote-halt"-ed
         // in backwards propagation
+        // TODO: make sure the global accumulator has been accumulated before this program
+        //       runs
         onHalt: [
           "seq",
           ["if",
-/*           [ ["global-accum-ref", "converged"],
+           [ ["not", ["global-accum-ref", "converged"]],
              ["seq",
-              ["finish"] ] ], */
+              ["finish"] ] ],
            [true, ["seq",
-                   ["print", "going to broadcast"],
                    ["goto-phase", "broadcast"]]],
           ],
         ],
@@ -157,7 +158,6 @@ function strongly_connected_components_program(resultField) {
             ],
           ],
           [true, ["seq",
-                  ["print", "?"],
                   "vote-halt"]],
         ],
       },

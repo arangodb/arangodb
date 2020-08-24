@@ -122,7 +122,7 @@ struct ProgressInfo {
   Setter _setter;
 };
 
-struct MasterInfo {
+struct LeaderInfo {
   std::string endpoint;
   std::string engine;  // storage engine (optional)
   ServerId serverId{0};
@@ -132,9 +132,9 @@ struct MasterInfo {
   TRI_voc_tick_t lastUncommittedLogTick{0};
   bool active{false};
 
-  explicit MasterInfo(ReplicationApplierConfiguration const& applierConfig);
+  explicit LeaderInfo(ReplicationApplierConfiguration const& applierConfig);
 
-  /// @brief get master state
+  /// @brief get leader state
   Result getState(Connection& connection, bool isChildSyncer);
 
   /// we need to act like a 3.2 client
@@ -159,7 +159,7 @@ struct BatchInfo {
   /// @brief send a "start batch" command
   /// @param patchCount try to patch count of this collection
   ///        only effective with the incremental sync
-  Result start(Connection const& connection, ProgressInfo& progress, MasterInfo& master,
+  Result start(Connection const& connection, ProgressInfo& progress, LeaderInfo& leader,
                SyncerId syncerId, std::string const& patchCount = "");
 
   /// @brief send an "extend batch" command

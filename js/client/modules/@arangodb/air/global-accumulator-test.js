@@ -36,74 +36,91 @@ exports.test = test;
 
 /* returns a program that compputes the vertex degree of every vertex */
 function global_accumulators_test_program(resultField) {
-    return {
-        resultField: resultField,
-        maxGSS: 2,
-      globalAccumulators: {
-        numberOfVertices: {
-          accumulatorType: "sum",
-          valueType: "ints",
-          storeSender: false
-        },
-        done: {
-          accumulatorType: "and",
-          valueType: "bool",
-          storeSender: false
-        }
+  return {
+    resultField: resultField,
+    maxGSS: 5,
+    globalAccumulators: {
+      numberOfVertices: {
+        accumulatorType: "sum",
+        valueType: "ints",
+        storeSender: false,
       },
-        vertexAccumulators: {
-          tmp: {
-            accumulatorType: "sum",
-            valueType: "ints",
-            storeSender: false
-          },
-
-        },
-      phases: [ {
+    },
+    vertexAccumulators: {
+      forward: {
+        accumulatorType: "sum",
+        valueType: "ints",
+        storeSender: false,
+      },
+    },
+    phases: [
+      {
         name: "main",
-        initProgram:
+        initProgram: [
+          "seq",
+          ["send-to-global-accum", "numberOfVertices", 1],
+          ["accum-set!", "forward", 0.1],
+          "vote-active",
+        ],
+        updateProgram:
         ["seq",
-         ["send-to-global-accum", "numberOfVertices", 1],
-         "vote-active"],
-        updateProgram: [ "seq",
-                         ["send-to-global-accum", "done", true],
-                         "vote-active" ],
-        onHalt: [ "seq",
-                  ["print", "global accum: ", ["global-accum-ref", "numberOfVertices"]]]
-      } ] };
+         ["for-each", ["edge", ["this-outbound-edges"]],
+          ["seq",
+           ["send-to-accum",
+            ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
+            "forward", ["accum-ref", "forward"]]]],
+         "vote-halt",
+        ],
+        onHalt: [
+          "seq",
+          ["print", "global accum: ", ["global-accum-ref", "numberOfVertices"]],
+          ["finish"]
+        ],
+      },
+    ],
+  };
 }
 
-function global_accumulators_test(
+function global_accumulators_test(graphName, resultField) {
+  return pregel.start(
+    "air",
     graphName,
-    resultField) {
-    return pregel.start(
-        "air",
-        graphName,
-        global_accumulators_test_program(resultField)
-    );
+    global_accumulators_test_program(resultField)
+  );
 }
 
-/*
- * Vertex Degree tests
- */
-function exec_test_global_accumulators_test_on_graph(graphSpec) {
-  return testhelpers.wait_for_pregel("AIR global-accumulators", global_accumulators_test(graphSpec.name, "globalAccumulators"));
+function checkVertexCount(graphSpec, presult) {
+  const agg_numberOfVertices = presult.masterContext.globalAccumulatorValues.numberOfVertices;
+  const exp_numberOfVertices = presult.vertexCount;
+
+  if (agg_numberOfVertices !== exp_numberOfVertices) {
+    throw "expected " + agg_numberOfVertices + " to be equal to " + exp_numberOfVertices;
+  }
 }
+
+function exec_test_global_accumulators_test_on_graph(graphSpec, checkProc) {
+  const presult = testhelpers.wait_for_pregel(
+    "AIR global-accumulators",
+    global_accumulators_test(graphSpec.name, "globalAccumulators")
+  );
+  checkProc(graphSpec, presult);
+ }
 
 function exec_test_vertex_degrees() {
-    exec_test_global_accumulators_test_on_graph(examplegraphs.create_line_graph("LineGraph100", 5, 1));
+  exec_test_global_accumulators_test_on_graph(
+    examplegraphs.create_line_graph("LineGraph100", 100, 5),
+    checkVertexCount
+  );
 
-//  exec_test_global_accumulators_test_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1));
-//  exec_test_global_accumulators_test_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9));
+  exec_test_global_accumulators_test_on_graph(
+    examplegraphs.create_line_graph("LineGraph1000", 1000, 5),
+    checkVertexCount
+  );
 
-//  exec_test_global_accumulators_test_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18));
-
-// exec_test_global_accumulators_test_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 1));
-//  exec_test_global_accumulators_test_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 9));
-//  exec_test_global_accumulators_test_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 18));
-
-  // TODO: random graph
-  // TODO: structurally generated graph
+  exec_test_global_accumulators_test_on_graph(
+    examplegraphs.create_wiki_vote_graph("WikiVote", 1),
+    checkVertexCount
+  );
 }
 
 // run tests

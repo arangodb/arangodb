@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <Basics/VelocyPackHelper.h>
-#include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -34,9 +33,7 @@
 #include "Interpreter.h"
 #include "Primitives.h"
 
-namespace arangodb {
-namespace greenspun {
-
+namespace arangodb::greenspun {
 
 EvalResult Prim_Min(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   bool set = false;
@@ -365,26 +362,7 @@ EvalResult Prim_Not(Machine& ctx, VPackSlice const params, VPackBuilder& result)
   return {};
 }
 
-// TODO: Ugly
-namespace {
-std::string paramsToString(VPackSlice const params) {
-  std::stringstream ss;
 
-  for (auto&& p : VPackArrayIterator(params)) {
-    if (p.isString()) {
-      ss << p.stringView();
-    } else if (p.isNumber()) {
-      ss << p.getNumber<double>();
-    } else if (p.isBool()) {
-      ss << std::boolalpha << p.getBool();
-    } else {
-      ss << p.toJson();
-    }
-    ss << " ";
-  }
-  return ss.str();
-}
-}  // namespace
 
 EvalResult Prim_PrintLn(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   std::cerr << paramsToString(params) << std::endl;
@@ -696,6 +674,32 @@ EvalResult Prim_Foldl1(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
   return EvalError("not implemented");
 }
 
+EvalResult Prim_EmptyArrayHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  auto res = extract<VPackSlice>(paramsList);
+  if (!res) {
+    return std::move(res).asResult();
+  }
+
+  auto&& [array] = res.value();
+  result.add(VPackValue(array.isEmptyArray()));
+  return {};
+}
+
+EvalResult Prim_ArrayLength(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  auto res = extract<VPackSlice>(paramsList);
+  if (!res) {
+    return std::move(res).asResult();
+  }
+
+  auto&& [array] = res.value();
+  if (!array.isArray()) {
+    return EvalError("expected array, found " + array.toJson());
+  }
+
+  result.add(VPackValue(array.length()));
+  return {};
+}
+
 void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_type&& f) {
   ctx.setFunction(name, std::move(f));
 }
@@ -760,6 +764,9 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("array-ref", Prim_ArrayRef);
   ctx.setFunction("array-set", Prim_ArraySet);
 
+  ctx.setFunction("array-empty?", Prim_EmptyArrayHuh);
+  ctx.setFunction("array-length", Prim_ArrayLength);
+
 
   ctx.setFunction("var-ref", Prim_VarRef);
 
@@ -767,5 +774,4 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("bind-ref", Prim_VarRef);
 }
 
-}  // namespace greenspun
 }  // namespace arangodb

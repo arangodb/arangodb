@@ -36,28 +36,21 @@ namespace pregel {
 namespace algos {
 namespace accumulators {
 
+struct WorkerContext;
+
 class VertexComputation : public vertex_computation {
  public:
   explicit VertexComputation(VertexAccumulators const& algorithm);
   void compute(MessageIterator<message_type> const& messages) override;
   VertexAccumulators const& algorithm() const;
+  WorkerContext const& workerContext() const;
 
  private:
-
-  // Reset the *local* data of all the global
-  // accumulators. We do this in every GSS, and never
-  // read from these inside a pregel program
-  void clearGlobalAccumulators();
-
-  // After the pregel program ran, aggregate the
-  // values in the global accumulators into
-  // the aggregators to be send off to the conductor
-  void aggregateGlobalAccumulators();
-
   greenspun::EvalResult clearAllVertexAccumulators();
   greenspun::EvalResultT<bool> processIncomingMessages(MessageIterator<MessageData> const& incomingMessages);
 
   greenspun::EvalResult runProgram(greenspun::Machine& ctx, VPackSlice program);
+
 
   void registerLocalFunctions();
 

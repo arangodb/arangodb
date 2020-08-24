@@ -80,6 +80,14 @@ EvalResult SpecialQuote(Machine& ctx, ArrayIterator paramIterator, VPackBuilder&
   return {};
 }
 
+EvalResult SpecialQuoteSplice(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+  if (!result.isOpenArray()) {
+    return EvalError("nothing to splice into");
+  }
+  result.add(paramIterator);
+  return {};
+}
+
 EvalResult SpecialCons(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   auto&& [head, list] = unpackTuple<VPackSlice, VPackSlice>(paramIterator);
   if (paramIterator.valid()) {
@@ -388,6 +396,57 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
   });
 }
 
+
+EvalResult Evaluate(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result);
+
+
+EvalResult SpecialQuasiQuote(Machine& ctx, ArrayIterator other, VPackBuilder& result) {
+
+  if (other.valid()) {
+    Slice first = *other;
+    if (first.isString() && first.isEqualString("unquote")) {
+      other++;
+      if (!other.valid() || !other.isLast()) {
+        return EvalError("expected one parameter for unquote");
+      }
+      return Evaluate(ctx, *other, result);
+    } else if (first.isString() && first.isEqualString("unquote-splice")) {
+      other++;
+      if (!other.valid() || !other.isLast()) {
+        return EvalError("expected one parameter for unquote");
+      }
+      VPackBuilder tempResult;
+      if (auto res = Evaluate(ctx, *other, tempResult); res.fail()) {
+        return res;
+      }
+      auto tempSlice = tempResult.slice();
+      if (tempSlice.isArray()) {
+        result.add(VPackArrayIterator (tempSlice));
+      } else {
+        result.add(tempSlice);
+      }
+      return {};
+    }
+  }
+
+  {
+    VPackArrayBuilder ab(&result);
+
+    for(; other.valid(); other++) {
+      auto&& part = *other;
+      if (part.isArray()) {
+        if (auto res = SpecialQuasiQuote(ctx, VPackArrayIterator(part), result); res.fail()) {
+          return res;
+        }
+      } else {
+        result.add(part);
+      }
+    }
+  }
+
+  return {};
+}
+
 EvalResult SpecialStr(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   std::stringstream ss;
 
@@ -413,6 +472,10 @@ EvalResult EvaluateApply(Machine& ctx, VPackSlice const functionSlice,
       return SpecialIf(ctx, paramIterator, result);
     } else if (functionSlice.isEqualString("quote")) {
       return SpecialQuote(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("quote-splice")) {
+      return SpecialQuoteSplice(ctx, paramIterator, result);
+    } else if (functionSlice.isEqualString("quasi-quote")) {
+      return SpecialQuasiQuote(ctx, paramIterator, result);
     } else if (functionSlice.isEqualString("cons")) {
       return SpecialCons(ctx, paramIterator, result);
     } else if (functionSlice.isEqualString("and")) {
@@ -450,25 +513,28 @@ EvalResult EvaluateApply(Machine& ctx, VPackSlice const functionSlice,
   return EvalError("function is not a string, found " + functionSlice.toJson());
 }
 
+EvalResult Evaluate(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+  if (!paramIterator.valid()) {
+    return EvalError("empty application");
+  }
+
+  VPackBuilder functionBuilder;
+  {
+    StackFrameGuard<false> guard(ctx);
+    auto err = Evaluate(ctx, *paramIterator, functionBuilder);
+    if (err.fail()) {
+      return err.mapError(
+          [&](EvalError& err) { err.wrapMessage("in function expression"); });
+    }
+  }
+  ++paramIterator;
+  VPackSlice functionSlice = functionBuilder.slice();
+  return EvaluateApply(ctx, functionSlice, paramIterator, result, true);
+}
+
 EvalResult Evaluate(Machine& ctx, VPackSlice const slice, VPackBuilder& result) {
   if (slice.isArray()) {
-    if (slice.isEmptyArray()) {
-      return EvalError("empty application");
-    }
-
-    auto paramIterator = ArrayIterator(slice);
-    VPackBuilder functionBuilder;
-    {
-      StackFrameGuard<false> guard(ctx);
-      auto err = Evaluate(ctx, *paramIterator, functionBuilder);
-      if (err.fail()) {
-        return err.mapError(
-            [&](EvalError& err) { err.wrapMessage("in function expression"); });
-      }
-    }
-    ++paramIterator;
-    VPackSlice functionSlice = functionBuilder.slice();
-    return EvaluateApply(ctx, functionSlice, paramIterator, result, true);
+    return Evaluate(ctx, ArrayIterator(slice), result);
   }
 
   result.add(slice);
@@ -584,6 +650,28 @@ bool ValueConsideredFalse(VPackSlice const value) {
 
 bool ValueConsideredTrue(VPackSlice const value) {
   return !ValueConsideredFalse(value);
+}
+
+std::string paramsToString(const VPackArrayIterator iter) {
+  std::stringstream ss;
+
+  for (auto&& p : iter) {
+    if (p.isString()) {
+      ss << p.stringView();
+    } else if (p.isNumber()) {
+      ss << p.getNumber<double>();
+    } else if (p.isBool()) {
+      ss << std::boolalpha << p.getBool();
+    } else {
+      ss << p.toJson();
+    }
+    ss << " ";
+  }
+  return ss.str();
+}
+
+std::string paramsToString(const VPackSlice params) {
+  return paramsToString(VPackArrayIterator(params));
 }
 
 }  // namespace arangodb::greenspun

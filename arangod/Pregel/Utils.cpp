@@ -82,6 +82,10 @@ std::string const Utils::compensate = "compensate";
 std::string const Utils::rollback = "rollback";
 std::string const Utils::reportsKey = "reports";
 
+std::string const Utils::workerToMasterMessagesKey = "workerToMasterMessages";
+std::string const Utils::masterToWorkerMessagesKey = "masterToWorkerMessages";
+
+
 std::string Utils::baseUrl(std::string const& prefix) {
   return Utils::apiPrefix + prefix + "/";
 }

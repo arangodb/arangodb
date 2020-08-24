@@ -219,10 +219,12 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data, VPackBuilder& re
     _config._localSuperstep = gss;
   }
 
+  VPackBuilder messageToMaster;
   // only place where is makes sense to call this, since startGlobalSuperstep
   // might not be called again
   if (_workerContext && gss > 0) {
     _workerContext->postGlobalSuperstep(gss - 1);
+    _workerContext->postGlobalSuperstepMasterMessage(messageToMaster);
   }
 
   // responds with info which allows the conductor to decide whether
@@ -232,6 +234,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data, VPackBuilder& re
   response.add(Utils::activeCountKey, VPackValue(_activeCount));
   response.add(Utils::vertexCountKey, VPackValue(_graphStore->localVertexCount()));
   response.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
+  response.add(Utils::workerToMasterMessagesKey, messageToMaster.slice());
   _workerAggregators->serializeValues(response);
   response.close();
 }
@@ -294,6 +297,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
     _workerContext->_vertexCount = data.get(Utils::vertexCountKey).getUInt();
     _workerContext->_edgeCount = data.get(Utils::edgeCountKey).getUInt();
     _workerContext->preGlobalSuperstep(gss);
+    _workerContext->preGlobalSuperstepMasterMessage(data.get(Utils::masterToWorkerMessagesKey));
   }
 
   LOG_TOPIC("39e20", DEBUG, Logger::PREGEL) << "Worker starts new gss: " << gss;

@@ -32,8 +32,6 @@
 #include <Pregel/Algos/AIR/Greenspun/Primitives.h>
 #include <Pregel/Algos/AIR/AIR.h>
 
-#include "AccumulatorAggregator.h"
-
 namespace arangodb {
 namespace pregel {
 namespace algos {
@@ -55,10 +53,17 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
   void finish();
 
   ContinuationResult postGlobalSuperstep(bool allVertexesVotedHalt) override;
+  void preGlobalSuperstepMessage(VPackBuilder& msg) override;
+  bool postGlobalSuperstepMessage(VPackSlice workerMsgs) override;
 
+  void serializeValues(VPackBuilder& b) override;
+
+  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const& globalAccumulators();
 private:
   VertexAccumulators const* _algo;
   greenspun::Machine _airMachine;
+
+  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _globalAccumulators;
 };
 
 }  // namespace accumulators

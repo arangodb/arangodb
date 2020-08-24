@@ -41,6 +41,10 @@ namespace deserializer {
 template <typename... T>
 struct parameter_list {
   constexpr static auto length = sizeof...(T);
+
+  static bool contains_name(VPackSlice slice) {
+    return (slice.isEqualString(T::name) || ...);
+  }
 };
 
 /*
@@ -298,8 +302,8 @@ struct parameter_executor<expected_value<N, V>, H> {
 template <int I, int K, typename...>
 struct parameter_list_executor;
 
-template <int I, int K, typename P, typename... Ps, typename H>
-struct parameter_list_executor<I, K, parameter_list<P, Ps...>, H> {
+template <int I, int K, typename P, typename... Ps, typename H, typename FullList>
+struct parameter_list_executor<I, K, parameter_list<P, Ps...>, H, FullList> {
   using unpack_result = result<unit_type, deserialize_error>;
 
   template <typename T, typename C>
@@ -318,19 +322,19 @@ struct parameter_list_executor<I, K, parameter_list<P, Ps...>, H> {
         auto& [value, read_value] = result.get();
         std::get<I>(t) = value;
         if (read_value) {
-          return parameter_list_executor<I + 1, K + 1, parameter_list<Ps...>, H>::unpack(
+          return parameter_list_executor<I + 1, K + 1, parameter_list<Ps...>, H, FullList>::unpack(
               t, s, hints, std::forward<C>(ctx));
         } else {
-          return parameter_list_executor<I + 1, K, parameter_list<Ps...>, H>::unpack(
+          return parameter_list_executor<I + 1, K, parameter_list<Ps...>, H, FullList>::unpack(
               t, s, hints, std::forward<C>(ctx));
         }
       }
       return unpack_result{std::move(result).error().wrap(
-          "during read of "s + std::to_string(I) + "th parameters value")};
+          "during read of "s + std::to_string(I) + "th parameters value (" + P::name + ")")};
     } else {
       auto result = executor::unpack(s, hints, std::forward<C>(ctx));
       if (result) {
-        return parameter_list_executor<I, K + 1, parameter_list<Ps...>, H>::unpack(
+        return parameter_list_executor<I, K + 1, parameter_list<Ps...>, H, FullList>::unpack(
             t, s, hints, std::forward<C>(ctx));
       }
       return unpack_result{std::move(result).error()};
@@ -338,14 +342,22 @@ struct parameter_list_executor<I, K, parameter_list<P, Ps...>, H> {
   }
 };
 
-template <int I, int K, typename H>
-struct parameter_list_executor<I, K, parameter_list<>, H> {
+template <int I, int K, typename H, typename FullList>
+struct parameter_list_executor<I, K, parameter_list<>, H, FullList> {
   using unpack_result = result<unit_type, deserialize_error>;
 
   template <typename T, typename C>
   static auto unpack(T& t, ::arangodb::velocypack::deserializer::slice_type s,
                      typename H::state_type hints, C &&) -> unpack_result {
     if (s.length() != K) {
+
+      for (auto&& pair : ObjectIterator(s)) {
+        if (!FullList::contains_name(pair.key)) {
+          return unpack_result{deserialize_error{
+              "superfluous field in object: `" + pair.key.copyString() + "`"}};
+        }
+      }
+
       return unpack_result{deserialize_error{
           "superfluous field in object, found " + std::to_string(s.length()) +
           " fields, expected " + std::to_string(K) + " fields"}};
@@ -377,7 +389,7 @@ struct deserialize_plan_executor<parameter_list<Ps...>, H> {
 
     // forward to the parameter execution
     auto parameter_result =
-        detail::parameter_list_executor<0, 0, parameter_list<Ps...>, H>::unpack(
+        detail::parameter_list_executor<0, 0, parameter_list<Ps...>, H, parameter_list<Ps...>>::unpack(
             parameter, s, hints, std::forward<C>(ctx));
     if (parameter_result) {
       return unpack_result{gadgets::unpack_opt_tuple(std::move(parameter))};
