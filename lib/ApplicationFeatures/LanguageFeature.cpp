@@ -149,7 +149,7 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
       msg += "' should point to the directory containing '" + fn + "'";
 
       LOG_TOPIC("0de77", FATAL, arangodb::Logger::FIXME) << msg;
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
     } else {
       std::string icu_path = path.substr(0, path.length() - fn.length());
       FileUtils::makePathAbsolute(icu_path);
@@ -168,7 +168,7 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
   if (icuDataPtr == nullptr) {
     LOG_TOPIC("d8a98", FATAL, arangodb::Logger::FIXME) << "failed to load '" << fn << "' at '"
                                               << path << "' - " << TRI_last_error();
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
   }
   return icuDataPtr;
 }
