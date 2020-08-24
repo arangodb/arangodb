@@ -1,6 +1,26 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
 
+* Added new metric "arangodb_aql_slow_query" for slow AQL queries, so this can 
+  be monitored more easily.
+
+* Added new metric "arangodb_scheduler_queue_full_failures" for tracking cases
+  of a full scheduler queue and dropping requests.
+
+* Added new metrics for the number of V8 contexts dynamically created and destroyed
+  ("arangodb_v8_context_created" and "arangodb_v8_context_destroyed") and for the
+  number of times a V8 context was entered and left ("arangodb_v8_context_entered"
+  and "arangodb_v8_context_exited"). There is also a new metric for tracking the
+  cases when a V8 context cannot be successfully acquired and an operation is not
+  performed ("arangodb_v8_context_enter_failures").
+    
+* Added extra info to "queue full" and "giving up waiting for unused v8 context" 
+  log messages.
+
+* Request to the `/_admin/statistics` API now processed via the CLIENT_FAST lane. 
+  Previously they were handled in the CLIENT_SLOW lane, meaning that monitoring 
+  requests using that API didn't get through when the queue was rather full.
+
 * Fixed internal issue #744: LIMIT with only offset and constrained heap
   optimization will use estimation value for ArangoSearch views.
 

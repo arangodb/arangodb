@@ -45,6 +45,9 @@ class JavaScriptSecurityContext {
 
   ~JavaScriptSecurityContext() = default;
 
+  /// @brief return the context type as a string
+  char const* typeName() const;
+
   /// @brief resets context to most restrictive settings
   void reset();
 
