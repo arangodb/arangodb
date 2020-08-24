@@ -134,14 +134,13 @@ void NetworkFeature::prepare() {
   config.clusterInfo = ci;
   config.name = "ClusterComm";
 
-  if (_protocol == "http") {
+  config.protocol = fuerte::ProtocolType::Http;
+  if (_protocol == "http" || _protocol == "h1") {
     config.protocol = fuerte::ProtocolType::Http;
   } else if (_protocol == "http2" || _protocol == "h2") {
     config.protocol = fuerte::ProtocolType::Http2;
   } else if (_protocol == "vst") {
     config.protocol = fuerte::ProtocolType::Vst;
-  } else {
-    config.protocol = fuerte::ProtocolType::Http;
   }
 
   _pool = std::make_unique<network::ConnectionPool>(config);
