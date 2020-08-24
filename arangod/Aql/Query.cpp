@@ -193,6 +193,11 @@ Query::~Query() {
       << elapsedSince(_startTime)
       << " Query::~Query this: " << (uintptr_t)this;
 }
+  
+/// @brief return the user that started the query
+std::string const& Query::user() const {
+  return _user;
+}
 
 bool Query::killed() const {
   if (_queryOptions.maxRuntime > std::numeric_limits<double>::epsilon() &&
