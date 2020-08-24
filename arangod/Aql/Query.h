@@ -98,6 +98,9 @@ class Query : public QueryContext {
 
   constexpr static uint64_t DontCache = 0;
 
+  /// @brief return the user that started the query
+  std::string const& user() const override;
+
   /// @brief whether or not the query is killed
   bool killed() const override;
 
