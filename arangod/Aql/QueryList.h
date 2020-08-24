@@ -215,6 +215,9 @@ class QueryList {
   static constexpr size_t defaultMaxQueryStringLength = 4096;
 
  private:
+  /// @brief query registry, for keeping track of slow queries counter
+  QueryRegistryFeature& _queryRegistryFeature;
+
   /// @brief r/w lock for the list
   arangodb::basics::ReadWriteLock _lock;
 
