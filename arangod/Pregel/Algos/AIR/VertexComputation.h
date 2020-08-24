@@ -41,6 +41,9 @@ struct WorkerContext;
 class VertexComputation : public vertex_computation {
  public:
   explicit VertexComputation(VertexAccumulators const& algorithm);
+  VertexComputation(VertexComputation&&) = delete;
+  VertexComputation& operator=(VertexComputation&&) = delete;
+
   void compute(MessageIterator<message_type> const& messages) override;
   VertexAccumulators const& algorithm() const;
   WorkerContext const& workerContext() const;

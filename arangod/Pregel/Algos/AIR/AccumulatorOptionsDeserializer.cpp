@@ -73,14 +73,12 @@ using accumulator_value_type_deserializer = enum_deserializer<AccumulatorValueTy
 
 constexpr const char accumulatorType[] = "accumulatorType";
 constexpr const char valueType[] = "valueType";
-constexpr const char storeSender[] = "storeSender";
 constexpr const char parameters[] = "parameters";
 constexpr const char customType[] = "customType";
 
 using accumulator_options_plan = parameter_list<
     factory_deserialized_parameter<accumulatorType, accumulator_type_deserializer, true>,
     factory_deserialized_parameter<valueType, accumulator_value_type_deserializer, true>,
-    factory_simple_parameter<storeSender, bool, false>,
     factory_optional_value_parameter<customType, std::string>,
     factory_optional_builder_parameter<parameters>
 >;

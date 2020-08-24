@@ -68,6 +68,9 @@ struct Machine {
 
   template<typename T, typename F>
   EvalResult setFunctionMember(std::string_view name, F&& f, T* ptr) {
+    static_assert(!(std::is_move_constructible_v<T> || std::is_move_assignable_v<T> ||
+                    std::is_copy_constructible_v<T> || std::is_copy_assignable_v<T>),
+                  "please make sure that `this` is a stable pointer.");
     return setFunction(name, bind_member(f, ptr));
   }
 

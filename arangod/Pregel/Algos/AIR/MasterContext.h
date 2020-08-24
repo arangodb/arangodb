@@ -40,6 +40,11 @@ namespace accumulators {
 struct MasterContext : ::arangodb::pregel::MasterContext {
   MasterContext(VertexAccumulators const* algorithm);
 
+  MasterContext(MasterContext&&) = delete;
+  MasterContext(MasterContext const&) = delete;
+  MasterContext& operator=(MasterContext&&) = delete;
+  MasterContext& operator=(MasterContext const&) = delete;
+
   greenspun::EvalResult air_GotoPhase(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
   greenspun::EvalResult air_Finish(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
   greenspun::EvalResult air_VertexCount(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);

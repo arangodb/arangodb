@@ -234,6 +234,11 @@ struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
   CustomAccumulator(AccumulatorOptions const& options,
                     CustomAccumulatorDefinitions const& defs);
 
+  CustomAccumulator(CustomAccumulator&&) = delete;
+  CustomAccumulator(CustomAccumulator const&) = delete;
+  CustomAccumulator& operator=(CustomAccumulator&&) = delete;
+  CustomAccumulator& operator=(CustomAccumulator const&) = delete;
+
   ~CustomAccumulator() override;
 
   auto setBySlice(VPackSlice v) -> greenspun::EvalResult override;
