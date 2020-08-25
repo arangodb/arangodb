@@ -1962,7 +1962,10 @@ ExecutionNode::NodeType CalculationNode::getType() const { return CALCULATION; }
 
 Variable const* CalculationNode::outVariable() const { return _outVariable; }
 
-Expression* CalculationNode::expression() const { return _expression.get(); }
+Expression* CalculationNode::expression() const { 
+  TRI_ASSERT(_expression != nullptr);
+  return _expression.get(); 
+}
 
 void CalculationNode::getVariablesUsedHere(VarSet& vars) const {
   _expression->variables(vars);
