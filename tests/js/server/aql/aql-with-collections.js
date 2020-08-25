@@ -162,29 +162,35 @@ function queryWithCollectionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testWithSingleBind : function () {
-      var query = "WITH @@col FOR i IN 1..10 RETURN i";
+      // data source bind parameter
+      let query = "WITH @@col FOR i IN 1..10 RETURN i";
 
-      var result = AQL_EXECUTE(query, { "@col" : "UnitTestsCollection1" }).json; 
+      let result = AQL_EXECUTE(query, { "@col" : "UnitTestsCollection1" }).json; 
       assertEqual(10, result.length);
       
-      var collections = AQL_PARSE(query).collections; 
+      let collections = AQL_PARSE(query).collections; 
       assertEqual([ ], collections);
-    },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test with one collection
-////////////////////////////////////////////////////////////////////////////////
-
-    testWithSingleBindWrongType : function () {
-      var query = "WITH @col FOR i IN 1..10 RETURN i";
+      // simple bind parameter
+      query = "WITH @col FOR i IN 1..10 RETURN i";
       
-      var result = AQL_EXECUTE(query, { "col" : "UnitTestsCollection1" }).json; 
+      result = AQL_EXECUTE(query, { "col" : "UnitTestsCollection1" }).json; 
       assertEqual(10, result.length);
       
-      var collections = AQL_PARSE(query).collections; 
+      collections = AQL_PARSE(query).collections; 
       assertEqual([ ], collections);
-
-     // assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code, query);
+      
+      // simple bind parameter - invalid types
+      [ null, false, true, -1, 0, 1, 123, 94584.43, [], ["foo"], {} ].forEach(function(value) {
+        assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code, query, { col: value });
+      });
+        
+      assertQueryError(errors.ERROR_ARANGO_ILLEGAL_NAME.code, query, { col: "" });
+      
+      // simple bind parameter - valid type, invalid values
+      [ " ", "NonExisting", "der fuxx" ].forEach(function(value) {
+        assertQueryError(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, query, { col: value });
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
