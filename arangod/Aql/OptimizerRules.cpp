@@ -5242,8 +5242,7 @@ class RemoveToEnumCollFinder final
 
         auto const& projections =
             dynamic_cast<DocumentProducingNode const*>(enumColl)->projections();
-        if (projections.size() > 1 ||
-            (!projections.empty() && projections[0] != StaticStrings::KeyString)) {
+        if (projections.isSingle(StaticStrings::KeyString)) {
           // cannot handle projections
           break;
         }

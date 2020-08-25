@@ -36,6 +36,7 @@
 #include "Aql/Parser.h"
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryExecutionState.h"
 #include "Aql/QueryProfile.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/Timing.h"
@@ -1074,7 +1075,7 @@ bool Query::canUseQueryCache() const {
 void Query::enterState(QueryExecutionState::ValueType state) {
   LOG_TOPIC("d8767", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime)
-      << " Query::enterState: " << state << " this: " << (uintptr_t)this;
+      << " Query::enterState: " << arangodb::aql::QueryExecutionState::toString(state) << " this: " << (uintptr_t)this;
   if (_profile != nullptr) {
     // record timing for previous state
     _profile->setStateDone(_execState);
