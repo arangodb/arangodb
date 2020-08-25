@@ -215,8 +215,11 @@ auto CustomAccumulator<VPackSlice>::AIR_InputValue(arangodb::greenspun::Machine&
 auto CustomAccumulator<VPackSlice>::AIR_InputSender(arangodb::greenspun::Machine& ctx,
                                                     VPackSlice slice, VPackBuilder& result)
     -> arangodb::greenspun::EvalResult {
-  result.add(VPackValue(*inputSender));
-  return {};
+  if (inputSender != nullptr) {
+    result.add(VPackValue(*inputSender));
+    return {};
+  }
+  return greenspun::EvalError("input-sender not available here");
 }
 
 CustomAccumulator<VPackSlice>::~CustomAccumulator() = default;
