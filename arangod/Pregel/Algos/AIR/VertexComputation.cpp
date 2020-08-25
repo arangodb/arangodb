@@ -226,12 +226,7 @@ greenspun::EvalResult VertexComputation::air_sendToGlobalAccum(greenspun::Machin
   }
   auto&& [accumId, value] = res.value();
 
-  auto inner = workerContext().sendToGlobalAccumulator(accumId, value);
-  if (!inner) {
-    return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
-                                "` not found");
-  }
-  return {};
+  return workerContext().sendToGlobalAccumulator(accumId, value);
 }
 
 /*  Graph stuff */
