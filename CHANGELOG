@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed issue BTS-169: cost estimation for LIMIT nodes showed wrong number of
+  estimated items.
+
 * Fixed issue #12507: SegFault when using an AQL for loop through edges.
 
 * Add attributes `database` and `user` when tracking current and slow AQL queries.
