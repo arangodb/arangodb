@@ -778,7 +778,7 @@ class CalculationNode : public ExecutionNode {
   /// @brief return out variable
   Variable const* outVariable() const;
 
-  /// @brief return the expression
+  /// @brief return the expression. never a nullptr!
   Expression* expression() const;
 
   /// @brief estimateCost
