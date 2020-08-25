@@ -35,7 +35,6 @@ const internal = require("internal");
 exports.single_source_shortest_paths_program = single_source_shortest_paths_program;
 exports.single_source_shortest_paths = single_source_shortest_paths;
 exports.test = test;
-exports.smallTest = testSmall;
 
 
 function foldAccumulator(foldOp, test) {
@@ -121,14 +120,18 @@ function cmpAccumulator2(cmp) {
                 ],
                 ["seq",
                     ["this-set!",
-                        ["dict", ["list", "isSet", true], ["list", "value", ["input-value"]]]
+                        ["dict",
+                            ["list", "isSet", true],
+                            ["list", "value", ["input-value"]],
+                            ["list", "sender", ["sender"]]
+                        ]
                     ],
                     "hot"
                 ]
             ],
             [true, "cold"]
         ],
-        clearProgram: ["this-set!", {"isSet": false, "value": 0}],
+        clearProgram: ["this-set!", {"isSet": false, "value": 0, sender: null}],
         getProgram: ["if",
             [
                 ["attrib-get", "isSet", ["current-value"]],
@@ -140,7 +143,11 @@ function cmpAccumulator2(cmp) {
             ]
         ],
         setProgram: ["this-set!",
-            ["dict", ["list", "isSet", true], ["list", "value", ["input-value"]]]
+            ["dict",
+                ["list", "isSet", true],
+                ["list", "value", ["input-value"]],
+                ["list", "sender", ["sender"]]
+            ]
         ],
         finalizeProgram: ["if",
             [
@@ -171,8 +178,7 @@ const maxAccumulator = cmpAccumulator("gt?");
 */
 function single_source_shortest_paths_program(
     resultField,
-    startVertexId,
-    weightAttribute
+    startVertexId
 ) {
     return {
         resultField: resultField,
@@ -182,7 +188,6 @@ function single_source_shortest_paths_program(
                 accumulatorType: "custom",
                 valueType: "slice",
                 customType: "my_min",
-                storeSender: true,
             },
         },
         customAccumulators: {
@@ -237,24 +242,22 @@ function single_source_shortest_paths_program(
 function single_source_shortest_paths(
     graphName,
     resultField,
-    startVertexId,
-    weightAttribute
+    startVertexId
 ) {
     return pregel.start(
         "air",
         graphName,
         single_source_shortest_paths_program(
             resultField,
-            startVertexId,
-            weightAttribute
+            startVertexId
         )
     );
 }
 
-function exec_test_sssp_on_graph(graphSpec) {
+function exec_test_compare_sssp_impls(graphSpec) {
     // Find the ID of a vertex to start at.
     const some_vertex = db
-        ._query(`FOR d IN @@V SORT d.id LIMIT 535, 1 RETURN d._id`,
+        ._query(`FOR d IN @@V SORT RAND() LIMIT 1 RETURN d._id`,
             {"@V": graphSpec.vname})
         .toArray()[0];
 
@@ -266,7 +269,6 @@ function exec_test_sssp_on_graph(graphSpec) {
             graphSpec.name,
             "SSSP",
             some_vertex,
-            "cost"
         ));
 
     testhelpers.wait_for_pregel(
@@ -277,26 +279,20 @@ function exec_test_sssp_on_graph(graphSpec) {
         }));
 
     return testhelpers.compare_pregel(db._query(`FOR d IN @@V
-               FILTER d.result != d.SSSP.distance
+               FILTER NOT ( d.result == d.SSSP.distance OR ( d.SSSP.distance == NULL AND d.result > 9999999 ) )
                RETURN d`, {"@V": graphSpec.vname}));
 }
 
-function exec_test_sssp(graphSpec) {
-    exec_test_sssp_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1));
-    exec_test_sssp_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9));
-    exec_test_sssp_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18));
+function exec_test_compare_sssp(graphSpec) {
+    exec_test_compare_sssp_impls(examplegraphs.create_line_graph("LineGraph100", 100, 1));
+    exec_test_compare_sssp_impls(examplegraphs.create_line_graph("LineGraph1000", 1000, 9));
+    exec_test_compare_sssp_impls(examplegraphs.create_line_graph("LineGraph10000", 10000, 18));
 
-    exec_test_sssp_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 1));
-    exec_test_sssp_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 9));
-    exec_test_sssp_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 18));
-}
-
-function testSmall() {
-    //exec_test_sssp_on_graph(examplegraphs.create_complete_graph("LineGraph100", 5));
-
-    exec_test_sssp_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 1));
+    exec_test_compare_sssp_impls(examplegraphs.create_wiki_vote_graph("WikiVote", 1));
+    exec_test_compare_sssp_impls(examplegraphs.create_wiki_vote_graph("WikiVote", 9));
+    exec_test_compare_sssp_impls(examplegraphs.create_wiki_vote_graph("WikiVote", 18));
 }
 
 function test() {
-    exec_test_sssp();
+    exec_test_compare_sssp();
 }

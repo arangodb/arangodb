@@ -165,7 +165,8 @@ using vertex_accumulator_options_plan = parameter_list<
     factory_deserialized_parameter<customAccumulators, custom_accumulators_map_deserializer, false>,
     factory_deserialized_parameter<bindings, bindings_map_deserializer, /* required */ false>, // will be default constructed as empty map
     factory_deserialized_parameter<phases, phases_deseriaizer, true>,
-    factory_simple_parameter<maxGSS, uint64_t, false, values::numeric_value<uint64_t, 500>>>;
+    factory_simple_parameter<maxGSS, uint64_t, false, values::numeric_value<uint64_t, 500>>
+>;
 
 using vertex_accumulator_options_deserializer =
   utilities::constructing_deserializer<VertexAccumulatorOptions, vertex_accumulator_options_plan>;
