@@ -85,7 +85,7 @@ void QueryEntryCopy::toVelocyPack(velocypack::Builder& out) const {
 
 /// @brief create a query list
 QueryList::QueryList(QueryRegistryFeature& feature)
-    : _lock(),
+    : _queryRegistryFeature(feature),
       _enabled(feature.trackSlowQueries()),
       _trackSlowQueries(feature.trackSlowQueries()),
       _trackBindVars(feature.trackBindVars()),
@@ -150,7 +150,7 @@ void QueryList::remove(Query* query) {
   if (!_trackSlowQueries.load(std::memory_order_relaxed) || query->killed()) {
     return;
   }
-  
+
   bool const isStreaming = query->queryOptions().stream;
   double threshold = (isStreaming ? _slowStreamingQueryThreshold : _slowQueryThreshold);
 
@@ -161,6 +161,8 @@ void QueryList::remove(Query* query) {
       TRI_IF_FAILURE("QueryList::remove") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
+  
+      _queryRegistryFeature.trackSlowQuery();
       
       // we calculate the query start timestamp as the current time minus
       // the elapsed time since query start. this is not 100% accurrate, but
