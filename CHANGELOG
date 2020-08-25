@@ -1,6 +1,8 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
 
+* add exit code for ICU database loading errors
+
 * Fixed internal issue #744: LIMIT with only offset and constrained heap
   optimization will use estimation value for ArangoSearch views.
 
