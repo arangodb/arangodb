@@ -51,7 +51,7 @@ enum class ValueType {
 
 QueryExecutionState::ValueType fromNumber(size_t value);
 size_t toNumber(QueryExecutionState::ValueType value);
-std::string toString(QueryExecutionState::ValueType state);
+std::string const& toString(QueryExecutionState::ValueType state);
 std::string toStringWithPrefix(QueryExecutionState::ValueType state);
 
 }  // namespace QueryExecutionState

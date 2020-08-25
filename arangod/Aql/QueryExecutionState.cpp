@@ -61,7 +61,7 @@ size_t QueryExecutionState::toNumber(QueryExecutionState::ValueType value) {
 }
 
 /// @brief get a description of the query's current state
-std::string QueryExecutionState::toString(QueryExecutionState::ValueType state) {
+std::string const& QueryExecutionState::toString(QueryExecutionState::ValueType state) {
   return StateNames[static_cast<int>(state)];
 }
 
