@@ -28,6 +28,8 @@
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace vst {
 
+static std::atomic<MessageID> vstMessageId(1);
+
 // Item that represents a Request in flight
 struct RequestItem {
   /// Buffer used to store data for request and response
@@ -52,17 +54,23 @@ struct RequestItem {
   size_t _responseNumberOfChunks = 0;
   
   /// ID of this message
-  MessageID _messageID;
+  const MessageID _messageID;
   /// Reference to the request we're processing
-  std::unique_ptr<Request> _request;
+  std::unique_ptr<Request> request;
 
   /// point in time when the message expires
-  std::chrono::steady_clock::time_point _expires;
+  std::chrono::steady_clock::time_point expires;
   
  public:
   
+  RequestItem(std::unique_ptr<Request>&& req,
+              RequestCallback&& cb)
+  : _callback(std::move(cb)),
+    _messageID(vstMessageId.fetch_add(1, std::memory_order_relaxed)),
+    request(std::move(req)) {}
+  
   inline void invokeOnError(Error e) {
-    _callback(e, std::move(_request), nullptr);
+    _callback(e, std::move(request), nullptr);
   }
 
   /// prepareForNetwork prepares the internal structures for

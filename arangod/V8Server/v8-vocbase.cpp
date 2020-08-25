@@ -1042,6 +1042,12 @@ static void JS_QueriesCurrentAql(v8::FunctionCallbackInfo<v8::Value> const& args
                TRI_V8_ASCII_STRING(isolate, "id"),
                TRI_V8UInt64String<TRI_voc_tick_t>(isolate, q.id)).FromMaybe(false);
       obj->Set(context,
+               TRI_V8_ASCII_STRING(isolate, "database"),
+               TRI_V8_STD_STRING(isolate, q.database)).FromMaybe(false);
+      obj->Set(context,
+               TRI_V8_ASCII_STRING(isolate, "user"),
+               TRI_V8_STD_STRING(isolate, q.user)).FromMaybe(false);
+      obj->Set(context,
                TRI_V8_ASCII_STRING(isolate, "query"),
                TRI_V8_STD_STRING(isolate, q.queryString)).FromMaybe(false);
       if (q.bindParameters != nullptr) {
@@ -1106,6 +1112,12 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       obj->Set(context,
                TRI_V8_ASCII_STRING(isolate, "id"),
                TRI_V8UInt64String<TRI_voc_tick_t>(isolate, q.id)).FromMaybe(false);
+      obj->Set(context,
+               TRI_V8_ASCII_STRING(isolate, "database"),
+               TRI_V8_STD_STRING(isolate, q.database)).FromMaybe(false);
+      obj->Set(context,
+               TRI_V8_ASCII_STRING(isolate, "user"),
+               TRI_V8_STD_STRING(isolate, q.user)).FromMaybe(false);
       obj->Set(context,
                TRI_V8_ASCII_STRING(isolate, "query"),
                TRI_V8_STD_STRING(isolate, q.queryString)).FromMaybe(false);
