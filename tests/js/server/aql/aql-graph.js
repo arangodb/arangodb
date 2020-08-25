@@ -36,6 +36,7 @@ var helper = require("@arangodb/aql-helper");
 var cluster = require("@arangodb/cluster");
 var getQueryResults = helper.getQueryResults;
 var getRawQueryResults = helper.getRawQueryResults;
+var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for graph features
@@ -284,6 +285,53 @@ function ahuacatlQueryEdgesTestSuite () {
       bindVars.start = "thefox/thefox";
       actual = getQueryResults(query, bindVars);
       assertEqual(actual, [ ]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks edges / vertex combination
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesOutInclVerticesNonCollectionBindInvalidValues : function () {
+      "use strict";
+      let query = `WITH ${vn} FOR v, e IN OUTBOUND @start @col SORT e.what RETURN v._key`;
+
+      [ null, false, true, -1, 0, 1, 2030, 45354.2343, [], ["foo"], {} ].forEach(function(value) {
+        let bindVars = {
+          start: "UnitTestsAhuacatlVertex/v1",
+          col: value
+        };
+
+        assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code, query, bindVars);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks edges / vertex combination
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesOutInclVerticesInvalidCollections : function () {
+      "use strict";
+      let query = `WITH ${vn} FOR v, e IN OUTBOUND @start @col SORT e.what RETURN v._key`;
+
+      [ " ", "NonExisting", "foo bar" ].forEach(function(value) {
+        let bindVars = {
+          start: "UnitTestsAhuacatlVertex/v1",
+          col: value
+        };
+
+        assertQueryError(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, query, bindVars);
+      });
+      
+      query = `WITH ${vn} FOR v, e IN OUTBOUND @start @@col SORT e.what RETURN v._key`;
+
+      [ " ", "NonExisting", "foo bar" ].forEach(function(value) {
+        let bindVars = {
+          start: "UnitTestsAhuacatlVertex/v1",
+          "@col": value
+        };
+
+        assertQueryError(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, query, bindVars);
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
