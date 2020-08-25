@@ -1,6 +1,9 @@
 devel
 -----
 
+* Remove some JavaScript files containing testsuites and test utilities from our
+  official release packages.
+
 * Fixed internal issue #741: STARTS_WITH fails to accept 'array' as variable.
 
 * Fixed internal issue #738: PHRASE doesn't accept a reference to an array of
