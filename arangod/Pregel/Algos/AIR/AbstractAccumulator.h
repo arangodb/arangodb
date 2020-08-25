@@ -63,16 +63,9 @@ struct AccumulatorBase {
 
   virtual auto setBySlice(VPackSlice v) -> greenspun::EvalResult = 0;
   virtual auto updateBySlice(VPackSlice v) -> greenspun::EvalResultT<UpdateResult> = 0;
+  virtual auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> = 0;
   virtual auto getValueIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult = 0;
   virtual auto finalizeIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult = 0;
-
-  void setSender(std::string const& sender) {
-    _sender = sender;
-  }
-  auto sender() -> std::string const& {
-    return _sender;
-  }
-  std::string _sender;
 };
 
 template <typename T>
@@ -109,6 +102,10 @@ class Accumulator : public AccumulatorBase {
     } else {
       return greenspun::EvalError("not implemented");
     }
+  }
+
+  auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> override {
+    return updateBySlice(msg._value.slice());
   }
 
   auto updateBySlice(VPackSlice s) -> greenspun::EvalResultT<UpdateResult> override {

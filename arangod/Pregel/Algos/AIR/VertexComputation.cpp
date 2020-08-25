@@ -376,7 +376,7 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
     auto&& accumName = msg->_accumulatorName;
     auto&& accum = vertexData().accumulatorByName(accumName);
 
-    auto res = accum->updateBySlice(msg->_value.slice());
+    auto res = accum->updateByMessage(*msg);
     if (res.fail()) {
       auto phase_index = *getAggregatedValue<uint32_t>("phase");
       auto phase = _algorithm.options().phases.at(phase_index);
@@ -393,10 +393,6 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
           << "in phase `" << phase.name << "` updating accumulator `"
           << accumName << "` failed: " << res.error().toString();
       return std::move(res.error());
-    }
-
-    if(res.value() == AccumulatorBase::UpdateResult::CHANGED) {
-      accum->setSender(msg->_sender);
     }
 
     accumChanged |= res.value() == AccumulatorBase::UpdateResult::CHANGED;

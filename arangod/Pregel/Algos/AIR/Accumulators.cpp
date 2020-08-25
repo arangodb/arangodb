@@ -28,12 +28,42 @@
 
 using namespace arangodb::pregel::algos::accumulators;
 
+auto CustomAccumulator<VPackSlice>::updateByMessage(MessageData const& msg)
+  -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> {
+  this->inputSlice = msg._value.slice();
+  this->inputSender =  &msg._sender;
+
+  TRI_DEFER({ this->inputSlice = VPackSlice::noneSlice();
+      this->inputSender = nullptr; })
+
+    VPackBuilder result;
+  auto res = greenspun::Evaluate(_machine, _definition.updateProgram.slice(), result);
+  if (res.fail()) {
+    return res.error().wrapMessage("in updateProgram of custom accumulator");
+  }
+
+  auto resultSlice = result.slice();
+  if (resultSlice.isString()) {
+    if (resultSlice.isEqualString("hot")) {
+      return UpdateResult::CHANGED;
+    } else if (resultSlice.isEqualString("cold")) {
+      return UpdateResult::NO_CHANGE;
+    }
+  } else if (resultSlice.isNone()) {
+    return AccumulatorBase::UpdateResult::NO_CHANGE;
+  }
+  return greenspun::EvalError(
+    "update program did not return a valid value: expected `\"hot\"` or "
+    "`\"cold\"`, found: " +
+    result.toJson());
+}
+
 auto CustomAccumulator<VPackSlice>::updateBySlice(VPackSlice s)
     -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> {
   this->inputSlice = s;
   TRI_DEFER({ this->inputSlice = VPackSlice::noneSlice(); })
 
-      VPackBuilder result;
+  VPackBuilder result;
   auto res = greenspun::Evaluate(_machine, _definition.updateProgram.slice(), result);
   if (res.fail()) {
     return res.error().wrapMessage("in updateProgram of custom accumulator");
@@ -185,7 +215,7 @@ auto CustomAccumulator<VPackSlice>::AIR_InputValue(arangodb::greenspun::Machine&
 auto CustomAccumulator<VPackSlice>::AIR_InputSender(arangodb::greenspun::Machine& ctx,
                                                     VPackSlice slice, VPackBuilder& result)
     -> arangodb::greenspun::EvalResult {
-  result.add(VPackValue(sender()));
+  result.add(VPackValue(*inputSender));
   return {};
 }
 
