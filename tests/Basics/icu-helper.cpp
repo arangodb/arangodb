@@ -34,7 +34,7 @@ void IcuInitializer::setup(char const* path) {
     std::string msg =
       "failed to initialize ICU library. The environment variable ICU_DATA";
     if (getenv("ICU_DATA") != nullptr) {
-      msg += "='" + getenv("ICU_DATA") + "'";
+      msg += "='" + std::string(getenv("ICU_DATA")) + "'";
     }
     msg += " should point to the directory containing the icudtl.dat file. We searched here: " + p;
     std::cerr << msg << std::endl;
