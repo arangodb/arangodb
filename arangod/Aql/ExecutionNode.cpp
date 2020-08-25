@@ -1761,9 +1761,22 @@ void LimitNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 CostEstimate LimitNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();
+
+  // arbitrary cost value for skipping a single document
+  // skipping over a document is not fully free, because in the RocksDB
+  // case, we need to move iterarors forward, invoke the comparator etc.
+  double const skipCost = 0.000001;
+
+  size_t estimatedNrItems = estimate.estimatedNrItems;
+  if (estimatedNrItems >= _offset) {
+    estimate.estimatedCost += _offset * skipCost;
+    estimatedNrItems -= _offset;
+  } else {
+    estimate.estimatedCost += estimatedNrItems * skipCost;
+    estimatedNrItems = 0;
+  }
   estimate.estimatedNrItems =
-      (std::min)(_limit, (std::max)(static_cast<size_t>(0),
-                                    estimate.estimatedNrItems - _offset));
+      (std::min)(_limit, estimatedNrItems);
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
@@ -1949,7 +1962,10 @@ ExecutionNode::NodeType CalculationNode::getType() const { return CALCULATION; }
 
 Variable const* CalculationNode::outVariable() const { return _outVariable; }
 
-Expression* CalculationNode::expression() const { return _expression.get(); }
+Expression* CalculationNode::expression() const { 
+  TRI_ASSERT(_expression != nullptr);
+  return _expression.get(); 
+}
 
 void CalculationNode::getVariablesUsedHere(VarSet& vars) const {
   _expression->variables(vars);

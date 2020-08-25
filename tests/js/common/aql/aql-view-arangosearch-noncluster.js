@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, fail*/
+/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotUndefined, fail*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for iresearch usage
@@ -32,6 +32,20 @@ var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
 var ERRORS = require("@arangodb").errors;
+
+function getNodes(query, type, bindVars, options) {
+  let stmt = db._createStatement(query);
+  if (typeof bindVars === "object") {
+    stmt.bind(bindVars);
+  }
+  if (typeof options === "object") {
+    stmt.setOptions(options);
+  }
+  return stmt.explain()
+             .plan
+             .nodes
+             .filter(node => node.type === type);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -494,6 +508,15 @@ function iResearchAqlTestSuite () {
       });
     },
 
+    testStartsWithFilterArrayWithoutMinMatchCountViaReference : function () {
+      var result = db._query("LET x = NOOPT(['fo', 'g']) FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, x) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
+        assertEqual(res.a, 'foo');
+      });
+    },
+
     testStartsWithFilterEmptyArray : function () {
       var result = db._query("FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, []) OPTIONS { waitForSync : true } RETURN doc").toArray();
 
@@ -798,13 +821,26 @@ function iResearchAqlTestSuite () {
       expected.push({ a: "foo", b: "bar", c: 0 });
       expected.push({ a: "foo", b: "baz", c: 0 });
 
-      var result = db._query(
-        "FOR doc0 IN CompoundView OPTIONS { collections: ['UnitTestsCollection2'], waitForSync:true } " +
-        "  FOR doc1 IN UnitTestsView SEARCH doc0.c == doc1.c && STARTS_WITH(doc1['a'], doc0.a) OPTIONS { waitForSync: true } " +
-        "FILTER doc1.c < 2 " +
-        "SORT doc1.c DESC, doc1.a, doc1.b " +
-        "RETURN doc1"
-      , null, { waitForSync: true }).toArray();
+      var query = "FOR doc0 IN CompoundView OPTIONS { collections: ['UnitTestsCollection2'], waitForSync:true } " +
+                  "  FOR doc1 IN UnitTestsView SEARCH doc0.c == doc1.c && STARTS_WITH(doc1['a'], doc0.a) OPTIONS { waitForSync: true } " +
+                  "FILTER doc1.c < 2 " +
+                  "SORT doc1.c DESC, doc1.a, doc1.b " +
+                  "RETURN doc1";
+
+      var viewNodes = getNodes(query, "EnumerateViewNode");
+      assertEqual(2, viewNodes.length);
+
+      var viewNode0 = viewNodes[0];
+      assertNotUndefined(viewNode0);
+      assertEqual(db.UnitTestsCollection2.count(), viewNode0.estimatedNrItems);
+      assertEqual(viewNode0.estimatedCost, viewNode0.estimatedNrItems + 1);
+
+      var viewNode1 = viewNodes[1];
+      assertNotUndefined(viewNode1);
+      assertEqual(db.UnitTestsCollection2.count()*db.UnitTestsCollection.count(), viewNode1.estimatedNrItems);
+      assertEqual(viewNode1.estimatedCost, viewNode0.estimatedCost + viewNode1.estimatedNrItems);
+
+      var result = db._query(query, null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, expected.length);
       var i = 0;
@@ -1104,8 +1140,13 @@ function iResearchAqlTestSuite () {
     },
 
     testAttributeInRangeOpenInterval : function () {
-      var result = db._query("FOR doc IN UnitTestsView SEARCH IN_RANGE(doc.c, 1, 3, false, false) OPTIONS { waitForSync : true } RETURN doc").toArray();
+      var query = "FOR doc IN UnitTestsView SEARCH IN_RANGE(doc.c, 1, 3, false, false) OPTIONS { waitForSync : true } RETURN doc";
+      var viewNode = getNodes(query, "EnumerateViewNode")[0];
+      assertNotUndefined(viewNode);
+      assertEqual(db.UnitTestsCollection.count(), viewNode.estimatedNrItems);
+      assertEqual(viewNode.estimatedCost, viewNode.estimatedNrItems + 1);
 
+      var result = db._query(query).toArray();
       assertEqual(result.length, 4);
       result.forEach(function(res) {
         assertTrue(res.c > 1 && res.c < 3);
@@ -1932,14 +1973,14 @@ function iResearchAqlTestSuite () {
     },
 
     testLevenshteinMatch0 : function() {
-      var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lazi', 0), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
+      var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lazi', 0, false), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
       assertEqual(2, res.length);
       assertEqual("full", res[0].name);
       assertEqual("half", res[1].name);
     },
 
     testLevenshteinMatch1 : function() {
-      var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lzi', 1), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
+      var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lzi', 1, false), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
       assertEqual(2, res.length);
       assertEqual("full", res[0].name);
       assertEqual("half", res[1].name);
@@ -1947,6 +1988,13 @@ function iResearchAqlTestSuite () {
 
     testLevenshteinDamerauMatch1 : function() {
       var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lzai', 1, true), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
+      assertEqual(2, res.length);
+      assertEqual("full", res[0].name);
+      assertEqual("half", res[1].name);
+    },
+
+    testLevenshteinDamerauMatch1Default : function() {
+      var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lzai', 1), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
       assertEqual(2, res.length);
       assertEqual("full", res[0].name);
       assertEqual("half", res[1].name);

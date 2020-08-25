@@ -104,6 +104,10 @@
 #include <velocypack/velocypack-aliases.h>
 #include <algorithm>
 
+#ifdef __APPLE__
+#include <regex>
+#endif
+
 #ifdef _WIN32
 #include "Basics/win-utils.h"
 #else
@@ -157,6 +161,10 @@ namespace {
 
 /// @brief an empty AQL value
 static AqlValue const emptyAqlValue;
+
+#ifdef __APPLE__
+std::regex const ipV4LeadingZerosRegex("^(.*?\\.)?0[0-9]+.*$", std::regex::optimize);
+#endif
 
 /// @brief mutex used to protect UUID generation
 static Mutex uuidMutex;
@@ -1779,7 +1787,7 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx, transaction::Method
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
 
-  bool withTranspositionsValue = false;
+  bool withTranspositionsValue = true;
   int64_t maxDistanceValue = maxDistance.toInt64();
 
   if (args.size() > 3) {
@@ -1794,13 +1802,13 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx, transaction::Method
   }
 
   if (maxDistanceValue < 0 ||
-      (withTranspositionsValue &&
-       maxDistanceValue > arangodb::iresearch::MAX_DAMERAU_LEVENSHTEIN_DISTANCE)) {
+      (!withTranspositionsValue &&
+       maxDistanceValue > arangodb::iresearch::MAX_LEVENSHTEIN_DISTANCE)) {
     registerInvalidArgumentWarning(ctx, AFN);
     return AqlValue{AqlValueHintNull{}};
   }
 
-  if (!withTranspositionsValue && maxDistanceValue > arangodb::iresearch::MAX_LEVENSHTEIN_DISTANCE) {
+  if (withTranspositionsValue && maxDistanceValue > arangodb::iresearch::MAX_DAMERAU_LEVENSHTEIN_DISTANCE) {
     // fallback to LEVENSHTEIN_DISTANCE
     auto const dist = Functions::LevenshteinDistance(ctx, trx, args);
     TRI_ASSERT(dist.isNumber());
@@ -4691,6 +4699,16 @@ AqlValue Functions::IpV4ToNumber(ExpressionContext* expressionContext, transacti
 #else
     int result = inet_pton(AF_INET, &buffer[0], &addr);
 #endif
+
+#ifdef __APPLE__
+    // inet_pton on MacOS accepts leading zeros...
+    // inet_pton on Linux and Windows doesn't
+    // this is the least intrusive solution, but it is not efficient.
+    if (result == 1 && 
+        std::regex_match(&buffer[0], buffer + l, ::ipV4LeadingZerosRegex, std::regex_constants::match_any)) {
+      result = 0;
+    }
+#endif
     
     if (result == 1) {
       return AqlValue(AqlValueHintUInt(basics::hostToBig(*reinterpret_cast<uint32_t*>(&addr))));
@@ -4733,8 +4751,16 @@ AqlValue Functions::IsIpV4(ExpressionContext* expressionContext, transaction::Me
 #else
     int result = inet_pton(AF_INET, &buffer[0], &addr);
 #endif
-    
+   
     if (result == 1) {
+#ifdef __APPLE__
+      // inet_pton on MacOS accepts leading zeros...
+      // inet_pton on Linux and Windows doesn't
+      // this is the least intrusive solution, but it is not efficient.
+      if (std::regex_match(&buffer[0], buffer + l, ::ipV4LeadingZerosRegex, std::regex_constants::match_any)) {
+        return AqlValue(AqlValueHintBool(false));
+      }
+#endif
       return AqlValue(AqlValueHintBool(true));
     }
   }

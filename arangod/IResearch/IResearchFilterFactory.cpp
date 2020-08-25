@@ -2402,7 +2402,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
   }
 
   // optional (3 - First) argument defines transpositions
-  bool withTranspositions = false;
+  bool withTranspositions = true;
   if (3 - First < argc) {
     res = ElementTraits::evaluateArg(withTranspositions, tmpValue, funcName, args, 3 - First, isFilter, ctx);
 
@@ -3178,22 +3178,36 @@ arangodb::Result fromFuncStartsWith(
   ++currentArgNum;
 
   // 2nd argument defines a value or array of values
-  std::vector<ScopedAqlValue> prefixValues;
-  std::vector<irs::string_ref> prefixes;
+  auto const* prefixesNode = args.getMemberUnchecked(currentArgNum);
+
+  if (!prefixesNode) {
+    return error::invalidAttribute(funcName, currentArgNum + 1);
+  }
+
+  ScopedAqlValue prefixesValue(*prefixesNode);
+
+  if (!filter && !prefixesValue.isConstant()) {
+    return {};
+  }
+
+  if (!prefixesValue.execute(ctx)) {
+    return error::failedToEvaluate(funcName, currentArgNum + 1);
+  }
+
+  std::vector<std::pair<ScopedAqlValue, irs::string_ref>> prefixes;
   ScopedAqlValue minMatchCountValue;
   auto minMatchCount = FilterConstants::DefaultStartsWithMinMatchCount;
-  auto const* astPrefixes = args.getMemberUnchecked(currentArgNum);
-  TRI_ASSERT(astPrefixes);
-  auto const isMultiPrefix = astPrefixes->isArray();
+  bool const isMultiPrefix = prefixesValue.isArray();
   if (isMultiPrefix) {
-    auto size = astPrefixes->numMembers();
+    auto const size = prefixesValue.size();
     if (size > 0) {
-      prefixValues.resize(size);
-      prefixes.resize(size);
+      prefixes.reserve(size);
       for (size_t i = 0; i < size; ++i) {
-        auto rv = evaluateArg(prefixes[i], prefixValues[i], funcName, *astPrefixes, i, filter != nullptr, ctx);
-        if (rv.fail()) {
-          return rv;
+        prefixes.emplace_back(prefixesValue.at(i), irs::string_ref::NIL);
+        auto& value = prefixes.back();
+
+        if (!value.first.getString(value.second)) {
+          return error::invalidArgument(funcName, currentArgNum + 1);
         }
       }
     }
@@ -3212,18 +3226,19 @@ arangodb::Result fromFuncStartsWith(
         return error::negativeNumber(funcName, currentArgNum + 1);
       }
     }
-  } else {
+  } else if (prefixesValue.isString()) {
     if (argc > 3) {
       return error::invalidArgsCount<error::Range<2, 3>>(funcName);
     }
-    size_t const size = 1;
-    prefixValues.resize(size);
-    prefixes.resize(size);
-    auto rv = evaluateArg(prefixes[0], prefixValues[0], funcName, args, currentArgNum, filter != nullptr, ctx);
 
-    if (rv.fail()) {
-      return rv;
+    prefixes.emplace_back();
+    auto& value = prefixes.back();
+
+    if (!prefixesValue.getString(value.second)) {
+      return error::invalidArgument(funcName, currentArgNum + 1);
     }
+  } else {
+    return error::invalidArgument(funcName, currentArgNum + 1);
   }
   ++currentArgNum;
 
@@ -3273,7 +3288,7 @@ arangodb::Result fromFuncStartsWith(
       }
       auto* opts = prefixFilter.mutable_options();
       opts->scored_terms_limit = scoringLimit;
-      irs::assign(opts->term, irs::ref_cast<irs::byte_type>(prefixes[i]));
+      irs::assign(opts->term, irs::ref_cast<irs::byte_type>(prefixes[i].second));
     }
   }
 

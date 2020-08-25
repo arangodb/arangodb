@@ -166,14 +166,13 @@ RestStatus RestAdminExecuteHandler::execute() {
 
         VPackBuilder result;
         bool handled = false;
-        int res = TRI_ERROR_FAILED;
 
         if (returnAsJSON) {
           result.openObject(true);
           result.add(StaticStrings::Error, VPackValue(false));
           result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
           if (rv->IsObject()) {
-            res = TRI_V8ToVPack(isolate, result, rv, false);
+            TRI_V8ToVPack(isolate, result, rv, false);
             handled = true;
           }
           result.close();
@@ -181,14 +180,7 @@ RestStatus RestAdminExecuteHandler::execute() {
 
         if (!handled) {
           result.clear();
-
-          VPackBuilder temp;
-          res = TRI_V8ToVPack(isolate, temp, rv, false);
-          result.add(temp.slice());
-        }
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(res);
+          TRI_V8ToVPack(isolate, result, rv, false);
         }
 
         generateResult(rest::ResponseCode::OK, result.slice());

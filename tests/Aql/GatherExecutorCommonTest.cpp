@@ -342,7 +342,7 @@ class CommonGatherExecutorTest
 
   auto assertResultValid(SharedAqlItemBlockPtr block, ResultMaps& result) -> void {
     if (block != nullptr) {
-      for (size_t row = 0; row < block->size(); ++row) {
+      for (size_t row = 0; row < block->numRows(); ++row) {
         if (block->isShadowRow(row)) {
           ShadowAqlItemRow in{block, row};
           auto val = in.getValue(0);

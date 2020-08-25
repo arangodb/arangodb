@@ -52,9 +52,9 @@ SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager
       manager.requestBlock(1, static_cast<RegisterId>(newNrRegs));
   if (isInitialized()) {
     std::unordered_set<AqlValue> cache;
-    TRI_ASSERT(getNrRegisters() <= newNrRegs);
+    TRI_ASSERT(getNumRegisters() <= newNrRegs);
     // Should we transform this to output row and reuse copy row?
-    for (RegisterId col = 0; col < getNrRegisters(); col++) {
+    for (RegisterId col = 0; col < getNumRegisters(); col++) {
       if (registers.find(col) == registers.end()) {
         continue;
       }
@@ -135,26 +135,26 @@ void InputAqlItemRow::toSimpleVelocyPack(velocypack::Options const* trxOpts,
 InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex) noexcept
     : _block(block), _baseIndex(baseIndex) {
   TRI_ASSERT(_block != nullptr);
-  TRI_ASSERT(_baseIndex < _block->size());
+  TRI_ASSERT(_baseIndex < _block->numRows());
   TRI_ASSERT(!_block->isShadowRow(baseIndex));
 }
 
 InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex) noexcept
     : _block(std::move(block)), _baseIndex(baseIndex) {
   TRI_ASSERT(_block != nullptr);
-  TRI_ASSERT(_baseIndex < _block->size());
+  TRI_ASSERT(_baseIndex < _block->numRows());
   TRI_ASSERT(!_block->isShadowRow(baseIndex));
 }
 
 AqlValue const& InputAqlItemRow::getValue(RegisterId registerId) const {
   TRI_ASSERT(isInitialized());
-  TRI_ASSERT(registerId < getNrRegisters());
+  TRI_ASSERT(registerId < getNumRegisters());
   return block().getValueReference(_baseIndex, registerId);
 }
 
 AqlValue InputAqlItemRow::stealValue(RegisterId registerId) {
   TRI_ASSERT(isInitialized());
-  TRI_ASSERT(registerId < getNrRegisters());
+  TRI_ASSERT(registerId < getNumRegisters());
   AqlValue const& a = block().getValueReference(_baseIndex, registerId);
   if (!a.isEmpty() && a.requiresDestruction()) {
     // Now no one is responsible for AqlValue a
@@ -164,8 +164,8 @@ AqlValue InputAqlItemRow::stealValue(RegisterId registerId) {
   return a;
 }
 
-RegisterCount InputAqlItemRow::getNrRegisters() const noexcept {
-  return block().getNrRegs();
+RegisterCount InputAqlItemRow::getNumRegisters() const noexcept {
+  return block().numRegisters();
 }
 
 bool InputAqlItemRow::isSameBlockAndIndex(InputAqlItemRow const& other) const noexcept {
@@ -178,14 +178,14 @@ bool InputAqlItemRow::equates(InputAqlItemRow const& other,
   if (!isInitialized() || !other.isInitialized()) {
     return isInitialized() == other.isInitialized();
   }
-  TRI_ASSERT(getNrRegisters() == other.getNrRegisters());
-  if (getNrRegisters() != other.getNrRegisters()) {
+  TRI_ASSERT(getNumRegisters() == other.getNumRegisters());
+  if (getNumRegisters() != other.getNumRegisters()) {
     return false;
   }
   auto const eq = [options](auto left, auto right) {
     return 0 == AqlValue::Compare(options, left, right, false);
   };
-  for (RegisterId i = 0; i < getNrRegisters(); ++i) {
+  for (RegisterId i = 0; i < getNumRegisters(); ++i) {
     if (!eq(getValue(i), other.getValue(i))) {
       return false;
     }
@@ -208,7 +208,7 @@ InputAqlItemRow::operator bool() const noexcept { return isInitialized(); }
 
 bool InputAqlItemRow::isFirstDataRowInBlock() const noexcept {
   TRI_ASSERT(isInitialized());
-  TRI_ASSERT(_baseIndex < block().size());
+  TRI_ASSERT(_baseIndex < block().numRows());
 
   auto [shadowRowsBegin, shadowRowsEnd] = block().getShadowRowIndexesFrom(0);
 
@@ -231,7 +231,7 @@ bool InputAqlItemRow::isFirstDataRowInBlock() const noexcept {
 
 bool InputAqlItemRow::blockHasMoreDataRowsAfterThis() const noexcept {
   TRI_ASSERT(isInitialized());
-  TRI_ASSERT(_baseIndex < block().size());
+  TRI_ASSERT(_baseIndex < block().numRows());
 
   // Count the number of shadow rows after this row.
   size_t const numShadowRowsAfterCurrentRow = [this]() {
@@ -247,7 +247,7 @@ bool InputAqlItemRow::blockHasMoreDataRowsAfterThis() const noexcept {
   }();
 
   // block().size() is strictly greater than baseIndex
-  size_t const totalRowsAfterCurrentRow = block().size() - _baseIndex - 1;
+  size_t const totalRowsAfterCurrentRow = block().numRows() - _baseIndex - 1;
 
   return totalRowsAfterCurrentRow > numShadowRowsAfterCurrentRow;
 }
