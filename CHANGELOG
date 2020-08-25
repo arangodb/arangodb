@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed internal issue #747: fixed possible dangling open files in ArangoSearch
+  index after remove operations.
+
 * Make the `IS_IPV4` AQL function behave identical on MacOS as on other
   platforms. It previously allowed leading zeros in octets on MacOS,
   whereas on other platforms they were disallowed.
