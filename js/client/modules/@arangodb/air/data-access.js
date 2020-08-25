@@ -30,6 +30,7 @@ const testhelpers = require("@arangodb/air/test-helpers");
 exports.write_vertex_program = data_access_write_vertex_program;
 exports.write_vertex = write_vertex;
 exports.test = test;
+exports.benchmark = benchmark;
 
 /* returns a program that writes {"someKeyA": "someValueA, "someKeyB": "someValueB"} into every vertex */
 function data_access_write_vertex_program() {
@@ -67,7 +68,7 @@ function write_vertex(
  * Write Vertex tests
  */
 function exec_test_write_vertex_on_graph(graphSpec, amount) {
-  testhelpers.wait_for_pregel("AIR write-vertex", write_vertex(graphSpec.name));
+  let status = testhelpers.wait_for_pregel("AIR write-vertex", write_vertex(graphSpec.name));
 
   let result = db._query(`
     FOR d IN @@V
@@ -89,13 +90,66 @@ function exec_test_write_vertex_on_graph(graphSpec, amount) {
   }
 }
 
+/*
+ * Write Vertex Benchmark (AQL Comparison)
+ */
+
+function exec_benchmark_write_vertex_on_graph(graphSpec, runs) {
+  // Pregel Run
+  let statusOfRuns = [];
+  let pregelTotalRuntime = 0;
+
+  for (let i = 0; i < runs; i++) {
+    statusOfRuns.push(testhelpers.wait_for_pregel("AIR write-vertex", write_vertex(graphSpec.name)));
+  }
+
+  statusOfRuns.forEach((status) => {
+    pregelTotalRuntime += status.totalRuntime;
+  });
+
+  // AQL Run
+  let statusOfAqlRuns = [];
+  let aqlTotalRuntime = 0;
+  for (let i = 0; i < runs; i++) {
+    statusOfAqlRuns.push(db._query(`
+    FOR d IN @@V
+    UPDATE { _key: d._key, someKeyA: "someValueA", someKeyB: "someValueB" } IN @@V`,
+      {
+        "@V": graphSpec.vname
+      }).getExtra());
+  }
+  statusOfAqlRuns.forEach((status) => {
+    aqlTotalRuntime += status.stats.executionTime;
+  });
+
+  let avgPregel = (pregelTotalRuntime / runs).toFixed(4);
+  let avgAql = (aqlTotalRuntime / runs).toFixed(4);
+  internal.print("A run in Pregel took about: " + avgPregel + " seconds.");
+  internal.print("A run in AQL took about: " + avgAql + " seconds.");
+  if (avgPregel < avgAql) {
+    internal.print("Pregel execution was faster, diff: " + (avgAql - avgPregel).toFixed(4));
+  } else {
+    internal.print("Pregel execution was slower, diff: " + (avgPregel - avgAql).toFixed(4));
+  }
+}
+
 function exec_test_data_access() {
+  // write vertex validation
   exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1), 100);
   exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9), 1000);
   exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18), 10000);
 }
 
+function exec_benchmark_data_access() {
+  // write vertex benchmark
+  exec_benchmark_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph500000", 500000, 1), 5);
+}
+
 // run tests
 function test() {
   exec_test_data_access();
+}
+
+function benchmark() {
+  exec_benchmark_data_access();
 }
