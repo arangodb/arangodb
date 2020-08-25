@@ -133,6 +133,9 @@ function exec_test_write_vertex_on_graph(graphSpec, amount) {
 /*
  * Read Vertex tests
  */
+
+// TODO: Also add tests for nested paths e.g.: {a: {b: "value"}}
+
 function exec_test_read_vertex_on_graph(graphSpec, expectedKeys) {
   let status = testhelpers.wait_for_pregel("AIR write-vertex", read_vertex(graphSpec.name, expectedKeys));
 
