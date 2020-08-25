@@ -106,7 +106,9 @@ greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
 
   if (auto iter = vertexData()._vertexAccumulators.find(accumId);
       iter != std::end(vertexData()._vertexAccumulators)) {
-    return iter->second->getValueIntoBuilder(result);
+    return iter->second->getValueIntoBuilder(result).mapError([](auto &err) {
+      err.wrapMessage("when getting value of accumulator");
+    });
   }
   return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                               "` not found");
@@ -124,7 +126,9 @@ greenspun::EvalResult VertexComputation::air_accumSet(greenspun::Machine& ctx,
 
   if (auto iter = vertexData()._vertexAccumulators.find(std::string{accumId});
       iter != std::end(vertexData()._vertexAccumulators)) {
-    return iter->second->setBySlice(value);
+    return iter->second->setBySlice(value).mapError([](auto &err) {
+      err.wrapMessage("when setting value of accumulator by slice");
+    });
   }
   return greenspun::EvalError("accumulator `" + std::string{accumId} +
                               "` not found");
@@ -141,7 +145,9 @@ greenspun::EvalResult VertexComputation::air_accumClear(greenspun::Machine& ctx,
 
   if (auto iter = vertexData()._vertexAccumulators.find(accumId);
       iter != std::end(vertexData()._vertexAccumulators)) {
-    return iter->second->clear();
+    return iter->second->clear().mapError([](auto &err) {
+      err.wrapMessage("when clearing accumulator");
+    });
   }
   return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                               "` not found");
