@@ -139,14 +139,14 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
     }
 
     if (!TRI_IsRegularFile(path.c_str())) {
-      std::string msg = std::string("cannot locate '") + path +
-                        "'; please make sure it is available; "
-                        "the variable ICU_DATA='";
+      std::string msg = std::string("failed to initialize ICU library. Could not locate '")
+                        + path + "'. Please make sure it is available. "
+                        "The environment variable ICU_DATA";
       std::string icupath;
       if (TRI_GETENV("ICU_DATA", icupath)) {
-        msg += icupath;
+        msg += "='" + icupath + "'";
       }
-      msg += "' should point to the directory containing '" + fn + "'";
+      msg += " should point to the directory containing '" + fn + "'";
 
       LOG_TOPIC("0de77", FATAL, arangodb::Logger::FIXME) << msg;
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
