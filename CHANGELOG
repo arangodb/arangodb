@@ -1,6 +1,8 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
-
+* Fixed internal issue #747: fixed possible dangling open files in ArangoSearch index
+  after remove operations
+  
 * Fixed internal issue #744: LIMIT with only offset and constrained heap
   optimization will use estimation value for ArangoSearch views.
 
