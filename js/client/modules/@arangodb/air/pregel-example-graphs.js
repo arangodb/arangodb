@@ -206,7 +206,7 @@ function createCircle(graphName, numberOfVertices, numberOfShards) {
   return { vname: vname, ename: ename };
 }
 
-function createLineGraph(graphName, numberOfVertices, numberOfShards) {
+function createLineGraph(graphName, numberOfVertices, numberOfShards, vertexKeysToInsert) {
   const vname = graphName + "_V";
   const ename = graphName + "_E";
 
@@ -224,7 +224,16 @@ function createLineGraph(graphName, numberOfVertices, numberOfShards) {
   var vids;
 
   for (let i = 0; i < numberOfVertices; i++) {
-    vs.push({ id: "" + i });
+    if (vertexKeysToInsert) {
+      let toInsert = {};
+      vertexKeysToInsert.forEach((key) => {
+        toInsert[key] = i;
+      });
+      toInsert.id = i;
+      vs.push(toInsert);
+    } else {
+      vs.push({ id: "" + i });
+    }
   }
   vids = db._collection(vname).save(vs);
 
