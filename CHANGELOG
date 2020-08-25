@@ -2,7 +2,7 @@ devel
 -----
 
 * Fixed: More cases in AQL can now react to a query being killed, so reaction
-  time to query abbortion is now shorted. This was a regression in comparisson
+  time to query abortion is now shortened. This was a regression in comparison
   to 3.6 series.
 
 * Fixed internal issue #741: STARTS_WITH fails to accept 'array' as variable.
