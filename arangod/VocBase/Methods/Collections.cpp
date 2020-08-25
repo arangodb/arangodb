@@ -339,7 +339,6 @@ Result Collections::create(TRI_vocbase_t& vocbase,
           factor = std::max(vocbase.replicationFactor(), cl.systemReplicationFactor());
         }
         helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
-#ifdef USE_ENTERPRISE
       } else {
         // the combination if "isSmart" and replicationFactor "satellite" does not make any sense.
         // note: replicationFactor "satellite" can also be expressed as replicationFactor 0.
@@ -353,7 +352,6 @@ Result Collections::create(TRI_vocbase_t& vocbase,
           events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_BAD_PARAMETER);
           return {TRI_ERROR_BAD_PARAMETER, "invalid combination of 'isSmart' and 'satellite' replicationFactor"};
         }
-#endif
       }
 
       if (!isSystemName) {
