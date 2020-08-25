@@ -51,12 +51,11 @@ size_t GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
 
 void filterDocumentData(VPackBuilder& tmpBuilder, VPackSlice const& arraySlice,
                         arangodb::velocypack::Slice& document) {
+  tmpBuilder.openObject();
+
   for (auto&& key : VPackArrayIterator(arraySlice)) {
     if (key.isString()) {
-      {
-        VPackObjectBuilder ob(&tmpBuilder);
-        tmpBuilder.add(key.copyString(), document.get(key.stringRef()));
-      }
+      tmpBuilder.add(key.copyString(), document.get(key.stringRef()));
     } else if (key.isArray()) {
       std::vector<VPackStringRef> path;
       size_t pathLength = key.length();
@@ -89,16 +88,17 @@ void filterDocumentData(VPackBuilder& tmpBuilder, VPackSlice const& arraySlice,
       TRI_ASSERT(false);
     }
   }
+  tmpBuilder.close();
 }
 
 // Extract vertex data from vertex document into target
 void GraphFormat::copyVertexData(std::string const& documentId,
                                  arangodb::velocypack::Slice vertexDocument,
                                  vertex_type& targetPtr) {
-  if (targetPtr._dataAccess.readVertex->slice().isArray()) {
+  if (_dataAccess.readVertex->slice().isArray()) {
     // copy only specified keys/key-paths to document
     VPackBuilder tmpBuilder;
-    filterDocumentData(tmpBuilder, targetPtr._dataAccess.readVertex->slice(), vertexDocument);
+    filterDocumentData(tmpBuilder, _dataAccess.readVertex->slice(), vertexDocument);
     targetPtr.reset(_vertexAccumulatorDeclarations, _customDefinitions,
                     _dataAccess, documentId, tmpBuilder.slice(), _vertexIdRange++);
   } else {
@@ -155,7 +155,7 @@ bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
   } else {
     VPackObjectBuilder guard(&b, _resultField);
     for (auto&& acc : ptr->_vertexAccumulators) {
-      // this will be obsolete soon
+      // (copy all) this is the default if no writeVertex program is set
       b.add(VPackValue(acc.first));
       if (auto res = acc.second->finalizeIntoBuilder(b); res.fail()) {
         LOG_DEVEL << "finalize program failed: " << res.error().toString();
