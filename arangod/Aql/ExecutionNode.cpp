@@ -1769,11 +1769,11 @@ CostEstimate LimitNode::estimateCost() const {
 
   size_t estimatedNrItems = estimate.estimatedNrItems;
   if (estimatedNrItems >= _offset) {
-    estimatedNrItems -= _offset;
     estimate.estimatedCost += _offset * skipCost;
+    estimatedNrItems -= _offset;
   } else {
+    estimate.estimatedCost += estimatedNrItems * skipCost;
     estimatedNrItems = 0;
-    estimate.estimatedCost += (_offset - estimatedNrItems) * skipCost;
   }
   estimate.estimatedNrItems =
       (std::min)(_limit, estimatedNrItems);
