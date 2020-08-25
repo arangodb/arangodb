@@ -51,9 +51,9 @@ exports.add_circle = add_circle;
 
 // complete graph
 function add_complete(graph, vids) {
-  for (i = 0; i < vids.length; i++) {
-    for (j = 0; j < vids.length; j++) {
-      if (i != j) {
+  for (let i = 0; i < vids.length; i++) {
+    for (let j = 0; j < vids.length; j++) {
+      if (i !== j) {
         graph.edges.push([vids[i], vids[j]]);
       }
     }
@@ -62,16 +62,16 @@ function add_complete(graph, vids) {
 exports.add_complete = add_complete;
 
 function add_binary_tree(graph, vids) {
-  var i = 0;
+  let i = 0;
 
-  while(i < vids.length) {
-    if(2*i + 1 < vids.length) {
-      graph.edges.push([vids[i], vids[2*i + 1]]);
+  while (i < vids.length) {
+    if (2 * i + 1 < vids.length) {
+      graph.edges.push([vids[i], vids[2 * i + 1]]);
     }
-    if(2*i + 2 < vids.length) {
-      graph.edges.push([vids[i], vids[2*i + 2]]);
+    if (2 * i + 2 < vids.length) {
+      graph.edges.push([vids[i], vids[2 * i + 2]]);
     }
-    i = i+1;
+    i = i + 1;
   }
 }
 exports.add_binary_tree = add_binary_tree;

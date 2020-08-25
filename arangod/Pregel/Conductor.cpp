@@ -837,9 +837,10 @@ VPackBuilder Conductor::toVelocyPack() const {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));
   }
-  result.add(VPackValue("masterContext"));
-  _masterContext->serializeValues(result);
-
+  if (_masterContext) {
+    result.add(VPackValue("masterContext"));
+    _masterContext->serializeValues(result);
+  }
   result.close();
   return result;
 }

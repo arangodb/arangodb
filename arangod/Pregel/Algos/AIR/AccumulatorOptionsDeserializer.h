@@ -66,7 +66,6 @@ enum class AccumulatorValueType {
 struct AccumulatorOptions {
   AccumulatorType type;
   AccumulatorValueType valueType;
-  bool storeSender;
   std::optional<std::string> customType;
   std::optional<VPackBuilder> parameters;
 };
