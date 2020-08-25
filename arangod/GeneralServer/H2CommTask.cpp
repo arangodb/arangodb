@@ -433,7 +433,7 @@ void H2CommTask<T>::setIOTimeout() {
     if (idle || writeTimeout) {
       // _numProcessing == 0 also if responses wait for writing
       if (me._numProcessing.load(std::memory_order_relaxed) == 0) {
-        LOG_TOPIC("5c1e0", INFO, Logger::REQUESTS)
+        LOG_TOPIC("5d6f1", INFO, Logger::REQUESTS)
             << "keep alive timeout, closing stream!";
         static_cast<GeneralCommTask<T>&>(*s).close(ec);
       } else {
