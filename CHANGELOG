@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed: More cases in AQL can now react to a query being killed, so reaction
+  time to query abortion is now shortened. This was a regression in comparison
+  to 3.6 series.
+
 * Support projections on sub-attributes (e.g. `a.b.c`).
 
   In previous versions of ArangoDB, projections were only supported on 
