@@ -26,7 +26,7 @@
 #include "store/store_utils.hpp"
 #include "utils/automaton_utils.hpp"
 #include "utils/levenshtein_utils.hpp"
-#include "utils/fst_table_matcher.hpp"
+#include "utils/fstext/fst_table_matcher.hpp"
 #include "utils/utf8_utils.hpp"
 
 using namespace irs::literals;

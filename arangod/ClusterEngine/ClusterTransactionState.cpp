@@ -81,7 +81,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   updateStatus(transaction::Status::RUNNING);
   _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted++;
 
-  transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction());
+  transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
   setRegistered();
 
   cleanup.cancel();

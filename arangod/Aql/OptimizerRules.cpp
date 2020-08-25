@@ -788,14 +788,6 @@ std::string getSingleShardId(arangodb::aql::ExecutionPlan const* plan,
 
 bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
                                  arangodb::aql::LimitNode& limitNode) {
-  auto const* loop = sortNode.getLoop();
-  if (loop && arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
-    // since currently view node doesn't provide any
-    // useful estimation, we apply heap optimization
-    // unconditionally
-    return true;
-  }
-
   size_t input = sortNode.getCost().estimatedNrItems;
   size_t output = limitNode.limit() + limitNode.offset();
 
@@ -6301,7 +6293,15 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
 
     while (current != nullptr) {
       if (current->getType() == EN::COLLECT) {
+        if (subqueryNode->isInInnerLoop()) {
+          eligible = false;
+          break;
+        }
         if (ExecutionNode::castTo<CollectNode const*>(current)->hasOutVariable()) {
+          // COLLECT ... INTO captures all existing variables in the scope.
+          // if we move the subquery from one scope into another, we will end up with
+          // different variables captured, so we must not apply the optimization in
+          // this case.
           eligible = false;
           break;
         }

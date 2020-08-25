@@ -1,4 +1,0 @@
-tests/test_main
-tests/*.o
-*.*~
-Makefile~

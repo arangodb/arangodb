@@ -53,7 +53,7 @@ template<
   return sum >= lhs && sum >= rhs;
 }
 
-inline size_t roundup_power2(size_t v) noexcept {
+inline constexpr size_t roundup_power2(size_t v) noexcept {
   v--;
   v |= v >> 1;
   v |= v >> 2;
