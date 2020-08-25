@@ -47,12 +47,12 @@ GlobalTailingSyncer::GlobalTailingSyncer(ReplicationApplierConfiguration const& 
 }
 
 std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
-  TRI_ASSERT(!_state.master.endpoint.empty());
-  TRI_ASSERT(_state.master.serverId.isSet());
-  TRI_ASSERT(_state.master.majorVersion != 0);
+  TRI_ASSERT(!_state.leader.endpoint.empty());
+  TRI_ASSERT(_state.leader.serverId.isSet());
+  TRI_ASSERT(_state.leader.majorVersion != 0);
 
-  if (_state.master.majorVersion < 3 ||
-      (_state.master.majorVersion == 3 && _state.master.minorVersion <= 2)) {
+  if (_state.leader.majorVersion < 3 ||
+      (_state.leader.majorVersion == 3 && _state.leader.minorVersion <= 2)) {
     std::string err =
         "You need >= 3.3 to perform the replication of an entire server";
     LOG_TOPIC("75fa1", ERR, Logger::REPLICATION) << err;
@@ -76,14 +76,14 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
     return false;
   }
 
-  if (_state.master.majorVersion < 3 ||
-      (_state.master.majorVersion == 3 && _state.master.minorVersion <= 2)) {
+  if (_state.leader.majorVersion < 3 ||
+      (_state.leader.majorVersion == 3 && _state.leader.minorVersion <= 2)) {
     // globallyUniqueId only exists in 3.3 and higher
     return false;
   }
 
   if (!_queriedTranslations) {
-    // no translations yet... query master inventory to find names of all
+    // no translations yet... query leader inventory to find names of all
     // collections
     try {
       GlobalInitialSyncer init(_state.applier);
@@ -93,7 +93,7 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
 
       if (res.fail()) {
         LOG_TOPIC("e25ae", ERR, Logger::REPLICATION)
-            << "got error while fetching master inventory for collection name "
+            << "got error while fetching leader inventory for collection name "
                "translations: "
             << res.errorMessage();
         return false;

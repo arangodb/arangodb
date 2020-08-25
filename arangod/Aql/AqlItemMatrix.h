@@ -65,7 +65,7 @@ class AqlItemMatrix {
   /**
    * @brief Number of registers, i.e. width of the matrix.
    */
-  RegisterCount getNrRegisters() const noexcept;
+  RegisterCount getNumRegisters() const noexcept;
 
   /**
    * @brief Test if this matrix is empty

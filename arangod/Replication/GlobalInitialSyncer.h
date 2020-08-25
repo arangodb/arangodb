@@ -55,8 +55,8 @@ class GlobalInitialSyncer final : public InitialSyncer {
   Result fetchInventory(arangodb::velocypack::Builder& builder);
 
   /// @brief add or remove databases such that the local inventory mirrors the
-  /// masters
-  Result updateServerInventory(velocypack::Slice const& masterDatabases);
+  /// leader's
+  Result updateServerInventory(velocypack::Slice const& leaderDatabases);
 };
 }  // namespace arangodb
 

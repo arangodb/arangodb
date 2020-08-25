@@ -126,7 +126,7 @@ auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult
   choosenMap.reserve(blockMap.size());
 
   if (block != nullptr) {
-    for (size_t i = 0; i < block->size(); ++i) {
+    for (size_t i = 0; i < block->numRows(); ++i) {
       if (block->isShadowRow(i)) {
         // ShadowRows need to be added to all Clients
         for (auto const& [key, value] : blockMap) {

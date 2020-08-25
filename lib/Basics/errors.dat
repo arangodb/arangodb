@@ -148,11 +148,11 @@ ERROR_ARANGO_IO_ERROR,1305,"storage engine I/O error","Will be raised when stora
 ## ArangoDB replication errors
 ################################################################################
 
-ERROR_REPLICATION_NO_RESPONSE,1400,"no response","Will be raised when the replication applier does not receive any or an incomplete response from the master."
-ERROR_REPLICATION_INVALID_RESPONSE,1401,"invalid response","Will be raised when the replication applier receives an invalid response from the master."
-ERROR_REPLICATION_MASTER_ERROR,1402,"master error","Will be raised when the replication applier receives a server error from the master."
-ERROR_REPLICATION_MASTER_INCOMPATIBLE,1403,"master incompatible","Will be raised when the replication applier connects to a master that has an incompatible version."
-ERROR_REPLICATION_MASTER_CHANGE,1404,"master change","Will be raised when the replication applier connects to a different master than before."
+ERROR_REPLICATION_NO_RESPONSE,1400,"no response","Will be raised when the replication applier does not receive any or an incomplete response from the leader."
+ERROR_REPLICATION_INVALID_RESPONSE,1401,"invalid response","Will be raised when the replication applier receives an invalid response from the leader."
+ERROR_REPLICATION_LEADER_ERROR,1402,"leader error","Will be raised when the replication applier receives a server error from the leader."
+ERROR_REPLICATION_LEADER_INCOMPATIBLE,1403,"leader incompatible","Will be raised when the replication applier connects to a leader that has an incompatible version."
+ERROR_REPLICATION_LEADER_CHANGE,1404,"leader change","Will be raised when the replication applier connects to a different leader than before."
 ERROR_REPLICATION_LOOP,1405,"loop detected","Will be raised when the replication applier is asked to connect to itself for replication."
 ERROR_REPLICATION_UNEXPECTED_MARKER,1406,"unexpected marker","Will be raised when an unexpected marker is found in the replication log stream."
 ERROR_REPLICATION_INVALID_APPLIER_STATE,1407,"invalid applier state","Will be raised when an invalid replication applier state file is found."

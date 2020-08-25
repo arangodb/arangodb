@@ -65,7 +65,7 @@ class TailingSyncer : public Syncer {
   Result run();
   
  protected:
-  /// @brief decide based on _masterInfo which api to use
+  /// @brief decide based on _leaderInfo which api to use
   virtual std::string tailingBaseUrl(std::string const& command);
 
   /// @brief set the applier progress
@@ -136,7 +136,7 @@ class TailingSyncer : public Syncer {
   Result applyLog(httpclient::SimpleHttpResult*, TRI_voc_tick_t firstRegularTick,
                   ApplyStats& applyStats, uint64_t& ignoreCount);
 
-  /// @brief perform a continuous sync with the master
+  /// @brief perform a continuous sync with the leader
   Result runContinuousSync();
 
   /// @brief fetch the open transactions we still need to complete
@@ -160,17 +160,17 @@ class TailingSyncer : public Syncer {
   /// @param firstRegularTick if we got openTransactions server will return the
   ///                         only operations belonging to these for smaller
   ///                         ticks
-  void fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+  void fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
                       TRI_voc_tick_t fetchTick, TRI_voc_tick_t lastScannedTick,
                       TRI_voc_tick_t firstRegularTick);
 
   /// @brief apply continuous synchronization data from a batch
-  arangodb::Result processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+  arangodb::Result processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
                                     TRI_voc_tick_t& fetchTick, TRI_voc_tick_t& lastScannedTick,
                                     TRI_voc_tick_t firstRegularTick, uint64_t& ignoreCount,
                                     bool& worked, bool& mustFetchBatch);
 
-  /// @brief determines if we can work in parallel on master and slave
+  /// @brief determines if we can work in parallel on leader and follower
   void checkParallel();
 
   arangodb::Result removeSingleDocument(arangodb::LogicalCollection* coll, std::string const& key);
@@ -187,14 +187,12 @@ class TailingSyncer : public Syncer {
 
   /// @brief whether or not the replication state file has been written at least
   /// once with non-empty values. this is required in situations when the
-  /// replication applier is manually started and the master has absolutely no
-  /// new data to provide, and the slave get shut down. in that case, the state
+  /// replication applier is manually started and the leader has absolutely no
+  /// new data to provide, and the follower gets shut down. in that case, the state
   /// file would never have been written with the initial start tick, so the
-  /// start tick would be lost. re-starting the slave and the replication
-  /// applier
-  /// with the ticks from the file would then result in a "no start tick
-  /// provided"
-  /// error
+  /// start tick would be lost. re-starting the follower and the replication
+  /// applier with the ticks from the file would then result in a "no start tick
+  /// provided" error
   bool _hasWrittenState;
 
   /// @brief initial tick for continuous synchronization
@@ -210,8 +208,7 @@ class TailingSyncer : public Syncer {
   bool _useTick;
 
   /// @brief whether or not the specified from tick must be present when
-  /// fetching
-  /// data from a master
+  /// fetching data from a leader
   bool _requireFromPresent;
 
   /// @brief ignore rename, create and drop operations for collections
@@ -220,7 +217,7 @@ class TailingSyncer : public Syncer {
   /// @brief ignore create / drop database
   bool _ignoreDatabaseMarkers;
 
-  /// @brief whether or not master & slave can work in parallel
+  /// @brief whether or not leader and follower can work in parallel
   bool _workInParallel;
 
   /// @brief which transactions were open and need to be treated specially

@@ -508,6 +508,15 @@ function iResearchAqlTestSuite () {
       });
     },
 
+    testStartsWithFilterArrayWithoutMinMatchCountViaReference : function () {
+      var result = db._query("LET x = NOOPT(['fo', 'g']) FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, x) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
+        assertEqual(res.a, 'foo');
+      });
+    },
+
     testStartsWithFilterEmptyArray : function () {
       var result = db._query("FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, []) OPTIONS { waitForSync : true } RETURN doc").toArray();
 
