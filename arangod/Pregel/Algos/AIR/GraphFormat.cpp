@@ -109,8 +109,15 @@ void GraphFormat::copyVertexData(std::string const& documentId,
 }
 
 void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_type& targetPtr) {
-  // TODO: implement filtering
-  targetPtr.reset(edgeDocument);
+  if (_dataAccess.readEdge->slice().isArray()) {
+    // copy only specified keys/key-paths to document
+    VPackBuilder tmpBuilder;
+    filterDocumentData(tmpBuilder, _dataAccess.readEdge->slice(), edgeDocument);
+    targetPtr.reset(tmpBuilder.slice());
+  } else {
+    // copy all
+    targetPtr.reset(edgeDocument);
+  }
 }
 
 bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
