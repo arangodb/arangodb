@@ -66,15 +66,13 @@ function write_vertex(
 }
 
 /* returns a program that reads only particular data instead of copying all vertex data */
-function data_access_read_vertex_program() {
+function data_access_read_vertex_program(expectedKeys) {
   return {
     dataAccess: {
       writeVertex: [
         "attrib-set", ["dict"], "availableKeys", ["accum-ref", "copiedDocumentKeys"]
       ],
-      readVertex: [
-        "a", "b"
-      ]
+      readVertex: expectedKeys
     },
     maxGSS: 2,
     vertexAccumulators: {
@@ -97,11 +95,11 @@ function data_access_read_vertex_program() {
 }
 
 function read_vertex(
-  graphName) {
+  graphName, expectedKeys) {
   return pregel.start(
     "air",
     graphName,
-    data_access_read_vertex_program()
+    data_access_read_vertex_program(expectedKeys)
   );
 }
 
@@ -136,7 +134,7 @@ function exec_test_write_vertex_on_graph(graphSpec, amount) {
  * Read Vertex tests
  */
 function exec_test_read_vertex_on_graph(graphSpec, expectedKeys) {
-  let status = testhelpers.wait_for_pregel("AIR write-vertex", read_vertex(graphSpec.name));
+  let status = testhelpers.wait_for_pregel("AIR write-vertex", read_vertex(graphSpec.name, expectedKeys));
 
   let result = db._query(`
     FOR d IN @@V
@@ -149,7 +147,7 @@ function exec_test_read_vertex_on_graph(graphSpec, expectedKeys) {
   let finalResult = false;
 
   for (let res of arrResult) {
-    if ((res.indexOf("a") > -1) && (res.indexOf("b") > -1) && res.length === 2) {
+    if ((res.indexOf(expectedKeys[0]) > -1) && (res.indexOf(expectedKeys[1]) > -1) && res.length === 2) {
       finalResult = true;
     } else {
       finalResult = false;
@@ -216,7 +214,10 @@ function exec_test_data_access() {
   //exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18), 10000);
 
   // read vertex validation
-  exec_test_read_vertex_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1, ["a", "b", "c"]), ["a", "b", "c"]);
+  exec_test_read_vertex_on_graph(
+    examplegraphs.create_line_graph("LineGraph100", 100, 1, ["a", "b", "c"]),
+    ["a", "b"]
+  );
 }
 
 function exec_benchmark_data_access() {
