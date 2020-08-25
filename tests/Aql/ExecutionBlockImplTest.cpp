@@ -1444,6 +1444,36 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_only) {
   ValidateResult(builder, skipped, block, outReg);
 }
 
+// Test that killQuery is honored, whenever we ask the Block
+
+// Test a simple produce block. that has is supposed to write 1000 rows.
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_fail_on_kill) {
+  auto singleton = createSingleton();
+
+  auto builder = std::make_shared<VPackBuilder>();
+  builder->openArray();
+  for (size_t i = 0; i < 1000; ++i) {
+    builder->add(VPackValue(i));
+  }
+  builder->close();
+  RegisterId outReg = 0;
+  auto producer = produceBlock(singleton.get(), builder, outReg);
+
+  auto const& call = getCall();
+  auto stack = buildStack(call);
+  // Kill the query.
+  fakedQuery->kill();
+  try {
+    // We killed the query, so any call to execute should fail
+    std::ignore = producer->execute(stack);
+    FAIL() << "Did not throw an exception";
+  } catch (arangodb::basics::Exception const& e) {
+    ASSERT_EQ(e.code(), TRI_ERROR_QUERY_KILLED);
+  } catch (...) {
+    FAIL() << "Got unexpected exception";
+  }
+}
+
 // Test two consecutive produce blocks.
 // The first writes 10 lines
 // The second another 10 per input (100 in total)
