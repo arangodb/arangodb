@@ -68,8 +68,8 @@ class DatabaseInitialSyncer final : public InitialSyncer {
     replutils::Connection& connection;
     /// @brief whether or not we have flushed the WAL on the remote server
     bool flushed;  // TODO worker safety
-    /// @brief info about master node (from the base Syncer)
-    replutils::MasterInfo& master;
+    /// @brief info about leader node (from the base Syncer)
+    replutils::LeaderInfo& leader;
     /// @brief the progress info (from the base InitialSyncer)
     replutils::ProgressInfo& progress;  // TODO worker safety
     /// @brief the syncer state (from the base Syncer)
@@ -79,7 +79,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
 
     explicit Configuration(ReplicationApplierConfiguration const&,
                            replutils::BatchInfo&,
-                           replutils::Connection&, bool, replutils::MasterInfo&,
+                           replutils::Connection&, bool, replutils::LeaderInfo&,
                            replutils::ProgressInfo&, SyncerState& state, TRI_vocbase_t&);
 
     bool isChild() const;  // TODO worker safety
@@ -130,11 +130,11 @@ class DatabaseInitialSyncer final : public InitialSyncer {
 
   /// @brief insert the batch ID for use in globalinitialsyncer
   // TODO worker safety
-  void useAsChildSyncer(replutils::MasterInfo const& info, SyncerId const syncerId,
+  void useAsChildSyncer(replutils::LeaderInfo const& info, SyncerId const syncerId,
                         uint64_t batchId, double batchUpdateTime) {
     _state.syncerId = syncerId;
     _state.isChildSyncer = true;
-    _state.master = info;
+    _state.leader = info;
     _config.batch.id = batchId;
     _config.batch.updateTime = batchUpdateTime;
   }
@@ -205,7 +205,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result handleCollection(arangodb::velocypack::Slice const&,
                           arangodb::velocypack::Slice const&, bool incremental, SyncPhase);
 
-  /// @brief handle the inventory response of the master
+  /// @brief handle the inventory response of the leader
   Result handleCollectionsAndViews(arangodb::velocypack::Slice const& colls,
                                    arangodb::velocypack::Slice const& views,
                                    bool incremental);

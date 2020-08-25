@@ -4,6 +4,47 @@ devel
 * Fixed issue BTS-169: cost estimation for LIMIT nodes showed wrong number of
   estimated items.
 
+* Add attributes `database` and `user` when tracking current and slow AQL queries.
+  `database` contains the name of the database the query is/was running in, `user`
+  contains the name of the user that started the query.
+  These attributes will be returned in addition when calling the APIs for current
+  and slow query inspection:
+  * GET `/_api/query/current` and `require("arangodb/aql/queries").current()`
+  * GET `/_api/query/slow` and `require("arangodb/aql/queries").slow()`
+
+  The "slow query" log message has also been augmented to contain the database
+  name and the user name.
+
+  The `user` attribute is now also displayed in the web interface in the "Running
+  queries" and "Slow queries" views.
+
+* Introduce an internal high-water mark for the maximum row number that was
+  written to in an AqlItemBlock. Using this number several operations on the
+  whole block, such as cleaning up or copying can be made more efficient when
+  run on only partially filled blocks.
+
+* Updated arangosync to 0.7.10.
+
+* Make UPSERT statement with collection bind parameter behave identical to its
+  non-bind parameter counterpart.
+
+  For example, the query 
+
+      FOR d IN ["key_1", "key_2", "key_3", "key_1"] 
+        UPSERT d INSERT d UPDATE d IN @@collection
+
+  would fail with "unique constraint violation" when used with a collection bind
+  parameter, but the equivalent query
+      
+      FOR d IN ["key_1", "key_2", "key_3", "key_1"] 
+        UPSERT d INSERT d UPDATE d IN collectionName
+
+  with a hard-coded collection name would succeed. This is now fixed so both
+  queries have the same behavior (no failure) in single server. 
+
+* Fixed internal issue #744: LIMIT with only offset and constrained heap
+  optimization will use estimation value for ArangoSearch views.
+
 * Fix internal issue #742: Add tick storage in index meta payload after 
   truncate operation
 
@@ -24,6 +65,20 @@ devel
   to the correct HTTP 400 "Bad parameter".
 
 * Show optimizer rules with highest execution times in explain output.
+
+* Renamed "master" to "leader" and "slave" to "follower" in replication messages.
+  This will change the contents of replication log messages as well the string
+  contents of replication-related error messages.
+
+The messages of the error codes 1402, 1403 and 1404 were also changed accordingly,
+as well as the identifiers:
+- `TRI_ERROR_REPLICATION_MASTER_ERROR` renamed to `TRI_ERROR_REPLICATION_LEADER_ERROR`
+- `TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE` renamed to `TRI_ERROR_REPLICATION_LEADER_INCOMPATIBLE`
+- `TRI_ERROR_REPLICATION_MASTER_CHANGE` renamed to `TRI_ERROR_REPLICATION_LEADER_CHANGE`
+
+  This change also renames the API endpoint `/_api/replication/make-slave` to 
+  `/_api/replication/make-follower`. The API is still available under the old
+  name, but using it is deprecated.
 
 * Fixed that dropping a vanished follower works again. An exception response
   to the replication request is now handled properly.

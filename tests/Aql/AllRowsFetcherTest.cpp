@@ -116,7 +116,7 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_done_immedia
     std::tie(state, matrix) = testee.fetchAllRows();
     ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_NE(matrix, nullptr);
-    EXPECT_EQ(1, matrix->getNrRegisters());
+    EXPECT_EQ(1, matrix->getNumRegisters());
     EXPECT_FALSE(matrix->empty());
     EXPECT_EQ(1, matrix->size());
     auto rowIndexes = matrix->produceRowIndexes();
@@ -145,7 +145,7 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_hasmore_then
     std::tie(state, matrix) = testee.fetchAllRows();
     ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_NE(matrix, nullptr);
-    EXPECT_EQ(1, matrix->getNrRegisters());
+    EXPECT_EQ(1, matrix->getNumRegisters());
     EXPECT_FALSE(matrix->empty());
     EXPECT_EQ(1, matrix->size());
     auto rowIndexes = matrix->produceRowIndexes();
@@ -178,7 +178,7 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_then_returns_d
     std::tie(state, matrix) = testee.fetchAllRows();
     ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_NE(matrix, nullptr);
-    EXPECT_EQ(1, matrix->getNrRegisters());
+    EXPECT_EQ(1, matrix->getNumRegisters());
     EXPECT_FALSE(matrix->empty());
     EXPECT_EQ(1, matrix->size());
     auto rowIndexes = matrix->produceRowIndexes();
@@ -212,7 +212,7 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_returns_hasmor
     std::tie(state, matrix) = testee.fetchAllRows();
     ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_NE(matrix, nullptr);
-    EXPECT_EQ(1, matrix->getNrRegisters());
+    EXPECT_EQ(1, matrix->getNumRegisters());
     EXPECT_FALSE(matrix->empty());
     EXPECT_EQ(1, matrix->size());
     auto rowIndexes = matrix->produceRowIndexes();
@@ -248,7 +248,7 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_does_not_wait) {
     std::tie(state, matrix) = testee.fetchAllRows();
     ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_NE(matrix, nullptr);
-    EXPECT_EQ(1, matrix->getNrRegisters());
+    EXPECT_EQ(1, matrix->getNumRegisters());
     EXPECT_FALSE(matrix->empty());
     EXPECT_EQ(6, matrix->size());
     auto rowIndexes = matrix->produceRowIndexes();
@@ -301,7 +301,7 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits) {
     std::tie(state, matrix) = testee.fetchAllRows();
     ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_NE(matrix, nullptr);
-    EXPECT_EQ(1, matrix->getNrRegisters());
+    EXPECT_EQ(1, matrix->getNumRegisters());
     EXPECT_FALSE(matrix->empty());
     EXPECT_EQ(6, matrix->size());
     auto rowIndexes = matrix->produceRowIndexes();
@@ -354,7 +354,7 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits_and_does_not_
     std::tie(state, matrix) = testee.fetchAllRows();
     ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_NE(matrix, nullptr);
-    EXPECT_EQ(1, matrix->getNrRegisters());
+    EXPECT_EQ(1, matrix->getNumRegisters());
     EXPECT_FALSE(matrix->empty());
     EXPECT_EQ(6, matrix->size());
     auto rowIndexes = matrix->produceRowIndexes();

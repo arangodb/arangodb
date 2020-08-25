@@ -36,21 +36,21 @@ SharedAqlItemBlockPtr itemBlock::concatenate(AqlItemBlockManager& manager,
                                              std::vector<SharedAqlItemBlockPtr>& blocks) {
   TRI_ASSERT(!blocks.empty());
 
-  size_t totalSize = 0;
-  RegisterCount nrRegs = 0;
+  size_t totalRows = 0;
+  RegisterCount numRegisters = 0;
   for (auto& it : blocks) {
-    totalSize += it->size();
-    if (nrRegs == 0) {
-      nrRegs = it->getNrRegs();
+    totalRows += it->numRows();
+    if (numRegisters == 0) {
+      numRegisters = it->numRegisters();
     } else {
-      TRI_ASSERT(it->getNrRegs() == nrRegs);
+      TRI_ASSERT(it->numRegisters() == numRegisters);
     }
   }
 
-  TRI_ASSERT(totalSize > 0);
-  TRI_ASSERT(nrRegs > 0);
+  TRI_ASSERT(totalRows > 0);
+  TRI_ASSERT(numRegisters > 0);
 
-  auto resultBlock = manager.requestBlock(totalSize, nrRegs);
+  auto resultBlock = manager.requestBlock(totalRows, numRegisters);
 
   size_t nextFreeRow = 0;
   for (auto& inputBlock : blocks) {

@@ -119,7 +119,7 @@ void MultiDependencySingleRowFetcher::init() {
 
 bool MultiDependencySingleRowFetcher::indexIsValid(
     const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
-  return info._currentBlock != nullptr && info._rowIndex < info._currentBlock->size();
+  return info._currentBlock != nullptr && info._rowIndex < info._currentBlock->numRows();
 }
 
 bool MultiDependencySingleRowFetcher::isDone(

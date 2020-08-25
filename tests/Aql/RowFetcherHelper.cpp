@@ -65,7 +65,7 @@ SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
     bool const returnsWaiting, ::arangodb::aql::SharedAqlItemBlockPtr input)
     : SingleRowFetcher<passBlocksThrough>(),
       _returnsWaiting(returnsWaiting),
-      _nrItems(input == nullptr ? 0 : input->size()),
+      _nrItems(input == nullptr ? 0 : input->numRows()),
       _blockSize(blockSize),
       _itemBlockManager(manager),
       _itemBlock(std::move(input)),

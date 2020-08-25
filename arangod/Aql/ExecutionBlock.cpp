@@ -163,7 +163,7 @@ void ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, Shar
 
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     auto const& [state, skipped, block] = result;
-    auto const items = block != nullptr ? block->size() : 0;
+    auto const items = block != nullptr ? block->numRows() : 0;
 
     _execNodeStats.calls += 1;
     _execNodeStats.items += skipped.getSkipCount() + items;
@@ -178,7 +178,7 @@ void ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, Shar
       size_t shadowRows = 0;
       if (block != nullptr) {
         shadowRows = block->numShadowRows();
-        rows = block->size() - shadowRows;
+        rows = block->numRows() - shadowRows;
       }
       ExecutionNode const* node = getPlanNode();
       LOG_QUERY("60bbc", INFO)
