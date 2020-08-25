@@ -42,17 +42,17 @@ class Connection : public std::enable_shared_from_this<Connection> {
   virtual ~Connection();
 
   ///  Connection state
-  ///  Disconnected <---------+
-  ///  +                      |
-  ///  |  +-------------------+--> Failed
+  ///  Created
+  ///  +
+  ///  |  +-------------------+--> Closed
   ///  |  |                   |
-  ///  v  +                   +
+  ///  v  +                +
   ///  Connecting +-----> Connected
-  enum class State {
-    Disconnected = 0,
+  enum class State : uint8_t {
+    Created = 0,
     Connecting = 1,
     Connected = 2,
-    Failed = 3  /// canceled or broken permanently (i.e. bad authentication)
+    Closed = 3  /// closed permanently
   };
 
   /// @brief Send a request to the server and wait into a response it received.
@@ -93,14 +93,8 @@ class Connection : public std::enable_shared_from_this<Connection> {
   /// @brief endpoint we are connected to
   std::string endpoint() const;
 
-  /// @brief lease a connection (prevent idle timeout)
-  virtual bool lease() = 0;
-
  protected:
   Connection(detail::ConnectionConfiguration const& conf) : _config(conf) {}
-
-  /// @brief Activate the connection.
-  virtual void start() = 0;
 
   // Invoke the configured ConnectionFailureCallback (if any)
   void onFailure(Error errorCode, const std::string& errorMessage) {
@@ -153,6 +147,12 @@ class ConnectionBuilder {
   /// @brief set the idle connection timeout (300s default)
   ConnectionBuilder& idleTimeout(std::chrono::milliseconds t) {
     _conf._idleTimeout = t;
+    return *this;
+  }
+  
+  /// @brief use an idle timeout
+  ConnectionBuilder& useIdleTimeout(bool t) {
+    _conf._useIdleTimeout = t;
     return *this;
   }
   

@@ -21,6 +21,25 @@ devel
   Previously they were handled in the CLIENT_SLOW lane, meaning that monitoring 
   requests using that API didn't get through when the queue was rather full.
 
+* Fixed issue BTS-169: cost estimation for LIMIT nodes showed wrong number of
+  estimated items.
+
+* Fixed issue #12507: SegFault when using an AQL for loop through edges.
+
+* Add attributes `database` and `user` when tracking current and slow AQL queries.
+  `database` contains the name of the database the query is/was running in, `user`
+  contains the name of the user that started the query.
+  These attributes will be returned in addition when calling the APIs for current
+  and slow query inspection:
+  * GET `/_api/query/current` and `require("arangodb/aql/queries").current()`
+  * GET `/_api/query/slow` and `require("arangodb/aql/queries").slow()`
+
+  The "slow query" log message has also been augmented to contain the database
+  name and the user name.
+
+  The `user` attribute is now also displayed in the web interface in the "Running
+  queries" and "Slow queries" views.
+
 * Introduce an internal high-water mark for the maximum row number that was
   written to in an AqlItemBlock. Using this number several operations on the
   whole block, such as cleaning up or copying can be made more efficient when
@@ -86,17 +105,38 @@ as well as the identifiers:
 * Fixed that dropping a vanished follower works again. An exception response
   to the replication request is now handled properly.
 
-* Fixed bad behaviour in agency supervision in some corner cases involving
+* Make optimizer rule "remove-filters-covered-by-index" remove FILTERs that were
+  referring to aliases of the collection variable, e.g.
+    
+      FOR doc IN collection
+        LET value = doc.indexedAttribute
+        FILTER value == ...
+
+  Previously, FILTERs that were using aliases were not removed by that optimizer
+  rule.
+  In addition, the optimizer rule "remove-unnecessary-calculations" will now run
+  again in case it successfully removed variables. This can unlock further removal
+  of unused variables in sequences such as
+
+      FOR doc IN collection
+        LET value = doc.indexedAttribute
+        LET tmp1 = value > ...
+        LET tmp2 = value < ...
+
+  when the removal of `tmp1` and `tmp2` makes it possible to also remove the 
+  calculation of `value`.
+
+* Fixed bad behavior in agency supervision in some corner cases involving
   already resigned leaders in Current.
 
 * Fixed a problem with potentially lost updates because a failover could
   happen at a wrong time or a restarted leader could come back at an
   unlucky time.
 
-* Fixed issue BTS-168: Fixed undefined behaviour that did trigger
+* Fixed issue BTS-168: Fixed undefined behavior that did trigger
   segfaults on cluster startups. It is only witnessed for
   MacOS based builds. The issue could be triggered by any network connection.
-  This behaviour is not part of any released version.
+  This behavior is not part of any released version.
 
 * Fixed issue ES-664: the optimizer rule `inline-subqueries` must pull out
   subqueries that contains a COLLECT statement if the subquery is itself called

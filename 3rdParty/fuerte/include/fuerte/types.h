@@ -189,6 +189,7 @@ struct ConnectionConfiguration {
         _idleTimeout(300000),
         _connectRetryPause(1000),
         _maxConnectRetries(3),
+        _useIdleTimeout(true),
         _authenticationType(AuthenticationType::None),
         _user(""),
         _password(""),
@@ -208,6 +209,7 @@ struct ConnectionConfiguration {
   std::chrono::milliseconds _idleTimeout;
   std::chrono::milliseconds _connectRetryPause;
   unsigned _maxConnectRetries;
+  bool _useIdleTimeout;
 
   AuthenticationType _authenticationType;
   std::string _user;
