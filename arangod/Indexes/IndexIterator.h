@@ -279,8 +279,6 @@ struct IndexIteratorOptions {
   /// @brief Whether FCalls will be evaluated entirely or just it's arguments
   /// Used when creating the condition required to build an iterator
   bool evaluateFCalls = true;
-  /// @brief force covering index access in case this would otherwise be doubtful
-  bool forceProjection = false;
   /// @brief enable caching
   bool enableCache = true;
 };

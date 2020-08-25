@@ -30,8 +30,8 @@ const _ = require('lodash');
 const fs = require('fs');
 
 const pu = require('@arangodb/process-utils');
-const rp = require('@arangodb/result-processing');
-const cu = require('@arangodb/crash-utils');
+const rp = require('@arangodb/testutils/result-processing');
+const cu = require('@arangodb/testutils/crash-utils');
 const tu = require('@arangodb/test-utils');
 const internal = require('internal');
 const platform = internal.platform;
