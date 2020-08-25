@@ -120,6 +120,7 @@ The following functions are only available when running as a vertex computation 
  * `["vertex-count"]` the number of vertices in the graph under consideration.
  * `["global-superstep"]` the current superstep the algorithm is in.
 
+ * `["this-doc"]` returns the document slice stored in vertexData
  * `["this-vertex-id"]`
  * `["this-unique-id"]`
  * `["this-pregel-id"]`
