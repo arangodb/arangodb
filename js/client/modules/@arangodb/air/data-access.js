@@ -63,12 +63,69 @@ function write_vertex(
   );
 }
 
+/* returns a program that reads only particular data instead of copying all vertex data */
+function data_access_write_vertex_program() {
+  return {
+    dataAccess: {
+      writeVertex: [
+        "attrib-set", ["attrib-set", ["dict"], "someKeyA", "someValueA"],
+        "someKeyB", "someValueB"
+      ]
+    },
+    maxGSS: 2,
+    vertexAccumulators: {},
+    phases: [{
+      name: "main",
+      initProgram: ["seq",
+        false
+      ],
+      updateProgram: ["seq",
+        false]
+    }]
+  };
+}
+
+function write_vertex(
+  graphName) {
+  return pregel.start(
+    "air",
+    graphName,
+    data_access_write_vertex_program()
+  );
+}
 
 /*
  * Write Vertex tests
  */
 function exec_test_write_vertex_on_graph(graphSpec, amount) {
+  // amount = expectation of writes that will happen
   let status = testhelpers.wait_for_pregel("AIR write-vertex", write_vertex(graphSpec.name));
+
+  let result = db._query(`
+    FOR d IN @@V
+      FILTER HAS(d, "someKeyA")
+      FILTER HAS(d, "someKeyB")
+      COLLECT WITH COUNT INTO length
+    RETURN length`,
+    {
+      "@V": graphSpec.vname
+    });
+
+  let arrResult = result.toArray()[0];
+  if (arrResult === amount) {
+    internal.print("Test succeeded.");
+    return true;
+  } else {
+    internal.print("Test failed.");
+    return false;
+  }
+}
+
+/*
+ * Read Vertex tests
+ */
+function exec_test_read_vertex_on_graph(graphSpec, expectedKeys) {
+  let status = testhelpers.wait_for_pregel("AIR write-vertex", read_vertex(graphSpec.name));
 
   let result = db._query(`
     FOR d IN @@V
@@ -138,6 +195,9 @@ function exec_test_data_access() {
   exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1), 100);
   exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9), 1000);
   exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18), 10000);
+
+  // read vertex validation
+  exec_test_read_vertex_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1), 100, ["a", "b", "c"]);
 }
 
 function exec_benchmark_data_access() {
