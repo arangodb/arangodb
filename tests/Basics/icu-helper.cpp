@@ -22,7 +22,7 @@ IcuInitializer::~IcuInitializer() {
 }
   
 void IcuInitializer::setup(char const* path) {
-  if (initialized) { 
+  if (initialized) {
     return;
   }
   initialized = true;
@@ -32,12 +32,11 @@ void IcuInitializer::setup(char const* path) {
   if (icuDataPtr == nullptr ||
       !arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("", icuDataPtr)) {
     std::string msg =
-      "cannot initialize ICU; please make sure ICU*dat is available; "
-      "the variable ICU_DATA='";
+      "failed to initialize ICU library. The environment variable ICU_DATA";
     if (getenv("ICU_DATA") != nullptr) {
-      msg += getenv("ICU_DATA");
+      msg += "='" + getenv("ICU_DATA") + "'";
     }
-    msg += "' should point the directory containing the ICU*dat file. We searched here: " + p;
+    msg += " should point to the directory containing the icudtl.dat file. We searched here: " + p;
     std::cerr << msg << std::endl;
   }
 }

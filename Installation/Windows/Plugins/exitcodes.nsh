@@ -14,6 +14,8 @@
 !define ARANGO_EXIT_COULD_NOT_LOCK 22
 !define ARANGO_EXIT_RECOVERY 23
 !define ARANGO_EXIT_DB_NOT_EMPTY 24
+!define ARANGO_EXIT_UNSUPPORTED_STORAGE_ENGINE 25
+!define ARANGO_EXIT_ICU_INITIALIZATION_FAILED 26
 
 !macro printExitCode exitCode Message DetailMessage
   Push "${exitCode}"
@@ -82,6 +84,14 @@ ${Switch} $1
 
   ${Case} 24 # EXIT_DB_NOT_EMPTY
     MessageBox MB_ICONEXCLAMATION '$2:$\r$\n>> database not empty <<$\r$\n"Will be returned when commanding to initialize a non empty directory as database"$\r$\n$3'
+  ${Break}
+
+  ${Case} 25 # EXIT_UNSUPPORTED_STORAGE_ENGINE
+    MessageBox MB_ICONEXCLAMATION '$2:$\r$\n>> unsupported storage engine <<$\r$\n"Will be returned when trying to start with an unsupported storage engine"$\r$\n$3'
+  ${Break}
+
+  ${Case} 26 # EXIT_ICU_INITIALIZATION_FAILED
+    MessageBox MB_ICONEXCLAMATION '$2:$\r$\n>> failed to initialize ICU library <<$\r$\n"Will be returned if icudtl.dat is not found, of the wrong version or invalid. Check for an incorrectly set ICU_DATA environment variable"$\r$\n$3'
   ${Break}
 
   ${Default}
