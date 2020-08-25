@@ -1411,7 +1411,7 @@ bool index_writer::consolidate(
 
   std::set<const segment_meta*> candidates;
   const auto run_id = reinterpret_cast<size_t>(&candidates);
-  
+
   // hold a reference to the last committed state to prevent files from being
   // deleted by a cleaner during the upcoming consolidation
   // use atomic_load(...) since finish() may modify the pointer
@@ -1455,9 +1455,9 @@ bool index_writer::consolidate(
     try {
       // register for consolidation
       consolidating_segments_.insert(candidates.begin(), candidates.end());
-    } catch(...) { 
+    } catch(...) {
       // rollback in case of insertion fails (finalizer below won`t handle partial insert
-      // as concurrent consolidation is free to select same candidate before finalizer 
+      // as concurrent consolidation is free to select same candidate before finalizer
       // reacquires the consolidation_lock)
       for (const auto* candidate : candidates) {
         consolidating_segments_.erase(candidate);
@@ -1566,7 +1566,7 @@ bool index_writer::consolidate(
       auto unregister_missing_cached_readers = irs::make_finally(std::move(cleanup_cached_readers));
 
       // check we didn`t added to reader cache already absent readers
-      // only if we have different index meta 
+      // only if we have different index meta
       if (committed_meta != current_committed_meta) {
         // pointers are different so check by name
         for (const auto& candidate : candidates) {
@@ -1962,7 +1962,6 @@ index_writer::pending_context_t index_writer::flush_all() {
       entry.segment_->uncomitted_modification_queries_,
       entry.modification_offset_end_
     ); // update so that can use valid value below
-
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -2140,8 +2139,8 @@ index_writer::pending_context_t index_writer::flush_all() {
 
     // write non-empty document mask
     if (!docs_mask.empty()) {
-      if (!pending_consolidation) { 
-        // if this is pending consolidation, 
+      if (!pending_consolidation) {
+        // if this is pending consolidation,
         // this segment is already in the mask (see assert below)
         // new version will be created. Remove old version from cache!
         ctx->segment_mask_.emplace(pending_segment.segment.meta);
@@ -2159,7 +2158,7 @@ index_writer::pending_context_t index_writer::flush_all() {
     to_sync.register_full_sync(segments.size());
     segments.emplace_back(std::move(pending_segment.segment));
   }
-  
+
   if (pending_candidates_count) {
     // for pending consolidation we need to filter out
     // consolidation candidates after applying them
@@ -2298,6 +2297,7 @@ index_writer::pending_context_t index_writer::flush_all() {
           }
         }
 
+        bool segment_modified{ false };
         // mask documents matching filters from all flushed segment_contexts (i.e. from new operations)
         for (auto& modifications: ctx->pending_segment_contexts_) {
           auto modifications_begin = modifications.modification_offset_begin_;
@@ -2310,9 +2310,11 @@ index_writer::pending_context_t index_writer::flush_all() {
             modifications_end - modifications_begin
           );
 
-          add_document_mask_modified_records(
-            modification_queries, flush_segment_ctx, cached_readers_
-          );
+          segment_modified |= add_document_mask_modified_records(
+            modification_queries, flush_segment_ctx, cached_readers_);
+        }
+        if (segment_modified) {
+          ctx->segment_mask_.emplace(flush_segment_ctx.segment_.meta);
         }
       }
     }
@@ -2322,12 +2324,12 @@ index_writer::pending_context_t index_writer::flush_all() {
       // if have a writer with potential update-replacement records then check if they were seen
       add_document_mask_unused_updates(segment_ctx);
 
-      // mask empty segments
+      // after mismatched replaces here could be also empty segment
+      // so masking is needed
       if (!segment_ctx.segment_.meta.live_docs_count) {
         ctx->segment_mask_.emplace(segment_ctx.segment_.meta);
         continue;
       }
-
       // write non-empty document mask
       if (!segment_ctx.docs_mask_.empty()) {
         write_document_mask(
@@ -2348,6 +2350,10 @@ index_writer::pending_context_t index_writer::flush_all() {
 
   // only flush a new index version upon a new index or a metadata change
   if (!modified) {
+    // even if nothing to commit, we may have populated readers cache! Need to cleanup.
+    if (!ctx->segment_mask_.empty()) {
+      cached_readers_.purge(ctx->segment_mask_);
+    }
     return pending_context_t();
   }
 
