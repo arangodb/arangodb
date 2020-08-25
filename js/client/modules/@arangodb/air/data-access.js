@@ -72,7 +72,6 @@ function data_access_read_vertex_program() {
       writeVertex: [
         "attrib-set", ["dict"], "availableKeys", ["accum-ref", "copiedDocumentKeys"]
       ],
-      // slice does contain "c", but we will not store it
       readVertex: [
         "a", "b"
       ]
@@ -147,17 +146,24 @@ function exec_test_read_vertex_on_graph(graphSpec, expectedKeys) {
     });
 
   let arrResult = result.toArray();
-  console.log(arrResult);
-  arrResult.forEach((res) => {
-    //console.log(res);
-  });
-  /*if (arrResult === amount) {
+  let finalResult = false;
+
+  for (let res of arrResult) {
+    if ((res.indexOf("a") > -1) && (res.indexOf("b") > -1) && res.length === 2) {
+      finalResult = true;
+    } else {
+      finalResult = false;
+      break;
+    }
+  }
+
+  if (finalResult) {
     internal.print("Test succeeded.");
     return true;
   } else {
     internal.print("Test failed.");
     return false;
-  }*/
+  }
 }
 
 /*
