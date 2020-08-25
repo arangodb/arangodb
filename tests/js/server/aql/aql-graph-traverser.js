@@ -1040,6 +1040,55 @@ function multiCollectionGraphSuite() {
         assertEqual(jsonResult, result, query);
       });
     },
+    
+    testEdgeCollectionBindParameterNoCol: function () {
+      var query = `WITH ${vn}
+      FOR x, e, p IN OUTBOUND '${vertex.B}' @eCol
+      SORT x._key
+      RETURN {vertex: x, path: p}`;
+      var bindVars = {
+        'eCol': en
+      };
+      var result = db._query(query, bindVars).toArray();
+      validateResult(result);
+      var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
+      plans.forEach(function (plan) {
+        var jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
+        assertEqual(jsonResult, result, query);
+      });
+    },
+    
+    testEdgeCollectionBindParameterNonExisting: function () {
+      var query = `WITH ${vn}
+      FOR x, e, p IN OUTBOUND '${vertex.B}' @@eCol
+      SORT x._key
+      RETURN {vertex: x, path: p}`;
+      var bindVars = {
+        '@eCol': 'FleischmannNonExisting'
+      };
+      try {
+        db._query(query, bindVars);
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+      }
+    },
+    
+    testEdgeCollectionBindParameterNoColNonExisting: function () {
+      var query = `WITH ${vn}
+      FOR x, e, p IN OUTBOUND '${vertex.B}' @eCol
+      SORT x._key
+      RETURN {vertex: x, path: p}`;
+      var bindVars = {
+        'eCol': 'FleischmannNonExisting'
+      };
+      try {
+        db._query(query, bindVars);
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+      }
+    },
 
     testStepsBindParameter: function () {
       var query = `WITH ${vn}
