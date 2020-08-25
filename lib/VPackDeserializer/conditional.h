@@ -86,11 +86,27 @@ struct conditional_deserializer {
   using factory = utilities::identity_factory<constructed_type>;
 };
 
+template <typename F, typename... VSs>
+struct conditional_deserializer_with_factory {
+  using plan = conditional<VSs...>;
+  using factory = F;
+  using constructed_type = typename factory::constructed_type;
+};
+
 struct is_object_condition {
   using forward_hints = hints::hint_list<hints::is_object>;
 
   static bool test(::arangodb::velocypack::deserializer::slice_type s) noexcept {
     return s.isObject();
+  }
+};
+
+template<const char K[]>
+struct has_key_condition {
+  using forward_hints = hints::hint_list<hints::has_field<K>>;
+
+  static bool test(::arangodb::velocypack::deserializer::slice_type s) noexcept {
+    return s.hasKey(K);
   }
 };
 

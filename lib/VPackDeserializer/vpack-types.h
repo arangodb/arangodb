@@ -27,6 +27,7 @@
 #ifndef DESERIALIZER_NO_VPACK_TYPES
 #include "velocypack/Iterator.h"
 #include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -34,6 +35,7 @@ namespace deserializer {
 using slice_type = arangodb::velocypack::Slice;
 using object_iterator = arangodb::velocypack::ObjectIterator;
 using array_iterator = arangodb::velocypack::ArrayIterator;
+using builder_type = arangodb::velocypack::Builder;
 }  // namespace deserializer
 }  // namespace velocypack
 }  // namespace arangodb
