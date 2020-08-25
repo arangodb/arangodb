@@ -7683,7 +7683,7 @@ AqlValue Functions::SchemaGet(ExpressionContext* expressionContext,
   }
 
   transaction::BuilderLeaser builder(trx);
-  logicalCollection->validatorsToVelocyPack(*builder.get());
+  logicalCollection->schemaToVelocyPack(*builder.get());
   VPackSlice slice = builder->slice();
 
   if (!slice.isObject()) {
