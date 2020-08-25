@@ -262,6 +262,11 @@ class ExecutionPlan {
   /// @brief get ast
   inline Ast* getAst() const { return _ast; }
 
+  /// @brief resolves a variable alias, e.g. fn(tmp) -> "a.b" for the following:
+  ///  LET tmp = a.b
+  ///  LET x = tmp
+  AstNode const* resolveVariableAlias(AstNode const* node) const;
+
   /// @brief creates an anonymous calculation node for an arbitrary expression
   ExecutionNode* createTemporaryCalculation(AstNode const*, ExecutionNode*);
 
