@@ -1,5 +1,7 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
+* Fixed internal issue #747: fixed possible dangling open files in ArangoSearch index
+  after remove operations
 
 * Make UPSERT statement with collection bind parameter behave identical to its
   non-bind parameter counterpart.
