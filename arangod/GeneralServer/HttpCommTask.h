@@ -47,10 +47,9 @@ class HttpCommTask final : public GeneralCommTask<T> {
   void start() override;
 
  protected:
-  // set a read timeout in asyncReadSome
-  bool enableReadTimeout() const override { return false; }
 
   bool readCallback(asio_ns::error_code ec) override;
+  void setIOTimeout() override;
 
   void sendResponse(std::unique_ptr<GeneralResponse> response, RequestStatistics::Item stat) override;
 

@@ -47,28 +47,26 @@ class VstCommTask final : public GeneralCommTask<T> {
 
  protected:
   
-  // set a read timeout in asyncReadSome
-  bool enableReadTimeout() const override {
-    return true;
-  }
-  
-  void start() override;
+  virtual void start() override;
 
+  virtual bool readCallback(asio_ns::error_code ec) override;
+  
+  /// set / reset connection timeout
+  virtual void setIOTimeout() override;
+  
   // convert from GeneralResponse to VstResponse ad dispatch request to class
   // internal addResponse
-  void sendResponse(std::unique_ptr<GeneralResponse>, RequestStatistics::Item) override;
-
-  bool readCallback(asio_ns::error_code ec) override;
+  virtual void sendResponse(std::unique_ptr<GeneralResponse>, RequestStatistics::Item) override;
   
-  std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
-                                                  uint64_t messageId) override;
+  virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
+                                                          uint64_t messageId) override;
 
  private:
   
   // Process the given incoming chunk.
   bool processChunk(fuerte::vst::Chunk const& chunk);
   /// process a VST message
-  bool processMessage(velocypack::Buffer<uint8_t>, uint64_t messageId);
+  void processMessage(velocypack::Buffer<uint8_t>, uint64_t messageId);
   
   void doWrite();
   
@@ -110,9 +108,11 @@ class VstCommTask final : public GeneralCommTask<T> {
   
  private:
   
-  std::map<uint64_t, std::unique_ptr<Message>> _messages;
-  boost::lockfree::queue<ResponseItem*, boost::lockfree::capacity<64>> _writeQueue;
-  std::atomic<bool> _writing; /// is writing
+  std::map<uint64_t, Message> _messages;
+  boost::lockfree::queue<ResponseItem*, boost::lockfree::capacity<32>> _writeQueue;
+  
+  std::atomic<bool> _writeLoopActive; /// is writing
+  std::atomic<unsigned> _numProcessing;
   
   /// Is the current user authenticated (not authorized)
   auth::TokenCache::Entry _authToken;

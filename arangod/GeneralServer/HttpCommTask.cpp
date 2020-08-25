@@ -293,6 +293,35 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
   return err == HPE_OK && !ec;
 }
 
+template <SocketType T>
+void HttpCommTask<T>::setIOTimeout() {
+  double secs = GeneralServerFeature::keepAliveTimeout();
+  if (secs <= 0) {
+    return;
+  }
+  
+  const bool wasReading = this->_reading;
+  const bool wasWriting = this->_writing;
+  TRI_ASSERT(wasReading && !wasWriting || !wasReading && wasWriting);
+  
+  auto millis = std::chrono::milliseconds(static_cast<int64_t>(secs * 1000));
+  this->_protocol->timer.expires_after(millis);
+  this->_protocol->timer.async_wait([=, self = CommTask::weak_from_this()](asio_ns::error_code const& ec) {
+    std::shared_ptr<CommTask> s;
+    if (ec || !(s = self.lock())) {  // was canceled / deallocated
+      return;
+    }
+    
+    auto& me = static_cast<HttpCommTask<T>&>(*s);
+    if ((wasReading && me._reading) ||
+        (wasWriting && me._writing)) {
+      LOG_TOPIC("5c1e0", INFO, Logger::REQUESTS)
+          << "keep alive timeout, closing stream!";
+      static_cast<GeneralCommTask<T>&>(*s).close(ec);
+    }
+  });
+}
+
 namespace {
 static constexpr const char* vst10 = "VST/1.0\r\n\r\n";
 static constexpr const char* vst11 = "VST/1.1\r\n\r\n";
@@ -333,7 +362,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
     } else if (nread >= h2PrefaceLen &&
                std::equal(::h2Preface, ::h2Preface + h2PrefaceLen,
                           bg, bg + ptrdiff_t(h2PrefaceLen))) {
-      // do not remove the preface here
+      // do not remove preface here, H2CommTask will read it from buffer
       auto commTask = std::make_unique<H2CommTask<T>>(me._server, me._connectionInfo,
                                                       std::move(me._protocol));
       me._server.registerTask(std::move(commTask));
@@ -364,11 +393,9 @@ void HttpCommTask<T>::processRequest() {
 
   TRI_ASSERT(_request);
   this->_protocol->timer.cancel();
-  this->_requestCount += 1;
-  if (this->_keepAliveTimeoutReached) {
-    return ;  // we have to ignore this request because the connection has already been closed
+  if (this->stopped()) {
+    return;  // we have to ignore this request because the connection has already been closed
   }
-
 
   // we may have gotten an H2 Upgrade request
   if (ADB_UNLIKELY(_parser.upgrade)) {
@@ -456,12 +483,11 @@ static void DTraceHttpCommTaskSendResponse(size_t) {}
 template <SocketType T>
 void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
                                    RequestStatistics::Item stat) {
-
-  DTraceHttpCommTaskSendResponse((size_t) this);
-
-  if (this->_stopped.load(std::memory_order_acquire)) {
+  if (this->stopped()) {
     return;
   }
+  
+  DTraceHttpCommTaskSendResponse((size_t) this);
   
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   HttpResponse& response = dynamic_cast<HttpResponse&>(*baseRes);
@@ -533,8 +559,6 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   // turn on the keepAlive timer
   double secs = GeneralServerFeature::keepAliveTimeout();
   if (_shouldKeepAlive && secs > 0) {
-    auto millis = std::chrono::milliseconds(static_cast<int64_t>(secs * 1000));
-    this->setTimeout(millis);
     _header.append(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
   } else {
     _header.append(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
@@ -606,25 +630,29 @@ void HttpCommTask<T>::writeResponse(RequestStatistics::Item stat) {
     buffers[1] = asio_ns::buffer(_response->data(), _response->size());
   }
 
+  this->_writing = true;
+  this->setIOTimeout();
+  
   // FIXME measure performance w/o sync write
   asio_ns::async_write(this->_protocol->socket, buffers,
                        [self = this->shared_from_this(),
                         stat = std::move(stat)](asio_ns::error_code ec, size_t nwrite) {
-
                          DTraceHttpCommTaskResponseWritten((size_t) self.get());
 
-                         auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
+                         auto& me = static_cast<HttpCommTask<T>&>(*self);
+    me._writing = false;
+    
                          stat.SET_WRITE_END();
                          stat.ADD_SENT_BYTES(nwrite);
 
-                         thisPtr->_response.reset();
+                         me._response.reset();
 
-                         llhttp_errno_t err = llhttp_get_errno(&thisPtr->_parser);
-                         if (ec || !thisPtr->_shouldKeepAlive || err != HPE_PAUSED) {
-                           thisPtr->close(ec);
+                         llhttp_errno_t err = llhttp_get_errno(&me._parser);
+    if (ec || !me._shouldKeepAlive || err != HPE_PAUSED) {
+                           me.close(ec);
                          } else {  // ec == HPE_PAUSED
-                           llhttp_resume(&thisPtr->_parser);
-                           thisPtr->asyncReadSome();
+                           llhttp_resume(&me._parser);
+                           me.asyncReadSome();
                          }
                        });
 }

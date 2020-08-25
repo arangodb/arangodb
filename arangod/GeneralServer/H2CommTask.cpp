@@ -130,7 +130,7 @@ template <SocketType T>
         
         Stream* strm = me->findStream(sid);
         if (strm) {
-          me->processStream(strm);
+          me->processStream(*strm);
         }
       }
       break;
@@ -161,12 +161,13 @@ template <SocketType T>
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
   auto it = me->_streams.find(stream_id);
   if (it != me->_streams.end()) {
-    Stream& strm = *it->second;
+    Stream& strm = it->second;
     if (strm.response) {
       strm.response->statistics.SET_WRITE_END();
     }
     me->_streams.erase(it);
   }
+  TRI_ASSERT(!me->_streams.empty() || me->_numProcessing == 0);
   
   if (error_code != NGHTTP2_NO_ERROR) {
     LOG_TOPIC("2824d", DEBUG, Logger::REQUESTS) << "<http2> closing stream "
@@ -246,8 +247,8 @@ int on_invalid_frame_recv(nghttp2_session *session, const nghttp2_frame *frame,
 constexpr uint32_t window_size = (1 << 30) - 1;  // 1 GiB
 void submitConnectionPreface(nghttp2_session* session) {
   std::array<nghttp2_settings_entry, 4> iv;
-  // 64 streams matches the queue capacity
-  iv[0] = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 64};
+  // 32 streams matches the queue capacity
+  iv[0] = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 32};
   // typically client is just a *sink* and just process data as
   // much as possible.  Use large window size by default.
   iv[1] = {NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, window_size};
@@ -342,9 +343,10 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
 
     TRI_ASSERT(req->messageId() == 1);
     auto* strm = me.createStream(1, std::move(req));
+    TRI_ASSERT(strm);
 
     // will start writing later
-    me.processStream(strm);
+    me.processStream(*strm);
 
     // start reading
     me.asyncReadSome();
@@ -397,12 +399,48 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
 
   doWrite();
 
-  if (!_writing && shouldStop()) {
+  if (!this->_writing && shouldStop()) {
     this->close();
     return false;  // stop read loop
   }
 
   return true;  //  continue read lopp
+}
+
+template <SocketType T>
+void H2CommTask<T>::setIOTimeout() {
+  double secs = GeneralServerFeature::keepAliveTimeout();
+  if (secs <= 0) {
+    return;
+  }
+  
+  const bool wasReading = this->_reading;
+  const bool wasWriting = this->_writing;
+  TRI_ASSERT(wasReading || wasWriting);
+  
+  auto millis = std::chrono::milliseconds(static_cast<int64_t>(secs * 1000));
+  this->_protocol->timer.expires_after(millis); // cancels old waiters
+  this->_protocol->timer.async_wait([=, self = CommTask::weak_from_this()](asio_ns::error_code const& ec) {
+    std::shared_ptr<CommTask> s;
+    if (ec || !(s = self.lock())) {  // was canceled / deallocated
+      return;
+    }
+    
+    auto& me = static_cast<H2CommTask<T>&>(*s);
+    
+    bool idle = wasReading && me._reading && !me._writing;
+    bool writeTimeout = wasWriting && me._writing;
+    if (idle || writeTimeout) {
+      // _numProcessing == 0 also if responses wait for writing
+      if (me._numProcessing.load(std::memory_order_relaxed) == 0) {
+        LOG_TOPIC("5c1e0", INFO, Logger::REQUESTS)
+            << "keep alive timeout, closing stream!";
+        static_cast<GeneralCommTask<T>&>(*s).close(ec);
+      } else {
+        setIOTimeout();
+      }
+    }
+  });
 }
 
 #ifdef USE_DTRACE
@@ -415,23 +453,22 @@ static void DTraceH2CommTaskProcessStream(size_t) {}
 #endif
 
 template <SocketType T>
-void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
+void H2CommTask<T>::processStream(H2CommTask<T>::Stream& stream) {
 
   DTraceH2CommTaskProcessStream((size_t) this);
 
-  TRI_ASSERT(stream);
-
-  std::unique_ptr<HttpRequest> req = std::move(stream->request);
+  std::unique_ptr<HttpRequest> req = std::move(stream.request);
   // ensure there is a null byte termination. RestHandlers use
   // C functions like strchr that except a C string as input
   req->body().push_back('\0');
   req->body().resetTo(req->body().size() - 1);
 
-  this->_protocol->timer.cancel();
-  this->_requestCount += 1;
-  if (this->_keepAliveTimeoutReached) {
-    return;
+  if (this->stopped()) {
+    return;  // we have to ignore this request because the connection has already been closed
   }
+  
+  // from here on we will send a response, the connection is not IDLE
+  _numProcessing.fetch_add(1, std::memory_order_relaxed);
 
   {
     LOG_TOPIC("924ce", INFO, Logger::REQUESTS)
@@ -452,17 +489,17 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
   }
   
   // store origin header for later use
-  stream->origin = req->header(StaticStrings::Origin);
+  stream.origin = req->header(StaticStrings::Origin);
   auto messageId = req->messageId();
   RequestStatistics::Item const& stat = this->statistics(messageId);
   stat.SET_REQUEST_TYPE(req->requestType());
-  stat.ADD_RECEIVED_BYTES(stream->headerBuffSize + req->body().size());
+  stat.ADD_RECEIVED_BYTES(stream.headerBuffSize + req->body().size());
   stat.SET_READ_END();
   stat.SET_WRITE_START();
 
   // OPTIONS requests currently go unauthenticated
   if (req->requestType() == rest::RequestType::OPTIONS) {
-    this->processCorsOptions(std::move(req), stream->origin);
+    this->processCorsOptions(std::move(req), stream.origin);
     return;
   }
 
@@ -514,13 +551,16 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
                                  RequestStatistics::Item stat) {
 
   DTraceH2CommTaskSendResponse((size_t) this);
-
-  double const totalTime = stat.ELAPSED_SINCE_READ_START();
   
-  if (this->_stopped.load(std::memory_order_acquire)) {
+  unsigned n = _numProcessing.fetch_sub(1, std::memory_order_relaxed);
+  TRI_ASSERT(n > 0);
+
+  if (this->stopped()) {
     return;
   }
 
+  double const totalTime = stat.ELAPSED_SINCE_READ_START();
+  
    // and give some request information
    LOG_TOPIC("924cc", DEBUG, Logger::REQUESTS)
        << "\"h2-request-end\",\"" << (void*)this << "\",\""
@@ -533,8 +573,8 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
   auto* tmp = static_cast<H2Response*>(res.get());
   tmp->statistics = std::move(stat);
   
-  // this uses fixed capacity queue, push might fail (it shouldn't though)
-  int retries = 1024;
+  // this uses a fixed capacity queue, push might fail (unlikely, we limit max streams)
+  unsigned retries = 512;
   while (ADB_UNLIKELY(!_responses.push(tmp))) {
     std::this_thread::yield();
     if (--retries == 0) {
@@ -552,7 +592,15 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
   }
   res.release();
   
-  signalWrite();  // starts writing if necessary
+  // avoid using asio_ns::post if possible
+  bool signaled = _signaledWrite.load();
+  if (!signaled && !_signaledWrite.exchange(true)) {
+    asio_ns::post(this->_protocol->context.io_context, [self = this->shared_from_this()] {
+      auto& me = static_cast<H2CommTask<T>&>(*self);
+      me._signaledWrite.store(false);
+      me.doWrite();
+    });
+  }
 }
 
 // queue the response onto the session, call only on IO thread
@@ -695,10 +743,10 @@ static void DTraceH2CommTaskAfterAsyncWrite(size_t) {}
 // called on IO context thread
 template <SocketType T>
 void H2CommTask<T>::doWrite() {
-  if (_writing) {
+  if (this->_writing) {
     return;
   }
-  _writing = true;
+  this->_writing = true;
   
   queueHttp2Responses();
   
@@ -712,7 +760,7 @@ void H2CommTask<T>::doWrite() {
     const uint8_t* data;
     ssize_t rv = nghttp2_session_mem_send(_session, &data);
     if (rv < 0) {  // error
-      _writing = false;
+      this->_writing = false;
       LOG_TOPIC("2b6c4", INFO, arangodb::Logger::REQUESTS)
         << "HTTP2 framing error: \"" << nghttp2_strerror((int)rv)
         << "\" (" << rv << ")";
@@ -735,10 +783,6 @@ void H2CommTask<T>::doWrite() {
   }
   outBuffers[0] = asio_ns::buffer(_outbuffer.data(), _outbuffer.size());
   
-  // Reset read timer here, because normally client is sending
-  // something, it does not expect timeout while doing it.
-  this->setTimeout(this->DefaultTimeout);
-
   if (asio_ns::buffer_size(outBuffers) == 0) {
     this->_writing = false;
     if (shouldStop()) {
@@ -746,9 +790,12 @@ void H2CommTask<T>::doWrite() {
     }
     return;
   }
-
+  
+  // Reset read timer here, because normally client is sending
+  // something, it does not expect timeout while doing it.
+  setIOTimeout();
+  
   DTraceH2CommTaskBeforeAsyncWrite((size_t) this);
-
   asio_ns::async_write(this->_protocol->socket, outBuffers,
                        [self = this->shared_from_this()](const asio_ns::error_code& ec,
                                                          std::size_t nwrite) {
@@ -775,17 +822,16 @@ template <SocketType T>
 typename H2CommTask<T>::Stream* H2CommTask<T>::createStream(int32_t sid,
                                                             std::unique_ptr<HttpRequest> req) {
   TRI_ASSERT(static_cast<uint64_t>(sid) == req->messageId());
-  auto stream = std::make_unique<Stream>(std::move(req));
-  auto [it, inserted] = _streams.emplace(sid, std::move(stream));
+  auto [it, inserted] = _streams.emplace(sid, Stream{std::move(req)});
   TRI_ASSERT(inserted == true);
-  return it->second.get();
+  return &it->second;
 }
 
 template <SocketType T>
-typename H2CommTask<T>::Stream* H2CommTask<T>::findStream(int32_t sid) const {
+typename H2CommTask<T>::Stream* H2CommTask<T>::findStream(int32_t sid) {
   auto const& it = _streams.find(sid);
   if (it != _streams.end()) {
-    return it->second.get();
+    return &it->second;
   }
   return nullptr;
 }
@@ -794,20 +840,6 @@ typename H2CommTask<T>::Stream* H2CommTask<T>::findStream(int32_t sid) const {
 template <SocketType T>
 bool H2CommTask<T>::shouldStop() const {
   return !nghttp2_session_want_read(_session) && !nghttp2_session_want_write(_session);
-}
-
-// may be used to signal a write from sendResponse
-template <SocketType T>
-void H2CommTask<T>::signalWrite() {
-  // avoid using asio_ns::post if possible
-  bool tmp = _signaledWrite.load();
-  if (!tmp && !_signaledWrite.exchange(true)) {
-    asio_ns::post(this->_protocol->context.io_context, [self = this->shared_from_this()] {
-      auto& me = static_cast<H2CommTask<T>&>(*self);
-      me._signaledWrite.store(false);
-      me.doWrite();
-    });
-  }
 }
 
 template class arangodb::rest::H2CommTask<SocketType::Tcp>;

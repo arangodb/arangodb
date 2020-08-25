@@ -58,7 +58,8 @@ VstCommTask<T>::VstCommTask(GeneralServer& server,
                             std::unique_ptr<AsioSocket<T>> so,
                             fuerte::vst::VSTVersion v)
 : GeneralCommTask<T>(server, std::move(info), std::move(so)),
-  _writing(false),
+  _writeLoopActive(false),
+  _numProcessing(0),
   _authToken("", false, 0),
   _authenticated(!this->_auth->isActive()),
   _authMethod(rest::AuthenticationMethod::NONE),
@@ -134,6 +135,42 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
   return true; // continue read loop
 }
 
+template <SocketType T>
+void VstCommTask<T>::setIOTimeout() {
+  double secs = GeneralServerFeature::keepAliveTimeout();
+  if (secs <= 0) {
+    return;
+  }
+  
+  const bool wasReading = this->_reading;
+  const bool wasWriting = this->_writing;
+  TRI_ASSERT(wasReading || wasWriting);
+  
+  auto millis = std::chrono::milliseconds(static_cast<int64_t>(secs * 1000));
+  this->_protocol->timer.expires_after(millis); // cancels old waiters
+  this->_protocol->timer.async_wait([=, self = CommTask::weak_from_this()](asio_ns::error_code const& ec) {
+    std::shared_ptr<CommTask> s;
+    if (ec || !(s = self.lock())) {  // was canceled / deallocated
+      return;
+    }
+    
+    auto& me = static_cast<VstCommTask<T>&>(*s);
+    
+    bool idle = wasReading && me._reading && !me._writing;
+    bool writeTimeout = wasWriting && me._writing;
+    if (idle || writeTimeout) {
+      // _numProcessing == 0 also if responses wait for writing
+      if (me._numProcessing.load(std::memory_order_relaxed) == 0) {
+        LOG_TOPIC("6a7ad", INFO, Logger::REQUESTS)
+            << "keep alive timeout, closing stream!";
+        static_cast<GeneralCommTask<T>&>(*s).close(ec);
+      } else {
+        setIOTimeout();
+      }
+    }
+  });
+}
+
 // Process the given incoming chunk.
 template<SocketType T>
 bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
@@ -157,30 +194,23 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
       buffer.append(reinterpret_cast<uint8_t const*>(chunk.body.data()),
                     chunk.body.size());
       TRI_ASSERT(_messages.find(chunk.header.messageID()) == _messages.end());
-      return processMessage(std::move(buffer), chunk.header.messageID());
+      processMessage(std::move(buffer), chunk.header.messageID());
+      return true;
     }
   }
 
-  Message* msg;
   // Find stored message for this chunk.
-  auto it = _messages.find(chunk.header.messageID());
-  if (it != _messages.end()) {
-    msg = it->second.get();
-  } else {
-    auto both = _messages.emplace(chunk.header.messageID(),
-                                  std::make_unique<Message>());
-    msg = both.first->second.get();
-  }
+  Message& msg = _messages[chunk.header.messageID()];
 
   // returns false if message gets too big
-  if (!msg->addChunk(chunk)) {
+  if (!msg.addChunk(chunk)) {
     LOG_TOPIC("695fd", WARN, Logger::REQUESTS)
     << "\"vst-request\"; chunk contents have become larger than "
     << "allowed, this=" << this;
     return false; // close connection
   }
 
-  if (!msg->assemble()) {
+  if (!msg.assemble()) {
     return true; // wait for more chunks
   }
 
@@ -188,7 +218,8 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
   auto guard = scopeGuard([&] {
     _messages.erase(chunk.header.messageID());
   });
-  return processMessage(std::move(msg->buffer), chunk.header.messageID());
+  processMessage(std::move(msg.buffer), chunk.header.messageID());
+  return true;
 }
 
 #ifdef USE_DTRACE
@@ -202,20 +233,27 @@ static void DTraceVstCommTaskProcessMessage(size_t) {}
 
 /// process a VST message
 template<SocketType T>
-bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
+void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
                                     uint64_t messageId) {
-  using namespace fuerte;
+  namespace fu = ::arangodb::fuerte::v1;
 
   DTraceVstCommTaskProcessMessage((size_t) this);
-
+  
+  if (this->stopped()) {
+    return;  // we have to ignore this request because the connection has already been closed
+  }
+  
+  // from here on we will send a response, the connection is not IDLE
+  _numProcessing.fetch_add(1, std::memory_order_relaxed);
+  
   auto ptr = buffer.data();
   auto len = buffer.byteSize();
 
   // first part of the buffer contains the response buffer
   std::size_t headerLength = 0;
-  MessageType mt = MessageType::Undefined;
+  fu::MessageType mt = fu::MessageType::Undefined;
   try {
-    mt = vst::parser::validateAndExtractMessageType(ptr, len, headerLength);
+    mt = fu::vst::parser::validateAndExtractMessageType(ptr, len, headerLength);
   } catch(std::exception const& e) {
     LOG_TOPIC("6479a", ERR, Logger::REQUESTS) << "\"vst-request\"; invalid message: '" <<
     e.what() << "'";
@@ -227,7 +265,7 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
   stat.ADD_RECEIVED_BYTES(buffer.size());
 
   // handle request types
-  if (mt == MessageType::Authentication) {  // auth
+  if (mt == fu::MessageType::Authentication) {  // auth
     handleVstAuthRequest(VPackSlice(buffer.data()), messageId);
     // Separate superuser traffic:
     // Note that currently, velocystream traffic will never come from
@@ -236,7 +274,7 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
         _authToken.username().empty()) {
       stat.SET_SUPERUSER();
     }
-  } else if (mt == MessageType::Request) {  // request
+  } else if (mt == fu::MessageType::Request) {  // request
 
     // the handler will take ownership of this pointer
     auto req = std::make_unique<VstRequest>(this->_connectionInfo,
@@ -281,7 +319,6 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
     this->sendSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
                              messageId, VPackBuffer<uint8_t>());
   }
-  return true;
 }
 
 #ifdef USE_DTRACE
@@ -299,8 +336,11 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   using namespace fuerte;
 
   DTraceVstCommTaskSendResponse((size_t) this);
+  
+  unsigned n = _numProcessing.fetch_sub(1, std::memory_order_relaxed);
+  TRI_ASSERT(n > 0);
 
-  if (this->_stopped.load(std::memory_order_acquire)) {
+  if (this->stopped()) {
     return;
   }
 
@@ -344,18 +384,27 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     << "\"," << Logger::FIXED(totalTime, 6);
 
   resItem->stat = std::move(stat);
-  while (!_writeQueue.push(resItem.get())) {
-    std::this_thread::yield();
+  
+  // this uses a fixed capacity queue, push might fail (unlikely, we limit max streams)
+  unsigned retries = 512;
+  while (ADB_UNLIKELY(!_writeQueue.push(resItem.get()))) {
+   std::this_thread::yield();
+   if (--retries == 0) {
+     LOG_TOPIC("a3bfc", WARN, Logger::REQUESTS)
+       << "was not able to queue response this=" << (void*)this;
+     this->stop(); // stop is thread-safe
+     return;
+   }
   }
   resItem.release();
 
   // start writing if necessary
-  if (_writing.load()) {
+  if (_writeLoopActive.load()) {
     return;
   }
   this->_protocol->context.io_context.post([self = this->shared_from_this()]() {
     auto& me = static_cast<VstCommTask<T>&>(*self);
-    if (!me._writing.exchange(true)) {
+    if (!me._writeLoopActive.exchange(true)) {
       me.doWrite();
     }
   });
@@ -376,21 +425,17 @@ static void DTraceVstCommTaskAfterAsyncWrite(size_t) {}
 
 template<SocketType T>
 void VstCommTask<T>::doWrite() {
-  TRI_ASSERT(_writing.load() == true);
-  if (this->_stopped.load(std::memory_order_acquire)) {
-    return;
-  }
-  
+
   ResponseItem* tmp = nullptr;
   if (!_writeQueue.pop(tmp)) {
     // careful now, we need to consider that someone queues
     // a new request item
-    _writing.store(false);
+    _writeLoopActive.store(false);
     if (_writeQueue.empty()) {
       return; // done, someone else may restart
     }
 
-    if (_writing.exchange(true)) {
+    if (_writeLoopActive.exchange(true)) {
       return; // someone else restarted writing
     }
     bool success = _writeQueue.pop(tmp);
@@ -401,8 +446,8 @@ void VstCommTask<T>::doWrite() {
 
   DTraceVstCommTaskBeforeAsyncWrite((size_t) this);
   
-  // TODO: should we have a better timeout mechanism?
-//  this->setTimeout(GeneralCommTask<T>::DefaultTimeout);
+  this->_writing = true;
+  this->setIOTimeout();
 
   auto& buffers = item->buffers;
   asio_ns::async_write(this->_protocol->socket, buffers,
@@ -412,6 +457,8 @@ void VstCommTask<T>::doWrite() {
     DTraceVstCommTaskAfterAsyncWrite((size_t) self.get());
 
     auto& me = static_cast<VstCommTask<T>&>(*self);
+    me._writing = false;
+    
     rsp->stat.SET_WRITE_END();
     rsp->stat.ADD_SENT_BYTES(rsp->buffers[0].size() + rsp->buffers[1].size());
     if (ec) {

@@ -49,16 +49,16 @@ class H2CommTask final : public GeneralCommTask<T> {
   void upgradeHttp1(std::unique_ptr<HttpRequest> req);
 
  protected:
-  // set a read timeout in asyncReadSome
-  bool enableReadTimeout() const override { return true; }
 
-  bool readCallback(asio_ns::error_code ec) override;
+  virtual bool readCallback(asio_ns::error_code ec) override;
+  virtual void setIOTimeout() override;
 
-  void sendResponse(std::unique_ptr<GeneralResponse> response, RequestStatistics::Item stat) override;
+  virtual void sendResponse(std::unique_ptr<GeneralResponse> response, RequestStatistics::Item stat) override;
 
-  std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode, uint64_t messageId) override;
+  virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode, uint64_t messageId) override;
 
  private:
+  
   static int on_begin_headers(nghttp2_session* session,
                               const nghttp2_frame* frame, void* user_data);
   static int on_header(nghttp2_session* session, const nghttp2_frame* frame,
@@ -84,7 +84,7 @@ class H2CommTask final : public GeneralCommTask<T> {
     std::string origin;
 
     std::unique_ptr<HttpRequest> request;
-    std::unique_ptr<H2Response> response;
+    std::unique_ptr<H2Response> response; // hold response memory
 
     size_t headerBuffSize = 0; // total header size
     size_t responseOffset = 0; // current offset in response body
@@ -93,7 +93,8 @@ class H2CommTask final : public GeneralCommTask<T> {
   /// init h2 session
   void initNgHttp2Session();
 
-  void processStream(Stream* strm);
+  /// handle stream request in arangodb
+  void processStream(Stream& strm);
 
   /// should close connection
   bool shouldStop() const;
@@ -105,24 +106,22 @@ class H2CommTask final : public GeneralCommTask<T> {
   void doWrite();
 
   Stream* createStream(int32_t sid, std::unique_ptr<HttpRequest>);
-  Stream* findStream(int32_t sid) const;
-
-  // may be used to signal a write from sendResponse
-  void signalWrite();
+  Stream* findStream(int32_t sid);
 
  private:
   
   velocypack::Buffer<uint8_t> _outbuffer;
 
   // no more than 64 streams allowed
-  boost::lockfree::queue<H2Response*, boost::lockfree::capacity<64>> _responses;
+  boost::lockfree::queue<H2Response*, boost::lockfree::capacity<32>> _responses;
 
-  std::map<int32_t, std::unique_ptr<Stream>> _streams;
+  std::map<int32_t, Stream> _streams;
 
   nghttp2_session* _session = nullptr;
-  bool _writing = false;
+  
+  std::atomic<unsigned> _numProcessing{0};
 
-  std::atomic<bool> _signaledWrite = false;
+  std::atomic<bool> _signaledWrite{false};
 };
 }  // namespace rest
 }  // namespace arangodb
