@@ -23,6 +23,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
+const _ = require("lodash");
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
@@ -149,12 +150,18 @@ function exec_test_read_vertex_on_graph(graphSpec, expectedKeys) {
   let arrResult = result.toArray();
   let finalResult = false;
 
+  internal.print("Result: ");
+  internal.print(arrResult);
+
   for (let res of arrResult) {
-    if ((res.indexOf(expectedKeys[0]) > -1) && (res.indexOf(expectedKeys[1]) > -1) && res.length === 2) {
-      finalResult = true;
-    } else {
-      finalResult = false;
-      break;
+    if (res) { // != null or undefined
+      if (_.get(expectedKeys, res)) {
+        finalResult = true;
+      } else {
+        internal.print("Error. Path: " + res + " not found.");
+        finalResult = false;
+        break;
+      }
     }
   }
 
@@ -217,9 +224,14 @@ function exec_test_data_access() {
   //exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18), 10000);
 
   // read vertex validation
-  exec_test_read_vertex_on_graph(
+  /*exec_test_read_vertex_on_graph(
     examplegraphs.create_line_graph("LineGraph100", 100, 1, ["a", "b", "c"]),
     ["a", "b"]
+  );*/
+
+  exec_test_read_vertex_on_graph(
+    examplegraphs.create_line_graph("LineGraph100", 5, 1, ["a", ["a", "b"], ["a", "c"], "d", "e"]),
+    ["a", ["a", "b"], ["a", "c"], "d", "e"]
   );
 }
 

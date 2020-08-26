@@ -206,6 +206,48 @@ function createCircle(graphName, numberOfVertices, numberOfShards) {
   return { vname: vname, ename: ename };
 }
 
+function writeToLeaf(obj, path) {
+  path = path.split('.');
+  let res = obj;
+
+  for (var i=0; i < path.length; i++) {
+    if (res[path[i]]) {
+      res = res[path[i]];
+    } else {
+      res[path[i]] = {};
+    }
+  }
+}
+
+function objectInsertHelper(arr, valueToInsert) {
+  let obj = {};
+  arr.forEach((key) => {
+    if (typeof key === "string") {
+      obj[key] = valueToInsert;
+    } else {
+      // array expected (toplevel -> n-level)
+      _.set(obj, key, valueToInsert);
+
+      //let pathAsArray = key;
+      //let pathAsString = "";
+      /*for (let pos = 0; pos < pathAsArray.length; pos++) {
+        if (pos === 0) {
+          // first iteration
+          pathAsString = pathAsArray[pos];
+        } else if (pos < (pathAsArray.length - 1)) {
+          // middle iteration (object buildup)
+          pathAsString += '.' + pathAsArray[pos];
+        } else {
+          // last step (also insert value i here)
+          _.set(obj, pathAsString, )
+        }
+      }*/
+    }
+  });
+  obj.id = valueToInsert;
+  return obj;
+}
+
 function createLineGraph(graphName, numberOfVertices, numberOfShards, vertexKeysToInsert) {
   const vname = graphName + "_V";
   const ename = graphName + "_E";
@@ -223,13 +265,14 @@ function createLineGraph(graphName, numberOfVertices, numberOfShards, vertexKeys
   var vs = [];
   var vids;
 
+  // vertexKeysToInsert can be either array of strings (simple path)
+  // ["a", "b", "c"]
+  // or also array of arrays of strings (nested path)
+  // [["a", "b"], ["a", "c"], "d", "e"]
+
   for (let i = 0; i < numberOfVertices; i++) {
     if (vertexKeysToInsert) {
-      let toInsert = {};
-      vertexKeysToInsert.forEach((key) => {
-        toInsert[key] = i;
-      });
-      toInsert.id = i;
+      let toInsert = objectInsertHelper(vertexKeysToInsert, i);
       vs.push(toInsert);
     } else {
       vs.push({ id: "" + i });
