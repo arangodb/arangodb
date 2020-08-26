@@ -4227,6 +4227,16 @@ std::unordered_map<ServerID, RebootId> ClusterInfo::rebootIds() const {
 }
 
 ////////////////////////////////////////////////////////////////////////
+/// @brief Look up a current reboot ID, returns a RebootId(0) if not found,
+/// this can be tested with the initialized() method.
+////////////////////////////////////////////////////////////////////////////////
+
+RebootId ClusterInfo::getCurrentRebootId(ServerID const& serverId) const {
+  MUTEX_LOCKER(mutexLocker, _serversProt.mutex);
+  return _serversKnown.getCurrentRebootId(serverId);
+}
+
+////////////////////////////////////////////////////////////////////////
 /// @brief find the endpoint of a server from its ID.
 /// If it is not found in the cache, the cache is reloaded once, if
 /// it is still not there an empty string is returned as an error.
@@ -5320,6 +5330,14 @@ std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() co
     rebootIds.try_emplace(it.first, it.second.rebootId());
   }
   return rebootIds;
+}
+
+RebootId ClusterInfo::ServersKnown::getCurrentRebootId(ServerID const& serverId) const {
+  auto it = _serversKnown.find(serverId);
+  if (it == _serversKnown.end()) {
+    return RebootId(0);
+  }
+  return it->second.rebootId();
 }
 
 void ClusterInfo::startSyncers() {
