@@ -60,7 +60,7 @@ function vertex_degrees_program(resultField) {
           `(seq
              (accum-set! outDegree (this-outbound-edges-count))
              (accum-set! inDegree 0)
-             (send-to-all-neighbours inDegree 1))`)
+             (send-to-all-neighbours inDegree 1))`),
         // Update program has to run once to accumulate the
         // inDegrees that have been sent out in initProgram
         updateProgram: [ false ]
