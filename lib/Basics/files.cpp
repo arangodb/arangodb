@@ -2644,8 +2644,8 @@ arangodb::Result TRI_GetDiskSpace(std::string const& path,
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     return {TRI_errno(), TRI_last_error()};
   }
-  totalSpace = static_cast<uint64_t>(stat.f_bsize) * static_cast<uint64_t>(stat.f_blocks);
-  freeSpace = static_cast<uint64_t>(stat.f_bsize) * static_cast<uint64_t>(stat.f_bfree);
+  totalSpace = static_cast<uint64_t>(stat.f_frsize) * static_cast<uint64_t>(stat.f_blocks);
+  freeSpace = static_cast<uint64_t>(stat.f_frsize) * static_cast<uint64_t>(stat.f_bfree);
 #endif
   return {};
 }
