@@ -35,7 +35,7 @@ class AqlItemMatrixTest : public AqlExecutorTestCase<> {};
 TEST_F(AqlItemMatrixTest, should_forward_number_of_regs) {
   for (RegisterCount c = 1; c < 3; c++) {
     AqlItemMatrix testee(c);
-    EXPECT_EQ(testee.getNrRegisters(), c);
+    EXPECT_EQ(testee.getNumRegisters(), c);
   }
 }
 

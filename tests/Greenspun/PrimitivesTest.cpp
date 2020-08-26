@@ -15,6 +15,59 @@
 
 using namespace arangodb::greenspun;
 
+TEST_CASE("Test [dict-x-tract] primitive", "[dict-x-tract]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("Test dict-x-tract") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["dict-x-tract", {"foo":1, "bar":3}, "foo"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if(res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().isObject());
+    REQUIRE(result.slice().get("foo").getNumericValue<double>() == 1);
+    REQUIRE(result.slice().get("bar").isNone());
+  }
+
+  SECTION("Test dict-x-tract") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["dict-x-tract", {"foo":1, "bar":3}, "baz"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("Test dict-x-tract-x") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["dict-x-tract-x", {"foo":1, "bar":3}, "foo"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if(res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().isObject());
+    REQUIRE(result.slice().get("foo").getNumericValue<double>() == 1);
+    REQUIRE(result.slice().get("bar").isNone());
+  }
+
+  SECTION("Test dict-x-tract") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["dict-x-tract-x", {"foo":1, "bar":3}, "baz"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.ok());
+    REQUIRE(result.slice().isEmptyObject());
+  }
+}
+
 TEST_CASE("Test [+] primitive", "[addition]") {
   Machine m;
   InitMachine(m);

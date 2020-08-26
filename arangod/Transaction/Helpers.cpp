@@ -381,6 +381,14 @@ std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const*
   TRI_ASSERT(key.isString());
 
   DataSourceId cid{encoding::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t))};
+  return makeIdFromParts(resolver, cid, key);
+}
+
+/// @brief creates an id string from a collection name and the _key string
+std::string transaction::helpers::makeIdFromParts(CollectionNameResolver const* resolver,
+                                                  DataSourceId const& cid,
+                                                  VPackSlice const& key) {
+  TRI_ASSERT(key.isString());
 
   std::string resolved = resolver->getCollectionNameCluster(cid);
 #ifdef USE_ENTERPRISE

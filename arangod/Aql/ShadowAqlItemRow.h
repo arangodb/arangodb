@@ -66,7 +66,7 @@ class ShadowAqlItemRow {
   /// @brief get the number of data registers in the underlying block.
   ///        Not all of these registers are necessarily filled by this
   ///        ShadowRow. There might be empty registers on deeper levels.
-  [[nodiscard]] RegisterCount getNrRegisters() const noexcept;
+  [[nodiscard]] RegisterCount getNumRegisters() const noexcept;
 
   /// @brief a ShadowRow is relevant iff it indicates an end of subquery block on the subquery context
   ///        we are in right now. This will only be of importance on nested subqueries.

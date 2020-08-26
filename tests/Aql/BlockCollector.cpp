@@ -42,7 +42,7 @@ size_t BlockCollector::totalSize() const { return _totalSize; }
 RegisterId BlockCollector::nrRegs() const {
   TRI_ASSERT(_totalSize > 0);
   TRI_ASSERT(!_blocks.empty());
-  return _blocks[0]->getNrRegs();
+  return _blocks[0]->numRegisters();
 }
 
 void BlockCollector::clear() {
@@ -55,13 +55,13 @@ void BlockCollector::clear() {
 
 void BlockCollector::add(SharedAqlItemBlockPtr block) {
   TRI_ASSERT(block != nullptr);
-  TRI_ASSERT(block->size() > 0);
+  TRI_ASSERT(block->numRows() > 0);
 
   if (_blocks.capacity() == 0) {
     _blocks.reserve(8);
   }
   _blocks.push_back(block);
-  _totalSize += block->size();
+  _totalSize += block->numRows();
 }
 
 SharedAqlItemBlockPtr BlockCollector::steal() {

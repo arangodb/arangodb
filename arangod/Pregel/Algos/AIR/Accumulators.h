@@ -243,6 +243,8 @@ struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
 
   auto setBySlice(VPackSlice v) -> greenspun::EvalResult override;
   auto updateBySlice(VPackSlice s) -> greenspun::EvalResultT<UpdateResult> override;
+  auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> override;
+
   auto getValueIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override;
   greenspun::EvalResult finalizeIntoBuilder(VPackBuilder& result) override;
 
@@ -265,6 +267,7 @@ struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
       -> greenspun::EvalResult;
 
   VPackSlice inputSlice = VPackSlice::noneSlice();
+  std::string const* inputSender = nullptr;
 
   VPackBuilder _buffer;
   VPackBuilder _parameters;

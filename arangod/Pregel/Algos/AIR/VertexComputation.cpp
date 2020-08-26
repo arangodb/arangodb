@@ -106,7 +106,9 @@ greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
 
   if (auto iter = vertexData()._vertexAccumulators.find(accumId);
       iter != std::end(vertexData()._vertexAccumulators)) {
-    return iter->second->getValueIntoBuilder(result);
+    return iter->second->getValueIntoBuilder(result).mapError([](auto &err) {
+      err.wrapMessage("when getting value of accumulator");
+    });
   }
   return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                               "` not found");
@@ -124,7 +126,9 @@ greenspun::EvalResult VertexComputation::air_accumSet(greenspun::Machine& ctx,
 
   if (auto iter = vertexData()._vertexAccumulators.find(std::string{accumId});
       iter != std::end(vertexData()._vertexAccumulators)) {
-    return iter->second->setBySlice(value);
+    return iter->second->setBySlice(value).mapError([](auto &err) {
+      err.wrapMessage("when setting value of accumulator by slice");
+    });
   }
   return greenspun::EvalError("accumulator `" + std::string{accumId} +
                               "` not found");
@@ -141,7 +145,9 @@ greenspun::EvalResult VertexComputation::air_accumClear(greenspun::Machine& ctx,
 
   if (auto iter = vertexData()._vertexAccumulators.find(accumId);
       iter != std::end(vertexData()._vertexAccumulators)) {
-    return iter->second->clear();
+    return iter->second->clear().mapError([](auto &err) {
+      err.wrapMessage("when clearing accumulator");
+    });
   }
   return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                               "` not found");
@@ -220,12 +226,7 @@ greenspun::EvalResult VertexComputation::air_sendToGlobalAccum(greenspun::Machin
   }
   auto&& [accumId, value] = res.value();
 
-  auto inner = workerContext().sendToGlobalAccumulator(accumId, value);
-  if (!inner) {
-    return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
-                                "` not found");
-  }
-  return {};
+  return workerContext().sendToGlobalAccumulator(accumId, value);
 }
 
 /*  Graph stuff */
@@ -376,7 +377,7 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
     auto&& accumName = msg->_accumulatorName;
     auto&& accum = vertexData().accumulatorByName(accumName);
 
-    auto res = accum->updateBySlice(msg->_value.slice());
+    auto res = accum->updateByMessage(*msg);
     if (res.fail()) {
       auto phase_index = *getAggregatedValue<uint32_t>("phase");
       auto phase = _algorithm.options().phases.at(phase_index);
@@ -393,10 +394,6 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
           << "in phase `" << phase.name << "` updating accumulator `"
           << accumName << "` failed: " << res.error().toString();
       return std::move(res.error());
-    }
-
-    if(res.value() == AccumulatorBase::UpdateResult::CHANGED) {
-      accum->setSender(msg->_sender);
     }
 
     accumChanged |= res.value() == AccumulatorBase::UpdateResult::CHANGED;

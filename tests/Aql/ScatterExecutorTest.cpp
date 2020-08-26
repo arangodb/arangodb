@@ -130,9 +130,9 @@ class SharedScatterExecutionBlockTest {
   auto ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected) {
     ASSERT_NE(expected, nullptr);
     ASSERT_NE(actual, nullptr);
-    EXPECT_EQ(actual->size(), expected->size());
-    EXPECT_EQ(actual->getNrRegs(), 1);
-    for (size_t i = 0; i < (std::min)(actual->size(), expected->size()); ++i) {
+    EXPECT_EQ(actual->numRows(), expected->numRows());
+    EXPECT_EQ(actual->numRegisters(), 1);
+    for (size_t i = 0; i < (std::min)(actual->numRows(), expected->numRows()); ++i) {
       if (actual->isShadowRow(i)) {
         ASSERT_TRUE(expected->isShadowRow(i))
             << "Row " << i << " is not supposed to be a shadow row.";

@@ -25,6 +25,7 @@
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
+const accumulators = require("@arangodb/air/accumulators");
 
 /*
 
@@ -41,17 +42,20 @@ function global_accumulators_test_program(resultField) {
     maxGSS: 5,
     globalAccumulators: {
       numberOfVertices: {
-        accumulatorType: "sum",
-        valueType: "ints",
-        storeSender: false,
+        accumulatorType: "custom",
+        valueType: "slice",
+        customType: "my_sum"
       },
     },
     vertexAccumulators: {
       forward: {
-        accumulatorType: "sum",
-        valueType: "ints",
-        storeSender: false,
+        accumulatorType: "custom",
+        valueType: "slice",
+        customType: "my_sum"
       },
+    },
+    customAccumulators: {
+      my_sum: accumulators.sumAccumulator()
     },
     phases: [
       {

@@ -78,7 +78,7 @@ class InputRangeTest : public AqlExecutorTestCase<> {
         chosenRows.emplace(i, std::vector<size_t>{});
       }
 
-      for (size_t i = 0; i < block->size(); ++i) {
+      for (size_t i = 0; i < block->numRows(); ++i) {
         if (block->isShadowRow(i)) {
           // ShadowRows need to be added to all Clients
           for (auto& [key, value] : chosenRows) {
@@ -97,9 +97,9 @@ class InputRangeTest : public AqlExecutorTestCase<> {
           auto copiedBlock = block->slice(chosen, 0, chosen.size());
           if (index != 0) {
             // Simulate that shadowRows have been "moved"  by clearing their dataRegisters
-            for (size_t i = 0; i < copiedBlock->size(); ++i) {
+            for (size_t i = 0; i < copiedBlock->numRows(); ++i) {
               if (copiedBlock->isShadowRow(i)) {
-                for (RegisterId r = 0; r < copiedBlock->getNrRegs(); ++r) {
+                for (RegisterId r = 0; r < copiedBlock->numRegisters(); ++r) {
                   copiedBlock->destroyValue(i, r);
                 }
 

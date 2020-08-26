@@ -103,6 +103,30 @@ function create_demo_propagation_graph(graphName, numberOfShards) {
   return { name: graphName, vname: vname, ename: ename };
 }
 
+
+/* Todo: can we fold "update sums" into this accumulator (i.e. we keep an update and the sum,
+   and fold these two things into one accumulator) */
+function bucketizedSumAccumulator(nrBuckets) {
+    return {
+      updateProgram: [
+                ["seq",
+                 ["for-each", ["entry", [...Array(nrBuckets).keys()]],
+                    ["this-set!",
+                     ["array-set", entry,
+                      ["+",
+                       ["array-ref", ["current-value"], entry],
+                       ["array-ref", ["input-value"], entry ]]]]],
+                    "hot"
+                ]
+        // TODO: detect whether all entries are 0 and return "cold"? [true, "cold"]
+            ],
+      clearProgram: ["this-set!", Array(nrBuckets).fill(0)],
+      getProgram: ["current-value"],
+      setProgram: ["this-set!", ["input-value"]],
+      finalizeProgram: ["current-value"],
+    };
+}
+
 /*
  * This pregel program propagates demands from leaf nodes
  * "upwards"
@@ -132,27 +156,20 @@ function demand_propagation_demo_program(resultField) {
   /* Vertex accumulators are instanciated per vertex
      for each run of the algorithm */
   "vertexAccumulators": {
-    "finalDemandBucketAccum_0": {
-      "accumulatorType": "sum",
-      "valueType": "ints"
-    },
-    "finalDemandBucketAccum_1": {
-      "accumulatorType": "sum",
-      "valueType": "ints"
-    },
-    "demandBucketAccum_0": {
-      "accumulatorType": "sum",
-      "valueType": "ints"
-    },
-    "demandBucketAccum_1": {
-      "accumulatorType": "sum",
-      "valueType": "ints"
-    },
-    "predecessors": {
-      "accumulatorType": "list",
+    "demandSumBuckets": {
+      "accumulatorType": "custom",
+      "customType": "bucketizedSum",
       "valueType": "slice"
-    }
+    },
+    "finalDemandSumBuckets": {
+      "accumulatorType": "custom",
+      "customType": "bucketizedSum",
+      "valueType": "slice"
+    },
   },
+   "customAccumulators": {
+     bucketizedSum: bucketizedSumAccumulator()
+   }
   /* A pregel program is structured into *phases*,
 
      On entry into a phase, `initProgram` runs once on each vertex,
@@ -168,66 +185,51 @@ function demand_propagation_demo_program(resultField) {
   "phases": [ {
     "name": "init",
     "initProgram": [ "seq",
-      ["accum-set!", "demandBucketAccum_0", ["attrib-ref", "demandBucket0", ["this-doc"]]],
-      ["accum-set!", "demandBucketAccum_1", ["attrib-ref", "demandBucket1", ["this-doc"]]],
+      ["accum-set!", "demandSumBuckets", ["attrib-ref", "init_demandSumBuckets", ["this-doc"]]],
       ["send-to-all-neighbours", "predecessors", ["this-pregel-id"]],
       false ],
     "updateProgram": [ "seq",
-                       ["send-to-accum", ["this-pregel-id"], "finalDemandBucketAccum_0", ["accum-ref", "demandBucketAccum_0"]],
-                       ["send-to-accum", ["this-pregel-id"], "finalDemandBucketAccum_1", ["accum-ref", "demandBucketAccum_1"]],
-      ["for-each",
-        ["pred", ["accum-ref", "predecessors"]],
-        ["seq",
-         ["send-to-accum",
-          ["var-ref", "pred"],
-          "demandBucketAccum_0",
-          ["accum-ref", "demandBucketAccum_0"]],
-         ["send-to-accum",
-          ["var-ref", "pred"],
-          "demandBucketAccum_1",
-          ["accum-ref", "demandBucketAccum_1"]]]],
-      ["accum-clear!", "demandBucketAccum_0"],
-      ["accum-clear!", "demandBucketAccum_1"],
-      false ]
-  } ]
+                       ["send-to-accum", ["this-pregel-id"], "finalDemandSumBuckets", ["accum-ref", "demandSumBuckets"]],
+                       ["for-each",
+                        ["pred", ["accum-ref", "predecessors"]],
+                        ["seq",
+                         ["send-to-accum",
+                          ["var-ref", "pred"],
+                          "demandSumBuckets",
+                          ["accum-ref", "demandSumBuckets"]],
+                         ["accum-clear!", "demandSumBuckets"],
+                         false ]
+                       ] } ]
 };
 }
 
 /* As a possible surface syntax example:
 
    (seq
-   (accum-set! "demandBucketAccum_0" (attrib-ref demandBucketAccum_0 (this-doc)))
-   (accum-set! "demandBucketAccum_1" (attrib-ref demandBucketAccum_1 (this-doc)))
+   (accum-set! "demandSumBuckets" (attrib-ref demandSumBuckets (this-doc)))
    (send-to-all-neighbors "predecessors" (this-pregel-id)))
 
    (seq
-   (send-to-accum "finalDemandBucketAccum_0" (this-pregel-id) demandBucketAccum_0)
-   (send-to-accum "finalDemandBucketAccum_1" (this-pregel-id) demandBucketAccum_1)
+   (send-to-accum "finalDemandSumBuckets" (this-pregel-id) demandSumBuckets)
    (for-each (pred predecessors)
-     (send-to-accum "demandBucketAccum_0" (attrib-ref "to-pregel-id" edge) demandBucketAccum_0))
-     (send-to-accum "demandBucketAccum_1" (attrib-ref "to-pregel-id" edge) demandBucketAccum_1)))
-   (accum-clear! "demandBucketAccum_0")
-   (accum-clear! "demandBuckedAccum_1"))
+     (send-to-accum "demandSumBuckets" (attrib-ref "to-pregel-id" edge) demandSumBuckets)))
+   (accum-clear! "demandSumBuckets"))
 
 
   or another (sneaky) possibility
 
   initProgram: function() {
-    accum_set("demandBucketAccum_0",  attrib_ref(demandBucketAccum_0, this_doc()));
-    accum_set("demandBucketAccum_1",  attrib_ref(demandBucketAccum_1, this_doc()));
+    accum_set("demandSumBucket_0", attrib_ref(demandSumBucket_0, this_doc()));
     send_to_all_neighbors("predecessors", this_pregel_id());
     return false;
   }
 
   updateProgram: function() {
-    send_to_accum("finalDemandBucketAccum_0", this_pregel_id(), demandBucketAccum_0);
-    send-to-accum("finalDemandBucketAccum_1", this_pregel-id(), demandBucketAccum_1);
+    send_to_accum("finalDemandSumBuckets", this_pregel_id(), demandSumBuckets);
     for(pred in predecessors) {
-      send_to_accum("demandBucketAccum_0", edge.`to-pregel-id`, demandBucketAccum_0));
-      send_to_accum("demandBucketAccum_1", edge.`to-pregel-id`, demandBucketAccum_1));
+      send_to_accum("demandSumBuckets", edge.`to-pregel-id`, demandSumBuckets));
     }
-    accum_clear("demandBucketAccum_0");
-    accum_clear("demandBuckedAccum_1");
+    accum_clear("demandSumBuckets");
     return false;
   }
 */

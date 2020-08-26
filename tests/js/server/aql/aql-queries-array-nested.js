@@ -112,7 +112,7 @@ function nestedArraySimpleSuite () {
       var expected = [ "UnitTestsArray/1", "UnitTestsArray/2" ];
       var q = "FOR doc IN " + c.name() + " RETURN doc._id";
 
-      runQueries(q, expected, false, false);
+      runQueries(q, expected, true, true);
     },
 
     testOne : function () {

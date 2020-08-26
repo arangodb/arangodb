@@ -400,6 +400,9 @@ void VstCommTask<T>::doWrite() {
   std::unique_ptr<ResponseItem> item(tmp);
 
   DTraceVstCommTaskBeforeAsyncWrite((size_t) this);
+  
+  // TODO: should we have a better timeout mechanism?
+//  this->setTimeout(GeneralCommTask<T>::DefaultTimeout);
 
   auto& buffers = item->buffers;
   asio_ns::async_write(this->_protocol->socket, buffers,
@@ -408,13 +411,13 @@ void VstCommTask<T>::doWrite() {
 
     DTraceVstCommTaskAfterAsyncWrite((size_t) self.get());
 
-    auto* me = static_cast<VstCommTask<T>*>(self.get());
+    auto& me = static_cast<VstCommTask<T>&>(*self);
     rsp->stat.SET_WRITE_END();
     rsp->stat.ADD_SENT_BYTES(rsp->buffers[0].size() + rsp->buffers[1].size());
     if (ec) {
-      me->close(ec);
+      me.close(ec);
     } else {
-      me->doWrite(); // write next one
+      me.doWrite(); // write next one
     }
   });
 }

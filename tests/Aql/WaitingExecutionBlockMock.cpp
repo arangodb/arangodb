@@ -48,7 +48,7 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> Re
   for (auto const& b : blocks) {
     if (b != nullptr) {
       // Find the first non-nullptr block
-      regs = b->getNrRegs();
+      regs = b->numRegisters();
 
       break;
     }
@@ -142,7 +142,7 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBl
     if (result != nullptr && !result->hasShadowRows()) {
       // Count produced rows
       auto& modCall = stack.modifyTopCall();
-      modCall.didProduce(result->size());
+      modCall.didProduce(result->numRows());
     }
 
     if (!skipped.nothingSkipped()) {

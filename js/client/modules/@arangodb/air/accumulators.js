@@ -104,6 +104,22 @@ function maxAccumulator() {
     };
 }
 
+function sumAccumulator() {
+  return {
+    updateProgram: ["if",
+                    [["eq?", ["input-value"], 0],
+                     "cold"],
+                    [true,
+                     ["seq",
+                      ["this-set!", ["+", ["current-value"], ["input-value"]]],
+                      "hot"]]],
+    clearProgram: ["this-set!", 0],
+    getProgram: ["current-value"],
+    setProgram: ["input-value"],
+    finalizeProgram: ["current-value"],
+  };
+}
 
 exports.minAccumulator = minAccumulator;
 exports.maxAccumulator = maxAccumulator;
+exports.sumAccumulator = sumAccumulator;

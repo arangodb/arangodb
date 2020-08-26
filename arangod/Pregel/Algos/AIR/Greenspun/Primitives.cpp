@@ -710,6 +710,42 @@ EvalResult Prim_ArrayLength(Machine& ctx, VPackSlice const paramsList, VPackBuil
   return {};
 }
 
+template<bool ignoreMissing>
+EvalResult Prim_DictExtract(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  if (paramsList.length() < 1) {
+    return EvalError("expected at least on parameter");
+  }
+  VPackArrayIterator iter(paramsList);
+
+  VPackSlice obj = *iter;
+  if (!obj.isObject()) {
+    return EvalError("expected first parameter to be a dict, found: " + obj.toJson());
+  }
+  iter++;
+
+  {
+    VPackObjectBuilder ob(&result);
+    for (; iter.valid(); iter++) {
+      VPackSlice key = *iter;
+      if (!key.isString()) {
+        return EvalError("expected string, found: " + key.toJson());
+      }
+
+      VPackSlice value = obj.get(key.stringRef());
+      if (value.isNone()) {
+        if constexpr (ignoreMissing) {
+          continue;
+        } else {
+          return EvalError("key `" + key.copyString() + "` not found");
+        }
+      }
+
+      result.add(key.stringRef(), value);
+    }
+  }
+  return {};
+}
+
 void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_type&& f) {
   ctx.setFunction(name, std::move(f));
 }
@@ -776,6 +812,8 @@ void RegisterAllPrimitives(Machine& ctx) {
 
   ctx.setFunction("array-empty?", Prim_EmptyArrayHuh);
   ctx.setFunction("array-length", Prim_ArrayLength);
+  ctx.setFunction("dict-x-tract", Prim_DictExtract<false>);
+  ctx.setFunction("dict-x-tract-x", Prim_DictExtract<true>);
 
   ctx.setFunction("var-ref", Prim_VarRef);
 

@@ -42,7 +42,7 @@ template <typename... T>
 struct parameter_list {
   constexpr static auto length = sizeof...(T);
 
-  static bool contains_name(VPackSlice slice) {
+  static bool contains_name(slice_type slice) {
     return (slice.isEqualString(T::name) || ...);
   }
 };
