@@ -215,7 +215,6 @@ void QueryRegistry::closeEngine(EngineId engineId) {
 // cppcheck-suppress virtualCallInConstructor
 std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& vocbase, QueryId id,
                                                           int errorCode) {
-  LOG_DEVEL << "destroyQuery called: " << vocbase << " " << id;
   std::unique_ptr<QueryInfo> queryInfo;
 
   {
@@ -226,14 +225,12 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
     if (m == _queries.end()) {
       // database not found. this can happen as a consequence of a race between garbage collection
       // and query shutdown
-      LOG_DEVEL << "Did not find vocbase: " << vocbase << " " << id;
       return nullptr;
     }
     
     auto q = m->second.find(id);
 
     if (q == m->second.end()) {
-      LOG_DEVEL << "Did not find query id: " << vocbase << " " << id;
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER, "query with given id not found in query registry");
     }
@@ -244,7 +241,6 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
         q->second->_query->kill();
       }
       q->second->_expires = 0.0;
-      LOG_DEVEL << "Query killed, because it is in use: " << vocbase << " " << id;
       return nullptr;
     }
 

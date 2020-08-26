@@ -262,12 +262,10 @@ void RestAqlHandler::setupClusterQuery() {
     auto& clusterInfo = clusterFeature.clusterInfo();
     RebootId rebootId = clusterInfo.getCurrentRebootId(coordinatorId);
     if (rebootId.initialized()) {
-      LOG_DEVEL << "Ordering RebootTracker cleanup for " << _vocbase.name() << " " << queryId;
       auto rGuard =
           std::make_unique<cluster::CallbackGuard>(clusterInfo.rebootTracker().callMeOnChange(
               cluster::RebootTracker::PeerState(coordinatorId, rebootId),
               [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(), queryId]() {
-                LOG_DEVEL << "Callback to destroy query called: " << vocbaseName << " " << queryId;
                 queryRegistry->destroyQuery(vocbaseName, queryId, TRI_ERROR_TRANSACTION_ABORTED);
               },
               "Query aborted since coordinator rebooted or failed."));

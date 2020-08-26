@@ -44,7 +44,6 @@ DropCollection::DropCollection(MaintenanceFeature& feature, ActionDescription co
     : ActionBase(feature, d) {
   std::stringstream error;
 
-  LOG_DEVEL << "DropCollection action created: " << (uint64_t) this << " " << d;
   if (!d.has(COLLECTION)) {
     error << "collection must be specified. ";
   }
@@ -108,7 +107,6 @@ bool DropCollection::first() {
   _feature.delShardVersion(collection);
   notify();
 
-  LOG_DEVEL << "DropCollection action first finished: " << (uint64_t) this << " " << _description;
   return false;
 }
 
