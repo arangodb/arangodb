@@ -1,6 +1,10 @@
 devel
 -----
 
+* Allow calling of REST APIs `/_api/engine/stats`, GET `/_api/collection` and
+  GET `/_api/database/current` on followers in active failover deployments. 
+  This can help debugging and inspecting the follower.
+
 * Don't allow creation of smart satellite graphs or collections (i.e. using
   `"isSmart":true` together with `"replicationFactor":"satellite"` when creating
   graphs or collections. This combination of parameters makes no sense, so that
