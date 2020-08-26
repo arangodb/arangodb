@@ -27,6 +27,7 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Cluster/CallbackGuard.h"
 
 namespace arangodb {
 namespace aql {
@@ -56,6 +57,9 @@ class QueryRegistry {
   /// that the caller can continue to use it exclusively.
   /// This is identical to an atomic sequence of insert();open();
   TEST_VIRTUAL void insertQuery(std::unique_ptr<ClusterQuery> query, double ttl);
+
+  void storeRebootTrackerCallbackGuard(std::string const& vocbaseName, QueryId queryId,
+                                       std::unique_ptr<cluster::CallbackGuard>&& guard);
 
   /// @brief open, find a engine in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
@@ -132,6 +136,8 @@ class QueryRegistry {
     double _expires;     // UNIX UTC timestamp of expiration
     size_t _numEngines; // used for legacy shutdown
     size_t _numOpen;
+
+    std::unique_ptr<cluster::CallbackGuard> _rebootTrackerCallbackGuard;
   };
 
   struct EngineInfo final {
