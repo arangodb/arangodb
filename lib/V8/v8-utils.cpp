@@ -3949,14 +3949,20 @@ static void JS_Sleep(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   double n = correctTimeoutToExecutionDeadlineS(TRI_ObjectToDouble(isolate, args[0]));
   double until = TRI_microtime() + n;
+  
+  TRI_GET_GLOBALS();
 
   while (true) {
+    if (v8g->_server.isStopping()) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
     double now = TRI_microtime();
     if (now >= until) {
       break;
     }
     uint64_t duration =
-        (until - now >= 0.5) ? 500000 : static_cast<uint64_t>((until - now) * 1000000);
+        (until - now >= 0.1) ? 100000 : static_cast<uint64_t>((until - now) * 1000000);
 
     std::this_thread::sleep_for(std::chrono::microseconds(duration));
   }

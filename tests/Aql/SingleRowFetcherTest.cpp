@@ -477,7 +477,7 @@ TEST_F(SingleRowFetcherTestPassBlocks,
     std::tie(state, row) = testee.fetchRow();
     ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getNumRegisters(), 1);
     ASSERT_EQ(row.getValue(0).slice().getInt(), 42);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
@@ -500,7 +500,7 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
     std::tie(state, row) = testee.fetchRow();
     ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getNumRegisters(), 1);
     ASSERT_EQ(row.getValue(0).slice().getInt(), 42);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
@@ -524,7 +524,7 @@ TEST_F(SingleRowFetcherTestPassBlocks,
     std::tie(state, row) = testee.fetchRow();
     ASSERT_EQ(state, ExecutionState::HASMORE);
     ASSERT_TRUE(row);
-    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getNumRegisters(), 1);
     ASSERT_EQ(row.getValue(0).slice().getInt(), 42);
 
     std::tie(state, row) = testee.fetchRow();
@@ -552,7 +552,7 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
     std::tie(state, row) = testee.fetchRow();
     ASSERT_EQ(state, ExecutionState::HASMORE);
     ASSERT_TRUE(row);
-    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getNumRegisters(), 1);
     ASSERT_EQ(row.getValue(0).slice().getInt(), 42);
 
     std::tie(state, row) = testee.fetchRow();
@@ -584,7 +584,7 @@ TEST_F(SingleRowFetcherTestPassBlocks,
     std::tie(state, row) = testee.fetchRow();
     ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getNumRegisters(), 1);
     ASSERT_EQ(row.getValue(0).slice().getInt(), 42);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
@@ -612,7 +612,7 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
     std::tie(state, row) = testee.fetchRow();
     ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getNumRegisters(), 1);
     ASSERT_EQ(row.getValue(0).slice().getInt(), 42);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
@@ -641,7 +641,7 @@ TEST_F(SingleRowFetcherTestPassBlocks,
     std::tie(state, row) = testee.fetchRow();
     ASSERT_EQ(state, ExecutionState::HASMORE);
     ASSERT_TRUE(row);
-    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getNumRegisters(), 1);
     ASSERT_EQ(row.getValue(0).slice().getInt(), 42);
 
     std::tie(state, row) = testee.fetchRow();
@@ -674,7 +674,7 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
     std::tie(state, row) = testee.fetchRow();
     ASSERT_EQ(state, ExecutionState::HASMORE);
     ASSERT_TRUE(row);
-    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getNumRegisters(), 1);
     ASSERT_EQ(row.getValue(0).slice().getInt(), 42);
 
     std::tie(state, row) = testee.fetchRow();
@@ -710,14 +710,14 @@ TEST_F(SingleRowFetcherTestPassBlocks, multiple_blocks_upstream_producer_doesnt_
       std::tie(state, row) = testee.fetchRow();
       ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getNumRegisters(), 1);
       ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     rowIdxAndValue = 6;
     std::tie(state, row) = testee.fetchRow();
     ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getNumRegisters(), 1);
     ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
@@ -746,14 +746,14 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks, multiple_blocks_upstream_producer_do
       std::tie(state, row) = testee.fetchRow();
       ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getNumRegisters(), 1);
       ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     rowIdxAndValue = 6;
     std::tie(state, row) = testee.fetchRow();
     ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getNumRegisters(), 1);
     ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
@@ -791,7 +791,7 @@ TEST_F(SingleRowFetcherTestPassBlocks, multiple_blocks_upstream_producer_waits) 
       std::tie(state, row) = testee.fetchRow();
       ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getNumRegisters(), 1);
       ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     rowIdxAndValue = 6;
@@ -803,7 +803,7 @@ TEST_F(SingleRowFetcherTestPassBlocks, multiple_blocks_upstream_producer_waits) 
     std::tie(state, row) = testee.fetchRow();
     ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getNumRegisters(), 1);
     ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
@@ -841,7 +841,7 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks, multiple_blocks_upstream_producer_wa
       std::tie(state, row) = testee.fetchRow();
       ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getNumRegisters(), 1);
       ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     rowIdxAndValue = 6;
@@ -853,7 +853,7 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks, multiple_blocks_upstream_producer_wa
     std::tie(state, row) = testee.fetchRow();
     ASSERT_EQ(state, ExecutionState::DONE);
     ASSERT_TRUE(row);
-    ASSERT_EQ(row.getNrRegisters(), 1);
+    ASSERT_EQ(row.getNumRegisters(), 1);
     ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
   }  // testee is destroyed here
   // testee must be destroyed before verify, because it may call returnBlock
@@ -892,7 +892,7 @@ TEST_F(SingleRowFetcherTestPassBlocks,
       std::tie(state, row) = testee.fetchRow();
       ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getNumRegisters(), 1);
       ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     std::tie(state, row) = testee.fetchRow();
@@ -935,7 +935,7 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
       std::tie(state, row) = testee.fetchRow();
       ASSERT_EQ(state, ExecutionState::HASMORE);
       ASSERT_TRUE(row);
-      ASSERT_EQ(row.getNrRegisters(), 1);
+      ASSERT_EQ(row.getNumRegisters(), 1);
       ASSERT_EQ(row.getValue(0).slice().getInt(), rowIdxAndValue);
     }
     std::tie(state, row) = testee.fetchRow();

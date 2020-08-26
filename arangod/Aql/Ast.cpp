@@ -1626,6 +1626,13 @@ void Ast::injectBindParameters(BindParameters& parameters,
           }
         } else {
           TRI_ASSERT(node->type == NODE_TYPE_PARAMETER_DATASOURCE);
+         
+          if (!value.isString()) {
+            // we can get here in case `WITH @col ...` when the value of @col
+            // is not a string
+            _query.warnings().registerError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, param.c_str());
+            // query will have been aborted here
+          }
 
           // bound data source parameter
           TRI_ASSERT(value.isString());
@@ -2347,7 +2354,7 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node, bool& isSaf
   return result;
 }
 
-/// @brief determines the to-be-kept attribute of an INTO expression
+/// @brief determines the to-be-kept attributes of an INTO expression
 std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(
     AstNode const* node, Variable const* searchVariable, bool& isSafeForOptimization) {
   auto isTargetVariable = [&searchVariable](AstNode const* node) {
@@ -2385,9 +2392,9 @@ std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(
   std::unordered_set<std::string> result;
   isSafeForOptimization = true;
 
-  std::function<bool(AstNode const*)> visitor = [&isSafeForOptimization,
-                                                 &result, &isTargetVariable,
-                                                 &searchVariable](AstNode const* node) {
+  auto visitor = [&isSafeForOptimization,
+                  &result, &isTargetVariable,
+                  &searchVariable](AstNode const* node) {
     if (!isSafeForOptimization) {
       return false;
     }
@@ -2480,6 +2487,59 @@ bool Ast::getReferencedAttributes(AstNode const* node, Variable const* variable,
     state.attributeName = nullptr;
     state.nameLength = 0;
 
+    return true;
+  };
+
+  traverseReadOnly(node, visitor, ::doNothingVisitor);
+
+  return state.isSafeForOptimization;
+}
+
+/// @brief determines the attributes (and their subattributes) referenced in an 
+/// expression for the specified out variable
+bool Ast::getReferencedAttributesRecursive(AstNode const* node, Variable const* variable,
+                                           std::unordered_set<arangodb::aql::AttributeNamePath>& vars) {
+  // traversal state
+  struct TraversalState {
+    Variable const* variable;
+    bool isSafeForOptimization;
+    std::unordered_set<arangodb::aql::AttributeNamePath>& vars;
+    arangodb::aql::AttributeNamePath path;
+  };
+
+  TraversalState state{variable, true, vars, {}};
+
+  auto visitor = [&state](AstNode const* node) -> bool {
+    if (node == nullptr || !state.isSafeForOptimization) {
+      return false;
+    }
+
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      state.path.path.emplace_back(node->getStringValue(), node->getStringLength());
+      return true;
+    }
+
+    if (node->type == NODE_TYPE_REFERENCE) {
+      // reference to a variable
+      auto v = static_cast<Variable const*>(node->getData());
+      if (v == state.variable) {
+        if (state.path.empty()) {
+          // we haven't seen an attribute access directly before...
+          // this may have been an access to an indexed property, e.g value[0]
+          // or a reference to the complete value, e.g. FUNC(value) note that
+          // this is unsafe to optimize this away
+          state.isSafeForOptimization = false;
+          return false;
+        }
+        // we picked attribute names up in reverse order, so now reverse them
+        state.path.reverse();
+        state.vars.emplace(std::move(state.path.path));
+        state.path.clear();
+      }
+      // fall-through
+    }
+
+    state.path.clear();
     return true;
   };
 
@@ -2752,7 +2812,7 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
       auto value = member->getMember(0);
 
       if (value->type == NODE_TYPE_OBJECT && value->numMembers() != 0) {
-          createCondition(value);
+        createCondition(value);
       } else {
         auto access = variable;
         for (auto const& it : attributeParts) {
