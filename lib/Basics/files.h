@@ -36,7 +36,7 @@
 #include <openssl/evp.h>
 
 #include "Basics/Common.h"
-#include "Basics/StringUtils.h"
+#include "Basics/Result.h"
 #include "Basics/debugging.h"
 
 #ifdef USE_ENTERPRISE
@@ -397,6 +397,11 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_PathIsAbsolute(std::string const& path);
+
+/// @brief return the amount of total and free disk space for the given path
+arangodb::Result TRI_GetDiskSpace(std::string const& path, 
+                                  uint64_t& totalSpace,
+                                  uint64_t& freeSpace);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads an environment variable. returns false if env var was not set.

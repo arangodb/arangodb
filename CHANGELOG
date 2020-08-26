@@ -1,6 +1,14 @@
 devel
 -----
 
+* Added new metrics for the total and the free disk space for the mount
+  used for the RocksDB database directory:
+
+  * `arangodb_rocksdb_free_disk_space`: provides the free disk space for
+    the mount, in bytes
+  * `arangodb_rocksdb_free_disk_space`: provides the total disk space of
+    the mount, in bytes
+
 * Don't allow creation of smart satellite graphs or collections (i.e. using
   `"isSmart":true` together with `"replicationFactor":"satellite"` when creating
   graphs or collections. This combination of parameters makes no sense, so that
