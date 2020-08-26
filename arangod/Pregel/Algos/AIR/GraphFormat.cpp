@@ -27,6 +27,9 @@
 #include "Pregel/Algos/AIR/Greenspun/Extractor.h"
 #include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
 
+#include <velocypack/Collection.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
 namespace pregel {
 namespace algos {
@@ -49,46 +52,66 @@ GraphFormat::GraphFormat(application_features::ApplicationServer& server,
 size_t GraphFormat::estimatedVertexSize() const { return sizeof(vertex_type); }
 size_t GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
 
-void filterDocumentData(VPackBuilder& tmpBuilder, VPackSlice const& arraySlice,
+void filterDocumentData(VPackBuilder& finalBuilder, VPackSlice const& arraySlice,
                         arangodb::velocypack::Slice& document) {
-  tmpBuilder.openObject();
-
   for (auto&& key : VPackArrayIterator(arraySlice)) {
     if (key.isString()) {
-      tmpBuilder.add(key.copyString(), document.get(key.stringRef()));
+      VPackBuilder tmp;
+      VPackBuilder innerBuilder;
+      innerBuilder.openObject();
+      innerBuilder.add(key.copyString(), document.get(key.stringRef()));
+      innerBuilder.close();
+
+      if (!finalBuilder.slice().isObject()) {
+        finalBuilder.openObject();
+        finalBuilder.close();
+      }
+      VPackCollection::merge(tmp, finalBuilder.slice(), innerBuilder.slice(), true, false);
+      finalBuilder.clear();
+      finalBuilder.add(tmp.slice());
     } else if (key.isArray()) {
       std::vector<VPackStringRef> path;
       size_t pathLength = key.length();
       size_t iterationStep = 0;
 
-      tmpBuilder.openObject();
-      for (auto&& pathStep : VPackArrayIterator(key)) {
-        if (!pathStep.isString()) {
+      VPackBuilder innerArrayBuilder;
+      innerArrayBuilder.openObject();  // open outer object
+
+      for (auto&& innerKey : VPackArrayIterator(key)) {
+        // TODO: optimize in the future - right now complicated to build a fresh object via key-path strings
+
+        if (!innerKey.isString()) {
           TRI_ASSERT(false);  // TODO: Add type checking in deserializer
         }
         // build up path - will change in every iteration step
-        path.emplace_back(pathStep.stringRef());
+        path.emplace_back(innerKey.stringRef());
 
         if (iterationStep < (pathLength - 1)) {
-          tmpBuilder.add(pathStep.copyString(), VPackValue(VPackValueType::Object));
+          innerArrayBuilder.add(innerKey);  //, VPackValue(VPackValueType::Object));
+          innerArrayBuilder.openObject();
         } else {
-          tmpBuilder.add(pathStep.copyString(), document.get(path));
+          innerArrayBuilder.add(innerKey.copyString(), document.get(path));
         }
 
         // get slice of each document depth
-        path.emplace_back(pathStep.stringRef());
         iterationStep++;
       }
 
-      // now close all opened objects
+      // now close all inner opened objects
       for (size_t step = 0; step < (pathLength - 1); step++) {
-        tmpBuilder.close();
+        innerArrayBuilder.close();
       }
+
+      innerArrayBuilder.close();  // close outer object
+      VPackBuilder tmp;
+      VPackCollection::merge(tmp, finalBuilder.slice(),
+                             innerArrayBuilder.slice(), true, false);
+      finalBuilder.clear();
+      finalBuilder.add(tmp.slice());
     } else {
       TRI_ASSERT(false);
     }
   }
-  tmpBuilder.close();
 }
 
 // Extract vertex data from vertex document into target
