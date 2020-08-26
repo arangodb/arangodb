@@ -175,13 +175,13 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       "--rocksdb.target-file-size-base",
       "per-file target file size for compaction (in bytes). the actual target file size for each level is `--rocksdb.target-file-size-base` multiplied by `--rocksdb.target-file-size-multiplier` ^ (level - 1)",
       new UInt64Parameter(&_targetFileSizeBase))
-  setIntroducedIn(30701);
+  .setIntroducedIn(30701);
   
   options->addOption(
       "--rocksdb.target-file-size-multiplier",
       "multiplier for `--rocksdb.target-file-size`, a value of 1 means that files in different levels will have the same size",
       new UInt64Parameter(&_targetFileSizeMultiplier))
-  setIntroducedIn(30701);
+  .setIntroducedIn(30701);
 
   options->addOption(
       "--rocksdb.transaction-lock-timeout",
@@ -347,7 +347,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       "if turned on, the RocksDB block cache quota will also include RocksDB memtable sizes",
       new BooleanParameter(&_cacheIndexAndFilterBlocks),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-  setIntroducedIn(30701);
+  .setIntroducedIn(30701);
 
   options->addOption(
       "--rocksdb.cache-index-and-filter-blocks-with-high-priority",
@@ -355,7 +355,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       "making index and filter blocks be less likely to be evicted than data blocks",
       new BooleanParameter(&_cacheIndexAndFilterBlocksWithHighPriority),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-  setIntroducedIn(30701);
+  .setIntroducedIn(30701);
 
   options->addOption(
       "--rocksdb.pin-l0-filter-and-index-blocks-in-cache",
@@ -363,7 +363,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       "filter and index blocks are pinned and only evicted from cache when the table reader is freed",
       new BooleanParameter(&_pinl0FilterAndIndexBlocksInCache),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-  setIntroducedIn(30701);
+  .setIntroducedIn(30701);
 
   options->addOption(
       "--rocksdb.pin-top-level-index-and-filter",
@@ -371,7 +371,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       "the top-level index of partitioned filter and index blocks are pinned and only evicted from cache when the table reader is freed",
       new BooleanParameter(&_pinTopLevelIndexAndFilter),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-  setIntroducedIn(30701);
+  .setIntroducedIn(30701);
 
   options->addOption(
       "--rocksdb.table-block-size",
