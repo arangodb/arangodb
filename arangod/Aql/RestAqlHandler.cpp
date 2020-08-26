@@ -39,6 +39,10 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/CallbackGuard.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "Logger/LogMacros.h"
@@ -243,9 +247,33 @@ void RestAqlHandler::setupClusterQuery() {
 
   answerBuilder.close(); // result
   answerBuilder.close();
-  
+
+  QueryId queryId = q->id();   // keep a copy
   _queryRegistry->insertQuery(std::move(q), ttl);
 
+  // Now set an alarm for the case that the coordinator is restarted which
+  // initiated this query. In that case, we want to drop our piece here:
+  bool found;
+  std::string const& coordinatorId = _request->header(StaticStrings::ClusterCommSource, found);
+  if (found) {
+    // If we do not see this header, then we do not know which coordinator issues
+    // this request, then we simply do nothing and let the ttl be the only safety net.
+    auto& clusterFeature = _server.getFeature<ClusterFeature>();
+    auto& clusterInfo = clusterFeature.clusterInfo();
+    RebootId rebootId = clusterInfo.getCurrentRebootId(coordinatorId);
+    if (rebootId.initialized()) {
+      LOG_DEVEL << "Ordering RebootTracker cleanup for " << _vocbase.name() << " " << queryId;
+      auto rGuard =
+          std::make_unique<cluster::CallbackGuard>(clusterInfo.rebootTracker().callMeOnChange(
+              cluster::RebootTracker::PeerState(coordinatorId, rebootId),
+              [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(), queryId]() {
+                LOG_DEVEL << "Callback to destroy query called: " << vocbaseName << " " << queryId;
+                queryRegistry->destroyQuery(vocbaseName, queryId, TRI_ERROR_TRANSACTION_ABORTED);
+              },
+              "Query aborted since coordinator rebooted or failed."));
+      _queryRegistry->storeRebootTrackerCallbackGuard(_vocbase.name(), queryId, std::move(rGuard));
+    }
+  }
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
