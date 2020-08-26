@@ -25,64 +25,13 @@
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
+const accumulators = require("@arangodb/air/accumulators");
 
 const internal = require("internal");
 
 exports.single_source_shortest_paths_program = single_source_shortest_paths_program;
 exports.single_source_shortest_paths = single_source_shortest_paths;
 exports.test = test;
-
-function cmpAccumulator2(cmp) {
-    return {
-        updateProgram: ["if",
-            [
-                ["or",
-                    ["not", ["attrib-get", "isSet", ["current-value"]]],
-                    [cmp, ["input-value"], ["attrib-get", "value", ["current-value"]]]
-                ],
-                ["seq",
-                    ["this-set!",
-                        ["dict",
-                            ["list", "isSet", true],
-                            ["list", "value", ["input-value"]],
-                            ["list", "sender", ["input-sender"]]
-                        ]
-                    ],
-                    "hot"
-                ]
-            ],
-            [true, "cold"]
-        ],
-        clearProgram: ["this-set!", {"isSet": false, "value": 0, sender: null}],
-        getProgram: ["if",
-            [
-                ["attrib-get", "isSet", ["current-value"]],
-                ["attrib-get", "value", ["current-value"]]
-            ],
-            [
-                true,
-                ["error", "accumulator undefined value"]
-            ]
-        ],
-        setProgram: ["this-set!",
-            ["dict",
-                ["list", "isSet", true],
-                ["list", "value", ["input-value"]],
-                ["list", "sender", null]
-            ]
-        ],
-        finalizeProgram: ["if",
-            [
-                ["attrib-get", "isSet", ["current-value"]],
-                ["dict-x-tract",  ["current-value"], "value", "sender"]
-            ],
-            [true, null]
-        ],
-    }
-}
-
-const minAccumulator = cmpAccumulator2("lt?");
-const maxAccumulator = cmpAccumulator2("gt?");
 
 /*
 
@@ -108,7 +57,7 @@ function single_source_shortest_paths_program(
             },
         },
         customAccumulators: {
-            "my_min": minAccumulator
+            "my_min": accumulators.minAccumulator
         },
         phases: [
             {
@@ -171,35 +120,6 @@ function single_source_shortest_paths(
     );
 }
 
-function exec_test_compare_sssp_impls(graphSpec) {
-    // Find the ID of a vertex to start at.
-    const some_vertex = db
-        ._query(`FOR d IN @@V SORT RAND() LIMIT 1 RETURN d._id`,
-            {"@V": graphSpec.vname})
-        .toArray()[0];
-
-    internal.print("using " + some_vertex + " as start vertex.");
-
-    testhelpers.wait_for_pregel(
-        "Air SSSP",
-        single_source_shortest_paths(
-            graphSpec.name,
-            "SSSP",
-            some_vertex,
-        ));
-
-    testhelpers.wait_for_pregel(
-        "Native SSSP",
-        pregel.start("sssp", graphSpec.name, {
-            source: some_vertex,
-            maxGSS: 10000,
-        }));
-
-    return testhelpers.compare_pregel(db._query(`FOR d IN @@V
-               FILTER NOT ( d.result == d.SSSP.distance.value OR ( d.SSSP.distance.value == NULL AND d.result > 9999999 ) )
-               RETURN d`, {"@V": graphSpec.vname}));
-}
-
 function exec_test_shortest_path_impl(graphSpec) {
     // Find the ID of a vertex to start at.
     const [from_vertex, ...to_vertexes] = db
@@ -212,9 +132,9 @@ function exec_test_shortest_path_impl(graphSpec) {
     testhelpers.wait_for_pregel(
         "Air SSSP",
         single_source_shortest_paths(
-            graphSpec.name,
-            "SSSP",
-            from_vertex,
+          graphSpec.name,
+          "SSSP",
+          from_vertex,
         ));
 
     for (let to_vertex of to_vertexes) {
@@ -273,24 +193,14 @@ function exec_test_shortest_path_impl(graphSpec) {
     }
 }
 
-function exec_test_compare_sssp() {
-    exec_test_compare_sssp_impls(examplegraphs.create_line_graph("LineGraph100", 100, 1));
-    exec_test_compare_sssp_impls(examplegraphs.create_line_graph("LineGraph1000", 1000, 9));
-    exec_test_compare_sssp_impls(examplegraphs.create_line_graph("LineGraph10000", 10000, 18));
-
-    exec_test_compare_sssp_impls(examplegraphs.create_wiki_vote_graph("WikiVote", 1));
-    exec_test_compare_sssp_impls(examplegraphs.create_wiki_vote_graph("WikiVote", 9));
-    exec_test_compare_sssp_impls(examplegraphs.create_wiki_vote_graph("WikiVote", 18));
-}
-
 function exec_test_shortest_path() {
     exec_test_shortest_path_impl(examplegraphs.create_line_graph("LineGraph100", 100, 1));
     exec_test_shortest_path_impl(examplegraphs.create_line_graph("LineGraph1000", 1000, 9));
     exec_test_shortest_path_impl(examplegraphs.create_line_graph("LineGraph10000", 10000, 18));
 
-    exec_test_shortest_path_impl(examplegraphs.create_circle("Circle10", 10, 1));
-    exec_test_shortest_path_impl(examplegraphs.create_circle("Circle100", 100, 6));
-    exec_test_shortest_path_impl(examplegraphs.create_circle("Circle1000", 1000, 18));
+    exec_test_shortest_path_impl(examplegraphs.create_circle_graph("Circle10", 10, 1));
+    exec_test_shortest_path_impl(examplegraphs.create_circle_graph("Circle100", 100, 6));
+    exec_test_shortest_path_impl(examplegraphs.create_circle_graph("Circle1000", 1000, 18));
 
     exec_test_shortest_path_impl(examplegraphs.create_wiki_vote_graph("WikiVote", 1));
     exec_test_shortest_path_impl(examplegraphs.create_wiki_vote_graph("WikiVote", 9));
@@ -298,6 +208,5 @@ function exec_test_shortest_path() {
 }
 
 function test() {
-    exec_test_compare_sssp();
     exec_test_shortest_path();
 }
