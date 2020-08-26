@@ -44,6 +44,7 @@ DropCollection::DropCollection(MaintenanceFeature& feature, ActionDescription co
     : ActionBase(feature, d) {
   std::stringstream error;
 
+  LOG_DEVEL << "DropCollection action created: " << (uint64_t) this << " " << d;
   if (!d.has(COLLECTION)) {
     error << "collection must be specified. ";
   }
@@ -55,7 +56,7 @@ DropCollection::DropCollection(MaintenanceFeature& feature, ActionDescription co
   TRI_ASSERT(d.has(DATABASE));
 
   if (!error.str().empty()) {
-    LOG_TOPIC("c7e42", ERR, Logger::MAINTENANCE) << "DropCollectio: " << error.str();
+    LOG_TOPIC("c7e42", ERR, Logger::MAINTENANCE) << "DropCollection: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -107,5 +108,13 @@ bool DropCollection::first() {
   _feature.delShardVersion(collection);
   notify();
 
+  LOG_DEVEL << "DropCollection action first finished: " << (uint64_t) this << " " << _description;
   return false;
+}
+
+void DropCollection::setState(ActionState state) {
+  if ((COMPLETE == state || FAILED == state) && _state != state) {
+    _feature.unlockShard(_description.get(COLLECTION));
+  }
+  ActionBase::setState(state);
 }

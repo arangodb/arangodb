@@ -947,3 +947,47 @@ void MaintenanceFeature::proceed() {
   _pauseUntil = std::chrono::steady_clock::duration::zero();
 }
 
+bool MaintenanceFeature::isShardLocked(ShardID shardId,
+                                       std::shared_ptr<maintenance::ActionDescription>& description) const {
+  auto it = _shardActionMap.find(shardId);
+  if (it == _shardActionMap.end()) {
+    description.reset();
+    return false;
+  }
+  description = it->second;
+  return true;
+}
+
+bool MaintenanceFeature::lockShard(ShardID shardId,
+                                   std::shared_ptr<maintenance::ActionDescription> const& description) {
+  LOG_TOPIC("aaed2", DEBUG, Logger::MAINTENANCE) << "Locking shard " << shardId << " for action " << *description;
+  std::lock_guard<std::mutex> guard(_shardActionMapMutex);
+  auto pair = _shardActionMap.emplace(shardId, description);
+  return pair.second;
+}
+
+bool MaintenanceFeature::unlockShard(ShardID shardId) {
+  std::lock_guard<std::mutex> guard(_shardActionMapMutex);
+  auto it = _shardActionMap.find(shardId);
+  if (it == _shardActionMap.end()) {
+    return false;
+  }
+  LOG_TOPIC("aaed3", DEBUG, Logger::MAINTENANCE) << "Unlocking shard " << shardId << " for action " << *it->second;
+  _shardActionMap.erase(it);
+  return true;
+}
+
+MaintenanceFeature::ShardActionMap MaintenanceFeature::getShardLocks() const {
+  LOG_TOPIC("aaed4", DEBUG, Logger::MAINTENANCE) << "Copy of shard action map taken.";
+  std::lock_guard<std::mutex> guard(_shardActionMapMutex);
+  return _shardActionMap;
+}
+
+void MaintenanceFeature::unlockShardByAction(std::shared_ptr<maintenance::ActionDescription> const& description) {
+  std::string actionName = description->get(NAME);
+  if (actionName == UPDATE_COLLECTION || actionName == TAKEOVER_SHARD_LEADERSHIP ||
+      actionName == CREATE_COLLECTION || actionName == DROP_COLLECTION ||
+      actionName == RESIGN_SHARD_LEADERSHIP || actionName == SYNCHRONIZE_SHARD) {
+    unlockShard(description->get(SHARD));
+  }
+}
