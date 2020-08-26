@@ -1,6 +1,12 @@
 devel
 -----
 
+* Don't allow creation of smart satellite graphs or collections (i.e. using
+  `"isSmart":true` together with `"replicationFactor":"satellite"` when creating
+  graphs or collections. This combination of parameters makes no sense, so that
+  the server will now respond with "bad parameter" and an HTTP status code of
+  HTTP 400 ("Bad request").
+
 * Fixed: More cases in AQL can now react to a query being killed, so reaction
   time to query abortion is now shortened. This was a regression in comparison
   to 3.6 series.
@@ -29,11 +35,6 @@ devel
 
   the projection can be satisfied by a single-attribute index on attribute `b`,
   but now also by a combined index on attributes `a` and `b` (or `b` and `a`).
-
-* Fixed issue ES-664: the optimizer rule `inline-subqueries` must not pull out 
-  subqueries that contain a COLLECT statement if the subquery is itself
-  called from within a loop. Otherwise the COLLECT will be applied to the
-  values in the outer FOR loop, which can produce a different result.
 
 * Remove some JavaScript files containing testsuites and test utilities from our
   official release packages.
@@ -188,7 +189,7 @@ as well as the identifiers:
   MacOS based builds. The issue could be triggered by any network connection.
   This behavior is not part of any released version.
 
-* Fixed issue ES-664: the optimizer rule `inline-subqueries` must pull out
+* Fixed issue ES-664: the optimizer rule `inline-subqueries` must not pull out
   subqueries that contains a COLLECT statement if the subquery is itself called
 	from within a loop. Otherwise the COLLECT will be applied to the values in the
 	outer FOR loop, which can produce a different result.

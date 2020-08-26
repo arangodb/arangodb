@@ -5475,10 +5475,10 @@ void ClusterInfo::SyncerThread::run() {
         _f();
       } catch (std::exception const& ex) {
         LOG_TOPIC("752c4", ERR, arangodb::Logger::CLUSTER)
-          << "Caugt an error while loading " << _section << ": " << ex.what();
+          << "Caught an error while loading " << _section << ": " << ex.what();
       } catch (...) {
         LOG_TOPIC("30968", ERR, arangodb::Logger::CLUSTER)
-          << "Caugt an error while loading " << _section;
+          << "Caught an error while loading " << _section;
       }
     }
     // next round...
