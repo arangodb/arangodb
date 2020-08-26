@@ -38,6 +38,10 @@ namespace arangodb {
 class AgencyCache final : public arangodb::Thread {
 
 public:
+  using change_set_t =
+    std::tuple<
+  std::vector<consensus::query_t>, std::vector<consensus::query_t>, consensus::index_t>;
+
   /// @brief start off with our server
   explicit AgencyCache(
     application_features::ApplicationServer& server,
@@ -109,9 +113,8 @@ public:
    *               representation of planned and other desired databases
    *                
    */
-  std::tuple <std::vector<consensus::query_t>, consensus::index_t> const
-  plannedDBsChangedSince(
-    consensus::index_t const& last, std::vector<std::string> const& others) const;
+  change_set_t const planChangedSince(consensus::index_t const& last,
+    std::vector<std::string> const& others = std::vector<std::string>{}) const;
 
   /**
    * @brief get a list of changes and other databases and the according RAFT index
@@ -121,9 +124,8 @@ public:
    *               representation of planned and other desired databases
    *                
    */
-  std::tuple <std::vector<consensus::query_t>, consensus::index_t> const
-  currentDBsChangedSince(
-    consensus::index_t const& last, std::vector<std::string> const& others) const;
+  change_set_t const currentChangedSince(consensus::index_t const& last,
+    std::vector<std::string> const& others = std::vector<std::string>{}) const;
   
 private:
 
@@ -164,7 +166,7 @@ private:
   std::multimap<consensus::index_t, futures::Promise<arangodb::Result>> _waiting;
 
   /// @ brief Index lock of planned changes
-  std::multimap<consensus::index_t, std::string> _plannedChanges;
+  std::multimap<consensus::index_t, std::string> _planChanges;
   
   /// @ brief Index lock of current changes
   std::multimap<consensus::index_t, std::string> _currentChanges;
@@ -172,5 +174,9 @@ private:
 };
 
 } // namespace
+
+namespace std {
+std::ostream& operator<<(std::ostream& o, arangodb::AgencyCache::change_set_t const& c);
+}
 
 #endif

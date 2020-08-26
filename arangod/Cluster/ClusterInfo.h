@@ -1108,7 +1108,9 @@ public:
   std::unordered_map<ServerShortID, ServerID> _coordinatorIdMap;
   ProtectionData _mappingsProt;
 
+  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> _consilium;
   std::shared_ptr<VPackBuilder> _plan;
+  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> _statum;
   std::shared_ptr<VPackBuilder> _current;
 
   std::string _clusterId;

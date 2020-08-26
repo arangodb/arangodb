@@ -568,7 +568,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
   std::shared_ptr<LogicalCollection> collection;
   uint64_t hash = 0;
 
-  if (!isBuilding && 
+  if (!isBuilding &&
       existingCollections != _plannedCollections.end()) {
     // check if we already know this collection from a previous run...
     auto existing = (*existingCollections).second.find(collectionId);
@@ -603,7 +603,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     collection = createCollectionObject(data, vocbase);
     TRI_ASSERT(collection != nullptr);
 
-    if (!isBuilding) { 
+    if (!isBuilding) {
       auto indexes = collection->getIndexes();
       // if the collection has a link to a view, there are dependencies between collection
       // objects and view objects. in this case, we need to disable the collection caching
@@ -638,10 +638,10 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     auto type = data.get(StaticStrings::DataSourceType);
 
     if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
-      return std::make_shared<VirtualSmartEdgeCollection>(vocbase, data); 
-    } 
-    return std::make_shared<SmartVertexCollection>(vocbase, data); 
-  } 
+      return std::make_shared<VirtualSmartEdgeCollection>(vocbase, data);
+    }
+    return std::make_shared<SmartVertexCollection>(vocbase, data);
+  }
 #endif
   return std::make_shared<LogicalCollection>(vocbase, data, true);
 }
@@ -658,7 +658,7 @@ void ClusterInfo::loadPlan() {
   using clock = std::chrono::high_resolution_clock;
 
   bool const isCoordinator = ServerState::instance()->isCoordinator();
-  
+
   auto start = clock::now();
 
   auto& clusterFeature = _server.getFeature<ClusterFeature>();
@@ -711,7 +711,7 @@ void ClusterInfo::loadPlan() {
 
   consensus::index_t idx = agencyCache.get(*planBuilder, "Plan/Version");
   auto planVersionSlice = planBuilder->slice();
-  
+
   uint64_t newPlanVersion = 0;
 
   if (idx > 0 && planVersionSlice.isNumber()) {
@@ -731,7 +731,6 @@ void ClusterInfo::loadPlan() {
 
   {
     READ_LOCKER(guard, _planProt.lock);
-
     if (_planProt.isValid && newPlanVersion <= _planVersion) {
       LOG_TOPIC("20450", DEBUG, Logger::CLUSTER)
           << "We already know this or a later version, do not update. "
@@ -746,14 +745,31 @@ void ClusterInfo::loadPlan() {
   planBuilder->clear();
   planBuilder->reserve(8 * 1024);
   idx = agencyCache.get(*planBuilder, prefixPlan);
-  auto planSlice = planBuilder->slice();
 
+  auto planSlice = planBuilder->slice();
+  uint64_t planIndex;
+  {
+    READ_LOCKER(guard, _planProt.lock);
+    planIndex = _planIndex;
+  }
   if (!planSlice.isObject()) {
     LOG_TOPIC("bc8e1", ERR, Logger::CLUSTER)
         << "\"Plan\" is not an object in agency";
     return;
   }
 
+  auto [dbs, p, i] = agencyCache.planChangedSince(planIndex);
+  for (auto const& j : dbs) {
+    VPackSlice s = j->slice();
+    TRI_ASSERT(s.isObject());    // We expect only {"arango/Plan/..." : { value }}
+    TRI_ASSERT(s.length() == 1);
+    _consilium[s.keyAt(0).copyString()] = j;
+  }
+  for (auto const& j : p) {
+    VPackSlice s = j->slice();
+    TRI_ASSERT(s.isObject());    // We expect only {"arango/Plan/..." : { value }}
+    TRI_ASSERT(s.length() == 1);
+  }
   decltype(_plannedDatabases) newDatabases;
   std::set<std::string> buildingDatabases;
   decltype(_plannedCollections) newCollections;  // map<string /*database id*/
@@ -1048,7 +1064,7 @@ void ClusterInfo::loadPlan() {
 
       DatabaseCollections databaseCollections;
       auto const databaseName = databasePairSlice.key.copyString();
-  
+
       // Skip databases that are still building.
       if (buildingDatabases.find(databaseName) != buildingDatabases.end()) {
         continue;
@@ -1068,7 +1084,7 @@ void ClusterInfo::loadPlan() {
 
         continue;
       }
-         
+
       // an iterator to all collections in the current database (from the previous round)
       // we can safely keep this iterator around because we hold the read-lock on _planProt here.
       // reusing the lookup positions helps avoiding redundant lookups into _plannedCollections
@@ -1086,24 +1102,24 @@ void ClusterInfo::loadPlan() {
 
           continue;
         }
-          
+
         bool const isBuilding = isCoordinator &&
             arangodb::basics::VelocyPackHelper::getBooleanValue(collectionSlice,
                                                                 StaticStrings::AttrIsBuilding,
                                                                 false);
 
         auto const collectionId = collectionPairSlice.key.copyString();
-        
+
         // check if we already know this collection (i.e. have it in our local cache).
         // we do this to avoid rebuilding LogicalCollection objects from scratch in
         // every iteration
         // the cache check is very coarse-grained: it simply hashes the Plan VelocyPack
-        // data for the collection, and will only reuse a collection from the cache if 
-        // the hash is identical. 
+        // data for the collection, and will only reuse a collection from the cache if
+        // the hash is identical.
         CollectionWithHash cwh = buildCollection(isBuilding, existingCollections, collectionId, collectionSlice, *vocbase, newPlanVersion);
-        auto& newCollection = cwh.collection; 
+        auto& newCollection = cwh.collection;
         TRI_ASSERT(newCollection != nullptr);
-     
+
         try {
           auto& collectionName = newCollection->name();
 
@@ -1261,7 +1277,7 @@ void ClusterInfo::loadCurrent() {
   // trying to integrate the servers upgrade code into loadCurrent, even if that
   // means small bits of the plan are read twice.
   loadServers();
-  
+
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto currentBuilder = std::make_shared<arangodb::velocypack::Builder>();
   currentBuilder->reserve(1 * 1024);
@@ -1608,7 +1624,7 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(DatabaseID const& databaseID,
     // already protected by _planProt.mutex, don't need to lock there
     return lookupView(_newPlannedViews, databaseID, viewID);
   }
-  
+
   if (!_planProt.isValid) {
     return nullptr;
   }
@@ -1694,7 +1710,7 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
   // never have revisions record (and they do not need one actually)
   // so waiting them to apper is futile. Anyway if database has revision
   // we will see it at best effort basis as soon as plan updates itself
-  // and some lag in revision appearing is expected (even with looping ) 
+  // and some lag in revision appearing is expected (even with looping )
   {
     READ_LOCKER(readLocker, _planProt.lock);
     // look up database by id
@@ -1712,7 +1728,7 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
         systemDbRevision = sysIt->second->getRevision();
       }
     } else {
-      // micro-optimization. If we are querying system database 
+      // micro-optimization. If we are querying system database
       // than current always equal system. And all requests for revision
       // will be resolved only with systemDbRevision member. So we copy
       // current to system and set current to MIN. As MIN value is default
@@ -4868,7 +4884,7 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServers() {
 std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
   std::unordered_map<std::string, std::string> ret;
   READ_LOCKER(readLocker, _serversProt.lock);
-  // note: don't try to change this to 
+  // note: don't try to change this to
   //  return _serverAlias
   // because we are returning the aliases in {value, key} order here
   for (const auto& i : _serverAliases) {
@@ -4880,7 +4896,7 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
 std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoints() {
   std::unordered_map<std::string, std::string> ret;
   READ_LOCKER(readLocker, _serversProt.lock);
-  // note: don't try to change this to 
+  // note: don't try to change this to
   //  return _serverAdvertisedEndpoints
   // because we are returning the aliases in {value, key} order here
   for (const auto& i : _serverAdvertisedEndpoints) {
