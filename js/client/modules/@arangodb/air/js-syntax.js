@@ -34,6 +34,19 @@
 
  */
 
+//
+// The acorn parser seems to output something that's "standardised",
+// namely "estree", though it seems entirely obscure to me what the
+// *definition* of estree is.
+//
+// here are some links:
+//
+// - https://github.com/estree/estree
+// - https://developer.mozilla.org/en-US/docs/Mozilla/Projects/SpiderMonkey/Parser_API
+//
+// Our translator will just walk the AST produced by the Acorn parser
+// and spit out AIR that *should* be interpretable by Greenspun
+//
 const {Parser} = require("acorn");
 
 
