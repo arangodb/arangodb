@@ -126,11 +126,10 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   std::shared_ptr<maintenance::Action> postAction(
       std::shared_ptr<maintenance::ActionDescription> const& description);
 
-  /// @brief Check if a shard is locked for a maintenance action. returns `true`
-  /// if locked and then also fills the description variable with the action
-  /// description. If the shard is not locked, `false` is returned and the
-  /// description is set to a nullptr.
-  bool isShardLocked(ShardID shardId, std::shared_ptr<maintenance::ActionDescription>& description) const;
+  /// @brief Check if a shard is locked for a maintenance action.
+  /// returns the ActionDescription of the job if locked. If the shard
+  /// is not locked, a nullptr is returned.
+  std::shared_ptr<maintenance::ActionDescription> isShardLocked(ShardID const& shardId) const;
 
   /// @brief Lock a shard for a certain action description. Returns `false` if
   /// the shard is already locked and `true` otherwise. If the lock succeeds, the
@@ -138,7 +137,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   bool lockShard(ShardID const& shardId, std::shared_ptr<maintenance::ActionDescription> const& description);
 
   /// @brief Release shard lock. Returns `true` if the shard was locked and `false` otherwise.
-  bool unlockShard(ShardID shardId);
+  bool unlockShard(ShardID const& shardId);
 
   /// @brief Get shard locks, this copies the whole map of shard locks.
   ShardActionMap getShardLocks() const;

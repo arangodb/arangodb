@@ -950,15 +950,12 @@ void MaintenanceFeature::proceed() {
   _pauseUntil = std::chrono::steady_clock::duration::zero();
 }
 
-bool MaintenanceFeature::isShardLocked(ShardID shardId,
-                                       std::shared_ptr<maintenance::ActionDescription>& description) const {
+std::shared_ptr<maintenance::ActionDescription> MaintenanceFeature::isShardLocked(ShardID const& shardId) const {
   auto it = _shardActionMap.find(shardId);
   if (it == _shardActionMap.end()) {
-    description.reset();
-    return false;
+    return nullptr;
   }
-  description = it->second;
-  return true;
+  return it->second;
 }
 
 bool MaintenanceFeature::lockShard(ShardID const& shardId,
@@ -969,7 +966,7 @@ bool MaintenanceFeature::lockShard(ShardID const& shardId,
   return pair.second;
 }
 
-bool MaintenanceFeature::unlockShard(ShardID shardId) {
+bool MaintenanceFeature::unlockShard(ShardID const& shardId) {
   std::lock_guard<std::mutex> guard(_shardActionMapMutex);
   auto it = _shardActionMap.find(shardId);
   if (it == _shardActionMap.end()) {
