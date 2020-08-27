@@ -88,5 +88,5 @@ function sumAccumulator() {
 }
 
 exports.minAccumulator = function() { return cmpAccumulator("lt?") };
-exports.maxAccumulator = function() { cmpAccumulator("gt?") };
+exports.maxAccumulator = function() { return cmpAccumulator("gt?") };
 exports.sumAccumulator = sumAccumulator;
