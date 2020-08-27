@@ -267,6 +267,10 @@ void RestAqlHandler::setupClusterQuery() {
               cluster::RebootTracker::PeerState(coordinatorId, rebootId),
               [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(), queryId]() {
                 queryRegistry->destroyQuery(vocbaseName, queryId, TRI_ERROR_TRANSACTION_ABORTED);
+                LOG_TOPIC("42511", DEBUG, Logger::AQL)
+                    << "Query snippet destroyed as consequence of "
+                       "RebootTracker for coordinator, db="
+                    << vocbaseName << " queryId=" << queryId;
               },
               "Query aborted since coordinator rebooted or failed."));
       _queryRegistry->storeRebootTrackerCallbackGuard(_vocbase.name(), queryId, std::move(rGuard));

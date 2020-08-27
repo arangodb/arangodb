@@ -390,7 +390,7 @@ void QueryRegistry::expireQueries() {
   for (auto& p : toDelete) {
     try {  // just in case
       LOG_TOPIC("e95dc", DEBUG, arangodb::Logger::AQL)
-          << "timeout for query with id " << p.second;
+          << "timeout or RebootChecker alert for query with id " << p.second;
       destroyQuery(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED);
     } catch (...) {
     }
