@@ -53,10 +53,12 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
   greenspun::EvalResult air_AccumClear(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
 
   ContinuationResult userSelectedNext = ContinuationResult::DONT_CARE;
+  bool allowPhaseModifications = false;
 
   bool gotoPhase(std::string_view nextPhase);
   void finish();
 
+  bool preGlobalSuperstepWithResult() override;
   ContinuationResult postGlobalSuperstep(bool allVertexesVotedHalt) override;
   void preGlobalSuperstepMessage(VPackBuilder& msg) override;
   bool postGlobalSuperstepMessage(VPackSlice workerMsgs) override;

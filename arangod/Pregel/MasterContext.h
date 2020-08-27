@@ -94,8 +94,9 @@ class MasterContext {
   virtual void preApplication() {}
 
   /// @brief called before supersteps
-  /// @return true to continue the computation
   virtual void preGlobalSuperstep() {}
+  /// @return true to continue the computation
+  virtual bool preGlobalSuperstepWithResult() { preGlobalSuperstep(); return true; }
   /// @brief called before supersteps; message that is put
   ///        in msg is sent to all WorkerContexts
   virtual void preGlobalSuperstepMessage(VPackBuilder& msg) {}

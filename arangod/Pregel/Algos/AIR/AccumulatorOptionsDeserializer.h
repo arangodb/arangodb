@@ -92,6 +92,8 @@ struct AlgorithmPhase {
   PregelProgram updateProgram;
 
   PregelProgram onHalt;
+  PregelProgram onPreStep;
+  PregelProgram onPostStep;
 };
 
 using PhaseDeclarations = std::vector<AlgorithmPhase>;

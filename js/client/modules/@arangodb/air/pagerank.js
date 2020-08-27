@@ -55,6 +55,8 @@ function pagerank_program(resultField, dampingFactor) {
     phases: [
       {
         name: "main",
+        onPreStep: ["print", "hello from prestep program"],
+        onPostStep: ["print", "hello from poststep program"],
         initProgram: [
           "seq",
           ["accum-set!", "rank", ["/", 1, ["vertex-count"]]],

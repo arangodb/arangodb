@@ -125,13 +125,17 @@ using custom_accumulator_definition_deserializer =
 
 constexpr const char name[] = "name";
 constexpr const char onHalt[] = "onHalt";
+constexpr const char onPreStep[] = "onPreStep";
+constexpr const char onPostStep[] = "onPostStep";
 constexpr const char initProgram[] = "initProgram";
 
 using algorithm_phase_plan = parameter_list<
     factory_deserialized_parameter<name, values::value_deserializer<std::string>, true>,
     factory_builder_parameter<initProgram, false>,
     factory_builder_parameter<updateProgram, true>,
-    factory_builder_parameter<onHalt, false>
+    factory_builder_parameter<onHalt, false>,
+    factory_builder_parameter<onPreStep, false>,
+    factory_builder_parameter<onPostStep, false>
 >;
 
 using algorithm_phase_deserializer = utilities::constructing_deserializer<AlgorithmPhase, algorithm_phase_plan>;
