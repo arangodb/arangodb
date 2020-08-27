@@ -193,7 +193,10 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
           !::startsWith(path, "/_admin/status") &&
           !::startsWith(path, "/_admin/statistics") &&
           !::startsWith(path, "/_api/agency/agency-callbacks") &&
+          !(req.requestType() == RequestType::GET && ::startsWith(path, "/_api/collection")) &&
           !::startsWith(path, "/_api/cluster/") &&
+          !(req.requestType() == RequestType::GET && path == "/_api/database/current") &&
+          !::startsWith(path, "/_api/engine/stats") &&
           !::startsWith(path, "/_api/replication") &&
           !::startsWith(path, "/_api/ttl/statistics") &&
           (mode == ServerState::Mode::TRYAGAIN ||

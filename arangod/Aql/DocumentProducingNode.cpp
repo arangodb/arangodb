@@ -42,7 +42,6 @@ using namespace arangodb::aql;
 namespace {
 arangodb::velocypack::StringRef const filterKey("filter");
 arangodb::velocypack::StringRef const producesResultKey("producesResult");
-arangodb::velocypack::StringRef const projectionsKey("projections");
 }
 
 DocumentProducingNode::DocumentProducingNode(Variable const* outVariable)
@@ -54,19 +53,11 @@ DocumentProducingNode::DocumentProducingNode(Variable const* outVariable)
 DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
                                              arangodb::velocypack::Slice slice)
     : _outVariable(Variable::varFromVPack(plan->getAst(), slice, "outVariable")),
+      _projections(arangodb::aql::Projections::fromVelocyPack(slice)),
       _count(false) {
   TRI_ASSERT(_outVariable != nullptr);
 
-  VPackSlice p = slice.get(::projectionsKey);
-  if (p.isArray()) {
-    for (VPackSlice it : VPackArrayIterator(p)) {
-      if (it.isString()) {
-        _projections.emplace_back(it.copyString());
-      }
-    }
-  }
-
-  p = slice.get(::filterKey);
+  VPackSlice p = slice.get(::filterKey);
   if (!p.isNone()) {
     Ast* ast = plan->getAst();
     // new AstNode is memory-managed by the Ast
@@ -88,11 +79,7 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
   builder.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(builder);
 
-  builder.add(::projectionsKey, VPackValue(VPackValueType::Array));
-  for (auto const& it : _projections) {
-    builder.add(VPackValue(it));
-  }
-  builder.close(); // projections
+  _projections.toVelocyPack(builder);
   
   if (_filter != nullptr) {
     builder.add(VPackValuePair(::filterKey.data(), ::filterKey.size(), VPackValueType::String));
@@ -118,30 +105,18 @@ void DocumentProducingNode::setFilter(std::unique_ptr<Expression> filter) {
   _filter = std::move(filter);
 }
 
-std::vector<std::string> const& DocumentProducingNode::projections() const noexcept {
+arangodb::aql::Projections const& DocumentProducingNode::projections() const noexcept {
   return _projections;
 }
 
-void DocumentProducingNode::projections(std::vector<std::string> const& projections) {
-  _projections = projections;
+arangodb::aql::Projections& DocumentProducingNode::projections() noexcept {
+  return _projections;
 }
 
-void DocumentProducingNode::projections(std::unordered_set<std::string>&& projections) {
-  _projections.clear();
-  _projections.reserve(projections.size());
-  for (auto& it : projections) {
-    _projections.push_back(std::move(it));
-  }
-}
-
-void DocumentProducingNode::projections(std::vector<std::string>&& projections) noexcept {
+void DocumentProducingNode::setProjections(arangodb::aql::Projections projections) {
   _projections = std::move(projections);
 }
 
-std::vector<size_t> const& DocumentProducingNode::coveringIndexAttributePositions() const noexcept {
-  return _coveringIndexAttributePositions;
-}
-  
 bool DocumentProducingNode::doCount() const {
   return _count && (_filter == nullptr); 
 }

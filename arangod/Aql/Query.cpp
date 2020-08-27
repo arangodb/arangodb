@@ -36,6 +36,7 @@
 #include "Aql/Parser.h"
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryExecutionState.h"
 #include "Aql/QueryProfile.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/Timing.h"
@@ -57,6 +58,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
@@ -91,8 +93,8 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _trx(nullptr),
       _startTime(currentSteadyClockValue()),
       _queryHash(DontCache),
-      _executionPhase(ExecutionPhase::INITIALIZE),
       _shutdownState(ShutdownState::None),
+      _executionPhase(ExecutionPhase::INITIALIZE),
       _contextOwnedByExterior(ctx->isV8Context() && v8::Isolate::GetCurrent() != nullptr),
       _queryKilled(false),
       _queryHashCalculated(false) {
@@ -140,6 +142,11 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 
   _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
   _warnings.updateOptions(_queryOptions);
+  
+  // store name of user that started the query
+  if (!ServerState::instance()->isDBServer()) {
+    _user = ExecContext::current().user();
+  }
 }
 
 /// @brief public constructor, Used to construct a full query
@@ -186,6 +193,11 @@ Query::~Query() {
   LOG_TOPIC("f5cee", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime)
       << " Query::~Query this: " << (uintptr_t)this;
+}
+  
+/// @brief return the user that started the query
+std::string const& Query::user() const {
+  return _user;
 }
 
 bool Query::killed() const {
@@ -414,7 +426,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
             auto& resultBuilder = *queryResult.data;
             auto& vpackOpts = vpackOptions();
 
-            size_t const n = block->size();
+            size_t const n = block->numRows();
 
             for (size_t i = 0; i < n; ++i) {
               AqlValue const& val = block->getValueReference(i, resultRegister);
@@ -616,7 +628,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
         }
 
         if (!_queryOptions.silent) {
-          size_t const n = value->size();
+          size_t const n = value->numRows();
 
           auto const& vpackOpts = vpackOptions();
           for (size_t i = 0; i < n; ++i) {
@@ -1063,7 +1075,7 @@ bool Query::canUseQueryCache() const {
 void Query::enterState(QueryExecutionState::ValueType state) {
   LOG_TOPIC("d8767", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime)
-      << " Query::enterState: " << state << " this: " << (uintptr_t)this;
+      << " Query::enterState: " << arangodb::aql::QueryExecutionState::toString(state) << " this: " << (uintptr_t)this;
   if (_profile != nullptr) {
     // record timing for previous state
     _profile->setStateDone(_execState);

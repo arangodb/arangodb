@@ -154,8 +154,8 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     /// @brief local server id
     std::string localServerIdString{};
 
-    /// @brief information about the master state
-    replutils::MasterInfo master;
+    /// @brief information about the leader state
+    replutils::LeaderInfo leader;
 
     /// @brief lazy loaded list of vocbases
     std::unordered_map<std::string, DatabaseGuard> vocbases{};

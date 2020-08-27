@@ -34,7 +34,6 @@ const optionsDocumentation = [
   '   - `ldapPort : Port of the ldap server'
 ];
 
-// const helper = require('@arangodb/user-helper');
 const _ = require('lodash');
 const tu = require('@arangodb/test-utils');
 

@@ -316,7 +316,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     // On a DBServer, the only local collections should be system collections
     // (like _statisticsRaw). Non-local (system or not) collections are shards,
     // so don't have system-names, even if they are system collections!
-    switch(ServerState::instance()->getRole()) {
+    switch (ServerState::instance()->getRole()) {
       case ServerState::ROLE_SINGLE:
         TRI_ASSERT(isLocalCollection);
         break;
@@ -332,7 +332,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       case ServerState::ROLE_UNDEFINED:
         TRI_ASSERT(false);
     }
-
+    
     if (!isLocalCollection) {
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
       if (replicationFactorSlice.isNone()) {
@@ -342,6 +342,19 @@ Result Collections::create(TRI_vocbase_t& vocbase,
           factor = std::max(vocbase.replicationFactor(), cl.systemReplicationFactor());
         }
         helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
+      } else {
+        // the combination if "isSmart" and replicationFactor "satellite" does not make any sense.
+        // note: replicationFactor "satellite" can also be expressed as replicationFactor 0.
+        VPackSlice s = info.properties.get(StaticStrings::IsSmart);
+        if (s.isBoolean() && s.getBoolean() && 
+            ((replicationFactorSlice.isNumber() && 
+              replicationFactorSlice.getNumber<int>() == 0) || 
+             (replicationFactorSlice.isString() && 
+              replicationFactorSlice.stringRef() == StaticStrings::Satellite))) {
+          // check for the combination of "satellite" replication factor and "isSmart"
+          events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_BAD_PARAMETER);
+          return {TRI_ERROR_BAD_PARAMETER, "invalid combination of 'isSmart' and 'satellite' replicationFactor"};
+        }
       }
 
       if (!isSystemName) {
