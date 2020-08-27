@@ -961,7 +961,7 @@ bool MaintenanceFeature::isShardLocked(ShardID shardId,
   return true;
 }
 
-bool MaintenanceFeature::lockShard(ShardID shardId,
+bool MaintenanceFeature::lockShard(ShardID const& shardId,
                                    std::shared_ptr<maintenance::ActionDescription> const& description) {
   LOG_TOPIC("aaed2", DEBUG, Logger::MAINTENANCE) << "Locking shard " << shardId << " for action " << *description;
   std::lock_guard<std::mutex> guard(_shardActionMapMutex);
