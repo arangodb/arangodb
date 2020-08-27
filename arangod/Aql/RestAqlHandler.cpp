@@ -165,7 +165,11 @@ void RestAqlHandler::setupClusterQuery() {
                   "body must be an object with attribute \"variables\"");
     return;
   }
-  
+
+  VPackSlice coordinatorRebootIdSlice = querySlice.get("coordinatorRebootId");
+  VPackSlice coordinatorIdSlice = querySlice.get("coordinatorId");
+  // Valid to not exist for upgrade scenarios!
+
   // Now we need to create shared_ptr<VPackBuilder>
   // That contains the old-style cluster snippet in order
   // to prepare create a Query object.
@@ -253,27 +257,32 @@ void RestAqlHandler::setupClusterQuery() {
 
   // Now set an alarm for the case that the coordinator is restarted which
   // initiated this query. In that case, we want to drop our piece here:
-  bool found;
-  std::string const& coordinatorId = _request->header(StaticStrings::ClusterCommSource, found);
-  if (found) {
-    // If we do not see this header, then we do not know which coordinator issues
-    // this request, then we simply do nothing and let the ttl be the only safety net.
-    auto& clusterFeature = _server.getFeature<ClusterFeature>();
-    auto& clusterInfo = clusterFeature.clusterInfo();
-    RebootId rebootId = clusterInfo.getCurrentRebootId(coordinatorId);
+  if (coordinatorRebootIdSlice.isInteger() && coordinatorIdSlice.isString()) {
+    RebootId rebootId(0);
+    try {
+      // The following will throw for negative numbers, which should not happen:
+      rebootId = RebootId(coordinatorRebootIdSlice.getUInt());
+    } catch (...) {
+    }  // simply ignore if negative
+    std::string coordinatorId = coordinatorIdSlice.copyString();
     if (rebootId.initialized()) {
-      auto rGuard =
-          std::make_unique<cluster::CallbackGuard>(clusterInfo.rebootTracker().callMeOnChange(
-              cluster::RebootTracker::PeerState(coordinatorId, rebootId),
-              [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(), queryId]() {
-                queryRegistry->destroyQuery(vocbaseName, queryId, TRI_ERROR_TRANSACTION_ABORTED);
-                LOG_TOPIC("42511", DEBUG, Logger::AQL)
-                    << "Query snippet destroyed as consequence of "
-                       "RebootTracker for coordinator, db="
-                    << vocbaseName << " queryId=" << queryId;
-              },
-              "Query aborted since coordinator rebooted or failed."));
-      _queryRegistry->storeRebootTrackerCallbackGuard(_vocbase.name(), queryId, std::move(rGuard));
+      LOG_TOPIC("42512", TRACE, Logger::AQL)
+          << "Setting RebootTracker on coordinator " << coordinatorId
+          << " for query with id " << queryId;
+      auto& clusterFeature = _server.getFeature<ClusterFeature>();
+      auto& clusterInfo = clusterFeature.clusterInfo();
+      cluster::CallbackGuard rGuard = clusterInfo.rebootTracker().callMeOnChange(
+          cluster::RebootTracker::PeerState(coordinatorId, rebootId),
+          [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(), queryId]() {
+            queryRegistry->destroyQuery(vocbaseName, queryId, TRI_ERROR_TRANSACTION_ABORTED);
+            LOG_TOPIC("42511", DEBUG, Logger::AQL)
+                << "Query snippet destroyed as consequence of "
+                   "RebootTracker for coordinator, db="
+                << vocbaseName << " queryId=" << queryId;
+          },
+          "Query aborted since coordinator rebooted or failed.");
+      _queryRegistry->storeRebootTrackerCallbackGuard(_vocbase.name(), queryId,
+                                                      std::move(rGuard));
     }
   }
   generateResult(rest::ResponseCode::OK, std::move(buffer));

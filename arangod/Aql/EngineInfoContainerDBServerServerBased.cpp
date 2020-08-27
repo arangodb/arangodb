@@ -314,6 +314,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     infoBuilder.add("isModificationQuery", VPackValue(_query.isModificationQuery()));
     infoBuilder.add("isAsyncQuery", VPackValue(_query.isAsyncQuery()));
 
+    infoBuilder.add("coordinatorRebootId", VPackValue(ServerState::instance()->getRebootId().value()));
+    infoBuilder.add("coordinatorId", VPackValue(ServerState::instance()->getId()));
+
     addSnippetPart(nodesById, infoBuilder, _shardLocking, nodeAliases, server);
     TRI_ASSERT(infoBuilder.isOpenObject());
     auto shardMapping = _shardLocking.getShardMapping();

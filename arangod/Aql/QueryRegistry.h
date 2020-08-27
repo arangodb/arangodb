@@ -59,7 +59,7 @@ class QueryRegistry {
   TEST_VIRTUAL void insertQuery(std::unique_ptr<ClusterQuery> query, double ttl);
 
   void storeRebootTrackerCallbackGuard(std::string const& vocbaseName, QueryId queryId,
-                                       std::unique_ptr<cluster::CallbackGuard> guard);
+                                       cluster::CallbackGuard guard);
 
   /// @brief open, find a engine in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
@@ -137,7 +137,7 @@ class QueryRegistry {
     size_t _numEngines; // used for legacy shutdown
     size_t _numOpen;
 
-    std::unique_ptr<cluster::CallbackGuard> _rebootTrackerCallbackGuard;
+    cluster::CallbackGuard _rebootTrackerCallbackGuard;
   };
 
   struct EngineInfo final {

@@ -108,7 +108,7 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl)
 
 void QueryRegistry::storeRebootTrackerCallbackGuard(
     std::string const& vocbaseName, QueryId queryId,
-    std::unique_ptr<arangodb::cluster::CallbackGuard> guard) {
+    arangodb::cluster::CallbackGuard guard) {
   WRITE_LOCKER(readLocker, _lock);
   auto it1 = _queries.find(vocbaseName);
   if (it1 != _queries.end()) {
