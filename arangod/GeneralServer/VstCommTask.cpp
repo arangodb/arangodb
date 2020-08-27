@@ -145,6 +145,9 @@ void VstCommTask<T>::setIOTimeout() {
   const bool wasReading = this->_reading;
   const bool wasWriting = this->_writing;
   TRI_ASSERT(wasReading || wasWriting);
+  if (wasWriting) {
+    secs = std::max(300.0, secs);
+  }
   
   auto millis = std::chrono::milliseconds(static_cast<int64_t>(secs * 1000));
   this->_protocol->timer.expires_after(millis); // cancels old waiters

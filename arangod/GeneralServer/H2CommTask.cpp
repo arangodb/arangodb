@@ -167,7 +167,6 @@ template <SocketType T>
     }
     me->_streams.erase(it);
   }
-  TRI_ASSERT(!me->_streams.empty() || me->_numProcessing == 0);
   
   if (error_code != NGHTTP2_NO_ERROR) {
     LOG_TOPIC("2824d", DEBUG, Logger::REQUESTS) << "<http2> closing stream "
@@ -417,6 +416,9 @@ void H2CommTask<T>::setIOTimeout() {
   const bool wasReading = this->_reading;
   const bool wasWriting = this->_writing;
   TRI_ASSERT(wasReading || wasWriting);
+  if (wasWriting) {
+    secs = std::max(300.0, secs);
+  }
   
   auto millis = std::chrono::milliseconds(static_cast<int64_t>(secs * 1000));
   this->_protocol->timer.expires_after(millis); // cancels old waiters
@@ -440,6 +442,8 @@ void H2CommTask<T>::setIOTimeout() {
         setIOTimeout();
       }
     }
+    // In all other cases we do nothing, since we have been posted to the
+    // iocontext but the thing we should be timing out has already completed.
   });
 }
 
@@ -612,9 +616,9 @@ void H2CommTask<T>::queueHttp2Responses() {
     
     const int32_t streamId = static_cast<int32_t>(response->messageId());
     Stream* strm = findStream(streamId);
-    if (strm == nullptr) {  // stream was already closed
-      LOG_TOPIC("e2773", TRACE, Logger::REQUESTS)
-          << "response with message id " << streamId << "has not H2 stream";
+    if (strm == nullptr) {  // stream was already closed for some reason
+      LOG_TOPIC("e2773", DEBUG, Logger::REQUESTS)
+          << "response with message id '" << streamId << "' has no H2 stream on server";
       return;
     }
     strm->response = std::move(guard);
