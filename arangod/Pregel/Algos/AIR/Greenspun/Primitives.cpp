@@ -28,6 +28,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
+#include <list>
 
 #include "Extractor.h"
 #include "Interpreter.h"
@@ -272,7 +273,7 @@ EvalResult Prim_DictKeys(Machine& ctx, VPackSlice const params, VPackBuilder& re
 
   auto obj = params.at(0);
   if (!obj.isObject()) {
-    return EvalError("expected object, found: " + params.at(0).toJson());
+    return EvalError("expected object, found: " + obj.toJson());
   }
 
   result.openArray();
@@ -282,6 +283,112 @@ EvalResult Prim_DictKeys(Machine& ctx, VPackSlice const params, VPackBuilder& re
   result.close();
 
   return {};
+}
+
+std::list<std::string> createObjectPaths(velocypack::Slice object,
+                                         std::list<std::string> currentPath) {
+  for (VPackObjectIterator iter(object); iter.valid(); iter++) {
+    if (iter.value().isObject()) {
+      // recursive through all available keys
+      currentPath.emplace_back(iter.key().toString());
+      return createObjectPaths(iter.value(), currentPath);
+    } else {
+      // reached end
+      currentPath.emplace_back(iter.key().toString());
+    }
+  }
+  return currentPath;
+}
+
+void printPath(std::list<std::string>& path) {
+
+  std::cout << "Printing current path: " << std::endl;
+    std::cout << " [ ";
+    for (auto const& pathElement : path) {
+      std::cout << " " << pathElement << " ";
+    }
+    std::cout << " ] " << std::endl;
+}
+
+void createPaths(
+    std::list<std::list<std::string>>& finalPaths,
+    velocypack::Slice object,
+    std::list<std::string>& currentPath) {
+  for (VPackObjectIterator iter(object); iter.valid(); iter++) {
+    std::string currentKey = iter.key().toString();  // <= a
+    VPackSlice currentValue = iter.value();          // <= {b:2 , c:2}
+    std::cout << "Current Key is: " << currentKey << std::endl;
+    std::cout << "Current Value is: " << currentValue.toString() << std::endl;
+
+    if (currentValue.isObject()) {
+      std::cout << "We've found an object!" << std::endl;
+      std::list<std::string> currentTmpPath(currentPath); //= {currentKey}; // <-- muss schon gespeichert werden
+      currentTmpPath.emplace_back(currentKey);
+      finalPaths.emplace_back(currentTmpPath); // ["c"] <-- das hier gespeichert in finalPath result
+
+      // ABER -> Pfad ist nicht abgeschlossen
+      std::cout << "Path not finalised!" << std::endl;
+      currentPath.emplace_back(currentKey);
+
+      std::cout << "We want to continue with path generation!" << std::endl;
+      createPaths(finalPaths, currentValue, currentPath);
+    } else {
+      std::cout << "Path finalised!" << std::endl;
+      // -> Pfad ist abgeschlossen!
+      std::list<std::string> currentTmpPath(currentPath); // Copy currentPath -> currentTmpPath
+      currentTmpPath.emplace_back(currentKey); // <-- Füge Key hinzu
+      finalPaths.emplace_back(currentTmpPath);
+      //currentPath.clear();
+    }
+
+    if (iter.isLast()) {
+      std::cout << "address: " << std::endl;
+      std::cout << &currentPath << std::endl;
+      printPath(currentPath);
+      std::cout << " - Found last iterator, key: " << iter.key().toString() << ". Pop front now" << std::endl;
+      std::cout << "Size before: " << currentPath.size() << std::endl;
+
+      // HIER NOCH PFAD SCHREIBEN BEVOR WIR LÖSCHEN
+
+      if (currentPath.size() > 0) {
+        currentPath.pop_back();
+      }
+
+      std::cout << "Size after: " << currentPath.size() << std::endl;
+    }
+
+  }
+}
+
+EvalResult Prim_DictDirectory(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (params.length() != 1) {
+    return EvalError("expected exactly one parameter");
+  }
+
+  auto obj = params.at(0);
+  if (!obj.isObject()) {
+    return EvalError("expected object, found: " + obj.toJson());
+  }
+  std::cout << "TEST: " << obj.toString() << std::endl;
+
+  std::list<std::list<std::string>> finalList;
+  std::list<std::string> currentPath;
+  createPaths(finalList, obj, currentPath);
+  // finalList.emplace_back(createObjectPaths(obj, {}));
+
+  std::cout << "printing incoming object " << obj.toString() << std::endl
+            << std::endl;
+
+  std::cout << "Printing final vector row by row: " << std::endl;
+  for (auto const& path : finalList) {
+    std::cout << " [ ";
+    for (auto const& pathElement : path) {
+      std::cout << " " << pathElement << " ";
+    }
+    std::cout << " ] " << std::endl;
+  }
+
+  return {Prim_DictKeys(ctx, params, result)};
 }
 
 EvalResult MergeObjectSlice(VPackBuilder& result, VPackSlice const& sliceA,
@@ -710,7 +817,7 @@ EvalResult Prim_ArrayLength(Machine& ctx, VPackSlice const paramsList, VPackBuil
   return {};
 }
 
-template<bool ignoreMissing>
+template <bool ignoreMissing>
 EvalResult Prim_DictExtract(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
   if (paramsList.length() < 1) {
     return EvalError("expected at least on parameter");
@@ -784,7 +891,8 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("dict", Prim_Dict);
   ctx.setFunction("dict-merge", Prim_MergeDict);
   ctx.setFunction("dict-keys", Prim_DictKeys);
-  // TODO: "dict-directory"
+  ctx.setFunction("dict-directory", Prim_DictDirectory);
+
   ctx.setFunction("list", Prim_List);
 
   // Lambdas
