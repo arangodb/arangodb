@@ -360,8 +360,6 @@ class StaticStrings {
 
   static std::string const AgencyCommRequestTimeMs;
 
-  static std::string const AqlQueryRuntimeMs;
-
   static std::string const SchedulerQueueLength;
   static std::string const SchedulerAwakeWorkers;
   static std::string const SchedulerNumWorker;

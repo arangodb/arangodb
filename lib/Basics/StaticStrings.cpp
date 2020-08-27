@@ -406,9 +406,6 @@ std::string const StaticStrings::ShardsNotReplicated(
 std::string const StaticStrings::AgencyCommRequestTimeMs(
     "arangodb_agencycomm_request_time_msec");
 
-std::string const StaticStrings::AqlQueryRuntimeMs(
-    "arangodb_aql_total_query_time_msec");
-
 std::string const StaticStrings::SchedulerQueueLength(
     "arangodb_scheduler_queue_length");
 std::string const StaticStrings::SchedulerAwakeWorkers(

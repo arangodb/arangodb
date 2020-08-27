@@ -25,13 +25,14 @@
 
 #include "Basics/Common.h"
 #include "Replication/DatabaseInitialSyncer.h"
+#include "Replication/ReplicationMetricsFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
 class LogicalCollection;
 
 Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
-                        InitialSyncerIncrementalSyncStats& stats,
+                        ReplicationMetricsFeature::InitialSyncStats& stats,
                         std::string const& keysId, uint64_t chunkId,
                         std::string const& lowString, std::string const& highString,
                         std::vector<std::string> const& markers);
