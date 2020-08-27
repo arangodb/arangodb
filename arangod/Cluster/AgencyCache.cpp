@@ -560,10 +560,9 @@ AgencyCache::change_set_t const AgencyCache::planChangedSince(
   bool get_rest = false;
 
   std::vector<std::string> databases;
-  for (auto const& i : others) {
-    auto databasePath = AgencyCommHelper::path(PLAN_COLLECTIONS + i);
-    if (std::find(databases.begin(), databases.end(), databasePath) == databases.end()) {
-      databases.push_back(databasePath);
+  for (auto const& db : others) {
+    if (std::find(databases.begin(), databases.end(), db) == databases.end()) {
+      databases.push_back(db);
     }
   }
 
@@ -575,9 +574,9 @@ AgencyCache::change_set_t const AgencyCache::planChangedSince(
     for (; it != _planChanges.end(); ++it) {
       if (it->second.empty()) { // Need to get rest of Plan
         get_rest = true;
-      } auto databasePath = AgencyCommHelper::path(PLAN_COLLECTIONS + it->second);
-      if (std::find(databases.begin(), databases.end(), databasePath) == databases.end()) {
-        databases.push_back(databasePath);
+      } 
+      if (std::find(databases.begin(), databases.end(), it->second) == databases.end()) {
+        databases.push_back(it->second);
       }
     }
     LOG_TOPIC("d5743", TRACE, Logger::CLUSTER) << "collecting " << databases << " from agency cache";
@@ -595,17 +594,19 @@ AgencyCache::change_set_t const AgencyCache::planChangedSince(
     VPackArrayBuilder outer(query.get());
     for (auto const& i : databases) {
       VPackArrayBuilder inner(query.get());
-      query->add(VPackValue(i));
+      query->add(VPackValue(AgencyCommHelper::path(PLAN_ANALYZERS) + "/" + i));
+      query->add(VPackValue(AgencyCommHelper::path(PLAN_COLLECTIONS) + "/" + i));
+      query->add(VPackValue(AgencyCommHelper::path(PLAN_DATABASES) + "/" + i));
+      query->add(VPackValue(AgencyCommHelper::path(PLAN_VIEWS) + "/" + i));
     }
   }
   if (_commitIndex > 0) { // Databases
     _readDB.read(query, db_res);
   }
 
-
   if (get_rest) { // All the rest, i.e. All keys of Plan excluding the usual suspects
     static std::vector<std::string> const exc {
-      "Analyzers", "Collections", "Databases", "Indexes", "Views"};
+      "Analyzers", "Collections", "Databases", "Views"};
     auto keys = _readDB.nodePtr(AgencyCommHelper::path(PLAN))->keys();
     keys.erase(
       std::remove_if(
