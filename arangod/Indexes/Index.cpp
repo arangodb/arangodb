@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <iostream>
+#include <limits>
 
 #include <date/date.h>
 #include <velocypack/Iterator.h>
@@ -30,8 +31,10 @@
 
 #include "Index.h"
 
+#include "Aql/Projections.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/AttributeNamePath.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -953,21 +956,59 @@ void Index::expandInSearchValues(VPackSlice const base, VPackBuilder& result) co
   }
 }
 
-bool Index::covers(std::unordered_set<std::string> const& attributes) const {
-  // check if we can use covering indexes
-  if (_fields.size() < attributes.size()) {
-    // we will not be able to satisfy all requested projections with this index
+/// @brief whether or not the index covers all the attributes passed in.
+/// the function may modify the projections by setting the coveringIndexPosition value in it.
+bool Index::covers(arangodb::aql::Projections& projections) const {
+  size_t const n = projections.size();
+
+  if (n == 0) {
     return false;
   }
 
-  std::string result;
-  for (size_t i = 0; i < _fields.size(); ++i) {
-    result.clear();
-    TRI_AttributeNamesToString(_fields[i], result, false);
-    if (std::find(attributes.begin(), attributes.end(), result) == attributes.end()) {
+  // check if we can use covering indexes
+  auto const& covered = coveredFields();
+
+  if (n > covered.size()) {
+    // we have more projections than attributes in the index, so we already know
+    // that the index cannot support all the projections
+    return false;
+  }
+
+  for (size_t i = 0; i < n; ++i) {
+    bool found = false;
+    for (size_t j = 0; j < covered.size(); ++j) {
+      auto const& field = covered[j];
+      size_t k = 0;
+      for (auto const& part : field) {
+        if (part.shouldExpand) {
+          k = std::numeric_limits<size_t>::max();
+          break;
+        }
+        if (k >= projections[i].path.size() ||
+            part.name != projections[i].path[k]) {
+          break;
+        }
+        ++k;
+      }
+
+      // if the index can only satisfy a prefix of the projection, that is still
+      // better than nothing, e.g. an index on  a.b  can be used to satisfy a 
+      // projection on  a.b.c
+      if (k >= field.size() &&
+          k != std::numeric_limits<size_t>::max()) {
+        TRI_ASSERT(k > 0);
+        projections[i].coveringIndexPosition = static_cast<uint16_t>(j);
+        projections[i].coveringIndexCutoff = static_cast<uint16_t>(k);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      // stop on the first attribute that we cannot support
       return false;
     }
   }
+
   return true;
 }
 

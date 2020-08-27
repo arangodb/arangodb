@@ -288,10 +288,9 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   VPackBuilder builder(buffer, &options);
   builder.openObject(/*unindexed*/ true);
 
-  // Required for 3.5.* and earlier, dropped in 3.6.0
-  builder.add("exhausted", VPackValue(false));
-  // Used in 3.4.0 onwards
+  // Used from 3.4.0 onwards:
   builder.add("done", VPackValue(false));
+
   builder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
   builder.add(StaticStrings::Error, VPackValue(false));
   // NOTE API change. Before all items have been send.
