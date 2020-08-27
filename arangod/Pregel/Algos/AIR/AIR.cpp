@@ -98,10 +98,15 @@ void VertexAccumulators::parseUserParams(VPackSlice userParams) {
     for (auto&& acc : _options.vertexAccumulators) {
       LOG_VERTEXACC("", DEBUG) << acc.first << " " << acc.second;
     }
+    LOG_VERTEXACC("", DEBUG) << "declared global accumulators";
+    for(auto&& acc : _options.globalAccumulators) {
+      LOG_VERTEXACC("", DEBUG) << acc.first << " " << acc.second;
+    }
   } else {
     // What do we do on error? std::terminate()
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, result.error().as_string());
   }
+  LOG_DEVEL << "done constructing";
 }
 
 VertexAccumulatorOptions const& VertexAccumulators::options() const {
