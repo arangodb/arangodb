@@ -87,6 +87,6 @@ function sumAccumulator() {
   };
 }
 
-exports.minAccumulator = cmpAccumulator("lt?");
-exports.maxAccumulator = cmpAccumulator("gt?");
+exports.minAccumulator = function() { return cmpAccumulator("lt?") };
+exports.maxAccumulator = function() { cmpAccumulator("gt?") };
 exports.sumAccumulator = sumAccumulator;
