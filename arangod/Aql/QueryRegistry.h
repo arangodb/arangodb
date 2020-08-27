@@ -59,7 +59,7 @@ class QueryRegistry {
   TEST_VIRTUAL void insertQuery(std::unique_ptr<ClusterQuery> query, double ttl);
 
   void storeRebootTrackerCallbackGuard(std::string const& vocbaseName, QueryId queryId,
-                                       std::unique_ptr<cluster::CallbackGuard>&& guard);
+                                       std::unique_ptr<cluster::CallbackGuard> guard);
 
   /// @brief open, find a engine in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
