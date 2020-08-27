@@ -65,6 +65,7 @@ struct ActionDescription final {
   ActionDescription(
       std::map<std::string, std::string> description,
       int priority,
+      bool forced,
       std::shared_ptr<VPackBuilder> properties = std::make_shared<VPackBuilder>());
 
   /**
@@ -161,6 +162,15 @@ struct ActionDescription final {
     return _priority;
   }
 
+  /**
+   * @brief Get the fact if it is forced or not. If forced, the MaintenanceFeature
+   * will not sort out duplicates by hashing the description. Rather, the action
+   * will always be submitted.
+   */
+  bool isForced() const {
+    return _forced;
+  }
+
  private:
   /** @brief discriminatory properties */
   std::map<std::string, std::string> const _description;
@@ -170,6 +180,9 @@ struct ActionDescription final {
 
   /** @brief priority */
   int _priority;
+
+  /// @brief forced flag to not sort out duplicates by hashing
+  bool _forced;
 };
 
 }  // namespace maintenance

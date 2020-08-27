@@ -363,24 +363,24 @@ class MaintenanceTestActionDescription : public SharedMaintenanceTest {
 TEST_F(MaintenanceTestActionDescription, construct_minimal_actiondescription) {
   ActionDescription desc(std::map<std::string, std::string>{{"name",
                                                              "SomeAction"}},
-                         NORMAL_PRIORITY);
+                         NORMAL_PRIORITY, false);
   ASSERT_EQ(desc.get("name"), "SomeAction");
 }
 
 TEST_F(MaintenanceTestActionDescription, construct_minimal_actiondescription_with_nullptr_props) {
   std::shared_ptr<VPackBuilder> props;
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
 }
 
 TEST_F(MaintenanceTestActionDescription, construct_minimal_actiondescription_with_empty_props) {
   std::shared_ptr<VPackBuilder> props;
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondescription) {
   std::shared_ptr<VPackBuilder> props;
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   try {
     auto bogus = desc.get("bogus");
@@ -395,7 +395,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondes
 
 TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondescription_2) {
   std::shared_ptr<VPackBuilder> props;
-  ActionDescription desc({{"name", "SomeAction"}, {"bogus", "bogus"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}, {"bogus", "bogus"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   try {
     auto bogus = desc.get("bogus");
@@ -410,14 +410,14 @@ TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondes
 
 TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_properties_from_actiondescription) {
   std::shared_ptr<VPackBuilder> props;
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_EQ(desc.properties(), nullptr);
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_empty_properties_from_actiondescription) {
   auto props = std::make_shared<VPackBuilder>();
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->isEmpty());
 }
@@ -425,7 +425,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_empty_properties_from_actionde
 TEST_F(MaintenanceTestActionDescription, retrieve_empty_object_properties_from_actiondescription) {
   auto props = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder empty(props.get()); }
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().isEmptyObject());
 }
@@ -436,7 +436,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_string_value_from_actiondescri
     VPackObjectBuilder obj(props.get());
     props->add("hello", VPackValue("world"));
   }
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().hasKey("hello"));
   ASSERT_EQ(desc.properties()->slice().get("hello").copyString(), "world");
@@ -449,7 +449,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_double_value_from_actiondescri
     VPackObjectBuilder obj(props.get());
     props->add("pi", VPackValue(3.14159265359));
   }
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().hasKey("pi"));
   ASSERT_EQ(desc.properties()->slice().get("pi").getNumber<double>(), pi);
@@ -462,7 +462,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_integer_value_from_actiondescr
     VPackObjectBuilder obj(props.get());
     props->add("one", VPackValue(one));
   }
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().hasKey("one"));
   ASSERT_EQ(desc.properties()->slice().get("one").getNumber<size_t>(), one);
@@ -483,7 +483,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_array_value_from_actiondescrip
       props->add(VPackValue(hello));
     }
   }
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().hasKey("array"));
   ASSERT_TRUE(desc.properties()->slice().get("array").isArray());

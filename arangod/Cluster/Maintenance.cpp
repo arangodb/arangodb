@@ -46,10 +46,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
 #include <algorithm>
 #include <regex>
 
@@ -278,13 +274,10 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
              {COLLECTION, colname},
              {SHARD, shname},
              {SERVER_ID, serverId},
-             {FOLLOWERS_TO_DROP, followersToDropString},
-             {MAKE_HASH_UNIQUE, boost::uuids::to_string(boost::uuids::random_generator()())}},
-            HIGHER_PRIORITY, std::move(properties));
-        if (feature.lockShard(shname, description)) {
-          // We did check that it is not locked, so this will always be fulfilled!
-          actions.emplace_back(std::move(description));
-        }
+             {FOLLOWERS_TO_DROP, followersToDropString}},
+            HIGHER_PRIORITY, true, std::move(properties));
+        feature.lockShard(shname, description);
+        actions.emplace_back(std::move(description));
       } else {
         LOG_TOPIC("0285b", DEBUG, Logger::MAINTENANCE)
             << "Previous failure exists for local shard " << dbname << "/" << shname
@@ -299,21 +292,17 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
           << ", leader id: " << leaderId << ", my id: " << serverId
           << ", should be leader: ";
       description = std::make_shared<ActionDescription>(
-          std::map<std::string, std::string>{
-              {NAME, TAKEOVER_SHARD_LEADERSHIP},
-              {DATABASE, dbname},
-              {COLLECTION, colname},
-              {SHARD, shname},
-              {THE_LEADER, std::string()},
-              {LOCAL_LEADER, std::string(localLeader)},
-              {OLD_CURRENT_COUNTER, "0"},   // legacy, no longer used
-              {PLAN_RAFT_INDEX, std::to_string(planIndex)},
-              {MAKE_HASH_UNIQUE, boost::uuids::to_string(boost::uuids::random_generator()())}},
-    LEADER_PRIORITY);
-      if (feature.lockShard(shname, description)) {
-        // We did check that it is not locked, so this will always be fulfilled!
-        actions.emplace_back(std::move(description));
-      }
+          std::map<std::string, std::string>{{NAME, TAKEOVER_SHARD_LEADERSHIP},
+                                             {DATABASE, dbname},
+                                             {COLLECTION, colname},
+                                             {SHARD, shname},
+                                             {THE_LEADER, std::string()},
+                                             {LOCAL_LEADER, std::string(localLeader)},
+                                             {OLD_CURRENT_COUNTER, "0"},  // legacy, no longer used
+                                             {PLAN_RAFT_INDEX, std::to_string(planIndex)}},
+          LEADER_PRIORITY, true);
+      feature.lockShard(shname, description);
+      actions.emplace_back(std::move(description));
     }
 
     // Indexes
@@ -339,7 +328,7 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
                {StaticStrings::IndexType, index.get(StaticStrings::IndexType).copyString()},
                {FIELDS, index.get(FIELDS).toJson()},
                {ID, index.get(ID).copyString()}},
-              INDEX_PRIORITY, std::make_shared<VPackBuilder>(index)));
+              INDEX_PRIORITY, false, std::make_shared<VPackBuilder>(index)));
         }
       }
     }
@@ -353,13 +342,10 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
                                              {SHARD, shname},
                                              {DATABASE, dbname},
                                              {SERVER_ID, serverId},
-                                             {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)},
-                                             {MAKE_HASH_UNIQUE, boost::uuids::to_string(boost::uuids::random_generator()())}},
-          shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, std::move(props));
-      if (feature.lockShard(shname, description)) {
-        // We did check that it is not locked, so this will always be fulfilled!
-        actions.emplace_back(std::move(description));
-      }
+                                             {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
+          shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true, std::move(props));
+      feature.lockShard(shname, description);
+      actions.emplace_back(std::move(description));
     } else {
       LOG_TOPIC("c1d8e", DEBUG, Logger::MAINTENANCE)
           << "Previous failure exists for creating local shard " << dbname << "/"
@@ -397,13 +383,10 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
         std::map<std::string, std::string>{
             {NAME, DROP_COLLECTION},
             {DATABASE, dbname},
-            {COLLECTION, colname},
-            {MAKE_HASH_UNIQUE, boost::uuids::to_string(boost::uuids::random_generator()())}},
-        isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY);
-    if (feature.lockShard(colname, description)) {
-      // We did check that it is not locked, so this will always be fulfilled!
-      actions.emplace_back(std::move(description));
-    }
+            {COLLECTION, colname}},
+        isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true);
+    feature.lockShard(colname, description);
+    actions.emplace_back(std::move(description));
     return;
   }
   // We dropped out before
@@ -431,16 +414,12 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
 
   if (activeResign || adjustResignState) {
     description = std::make_shared<ActionDescription>(
-        std::map<std::string, std::string>{
-            {NAME, RESIGN_SHARD_LEADERSHIP},
-            {DATABASE, dbname},
-            {SHARD, colname},
-            {MAKE_HASH_UNIQUE, boost::uuids::to_string(boost::uuids::random_generator()())}},
-        RESIGN_PRIORITY);
-    if (feature.lockShard(colname, description)) {
-      // We did check that it is not locked, so this will always be fulfilled!
-      actions.emplace_back(description);
-    }
+        std::map<std::string, std::string>{{NAME, RESIGN_SHARD_LEADERSHIP},
+                                           {DATABASE, dbname},
+                                           {SHARD, colname}},
+        RESIGN_PRIORITY, true);
+    feature.lockShard(colname, description);
+    actions.emplace_back(description);
   }
 
   // We only drop indexes, when collection is not being dropped already
@@ -463,7 +442,7 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
                                                    {DATABASE, dbname},
                                                    {COLLECTION, colname},
                                                    {"index", id}},
-                INDEX_PRIORITY));
+                INDEX_PRIORITY, false));
           }
         }
       }
@@ -507,7 +486,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
         actions.emplace_back(std::make_shared<ActionDescription>(
               std::map<std::string, std::string>{{std::string(NAME), std::string(CREATE_DATABASE)}, {std::string("tick"), std::to_string(TRI_NewTickServer())},
                {std::string(DATABASE), std::move(dbname)}},
-              HIGHER_PRIORITY,
+              HIGHER_PRIORITY, false,
               std::make_shared<VPackBuilder>(pdb.value)));
       } else {
         LOG_TOPIC("3a6a8", DEBUG, Logger::MAINTENANCE)
@@ -523,7 +502,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       actions.emplace_back(std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{{std::string(NAME), std::string(DROP_DATABASE)}, {std::string("tick"), std::to_string(TRI_NewTickServer())},
            {std::string(DATABASE), std::move(dbname)}}, 
-          HIGHER_PRIORITY));
+          HIGHER_PRIORITY, false));
     }
   }
 
@@ -1306,13 +1285,10 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
                 {COLLECTION, colname.toString()},
                 {SHARD, shname.toString()},
                 {THE_LEADER, leader},
-                {SHARD_VERSION, std::to_string(feature.shardVersion(shname.toString()))},
-                {MAKE_HASH_UNIQUE, boost::uuids::to_string(boost::uuids::random_generator()())}},
-            SYNCHRONIZE_PRIORITY);
-        if (feature.lockShard(shname.toString(), description)) {
-          // We did check that it is not locked, so this will always be fulfilled!
-          feature.addAction(description, false);
-        }
+                {SHARD_VERSION, std::to_string(feature.shardVersion(shname.toString()))}},
+            SYNCHRONIZE_PRIORITY, true);
+        feature.lockShard(shname.toString(), description);
+        feature.addAction(description, false);
       }
     }
   }

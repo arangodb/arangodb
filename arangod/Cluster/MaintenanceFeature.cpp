@@ -446,11 +446,14 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescript
   try {
     std::shared_ptr<Action> newAction;
 
-    size_t action_hash = description->hash();
-    WRITE_LOCKER(wLock, _actionRegistryLock);
+    std::shared_ptr<Action> curAction;
 
-    std::shared_ptr<Action> curAction =
-        findFirstActionHashNoLock(action_hash, ::findNotDoneActions);
+    WRITE_LOCKER(wLock, _actionRegistryLock);
+    if (!description->isForced()) {
+      size_t action_hash = description->hash();
+
+      curAction = findFirstActionHashNoLock(action_hash, ::findNotDoneActions);
+    }
 
     // similar action not in the queue (or at least no longer viable)
     if (!curAction) {
