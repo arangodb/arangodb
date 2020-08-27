@@ -758,18 +758,20 @@ void ClusterInfo::loadPlan() {
     return;
   }
 
-  auto [dbs, p, i] = agencyCache.planChangedSince(planIndex);
-  for (auto const& j : dbs) {
-    VPackSlice s = j->slice();
-    TRI_ASSERT(s.isObject());    // We expect only {"arango/Plan/..." : { value }}
-    TRI_ASSERT(s.length() == 1);
-    _consilium[s.keyAt(0).copyString()] = j;
+  auto [i, dbs, p] = agencyCache.planChangedSince(planIndex);
+  LOG_DEVEL << i;
+/*  {
+    WRITE_LOCKER(writeLocker, _planProt.lock);
+    for (auto const& j : dbs) {
+      LOG_DEVEL << j.second->toJson();
+      _consilium[j.first] = j.second;
+    }
+    for (auto const& j : p) {
+      LOG_DEVEL << j.second->toJson();
+      _consilium[j.first] = j.second;
+    }
   }
-  for (auto const& j : p) {
-    VPackSlice s = j->slice();
-    TRI_ASSERT(s.isObject());    // We expect only {"arango/Plan/..." : { value }}
-    TRI_ASSERT(s.length() == 1);
-  }
+*/
   decltype(_plannedDatabases) newDatabases;
   std::set<std::string> buildingDatabases;
   decltype(_plannedCollections) newCollections;  // map<string /*database id*/
@@ -5567,6 +5569,20 @@ futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(network::Timeout
         }
       });
 }
+
+
+VPackBuilder ClusterInfo::toVelocyPack() {
+  VPackBuilder dump;
+  {
+    VPackObjectBuilder d();
+    READ_LOCKER(readLocker, _planProt.lock);
+    for (auto const& i : _consilium) {
+      dump.add(i.first, i.second->slice());
+    }
+  }
+  return dump;
+}
+
 
 void ClusterInfo::triggerWaiting(
   std::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm, uint64_t commitIndex) {

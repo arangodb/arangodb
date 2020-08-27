@@ -113,7 +113,7 @@ class Store {
   std::vector<bool> read(query_t const& query, query_t& result) const;
 
   /// @brief Read specified query from store
-  void read(query_t const& query, std::vector<query_t>& result) const;
+  void read(query_t const& query, std::unordered_map<std::string,query_t>& result) const;
 
   /// @brief Read individual entry specified in slice into builder
   bool read(arangodb::velocypack::Slice const&, arangodb::velocypack::Builder&) const;

@@ -38,9 +38,21 @@ namespace arangodb {
 class AgencyCache final : public arangodb::Thread {
 
 public:
-  using change_set_t =
-    std::tuple<
-  std::vector<consensus::query_t>, std::vector<consensus::query_t>, consensus::index_t>;
+
+  struct change_set_t {
+    consensus::index_t ind;
+    std::unordered_map<std::string, consensus::query_t> dbs;
+    std::unordered_map<std::string, consensus::query_t> rest;
+    change_set_t (consensus::index_t const& i,
+                  std::unordered_map<std::string, consensus::query_t> const& d,
+                  std::unordered_map<std::string, consensus::query_t> const& r) :
+      ind(i), dbs(d), rest(r) {};
+    change_set_t (consensus::index_t&& i,
+                  std::unordered_map<std::string, consensus::query_t>&& d,
+                  std::unordered_map<std::string, consensus::query_t>&& r) :
+      ind(std::move(i)), dbs(std::move(d)), rest(std::move(r)) {};
+    void index(consensus::index_t const& i) { ind = i; }
+  };
 
   /// @brief start off with our server
   explicit AgencyCache(
