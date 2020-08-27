@@ -320,7 +320,7 @@ class SharedMaintenanceTest : public ::testing::Test {
 
     Slice col = tmp.slice();
     auto id = col.get("id").copyString();
-    plan(PLAN_COL_PATH + dbname + "/" + col.get("id").copyString()) = col;
+    plan(PLAN_COL_PATH + dbname + "/" + col.get("id").copyString()).applies(col);
   }
 
   void createLocalCollection(std::string const& dbname,
@@ -336,7 +336,7 @@ class SharedMaintenanceTest : public ::testing::Test {
               VPackValue(C + colname + "/" + S + std::to_string(planId + 1)));
       tmp.add("objectId", VPackValue("9031415"));
     }
-    node(dbname + "/" + S + std::to_string(planId + 1)) = tmp.slice();
+    node(dbname + "/" + S + std::to_string(planId + 1)).applies(tmp.slice());
   }
 
   std::map<std::string, std::string> collectionMap(Node const& plan) {
@@ -813,6 +813,39 @@ TEST_F(MaintenanceTestActionPhaseOne,
     for (auto const& action : actions) {
       ASSERT_EQ(action->name(), "CreateCollection");
     }
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne,
+       add_one_collection_to_db3_in_plan_with_shards_for_all_db_servers_shard_locked) {
+  // This tests that phaseOne does not consider a shard which is locked.
+  std::string dbname("db3"), colname("x");
+
+  plan = originalPlan;
+  createPlanDatabase(dbname, plan);
+  createPlanCollection(dbname, colname, 1, 3, plan);
+
+  auto cid = collectionMap(plan).at("db3/x");
+  auto shards = plan({"Collections", dbname, cid}).hasAsChildren("shards");
+  ASSERT_TRUE(shards.second);
+  ASSERT_EQ(shards.first.size(), 1);
+  std::string shardName = shards.first.begin()->first;
+
+  for (auto node : localNodes) {
+    std::vector<std::shared_ptr<ActionDescription>> actions;
+
+    node.second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
+
+    arangodb::maintenance::diffPlanLocal(
+        plan.toBuilder().slice(), 0, node.second.toBuilder().slice(),
+        node.first, errors, *feature, actions,
+        arangodb::MaintenanceFeature::ShardActionMap{
+            {shardName, std::make_shared<ActionDescription>(
+                            std::map<std::string, std::string>(
+                                {{"name", "CreateCollection"}}),
+                            0, true)}});
+
+    ASSERT_EQ(actions.size(), 0);
   }
 }
 
