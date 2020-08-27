@@ -1,6 +1,13 @@
 devel
 -----
 
+* Implement RebootTracker usage for AQL queries in case of coordinator
+  restarts or failures. This will clean up the rest of an AQL query
+  on dbservers more quickly and in particular release locks faster.
+
+* Serialize maintenance actions for each shard. This addresses lost document
+  problems found in chaos testing.
+
 * Add attributes `database` and `user` when tracking current and slow AQL queries.
   `database` contains the name of the database the query is/was running in, `user`
   contains the name of the user that started the query.
