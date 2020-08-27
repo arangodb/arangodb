@@ -135,7 +135,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief Lock a shard for a certain action description. Returns `false` if
   /// the shard is already locked and `true` otherwise. If the lock succeeds, the
   /// action description is retained for later query.
-  bool lockShard(ShardID shardId, std::shared_ptr<maintenance::ActionDescription> const& description);
+  bool lockShard(ShardID const& shardId, std::shared_ptr<maintenance::ActionDescription> const& description);
 
   /// @brief Release shard lock. Returns `true` if the shard was locked and `false` otherwise.
   bool unlockShard(ShardID shardId);
