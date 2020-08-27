@@ -11,7 +11,7 @@ LINENOISE_OBJ_FILES := $(patsubst $(LINENOISE_SRC_DIR)/%.cpp,$(LINENOISE_OBJ_DIR
 
 EVALUATOR_SRC_DIR := ../../arangod/Pregel/Algos/AIR/Greenspun/
 EVALUATOR_OBJ_DIR := obj
-EVALUATOR_SRC_FILES := $(addprefix $(EVALUATOR_SRC_DIR)/,Extractor.cpp Interpreter.cpp Primitives.cpp)
+EVALUATOR_SRC_FILES := $(addprefix $(EVALUATOR_SRC_DIR)/,Extractor.cpp Interpreter.cpp Primitives.cpp lib/Math.cpp)
 EVALUATOR_OBJ_FILES := $(patsubst $(EVALUATOR_SRC_DIR)/%.cpp,$(EVALUATOR_OBJ_DIR)/%.o,$(EVALUATOR_SRC_FILES))
 
 UTILITIES_SRC_DIR := ../../lib/Utilities/
@@ -29,6 +29,7 @@ dirs:
 	mkdir -p $(VELOCYPACK_OBJ_DIR)
 	mkdir -p $(LINENOISE_OBJ_DIR)
 	mkdir -p $(EVALUATOR_OBJ_DIR)
+	mkdir -p $(EVALUATOR_OBJ_DIR)/lib
 
 
 primitives: $(VELOCYPACK_OBJ_FILES) $(EVALUATOR_OBJ_FILES) obj/xxhash.o obj/PrimitivesTest.o
