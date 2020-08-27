@@ -22,24 +22,28 @@
 // / @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-function minAccumulator() {
+function cmpAccumulator(cmp) {
     return {
         updateProgram: ["if",
             [
                 ["or",
                     ["not", ["attrib-get", "isSet", ["current-value"]]],
-                    ["gt?", ["attrib-get", "value", ["current-value"]], ["input-value"]]
+                    [cmp, ["input-value"], ["attrib-get", "value", ["current-value"]]]
                 ],
                 ["seq",
                     ["this-set!",
-                        ["dict", ["list", "isSet", true], ["list", "value", ["input-value"]]]
+                        ["dict",
+                            ["list", "isSet", true],
+                            ["list", "value", ["input-value"]],
+                            ["list", "sender", ["input-sender"]]
+                        ]
                     ],
                     "hot"
                 ]
             ],
             [true, "cold"]
         ],
-        clearProgram: ["this-set!", {"isSet": false, "value": 0}],
+        clearProgram: ["this-set!", {"isSet": false, "value": 0, sender: null}],
         getProgram: ["if",
             [
                 ["attrib-get", "isSet", ["current-value"]],
@@ -51,53 +55,16 @@ function minAccumulator() {
             ]
         ],
         setProgram: ["this-set!",
-            ["dict", ["list", "isSet", true], ["list", "value", ["input-value"]]]
-        ],
-        finalizeProgram: ["if",
-            [
-                ["attrib-get", "isSet", ["current-value"]],
-                ["attrib-get", "value", ["current-value"]]
-            ],
-            [true, null]
-        ],
-    };
-}
-
-function maxAccumulator() {
-    return {
-        updateProgram: ["if",
-            [
-                ["or",
-                    ["not", ["attrib-get", "isSet", ["current-value"]]],
-                    ["lt?", ["attrib-get", "value", ["current-value"]], ["input-value"]]
-                ],
-                ["seq",
-                    ["this-set!",
-                        ["dict", ["list", "isSet", true], ["list", "value", ["input-value"]]]
-                    ],
-                    "hot"
-                ]
-            ],
-            [true, "cold"]
-        ],
-        clearProgram: ["this-set!", {"isSet": false, "value": 0}],
-        getProgram: ["if",
-            [
-                ["attrib-get", "isSet", ["current-value"]],
-                ["attrib-get", "value", ["current-value"]]
-            ],
-            [
-                true,
-                ["error", "accumulator undefined value"]
+            ["dict",
+                ["list", "isSet", true],
+                ["list", "value", ["input-value"]],
+                ["list", "sender", null]
             ]
         ],
-        setProgram: ["this-set!",
-            ["dict", ["list", "isSet", true], ["list", "value", ["input-value"]]]
-        ],
         finalizeProgram: ["if",
             [
                 ["attrib-get", "isSet", ["current-value"]],
-                ["attrib-get", "value", ["current-value"]]
+                ["dict-x-tract",  ["current-value"], "value", "sender"]
             ],
             [true, null]
         ],
@@ -120,6 +87,6 @@ function sumAccumulator() {
   };
 }
 
-exports.minAccumulator = minAccumulator;
-exports.maxAccumulator = maxAccumulator;
+exports.minAccumulator = cmpAccumulator("lt?");
+exports.maxAccumulator = cmpAccumulator("gt?");
 exports.sumAccumulator = sumAccumulator;

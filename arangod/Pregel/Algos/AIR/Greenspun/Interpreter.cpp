@@ -25,6 +25,7 @@
 // #include "Basics/debugging.h"
 #include "Interpreter.h"
 #include "Primitives.h"
+#include "lib/DateTime.h"
 
 #include <iostream>
 #include <sstream>
@@ -36,7 +37,13 @@ using namespace arangodb::velocypack;
 
 namespace arangodb::greenspun {
 
-void InitMachine(Machine& m) { RegisterAllPrimitives(m); }
+void InitMachine(Machine& m) {
+  RegisterAllPrimitives(m);
+  // FIXME: Demo hack. better provide real libraries!
+  // Also adds a dependency on Basics which is just a whole lot of pain I don't
+  // want right now.
+  // RegisterAllDateTimeFunctions(m);
+}
 
 EvalResult Apply(Machine& ctx, std::string const& function,
                  VPackSlice const params, VPackBuilder& result) {

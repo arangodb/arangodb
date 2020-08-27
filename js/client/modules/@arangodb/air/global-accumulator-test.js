@@ -46,6 +46,16 @@ function global_accumulators_test_program(resultField) {
         valueType: "slice",
         customType: "my_sum"
       },
+      minimalTest: {
+        accumulatorType: "custom",
+        valueType: "slice",
+        customType: "my_min"
+      },
+      maximalTest: {
+        accumulatorType: "custom",
+        valueType: "slice",
+        customType: "my_max"
+      }
     },
     vertexAccumulators: {
       forward: {
@@ -55,7 +65,9 @@ function global_accumulators_test_program(resultField) {
       },
     },
     customAccumulators: {
-      my_sum: accumulators.sumAccumulator()
+      my_sum: accumulators.sumAccumulator(),
+      my_min: accumulators.minAccumulator(),
+      my_max: accumulators.maxAccumulator()
     },
     phases: [
       {
@@ -78,9 +90,37 @@ function global_accumulators_test_program(resultField) {
         onHalt: [
           "seq",
           ["print", "global accum: ", ["global-accum-ref", "numberOfVertices"]],
-          ["finish"]
+          ["goto-phase", "second"]
         ],
       },
+      {
+        name: "second",
+        initProgram: [
+          "seq",
+          ["send-to-global-accum", "minimalTest", ["this-unique-id"]],
+          "vote-halt",
+        ],
+        updateProgram: ["vote-halt"],
+        onHalt: [
+          "seq",
+          ["print", "global accum: ", ["global-accum-ref", "minimalTtest"]],
+          ["goto-phase", ["third"]]
+        ],
+      },
+      {
+        name: "third",
+        initProgram: [
+          "seq",
+          ["send-to-global-accum", "maximalTest", ["this-unique-id"]],
+          "vote-halt",
+        ],
+        updateProgram: ["vote-halt"],
+        onHalt: [
+          "seq",
+          ["print", "global accum: ", ["global-accum-ref", "minimalTtest"]],
+          ["finish"]
+        ]
+      }
     ],
   };
 }
