@@ -67,7 +67,19 @@ function write_vertex(
 }
 
 /* returns a program that reads only particular data instead of copying all vertex data */
-function data_access_read_vertex_program(expectedKeys) {
+function data_access_read_vertex_program(expectedKeys, nested) {
+  let initProgram = [
+    "seq",
+    ["accum-set!", "copiedDocumentKeys", ["dict-keys", ["this-doc"]]]
+  ];
+
+  if (nested) {
+    initProgram = [
+      "seq",
+      ["accum-set!", "copiedDocumentKeys", ["dict-directory", ["this-doc"]]]
+    ];
+  }
+
   return {
     dataAccess: {
       writeVertex: [
@@ -85,10 +97,7 @@ function data_access_read_vertex_program(expectedKeys) {
     phases: [{
       name: "main",
       // get all available keys and write into copiedDocumentKeys
-      initProgram: [
-        "seq",
-        ["accum-set!", "copiedDocumentKeys", ["dict-keys", ["this-doc"]]]
-      ],
+      initProgram: initProgram,
       updateProgram: ["seq",
         false]
     }]
@@ -96,11 +105,11 @@ function data_access_read_vertex_program(expectedKeys) {
 }
 
 function read_vertex(
-  graphName, expectedKeys) {
+  graphName, expectedKeys, nested) {
   return pregel.start(
     "air",
     graphName,
-    data_access_read_vertex_program(expectedKeys)
+    data_access_read_vertex_program(expectedKeys, nested)
   );
 }
 
@@ -137,8 +146,8 @@ function exec_test_write_vertex_on_graph(graphSpec, amount) {
 
 // TODO: Also add tests for nested paths e.g.: {a: {b: "value"}}
 
-function exec_test_read_vertex_on_graph(graphSpec, expectedKeys) {
-  let status = testhelpers.wait_for_pregel("AIR write-vertex", read_vertex(graphSpec.name, expectedKeys));
+function exec_test_read_vertex_on_graph(graphSpec, expectedKeys, nested) {
+  let status = testhelpers.wait_for_pregel("AIR write-vertex", read_vertex(graphSpec.name, expectedKeys, nested));
 
   let result = db._query(`
     FOR d IN @@V
@@ -229,9 +238,12 @@ function exec_test_data_access() {
     ["a", "b"]
   );*/
 
+  // let vertexKeysToInsert = ["a", ["a", "b"], ["a", "c"], "d", "e"]; // original
+  let vertexKeysToInsert = ["a", ["a", "b"], ["a", "c"], ["a", "c", "x"], "d", "e"];
   exec_test_read_vertex_on_graph(
-    examplegraphs.create_line_graph("LineGraph100", 5, 1, ["a", ["a", "b"], ["a", "c"], "d", "e"]),
-    ["a", ["a", "b"], ["a", "c"], "d", "e"]
+    examplegraphs.create_line_graph("LineGraph100", 5, 1,
+      vertexKeysToInsert),
+    vertexKeysToInsert, true
   );
 }
 
