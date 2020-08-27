@@ -228,7 +228,6 @@ bool Conductor::_startGlobalStep() {
     }
     return false;
   }
-  LOG_DEVEL << "make messtsch";
 
   VPackBuilder toWorkerMessages;
   if (_masterContext) {
@@ -247,17 +246,14 @@ bool Conductor::_startGlobalStep() {
   b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
   b.add(Utils::activateAllKey, VPackValue(activateAll));
 
-  LOG_DEVEL << "bla";
   b.add(Utils::masterToWorkerMessagesKey, toWorkerMessages.slice());
   _aggregators->serializeValues(b);
 
-  LOG_DEVEL << "blibb";
   b.close();
   LOG_TOPIC("d98de", DEBUG, Logger::PREGEL) << b.toString();
 
   _stepStartTimeSecs = TRI_microtime();
 
-  LOG_DEVEL << "blibber";
   // start vertex level operations, does not get a response
   int res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
@@ -268,7 +264,6 @@ bool Conductor::_startGlobalStep() {
   } else {
     LOG_TOPIC("411a5", DEBUG, Logger::PREGEL) << "Conductor started new gss " << _globalSuperstep;
   }
-  LOG_DEVEL << "DONE BANONE";
   return res == TRI_ERROR_NO_ERROR;
 }
 
