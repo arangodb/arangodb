@@ -907,7 +907,7 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else if (destination == "server:" + dbserver2) {
     } else if (destination == "server:" + dbserver3) {
     } else {
@@ -962,7 +962,7 @@ TEST_F(ShardDistributionReporterTest,
     } else if (destination == "server:" + dbserver2) {
       response.response = generateCountResponse(largerFollowerCount);
     } else if (destination == "server:" + dbserver3) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else {
       EXPECT_TRUE(false);
     }
@@ -1012,9 +1012,9 @@ TEST_F(ShardDistributionReporterTest,
     if (destination == "server:" + dbserver1) {
       response.response = generateCountResponse(leaderCount);
     } else if (destination == "server:" + dbserver2) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else if (destination == "server:" + dbserver3) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else {
       EXPECT_TRUE(false);
     }
@@ -1060,7 +1060,7 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else if (destination == "server:" + dbserver2) {
     } else if (destination == "server:" + dbserver3) {
     } else {
@@ -1115,7 +1115,7 @@ TEST_F(ShardDistributionReporterTest,
     } else if (destination == "server:" + dbserver2) {
       response.response = generateCountResponse(largerFollowerCount);
     } else if (destination == "server:" + dbserver3) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else {
       EXPECT_TRUE(false);
     }
@@ -1165,9 +1165,9 @@ TEST_F(ShardDistributionReporterTest,
     if (destination == "server:" + dbserver1) {
       response.response = generateCountResponse(leaderCount);
     } else if (destination == "server:" + dbserver2) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else if (destination == "server:" + dbserver3) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else {
       EXPECT_TRUE(false);
     }

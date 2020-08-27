@@ -26,11 +26,10 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'gtest': 'gtest test suites'
+  'fuerte': 'fuerte gtest test suites'
 };
 const optionsDocumentation = [
-  '   - `skipGTest`: if set to true the gtest unittests are skipped',
-  '   - `skipGeo`: obsolete and only here for downwards-compatibility'
+  '   - `skipFuerte`: if set to true the fuerte tests are skipped'
 ];
 
 const fs = require('fs');
@@ -38,8 +37,7 @@ const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
 
 const testPaths = {
-  'gtest': [],
-  'catch': [],
+  'fuerte': []
 };
 
 const RED = require('internal').COLORS.COLOR_RED;
@@ -49,7 +47,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // / @brief TEST: GTest
 // //////////////////////////////////////////////////////////////////////////////
 
-function locateGTest (name) {
+function locateGTest(name) {
   var file = fs.join(pu.UNITTESTS_DIR, name + pu.executableExt);
 
   if (!fs.exists(file)) {
@@ -61,40 +59,20 @@ function locateGTest (name) {
   return file;
 }
 
-function readGreylist() {
-  let greylist = [];
-  const gtestGreylistRX = new RegExp('- gtest:.*', 'gm');
-  let raw_greylist = fs.read(fs.join('tests', 'Greylist.txt'));
-  let greylistMatches = raw_greylist.match(gtestGreylistRX);
-    if (greylistMatches != null) {
-    greylistMatches.forEach(function(match) {
-      let partMatch = /- gtest:(.*)/.exec(match);
-      if (partMatch.length !== 2) {
-        throw new Error("failed to match the test to greylist in: " + match);
-      }
-      greylist.push(partMatch[1]);
-    });
-  }
-  if (greylist.length !== 0) {
-    print(RED + "Greylisting tests: " + JSON.stringify(greylist) + RESET);
-  }
-  return greylist;
-}
-
 function getGTestResults(fileName, defaultResults) {
   let results = defaultResults;
-  if (! fs.exists(fileName)) {
+  if (!fs.exists(fileName)) {
     defaultResults.failed += 1;
-    print(RED + "No testresult file found at: " + fileName + RESET);    
+    print(RED + "No testresult file found at: " + fileName + RESET);
     return defaultResults;
   }
   let gTestResults = JSON.parse(fs.read(fileName));
   results.failed = gTestResults.failures + gTestResults.errors;
   results.status = (gTestResults.errors === 0) || (gTestResults.failures === 0);
-  gTestResults.testsuites.forEach(function(testSuite) {
+  gTestResults.testsuites.forEach(function (testSuite) {
     results[testSuite.name] = {
       failed: testSuite.failures + testSuite.errors,
-      status: (testSuite.failures + testSuite.errors ) === 0,
+      status: (testSuite.failures + testSuite.errors) === 0,
       duration: testSuite.time
     };
     if (testSuite.failures !== 0) {
@@ -112,63 +90,96 @@ function getGTestResults(fileName, defaultResults) {
   return results;
 }
 
-function gtestRunner (options) {
+function gtestRunner(options) {
   let results = { failed: 0 };
-  let rootDir = fs.join(fs.getTempPath(), 'gtest');
+  let rootDir = fs.join(fs.getTempPath(), 'fuertetest');
   let testResultJsonFile = fs.join(rootDir, 'testResults.json');
   // we append one cleanup directory for the invoking logic...
-  let dummyDir = fs.join(fs.getTempPath(), 'gtest_dummy');
+  let dummyDir = fs.join(fs.getTempPath(), 'fuerte_dummy');
   if (!fs.exists(dummyDir)) {
     fs.makeDirectory(dummyDir);
   }
   pu.cleanupDBDirectoriesAppend(dummyDir);
 
-  const run = locateGTest('arangodbtests');
-  if (!options.skipGTest) {
-    if (run !== '') {
-      let argv = [
-        '--gtest_output=json:' + testResultJsonFile,
-      ];
-      if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
-        argv.push('--gtest_filter='+options.testCase);
-      } else {
-        argv.push('--gtest_filter=-*_LongRunning');
-        let greylist =   readGreylist();
-        greylist.forEach(function(greyItem) {
-          argv.push('--gtest_filter=-'+greyItem);
-        });
-      }
-      // all non gtest args have to come last
-      argv.push('--log.line-number');
-      argv.push(options.extremeVerbosity ? "true" : "false");
-      results.basics = pu.executeAndWait(run, argv, options, 'all-gtest', rootDir, options.coreCheck);
-      results.basics.failed = results.basics.status ? 0 : 1;
-      if (!results.basics.status) {
-        results.failed += 1;
-      }
-      results = getGTestResults(testResultJsonFile, results);
-    } else {
-      results.failed += 1;
-      results.basics = {
-        failed: 1,
-        status: false,
-        message: 'binary "arangodbtests" not found when trying to run suite "all-gtest"'
-      };
-    }
+  const run = locateGTest('fuertetest');
+  if (options.skipFuerte) {
+    return results;
   }
+
+  if (run === '') {
+    results.failed += 1;
+    results.basics = {
+      failed: 1,
+      status: false,
+      message: 'binary "fuertetest" not found when trying to run suite "fuertetest"'
+    };
+    return results;
+  }
+
+  // start server
+  print('Starting server...');
+
+  let instanceInfo = pu.startInstance('tcp', options, {}, 'single_server');
+  if (instanceInfo === false) {
+    results.failed += 1;
+    results.basics = {
+      failed: 1,
+      status: false,
+      message: 'could not start server'
+    };
+    return results;
+  }
+
+  let argv = [
+    '--gtest_output=json:' + testResultJsonFile
+  ];
+  if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
+    argv.push('--gtest_filter=' + options.testCase);
+  } /*else {
+    argv.push('--gtest_filter=-*_LongRunning');
+    let greylist =  readGreylist();
+    greylist.forEach(function(greyItem) {
+      argv.push('--gtest_filter=-'+greyItem);
+    });
+  }*/
+  // all non gtest args have to come last
+  argv.push('--log.line-number');
+  argv.push(options.extremeVerbosity ? "true" : "false");
+
+  // TODO use JWT tokens ?
+  argv.push('--endpoint=' + instanceInfo.endpoint);
+  argv.push('--authentication=' + "basic:root:");
+
+  print(argv);
+
+  results.basics = pu.executeAndWait(run, argv, options, 'fuertetest', rootDir, options.coreCheck);
+  results.basics.failed = results.basics.status ? 0 : 1;
+  if (!results.basics.status) {
+    results.failed += 1;
+  }
+  results = getGTestResults(testResultJsonFile, results);
+
+
+  print('Shutting down...');
+
+  // if (result[te].status === false) {
+  //   options.cleanup = false;
+  // }
+
+  results['shutdown'] = pu.shutdownInstance(instanceInfo, options);
+
+  print('done.');
+
   return results;
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
-  testFns['gtest'] = gtestRunner;
-  testFns['catch'] = gtestRunner;
-  testFns['boost'] = gtestRunner;
+  testFns['fuerte'] = gtestRunner;
 
-  opts['skipGtest'] = false;
-  opts['skipGeo'] = false; // not used anymore - only here for downwards-compatibility
+  opts['skipFuerte'] = false;
 
-  defaultFns.push('gtest');
+  defaultFns.push('fuerte');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

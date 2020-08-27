@@ -24,9 +24,8 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
-  
-std::unique_ptr<Request> createRequest(RestVerb verb,
-                                       ContentType contentType) {
+
+std::unique_ptr<Request> createRequest(RestVerb verb, ContentType contentType) {
   auto request = std::make_unique<Request>();
   request->header.restVerb = verb;
   request->header.contentType(contentType);

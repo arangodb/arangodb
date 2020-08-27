@@ -1479,7 +1479,7 @@ static void Return_PrepareClusterCommResultForJS(v8::FunctionCallbackInfo<v8::Va
             v8::Local<v8::Object>::New(isolate, buffer->_handle);
         r->Set(context, TRI_V8_ASCII_STRING(isolate, "rawBody"), bufferObject).FromMaybe(false);
       }
-    } else if (response.error == fuerte::Error::Timeout) {
+    } else if (response.error == fuerte::Error::RequestTimeout) {
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(context, StatusKey, TRI_V8_ASCII_STRING(isolate, "TIMEOUT")).FromMaybe(false);
       TRI_GET_GLOBAL_STRING(TimeoutKey);

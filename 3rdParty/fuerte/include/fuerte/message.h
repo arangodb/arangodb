@@ -25,15 +25,14 @@
 #ifndef ARANGO_CXX_DRIVER_MESSAGE
 #define ARANGO_CXX_DRIVER_MESSAGE
 
-#include <string>
-#include <vector>
-
 #include <fuerte/asio_ns.h>
 #include <fuerte/types.h>
-
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
+#include <string>
+#include <vector>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 const std::string fu_accept_key("accept");
@@ -49,7 +48,7 @@ struct MessageHeader {
 
  public:
   // Header metadata helpers#
-  template<typename K, typename V>
+  template <typename K, typename V>
   void addMeta(K&& key, V&& value) {
     if (fu_accept_key == key) {
       _acceptType = to_ContentType(value);
@@ -77,9 +76,7 @@ struct MessageHeader {
 
   // content type accessors
   ContentType contentType() const { return _contentType; }
-  void contentType(ContentType type) {
-    _contentType = type;
-  }
+  void contentType(ContentType type) { _contentType = type; }
   void contentType(std::string const& type) {
     addMeta(fu_content_type_key, type);
   }
@@ -109,7 +106,7 @@ struct RequestHeader final : public MessageHeader {
   ContentType acceptType() const { return _acceptType; }
   void acceptType(ContentType type) { _acceptType = type; }
   void acceptType(std::string const& type);
-  
+
   // query parameter helpers
   void addParameter(std::string const& key, std::string const& value);
 

@@ -202,10 +202,10 @@ int toArangoErrorCodeInternal(fuerte::Error err) {
     case fuerte::Error::CloseRequested:
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
 
-    case fuerte::Error::Timeout:  // No reply, we give up:
+    case fuerte::Error::RequestTimeout:  // No reply, we give up:
       return TRI_ERROR_CLUSTER_TIMEOUT;
 
-    case fuerte::Error::Canceled:
+    case fuerte::Error::ConnectionCanceled:
     case fuerte::Error::QueueCapacityExceeded:  // there is no result
     case fuerte::Error::ReadError:
     case fuerte::Error::WriteError:
