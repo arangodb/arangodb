@@ -101,17 +101,17 @@ class MasterContext {
   virtual void preGlobalSuperstepMessage(VPackBuilder& msg) {}
   /// @brief called after supersteps
   /// @return true to continue the computation
-  virtual bool postGlobalSuperstep() { return true; };
+  virtual bool postGlobalSuperstep() { return true; }
 
   /// @brief called after supersteps, VPackSlice contains array of all
   ///        worker messages received
-  virtual bool postGlobalSuperstepMessage(VPackSlice workerMsgs) { return true; };
+  virtual bool postGlobalSuperstepMessage(VPackSlice workerMsgs) { return true; }
 
   virtual void postApplication() {}
 
   ReportManager& getReportManager() { return *_reports; }
 
-  virtual void serializeValues(VPackBuilder& b) {};
+  virtual void serializeValues(VPackBuilder& b) { }
 
   enum class ContinuationResult {
     CONTINUE, ABORT, DONT_CARE, ACTIVATE_ALL, ERROR_ABORT,

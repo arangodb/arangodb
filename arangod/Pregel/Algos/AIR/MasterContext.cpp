@@ -269,20 +269,16 @@ bool MasterContext::postGlobalSuperstepMessage(VPackSlice workerMsgs) {
   return true;
 }
 
-
 void MasterContext::serializeValues(VPackBuilder& msg) {
   {
-    VPackObjectBuilder msgGuard(&msg);
-    {
-      VPackObjectBuilder valuesGuard(&msg, "globalAccumulatorValues");
+    VPackObjectBuilder valuesGuard(&msg, "globalAccumulatorValues");
 
-      for (auto&& acc : globalAccumulators()) {
-        msg.add(VPackValue(acc.first));
+    for (auto&& acc : globalAccumulators()) {
+      msg.add(VPackValue(acc.first));
 
-        if(auto result = acc.second->getValueIntoBuilder(msg); result.fail()) {
-          LOG_DEVEL << "AIR MasterContext, error serializing global accumulator "
-                    << acc.first << " " << result.error().toString();
-        }
+      if (auto result = acc.second->getValueIntoBuilder(msg); result.fail()) {
+        LOG_DEVEL << "AIR MasterContext, error serializing global accumulator "
+                  << acc.first << " " << result.error().toString();
       }
     }
   }
