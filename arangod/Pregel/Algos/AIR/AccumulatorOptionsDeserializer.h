@@ -41,6 +41,8 @@ namespace pregel {
 namespace algos {
 namespace accumulators {
 
+using PregelProgram = VPackBuilder;
+
 enum class AccumulatorType {
   MIN,
   MAX,
@@ -71,11 +73,11 @@ struct AccumulatorOptions {
 };
 
 struct CustomAccumulatorDefinition {
-  VPackBuilder clearProgram;
-  VPackBuilder updateProgram;
-  VPackBuilder setProgram;
-  VPackBuilder getProgram;
-  VPackBuilder finalizeProgram;
+  PregelProgram clearProgram;
+  PregelProgram updateProgram;
+  PregelProgram setProgram;
+  PregelProgram getProgram;
+  PregelProgram finalizeProgram;
 };
 
 // An accumulator declaration consists of a unique name
@@ -86,9 +88,10 @@ using CustomAccumulatorDefinitions = std::unordered_map<std::string, CustomAccum
 
 struct AlgorithmPhase {
   std::string name;
-  VPackBuilder initProgram;
-  VPackBuilder updateProgram;
-  VPackBuilder onHalt;
+  PregelProgram initProgram;
+  PregelProgram updateProgram;
+
+  PregelProgram onHalt;
 };
 
 using PhaseDeclarations = std::vector<AlgorithmPhase>;

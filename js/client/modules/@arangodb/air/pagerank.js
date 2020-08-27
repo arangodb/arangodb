@@ -25,11 +25,8 @@
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
+const {sumAccumulator} = require("./accumulators");
 
-/*
-
-
-*/
 exports.pagerank_program = pagerank_program;
 exports.pagerank = pagerank;
 exports.test = test;
@@ -42,15 +39,18 @@ function pagerank_program(resultField, dampingFactor) {
     globalAccumulators: {},
     vertexAccumulators: {
       rank: {
-        accumulatorType: "sum",
-        valueType: "doubles",
-        storeSender: false,
+        accumulatorType: "custom",
+        valueType: "slice",
+        customType: "sumAccumulator",
       },
       tmpRank: {
-        accumulatorType: "sum",
-        valueType: "doubles",
-        storeSender: false,
-      },
+        accumulatorType: "custom",
+        valueType: "slice",
+        customType: "sumAccumulator",
+      }
+    },
+    customAccumulators: {
+      sumAccumulator: sumAccumulator(),
     },
     phases: [
       {
@@ -85,10 +85,15 @@ function pagerank_program(resultField, dampingFactor) {
             ],
           ],
           ["accum-set!", "tmpRank", 0],
-          [
-            "send-to-all-neighbours",
-            "tmpRank",
-            ["/", ["accum-ref", "rank"], ["this-outbound-edges-count"]],
+          ["if",
+            [
+              ["gt?", ["this-outbound-edges-count"], 0],
+              [
+                "send-to-all-neighbours",
+                "tmpRank",
+                ["/", ["accum-ref", "rank"], ["this-outbound-edges-count"]],
+              ]
+            ]
           ],
           true,
         ],

@@ -23,51 +23,53 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 function cmpAccumulator(cmp) {
-    return {
-        updateProgram: ["if",
-            [
-                ["or",
-                    ["not", ["attrib-get", "isSet", ["current-value"]]],
-                    [cmp, ["input-value"], ["attrib-get", "value", ["current-value"]]]
-                ],
-                ["seq",
-                    ["this-set!",
-                        ["dict",
-                            ["list", "isSet", true],
-                            ["list", "value", ["input-value"]],
-                            ["list", "sender", ["input-sender"]]
-                        ]
+    return function() {
+        return {
+            updateProgram: ["if",
+                [
+                    ["or",
+                        ["not", ["attrib-get", "isSet", ["current-value"]]],
+                        [cmp, ["input-value"], ["attrib-get", "value", ["current-value"]]]
                     ],
-                    "hot"
+                    ["seq",
+                        ["this-set!",
+                            ["dict",
+                                ["list", "isSet", true],
+                                ["list", "value", ["input-value"]],
+                                ["list", "sender", ["input-sender"]]
+                            ]
+                        ],
+                        "hot"
+                    ]
+                ],
+                [true, "cold"]
+            ],
+            clearProgram: ["this-set!", {"isSet": false, "value": 0, sender: null}],
+            getProgram: ["if",
+                [
+                    ["attrib-get", "isSet", ["current-value"]],
+                    ["attrib-get", "value", ["current-value"]]
+                ],
+                [
+                    true,
+                    ["error", "accumulator undefined value"]
                 ]
             ],
-            [true, "cold"]
-        ],
-        clearProgram: ["this-set!", {"isSet": false, "value": 0, sender: null}],
-        getProgram: ["if",
-            [
-                ["attrib-get", "isSet", ["current-value"]],
-                ["attrib-get", "value", ["current-value"]]
+            setProgram: ["this-set!",
+                ["dict",
+                    ["list", "isSet", true],
+                    ["list", "value", ["input-value"]],
+                    ["list", "sender", null]
+                ]
             ],
-            [
-                true,
-                ["error", "accumulator undefined value"]
-            ]
-        ],
-        setProgram: ["this-set!",
-            ["dict",
-                ["list", "isSet", true],
-                ["list", "value", ["input-value"]],
-                ["list", "sender", null]
-            ]
-        ],
-        finalizeProgram: ["if",
-            [
-                ["attrib-get", "isSet", ["current-value"]],
-                ["dict-x-tract",  ["current-value"], "value", "sender"]
+            finalizeProgram: ["if",
+                [
+                    ["attrib-get", "isSet", ["current-value"]],
+                    ["dict-x-tract", ["current-value"], "value", "sender"]
+                ],
+                [true, null]
             ],
-            [true, null]
-        ],
+        };
     };
 }
 
@@ -82,11 +84,11 @@ function sumAccumulator() {
                       "hot"]]],
     clearProgram: ["this-set!", 0],
     getProgram: ["current-value"],
-    setProgram: ["input-value"],
+    setProgram: ["this-set!", ["input-value"]],
     finalizeProgram: ["current-value"],
   };
 }
 
-exports.minAccumulator = function() { return cmpAccumulator("lt?") };
-exports.maxAccumulator = function() { return cmpAccumulator("gt?") };
+exports.minAccumulator = cmpAccumulator("lt?");
+exports.maxAccumulator = cmpAccumulator("gt?");
 exports.sumAccumulator = sumAccumulator;
