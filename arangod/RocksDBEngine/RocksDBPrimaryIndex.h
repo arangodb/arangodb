@@ -65,6 +65,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   bool hasCoveringIterator() const override { return true; }
 
   bool isSorted() const override { return true; }
+  
+  std::vector<std::vector<arangodb::basics::AttributeName>> const& coveredFields() const override;
 
   bool hasSelectivityEstimate() const override { return true; }
 
@@ -143,6 +145,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                      arangodb::aql::AstNode const* valNode, bool isId) const;
 
  private:
+  std::vector<std::vector<arangodb::basics::AttributeName>> const _coveredFields;
+
   bool const _isRunningInCluster;
 };
 }  // namespace arangodb

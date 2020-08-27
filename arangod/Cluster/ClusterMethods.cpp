@@ -2379,7 +2379,6 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> shards = nullptr;
 
       if (!distributeShardsLike.empty()) {
-
         std::shared_ptr<LogicalCollection> myColToDistributeLike;
 
         if (colToDistributeLike != nullptr) {

@@ -52,6 +52,7 @@
 #include "Aql/MutexNode.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
+#include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/Range.h"
 #include "Aql/RegisterPlan.h"
@@ -1538,7 +1539,6 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
       EnumerateCollectionExecutorInfos(outputRegister, engine.getQuery(), collection(),
                                        _outVariable, produceResult,
                                        this->_filter.get(), this->projections(),
-                                       this->coveringIndexAttributePositions(),
                                        this->_random, this->doCount());
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -1556,7 +1556,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDepe
   auto c = std::make_unique<EnumerateCollectionNode>(plan, _id, collection(),
                                                      outVariable, _random, _hint);
 
-  c->projections(_projections);
+  c->_projections = _projections;
   CollectionAccessingNode::cloneInto(*c);
   DocumentProducingNode::cloneInto(plan, *c);
 

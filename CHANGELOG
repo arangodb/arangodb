@@ -1,6 +1,53 @@
 devel
 -----
 
+* Allow calling of REST APIs `/_api/engine/stats`, GET `/_api/collection` and
+  GET `/_api/database/current` on followers in active failover deployments. 
+  This can help debugging and inspecting the follower.
+
+* Don't allow creation of smart satellite graphs or collections (i.e. using
+  `"isSmart":true` together with `"replicationFactor":"satellite"` when creating
+  graphs or collections. This combination of parameters makes no sense, so that
+  the server will now respond with "bad parameter" and an HTTP status code of
+  HTTP 400 ("Bad request").
+
+* Fixed: More cases in AQL can now react to a query being killed, so reaction
+  time to query abortion is now shortened. This was a regression in comparison
+  to 3.6 series.
+
+* Support projections on sub-attributes (e.g. `a.b.c`).
+
+  In previous versions of ArangoDB, projections were only supported on 
+  top-level attributes. For example, in the query
+    
+      FOR doc IN collection
+        RETURN doc.a.b
+
+  the projection that was used was just `a`. Now the projection will be `a.b`,
+  which can help reduce the amount of data to be extracted from documents,
+  when only some sub-attributes are accessed.
+
+  In addition, indexes can now be used to extract the data of sub-attributes
+  for projections. If for the above example query an index on `a.b` exists, 
+  it will be used now. Previously, no index could be used for this projection.
+
+  Projections now can also be fed by any attribute in a combined index. For 
+  example, in the query
+
+    FOR doc IN collection
+      RETURN doc.b
+
+  the projection can be satisfied by a single-attribute index on attribute `b`,
+  but now also by a combined index on attributes `a` and `b` (or `b` and `a`).
+
+* Remove some JavaScript files containing testsuites and test utilities from our
+  official release packages.
+
+* Fixed internal issue #741: STARTS_WITH fails to accept 'array' as variable.
+
+* Fixed internal issue #738: PHRASE doesn't accept a reference to an array of
+  arguments.
+
 * Fixed internal issue #747: fixed possible dangling open files in ArangoSearch
   index after remove operations.
 
@@ -146,7 +193,7 @@ as well as the identifiers:
   MacOS based builds. The issue could be triggered by any network connection.
   This behavior is not part of any released version.
 
-* Fixed issue ES-664: the optimizer rule `inline-subqueries` must pull out
+* Fixed issue ES-664: the optimizer rule `inline-subqueries` must not pull out
   subqueries that contains a COLLECT statement if the subquery is itself called
 	from within a loop. Otherwise the COLLECT will be applied to the values in the
 	outer FOR loop, which can produce a different result.
