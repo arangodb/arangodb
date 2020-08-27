@@ -128,8 +128,7 @@ void QueryRegistry::storeRebootTrackerCallbackGuard(
   // in the logs:
   LOG_TOPIC("43251", WARN, Logger::AQL)
       << "Could not store RebootTrackerCallbackGuard for database "
-      << vocbaseName << " and QueryId " << queryId
-      << ", this is odd, but will not lead to critical problems.";
+      << vocbaseName << " and QueryId " << queryId;
 }
 
 /// @brief open
