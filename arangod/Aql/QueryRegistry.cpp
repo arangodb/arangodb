@@ -109,7 +109,7 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl)
 void QueryRegistry::storeRebootTrackerCallbackGuard(
     std::string const& vocbaseName, QueryId queryId,
     std::unique_ptr<arangodb::cluster::CallbackGuard>&& guard) {
-  READ_LOCKER(readLocker, _lock);
+  WRITE_LOCKER(readLocker, _lock);
   auto it1 = _queries.find(vocbaseName);
   if (it1 != _queries.end()) {
     auto it2 = it1->second.find(queryId);
@@ -128,8 +128,7 @@ void QueryRegistry::storeRebootTrackerCallbackGuard(
   // in the logs:
   LOG_TOPIC("43251", WARN, Logger::AQL)
       << "Could not store RebootTrackerCallbackGuard for database "
-      << vocbaseName << " and QueryId " << queryId
-      << ", this is odd, but will not lead to critical problems.";
+      << vocbaseName << " and QueryId " << queryId;
 }
 
 /// @brief open
