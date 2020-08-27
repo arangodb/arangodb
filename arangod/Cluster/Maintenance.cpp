@@ -707,7 +707,7 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent(
     VPackSlice const& local, VPackSlice const& current, std::string const& serverId,
     Transactions& transactions, MaintenanceFeature::ShardActionMap const& shardActionMap) {
   // Iterate over local databases
-    for (auto const& ldbo : VPackObjectIterator(local, true)) {
+  for (auto const& ldbo : VPackObjectIterator(local, true)) {
     VPackStringRef dbname = ldbo.key.stringRef();
 
     // Current has this database
