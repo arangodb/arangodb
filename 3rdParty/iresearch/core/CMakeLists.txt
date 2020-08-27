@@ -395,6 +395,12 @@ add_dependencies(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
 )
+ 
+if (S2_FOUND)
+  add_dependencies(${IResearch_TARGET_NAME}-static
+    ${IResearch_TARGET_NAME}-geo-static
+  )
+endif()
 
 # setup CRT
 if(MSVC)
@@ -416,6 +422,12 @@ if(MSVC)
     ${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
     ${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
  )
+
+ if (S2_FOUND)
+   add_dependencies(${IResearch_TARGET_NAME}-static-scrt
+     ${IResearch_TARGET_NAME}-geo-static-scrt
+   )
+ endif()
 endif()
 
 target_include_directories(${IResearch_TARGET_NAME}-shared
@@ -533,8 +545,8 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_SHARED}
   ${ATOMIC_LIBRARY}
+  ${S2_STATIC_LIB}
 )
-
 
 target_link_libraries(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-delimiter-static
@@ -546,6 +558,8 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
+  $<$<BOOL:${S2_FOUND}>:${IResearch_TARGET_NAME}-geo-static>
+  ${S2_STATIC_LIB}
   ${GCOV_LIBRARY}
   ${BFD_STATIC_LIBS}
   ${Lz4_STATIC_LIB}
@@ -576,6 +590,7 @@ if(MSVC)
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
     ${SIMD_LIBRARY_SHARED}
+    ${S2_STATIC_LIB}
   )
 
   target_link_libraries(${IResearch_TARGET_NAME}-static-scrt
@@ -588,6 +603,8 @@ if(MSVC)
     ${IResearch_TARGET_NAME}-format-1_0-static-scrt
     ${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
     ${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
+    $<$<BOOL:${S2_FOUND}>:${IResearch_TARGET_NAME}-geo-static-scrt>
+    ${S2_STATIC_LIB}
     ${GCOV_LIBRARY}
     ${BFD_STATIC_LIBS}
     ${Lz4_STATIC_LIB}
@@ -617,6 +634,8 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
   "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>"
+  $<$<BOOL:${S2_FOUND}>:"$<TARGET_FILE:${IResearch_TARGET_NAME}-geo-static>">
+  $<$<BOOL:${S2_FOUND}>:"$<TARGET_FILE:${S2_STATIC_LIB}>">
 )
 
 if (MSVC)
@@ -1908,6 +1927,148 @@ if(MSVC)
   target_link_libraries(${IResearch_TARGET_NAME}-scorer-bm25-shared-scrt
     ${IResearch_TARGET_NAME}-shared-scrt
   )
+endif()
+
+################################################################################
+### geo library
+################################################################################
+
+if (S2_FOUND)
+
+set(IResearch_geo_source
+  ./analysis/geo_token_stream.cpp
+  ./search/geo_filter.cpp
+)
+add_library(${IResearch_TARGET_NAME}-geo-shared
+  SHARED
+  ${IResearch_geo_source}
+)
+
+set_ipo(${IResearch_TARGET_NAME}-geo-shared)
+
+add_library(${IResearch_TARGET_NAME}-geo-static
+  STATIC
+  ${IResearch_geo_source}
+)
+
+set_ipo(${IResearch_TARGET_NAME}-geo-static)
+
+# setup CRT
+if(MSVC)
+  add_library(${IResearch_TARGET_NAME}-geo-shared-scrt
+    SHARED
+    ${IResearch_geo_source}
+  )
+
+  set_ipo(${IResearch_TARGET_NAME}-geo-shared-scrt)
+
+  add_library(${IResearch_TARGET_NAME}-geo-static-scrt
+    STATIC
+    ${IResearch_geo_source}
+  )
+
+  set_ipo(${IResearch_TARGET_NAME}-geo-static-scrt)
+endif()
+
+target_include_directories(${IResearch_TARGET_NAME}-geo-shared
+  PRIVATE ${S2_INCLUDE_DIR}
+)
+
+target_include_directories(${IResearch_TARGET_NAME}-geo-static
+  PRIVATE ${S2_INCLUDE_DIR}
+)
+
+# setup CRT
+if(MSVC)
+  target_include_directories(${IResearch_TARGET_NAME}-geo-shared-scrt
+    PRIVATE ${S2_INCLUDE_DIR}
+  )
+
+  target_include_directories(${IResearch_TARGET_NAME}-geo-static-scrt
+    PRIVATE ${S2_INCLUDE_DIR}
+  )
+endif()
+
+# setup CRT
+if(MSVC)
+  target_compile_options(${IResearch_TARGET_NAME}-geo-shared
+    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+  )
+
+  target_compile_options(${IResearch_TARGET_NAME}-geo-static
+    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+  )
+
+  target_compile_options(${IResearch_TARGET_NAME}-geo-shared-scrt
+    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+  )
+
+  target_compile_options(${IResearch_TARGET_NAME}-geo-static-scrt
+    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+  )
+endif()
+
+set_target_properties(${IResearch_TARGET_NAME}-geo-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME geo
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-geo-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME geo-s
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+)
+
+# setup CRT
+if(MSVC)
+  set_target_properties(${IResearch_TARGET_NAME}-geo-shared-scrt
+    PROPERTIES
+    PREFIX lib
+    IMPORT_PREFIX lib
+    OUTPUT_NAME geo-scrt
+    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
+    CXX_VISIBILITY_PRESET hidden
+  )
+
+  set_target_properties(${IResearch_TARGET_NAME}-geo-static-scrt
+    PROPERTIES
+    PREFIX lib
+    IMPORT_PREFIX lib
+    OUTPUT_NAME geo-scrt-s
+    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+  )
+endif()
+
+target_link_libraries(${IResearch_TARGET_NAME}-geo-shared
+  ${IResearch_TARGET_NAME}-shared
+  ${S2_STATIC_LIB}
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-geo-static
+  ${IResearch_TARGET_NAME}-static
+  ${S2_STATIC_LIB}
+)
+
+# setup CRT
+if(MSVC)
+  target_link_libraries(${IResearch_TARGET_NAME}-geo-shared-scrt
+    ${IResearch_TARGET_NAME}-shared-scrt
+    ${S2_STATIC_LIB}
+  )
+
+  target_link_libraries(${IResearch_TARGET_NAME}-geo-static-scrt
+    ${IResearch_TARGET_NAME}-static-scrt
+    ${S2_STATIC_LIB}
+  )
+endif()
+
 endif()
 
 ################################################################################

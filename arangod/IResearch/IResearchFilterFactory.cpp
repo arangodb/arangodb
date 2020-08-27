@@ -27,11 +27,16 @@
 #include "date/date.h"
 #endif
 
+#include "IResearch/IResearchFilterFactory.h"
+
+#include "s2/s2point_region.h"
+
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
 #include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/column_existence_filter.hpp"
+#include "search/geo_filter.hpp"
 #include "search/filter_visitor.hpp"
 #include "search/granular_range_filter.hpp"
 #include "search/levenshtein_filter.hpp"
@@ -48,13 +53,14 @@
 #include "Aql/Function.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Range.h"
+#include "Geo/GeoJson.h"
+#include "Geo/ShapeContainer.h"
 #include "Basics/StringUtils.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
-#include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/IResearchPDP.h"
 #include "Logger/LogMacros.h"
@@ -66,6 +72,8 @@ using namespace arangodb::iresearch;
 using namespace std::literals::string_literals;
 
 namespace {
+
+char const* GEO_INTERSECT_FUNC = "GEO_INTERSECT";
 
 namespace error {
 
@@ -3345,7 +3353,6 @@ arangodb::Result fromFuncLike(
     return error::invalidArgsCount<error::ExactValue<2>>(funcName);
   }
 
-
   // 1st argument defines a field
   auto const* field =
       arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
@@ -3423,6 +3430,103 @@ arangodb::Result fromFuncLevenshteinMatch(
   return {};
 }
 
+arangodb::Result fromFuncGeoContainsIntersect(
+    char const* funcName,
+    irs::boolean_filter* filter,
+    QueryContext const& ctx,
+    FilterContext const& filterCtx,
+    arangodb::aql::AstNode const& args) {
+  TRI_ASSERT(funcName);
+
+  if (!args.isDeterministic()) {
+    return error::nondeterministicArgs(funcName);
+  }
+
+  auto const argc = args.numMembers();
+
+  if (argc != 2) {
+    return error::invalidArgsCount<error::ExactValue<2>>(funcName);
+  }
+
+  // 1st argument defines a field
+  auto const* field =
+      arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
+
+  if (!field) {
+    return error::invalidAttribute(funcName, 1);
+  }
+
+  // 2nd argument defines a shape
+  ScopedAqlValue shapeValue;
+  arangodb::geo::ShapeContainer shape;
+
+  if (filter || shapeValue.isConstant()) {
+    if (!shapeValue.execute(ctx)) {
+      return error::failedToEvaluate(funcName, 2);
+    }
+
+    arangodb::Result res;
+    if (shapeValue.isObject()) {
+      res = arangodb::geo::geojson::parseRegion(shapeValue.slice(), shape);
+    } else if (shapeValue.isArray()) {
+      auto const slice = shapeValue.slice();
+
+      if (slice.isArray() && slice.length() >= 2) {
+        res = shape.parseCoordinates(slice, /*geoJson*/ true);
+      }
+    } else {
+      return {
+          TRI_ERROR_BAD_PARAMETER,
+          "'"s.append(funcName).append("' AQL function: argument at position '").append(std::to_string(2))
+         .append("' has invalid type '").append(ScopedAqlValue::typeString(shapeValue.type()).c_str())
+         .append("' ('").append(ScopedAqlValue::typeString(arangodb::iresearch::SCOPED_VALUE_TYPE_OBJECT).c_str())
+         .append("' or '").append(ScopedAqlValue::typeString(arangodb::iresearch::SCOPED_VALUE_TYPE_ARRAY).c_str())
+         .append("' expected)")
+      };
+    }
+
+    if (res.fail()) {
+      return {
+          TRI_ERROR_BAD_PARAMETER,
+          "'"s.append(funcName).append("' AQL function: failed to parse argument at position '")
+              .append(std::to_string(2)).append("' due to the following error '")
+              .append(res.errorMessage()).append("'")
+      };
+    }
+  }
+
+  if (filter) {
+    std::string name;
+
+    if (!nameFromAttributeAccess(name, *field, ctx)) {
+      return error::failedToGenerateName(funcName, 1);
+    }
+
+    TRI_ASSERT(filterCtx.analyzer);
+    kludge::mangleStringField(name, filterCtx.analyzer);
+
+    auto& geo_filter = filter->add<irs::by_geo_terms>();
+    *geo_filter.mutable_field() = std::move(name);
+    geo_filter.boost(filterCtx.boost);
+
+    auto const* region = shape.region();
+    TRI_ASSERT(region);
+
+    auto* opts = geo_filter.mutable_options();
+    if (arangodb::geo::ShapeContainer::Type::S2_POINT == shape.type()) {
+      opts->reset(static_cast<S2PointRegion const*>(region)->point());
+    } else {
+      auto const type = GEO_INTERSECT_FUNC == funcName
+        ? irs::GeoFilterType::INTERSECTS
+        : irs::GeoFilterType::CONTAINS;
+
+      opts->reset(type, *region);
+    }
+  }
+
+  return {};
+}
+
 std::map<irs::string_ref, ConvertionHandler> const FCallUserConvertionHandlers;
 
 arangodb::Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
@@ -3477,6 +3581,9 @@ std::map<std::string, ConvertionHandler> const FCallSystemConvertionHandlers{
     {"LIKE", fromFuncLike },
     {"LEVENSHTEIN_MATCH", fromFuncLevenshteinMatch},
     {"NGRAM_MATCH", fromFuncNgramMatch},
+    // geo function
+    {GEO_INTERSECT_FUNC, fromFuncGeoContainsIntersect},
+    {"GEO_CONTAINS", fromFuncGeoContainsIntersect},
     // context functions
     {"BOOST", fromFuncBoost},
     {"ANALYZER", fromFuncAnalyzer},
