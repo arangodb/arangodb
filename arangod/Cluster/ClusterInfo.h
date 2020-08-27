@@ -412,8 +412,6 @@ public:
 
     std::unordered_map<ServerID, RebootId> rebootIds() const;
 
-    RebootId getCurrentRebootId(ServerID const& serverId) const;
-
    private:
     std::unordered_map<ServerID, KnownServer> _serversKnown;
   };
@@ -928,8 +926,6 @@ public:
   std::unordered_map<ServerID, std::string> getServerTimestamps();
 
   std::unordered_map<ServerID, RebootId> rebootIds() const;
-
-  RebootId getCurrentRebootId(ServerID const& serverId) const;
 
   uint64_t getPlanVersion() {
     READ_LOCKER(guard, _planProt.lock);
