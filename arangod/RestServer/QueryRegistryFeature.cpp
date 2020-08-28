@@ -78,9 +78,12 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _totalQueryExecutionTime(
         server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_aql_total_query_time_msec", 0, "Total execution time of all AQL queries [ms]")),
+      _queriesCounter(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_aql_all_query", 0, "Total number of AQL queries")),
       _slowQueriesCounter(
         server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_aql_slow_query", 0, "Number of slow AQL queries")) {
+          "arangodb_aql_slow_query", 0, "Total number of slow AQL queries")) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
@@ -251,6 +254,7 @@ void QueryRegistryFeature::unprepare() {
 }
 
 void QueryRegistryFeature::trackQuery(double time) { 
+  ++_queriesCounter; 
   _queryTimes.count(time);
   _totalQueryExecutionTime += static_cast<uint64_t>(1000 * time);
 }
@@ -258,8 +262,8 @@ void QueryRegistryFeature::trackQuery(double time) {
 void QueryRegistryFeature::trackSlowQuery(double time) { 
   // query is already counted here as normal query, so don't count it
   // again in _queryTimes or _totalQueryExecutionTime
-  _slowQueryTimes.count(time);
   ++_slowQueriesCounter; 
+  _slowQueryTimes.count(time);
 }
 
 }  // namespace arangodb
