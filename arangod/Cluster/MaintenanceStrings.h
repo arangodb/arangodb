@@ -47,7 +47,6 @@ constexpr char const* INDEX = "index";
 constexpr char const* INDEXES = "indexes";
 constexpr char const* KEY = "key";
 constexpr char const* LOCAL_LEADER = "localLeader";
-constexpr char const* MAKE_HASH_UNIQUE = "makeHashUnique";
 constexpr char const* NAME = "name";
 constexpr char const* OBJECT_ID = "objectId";
 constexpr char const* OLD_CURRENT_COUNTER = "oldCurrentCounter";
