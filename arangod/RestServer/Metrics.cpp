@@ -67,12 +67,12 @@ Counter& Counter::operator++(int n) {
   return *this;
 }
 
-Counter& Counter::operator+=(uint64_t const& n) {
+Counter& Counter::operator+=(uint64_t n) {
   count(n);
   return *this;
 }
 
-Counter& Counter::operator=(uint64_t const& n) {
+Counter& Counter::operator=(uint64_t n) {
   store(n);
   return *this;
 }
@@ -95,7 +95,7 @@ uint64_t Counter::load() const {
   return _c.load();
 }
 
-void Counter::store(uint64_t const& n) {
+void Counter::store(uint64_t n) {
   _c.exchange(n);
 }
 
@@ -104,6 +104,15 @@ void Counter::toPrometheus(std::string& result) const {
   result += "\n#TYPE " + name() + " counter\n";
   result += "#HELP " + name() + " " + help() + "\n";
   result += name() + "{" + labels() + "} " + std::to_string(load()) + "\n";
+}
+
+void Counter::toBuilder(arangodb::velocypack::Builder& result) const {
+  _b.push();
+  result.openObject();
+  Metric::toBuilder(result);
+  result.add("type", arangodb::velocypack::Value("counter"));
+  result.add("value", arangodb::velocypack::Value(load()));
+  result.close();
 }
 
 Counter::Counter(

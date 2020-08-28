@@ -37,6 +37,8 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/StorageEngineFeature.h"
 
+#include <velocypack/Builder.h>
+
 #include <chrono>
 #include <thread>
 
@@ -70,12 +72,38 @@ bool MetricsFeature::exportAPI() const {
   return _export;
 }
 
-void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
+void MetricsFeature::toBuilder(arangodb::velocypack::Builder& result) const {
+  // minimize reallocs
+  result.reserve(16384);
+
+  {
+    std::lock_guard<std::recursive_mutex> guard(_lock);
+    for (auto const& i : _registry) {
+      i.second->toBuilder(result);
+    }
+  }
+/*
+  // StatisticsFeature
+  auto& sf = server().getFeature<StatisticsFeature>();
+  if (sf.enabled()) {
+    sf.toBuilder(result, std::chrono::duration<double,std::milli>(
+                      std::chrono::system_clock::now().time_since_epoch()).count());
+  }
+
+  // RocksDBEngine
+  auto es = EngineSelectorFeature::ENGINE;
+  if (es != nullptr) {
+    std::string const& engineName = es->typeName();
+    if (engineName == RocksDBEngine::EngineName) {
+      es->getStatistics(result);
+    }
+  }
+  */
+}
 
 void MetricsFeature::toPrometheus(std::string& result) const {
-
   // minimize reallocs
-  result.reserve(32768);
+  result.reserve(16384);
 
   {
     std::lock_guard<std::recursive_mutex> guard(_lock);
@@ -183,7 +211,7 @@ metrics_key::metrics_key(std::initializer_list<std::string> const& il) {
   TRI_ASSERT(il.size() < 3);
   name = *il.begin();
   if (il.size() == 2) {
-    labels = *(il.begin()+1);
+    labels = *(il.begin() + 1);
   }
   _hash = std::hash<std::string>{}(name + labels);
 }
@@ -201,7 +229,7 @@ std::size_t metrics_key::hash() const noexcept {
   return _hash;
 }
 
-bool metrics_key::operator== (metrics_key const& other) const {
+bool metrics_key::operator==(metrics_key const& other) const {
   return name == other.name && labels == other.labels;
 }
 

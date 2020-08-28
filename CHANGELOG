@@ -1,6 +1,9 @@
 devel
 -----
 
+* Expose available server metrics also in JSON format via new REST endpoint GET 
+  `/_admin/metrics/json`.
+
 * Allow calling of REST APIs `/_api/engine/stats`, GET `/_api/collection` and
   GET `/_api/database/current` on followers in active failover deployments. 
   This can help debugging and inspecting the follower.

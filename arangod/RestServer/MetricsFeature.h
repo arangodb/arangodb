@@ -32,6 +32,10 @@
 #include "Statistics/ServerStatistics.h"
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 struct metrics_key;
 }
 
@@ -68,7 +72,6 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   bool exportAPI() const;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   template <typename Scale>
   Histogram<Scale>& histogram(std::string const& name, Scale const& scale,
@@ -256,6 +259,9 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return *metric;
   }
 
+  /// @brief serialize metrics in JSON format
+  void toBuilder(arangodb::velocypack::Builder& result) const;
+  /// @brief serialize metrics in Prometheus format
   void toPrometheus(std::string& result) const;
 
   ServerStatistics& serverStatistics();

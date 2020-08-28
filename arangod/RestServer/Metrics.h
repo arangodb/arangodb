@@ -35,8 +35,13 @@
 #include <cmath>
 #include <limits>
 
-#include "Basics/VelocyPackHelper.h"
-#include "Logger/LogMacros.h"
+#include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "counter.h"
 
 class Metric {
@@ -46,8 +51,29 @@ class Metric {
   std::string const& help() const;
   std::string const& name() const;
   std::string const& labels() const;
+  
   virtual void toPrometheus(std::string& result) const = 0;
-  void header(std::string& result) const;
+
+  virtual void toBuilder(arangodb::velocypack::Builder& result) const {
+    result.add("name", arangodb::velocypack::Value(name()));
+    result.add("help", arangodb::velocypack::Value(help()));
+    result.add(arangodb::velocypack::Value("labels"));
+    result.openArray();
+    for (auto const& pair: arangodb::basics::StringUtils::split(labels(), ',')) {
+      result.openObject();
+      auto keyValuePair = arangodb::basics::StringUtils::split(pair, '=');
+      keyValuePair[0] = arangodb::basics::StringUtils::replace(keyValuePair[0], "\"", "");
+      if (keyValuePair.size() > 1) {
+        keyValuePair[1] = arangodb::basics::StringUtils::replace(keyValuePair[1], "\"", "");
+        result.add(keyValuePair[0], arangodb::velocypack::Value(keyValuePair[1]));
+      } else {
+        result.add(keyValuePair[0], arangodb::velocypack::Value(""));
+      }
+      result.close();
+    }
+    result.close();
+  }
+
  protected:
   std::string const _name;
   std::string const _help;
@@ -64,7 +90,7 @@ struct Metrics {
 /**
  * @brief Counter functionality
  */
-class Counter : public Metric {
+class Counter final : public Metric {
  public:
   Counter(uint64_t const& val, std::string const& name, std::string const& help,
           std::string const& labels = std::string());
@@ -73,21 +99,22 @@ class Counter : public Metric {
   std::ostream& print (std::ostream&) const;
   Counter& operator++();
   Counter& operator++(int);
-  Counter& operator+=(uint64_t const&);
-  Counter& operator=(uint64_t const&);
+  Counter& operator+=(uint64_t);
+  Counter& operator=(uint64_t);
   void count();
   void count(uint64_t);
   uint64_t load() const;
-  void store(uint64_t const&);
+  void store(uint64_t);
   void push();
-  virtual void toPrometheus(std::string&) const override;
+  void toPrometheus(std::string&) const override;
+  void toBuilder(arangodb::velocypack::Builder& result) const override;
  private:
   mutable Metrics::counter_type _c;
   mutable Metrics::buffer_type _b;
 };
 
 
-template<typename T> class Gauge : public Metric {
+template<typename T> class Gauge final : public Metric {
  public:
   Gauge() = delete;
   Gauge(T const& val, std::string const& name, std::string const& help,
@@ -122,11 +149,20 @@ template<typename T> class Gauge : public Metric {
   T load() const {
     return _g.load();
   }
-  virtual void toPrometheus(std::string& result) const override {
+
+  void toPrometheus(std::string& result) const override {
     result += "\n#TYPE " + name() + " gauge\n";
     result += "#HELP " + name() + " " + help() + "\n";
     result += name() + "{" + labels() + "} " + std::to_string(load()) + "\n";
-  };
+  }
+
+  void toBuilder(arangodb::velocypack::Builder& result) const override {
+    result.openObject();
+    Metric::toBuilder(result);
+    result.add("type", arangodb::velocypack::Value("gauge"));
+    result.add("value", arangodb::velocypack::Value(load()));
+    result.close();
+  }
  private:
   std::atomic<T> _g;
 };
@@ -153,30 +189,23 @@ struct scale_t {
   size_t n() const {
     return _n;
   }
-  /**
-   * @brief number of buckets
-   */
+  
   T low() const {
     return _low;
   }
-  /**
-   * @brief number of buckets
-   */
+  
   T high() const {
     return _high;
   }
-  /**
-   * @brief number of buckets
-   */
-  std::string const delim(size_t const& s) const {
+  
+  std::string const delim(size_t s) const {
     return (s < _n - 1) ? std::to_string(_delim.at(s)) : "+Inf";
   }
-  /**
-   * @brief number of buckets
-   */
+  
   std::vector<T> const& delims() const {
     return _delim;
   }
+
   /**
    * @brief dump to builder
    */
@@ -191,6 +220,7 @@ struct scale_t {
       b.add(VPackValue(i));
     }
   }
+  
   /**
    * @brief dump to
    */
@@ -216,7 +246,7 @@ std::ostream& operator<< (std::ostream& o, scale_t<T> const& s) {
 }
 
 template<typename T>
-struct log_scale_t : public scale_t<T> {
+struct log_scale_t final : public scale_t<T> {
  public:
 
   using value_type = T;
@@ -242,8 +272,9 @@ struct log_scale_t : public scale_t<T> {
    * @return    index
    */
   size_t pos(T const& val) const {
-    return static_cast<size_t>(1+std::floor(log((val - this->_low)/_div)/_lbase));
+    return static_cast<size_t>(1 + std::floor(log((val - this->_low) / _div) / _lbase));
   }
+
   /**
    * @brief Dump to builder
    * @param b Envelope
@@ -253,6 +284,7 @@ struct log_scale_t : public scale_t<T> {
     b.add("base", VPackValue(_base));
     scale_t<T>::toVelocyPack(b);
   }
+  
   /**
    * @brief Base
    * @return base
@@ -267,7 +299,7 @@ struct log_scale_t : public scale_t<T> {
 };
 
 template<typename T>
-struct lin_scale_t : public scale_t<T> {
+struct lin_scale_t final : public scale_t<T> {
  public:
 
   using value_type = T;
@@ -293,9 +325,9 @@ struct lin_scale_t : public scale_t<T> {
    * @return    index
    */
   size_t pos(T const& val) const {
-    return static_cast<size_t>(std::floor((val - this->_low)/ _div));
+    return static_cast<size_t>(std::floor((val - this->_low) / _div));
   }
-
+  
   virtual void toVelocyPack(VPackBuilder& b) const {
     b.add("scale-type", VPackValue("linear"));
     scale_t<T>::toVelocyPack(b);
@@ -306,23 +338,10 @@ struct lin_scale_t : public scale_t<T> {
 };
 
 
-template<typename ... Args>
-std::string strfmt (std::string const& format, Args ... args) {
-  size_t size = snprintf( nullptr, 0, format.c_str(), args ... ) + 1;
-  if( size <= 0 ) {
-    throw std::runtime_error( "Error during formatting." );
-  }
-  std::unique_ptr<char[]> buf(new char[size]);
-  snprintf(buf.get(), size, format.c_str(), args ...);
-  return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
-}
-
-
-
 /**
  * @brief Histogram functionality
  */
-template<typename Scale> class Histogram : public Metric {
+template<typename Scale> class Histogram final : public Metric {
 
  public:
 
@@ -392,11 +411,11 @@ template<typename Scale> class Histogram : public Metric {
     return v;
   }
 
-  uint64_t load(size_t i) const { return _c.load(i); };
+  uint64_t load(size_t i) const { return _c.load(i); }
 
   size_t size() const { return _c.size(); }
 
-  virtual void toPrometheus(std::string& result) const override {
+  void toPrometheus(std::string& result) const override {
     result += "\n#TYPE " + name() + " histogram\n";
     result += "#HELP " + name() + " " + help() + "\n";
     std::string lbs = labels();
@@ -418,6 +437,31 @@ template<typename Scale> class Histogram : public Metric {
     result += name() + "_count{" + labels() + "} " + std::to_string(sum) + "\n";
   }
 
+  void toBuilder(arangodb::velocypack::Builder& result) const override {
+    result.openObject();
+    result.add("type", arangodb::velocypack::Value("histogram"));
+    Metric::toBuilder(result);
+    result.add(arangodb::velocypack::Value("buckets"));
+    result.openArray();
+    uint64_t sum = 0;
+    auto const& delimiters = _scale.delims();
+    for (size_t i = 0; i < size(); ++i) {
+      uint64_t n = load(i);
+      sum += n;
+      result.openObject();
+      if (i < delimiters.size()) {
+        result.add("lower", arangodb::velocypack::Value(delimiters[i]));
+      } else {
+        result.add("lower", arangodb::velocypack::Value("+Inf"));
+      }
+      result.add("count", arangodb::velocypack::Value(n));
+      result.close();
+    }
+    result.close();
+    result.add("total", arangodb::velocypack::Value(sum));
+    result.close();
+  }
+
   std::ostream& print(std::ostream& o) const {
     o << name() << " scale: " <<  _scale << " extremes: [" << _lowr << ", " << _highr << "]";
     return o;
@@ -428,7 +472,6 @@ template<typename Scale> class Histogram : public Metric {
   Scale _scale;
   value_type _lowr, _highr;
   size_t _n;
-
 };
 
 std::ostream& operator<< (std::ostream&, Metrics::counter_type const&);

@@ -22,13 +22,9 @@
 
 #include "RestMetricsHandler.h"
 
-#include "Agency/AgencyComm.h"
-#include "Agency/AgencyFeature.h"
-#include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
-#include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
 
 #include <velocypack/Builder.h>
@@ -37,10 +33,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoDB server
-////////////////////////////////////////////////////////////////////////////////
 
 RestMetricsHandler::RestMetricsHandler(
   application_features::ApplicationServer& server,
@@ -68,11 +60,21 @@ RestStatus RestMetricsHandler::execute() {
     return RestStatus::DONE;
   }
 
-  std::string result;
-  metrics.toPrometheus(result);
-  _response->setResponseCode(rest::ResponseCode::OK);
-  _response->setContentType(rest::ContentType::TEXT);
-  _response->addRawPayload(VPackStringRef(result));
-  
+  if (!_request->suffixes().empty() &&
+      _request->suffixes()[0] == "json") {
+    // return metrics in JSON format
+    VPackBuilder result;
+    result.openArray();
+    metrics.toBuilder(result);
+    result.close();
+    generateResult(rest::ResponseCode::OK, result.slice());
+  } else {
+    // return metrics in prometheus format
+    std::string result;
+    metrics.toPrometheus(result);
+    _response->setResponseCode(rest::ResponseCode::OK);
+    _response->setContentType(rest::ContentType::TEXT);
+    _response->addRawPayload(VPackStringRef(result));
+  } 
   return RestStatus::DONE;
 }

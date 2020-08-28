@@ -544,8 +544,8 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler("/_admin/statistics",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
 
-  _handlerFactory->addHandler("/_admin/metrics",
-                              RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
+  _handlerFactory->addPrefixHandler("/_admin/metrics",
+                                    RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
 
   _handlerFactory->addHandler("/_admin/statistics-description",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
