@@ -429,8 +429,8 @@ std::string AgencyCommResult::errorMessage() const {
   return asResult().errorMessage();
 }
 
-std::pair<boost::optional<int>, boost::optional<std::string_view>> AgencyCommResult::parseBodyError() const {
-  auto result = std::pair<boost::optional<int>, boost::optional<std::string_view>>{};
+std::pair<boost::optional<int>, boost::optional<velocypack::StringRef>> AgencyCommResult::parseBodyError() const {
+  auto result = std::pair<boost::optional<int>, boost::optional<velocypack::StringRef>>{};
 
   if (!_body.empty()) {
     std::shared_ptr<VPackBuilder> bodyBuilder = VPackParser::fromJson(_body);
@@ -446,11 +446,11 @@ std::pair<boost::optional<int>, boost::optional<std::string_view>> AgencyCommRes
 
       auto errMsg = body.get(StaticStrings::ErrorMessage);
       if (errMsg.isString()) {
-        result->second = errMsg.stringRef();
+        result.second = errMsg.stringRef();
       } else {
         errMsg = body.get("message");
         if (errMsg.isString()) {
-          result->second = errMsg.stringRef();
+          result.second = errMsg.stringRef();
         }
       }
     }
@@ -521,7 +521,7 @@ Result AgencyCommResult::asResult() const {
     return Result{};
   } else {
     auto const err = parseBodyError();
-    auto const errorCode = std::invoke([&]() -> int {
+    auto const errorCode = [&]() -> int {
       if (err.first) {
         return *err.first;
       } else if (_statusCode > 0) {
@@ -529,20 +529,21 @@ Result AgencyCommResult::asResult() const {
       } else {
         return TRI_ERROR_INTERNAL;
       }
-    });
-    auto const errorMessage = std::invoke([&]() -> std::string_view {
+    }();
+    auto const errorMessage = [&]() -> velocypack::StringRef {
+      using velocypack::StringRef;
       if (err.second) {
         return *err.second;
       } else if (!_message.empty()) {
-        return _message;
+        return StringRef{_message};
       } else if (!_connected) {
-        return "unable to connect to agency";
+        return StringRef{"unable to connect to agency"};
       } else {
-        return TRI_errno_string(errorCode);
+        return StringRef{TRI_errno_string(errorCode)};
       }
-    });
+    }();
 
-    return Result(errorCode, errorMessage);
+    return Result(errorCode, errorMessage.toString());
   }
 }
 

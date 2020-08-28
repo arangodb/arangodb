@@ -406,7 +406,7 @@ class AgencyCommResult {
 
   VPackBuilder toVelocyPack() const;
 
-  std::pair<boost::optional<int>, boost::optional<std::string_view>> parseBodyError() const;
+  std::pair<boost::optional<int>, boost::optional<velocypack::StringRef>> parseBodyError() const;
 
  public:
   std::string _location = "";
