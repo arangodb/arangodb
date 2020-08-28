@@ -956,7 +956,7 @@ TEST_F(MaintenanceTestActionPhaseOne, add_one_collection_to_local) {
     for (auto const& action : actions) {
       ASSERT_EQ(action->name(), "DropCollection");
       ASSERT_EQ(action->get("database"), "_system");
-      ASSERT_EQ(action->get("collection"), "s1111112");
+      ASSERT_EQ(action->get("shard"), "s1111112");
     }
   }
 }
