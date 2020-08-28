@@ -27,6 +27,8 @@ const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
 const accumulators = require("@arangodb/air/accumulators");
 
+const internal = require("internal");
+
 /*
 
 
@@ -34,6 +36,77 @@ const accumulators = require("@arangodb/air/accumulators");
 exports.global_accumulators_test_program = global_accumulators_test_program;
 exports.global_accumulators_test = global_accumulators_test;
 exports.test = test;
+
+// TODO these tests have to be more detailed, but less icky to write...
+function test_custom_global_accumulator_not_defined() {
+  internal.print("Testing: custom global accumulator declared");
+
+  const tgname = "LineGraph100";
+  examplegraphs.create_line_graph(tgname, 100, 5);
+  try {
+    const res = testhelpers.wait_for_pregel(pregel.start(
+      "air",
+      tgname,
+      {
+        resultField: "",
+        maxGSS: 5,
+        globalAccumulators: {
+          one: {
+            accumulatorType: "custom",
+            valueType: "slice",
+            customType: "sam"
+          },
+        },
+        vertexAccumulators: { },
+        customAccumulators: {
+          sum: accumulators.sumAccumulator(),
+        },
+        phases: [ { name: "main", updateProgram: [], initProgram: [] } ]
+      }));
+  } catch(e) {
+    if (e.errorNum === 10 && e.code === 400) {
+      internal.print("\u001b[32mOK:   Error signaled when custom type used that is not declared\u001b[0m");
+      return;
+    } else {
+      internal.print("\u001b[31mFAIL: Expected errorNum == 10 and code == 400, received errorNum ", e.errorNum, " and code ", e.code, "\u001b[0m");
+    }
+  }
+}
+
+function test_custom_vertex_accumulator_not_defined() {
+  internal.print("Testing: custom vertex accumulators declared");
+
+  const tgname = "LineGraph100";
+  examplegraphs.create_line_graph(tgname, 100, 5);
+  try {
+    const res = testhelpers.wait_for_pregel(pregel.start(
+      "air",
+      tgname,
+      {
+        resultField: "",
+        maxGSS: 5,
+        globalAccumulators: { },
+        vertexAccumulators: {
+          one: {
+            accumulatorType: "custom",
+            valueType: "slice",
+            customType: "sam"
+          },
+        },
+        customAccumulators: {
+          sum: accumulators.sumAccumulator(),
+        },
+        phases: [ { name: "main", updateProgram: [], initProgram: [] } ]
+      }));
+  } catch(e) {
+    if (e.errorNum === 10 && e.code === 400) {
+      internal.print("\u001b[32mOK:   Error signaled when custom type used that is not declared\u001b[0m");
+      return;
+    } else {
+      internal.print("\u001b[31mFAIL: Expected errorNum == 10 and code == 400, received errorNum ", e.errorNum, " and code ", e.code, "\u001b[0m");
+    }
+  }
+}
 
 /* returns a program that compputes the vertex degree of every vertex */
 function global_accumulators_test_program(resultField) {
@@ -169,5 +242,7 @@ function exec_test_vertex_degrees() {
 
 // run tests
 function test() {
+  test_custom_global_accumulator_not_defined();
+  test_custom_vertex_accumulator_not_defined();
   exec_test_vertex_degrees();
 }
