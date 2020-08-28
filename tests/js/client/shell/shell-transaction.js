@@ -4550,7 +4550,7 @@ function transactionOverlapSuite() {
 
   };
 }
-/*
+
 jsunity.run(transactionRevisionsSuite);
 jsunity.run(transactionRollbackSuite);
 jsunity.run(transactionInvocationSuite);
@@ -4563,7 +4563,6 @@ jsunity.run(transactionTraversalSuite);
 jsunity.run(transactionAQLStreamSuite);
 jsunity.run(transactionTTLStreamSuite);
 jsunity.run(transactionIteratorSuite);
-*/
 jsunity.run(transactionOverlapSuite);
 
 return jsunity.done();
