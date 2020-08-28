@@ -222,7 +222,7 @@ Result RocksDBIndex::drop() {
   return r;
 }
 
-void RocksDBIndex::afterTruncate(TRI_voc_tick_t) {
+void RocksDBIndex::afterTruncate(TRI_voc_tick_t, transaction::Methods*) {
   // simply drop the cache and re-create it
   if (_cacheEnabled) {
     destroyCache();
