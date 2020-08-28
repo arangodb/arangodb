@@ -25,6 +25,7 @@
 #include "Agency/AgencyStrings.h"
 #include "Agency/Node.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/application-exit.h"
 #include "GeneralServer/RestHandler.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -177,58 +178,57 @@ void AgencyCache::handleCallbacksNoLock(
   // Find keys, which are a prefix of a callback:
   for (auto const& k : keys) {
 
-      auto it = _callbacks.lower_bound(k);
-      while (it != _callbacks.end() && it->first.compare(0, k.size(), k) == 0) {
-        if (uniq.emplace(it->second).second) {
-          toCall.push_back(it->second);
-        }
-        ++it;
+    auto it = _callbacks.lower_bound(k);
+    while (it != _callbacks.end() && it->first.compare(0, k.size(), k) == 0) {
+      if (uniq.emplace(it->second).second) {
+        toCall.push_back(it->second);
       }
-
-          if (k.size() > 8) {
+      ++it;
+    }
+    
+    if (k.size() > 8) {
       std::string r(k.substr(8)); // TODO: Optimize for string_view
       auto rs = r.size();
-
+        
       if (rs > strlen(PLAN) && r.compare(0, strlen(PLAN), PLAN) == 0) {
-        if (rs >= strlen(PLAN_VERSION) &&                      // Plan/Version -> ignore
+        if (rs >= strlen(PLAN_VERSION) &&                 // Plan/Version -> ignore
             r.compare(0, strlen(PLAN_VERSION), PLAN_VERSION) == 0) {
           continue;
-        } else if (rs > strlen(PLAN_COLLECTIONS) &&                // Plan/Collections
+        } else if (rs > strlen(PLAN_COLLECTIONS) &&       // Plan/Collections
                    r.compare(0, strlen(PLAN_COLLECTIONS), PLAN_COLLECTIONS) == 0) {
           auto tmp = r.substr(strlen(PLAN_COLLECTIONS));
           planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
-        } else if (rs > strlen(PLAN_DATABASES) &&             // Plan/Databases
+        } else if (rs > strlen(PLAN_DATABASES) &&         // Plan/Databases
                    r.compare(0, strlen(PLAN_DATABASES), PLAN_DATABASES) == 0) {
           auto tmp = r.substr(strlen(PLAN_DATABASES));
-          planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
-        } else if (rs > strlen(PLAN_VIEWS) &&                 // Plan/Views
+          planChanges.emplace(tmp);
+        } else if (rs > strlen(PLAN_VIEWS) &&             // Plan/Views
                    r.compare(0, strlen(PLAN_VIEWS), (PLAN_VIEWS)) == 0) {
           auto tmp = r.substr(strlen(PLAN_VIEWS));
           planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
-        } else if (rs > strlen(PLAN_ANALYZERS) &&             // Plan/Analyzers
+        } else if (rs > strlen(PLAN_ANALYZERS) &&         // Plan/Analyzers
                    r.compare(0, strlen(PLAN_ANALYZERS), PLAN_ANALYZERS)==0) {
           auto tmp = r.substr(strlen(PLAN_ANALYZERS));
           planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
-        } else {                                              // Plan others
-          planChanges.emplace(std::string());
+        } else {
+          planChanges.emplace(std::string());             // To indicate non database
         }
       } else if (rs > strlen(CURRENT) && r.compare(0, strlen(CURRENT), CURRENT) == 0) {
-        if (rs >= strlen(CURRENT_VERSION) &&                   // Current/Version is ignored
+        if (rs >= strlen(CURRENT_VERSION) &&              // Current/Version is ignored
             r.compare(0, strlen(CURRENT_VERSION), CURRENT_VERSION) == 0) {
           continue;
-        } else if (rs > strlen(CURRENT_COLLECTIONS) &&        // Current/Collections
+        } else if (rs > strlen(CURRENT_COLLECTIONS) &&    // Current/Collections
                    r.compare(0, strlen(CURRENT_COLLECTIONS), CURRENT_COLLECTIONS) == 0) {
           auto tmp = r.substr(strlen(CURRENT_COLLECTIONS));
           currentChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
-        } else if (rs > strlen(CURRENT_DATABASES) &&          // Current/Databases
+        } else if (rs > strlen(CURRENT_DATABASES) &&      // Current/Databases
                    r.compare(0, strlen(CURRENT_DATABASES), CURRENT_DATABASES) == 0) {
           auto tmp = r.substr(strlen(CURRENT_DATABASES));
           currentChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
-        } else {                                              // Current others
-          currentChanges.emplace(std::string());
+        } else {
+          currentChanges.emplace(std::string());          // To indicate non database
         }
       }
-
     }
   }
 }
@@ -556,8 +556,9 @@ void AgencyCache::invokeAllCallbacks() const {
 AgencyCache::change_set_t const AgencyCache::planChangedSince(
   consensus::index_t const& last, std::vector<std::string> const& others) const {
 
-  //bool get_rest = false;
-  std::unordered_map<std::string, query_t> db_res, rest_res;
+  bool get_rest = false;
+  std::unordered_map<std::string, query_t> db_res;
+  query_t rest_res = nullptr;
 
   std::vector<std::string> databases;
   for (auto const& db : others) {
@@ -569,11 +570,11 @@ AgencyCache::change_set_t const AgencyCache::planChangedSince(
   std::shared_lock_guard g(_storeLock);
 
   std::multimap<consensus::index_t, std::string>::const_iterator it =
-    _planChanges.lower_bound(last);
+    _planChanges.lower_bound(last+1); 
   if (it != _planChanges.end()) {
     for (; it != _planChanges.end(); ++it) {
       if (it->second.empty()) { // Need to get rest of Plan
-        //get_rest = true;
+        get_rest = true;
       }
       if (std::find(databases.begin(), databases.end(), it->second) == databases.end()) {
         databases.push_back(it->second);
@@ -592,25 +593,27 @@ AgencyCache::change_set_t const AgencyCache::planChangedSince(
   auto query = std::make_shared<arangodb::velocypack::Builder>();
   {
     for (auto const& i : databases) {
-      
-      auto query = std::make_shared<arangodb::velocypack::Builder>();
-      { VPackArrayBuilder outer(query.get());
-        { VPackArrayBuilder inner(query.get());
-          query->add(VPackValue(AgencyCommHelper::path(PLAN_ANALYZERS) + "/" + i));
-          query->add(VPackValue(AgencyCommHelper::path(PLAN_COLLECTIONS) + "/" + i));
-          query->add(VPackValue(AgencyCommHelper::path(PLAN_DATABASES) + "/" + i));
-          query->add(VPackValue(AgencyCommHelper::path(PLAN_VIEWS) + "/" + i)); }}
-      auto [entry,created] = db_res.try_emplace(i, std::make_shared<VPackBuilder>());
-      if (created) {
-        _readDB.read(query, entry->second);
-        LOG_DEVEL << entry->first << " " << entry->second->toJson();
-      } else {
-        LOG_DEVEL << "FATAL_ERROR";
+      if (!i.empty()) { // database
+        auto query = std::make_shared<arangodb::velocypack::Builder>();
+        { VPackArrayBuilder outer(query.get());
+          { VPackArrayBuilder inner(query.get());
+            query->add(VPackValue(AgencyCommHelper::path(PLAN_ANALYZERS) + "/" + i));
+            query->add(VPackValue(AgencyCommHelper::path(PLAN_COLLECTIONS) + "/" + i));
+            query->add(VPackValue(AgencyCommHelper::path(PLAN_DATABASES) + "/" + i));
+            query->add(VPackValue(AgencyCommHelper::path(PLAN_VIEWS) + "/" + i)); }}
+        auto [entry,created] = db_res.try_emplace(i, std::make_shared<VPackBuilder>());
+        if (created) {
+          _readDB.read(query, entry->second);
+        } else {
+          LOG_TOPIC("31ae3", ERR, Logger::CLUSTER)
+            << "Failed to communicate updated database " << i
+            << " in AgencyCache with maintenance.";
+          FATAL_ERROR_EXIT();
+        }
       }
     }
   }
 
-  /*
   if (get_rest) { // All the rest, i.e. All keys of Plan excluding the usual suspects
     static std::vector<std::string> const exc {
       "Analyzers", "Collections", "Databases", "Views"};
@@ -630,95 +633,18 @@ AgencyCache::change_set_t const AgencyCache::planChangedSince(
       }
     }
     if (_commitIndex > 0) { // Databases
+      rest_res = std::make_shared<VPackBuilder>();
       _readDB.read(query, rest_res);
     }
+  }
 
-    }*/
   return change_set_t(_commitIndex, std::move(db_res), std::move(rest_res));
 
 }
 
 AgencyCache::change_set_t const AgencyCache::currentChangedSince(
   consensus::index_t const& last, std::vector<std::string> const& others) const {
-
-  //bool get_rest = false;
-  std::unordered_map<std::string, query_t> db_res, rest_res;
-
-  std::vector<std::string> databases;
-  for (auto const& db : others) {
-    if (std::find(databases.begin(), databases.end(), db) == databases.end()) {
-      databases.push_back(db);
-    }
-  }
-
-  std::shared_lock_guard g(_storeLock);
-
-  std::multimap<consensus::index_t, std::string>::const_iterator it =
-    _planChanges.lower_bound(last);
-  if (it != _planChanges.end()) {
-    for (; it != _planChanges.end(); ++it) {
-      if (it->second.empty()) { // Need to get rest of Plan
-        //get_rest = true;
-      }
-      if (std::find(databases.begin(), databases.end(), it->second) == databases.end()) {
-        databases.push_back(it->second);
-      }
-    }
-    LOG_TOPIC("d5743", TRACE, Logger::CLUSTER) << "collecting " << databases << " from agency cache";
-  } else {
-    LOG_TOPIC("d5734", DEBUG, Logger::CLUSTER) << "no changed databases since " << last;
-    return change_set_t(_commitIndex, std::move(db_res), std::move(rest_res));
-  }
-
-  if (databases.empty()) {
-    return change_set_t(_commitIndex, std::move(db_res), std::move(rest_res));
-  }
-
-  auto query = std::make_shared<arangodb::velocypack::Builder>();
-  {
-    for (auto const& i : databases) {
-      
-      auto query = std::make_shared<arangodb::velocypack::Builder>();
-      { VPackArrayBuilder outer(query.get());
-        { VPackArrayBuilder inner(query.get());
-          query->add(VPackValue(AgencyCommHelper::path(PLAN_ANALYZERS) + "/" + i));
-          query->add(VPackValue(AgencyCommHelper::path(PLAN_COLLECTIONS) + "/" + i));
-          query->add(VPackValue(AgencyCommHelper::path(PLAN_DATABASES) + "/" + i));
-          query->add(VPackValue(AgencyCommHelper::path(PLAN_VIEWS) + "/" + i)); }}
-      auto [entry,created] = db_res.try_emplace(i, std::make_shared<VPackBuilder>());
-      if (created) {
-        _readDB.read(query, entry->second);
-      } else {
-        LOG_DEVEL << "ERROR";
-      }
-    }
-  }
-
-  /*
-  if (get_rest) { // All the rest, i.e. All keys of Plan excluding the usual suspects
-    static std::vector<std::string> const exc {
-      "Analyzers", "Collections", "Databases", "Views"};
-    auto keys = _readDB.nodePtr(AgencyCommHelper::path(PLAN))->keys();
-    keys.erase(
-      std::remove_if(
-        std::begin(keys), std::end(keys),
-        [&] (auto x) {
-          return std::binary_search(std::begin(exc), std::end(exc),x);}),
-      std::end(keys));
-    query->clear();
-    {
-      VPackArrayBuilder outer(query.get());
-      for (auto const& i : keys) {
-        VPackArrayBuilder inner(query.get());
-        query->add(VPackValue(AgencyCommHelper::path(PLAN) + "/" + i));
-      }
-    }
-    if (_commitIndex > 0) { // Databases
-      _readDB.read(query, rest_res);
-    }
-
-    }*/
-  return change_set_t(_commitIndex, std::move(db_res), std::move(rest_res));
+  return planChangedSince(last, others);
 }
 
 

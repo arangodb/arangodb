@@ -1146,7 +1146,8 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
   if (result.success) {
     LOG_TOPIC("ce0db", DEBUG, Logger::HEARTBEAT)
         << "Sync request successful. Now have Plan " << result.planVersion
-        << ", Current " << result.currentVersion;
+        << " (" << result.planIndex << ")" << ", Current " << result.currentVersion
+        << " (" << result.currentIndex << ")"; 
     _currentVersions = AgencyVersions(result);
   } else {
     LOG_TOPIC("b72a6", ERR, Logger::HEARTBEAT)

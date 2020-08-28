@@ -87,7 +87,7 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
     auto cols = vocbase.collections(false);
 
     for (auto const& collection : cols) {
-      // note: system collections are ignored here, but the local parts of 
+      // note: system collections are ignored here, but the local parts of
       // smart edge collections are system collections, too. these are
       // included.
       if (!collection->system() || collection->isSmartChild()) {
@@ -191,8 +191,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     auto startTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne";
-    tmp = arangodb::maintenance::phaseOne(plan->slice(), planIndex, local.slice(),
-                                          serverId, mfeature, rb);
+    tmp = arangodb::maintenance::phaseOne(
+      plan->slice(), planIndex, local.slice(), serverId, mfeature, rb);
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne done";
@@ -234,8 +234,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("652ff", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo";
 
-    tmp = arangodb::maintenance::phaseTwo(plan->slice(), current->slice(),
-                                          local.slice(), serverId, mfeature, rb);
+    tmp = arangodb::maintenance::phaseTwo(
+      plan->slice(), current->slice(), local.slice(), serverId, mfeature, rb);
 
     LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";
@@ -264,7 +264,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
             auto const precondition = ao.value.get("precondition");
             if (!precondition.isNone()) {
-              // have a precondition 
+              // have a precondition
               preconditions.push_back(AgencyPrecondition(precondition.keyAt(0).copyString(),
                                                          AgencyPrecondition::Type::VALUE,
                                                          precondition.valueAt(0)));
@@ -292,15 +292,20 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
       if (tmp.ok()) {
         result = DBServerAgencySyncResult(
-            true,
-            report.hasKey("Plan") ? report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
-            report.hasKey("Current")
-                ? report.get("Current").get("Version").getNumber<uint64_t>()
-                : 0);
+          true,
+          report.hasKey("Plan") ?
+            report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
+          report.hasKey("Current") ?
+            report.get("Current").get("Version").getNumber<uint64_t>() : 0,
+          report.hasKey("Plan") ?
+            report.get("Plan").get("Index").getNumber<uint64_t>() : 0,
+          report.hasKey("Current") ?
+            report.get("Current").get("Index").getNumber<uint64_t>() : 0);
+
       } else {
         // Report an error:
-        result = DBServerAgencySyncResult(false, "Error in phase 2: " + tmp.errorMessage(),
-                                          0, 0);
+        result = DBServerAgencySyncResult(
+          false, "Error in phase 2: " + tmp.errorMessage(), 0, 0, 0, 0);
       }
     } else {
       // This code should never run, it is only there to debug problems if

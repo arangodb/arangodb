@@ -42,14 +42,14 @@ public:
   struct change_set_t {
     consensus::index_t ind;
     std::unordered_map<std::string, consensus::query_t> dbs;
-    std::unordered_map<std::string, consensus::query_t> rest;
+    consensus::query_t rest;
     change_set_t (consensus::index_t const& i,
                   std::unordered_map<std::string, consensus::query_t> const& d,
-                  std::unordered_map<std::string, consensus::query_t> const& r) :
+                  consensus::query_t const& r) :
       ind(i), dbs(d), rest(r) {};
     change_set_t (consensus::index_t&& i,
                   std::unordered_map<std::string, consensus::query_t>&& d,
-                  std::unordered_map<std::string, consensus::query_t>&& r) :
+                  consensus::query_t&& r) :
       ind(std::move(i)), dbs(std::move(d)), rest(std::move(r)) {};
     void index(consensus::index_t const& i) { ind = i; }
   };

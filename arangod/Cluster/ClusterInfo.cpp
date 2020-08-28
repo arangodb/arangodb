@@ -759,19 +759,17 @@ void ClusterInfo::loadPlan() {
   }
 
   auto [i, dbs, p] = agencyCache.planChangedSince(planIndex);
-  LOG_DEVEL << i;
-/*  {
+  {
     WRITE_LOCKER(writeLocker, _planProt.lock);
     for (auto const& j : dbs) {
-      LOG_DEVEL << j.second->toJson();
       _consilium[j.first] = j.second;
     }
-    for (auto const& j : p) {
-      LOG_DEVEL << j.second->toJson();
-      _consilium[j.first] = j.second;
+    if (p != nullptr) {
+      _consilium[std::string()] = p;
+      LOG_DEVEL << p->toJson();
     }
   }
-*/
+
   decltype(_plannedDatabases) newDatabases;
   std::set<std::string> buildingDatabases;
   decltype(_plannedCollections) newCollections;  // map<string /*database id*/
@@ -5574,7 +5572,7 @@ futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(network::Timeout
 VPackBuilder ClusterInfo::toVelocyPack() {
   VPackBuilder dump;
   {
-    VPackObjectBuilder d();
+    VPackObjectBuilder d(&dump);
     READ_LOCKER(readLocker, _planProt.lock);
     for (auto const& i : _consilium) {
       dump.add(i.first, i.second->slice());

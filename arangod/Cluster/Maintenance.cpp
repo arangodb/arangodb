@@ -673,12 +673,10 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent(VPackSlice const& local
 }
 
 /// @brief Phase one: Compare plan and local and create descriptions
-arangodb::Result arangodb::maintenance::phaseOne(VPackSlice const& plan,
-                                                 uint64_t planIndex,
-                                                 VPackSlice const& local,
-                                                 std::string const& serverId,
-                                                 MaintenanceFeature& feature,
-                                                 VPackBuilder& report) {
+arangodb::Result arangodb::maintenance::phaseOne(
+  VPackSlice const& plan, uint64_t planIndex, VPackSlice const& local,
+  std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report) {
+  
   auto start = std::chrono::steady_clock::now();
 
   arangodb::Result result;
@@ -701,6 +699,7 @@ arangodb::Result arangodb::maintenance::phaseOne(VPackSlice const& plan,
   {
     VPackObjectBuilder p(&report);
     report.add("Version", plan.get("Version"));
+    report.add("Index", VPackValue(planIndex));
   }
 
   auto end = std::chrono::steady_clock::now();
@@ -713,8 +712,8 @@ arangodb::Result arangodb::maintenance::phaseOne(VPackSlice const& plan,
 
 static VPackBuilder removeSelectivityEstimate(VPackSlice const& index) {
   TRI_ASSERT(index.isObject());
-  return arangodb::velocypack::Collection::remove(index, std::unordered_set<std::string>(
-                                                             {SELECTIVITY_ESTIMATE}));
+  return arangodb::velocypack::Collection::remove(
+    index, std::unordered_set<std::string>({SELECTIVITY_ESTIMATE}));
 }
 
 static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
@@ -1240,12 +1239,9 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
 }
 
 /// @brief Phase two: See, what we can report to the agency
-arangodb::Result arangodb::maintenance::phaseTwo(VPackSlice const& plan,
-                                                 VPackSlice const& cur,
-                                                 VPackSlice const& local,
-                                                 std::string const& serverId,
-                                                 MaintenanceFeature& feature,
-                                                 VPackBuilder& report) {
+arangodb::Result arangodb::maintenance::phaseTwo(
+  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
+  std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report) {
   auto start = std::chrono::steady_clock::now();
 
   MaintenanceFeature::errors_t allErrors;
@@ -1293,6 +1289,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(VPackSlice const& plan,
   {
     VPackObjectBuilder p(&report);
     report.add("Version", cur.get("Version"));
+    report.add("Index", VPackValue(0));
   }
 
   auto end = std::chrono::steady_clock::now();
