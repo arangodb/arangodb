@@ -252,8 +252,7 @@ void RestAqlHandler::setupClusterQuery() {
   answerBuilder.close(); // result
   answerBuilder.close();
 
-  QueryId queryId = q->id();   // keep a copy
-  _queryRegistry->insertQuery(std::move(q), ttl);
+  cluster::CallbackGuard rGuard;
 
   // Now set an alarm for the case that the coordinator is restarted which
   // initiated this query. In that case, we want to drop our piece here:
@@ -268,12 +267,12 @@ void RestAqlHandler::setupClusterQuery() {
     if (rebootId.initialized()) {
       LOG_TOPIC("42512", TRACE, Logger::AQL)
           << "Setting RebootTracker on coordinator " << coordinatorId
-          << " for query with id " << queryId;
+          << " for query with id " << q->id();
       auto& clusterFeature = _server.getFeature<ClusterFeature>();
       auto& clusterInfo = clusterFeature.clusterInfo();
-      cluster::CallbackGuard rGuard = clusterInfo.rebootTracker().callMeOnChange(
+      rGuard = clusterInfo.rebootTracker().callMeOnChange(
           cluster::RebootTracker::PeerState(coordinatorId, rebootId),
-          [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(), queryId]() {
+          [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(), queryId = q->id()]() {
             queryRegistry->destroyQuery(vocbaseName, queryId, TRI_ERROR_TRANSACTION_ABORTED);
             LOG_TOPIC("42511", DEBUG, Logger::AQL)
                 << "Query snippet destroyed as consequence of "
@@ -281,10 +280,10 @@ void RestAqlHandler::setupClusterQuery() {
                 << vocbaseName << " queryId=" << queryId;
           },
           "Query aborted since coordinator rebooted or failed.");
-      _queryRegistry->storeRebootTrackerCallbackGuard(_vocbase.name(), queryId,
-                                                      std::move(rGuard));
     }
   }
+
+  _queryRegistry->insertQuery(std::move(q), ttl, std::move(rGuard));
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 

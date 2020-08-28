@@ -46,7 +46,7 @@ QueryRegistry::~QueryRegistry() {
 }
 
 /// @brief insert
-void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl) {
+void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard) {
   TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->state() != QueryExecutionState::ValueType::INITIALIZATION);
   LOG_TOPIC("77778", DEBUG, arangodb::Logger::AQL)
@@ -60,7 +60,7 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl)
 
   QueryId qId = query->id();
   // create the query info object outside of the lock
-  auto p = std::make_unique<QueryInfo>(std::move(query), ttl);
+  auto p = std::make_unique<QueryInfo>(std::move(query), ttl, std::move(guard));
   TRI_ASSERT(p->_expires != 0);
 
   // now insert into table of running queries
@@ -104,31 +104,6 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl)
       throw;
     }
   }
-}
-
-void QueryRegistry::storeRebootTrackerCallbackGuard(
-    std::string const& vocbaseName, QueryId queryId,
-    arangodb::cluster::CallbackGuard guard) {
-  WRITE_LOCKER(readLocker, _lock);
-  auto it1 = _queries.find(vocbaseName);
-  if (it1 != _queries.end()) {
-    auto it2 = it1->second.find(queryId);
-    if (it2 != it1->second.end()) {
-      if (it2->second != nullptr) {
-        it2->second->_rebootTrackerCallbackGuard = std::move(guard);
-        return;
-      }
-    }
-  }
-  // If anything is not found, we can ignore this. It means that the
-  // callbackGuard is not stored, so it will be destroyed soon and
-  // the callback will be called. This will unregister the RebootTracker
-  // callback and some automatic cleanup will not happen. This is OK,
-  // because the query still has a TTL. However, we do want to see this
-  // in the logs:
-  LOG_TOPIC("43251", WARN, Logger::AQL)
-      << "Could not store RebootTrackerCallbackGuard for database "
-      << vocbaseName << " and QueryId " << queryId;
 }
 
 /// @brief open
@@ -486,11 +461,13 @@ void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
   }
 }
 
-QueryRegistry::QueryInfo::QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl)
+QueryRegistry::QueryInfo::QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard)
     : _query(std::move(query)),
       _timeToLive(ttl),
       _expires(TRI_microtime() + ttl),
       _numEngines(0),
-      _numOpen(0) {}
+      _numOpen(0),
+      _rebootTrackerCallbackGuard(std::move(guard))
+{}
 
 QueryRegistry::QueryInfo::~QueryInfo() = default;
