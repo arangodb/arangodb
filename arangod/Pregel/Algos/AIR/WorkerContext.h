@@ -45,7 +45,7 @@ struct WorkerContext : public ::arangodb::pregel::WorkerContext {
   void postGlobalSuperstep(uint64_t gss) override;
   void postGlobalSuperstepMasterMessage(VPackBuilder& msg) override;
 
-  greenspun::EvalResult sendToGlobalAccumulator(std::string accumId, VPackSlice value) const;
+  greenspun::EvalResult sendToGlobalAccumulator(std::string accumId, MessageData const& message) const;
   greenspun::EvalResult getGlobalAccumulator(std::string accumId, VPackBuilder result) const;
 private:
 

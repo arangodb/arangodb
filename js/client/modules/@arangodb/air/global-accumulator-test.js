@@ -103,8 +103,8 @@ function global_accumulators_test_program(resultField) {
         updateProgram: ["vote-halt"],
         onHalt: [
           "seq",
-          ["print", "global accum: ", ["global-accum-ref", "minimalTtest"]],
-          ["goto-phase", ["third"]]
+          ["print", "global accum: ", ["global-accum-ref", "minimalTest"]],
+          ["goto-phase", "third"]
         ],
       },
       {
@@ -117,7 +117,7 @@ function global_accumulators_test_program(resultField) {
         updateProgram: ["vote-halt"],
         onHalt: [
           "seq",
-          ["print", "global accum: ", ["global-accum-ref", "minimalTtest"]],
+          ["print", "global accum: ", ["global-accum-ref", "maximalTest"]],
           ["finish"]
         ]
       }

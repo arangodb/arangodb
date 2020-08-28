@@ -226,7 +226,10 @@ greenspun::EvalResult VertexComputation::air_sendToGlobalAccum(greenspun::Machin
   }
   auto&& [accumId, value] = res.value();
 
-  return workerContext().sendToGlobalAccumulator(accumId, value);
+  MessageData msg;
+  msg.reset(accumId, value, vertexData()._documentId);
+
+  return workerContext().sendToGlobalAccumulator(accumId, msg);
 }
 
 /*  Graph stuff */
