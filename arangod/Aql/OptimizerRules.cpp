@@ -600,8 +600,7 @@ std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const scatterInClu
     arangodb::aql::ExecutionNode::INSERT,
     arangodb::aql::ExecutionNode::UPDATE,
     arangodb::aql::ExecutionNode::REPLACE,
-    arangodb::aql::ExecutionNode::REMOVE,
-    arangodb::aql::ExecutionNode::UPSERT};
+    arangodb::aql::ExecutionNode::REMOVE};
 std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const removeDataModificationOutVariablesNodeTypes{
     arangodb::aql::ExecutionNode::REMOVE, arangodb::aql::ExecutionNode::INSERT,
     arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE,
@@ -4188,7 +4187,7 @@ auto isModificationNode(ExecutionNode::NodeType nodeType) noexcept -> bool {
 }
 
 auto nodeEligibleForDistribute(ExecutionNode::NodeType nodeType) noexcept -> bool {
-  return isModificationNode(nodeType) || isGraphNode(nodeType);
+  return nodeType != ExecutionNode::UPSERT && (isModificationNode(nodeType) || isGraphNode(nodeType));
 }
 
 void arangodb::aql::distributeInClusterRule(Optimizer* opt,
