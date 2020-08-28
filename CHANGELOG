@@ -16,7 +16,7 @@ devel
     made.
   * `arangodb_replication_dump_bytes_received`: number of bytes received in 
     replication dump requests.
-  * `arangodb_replication_dump_documents`: number of documents receivedin
+  * `arangodb_replication_dump_documents`: number of documents received in
     replication dump requests.
   * `arangodb_replication_dump_request_time`: wait time for replication dump 
     requests.
