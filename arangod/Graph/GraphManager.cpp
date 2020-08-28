@@ -1026,6 +1026,18 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
   try {
     TRI_ASSERT(input.isObject());
     if (ServerState::instance()->isCoordinator()) {
+      VPackSlice s = input.get(StaticStrings::IsSmart);
+      if (s.isBoolean() && s.getBoolean()) {
+        s = input.get("options");
+        if (s.isObject()) {
+          s = s.get(StaticStrings::ReplicationFactor);
+          if ((s.isNumber() && s.getNumber<int>() == 0) ||
+              (s.isString() && s.stringRef() == "satellite")) {
+            return Result{TRI_ERROR_BAD_PARAMETER, "invalid combination of 'isSmart' and 'satellite' replicationFactor"};
+          }
+        }
+      }
+
       // validate numberOfShards and replicationFactor
       Result res =
           ShardingInfo::validateShardsAndReplicationFactor(input.get("options"),

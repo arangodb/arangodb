@@ -187,9 +187,6 @@ void replaceGatherNodeVariables(
         auto* expr =
             arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(setter)
                 ->expression();
-        if (expr == nullptr) {
-          continue;
-        }
         try {
           // stringifying an expression may fail with "too long" error
           buffer.clear();
@@ -691,13 +688,7 @@ std::string getSingleShardId(arangodb::aql::ExecutionPlan const* plan,
   if (setter->getType() == EN::CALCULATION) {
     arangodb::aql::CalculationNode const* c =
         ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(setter);
-    auto ex = c->expression();
-
-    if (ex == nullptr) {
-      return std::string();
-    }
-
-    auto n = ex->node();
+    auto n = c->expression()->node();
     if (n == nullptr) {
       return std::string();
     }
@@ -1207,8 +1198,6 @@ void arangodb::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
     auto s = ExecutionNode::castTo<CalculationNode*>(setter);
     auto root = s->expression()->node();
 
-    TRI_ASSERT(root != nullptr);
-
     if (!root->isDeterministic()) {
       // we better not tamper with this filter
       continue;
@@ -1278,7 +1267,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
         if (planNode->getType() == EN::CALCULATION) {
           auto cc = ExecutionNode::castTo<CalculationNode const*>(planNode);
           Expression const* exp = cc->expression();
-          if (exp != nullptr && exp->node() != nullptr && !searchVariables.empty()) {
+          if (exp->node() != nullptr && !searchVariables.empty()) {
             bool isSafeForOptimization;
             auto usedThere =
                 ast::getReferencedAttributesForKeep(exp->node(), searchVariables,
@@ -1384,10 +1373,7 @@ class PropagateConstantAttributesHelper {
       if (setter != nullptr && setter->getType() == EN::CALCULATION) {
         auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
         auto expression = cn->expression();
-
-        if (expression != nullptr) {
-          collectConstantAttributes(const_cast<AstNode*>(expression->node()));
-        }
+        collectConstantAttributes(const_cast<AstNode*>(expression->node()));
       }
     }
 
@@ -1398,10 +1384,7 @@ class PropagateConstantAttributesHelper {
         if (setter != nullptr && setter->getType() == EN::CALCULATION) {
           auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
           auto expression = cn->expression();
-
-          if (expression != nullptr) {
-            insertConstantAttributes(const_cast<AstNode*>(expression->node()));
-          }
+          insertConstantAttributes(const_cast<AstNode*>(expression->node()));
         }
       }
     }
@@ -2861,7 +2844,6 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
         // now we can replace the reference to our variable in the other
         // calculation with the variable's expression directly
         auto otherExpression = other->expression();
-        TRI_ASSERT(otherExpression != nullptr);
 
         if (rootNode->type != NODE_TYPE_ATTRIBUTE_ACCESS &&
             Ast::countReferences(otherExpression->node(), outVariable) > 1) {
@@ -2910,9 +2892,18 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
 
   if (!toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
+    TRI_ASSERT(nodes.size() >= toUnlink.size());
+    if (nodes.size() - toUnlink.size() > 0) {
+      // need to rerun the rule because removing calculations may unlock
+      // removal of further calculations
+      opt->addPlanAndRerun(std::move(plan), rule, true);
+    } else {
+      // no need to rerun the rule
+      opt->addPlan(std::move(plan), rule, true);
+    }
+  } else {
+    opt->addPlan(std::move(plan), rule, false);
   }
-
-  opt->addPlan(std::move(plan), rule, !toUnlink.empty());
 }
 
 /// @brief useIndex, try to use an index for filtering
@@ -3452,7 +3443,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(Optimizer* opt,
         }
       }
 
-      if (handled || current->getType() == EN::LIMIT || !current->hasDependency()) {
+      if (handled || current->getType() == EN::LIMIT) {
         break;
       }
 
@@ -5041,7 +5032,7 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
               if (c->getType() == EN::CALCULATION) {
                 auto cn = ExecutionNode::castTo<CalculationNode const*>(c);
                 auto expr = cn->expression();
-                if (expr != nullptr && !expr->canRunOnDBServer()) {
+                if (!expr->canRunOnDBServer()) {
                   // found something that must not run on a DB server,
                   // but that must run on a coordinator. stop optimization here!
                   toRemove.clear();
@@ -5250,8 +5241,7 @@ class RemoveToEnumCollFinder final
 
         auto const& projections =
             dynamic_cast<DocumentProducingNode const*>(enumColl)->projections();
-        if (projections.size() > 1 ||
-            (!projections.empty() && projections[0] != StaticStrings::KeyString)) {
+        if (projections.isSingle(StaticStrings::KeyString)) {
           // cannot handle projections
           break;
         }
@@ -6879,7 +6869,7 @@ static void optimizeFilterNode(ExecutionPlan* plan, FilterNode* fn, GeoIndexInfo
   }
   CalculationNode* calc = ExecutionNode::castTo<CalculationNode*>(setter);
   Expression* expr = calc->expression();
-  if (expr == nullptr || expr->node() == nullptr) {
+  if (expr->node() == nullptr) {
     return;  // the expression must exist and must have an AstNode
   }
 
@@ -7256,12 +7246,7 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
 
   for (auto const& n : nodes) {
     auto cn = ExecutionNode::castTo<CalculationNode*>(n);
-    auto expr = cn->expression();
-    if (expr == nullptr) {
-      continue;
-    }
-
-    AstNode const* root = expr->node();
+    AstNode const* root = cn->expression()->node();
     if (root == nullptr) {
       continue;
     }
@@ -7639,8 +7624,7 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
   // find all calculation nodes in the plan
   for (auto const& n : nodes) {
     auto cn = ExecutionNode::castTo<CalculationNode*>(n);
-    auto expr = cn->expression();
-    AstNode const* root = expr->node();
+    AstNode const* root = cn->expression()->node();
     if (root == nullptr) {
       continue;
     }

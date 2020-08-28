@@ -1,5 +1,127 @@
 devel
 -----
+
+* Allow calling of REST APIs `/_api/engine/stats`, GET `/_api/collection` and
+  GET `/_api/database/current` on followers in active failover deployments. 
+  This can help debugging and inspecting the follower.
+
+* Don't allow creation of smart satellite graphs or collections (i.e. using
+  `"isSmart":true` together with `"replicationFactor":"satellite"` when creating
+  graphs or collections. This combination of parameters makes no sense, so that
+  the server will now respond with "bad parameter" and an HTTP status code of
+  HTTP 400 ("Bad request").
+
+* Fixed: More cases in AQL can now react to a query being killed, so reaction
+  time to query abortion is now shortened. This was a regression in comparison
+  to 3.6 series.
+
+* Support projections on sub-attributes (e.g. `a.b.c`).
+
+  In previous versions of ArangoDB, projections were only supported on 
+  top-level attributes. For example, in the query
+    
+      FOR doc IN collection
+        RETURN doc.a.b
+
+  the projection that was used was just `a`. Now the projection will be `a.b`,
+  which can help reduce the amount of data to be extracted from documents,
+  when only some sub-attributes are accessed.
+
+  In addition, indexes can now be used to extract the data of sub-attributes
+  for projections. If for the above example query an index on `a.b` exists, 
+  it will be used now. Previously, no index could be used for this projection.
+
+  Projections now can also be fed by any attribute in a combined index. For 
+  example, in the query
+
+    FOR doc IN collection
+      RETURN doc.b
+
+  the projection can be satisfied by a single-attribute index on attribute `b`,
+  but now also by a combined index on attributes `a` and `b` (or `b` and `a`).
+
+* Remove some JavaScript files containing testsuites and test utilities from our
+  official release packages.
+
+* Fixed internal issue #741: STARTS_WITH fails to accept 'array' as variable.
+
+* Fixed internal issue #738: PHRASE doesn't accept a reference to an array of
+  arguments.
+
+* Fixed internal issue #747: fixed possible dangling open files in ArangoSearch
+  index after remove operations.
+
+* Make the `IS_IPV4` AQL function behave identical on MacOS as on other
+  platforms. It previously allowed leading zeros in octets on MacOS,
+  whereas on other platforms they were disallowed.
+  Now this is disallowed on MacOS as well.
+
+* Added new metric "arangodb_aql_slow_query" for slow AQL queries, so this can 
+  be monitored more easily.
+
+* Added new metric "arangodb_scheduler_queue_full_failures" for tracking cases
+  of a full scheduler queue and dropping requests.
+
+* Added new metrics for the number of V8 contexts dynamically created and destroyed
+  ("arangodb_v8_context_created" and "arangodb_v8_context_destroyed") and for the
+  number of times a V8 context was entered and left ("arangodb_v8_context_entered"
+  and "arangodb_v8_context_exited"). There is also a new metric for tracking the
+  cases when a V8 context cannot be successfully acquired and an operation is not
+  performed ("arangodb_v8_context_enter_failures").
+    
+* Added extra info to "queue full" and "giving up waiting for unused v8 context" 
+  log messages.
+
+* Request to the `/_admin/statistics` API now processed via the CLIENT_FAST lane. 
+  Previously they were handled in the CLIENT_SLOW lane, meaning that monitoring 
+  requests using that API didn't get through when the queue was rather full.
+
+* Fixed issue BTS-169: cost estimation for LIMIT nodes showed wrong number of
+  estimated items.
+
+* Fixed issue #12507: SegFault when using an AQL for loop through edges.
+
+* Add attributes `database` and `user` when tracking current and slow AQL queries.
+  `database` contains the name of the database the query is/was running in, `user`
+  contains the name of the user that started the query.
+  These attributes will be returned in addition when calling the APIs for current
+  and slow query inspection:
+  * GET `/_api/query/current` and `require("arangodb/aql/queries").current()`
+  * GET `/_api/query/slow` and `require("arangodb/aql/queries").slow()`
+
+  The "slow query" log message has also been augmented to contain the database
+  name and the user name.
+
+  The `user` attribute is now also displayed in the web interface in the "Running
+  queries" and "Slow queries" views.
+
+* Introduce an internal high-water mark for the maximum row number that was
+  written to in an AqlItemBlock. Using this number several operations on the
+  whole block, such as cleaning up or copying can be made more efficient when
+  run on only partially filled blocks.
+
+* Updated arangosync to 0.7.10.
+
+* Make UPSERT statement with collection bind parameter behave identical to its
+  non-bind parameter counterpart.
+
+  For example, the query 
+
+      FOR d IN ["key_1", "key_2", "key_3", "key_1"] 
+        UPSERT d INSERT d UPDATE d IN @@collection
+
+  would fail with "unique constraint violation" when used with a collection bind
+  parameter, but the equivalent query
+      
+      FOR d IN ["key_1", "key_2", "key_3", "key_1"] 
+        UPSERT d INSERT d UPDATE d IN collectionName
+
+  with a hard-coded collection name would succeed. This is now fixed so both
+  queries have the same behavior (no failure) in single server. 
+
+* Fixed internal issue #744: LIMIT with only offset and constrained heap
+  optimization will use estimation value for ArangoSearch views.
+
 * Fix internal issue #742: Add tick storage in index meta payload after 
   truncate operation
 
@@ -21,22 +143,57 @@ devel
 
 * Show optimizer rules with highest execution times in explain output.
 
+* Renamed "master" to "leader" and "slave" to "follower" in replication messages.
+  This will change the contents of replication log messages as well the string
+  contents of replication-related error messages.
+
+The messages of the error codes 1402, 1403 and 1404 were also changed accordingly,
+as well as the identifiers:
+- `TRI_ERROR_REPLICATION_MASTER_ERROR` renamed to `TRI_ERROR_REPLICATION_LEADER_ERROR`
+- `TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE` renamed to `TRI_ERROR_REPLICATION_LEADER_INCOMPATIBLE`
+- `TRI_ERROR_REPLICATION_MASTER_CHANGE` renamed to `TRI_ERROR_REPLICATION_LEADER_CHANGE`
+
+  This change also renames the API endpoint `/_api/replication/make-slave` to 
+  `/_api/replication/make-follower`. The API is still available under the old
+  name, but using it is deprecated.
+
 * Fixed that dropping a vanished follower works again. An exception response
   to the replication request is now handled properly.
 
-* Fixed bad behaviour in agency supervision in some corner cases involving
+* Make optimizer rule "remove-filters-covered-by-index" remove FILTERs that were
+  referring to aliases of the collection variable, e.g.
+    
+      FOR doc IN collection
+        LET value = doc.indexedAttribute
+        FILTER value == ...
+
+  Previously, FILTERs that were using aliases were not removed by that optimizer
+  rule.
+  In addition, the optimizer rule "remove-unnecessary-calculations" will now run
+  again in case it successfully removed variables. This can unlock further removal
+  of unused variables in sequences such as
+
+      FOR doc IN collection
+        LET value = doc.indexedAttribute
+        LET tmp1 = value > ...
+        LET tmp2 = value < ...
+
+  when the removal of `tmp1` and `tmp2` makes it possible to also remove the 
+  calculation of `value`.
+
+* Fixed bad behavior in agency supervision in some corner cases involving
   already resigned leaders in Current.
 
 * Fixed a problem with potentially lost updates because a failover could
   happen at a wrong time or a restarted leader could come back at an
   unlucky time.
 
-* Fixed issue BTS-168: Fixed undefined behaviour that did trigger
+* Fixed issue BTS-168: Fixed undefined behavior that did trigger
   segfaults on cluster startups. It is only witnessed for
   MacOS based builds. The issue could be triggered by any network connection.
-  This behaviour is not part of any released version.
+  This behavior is not part of any released version.
 
-* Fixed issue ES-664: the optimizer rule `inline-subqueries` must pull out
+* Fixed issue ES-664: the optimizer rule `inline-subqueries` must not pull out
   subqueries that contains a COLLECT statement if the subquery is itself called
 	from within a loop. Otherwise the COLLECT will be applied to the values in the
 	outer FOR loop, which can produce a different result.

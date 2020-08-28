@@ -51,8 +51,8 @@ class AqlShadowItemRowTest : public ::testing::Test {
                        std::unordered_set<RegisterId> const& regsToIgnore = {}) {
     ASSERT_TRUE(result.isArray());
     ASSERT_TRUE(input.isInitialized());
-    ASSERT_EQ(input.getNrRegisters(), static_cast<size_t>(result.length()));
-    for (RegisterId i = 0; i < input.getNrRegisters(); ++i) {
+    ASSERT_EQ(input.getNumRegisters(), static_cast<size_t>(result.length()));
+    for (RegisterId i = 0; i < input.getNumRegisters(); ++i) {
       if (regsToIgnore.find(i) == regsToIgnore.end()) {
         auto val = input.getValue(i);
         ASSERT_TRUE(VelocyPackHelper::equal(val.slice(), result.at(i), false))
@@ -65,12 +65,12 @@ class AqlShadowItemRowTest : public ::testing::Test {
   void InsertNewShadowRowAfterEachDataRow(size_t targetNumberOfRows,
                                           SharedAqlItemBlockPtr const& inputBlock,
                                           SharedAqlItemBlockPtr& outputBlock) {
-    auto numRegisters = inputBlock->getNrRegs();
+    auto numRegisters = inputBlock->numRegisters();
     outputBlock = itemBlockManager.requestBlock(targetNumberOfRows, numRegisters);
     // We do not add or remove anything, just move
     auto outputRegisters = RegIdSet{};
     size_t maxShadowRowDepth = 0;
-    for (size_t rowIdx = 0; rowIdx < inputBlock->size(); ++rowIdx) {
+    for (size_t rowIdx = 0; rowIdx < inputBlock->numRows(); ++rowIdx) {
       if (inputBlock->isShadowRow(rowIdx)) {
         maxShadowRowDepth =
             std::max(maxShadowRowDepth, inputBlock->getShadowRowDepth(rowIdx) + 1);
@@ -89,7 +89,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
                             registersToKeep, registersToClear);
 
-    for (size_t rowIdx = 0; rowIdx < inputBlock->size(); ++rowIdx) {
+    for (size_t rowIdx = 0; rowIdx < inputBlock->numRows(); ++rowIdx) {
       ASSERT_FALSE(testee.isFull());
       if (!inputBlock->isShadowRow(rowIdx)) {
         // simply copy over every row, and insert a shadowRow after it
@@ -112,19 +112,19 @@ class AqlShadowItemRowTest : public ::testing::Test {
     ASSERT_TRUE(testee.isFull());
     ASSERT_EQ(testee.numRowsWritten(), targetNumberOfRows);
     outputBlock = testee.stealBlock();
-    ASSERT_EQ(outputBlock->size(), targetNumberOfRows);
+    ASSERT_EQ(outputBlock->numRows(), targetNumberOfRows);
   }
 
   void ConsumeRelevantShadowRows(size_t targetNumberOfRows,
                                  SharedAqlItemBlockPtr const& inputBlock,
                                  SharedAqlItemBlockPtr& outputBlock) {
-    auto numRegisters = inputBlock->getNrRegs();
+    auto numRegisters = inputBlock->numRegisters();
     outputBlock.reset(new AqlItemBlock(itemBlockManager, targetNumberOfRows,
                                        numRegisters + 1));
     // We do not add or remove anything, just move
     auto outputRegisters = RegIdSet{static_cast<RegisterId>(numRegisters)};
     size_t maxShadowRowDepth = 0;
-    for (size_t rowIdx = 0; rowIdx < inputBlock->size(); ++rowIdx) {
+    for (size_t rowIdx = 0; rowIdx < inputBlock->numRows(); ++rowIdx) {
       if (inputBlock->isShadowRow(rowIdx)) {
         maxShadowRowDepth =
             std::max(maxShadowRowDepth, inputBlock->getShadowRowDepth(rowIdx) + 1);
@@ -146,7 +146,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
     AqlValue shadowRowData{VPackSlice::emptyArraySlice()};
 
     // Let this go out of scope before assertions, to make sure no references are bound here.
-    for (size_t rowIdx = 0; rowIdx < inputBlock->size(); ++rowIdx) {
+    for (size_t rowIdx = 0; rowIdx < inputBlock->numRows(); ++rowIdx) {
       ASSERT_FALSE(testee.isFull());
 
       // Transform relevant ShadowRows to new DataRows
@@ -174,7 +174,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
     ASSERT_TRUE(testee.isFull());
     ASSERT_EQ(testee.numRowsWritten(), targetNumberOfRows);
     outputBlock = testee.stealBlock();
-    ASSERT_EQ(outputBlock->size(), targetNumberOfRows);
+    ASSERT_EQ(outputBlock->numRows(), targetNumberOfRows);
   }
 };
 
@@ -187,7 +187,7 @@ TEST_F(AqlShadowItemRowTest, inject_new_shadow_rows) {
   InsertNewShadowRowAfterEachDataRow(6, inputBlock, outputBlock);
   auto expected =
       VPackParser::fromJson("[[1,2,3],[4,5,6],[\"a\",\"b\",\"c\"]]");
-  for (size_t rowIdx = 0; rowIdx < outputBlock->size(); ++rowIdx) {
+  for (size_t rowIdx = 0; rowIdx < outputBlock->numRows(); ++rowIdx) {
     if (rowIdx % 2 == 0) {
       // Data Row Case
       ASSERT_FALSE(outputBlock->isShadowRow(rowIdx));
@@ -219,7 +219,7 @@ TEST_F(AqlShadowItemRowTest, consume_shadow_rows) {
 
   auto expected =
       VPackParser::fromJson("[[1,2,3,[]],[4,5,6,[]],[\"a\",\"b\",\"c\",[]]]");
-  for (size_t rowIdx = 0; rowIdx < outputBlock->size(); ++rowIdx) {
+  for (size_t rowIdx = 0; rowIdx < outputBlock->numRows(); ++rowIdx) {
     ASSERT_FALSE(outputBlock->isShadowRow(rowIdx));
     InputAqlItemRow testResult{outputBlock, rowIdx};
     AssertResultRow(testResult, expected->slice().at(rowIdx));
@@ -241,7 +241,7 @@ TEST_F(AqlShadowItemRowTest, multi_level_shadow_rows) {
   {
     auto expected =
         VPackParser::fromJson("[[1,2,3],[4,5,6],[\"a\",\"b\",\"c\"]]");
-    for (size_t rowIdx = 0; rowIdx < outputBlock->size(); ++rowIdx) {
+    for (size_t rowIdx = 0; rowIdx < outputBlock->numRows(); ++rowIdx) {
       switch (rowIdx % 3) {
         case 0:
           // First is always datarow
@@ -280,7 +280,7 @@ TEST_F(AqlShadowItemRowTest, multi_level_shadow_rows) {
   {
     auto expected = VPackParser::fromJson(
         "[[1,2,3,[]],[4,5,6,[]],[\"a\",\"b\",\"c\", []]]");
-    for (size_t rowIdx = 0; rowIdx < outputBlock->size(); ++rowIdx) {
+    for (size_t rowIdx = 0; rowIdx < outputBlock->numRows(); ++rowIdx) {
       switch (rowIdx % 2) {
         case 0:
           // First is always datarow
@@ -311,7 +311,7 @@ TEST_F(AqlShadowItemRowTest, multi_level_shadow_rows) {
   {
     auto expected = VPackParser::fromJson(
         "[[1,2,3,[]],[4,5,6,[]],[\"a\",\"b\",\"c\", []]]");
-    for (size_t rowIdx = 0; rowIdx < outputBlock->size(); ++rowIdx) {
+    for (size_t rowIdx = 0; rowIdx < outputBlock->numRows(); ++rowIdx) {
         ASSERT_FALSE(outputBlock->isShadowRow(rowIdx));
         InputAqlItemRow testResult{outputBlock, rowIdx};
         AssertResultRow(testResult, expected->slice().at(rowIdx));

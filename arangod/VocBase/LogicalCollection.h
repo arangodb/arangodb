@@ -314,7 +314,7 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
-  void validatorsToVelocyPack(VPackBuilder&) const;
+  void schemaToVelocyPack(VPackBuilder&) const;
   Result validate(VPackSlice newDoc, VPackOptions const*) const; // insert
   Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const*) const; // update / replace
 
@@ -339,7 +339,7 @@ class LogicalCollection : public LogicalDataSource {
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
                                            Serialization context) const override;
 
-  Result updateValidators(VPackSlice validatorArray);
+  Result updateSchema(VPackSlice schema);
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
@@ -414,10 +414,9 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief sharding information
   std::unique_ptr<ShardingInfo> _sharding;
 
-  using ValidatorVec = std::vector<std::unique_ptr<arangodb::ValidatorBase>>;
-  // `_validators` must be used with atomic accessors only!!
+  // `_schema` must be used with atomic accessors only!!
   // We use relaxed access (load/store) as we only care about atomicity.
-  std::shared_ptr<ValidatorVec> _validators;
+  std::shared_ptr<arangodb::ValidatorBase> _schema;
 };
 
 }  // namespace arangodb

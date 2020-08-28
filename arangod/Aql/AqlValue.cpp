@@ -95,7 +95,7 @@ uint64_t AqlValue::hash(uint64_t seed) const {
       uint64_t const tmp = docvecLength() ^ 0xba5bedf00d;
       uint64_t value = VELOCYPACK_HASH(&tmp, sizeof(tmp), seed);
       for (auto const& it : *_data.docvec) {
-        size_t const n = it->size();
+        size_t const n = it->numRows();
         for (size_t i = 0; i < n; ++i) {
           value = it->getValueReference(i, 0).hash(value);
         }
@@ -363,7 +363,7 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
         // only look up the value if it is within array bounds
         size_t total = 0;
         for (auto const& it : *_data.docvec) {
-          if (position < static_cast<int64_t>(total + it->size())) {
+          if (position < static_cast<int64_t>(total + it->numRows())) {
             // found the correct vector
             if (doCopy) {
               mustDestroy = true;
@@ -373,7 +373,7 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
             }
             return it->getValue(static_cast<size_t>(position - total), 0);
           }
-          total += it->size();
+          total += it->numRows();
         }
       }
       // intentionally falls through
@@ -437,7 +437,7 @@ AqlValue AqlValue::at(int64_t position, size_t n, bool& mustDestroy, bool doCopy
         // only look up the value if it is within array bounds
         size_t total = 0;
         for (auto const& it : *_data.docvec) {
-          if (position < static_cast<int64_t>(total + it->size())) {
+          if (position < static_cast<int64_t>(total + it->numRows())) {
             // found the correct vector
             if (doCopy) {
               mustDestroy = true;
@@ -447,7 +447,7 @@ AqlValue AqlValue::at(int64_t position, size_t n, bool& mustDestroy, bool doCopy
             }
             return it->getValue(static_cast<size_t>(position - total), 0);
           }
-          total += it->size();
+          total += it->numRows();
         }
       }
       // intentionally falls through
@@ -946,7 +946,7 @@ size_t AqlValue::docvecLength() const {
   size_t s = 0;
   for (auto const& it : *_data.docvec) {
     TRI_ASSERT(it != nullptr);
-    s += it->size();
+    s += it->numRows();
   }
   return s;
 }
@@ -997,7 +997,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, velocypack::Options c
       v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(s));
       uint32_t j = 0;  // output row count
       for (auto const& it : *_data.docvec) {
-        size_t const n = it->size();
+        size_t const n = it->numRows();
         for (size_t i = 0; i < n; ++i) {
           result->Set(context, j++, it->getValueReference(i, 0).toV8(isolate, options)).FromMaybe(false);
 
@@ -1064,7 +1064,7 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
     case DOCVEC: {
       builder.openArray(/*unindexed*/allowUnindexed);
       for (auto const& it : *_data.docvec) {
-        size_t const n = it->size();
+        size_t const n = it->numRows();
         for (size_t i = 0; i < n; ++i) {
           it->getValueReference(i, 0).toVelocyPack(options, builder,
                                                    resolveExternals, allowUnindexed);
@@ -1140,7 +1140,7 @@ AqlValue AqlValue::clone() const {
       auto c = std::make_unique<std::vector<SharedAqlItemBlockPtr>>();
       c->reserve(docvecLength());
       for (auto const& it : *_data.docvec) {
-        c->emplace_back(it->slice(0, it->size()));
+        c->emplace_back(it->slice(0, it->numRows()));
         TRI_ASSERT(c->back() != nullptr);
       }
       return AqlValue(c.release());
@@ -1262,8 +1262,8 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
         return (lsize < rsize ? -1 : 1);
       }
 
-      size_t lrows = left._data.docvec->at(0)->size();
-      size_t rrows = right._data.docvec->at(0)->size();
+      size_t lrows = left._data.docvec->at(0)->numRows();
+      size_t rrows = right._data.docvec->at(0)->numRows();
 
       while (lblock < lsize && rblock < rsize) {
         AqlValue const& lval =
@@ -1280,14 +1280,14 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
           litem = 0;
           lblock++;
           if (lblock < lsize) {
-            lrows = left._data.docvec->at(lblock)->size();
+            lrows = left._data.docvec->at(lblock)->numRows();
           }
         }
         if (++ritem == rrows) {
           ritem = 0;
           rblock++;
           if (rblock < rsize) {
-            rrows = right._data.docvec->at(rblock)->size();
+            rrows = right._data.docvec->at(rblock)->numRows();
           }
         }
       }

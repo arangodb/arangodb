@@ -54,6 +54,7 @@ class RegisterInfos;
 class Expression;
 class InputAqlItemRow;
 class OutputAqlItemRow;
+class Projections;
 class QueryContext;
 struct Variable;
 
@@ -65,8 +66,7 @@ class EnumerateCollectionExecutorInfos {
   EnumerateCollectionExecutorInfos(RegisterId outputRegister, aql::QueryContext& query,
                                    Collection const* collection, Variable const* outVariable,
                                    bool produceResult, Expression* filter,
-                                   std::vector<std::string> const& projections,
-                                   std::vector<size_t> const& coveringIndexAttributePositions,
+                                   arangodb::aql::Projections projections,
                                    bool random, bool count);
 
   EnumerateCollectionExecutorInfos() = delete;
@@ -78,8 +78,7 @@ class EnumerateCollectionExecutorInfos {
   Variable const* getOutVariable() const;
   QueryContext& getQuery() const;
   Expression* getFilter() const noexcept;
-  std::vector<std::string> const& getProjections() const noexcept;
-  std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
+  arangodb::aql::Projections const& getProjections() const noexcept;
   bool getProduceResult() const noexcept;
   bool getRandom() const noexcept;
   bool getCount() const noexcept;
@@ -90,8 +89,7 @@ class EnumerateCollectionExecutorInfos {
   Collection const* _collection;
   Variable const* _outVariable;
   Expression* _filter;
-  std::vector<std::string> const& _projections;
-  std::vector<size_t> const& _coveringIndexAttributePositions;
+  arangodb::aql::Projections _projections;
   RegisterId _outputRegisterId;
   bool _produceResult;
   bool _random;
@@ -151,9 +149,6 @@ class EnumerateCollectionExecutor {
       AqlItemBlockInputRange& inputRange, AqlCall& call);
 
   void initializeCursor();
-
- private:
-  void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization);
 
  private:
   transaction::Methods _trx;
