@@ -1519,7 +1519,7 @@ TEST_F(MaintenanceTestActionPhaseOne, removed_follower_in_plan_must_be_dropped) 
       ASSERT_EQ(actions.size(), 1);
       ASSERT_EQ(actions[0]->name(), "DropCollection");
       ASSERT_EQ(actions[0]->get(DATABASE), dbname);
-      ASSERT_EQ(actions[0]->get(COLLECTION), shname);
+      ASSERT_EQ(actions[0]->get(SHARD), shname);
     } else if (node.first == leaderName) {
       // Must see an UpdateCollection action to drop the follower
       ASSERT_EQ(actions.size(), 1);
