@@ -551,7 +551,7 @@ Result AgencyCommResult::asResult() const {
       }
     });
 
-    return Result(errorCode, errorMessage);
+    return Result(errorCode, std::string{errorMessage});
   }
 }
 
