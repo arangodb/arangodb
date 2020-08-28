@@ -984,10 +984,8 @@ MaintenanceFeature::ShardActionMap MaintenanceFeature::getShardLocks() const {
 }
 
 void MaintenanceFeature::unlockShardByAction(std::shared_ptr<maintenance::ActionDescription> const& description) {
-  std::string actionName = description->get(NAME);
-  if (actionName == UPDATE_COLLECTION || actionName == TAKEOVER_SHARD_LEADERSHIP ||
-      actionName == CREATE_COLLECTION || actionName == DROP_COLLECTION ||
-      actionName == RESIGN_SHARD_LEADERSHIP || actionName == SYNCHRONIZE_SHARD) {
+  if (description->isForced()) {
+    // If the description isForced, then the shard was locked, in this case, we must unlock it.
     unlockShard(description->get(SHARD));
   }
 }

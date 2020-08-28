@@ -383,7 +383,7 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
         std::map<std::string, std::string>{
             {NAME, DROP_COLLECTION},
             {DATABASE, dbname},
-            {COLLECTION, colname}},
+            {SHARD, colname}},
         isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true);
     feature.lockShard(colname, description);
     actions.emplace_back(std::move(description));
@@ -440,7 +440,7 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
             actions.emplace_back(std::make_shared<ActionDescription>(
                 std::map<std::string, std::string>{{NAME, DROP_INDEX},
                                                    {DATABASE, dbname},
-                                                   {COLLECTION, colname},
+                                                   {SHARD, colname},
                                                    {"index", id}},
                 INDEX_PRIORITY, false));
           }
