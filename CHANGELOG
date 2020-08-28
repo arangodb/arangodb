@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed some cases where subqueries in PRUNE did not result in a parse error,
+  but either in an incomprehensible error (in 3.7), or undefined behaviour
+  during execution (pre 3.7).
+
 * Allow calling of REST APIs `/_api/engine/stats`, GET `/_api/collection` and
   GET `/_api/database/current` on followers in active failover deployments. 
   This can help debugging and inspecting the follower.
