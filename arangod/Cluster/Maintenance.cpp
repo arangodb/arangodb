@@ -276,7 +276,8 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
              {SERVER_ID, serverId},
              {FOLLOWERS_TO_DROP, followersToDropString}},
             HIGHER_PRIORITY, true, std::move(properties));
-        feature.lockShard(shname, description);
+        bool ok = feature.lockShard(shname, description);
+        TRI_ASSERT(ok);
         actions.emplace_back(std::move(description));
       } else {
         LOG_TOPIC("0285b", DEBUG, Logger::MAINTENANCE)
@@ -301,7 +302,8 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
                                              {OLD_CURRENT_COUNTER, "0"},  // legacy, no longer used
                                              {PLAN_RAFT_INDEX, std::to_string(planIndex)}},
           LEADER_PRIORITY, true);
-      feature.lockShard(shname, description);
+      bool ok = feature.lockShard(shname, description);
+      TRI_ASSERT(ok);
       actions.emplace_back(std::move(description));
     }
 
@@ -344,7 +346,8 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
                                              {SERVER_ID, serverId},
                                              {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
           shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true, std::move(props));
-      feature.lockShard(shname, description);
+      bool ok = feature.lockShard(shname, description);
+      TRI_ASSERT(ok);
       actions.emplace_back(std::move(description));
     } else {
       LOG_TOPIC("c1d8e", DEBUG, Logger::MAINTENANCE)
@@ -385,7 +388,8 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
             {DATABASE, dbname},
             {SHARD, colname}},
         isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true);
-    feature.lockShard(colname, description);
+    bool ok = feature.lockShard(colname, description);
+    TRI_ASSERT(ok);
     actions.emplace_back(std::move(description));
     return;
   }
@@ -418,7 +422,8 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
                                            {DATABASE, dbname},
                                            {SHARD, colname}},
         RESIGN_PRIORITY, true);
-    feature.lockShard(colname, description);
+    bool ok = feature.lockShard(colname, description);
+    TRI_ASSERT(ok);
     actions.emplace_back(description);
   }
 
@@ -1287,7 +1292,8 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
                 {THE_LEADER, leader},
                 {SHARD_VERSION, std::to_string(feature.shardVersion(shname.toString()))}},
             SYNCHRONIZE_PRIORITY, true);
-        feature.lockShard(shname.toString(), description);
+        bool ok = feature.lockShard(shname.toString(), description);
+        TRI_ASSERT(ok);
         feature.addAction(description, false);
       }
     }
