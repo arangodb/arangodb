@@ -212,7 +212,7 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
       prop.reset(new VPackBuilder(value));
     } else if (key.isString() && (key.copyString() == "priority") && value.isInteger()) {
       priority = static_cast<int>(value.getInt());
-    } else if (key.isString() && (key.copyString() == "forced") && value.isBool()) {
+    } else if (key.isString() && (key.stringRef() == "forced") && value.isBool()) {
       forced = value.isTrue();
     } else {
       good = false;
