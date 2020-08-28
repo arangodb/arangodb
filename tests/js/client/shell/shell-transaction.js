@@ -4411,14 +4411,146 @@ function transactionIteratorSuite() {
 
       trx.commit();
     },
-
+    
   };
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes the test suites
-// //////////////////////////////////////////////////////////////////////////////
+function transactionOverlapSuite() {
+  'use strict';
+  const cn = 'UnitTestsTransaction';
 
+  return {
+
+    setUp: function () {
+      db._drop(cn);
+      db._create(cn, { numberOfShards: 4 });
+    },
+
+    tearDown: function () {
+      db._drop(cn);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test: overlapping transactions writing to the same document
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testOverlapInsert: function () {
+      const opts = {
+        collections: {
+          write: [cn]
+        }
+      };
+      const trx1 = internal.db._createTransaction(opts);
+      try {
+        const tc1 = trx1.collection(cn);
+        tc1.insert({ _key: "test" });
+
+        const trx2 = internal.db._createTransaction(opts);
+        const tc2 = trx2.collection(cn);
+        try { 
+          // should produce a conflict
+          tc2.insert({ _key: "test" });
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+        } finally { 
+          trx2.abort();
+        }
+      } finally {
+        trx1.abort();
+      }
+    },
+    
+    testOverlapUpdate: function () {
+      db[cn].insert({ _key: "test" });
+
+      const opts = {
+        collections: {
+          write: [cn]
+        }
+      };
+      const trx1 = internal.db._createTransaction(opts);
+      try {
+        const tc1 = trx1.collection(cn);
+        tc1.update("test", { value: "der fux" });
+
+        const trx2 = internal.db._createTransaction(opts);
+        const tc2 = trx2.collection(cn);
+        try { 
+          // should produce a conflict
+          tc2.update("test", { value: "der hans" });
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+        } finally { 
+          trx2.abort();
+        }
+      } finally {
+        trx1.abort();
+      }
+    },
+    
+    testOverlapReplace: function () {
+      db[cn].insert({ _key: "test" });
+
+      const opts = {
+        collections: {
+          write: [cn]
+        }
+      };
+      const trx1 = internal.db._createTransaction(opts);
+      try {
+        const tc1 = trx1.collection(cn);
+        tc1.replace("test", { value: "der fux" });
+
+        const trx2 = internal.db._createTransaction(opts);
+        const tc2 = trx2.collection(cn);
+        try { 
+          // should produce a conflict
+          tc2.replace("test", { value: "der hans" });
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+        } finally { 
+          trx2.abort();
+        }
+      } finally {
+        trx1.abort();
+      }
+    },
+    
+    testOverlapRemove: function () {
+      db[cn].insert({ _key: "test" });
+
+      const opts = {
+        collections: {
+          write: [cn]
+        }
+      };
+      const trx1 = internal.db._createTransaction(opts);
+      try {
+        const tc1 = trx1.collection(cn);
+        tc1.remove("test");
+
+        const trx2 = internal.db._createTransaction(opts);
+        const tc2 = trx2.collection(cn);
+        try { 
+          // should produce a conflict
+          tc2.remove("test");
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+        } finally { 
+          trx2.abort();
+        }
+      } finally {
+        trx1.abort();
+      }
+    },
+
+  };
+}
+/*
 jsunity.run(transactionRevisionsSuite);
 jsunity.run(transactionRollbackSuite);
 jsunity.run(transactionInvocationSuite);
@@ -4431,5 +4563,7 @@ jsunity.run(transactionTraversalSuite);
 jsunity.run(transactionAQLStreamSuite);
 jsunity.run(transactionTTLStreamSuite);
 jsunity.run(transactionIteratorSuite);
+*/
+jsunity.run(transactionOverlapSuite);
 
 return jsunity.done();
