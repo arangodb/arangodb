@@ -142,9 +142,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief Get shard locks, this copies the whole map of shard locks.
   ShardActionMap getShardLocks() const;
 
-  /// @brief Unlock shard by inspecting the action:
-  void unlockShardByAction(std::shared_ptr<maintenance::ActionDescription> const& description);
-
  protected:
   std::shared_ptr<maintenance::Action> createAction(
       std::shared_ptr<maintenance::ActionDescription> const& description);

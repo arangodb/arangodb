@@ -982,10 +982,3 @@ MaintenanceFeature::ShardActionMap MaintenanceFeature::getShardLocks() const {
   std::lock_guard<std::mutex> guard(_shardActionMapMutex);
   return _shardActionMap;
 }
-
-void MaintenanceFeature::unlockShardByAction(std::shared_ptr<maintenance::ActionDescription> const& description) {
-  if (description->isForced()) {
-    // If the description isForced, then the shard was locked, in this case, we must unlock it.
-    unlockShard(description->get(SHARD));
-  }
-}

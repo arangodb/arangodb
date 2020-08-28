@@ -276,7 +276,6 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
              {SERVER_ID, serverId},
              {FOLLOWERS_TO_DROP, followersToDropString}},
             HIGHER_PRIORITY, true, std::move(properties));
-        feature.lockShard(shname, description);
         actions.emplace_back(std::move(description));
       } else {
         LOG_TOPIC("0285b", DEBUG, Logger::MAINTENANCE)
@@ -301,7 +300,6 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
                                              {OLD_CURRENT_COUNTER, "0"},  // legacy, no longer used
                                              {PLAN_RAFT_INDEX, std::to_string(planIndex)}},
           LEADER_PRIORITY, true);
-      feature.lockShard(shname, description);
       actions.emplace_back(std::move(description));
     }
 
@@ -344,7 +342,6 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
                                              {SERVER_ID, serverId},
                                              {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
           shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true, std::move(props));
-      feature.lockShard(shname, description);
       actions.emplace_back(std::move(description));
     } else {
       LOG_TOPIC("c1d8e", DEBUG, Logger::MAINTENANCE)
@@ -385,7 +382,6 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
             {DATABASE, dbname},
             {SHARD, colname}},
         isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true);
-    feature.lockShard(colname, description);
     actions.emplace_back(std::move(description));
     return;
   }
@@ -418,7 +414,6 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
                                            {DATABASE, dbname},
                                            {SHARD, colname}},
         RESIGN_PRIORITY, true);
-    feature.lockShard(colname, description);
     actions.emplace_back(description);
   }
 
@@ -654,27 +649,38 @@ arangodb::Result arangodb::maintenance::executePlan(VPackSlice const& plan,
     // open ACTIONS
     TRI_ASSERT(report.isOpenObject());
     report.add(ACTIONS, VPackValue(VPackValueType::Array));
-  
-    // enact all
-    for (auto& action : actions) {
-      LOG_TOPIC("8513c", DEBUG, Logger::MAINTENANCE)
-          << "adding action " << action.get() << " to feature ";
+  }
+
+  // enact all
+  for (auto& action : actions) {
+    LOG_TOPIC("8513c", DEBUG, Logger::MAINTENANCE)
+        << "adding action " << action.get() << " to feature ";
+    if (debugActions) {
       VPackObjectBuilder b(&report);
       action->toVelocyPack(report);
-      Result res = feature.addAction(std::move(action), false);
-      if (res.fail()) {
-        feature.unlockShardByAction(action);
+    }
+    if (!action->isForced()) {
+      feature.addAction(std::move(action), false);
+    } else {
+      std::string shardName = action->get(SHARD);
+      bool ok = feature.lockShard(shardName, action);
+      TRI_ASSERT(ok);
+      try {
+        Result res = feature.addAction(std::move(action), false);
+        if (res.fail()) {
+          feature.unlockShard(shardName);
+        }
+      } catch (std::exception const& exc) {
+        feature.unlockShard(shardName);
+        LOG_TOPIC("86762", INFO, Logger::MAINTENANCE)
+            << "Exception caught when adding action, unlocking shard "
+            << shardName << " again: " << exc.what();
       }
     }
+  }
+  if (debugActions) {
     // close ACTIONS
     report.close();
-  } else {
-    for (auto& action : actions) {
-      Result res = feature.addAction(std::move(action), false);
-      if (res.fail()) {
-        feature.unlockShardByAction(action);
-      }
-    }
   }
 
   return result;
@@ -1287,7 +1293,6 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
                 {THE_LEADER, leader},
                 {SHARD_VERSION, std::to_string(feature.shardVersion(shname.toString()))}},
             SYNCHRONIZE_PRIORITY, true);
-        feature.lockShard(shname.toString(), description);
         feature.addAction(description, false);
       }
     }
