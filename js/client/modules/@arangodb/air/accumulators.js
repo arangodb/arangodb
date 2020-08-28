@@ -74,21 +74,32 @@ function cmpAccumulator(cmp) {
 }
 
 function sumAccumulator() {
-  return {
-    updateProgram: ["if",
-                    [["eq?", ["input-value"], 0],
-                     "cold"],
-                    [true,
-                     ["seq",
-                      ["this-set!", ["+", ["current-value"], ["input-value"]]],
-                      "hot"]]],
-    clearProgram: ["this-set!", 0],
-    getProgram: ["current-value"],
-    setProgram: ["this-set!", ["input-value"]],
-    finalizeProgram: ["current-value"],
-  };
+    return {
+        updateProgram: ["if",
+            [["eq?", ["input-value"], 0],
+                "cold"],
+            [true,
+                ["seq",
+                    ["this-set!", ["+", ["current-value"], ["input-value"]]],
+                    "hot"]]],
+        clearProgram: ["this-set!", 0],
+        getProgram: ["current-value"],
+        setProgram: ["this-set!", ["input-value"]],
+        finalizeProgram: ["current-value"],
+    };
+}
+
+function storeAccumulator(clearValue = null) {
+    return {
+        updateProgram: ["this-set!", ["input-value"]],
+        clearProgram: ["this-set!", clearValue],
+        getProgram: ["current-value"],
+        setProgram: ["this-set!", ["input-value"]],
+        finalizeProgram: ["current-value"],
+    };
 }
 
 exports.minAccumulator = cmpAccumulator("lt?");
 exports.maxAccumulator = cmpAccumulator("gt?");
 exports.sumAccumulator = sumAccumulator;
+exports.storeAccumulator = storeAccumulator;

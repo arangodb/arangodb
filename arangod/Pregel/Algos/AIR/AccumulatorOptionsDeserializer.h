@@ -31,6 +31,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <map>
+#include <unordered_set>
 #include <string>
 
 #include <VPackDeserializer/errors.h>
@@ -98,6 +99,24 @@ struct AlgorithmPhase {
 
 using PhaseDeclarations = std::vector<AlgorithmPhase>;
 
+using IdentifierList = std::unordered_set<std::string>;
+
+struct TraceMessagesFilterOptions {
+  IdentifierList byReceiver;  // obsolete, plz remove
+  IdentifierList bySender;
+  IdentifierList byAccumulator;
+};
+
+struct TraceMessagesOptions {
+  std::optional<TraceMessagesFilterOptions> filter;
+};
+
+using TraceMessageVertexList = std::unordered_map<std::string, TraceMessagesOptions>;
+
+struct DebugInformation {
+  TraceMessageVertexList traceMessages;
+};
+
 /* The Pregel Algorithm */
 struct VertexAccumulatorOptions {
   std::string resultField;
@@ -107,6 +126,7 @@ struct VertexAccumulatorOptions {
   BindingDeclarations bindings;
   PhaseDeclarations phases;
   uint64_t maxGSS;
+  std::optional<DebugInformation> debug;
 };
 
 std::ostream& operator<<(std::ostream&, AccumulatorOptions const&);

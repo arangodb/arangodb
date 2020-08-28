@@ -22,6 +22,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <unordered_set>
 #include "AccumulatorOptionsDeserializer.h"
 
 #include <VPackDeserializer/deserializer.h>
@@ -32,6 +33,14 @@ namespace arangodb {
 namespace pregel {
 namespace algos {
 namespace accumulators {
+
+
+template<typename K, typename V>
+using my_map = std::unordered_map<K, V>;
+template<typename V>
+using my_vector = std::vector<V>;
+template<typename V>
+using my_unordered_set = std::unordered_set<V>;
 
 bool isValidAccumulatorOptions(const AccumulatorOptions& options);
 
@@ -140,6 +149,44 @@ using algorithm_phase_plan = parameter_list<
 
 using algorithm_phase_deserializer = utilities::constructing_deserializer<AlgorithmPhase, algorithm_phase_plan>;
 
+/* Debug */
+
+using identifier_list_deserializer = array_deserializer<values::value_deserializer<std::string>, my_unordered_set>;
+
+constexpr const char byReceiver[] = "byReceiver";
+constexpr const char bySender[] = "bySender";
+constexpr const char byAccumulator[] = "byAccumulator";
+
+using trace_messages_filter_options_deserializer_plan = parameter_list<
+    factory_deserialized_parameter<byReceiver, identifier_list_deserializer, false>,
+    factory_deserialized_parameter<bySender, identifier_list_deserializer, false>,
+    factory_deserialized_parameter<byAccumulator, identifier_list_deserializer, false>
+>;
+
+using trace_messages_filter_options_deserializer =
+  utilities::constructing_deserializer<TraceMessagesFilterOptions, trace_messages_filter_options_deserializer_plan>;
+
+constexpr const char filter[] = "filter";
+
+using trace_messages_options_deserializer_plan = parameter_list<
+    factory_optional_deserialized_parameter<filter, trace_messages_filter_options_deserializer>
+>;
+
+using trace_messages_options_deserializer =
+  utilities::constructing_deserializer<TraceMessagesOptions, trace_messages_options_deserializer_plan>;
+
+using trace_messages_vertex_list_deserializer = map_deserializer<trace_messages_options_deserializer, my_map>;
+
+constexpr const char traceMessages[] = "traceMessages";
+
+using debug_information_deserializer_plan = parameter_list<
+    factory_deserialized_parameter<traceMessages, trace_messages_vertex_list_deserializer, false>
+>;
+
+using debug_information_deserializer = utilities::constructing_deserializer<DebugInformation, debug_information_deserializer_plan>;
+
+/* Algorithm */
+
 constexpr const char resultField[] = "resultField";
 constexpr const char vertexAccumulators[] = "vertexAccumulators";
 constexpr const char globalAccumulators[] = "globalAccumulators";
@@ -147,11 +194,8 @@ constexpr const char customAccumulators[] = "customAccumulators";
 constexpr const char bindings[] = "bindings";
 constexpr const char maxGSS[] = "maxGSS";
 constexpr const char phases[] = "phases";
+constexpr const char debug[] = "debug";
 
-template<typename K, typename V>
-using my_map = std::unordered_map<K, V>;
-template<typename V>
-using my_vector = std::vector<V>;
 
 template<typename D, template <typename> typename C>
 using non_empty_array_deserializer = validate<
@@ -169,7 +213,8 @@ using vertex_accumulator_options_plan = parameter_list<
     factory_deserialized_parameter<customAccumulators, custom_accumulators_map_deserializer, false>,
     factory_deserialized_parameter<bindings, bindings_map_deserializer, /* required */ false>, // will be default constructed as empty map
     factory_deserialized_parameter<phases, phases_deseriaizer, true>,
-    factory_simple_parameter<maxGSS, uint64_t, false, values::numeric_value<uint64_t, 500>>
+    factory_simple_parameter<maxGSS, uint64_t, false, values::numeric_value<uint64_t, 500>>,
+    factory_optional_deserialized_parameter<debug, debug_information_deserializer>
 >;
 
 

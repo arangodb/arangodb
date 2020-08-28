@@ -25,13 +25,13 @@
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
-const {sumAccumulator} = require("./accumulators");
+const {sumAccumulator, storeAccumulator} = require("./accumulators");
 
 exports.pagerank_program = pagerank_program;
 exports.pagerank = pagerank;
 exports.test = test;
 
-function pagerank_program(resultField, dampingFactor) {
+function pagerank_program(resultField, dampingFactor, traceVertex) {
   return {
     resultField: resultField,
     // TODO: Karpott.
@@ -41,9 +41,9 @@ function pagerank_program(resultField, dampingFactor) {
       rank: {
         accumulatorType: "custom",
         valueType: "slice",
-        customType: "sumAccumulator",
+        customType: "storeAccumulator",
       },
-      tmpRank: {
+      receiver: {
         accumulatorType: "custom",
         valueType: "slice",
         customType: "sumAccumulator",
@@ -51,48 +51,53 @@ function pagerank_program(resultField, dampingFactor) {
     },
     customAccumulators: {
       sumAccumulator: sumAccumulator(),
+      storeAccumulator: storeAccumulator(),
+    },
+    debug: {
+      traceMessages: {
+        [traceVertex]: {
+          filter: {
+            byAccumulator: ["receiver"]
+          }
+        }
+      },
     },
     phases: [
       {
         name: "main",
-        onPreStep: ["print", "hello from prestep program"],
-        onPostStep: ["print", "hello from poststep program"],
         initProgram: [
           "seq",
           ["accum-set!", "rank", ["/", 1, ["vertex-count"]]],
-          ["accum-set!", "tmpRank", 0],
-          [
-            "if",
-            [
-              ["gt?", ["this-outbound-edges-count"], 0],
-              [
-                "send-to-all-neighbours",
-                "tmpRank",
-                ["/", ["accum-ref", "rank"], ["this-outbound-edges-count"]],
-              ],
-            ],
-            [true, true],
-          ],
-          true,
+          ["accum-set!", "receiver", 0],
+          ["gt?", ["this-outbound-edges-count"], 0]
         ],
         updateProgram: [
           "seq",
-          [
-            "accum-set!",
-            "rank",
+          ["let",
             [
-              "+",
-              ["/", ["-", 1, dampingFactor], ["vertex-count"]],
-              ["*", dampingFactor, ["accum-ref", "tmpRank"]],
+              [
+                "new-rank",
+                [
+                  "+",
+                  ["/", ["-", 1, dampingFactor], ["vertex-count"]],
+                  ["*", dampingFactor, ["accum-ref", "receiver"]],
+                ]
+              ]
+            ],
+              ["print", "set new rank of ", ["this-vertex-id"], " to ", ["var-ref", "new-rank"]],
+            [
+              "accum-set!",
+              "rank",
+              ["var-ref", "new-rank"]
             ],
           ],
-          ["accum-set!", "tmpRank", 0],
+          ["accum-set!", "receiver", 0],
           ["if",
             [
               ["gt?", ["this-outbound-edges-count"], 0],
               [
                 "send-to-all-neighbours",
-                "tmpRank",
+                "receiver",
                 ["/", ["accum-ref", "rank"], ["this-outbound-edges-count"]],
               ]
             ]
@@ -104,21 +109,22 @@ function pagerank_program(resultField, dampingFactor) {
   };
 }
 
-function pagerank(graphName, resultField, dampingFactor) {
+function pagerank(graphName, resultField, dampingFactor, vertex) {
   return pregel.start(
     "air",
     graphName,
-    pagerank_program(resultField, dampingFactor)
+    pagerank_program(resultField, dampingFactor, vertex)
   );
 }
 
-function exec_test_pagerank_on_graph(graphSpec) {
+function exec_test_pagerank_on_graph(graphSpec, vertex) {
   testhelpers.wait_for_pregel(
     "Air Pagerank",
-    pagerank(
-      graphSpec.name,
-      "pageRankResult",
-      0.85
+      pagerank(
+          graphSpec.name,
+          "pageRankResult",
+          0.85,
+          vertex,
     ));
 
   testhelpers.wait_for_pregel(
@@ -141,16 +147,16 @@ function exec_test_pagerank_on_graph(graphSpec) {
   );
 }
 
-function exec_test_pagerank() {
-  exec_test_pagerank_on_graph(examplegraphs.create_pagerank_graph("PageRankGraph1", 1));
-  exec_test_pagerank_on_graph(examplegraphs.create_pagerank_graph("PageRankGraph9", 9));
-  exec_test_pagerank_on_graph(examplegraphs.create_pagerank_graph("PageRankGraph18", 18));
+function exec_test_pagerank(vertex) {
+  //exec_test_pagerank_on_graph(examplegraphs.create_pagerank_graph("PageRankGraph1", 1), vertex);
+  exec_test_pagerank_on_graph(examplegraphs.create_pagerank_graph("PageRankGraph9", 9), vertex);
+  /*exec_test_pagerank_on_graph(examplegraphs.create_pagerank_graph("PageRankGraph18", 18), vertex);
 
   exec_test_pagerank_on_graph(examplegraphs.create_wiki_vote_graph("WikiVoteGraph1", 1));
   exec_test_pagerank_on_graph(examplegraphs.create_wiki_vote_graph("WikiVoteGraph9", 9));
-  exec_test_pagerank_on_graph(examplegraphs.create_wiki_vote_graph("WikiVoteGraph18", 18));
+  exec_test_pagerank_on_graph(examplegraphs.create_wiki_vote_graph("WikiVoteGraph18", 18));*/
 }
 
-function test() {
-  exec_test_pagerank();
+function test(vertex = "") {
+  exec_test_pagerank(vertex);
 }
