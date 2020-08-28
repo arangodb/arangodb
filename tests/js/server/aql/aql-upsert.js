@@ -48,17 +48,16 @@ class UpsertTestCase {
     this._largeLoop = this._isBitSet(2);
     this._uniqueIndex = this._isBitSet(3);
     this._inSubqueryLoop = this._isBitSet(4);
-    this._intermediateCommit = this._isBitSet(5);
-    this._updateOnly = this._isBitSet(6);
-    this._index = this._isBitSet(7);
+    this._updateOnly = this._isBitSet(5);
+    this._index = this._isBitSet(6);
 
 
     // Cluster only
     // Make sure those are the highest bits
     // as the single server will simply not set them
-    this._multipleShards = this._isBitSet(8);
-    this._shardKey = this._isBitSet(9);
-    this._satellite = this._isBitSet(10);
+    this._multipleShards = this._isBitSet(7);
+    this._shardKey = this._isBitSet(8);
+    this._satellite = this._isBitSet(9);
   }
 
   isValidCombination() {
@@ -111,9 +110,6 @@ class UpsertTestCase {
     }
     if (this._index) {
       nameFlags.push("Indexed");
-    }
-    if (this._intermediateCommit) {
-      nameFlags.push("intermediateCommit");
     }
     if (this._satellite) {
       nameFlags.push("Satellite");
@@ -243,12 +239,6 @@ class UpsertTestCase {
     } else {
       options.optimizer = {rules: ["-all"]};
     }
-    if (this._intermediateCommit) {
-      // Intermediate commit is intentionally
-      // not equal to the amount of different documents,
-      // to make sure we are not miscounting even if we commit in between batches
-      options.intermediateCommitCount = this._differentValues + 1;
-    }
     if (true && debugLogging) {
       options.profile = 4;
     }
@@ -316,7 +306,7 @@ function aqlUpsertCombinationSuite () {
     tearDown : clear
   };
   
-  let testFlags = 8;
+  let testFlags = 7;
   if (isCluster) {
     // Sharding Mechanism
     testFlags += 3;
