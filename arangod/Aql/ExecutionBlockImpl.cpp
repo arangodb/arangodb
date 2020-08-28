@@ -75,8 +75,6 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <boost/core/demangle.hpp>
-
 #include <type_traits>
 
 using namespace arangodb;
@@ -570,7 +568,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               TraversalExecutor, EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor, SortedCollectExecutor,
               LimitExecutor, NoResultsExecutor, SingleRemoteModificationExecutor<IndexTag>, SingleRemoteModificationExecutor<Insert>,
               SingleRemoteModificationExecutor<Remove>, SingleRemoteModificationExecutor<Update>,
-              SingleRemoteModificationExecutor<Replace>, SingleRemoteModificationExecutor<Upsert>,
+              SingleRemoteModificationExecutor<Replace>,
               MaterializeExecutor<RegisterId>, MaterializeExecutor<std::string const&>>),
       "Unexpected executor for SkipVariants::EXECUTOR");
 
@@ -1867,7 +1865,6 @@ template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecu
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Remove>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Update>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Replace>>;
-template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Upsert>>;
 
 template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
