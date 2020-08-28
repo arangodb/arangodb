@@ -368,6 +368,7 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
       ctx->reset(); // throw away all pending operations
       state.cookie(key, nullptr); // force active segment release to allow commit go and avoid deadlock in clear
     }
+  }
 
   auto const lastCommittedTick = _lastCommittedTick;
   bool recoverCommittedTick = true;
