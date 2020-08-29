@@ -9,7 +9,7 @@ devel
   * `arangodb_aql_query_time`: histogram with AQL query times distribution.
   * `arangodb_aql_slow_query_time`: histogram with AQL slow query times 
     distribution.
-  * `arangodb_aql_slow_query`: total number of slow AQL queries.
+  * `arangodb_aql_all_query`: total number of all AQL queries.
 
 * Added new metrics for replication:
   * `arangodb_replication_dump_requests`: number of replication dump requests
