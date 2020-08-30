@@ -168,7 +168,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
   explicit StorageEngineMock(arangodb::application_features::ApplicationServer& server);
   virtual void addOptimizerRules() override;
   virtual void addRestHandlers(arangodb::rest::RestHandlerFactory& handlerFactory) override;
-  virtual void addV8Functions() override;
+  virtual void addV8Functions(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>& ArangoNS) override;
   virtual void changeCollection(TRI_vocbase_t& vocbase,
                                 arangodb::LogicalCollection const& collection,
                                 bool doSync) override;
