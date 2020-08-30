@@ -361,6 +361,7 @@ target_link_libraries(fuertetest
     arango
     ${OPENSSL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
+    ${V8_LIBS}
 )
 
 target_include_directories(fuertetest SYSTEM PRIVATE
