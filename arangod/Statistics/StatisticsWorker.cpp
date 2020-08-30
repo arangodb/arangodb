@@ -876,7 +876,25 @@ std::map<std::string, std::vector<std::string>> statStrings{
     "Total connection time of a client.\n"}},
   {"connectionTimeSum",
    {"arangodb_client_connection_statistics_connection_time_sum ", "gauge",
-    "Total connection time of a client.\n"}}
+    "Total connection time of a client.\n"}},
+  {"v8ContextAvailable",
+   {"arangodb_v8_context_alive", "gauge",
+    "Number of V8 contexts currently alive\n"}},
+  {"v8ContextBusy",
+   {"arangodb_v8_context_busy", "gauge",
+    "Number of V8 contexts currently busy\n"}},
+  {"v8ContextDirty",
+   {"arangodb_v8_context_dirty", "gauge",
+    "Number of V8 contexts currently dirty\n"}},
+  {"v8ContextFree",
+   {"arangodb_v8_context_free", "gauge",
+    "Number of V8 contexts currently free\n"}},
+  {"v8ContextMax",
+   {"arangodb_v8_context_max", "gauge",
+    "Maximum number of concurrent V8 contexts\n"}},
+  {"v8ContextMin",
+   {"arangodb_v8_context_min", "gauge",
+    "Minimum number of concurrent V8 contexts\n"}},
   /*{"",
     {"", "",
     ""}}*/
@@ -981,6 +999,20 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
       HELP_ + statStrings.at("connectionTimeSum")[0] + statStrings.at("connectionTimeSum")[2] +
       statStrings.at("connectionTimeSum")[0] + std::to_string(slc.get("sum").template getNumber<uint64_t>());
 
+    V8DealerFeature::Statistics v8Counters{};
+    if (_server.hasFeature<V8DealerFeature>()) {
+      V8DealerFeature& dealer = _server.getFeature<V8DealerFeature>();
+      if (dealer.isEnabled()) {
+        v8Counters = dealer.getCurrentContextNumbers();
+      }
+    }
+    appendMetric(result, std::to_string(v8Counters.available), "v8ContextAvailable");
+    appendMetric(result, std::to_string(v8Counters.busy), "v8ContextBusy");
+    appendMetric(result, std::to_string(v8Counters.dirty), "v8ContextDirty");
+    appendMetric(result, std::to_string(v8Counters.free), "v8ContextFree");
+    appendMetric(result, std::to_string(v8Counters.min), "v8ContextMin");
+    appendMetric(result, std::to_string(v8Counters.max), "v8ContextMax");
+
     result += "\n";
 
       /*
@@ -1032,25 +1064,6 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
         builder.add("server", VPackValue(VPackValueType::Object));
         builder.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
         builder.add("transactions", VPackValue(VPackValueType::Object));
-        builder.close();
-
-        // export v8 statistics
-        builder.add("v8Context", VPackValue(VPackValueType::Object));
-        V8DealerFeature::Statistics v8Counters{};
-        // std::vector<V8DealerFeature::MemoryStatistics> memoryStatistics;
-        // V8 may be turned off on a server
-        if (_server.hasFeature<V8DealerFeature>()) {
-            V8DealerFeature& dealer = _server.getFeature<V8DealerFeature>();
-            if (dealer.isEnabled()) {
-                v8Counters = dealer.getCurrentContextNumbers();
-                // see below: memoryStatistics = dealer.getCurrentMemoryNumbers();
-            }
-        }
-        builder.add("available", VPackValue(v8Counters.available));
-        builder.add("busy", VPackValue(v8Counters.busy));
-        builder.add("dirty", VPackValue(v8Counters.dirty));
-        builder.add("free", VPackValue(v8Counters.free));
-        builder.add("max", VPackValue(v8Counters.max));
         builder.close();
 
         // export threads statistics
@@ -1201,6 +1214,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.add("dirty", VPackValue(v8Counters.dirty));
   builder.add("free", VPackValue(v8Counters.free));
   builder.add("max", VPackValue(v8Counters.max));
+  builder.add("min", VPackValue(v8Counters.min));
   /* at the time being we don't want to write this into the database so the data volume doesn't increase.
   {
     builder.add("memory", VPackValue(VPackValueType::Array));
@@ -1231,6 +1245,15 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.close();
 
   builder.close();
+}
+
+void StatisticsWorker::appendMetric(
+   std::string& result, std::string const& val, std::string const& label) const {
+ 
+   result +=
+     TYPE_ + statStrings.at(label).at(0) + " " + statStrings.at(label)[1] +
+     HELP_ + statStrings.at(label).at(0) + " " + statStrings.at(label)[2] +
+     statStrings.at(label).at(0) + " " + val + "\n";
 }
 
 VPackBuilder StatisticsWorker::fillDistribution(StatisticsDistribution const& dist) const {

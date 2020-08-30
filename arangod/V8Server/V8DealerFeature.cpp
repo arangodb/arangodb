@@ -1491,7 +1491,7 @@ V8DealerFeature::Statistics V8DealerFeature::getCurrentContextNumbers() {
   CONDITION_LOCKER(guard, _contextCondition);
 
   return {_contexts.size(), _busyContexts.size(), _dirtyContexts.size(),
-          _idleContexts.size(), _nrMaxContexts};
+          _idleContexts.size(), _nrMaxContexts, _nrMinContexts};
 }
 
 std::vector<V8DealerFeature::MemoryStatistics> V8DealerFeature::getCurrentMemoryNumbers() {
