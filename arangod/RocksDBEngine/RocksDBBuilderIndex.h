@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,8 +68,9 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
   Result drop() override { return _wrapped->drop(); }
 
-  void afterTruncate(TRI_voc_tick_t tick) override {
-    _wrapped->afterTruncate(tick);
+  void afterTruncate(TRI_voc_tick_t tick,
+                     arangodb::transaction::Methods* trx) override {
+    _wrapped->afterTruncate(tick, trx);
   }
 
   void load() override { _wrapped->load(); }
