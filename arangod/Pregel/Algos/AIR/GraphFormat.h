@@ -41,7 +41,8 @@ struct GraphFormat final : public graph_format {
                        std::string const& resultField,
                        AccumulatorsDeclaration const& globalAccumulatorDeclarations,
                        AccumulatorsDeclaration const& vertexAccumulatorDeclarations,
-                       CustomAccumulatorDefinitions customDefinitions);
+                       CustomAccumulatorDefinitions customDefinitions,
+                       DataAccessDefinition const& dataAccess);
 
   std::string const _resultField;
 
@@ -50,6 +51,7 @@ struct GraphFormat final : public graph_format {
   AccumulatorsDeclaration _globalAccumulatorDeclarations;
   AccumulatorsDeclaration _vertexAccumulatorDeclarations;
   CustomAccumulatorDefinitions _customDefinitions;
+  DataAccessDefinitions _dataAccess;
 
   size_t estimatedVertexSize() const override;
   size_t estimatedEdgeSize() const override;

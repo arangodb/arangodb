@@ -22,8 +22,8 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <unordered_set>
 #include "AccumulatorOptionsDeserializer.h"
+#include <unordered_set>
 
 #include <VPackDeserializer/deserializer.h>
 
@@ -34,12 +34,11 @@ namespace pregel {
 namespace algos {
 namespace accumulators {
 
-
-template<typename K, typename V>
+template <typename K, typename V>
 using my_map = std::unordered_map<K, V>;
-template<typename V>
+template <typename V>
 using my_vector = std::vector<V>;
-template<typename V>
+template <typename V>
 using my_unordered_set = std::unordered_set<V>;
 
 bool isValidAccumulatorOptions(const AccumulatorOptions& options);
@@ -95,6 +94,9 @@ using accumulator_options_plan = parameter_list<
 using accumulator_options_deserializer_base =
     utilities::constructing_deserializer<AccumulatorOptions, accumulator_options_plan>;
 
+using data_access_options_deserializer_base =
+    utilities::constructing_deserializer<DataAccessDefinition, accumulator_options_plan>;
+
 /* clang-format on */
 
 struct accumulator_options_validator {
@@ -129,6 +131,19 @@ using custom_accumulator_definition_plan = parameter_list<
 
 using custom_accumulator_definition_deserializer =
     utilities::constructing_deserializer<CustomAccumulatorDefinition, custom_accumulator_definition_plan>;
+
+/* Data Access */
+
+constexpr const char writeVertex[] = "writeVertex";
+constexpr const char readVertex[] = "readVertex";
+constexpr const char readEdge[] = "readEdge";
+
+using data_access_options_plan = parameter_list<
+    factory_builder_parameter<writeVertex, false>,
+    factory_builder_parameter<readVertex, false>,
+    factory_builder_parameter<readEdge, false>
+>;
+using data_access_options_deserializer = utilities::constructing_deserializer<DataAccessDefinition, data_access_options_plan>;
 
 /* Algorithm Phase */
 
@@ -191,6 +206,7 @@ constexpr const char resultField[] = "resultField";
 constexpr const char vertexAccumulators[] = "vertexAccumulators";
 constexpr const char globalAccumulators[] = "globalAccumulators";
 constexpr const char customAccumulators[] = "customAccumulators";
+constexpr const char dataAccess[] = "dataAccess";
 constexpr const char bindings[] = "bindings";
 constexpr const char maxGSS[] = "maxGSS";
 constexpr const char phases[] = "phases";
@@ -204,19 +220,19 @@ using non_empty_array_deserializer = validate<
 using accumulators_map_deserializer = map_deserializer<accumulator_options_deserializer, my_map>;
 using custom_accumulators_map_deserializer = map_deserializer<custom_accumulator_definition_deserializer, my_map>;
 using bindings_map_deserializer = map_deserializer<values::vpack_builder_deserializer, my_map>;
-using phases_deseriaizer = non_empty_array_deserializer<algorithm_phase_deserializer, my_vector>;
+using phases_deserializer = non_empty_array_deserializer<algorithm_phase_deserializer, my_vector>;
 
 using vertex_accumulator_options_plan = parameter_list<
-    factory_deserialized_parameter<resultField, values::value_deserializer<std::string>, true>,
+    factory_deserialized_parameter<resultField, values::value_deserializer<std::string>, false>,
     factory_deserialized_parameter<vertexAccumulators, accumulators_map_deserializer, false>,
     factory_deserialized_parameter<globalAccumulators, accumulators_map_deserializer, false>,
     factory_deserialized_parameter<customAccumulators, custom_accumulators_map_deserializer, false>,
+    factory_deserialized_parameter<dataAccess, data_access_options_deserializer, false>,
     factory_deserialized_parameter<bindings, bindings_map_deserializer, /* required */ false>, // will be default constructed as empty map
-    factory_deserialized_parameter<phases, phases_deseriaizer, true>,
+    factory_deserialized_parameter<phases, phases_deserializer, true>,
     factory_simple_parameter<maxGSS, uint64_t, false, values::numeric_value<uint64_t, 500>>,
     factory_optional_deserialized_parameter<debug, debug_information_deserializer>
 >;
-
 
 // TODO: we could of course collect all parsing problems and return
 //       them in bulk
@@ -261,8 +277,6 @@ using vertex_accumulator_options_deserializer_base =
 
 using vertex_accumulator_options_deserializer = validator::validate<vertex_accumulator_options_deserializer_base, vertex_accumulator_options_validator>;
 
-
-
 /* clang-format on */
 
 result<AccumulatorOptions, error> parseAccumulatorOptions(VPackSlice slice) {
@@ -271,6 +285,10 @@ result<AccumulatorOptions, error> parseAccumulatorOptions(VPackSlice slice) {
 
 result<VertexAccumulatorOptions, error> parseVertexAccumulatorOptions(VPackSlice slice) {
   return deserialize<vertex_accumulator_options_deserializer>(slice);
+}
+
+result<DataAccessDefinition, error> parseDataAccessOptions(VPackSlice slice) {
+  return deserialize<data_access_options_deserializer>(slice);
 }
 
 std::ostream& operator<<(std::ostream& os, AccumulatorType const& type) {

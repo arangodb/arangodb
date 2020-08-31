@@ -206,7 +206,34 @@ function createCircle(graphName, numberOfVertices, numberOfShards) {
   return { vname: vname, ename: ename };
 }
 
-function createLineGraph(graphName, numberOfVertices, numberOfShards) {
+function writeToLeaf(obj, path) {
+  path = path.split('.');
+  let res = obj;
+
+  for (var i=0; i < path.length; i++) {
+    if (res[path[i]]) {
+      res = res[path[i]];
+    } else {
+      res[path[i]] = {};
+    }
+  }
+}
+
+function objectInsertHelper(arr, valueToInsert) {
+  let obj = {};
+  arr.forEach((key) => {
+    if (typeof key === "string") {
+      obj[key] = valueToInsert;
+    } else {
+      // array expected (toplevel -> n-level)
+      _.set(obj, key, valueToInsert);
+    }
+  });
+  obj.id = valueToInsert;
+  return obj;
+}
+
+function createLineGraph(graphName, numberOfVertices, numberOfShards, vertexKeysToInsert) {
   const vname = graphName + "_V";
   const ename = graphName + "_E";
 
@@ -223,8 +250,18 @@ function createLineGraph(graphName, numberOfVertices, numberOfShards) {
   var vs = [];
   var vids;
 
+  // vertexKeysToInsert can be either array of strings (simple path)
+  // ["a", "b", "c"]
+  // or also array of arrays of strings (nested path)
+  // [["a", "b"], ["a", "c"], "d", "e"]
+
   for (let i = 0; i < numberOfVertices; i++) {
-    vs.push({ id: "" + i });
+    if (vertexKeysToInsert) {
+      let toInsert = objectInsertHelper(vertexKeysToInsert, i);
+      vs.push(toInsert);
+    } else {
+      vs.push({ id: "" + i });
+    }
   }
   vids = db._collection(vname).save(vs);
 

@@ -73,6 +73,12 @@ struct AccumulatorOptions {
   std::optional<VPackBuilder> parameters;
 };
 
+struct DataAccessDefinition {
+  std::optional<VPackBuilder> writeVertex;
+  std::optional<VPackBuilder> readVertex;
+  std::optional<VPackBuilder> readEdge;
+};
+
 struct CustomAccumulatorDefinition {
   PregelProgram clearProgram;
   PregelProgram updateProgram;
@@ -86,6 +92,7 @@ struct CustomAccumulatorDefinition {
 using AccumulatorsDeclaration = std::unordered_map<std::string, AccumulatorOptions>;
 using BindingDeclarations = std::unordered_map<std::string, VPackBuilder>;
 using CustomAccumulatorDefinitions = std::unordered_map<std::string, CustomAccumulatorDefinition>;
+using DataAccessDefinitions = DataAccessDefinition;
 
 struct AlgorithmPhase {
   std::string name;
@@ -123,6 +130,7 @@ struct VertexAccumulatorOptions {
   AccumulatorsDeclaration vertexAccumulators;
   AccumulatorsDeclaration globalAccumulators;
   CustomAccumulatorDefinitions customAccumulators;
+  DataAccessDefinitions dataAccess;
   BindingDeclarations bindings;
   PhaseDeclarations phases;
   uint64_t maxGSS;
@@ -130,8 +138,10 @@ struct VertexAccumulatorOptions {
 };
 
 std::ostream& operator<<(std::ostream&, AccumulatorOptions const&);
+std::ostream& operator<<(std::ostream&, DataAccessDefinition const&);
 std::ostream& operator<<(std::ostream&, AccumulatorValueType const&);
 
+deserializer_result<DataAccessDefinition> parseDataAccessOptions(VPackSlice slice);
 deserializer_result<AccumulatorOptions> parseAccumulatorOptions(VPackSlice slice);
 deserializer_result<VertexAccumulatorOptions> parseVertexAccumulatorOptions(VPackSlice slice);
 

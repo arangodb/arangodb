@@ -28,6 +28,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
+#include <list>
 
 #include "Extractor.h"
 #include "Interpreter.h"
@@ -265,6 +266,113 @@ EvalResult Prim_Dict(Machine& ctx, VPackSlice const params, VPackBuilder& result
   return {};
 }
 
+EvalResult Prim_DictKeys(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (params.length() != 1) {
+    return EvalError("expected exactly one parameter");
+  }
+
+  auto obj = params.at(0);
+  if (!obj.isObject()) {
+    return EvalError("expected object, found: " + obj.toJson());
+  }
+
+  result.openArray();
+  for (VPackObjectIterator iter(params.at(0)); iter.valid(); iter++) {
+    result.add(iter.key());
+  }
+  result.close();
+
+  return {};
+}
+
+std::list<std::string> createObjectPaths(velocypack::Slice object,
+                                         std::list<std::string> currentPath) {
+  for (VPackObjectIterator iter(object); iter.valid(); iter++) {
+    if (iter.value().isObject()) {
+      // recursive through all available keys
+      currentPath.emplace_back(iter.key().toString());
+      return createObjectPaths(iter.value(), currentPath);
+    } else {
+      // reached end
+      currentPath.emplace_back(iter.key().toString());
+    }
+  }
+  return currentPath;
+}
+
+void printPath(std::list<std::string>& path) {
+  // TODO: can be removed - internal debugging method
+  std::cout << "Printing current path: " << std::endl;
+  std::cout << " [ ";
+  for (auto const& pathElement : path) {
+    std::cout << " " << pathElement << " ";
+  }
+  std::cout << " ] " << std::endl;
+}
+
+void createPaths(std::list<std::list<std::string>>& finalPaths,
+                 velocypack::Slice object, std::list<std::string>& currentPath) {
+  for (VPackObjectIterator iter(object); iter.valid(); iter++) {
+    std::string currentKey = iter.key().toString();
+    VPackSlice currentValue = iter.value();
+
+    if (currentValue.isObject()) {
+      // path not done yet
+      currentPath.emplace_back(currentKey);
+
+      std::list<std::string> currentTmpPath(currentPath);
+      finalPaths.emplace_back(currentTmpPath);
+      createPaths(finalPaths, currentValue, currentPath);
+    } else {
+      // path is done
+      std::list<std::string> currentTmpPath(currentPath);
+      currentTmpPath.emplace_back(currentKey);
+      finalPaths.emplace_back(currentTmpPath);
+    }
+
+    if (iter.isLast()) {
+      // if end of path reached, remove last visited member
+      if (currentPath.size() > 0) {
+        currentPath.pop_back();
+      }
+    }
+  }
+}
+
+void pathToBuilder(std::list<std::list<std::string>>& finalPaths, VPackBuilder& result) {
+  result.openArray();
+  for (auto const& path : finalPaths) {
+    if (path.size() > 1) {
+      result.openArray();
+    }
+    for (auto const& pathElement : path) {
+      result.add(VPackValue(pathElement));
+    }
+    if (path.size() > 1) {
+      result.close();
+    }
+  }
+  result.close();
+}
+
+EvalResult Prim_DictDirectory(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (params.length() != 1) {
+    return EvalError("expected exactly one parameter");
+  }
+
+  auto obj = params.at(0);
+  if (!obj.isObject()) {
+    return EvalError("expected object, found: " + obj.toJson());
+  }
+
+  std::list<std::list<std::string>> finalPaths;
+  std::list<std::string> currentPath;
+  createPaths(finalPaths, obj, currentPath);
+  pathToBuilder(finalPaths, result);
+
+  return {};
+}
+
 EvalResult MergeObjectSlice(VPackBuilder& result, VPackSlice const& sliceA,
                             VPackSlice const& sliceB) {
   VPackCollection::merge(result, sliceA, sliceB, true, false);
@@ -353,8 +461,6 @@ EvalResult Prim_Not(Machine& ctx, VPackSlice const params, VPackBuilder& result)
   result.add(VPackValue(ValueConsideredFalse(params.at(0))));
   return {};
 }
-
-
 
 EvalResult Prim_PrintLn(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   std::cerr << paramsToString(params) << std::endl;
@@ -639,7 +745,8 @@ EvalResult Prim_Map(Machine& ctx, VPackSlice const paramsList, VPackBuilder& res
 
       VPackBuilder tempBuffer;
 
-      auto res = EvaluateApply(ctx, functionSlice, VPackArrayIterator(parameter.slice()), tempBuffer, false);
+      auto res = EvaluateApply(ctx, functionSlice,
+                               VPackArrayIterator(parameter.slice()), tempBuffer, false);
       if (res.fail()) {
         return res.error().wrapMessage("when mapping pair " + parameter.toJson());
       }
@@ -692,7 +799,7 @@ EvalResult Prim_ArrayLength(Machine& ctx, VPackSlice const paramsList, VPackBuil
   return {};
 }
 
-template<bool ignoreMissing>
+template <bool ignoreMissing>
 EvalResult Prim_DictExtract(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
   if (paramsList.length() < 1) {
     return EvalError("expected at least on parameter");
@@ -765,6 +872,9 @@ void RegisterAllPrimitives(Machine& ctx) {
   // Constructors
   ctx.setFunction("dict", Prim_Dict);
   ctx.setFunction("dict-merge", Prim_MergeDict);
+  ctx.setFunction("dict-keys", Prim_DictKeys);
+  ctx.setFunction("dict-directory", Prim_DictDirectory);
+
   ctx.setFunction("list", Prim_List);
 
   // Lambdas
@@ -795,11 +905,10 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("dict-x-tract", Prim_DictExtract<false>);
   ctx.setFunction("dict-x-tract-x", Prim_DictExtract<true>);
 
-
   ctx.setFunction("var-ref", Prim_VarRef);
 
   // TODO: We can just register bind parameters as variables (or a variable)
   ctx.setFunction("bind-ref", Prim_VarRef);
 }
 
-}  // namespace arangodb
+}  // namespace arangodb::greenspun

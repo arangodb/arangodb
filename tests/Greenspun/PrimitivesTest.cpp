@@ -1159,6 +1159,51 @@ TEST_CASE("Test [dict] primitive", "[dict]") {
   }
 }
 
+TEST_CASE("Test [dict-keys] primitive", "[dict-keys]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("empty dict") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["dict-keys", {}]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().toJson() == "[]");
+  }
+
+  SECTION("dict with 3 tuples") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["dict-keys", {"a": 1, "b": 2, "c": 3}]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().isArray());
+    REQUIRE(result.slice().length() == 3);
+    REQUIRE(result.slice().toJson() == "[\"a\",\"b\",\"c\"]");
+  }
+
+  SECTION("no content") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["dict-keys"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+}
+
+TEST_CASE("Test [dict-keys] primitive", "[dict-keys]") {
+  // TODO: to be implemented!
+}
+
 TEST_CASE("Test [str] primitive", "[str]") {
   Machine m;
   InitMachine(m);
@@ -1340,11 +1385,12 @@ TEST_CASE("Test [attrib-set] primitive", "[attrib-set]") {
     REQUIRE(result.slice().get("first").isObject());
     REQUIRE(result.slice().get("first").get("second").isArray());
     REQUIRE(result.slice().get("first").get("second").length() == 2);
-    REQUIRE(result.slice().get("first").get("second").at(0).copyString() == "new");
-    REQUIRE(result.slice().get("first").get("second").at(1).copyString() == "world");
+    REQUIRE(result.slice().get("first").get("second").at(0).copyString() ==
+            "new");
+    REQUIRE(result.slice().get("first").get("second").at(1).copyString() ==
+            "world");
   }
 }
-
 
 TEST_CASE("Test [min] primitive", "[min]") {
   Machine m;

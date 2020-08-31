@@ -84,6 +84,8 @@ arangosh> var pexec = pp.execute("WikiVoteGraph",
  * array-set -- `["array-set", arr, index, value]` - set value at specified index
  
  * dict-merge -- `["merge", dict, dict]` returns the merge of two dicts 
+ * dict-keys -- `["dict-keys", dict]` returns an array with all toplevel keys
+ * dict-directory -- `["dict-directory", dict]` returns all available paths
 
  * print -- `["print", expr ...]` print `expr` for each `expr`. 
 
@@ -119,6 +121,7 @@ The following functions are only available when running as a vertex computation 
  * `["vertex-count"]` the number of vertices in the graph under consideration.
  * `["global-superstep"]` the current superstep the algorithm is in.
 
+ * `["this-doc"]` returns the document slice stored in vertexData
  * `["this-vertex-id"]`
  * `["this-unique-id"]`
  * `["this-pregel-id"]`

@@ -55,7 +55,7 @@ function wait_for_pregel(name, pid) {
     } else {
       waited++;
       if (waited % 10 === 0) {
-        internal.print("waited " + waited * 10 + " seconds, not done yet, waiting some more, status = " + status.state);
+        internal.print("waited " + waited + " seconds, not done yet, waiting some more, status = " + status.state);
       }
     }
     internal.sleep(1);

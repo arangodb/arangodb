@@ -45,12 +45,17 @@ class VertexData {
  public:
   void reset(AccumulatorsDeclaration const& vertexAccumulatorsDeclaration,
              CustomAccumulatorDefinitions const& customDefinitions,
+             DataAccessDefinitions  const& dataAccessDefinitions,
              std::string documentId, VPackSlice const& doc, std::size_t vertexId);
 
   std::unique_ptr<AccumulatorBase> const& accumulatorByName(std::string_view name);
 
   // The vertex accumulators are *not* reset automatically
   std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _vertexAccumulators;
+
+  // Location for dataAccess definitions (writeVertex, readVertex, readEdge)
+  // TODO: Optimize? Store as ref? Other way?
+  DataAccessDefinition _dataAccess;
 
   std::string _documentId;
   // FIXME: YOLO. we copy the whole document, which is
