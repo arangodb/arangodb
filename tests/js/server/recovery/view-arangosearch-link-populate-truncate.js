@@ -55,7 +55,7 @@ function runSetup () {
   c.truncate();
   // force sync
   db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length");
-  internal.debugTerminate('crashing server');
+  internal.debugSegfault('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

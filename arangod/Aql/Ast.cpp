@@ -36,6 +36,7 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Graph.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -1602,34 +1603,57 @@ void Ast::injectBindParameters(BindParameters& parameters,
           bool isWriteCollection = false;
 
           arangodb::velocypack::StringRef paramRef(param);
+          arangodb::velocypack::StringRef nameRef(name, l);
+
+          bool const isMMFiles = EngineSelectorFeature::isMMFiles();
+
+          AstNode* newNode = nullptr;
           for (auto const& it : _writeCollections) {
             auto const& c = it.first;
 
             if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
                 paramRef == arangodb::velocypack::StringRef(c->getStringValue(), c->getStringLength())) {
+              // bind parameter still present in _writeCollections
+              TRI_ASSERT(newNode == nullptr);
               isWriteCollection = true;
+              break;
+            } else if (!isMMFiles &&
+                c->type == NODE_TYPE_COLLECTION &&
+                nameRef == arangodb::velocypack::StringRef(c->getStringValue(),
+                                                           c->getStringLength())) {
+              // bind parameter was already replaced with a proper collection node 
+              // in _writeCollections
+              TRI_ASSERT(newNode == nullptr);
+              isWriteCollection = true;
+              newNode = const_cast<AstNode*>(c);
               break;
             }
           }
 
-          node = createNodeDataSource(resolver, name, l,
-                                      isWriteCollection ? AccessMode::Type::WRITE
-                                                        : AccessMode::Type::READ,
-                                      false, true);
+          TRI_ASSERT(newNode == nullptr || isWriteCollection);
 
-          if (isWriteCollection) {
-            // must update AST info now for all nodes that contained this
-            // parameter
-            for (size_t i = 0; i < _writeCollections.size(); ++i) {
-              auto& c = _writeCollections[i].first;
+          if (newNode == nullptr) {
+            newNode = createNodeDataSource(resolver, name, l,
+                                           isWriteCollection ? AccessMode::Type::WRITE
+                                                             : AccessMode::Type::READ,
+                                        false, true);
+            TRI_ASSERT(newNode != nullptr);
 
-              if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
-                  paramRef == arangodb::velocypack::StringRef(c->getStringValue(), c->getStringLength())) {
-                c = node;
-                // no break here. replace all occurrences
+            if (isWriteCollection) {
+              // must update AST info now for all nodes that contained this
+              // parameter
+              for (size_t i = 0; i < _writeCollections.size(); ++i) {
+                auto& c = _writeCollections[i].first;
+
+                if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
+                    paramRef == arangodb::velocypack::StringRef(c->getStringValue(), c->getStringLength())) {
+                  c = newNode;
+                  // no break here. replace all occurrences
+                }
               }
             }
           }
+          node = newNode;
         }
       } else if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
         // look at second sub-node. this is the (replaced) bind parameter
