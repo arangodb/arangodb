@@ -1,5 +1,7 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
+* Fix for issue BTS-183: added pending operations purging before ArangoSearch
+  index truncation
 
 * Fixed issue BTS-169: cost estimation for LIMIT nodes showed wrong number of
   estimated items.
