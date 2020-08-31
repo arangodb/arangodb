@@ -69,6 +69,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBReplicationManager.cpp
   RocksDBEngine/RocksDBReplicationTailing.cpp
   RocksDBEngine/RocksDBRestCollectionHandler.cpp
+  RocksDBEngine/RocksDBRestCompactHandler.cpp
   RocksDBEngine/RocksDBRestExportHandler.cpp
   RocksDBEngine/RocksDBRestHandlers.cpp
   RocksDBEngine/RocksDBRestReplicationHandler.cpp

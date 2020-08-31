@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,18 +21,25 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MMFILES_MMFILES_V8_FUNCTIONS_H
-#define ARANGOD_MMFILES_MMFILES_V8_FUNCTIONS_H 1
+#ifndef ARANGOD_ROCKSDB_REST_COMPACT_HANDLER_H
+#define ARANGOD_ROCKSDB_REST_COMPACT_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include <v8.h>
+#include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
 
-struct MMFilesV8Functions {
-  static void registerResources(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>& ArangoNS);
-};
+class RocksDBRestCompactHandler : public arangodb::RestBaseHandler {
+ public:
+  RocksDBRestCompactHandler(application_features::ApplicationServer&,
+                            GeneralRequest*, GeneralResponse*);
 
+
+ public:
+  RestStatus execute() override;
+  char const* name() const override { return "RocksDBRestCompactHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+};
 }  // namespace arangodb
 
 #endif

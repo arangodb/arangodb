@@ -40,9 +40,14 @@
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/convenience.h>
+#include <rocksdb/db.h>
+#include <rocksdb/options.h>
+#include <rocksdb/status.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
+
+#include <initializer_list>
 
 namespace arangodb {
 namespace rocksutils {
@@ -260,6 +265,42 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
     return Result(TRI_ERROR_INTERNAL,
                   "unknown exception during RocksDB key prefix deletion");
   }
+}
+
+Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLevel) {
+  rocksdb::CompactRangeOptions options;
+  options.change_level = changeLevel;
+  options.bottommost_level_compaction = compactBottomMostLevel ?
+      rocksdb::BottommostLevelCompaction::kForceOptimized : 
+      rocksdb::BottommostLevelCompaction::kIfHaveCompactionFilter;
+
+  std::initializer_list<rocksdb::ColumnFamilyHandle*> const cfs = {
+    RocksDBColumnFamily::definitions(),
+    RocksDBColumnFamily::documents(),
+    RocksDBColumnFamily::primary(),
+    RocksDBColumnFamily::edge(),
+    RocksDBColumnFamily::vpack(),
+    RocksDBColumnFamily::geo(),
+    RocksDBColumnFamily::fulltext(),
+  };
+
+  LOG_TOPIC("d8a5d", INFO, arangodb::Logger::ENGINES)
+      << "starting compaction of entire RocksDB database key range";
+
+  for (auto* cf : cfs) {
+    // compact the entire data range
+    rocksdb::Status s = db->CompactRange(options, cf, nullptr, nullptr);
+    if (!s.ok()) {
+      Result res = rocksutils::convertStatus(s);
+      LOG_TOPIC("e46a3", WARN, arangodb::Logger::ENGINES)
+        << "compaction of entire RocksDB database key range failed: " << res.errorMessage();
+      return res;
+    }
+  }
+  LOG_TOPIC("65594", INFO, arangodb::Logger::ENGINES)
+      << "compaction of entire RocksDB database key range finished";
+
+  return {};
 }
 
 }  // namespace rocksutils

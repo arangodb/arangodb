@@ -3120,8 +3120,8 @@ void MMFilesEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
 }
 
 /// @brief Add engine-specific V8 functions
-void MMFilesEngine::addV8Functions() {
-  MMFilesV8Functions::registerResources();
+void MMFilesEngine::addV8Functions(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>& ArangoNS) {
+  MMFilesV8Functions::registerResources(isolate, ArangoNS);
 }
 
 /// @brief Add engine-specific REST handlers
