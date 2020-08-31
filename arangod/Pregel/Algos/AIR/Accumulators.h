@@ -159,7 +159,7 @@ class ListAccumulator : public Accumulator<T> {
     _list.clear();
     return {};
   }
-  auto getValueIntoBuilder(VPackBuilder& builder) -> greenspun::EvalResult override {
+  auto getIntoBuilder(VPackBuilder& builder) -> greenspun::EvalResult override {
     VPackArrayBuilder array(&builder);
     for (auto&& p : _list) {
       builder.add(VPackValue(p));
@@ -198,7 +198,7 @@ class ListAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
     _list.clear();
     return {};
   }
-  auto getValueIntoBuilder(VPackBuilder& builder) -> greenspun::EvalResult override {
+  auto getIntoBuilder(VPackBuilder& builder) -> greenspun::EvalResult override {
     VPackArrayBuilder array(&builder);
     for (auto&& p : _list) {
       builder.add(p.slice());
@@ -216,10 +216,6 @@ class ListAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
       auto msg = std::string{"setBySlice expected an array, but got "} + s.typeName();
       return greenspun::EvalError{msg};
     }
-  }
-  auto updateBySlice(VPackSlice v)
-      -> greenspun::EvalResultT<AccumulatorBase::UpdateResult> override {
-    return update(v);
   }
 
  private:
@@ -241,14 +237,22 @@ struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
 
   ~CustomAccumulator() override;
 
-  auto setBySlice(VPackSlice v) -> greenspun::EvalResult override;
-  auto updateBySlice(VPackSlice s) -> greenspun::EvalResultT<UpdateResult> override;
-  auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> override;
+  virtual auto clear() -> greenspun::EvalResult override;
+  virtual auto setBySlice(VPackSlice v) -> greenspun::EvalResult override;
+  virtual auto getIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override;
 
-  auto getValueIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override;
+  // This c
+  virtual auto updateByMessageSlice(VPackSlice msg) -> greenspun::EvalResultT<UpdateResult> override;
+  virtual auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> override;
+
+
+  virtual auto setStateBySlice(VPackSlice s) -> greenspun::EvalResult override;
+  virtual auto getStateIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override;
+  virtual auto getStateUpdateIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override;
+  virtual auto aggregateStateBySlice(VPackSlice s) -> greenspun::EvalResult override;
+
   greenspun::EvalResult finalizeIntoBuilder(VPackBuilder& result) override;
 
-  auto clear() -> greenspun::EvalResult override;
 
  private:
   void SetupFunctions();
@@ -267,7 +271,7 @@ struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
       -> greenspun::EvalResult;
 
   VPackSlice inputSlice = VPackSlice::noneSlice();
-  std::string const* inputSender = nullptr;
+  VPackSlice inputSender = VPackSlice::noneSlice();
 
   VPackBuilder _buffer;
   VPackBuilder _parameters;

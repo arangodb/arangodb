@@ -116,16 +116,28 @@ struct accumulator_options_validator {
 using accumulator_options_deserializer = validator::validate<accumulator_options_deserializer_base, accumulator_options_validator>;
 
 constexpr const char clearProgram[] = "clearProgram";
-constexpr const char updateProgram[] = "updateProgram";
 constexpr const char setProgram[] = "setProgram";
 constexpr const char getProgram[] = "getProgram";
+constexpr const char updateProgram[] = "updateProgram";
+
+constexpr const char setStateProgram[] = "setStateProgram";
+constexpr const char getStateProgram[] = "getStateProgram";
+constexpr const char getStateUpdateProgram[] = "getStateUpdateProgram";
+constexpr const char aggregateStateProgram[] = "aggregateStateProgram";
+
 constexpr const char finalizeProgram[] = "finalizeProgram";
 
 using custom_accumulator_definition_plan = parameter_list<
     factory_builder_parameter<clearProgram, true>,
-    factory_builder_parameter<updateProgram, true>,
     factory_builder_parameter<setProgram, false>,
     factory_builder_parameter<getProgram, false>,
+    factory_builder_parameter<updateProgram, true>,
+
+    factory_builder_parameter<setStateProgram, false>,
+    factory_builder_parameter<getStateProgram, false>,
+    factory_builder_parameter<getStateUpdateProgram, false>,
+    factory_builder_parameter<aggregateStateProgram, false>,
+
     factory_builder_parameter<finalizeProgram, false>
 >;
 

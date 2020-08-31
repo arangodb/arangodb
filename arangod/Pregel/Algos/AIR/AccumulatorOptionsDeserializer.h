@@ -81,9 +81,15 @@ struct DataAccessDefinition {
 
 struct CustomAccumulatorDefinition {
   PregelProgram clearProgram;
-  PregelProgram updateProgram;
   PregelProgram setProgram;
   PregelProgram getProgram;
+  PregelProgram updateProgram;
+
+  PregelProgram setStateProgram;
+  PregelProgram getStateProgram;
+  PregelProgram getStateUpdateProgram;
+  PregelProgram aggregateStateProgram;
+
   PregelProgram finalizeProgram;
 };
 

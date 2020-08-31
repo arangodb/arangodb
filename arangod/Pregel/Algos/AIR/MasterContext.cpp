@@ -99,7 +99,7 @@ greenspun::EvalResult MasterContext::air_AccumRef(greenspun::Machine& ctx,
   auto&& [accumId] = unpackTuple<std::string_view>(params);
 
   if (auto iter = _globalAccumulators.find(accumId); iter != std::end(_globalAccumulators)) {
-    auto inner = iter->second->getValueIntoBuilder(result);
+    auto inner = iter->second->getIntoBuilder(result);
     if (!inner) {
       return inner.error();
     } else {
@@ -116,7 +116,7 @@ greenspun::EvalResult MasterContext::air_AccumSet(greenspun::Machine& ctx,
   auto&& [accumId, value] = unpackTuple<std::string_view, VPackSlice>(params);
 
   if (auto iter = _globalAccumulators.find(accumId); iter != std::end(_globalAccumulators)) {
-    auto inner = iter->second->updateBySlice(value);
+    auto inner = iter->second->setBySlice(value);
     if (!inner) {
       return inner.error();
     } else {
@@ -248,7 +248,7 @@ void MasterContext::preGlobalSuperstepMessage(VPackBuilder& msg) {
       for (auto&& acc : globalAccumulators()) {
         msg.add(VPackValue(acc.first));
 
-        if(auto result = acc.second->getValueIntoBuilder(msg); result.fail()) {
+        if(auto result = acc.second->getStateIntoBuilder(msg); result.fail()) {
           LOG_DEVEL << "AIR MasterContext, error serializing global accumulator "
                     << acc.first << " " << result.error().toString();
         }
@@ -277,13 +277,13 @@ bool MasterContext::postGlobalSuperstepMessage(VPackSlice workerMsgs) {
     }
     for (auto&& upd : VPackObjectIterator(accumulatorUpdate)) {
       if (!upd.key.isString()) {
-        LOG_DEVEL << "AIR MasterContext received invalid key from worker: " << upd .key.toJson() << " expecting string.";
+        LOG_DEVEL << "AIR MasterContext received invalid key from worker: " << upd.key.toJson() << " expecting string.";
         return false;
       }
 
       auto accumName = upd.key.copyString();
       if (auto iter = globalAccumulators().find(accumName); iter != std::end(globalAccumulators())) {
-        auto res = iter->second->updateBySlice(upd.value);
+        auto res = iter->second->aggregateStateBySlice(upd.value);
         if (!res) {
           LOG_DEVEL << "AIR MasterContext could not update global accumulator " << accumName << ", " << res.error().toString();
           return false;

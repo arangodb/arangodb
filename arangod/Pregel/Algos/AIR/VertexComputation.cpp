@@ -45,30 +45,31 @@ VertexComputation::VertexComputation(VertexAccumulators const& algorithm)
 }
 
 void VertexComputation::registerLocalFunctions() {
-  _airMachine.setFunctionMember("accum-ref",  // " name:id -> value:any ",
-                                &VertexComputation::air_accumRef, this);
-
-  _airMachine.setFunctionMember("global-accum-ref",  // " name:id -> value:any ",
-                                &VertexComputation::air_globalAccumRef, this);
+  // Vertex Accumulators
+  _airMachine.setFunctionMember("accum-clear!",  // " name:id -> void ",
+                                &VertexComputation::air_accumClear, this);
 
   _airMachine.setFunctionMember("accum-set!",  // " name:id -> value:any -> void ",
                                 &VertexComputation::air_accumSet, this);
 
-  _airMachine.setFunctionMember("accum-clear!",  // " name:id -> void ",
-                                &VertexComputation::air_accumClear, this);
-
-  _airMachine.setFunctionMember("bind-ref",  // " name:id -> value:any ",
-                                &VertexComputation::air_accumClear, this);
+  _airMachine.setFunctionMember("accum-ref",  // " name:id -> value:any ",
+                                &VertexComputation::air_accumRef, this);
 
   _airMachine.setFunctionMember("send-to-accum",  // " name:id -> to-vertex:pid -> value:any -> void ",
                                 &VertexComputation::air_sendToAccum, this);
 
-  _airMachine.setFunctionMember("send-to-global-accum",  // " name:id -> value:any -> void ",
-                                &VertexComputation::air_sendToGlobalAccum, this);
-
   _airMachine.setFunctionMember("send-to-all-neighbours",  // " name:id -> value:any -> void ",
                                 &VertexComputation::air_sendToAllNeighbours, this);
 
+  // Global Accumulators
+  _airMachine.setFunctionMember("global-accum-ref",  // " name:id -> value:any ",
+                                &VertexComputation::air_globalAccumRef, this);
+
+  _airMachine.setFunctionMember("send-to-global-accum",  // " name:id -> value:any -> void ",
+                                &VertexComputation::air_sendToGlobalAccum, this);
+
+
+  //
   _airMachine.setFunctionMember("this-outbound-edges",  // " name:id -> value:any -> void ",
                                 &VertexComputation::air_outboundEdges, this);
 
@@ -94,20 +95,19 @@ void VertexComputation::registerLocalFunctions() {
 }
 
 /* Vertex accumulators */
-greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
-                                                      VPackSlice const params,
-                                                      VPackBuilder& result) {
+greenspun::EvalResult VertexComputation::air_accumClear(greenspun::Machine& ctx,
+                                                          VPackSlice const params,
+                                                          VPackBuilder& result) {
   auto res = greenspun::extract<std::string>(params);
   if (res.fail()) {
-    return std::move(res).error();
+    return res.error();
   }
-
   auto&& [accumId] = res.value();
 
   if (auto iter = vertexData()._vertexAccumulators.find(accumId);
       iter != std::end(vertexData()._vertexAccumulators)) {
-    return iter->second->getValueIntoBuilder(result).mapError(
-        [](auto& err) { err.wrapMessage("when getting value of accumulator"); });
+    return iter->second->clear().mapError(
+      [](auto& err) { err.wrapMessage("when clearing accumulator"); });
   }
   return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                               "` not found");
@@ -133,19 +133,21 @@ greenspun::EvalResult VertexComputation::air_accumSet(greenspun::Machine& ctx,
                               "` not found");
 }
 
-greenspun::EvalResult VertexComputation::air_accumClear(greenspun::Machine& ctx,
-                                                        VPackSlice const params,
-                                                        VPackBuilder& result) {
+greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
+                                                      VPackSlice const params,
+                                                      VPackBuilder& result) {
   auto res = greenspun::extract<std::string>(params);
   if (res.fail()) {
-    return res.error();
+    return std::move(res).error();
   }
+
   auto&& [accumId] = res.value();
 
   if (auto iter = vertexData()._vertexAccumulators.find(accumId);
       iter != std::end(vertexData()._vertexAccumulators)) {
-    return iter->second->clear().mapError(
-        [](auto& err) { err.wrapMessage("when clearing accumulator"); });
+    return iter->second->getIntoBuilder(result).mapError([](auto &err) {
+      err.wrapMessage("when getting value of accumulator");
+    });
   }
   return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                               "` not found");
@@ -223,10 +225,14 @@ greenspun::EvalResult VertexComputation::air_sendToGlobalAccum(greenspun::Machin
   }
   auto&& [accumId, value] = res.value();
 
-  MessageData msg;
-  msg.reset(accumId, value, vertexData()._documentId);
+  VPackBuilder msg;
+  {
+    VPackObjectBuilder guard(&msg);
+    msg.add("sender", VPackValue(vertexData()._documentId));
+    msg.add("value", value);
+  }
 
-  return workerContext().sendToGlobalAccumulator(accumId, msg);
+  return workerContext().sendToGlobalAccumulator(accumId, msg.slice());
 }
 
 /*  Graph stuff */
@@ -529,6 +535,7 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
   }
 
   if (phaseStep == 0) {
+    LOG_DEVEL << "init prog";
     if (auto res = runProgram(_airMachine, phase.initProgram.slice()); res.fail()) {
       LOG_DEVEL << res.error().toString();
       getReportManager()
@@ -542,7 +549,9 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
           << "` init-program failed: " << res.error().toString();
     }
   } else {
+    LOG_DEVEL << "update prog processing msgs";
     auto accumChanged = processIncomingMessages(incomingMessages);
+    LOG_DEVEL << "update prog process done";
     if (accumChanged.fail()) {
       voteHalt();
       return;

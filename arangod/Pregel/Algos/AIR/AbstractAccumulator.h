@@ -60,11 +60,29 @@ struct AccumulatorBase {
 
   // Resets the accumulator to a well-known value
   virtual auto clear() -> greenspun::EvalResult = 0;
-
   virtual auto setBySlice(VPackSlice v) -> greenspun::EvalResult = 0;
-  virtual auto updateBySlice(VPackSlice v) -> greenspun::EvalResultT<UpdateResult> = 0;
+  virtual auto getIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult = 0;
+
+  // This conflates two operations: updating the accumulator, and passing the
+  // sender of the update message into the accumulator, i.e. the message passing and
+  // the accumulator operation
+  // One of these two operations should also be obsolete. This will need some consideration
+  // wrt "efficiency" (whether velocypack is the best format for messages here. It probably is,
+  // in particular since we can prevent copying stuff around)
+  virtual auto updateByMessageSlice(VPackSlice msg) -> greenspun::EvalResultT<UpdateResult> = 0;
   virtual auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> = 0;
-  virtual auto getValueIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult = 0;
+
+  // used to set state on WorkerContext from message by MasterContext
+  virtual auto setStateBySlice(VPackSlice msg) -> greenspun::EvalResult = 0;
+  // used to set state on WorkerContext from message by MasterContext
+  virtual auto getStateIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult = 0;
+  // used to send updates from WorkerContext to MasterContext, output of this
+  // is given to aggregateStateBySlice on MasterContext
+  virtual auto getStateUpdateIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult = 0;
+  // used to aggregate states on MasterContext after receiving messages from WorkerContexts.
+  virtual auto aggregateStateBySlice(VPackSlice msg) -> greenspun::EvalResult = 0;
+
+  // Is this obsolete?
   virtual auto finalizeIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult = 0;
 };
 
@@ -104,12 +122,18 @@ class Accumulator : public AccumulatorBase {
     }
   }
 
-  auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> override {
-    return updateBySlice(msg._value.slice());
+  auto updateByMessageSlice(VPackSlice msg) -> greenspun::EvalResultT<UpdateResult> override {
+    VPackSlice const& s = msg.get("value");
+    if constexpr (std::is_same_v<T, bool>) {
+      return this->update(s.getBool());
+    } else if constexpr (std::is_arithmetic_v<T>) {
+      return this->update(s.getNumericValue<T>());
+    } else {
+      return greenspun::EvalError("not implemented");
+    }
   }
-
-  auto updateBySlice(VPackSlice s) -> greenspun::EvalResultT<UpdateResult> override {
-    // TODO proper error handling here!
+  auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> override {
+    VPackSlice const& s = msg._value.slice();
     if constexpr (std::is_same_v<T, bool>) {
       return this->update(s.getBool());
     } else if constexpr (std::is_arithmetic_v<T>) {
@@ -119,7 +143,21 @@ class Accumulator : public AccumulatorBase {
     }
   }
 
-  auto getValueIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override {
+  auto setStateBySlice(VPackSlice s) -> greenspun::EvalResult override {
+    return greenspun::EvalError("not implemented");
+  }
+  auto getStateIntoBuilder(VPackBuilder& msg) -> greenspun::EvalResult override {
+    return greenspun::EvalError("not implemented");
+  }
+  auto getStateUpdateIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override {
+    return greenspun::EvalError("not implemented");
+  }
+  auto aggregateStateBySlice(VPackSlice msg) -> greenspun::EvalResult override {
+    return greenspun::EvalError("not implemented");
+  }
+
+
+  auto getIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override {
     if constexpr (std::is_same_v<T, VPackSlice>) {
       result.add(_value);
     } else {
@@ -129,10 +167,15 @@ class Accumulator : public AccumulatorBase {
   }
 
   auto finalizeIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override {
-    return getValueIntoBuilder(result);
+    if constexpr (std::is_same_v<T, VPackSlice>) {
+      result.add(_value);
+    } else {
+      result.add(VPackValue(_value));
+    }
+    return {};
   }
 
-   protected:
+protected:
   data_type _value;
 };
 
