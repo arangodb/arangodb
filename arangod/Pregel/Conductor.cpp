@@ -234,8 +234,11 @@ bool Conductor::_startGlobalStep() {
     _masterContext->_globalSuperstep = _globalSuperstep;
     _masterContext->_vertexCount = _totalVerticesCount;
     _masterContext->_edgeCount = _totalEdgesCount;
+    _masterContext->_reports = &_reports;
     if (!_masterContext->preGlobalSuperstepWithResult()) {
       LOG_DEVEL << "Aborting algorithm because of error in onPreStep";
+      _state = ExecutionState::FATAL_ERROR;
+      _endTimeSecs = TRI_microtime();
       return false;
     }
     _masterContext->preGlobalSuperstepMessage(toWorkerMessages);

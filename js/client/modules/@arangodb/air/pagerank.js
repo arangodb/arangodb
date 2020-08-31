@@ -25,7 +25,7 @@
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
-const {sumAccumulator, storeAccumulator} = require("./accumulators");
+const {sumAccumulator, storeAccumulator, maxAccumulator} = require("./accumulators");
 
 exports.pagerank_program = pagerank_program;
 exports.pagerank = pagerank;
@@ -36,7 +36,13 @@ function pagerank_program(resultField, dampingFactor, traceVertex) {
     resultField: resultField,
     // TODO: Karpott.
     maxGSS: 1000,
-    globalAccumulators: {},
+    globalAccumulators: {
+      delta: {
+        accumulatorType: "custom",
+        valueType: "slice",
+        customType: "maxAccumulator",
+      }
+    },
     vertexAccumulators: {
       rank: {
         accumulatorType: "custom",
@@ -52,15 +58,7 @@ function pagerank_program(resultField, dampingFactor, traceVertex) {
     customAccumulators: {
       sumAccumulator: sumAccumulator(),
       storeAccumulator: storeAccumulator(),
-    },
-    debug: {
-      traceMessages: {
-        [traceVertex]: {
-          filter: {
-            byAccumulator: ["receiver"]
-          }
-        }
-      },
+      maxAccumulator: maxAccumulator(),
     },
     phases: [
       {
@@ -70,6 +68,16 @@ function pagerank_program(resultField, dampingFactor, traceVertex) {
           ["accum-set!", "rank", ["/", 1, ["vertex-count"]]],
           ["accum-set!", "receiver", 0],
           ["gt?", ["this-outbound-edges-count"], 0]
+        ],
+        onPreStep: ["global-accum-set!", "delta", 0],
+        onPostStep: ["if",
+          [
+              ["and",
+                  ["lt?", ["global-accum-ref", "delta"], 0.001],
+                  ["ne?", ["global-superstep"], 0]
+              ],
+              ["finish"]
+          ]
         ],
         updateProgram: [
           "seq",
@@ -84,7 +92,12 @@ function pagerank_program(resultField, dampingFactor, traceVertex) {
                 ]
               ]
             ],
-              ["print", "set new rank of ", ["this-vertex-id"], " to ", ["var-ref", "new-rank"]],
+            ["send-to-global-accum", "delta",
+              ["abs", ["-",
+                ["accum-ref", "rank"],
+                ["var-ref", "new-rank"]
+              ]]
+            ],
             [
               "accum-set!",
               "rank",

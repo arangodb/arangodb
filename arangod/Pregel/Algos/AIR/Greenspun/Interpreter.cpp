@@ -617,10 +617,8 @@ EvalResult Machine::applyFunction(std::string function, VPackSlice const params,
     return f->second(*this, params, result).mapError([&](EvalError& err) {
       err.wrapCall(function, params);
     });
-  } else {
-    return EvalError("function not found `" + function + "`");
   }
-  return {};
+  return EvalError("function not found `" + function + "`");
 }
 
 std::string EvalError::toString() const {

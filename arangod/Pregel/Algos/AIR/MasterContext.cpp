@@ -24,6 +24,7 @@
 
 #include <Logger/LogMacros.h>
 #include <Logger/Logger.h>
+#include <Pregel/Algos/AIR/Greenspun/Extractor.h>
 
 #include "MasterContext.h"
 
@@ -36,7 +37,8 @@ MasterContext::MasterContext(VertexAccumulators const* algorithm)
       _algo->options().globalAccumulators;
 
   for (auto&& decl : globalAccumulatorsDeclarations) {
-    auto [acc, ignore] = _globalAccumulators.emplace(decl.first, instantiateAccumulator(decl.second, customDefinitions));
+    auto [acc, ignore] =
+        _globalAccumulators.emplace(decl.first, instantiateAccumulator(decl.second, customDefinitions));
     // TODO: Clear could fail :/
     acc->second->clear();
   }
@@ -49,6 +51,8 @@ MasterContext::MasterContext(VertexAccumulators const* algorithm)
   _airMachine.setFunctionMember("global-accum-ref", &MasterContext::air_AccumRef, this);
   _airMachine.setFunctionMember("global-accum-set!", &MasterContext::air_AccumSet, this);
   _airMachine.setFunctionMember("global-accum-clear!", &MasterContext::air_AccumClear, this);
+  _airMachine.setFunctionMember("global-superstep",
+                                &MasterContext::air_GlobalSuperstep, this);
 }
 
 greenspun::EvalResult MasterContext::air_GotoPhase(greenspun::Machine& ctx,
@@ -72,9 +76,6 @@ greenspun::EvalResult MasterContext::air_GotoPhase(greenspun::Machine& ctx,
 greenspun::EvalResult MasterContext::air_Finish(greenspun::Machine& ctx,
                                                 VPackSlice const params,
                                                 VPackBuilder& result) {
-  if (!allowPhaseModifications) {
-    return greenspun::EvalError("not allowed in this context");
-  }
   if (params.isEmptyArray()) {
     finish();
     return {};
@@ -186,6 +187,7 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
       getReportManager().report(ReportLevel::ERROR).with("phase", phase.name)
           << "onPreStep program of phase `" << phase.name
           << "` returned and error: " << res.error().toString();
+      LOG_DEVEL << res.error().toString();
       return ContinuationResult::ERROR_ABORT;
     }
     if (userSelectedNext == ContinuationResult::ABORT) {
@@ -248,9 +250,10 @@ void MasterContext::preGlobalSuperstepMessage(VPackBuilder& msg) {
       for (auto&& acc : globalAccumulators()) {
         msg.add(VPackValue(acc.first));
 
-        if(auto result = acc.second->getStateIntoBuilder(msg); result.fail()) {
-          LOG_DEVEL << "AIR MasterContext, error serializing global accumulator "
-                    << acc.first << " " << result.error().toString();
+        if (auto result = acc.second->getStateIntoBuilder(msg); result.fail()) {
+          LOG_DEVEL
+              << "AIR MasterContext, error serializing global accumulator "
+              << acc.first << " " << result.error().toString();
         }
       }
     }
@@ -260,36 +263,44 @@ void MasterContext::preGlobalSuperstepMessage(VPackBuilder& msg) {
 bool MasterContext::postGlobalSuperstepMessage(VPackSlice workerMsgs) {
   LOG_DEVEL << "postGlobalStep message";
   if (!workerMsgs.isArray()) {
-    LOG_DEVEL << "AIR MasterContext received invalid message from conductor: " << workerMsgs.toJson() << " expecting array of objects";
+    LOG_DEVEL << "AIR MasterContext received invalid message from conductor: "
+              << workerMsgs.toJson() << " expecting array of objects";
     return false;
   }
 
-  for(auto&& msg : VPackArrayIterator(workerMsgs)) {
+  for (auto&& msg : VPackArrayIterator(workerMsgs)) {
     if (!msg.isObject()) {
-      LOG_DEVEL << "AIR MasterContext received invalid message from worker: " << msg.toJson() << " expecting object; stopping.";
+      LOG_DEVEL << "AIR MasterContext received invalid message from worker: "
+                << msg.toJson() << " expecting object; stopping.";
       return false;
     }
 
     auto accumulatorUpdate = msg.get("globalAccumulatorUpdates");
     if (!accumulatorUpdate.isObject()) {
-      LOG_DEVEL << "AIR MasterContext did not receive globalAccumulatorUpdates from worker.";
+      LOG_DEVEL << "AIR MasterContext did not receive globalAccumulatorUpdates "
+                   "from worker.";
       continue;
     }
     for (auto&& upd : VPackObjectIterator(accumulatorUpdate)) {
       if (!upd.key.isString()) {
-        LOG_DEVEL << "AIR MasterContext received invalid key from worker: " << upd.key.toJson() << " expecting string.";
+        LOG_DEVEL << "AIR MasterContext received invalid key from worker: "
+                  << upd.key.toJson() << " expecting string.";
         return false;
       }
 
       auto accumName = upd.key.copyString();
-      if (auto iter = globalAccumulators().find(accumName); iter != std::end(globalAccumulators())) {
+      if (auto iter = globalAccumulators().find(accumName);
+          iter != std::end(globalAccumulators())) {
         auto res = iter->second->aggregateStateBySlice(upd.value);
         if (!res) {
-          LOG_DEVEL << "AIR MasterContext could not update global accumulator " << accumName << ", " << res.error().toString();
+          LOG_DEVEL << "AIR MasterContext could not update global accumulator "
+                    << accumName << ", " << res.error().toString();
           return false;
         }
       } else {
-        LOG_DEVEL << "AIR MasterContext received update for unknown global accumulator " << accumName;
+        LOG_DEVEL << "AIR MasterContext received update for unknown global "
+                     "accumulator "
+                  << accumName;
       }
     }
   }
@@ -313,6 +324,7 @@ bool MasterContext::preGlobalSuperstepWithResult() {
       getReportManager().report(ReportLevel::ERROR).with("phase", phase.name)
           << "onPreStep program of phase `" << phase.name
           << "` returned and error: " << res.error().toString();
+      LOG_DEVEL << "error in prestep: " << res.error().toString();
       return false;
     }
     if (userSelectedNext == ContinuationResult::ABORT) {
@@ -335,6 +347,18 @@ void MasterContext::serializeValues(VPackBuilder& msg) {
       }
     }
   }
+}
+
+greenspun::EvalResult MasterContext::air_GlobalSuperstep(greenspun::Machine& ctx,
+                                                         const VPackSlice params,
+                                                         VPackBuilder& result) {
+  auto res = greenspun::extract<>(params);
+  if (!res) {
+    return res.error();
+  }
+
+  result.add(VPackValue(this->globalSuperstep()));
+  return {};
 }
 
 }  // namespace arangodb::pregel::algos::accumulators

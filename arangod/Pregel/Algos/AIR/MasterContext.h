@@ -51,6 +51,7 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
   greenspun::EvalResult air_AccumRef(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
   greenspun::EvalResult air_AccumSet(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
   greenspun::EvalResult air_AccumClear(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_GlobalSuperstep(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
 
   ContinuationResult userSelectedNext = ContinuationResult::DONT_CARE;
   bool allowPhaseModifications = false;
