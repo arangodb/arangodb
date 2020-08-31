@@ -6,11 +6,6 @@ devel
   can help to reclaim disk space on the follower earlier than without running
   the truncate.
 
-* The REST API PUT `/_api/collection/<name>/truncate` will now also run a
-  compaction if the truncation affected more than 4k documents. This may add
-  extra latency to the truncate operation, but can help to reclaim disk space
-  earlier.
-
 * Added REST API PUT `/_admin/compact` for compacting the entire database
   data. This endpoint can be used to reclaim disk space after substantial data 
   deletions have taken place. The command is also exposed via the JavaScript
