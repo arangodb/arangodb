@@ -256,7 +256,7 @@ class RocksDBEngine final : public StorageEngine {
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 
   /// @brief Add engine-specific V8 functions
-  void addV8Functions() override;
+  void addV8Functions(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>& ArangoNS) override;
 
   /// @brief Add engine-specific REST handlers
   void addRestHandlers(rest::RestHandlerFactory& handlerFactory) override;

@@ -1445,7 +1445,9 @@ void StorageEngineMock::addRestHandlers(arangodb::rest::RestHandlerFactory& hand
   TRI_ASSERT(false);
 }
 
-void StorageEngineMock::addV8Functions() { TRI_ASSERT(false); }
+void StorageEngineMock::addV8Functions(v8::Isolate*, v8::Handle<v8::ObjectTemplate>&) {
+  TRI_ASSERT(false); 
+}
 
 void StorageEngineMock::changeCollection(TRI_vocbase_t& vocbase,
                                          arangodb::LogicalCollection const& collection,

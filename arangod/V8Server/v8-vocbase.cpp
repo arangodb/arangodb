@@ -2114,6 +2114,10 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_InitV8cursor(context, v8g);
 
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
+  engine->addV8Functions(isolate, ArangoNS);
+
   // .............................................................................
   // generate global functions
   // .............................................................................
