@@ -629,8 +629,6 @@ void HttpCommTask<T>::writeResponse(RequestStatistics::Item stat) {
   }
 
   this->_writing = true;
-  this->setIOTimeout();
-
   // FIXME measure performance w/o sync write
   asio_ns::async_write(this->_protocol->socket, buffers,
                        [self = this->shared_from_this(),

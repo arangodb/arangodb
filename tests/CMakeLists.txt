@@ -361,11 +361,9 @@ target_link_libraries(fuertetest
     arango
     ${OPENSSL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
-    ${V8_LIBS}
 )
 
 target_include_directories(fuertetest SYSTEM PRIVATE
-  ${V8_INCLUDE_DIR}
   ${V8_INTERNAL_INCLUDE_DIR}
   ${INCLUDE_DIRECTORIES}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest

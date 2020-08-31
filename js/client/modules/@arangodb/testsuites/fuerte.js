@@ -119,7 +119,7 @@ function gtestRunner(options) {
   // start server
   print('Starting server...');
 
-  let instanceInfo = pu.startInstance('tcp', options, {}, 'single_server');
+  let instanceInfo = pu.startInstance('tcp', options, {"http.keep-alive-timeout" : "10"}, 'single_server');
   if (instanceInfo === false) {
     results.failed += 1;
     results.basics = {

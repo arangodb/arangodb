@@ -144,7 +144,7 @@ void VstCommTask<T>::setIOTimeout() {
   const bool wasWriting = this->_writing;
   TRI_ASSERT(wasReading || wasWriting);
   if (wasWriting) {
-    secs = std::max(300.0, secs);
+    secs = std::max(this->WriteTimeout, secs);
   }
 
   auto millis = std::chrono::milliseconds(static_cast<int64_t>(secs * 1000));
