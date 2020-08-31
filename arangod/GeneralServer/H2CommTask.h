@@ -49,16 +49,16 @@ class H2CommTask final : public GeneralCommTask<T> {
   void upgradeHttp1(std::unique_ptr<HttpRequest> req);
 
  protected:
-
   virtual bool readCallback(asio_ns::error_code ec) override;
   virtual void setIOTimeout() override;
 
-  virtual void sendResponse(std::unique_ptr<GeneralResponse> response, RequestStatistics::Item stat) override;
+  virtual void sendResponse(std::unique_ptr<GeneralResponse> response,
+                            RequestStatistics::Item stat) override;
 
-  virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode, uint64_t messageId) override;
+  virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
+                                                          uint64_t messageId) override;
 
  private:
-  
   static int on_begin_headers(nghttp2_session* session,
                               const nghttp2_frame* frame, void* user_data);
   static int on_header(nghttp2_session* session, const nghttp2_frame* frame,
@@ -79,15 +79,16 @@ class H2CommTask final : public GeneralCommTask<T> {
  private:
   // ongoing Http2 stream
   struct Stream final {
-    explicit Stream(std::unique_ptr<HttpRequest> req) : request(std::move(req)) {}
-    
+    explicit Stream(std::unique_ptr<HttpRequest> req)
+        : request(std::move(req)) {}
+
     std::string origin;
 
     std::unique_ptr<HttpRequest> request;
-    std::unique_ptr<H2Response> response; // hold response memory
+    std::unique_ptr<H2Response> response;  // hold response memory
 
-    size_t headerBuffSize = 0; // total header size
-    size_t responseOffset = 0; // current offset in response body
+    size_t headerBuffSize = 0;  // total header size
+    size_t responseOffset = 0;  // current offset in response body
   };
 
   /// init h2 session
@@ -109,7 +110,6 @@ class H2CommTask final : public GeneralCommTask<T> {
   Stream* findStream(int32_t sid);
 
  private:
-  
   velocypack::Buffer<uint8_t> _outbuffer;
 
   // no more than 64 streams allowed
@@ -118,7 +118,7 @@ class H2CommTask final : public GeneralCommTask<T> {
   std::map<int32_t, Stream> _streams;
 
   nghttp2_session* _session = nullptr;
-  
+
   std::atomic<unsigned> _numProcessing{0};
 
   std::atomic<bool> _signaledWrite{false};
