@@ -36,6 +36,7 @@
 #include "Basics/system-functions.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Replication/InitialSyncer.h"
 #include "Replication/ReplicationApplier.h"
 #include "Replication/ReplicationTransaction.h"
@@ -49,6 +50,7 @@
 #include "Transaction/Hints.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Databases.h"
@@ -614,7 +616,7 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
 
   TRI_ASSERT(tid.isSet());
 
-  LOG_TOPIC("e39dc", TRACE, Logger::REPLICATION) << "starting replication transaction " << tid;
+  LOG_TOPIC("e39dc", TRACE, Logger::REPLICATION) << "starting replication transaction " << tid.id();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(countOngoingTransactions(slice) == 0);
@@ -654,7 +656,7 @@ Result TailingSyncer::abortTransaction(VPackSlice const& slice) {
 
   TRI_ASSERT(tid.isSet());
 
-  LOG_TOPIC("19551", TRACE, Logger::REPLICATION) << "aborting replication transaction " << tid;
+  LOG_TOPIC("19551", TRACE, Logger::REPLICATION) << "aborting replication transaction " << tid.id();
 
   _ongoingTransactions.erase(it);
   return Result();
@@ -683,7 +685,7 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
 
   TRI_ASSERT(tid.isSet());
 
-  LOG_TOPIC("fb331", TRACE, Logger::REPLICATION) << "committing replication transaction " << tid;
+  LOG_TOPIC("fb331", TRACE, Logger::REPLICATION) << "committing replication transaction " << tid.id();
 
   std::unique_ptr<ReplicationTransaction>& trx = (*it).second;
   Result res = trx->commit();
