@@ -923,7 +923,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
 
     // update the global metrics so the changes become visible early
     stats.publish();
-    // keep the cumulatedStats intact here!
+    // keep the cumulativeStats intact here!
   }
 
   TRI_ASSERT(false);
