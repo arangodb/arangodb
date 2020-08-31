@@ -106,9 +106,8 @@ greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
 
   if (auto iter = vertexData()._vertexAccumulators.find(accumId);
       iter != std::end(vertexData()._vertexAccumulators)) {
-    return iter->second->getValueIntoBuilder(result).mapError([](auto &err) {
-      err.wrapMessage("when getting value of accumulator");
-    });
+    return iter->second->getValueIntoBuilder(result).mapError(
+        [](auto& err) { err.wrapMessage("when getting value of accumulator"); });
   }
   return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                               "` not found");
@@ -126,7 +125,7 @@ greenspun::EvalResult VertexComputation::air_accumSet(greenspun::Machine& ctx,
 
   if (auto iter = vertexData()._vertexAccumulators.find(std::string{accumId});
       iter != std::end(vertexData()._vertexAccumulators)) {
-    return iter->second->setBySlice(value).mapError([](auto &err) {
+    return iter->second->setBySlice(value).mapError([](auto& err) {
       err.wrapMessage("when setting value of accumulator by slice");
     });
   }
@@ -145,9 +144,8 @@ greenspun::EvalResult VertexComputation::air_accumClear(greenspun::Machine& ctx,
 
   if (auto iter = vertexData()._vertexAccumulators.find(accumId);
       iter != std::end(vertexData()._vertexAccumulators)) {
-    return iter->second->clear().mapError([](auto &err) {
-      err.wrapMessage("when clearing accumulator");
-    });
+    return iter->second->clear().mapError(
+        [](auto& err) { err.wrapMessage("when clearing accumulator"); });
   }
   return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                               "` not found");
@@ -156,7 +154,6 @@ greenspun::EvalResult VertexComputation::air_accumClear(greenspun::Machine& ctx,
 greenspun::EvalResult VertexComputation::air_sendToAccum(greenspun::Machine& ctx,
                                                          VPackSlice const params,
                                                          VPackBuilder& result) {
-
   auto res = greenspun::extract<VPackSlice, std::string, VPackSlice>(params);
   if (res.fail()) {
     return res.error();
@@ -226,7 +223,10 @@ greenspun::EvalResult VertexComputation::air_sendToGlobalAccum(greenspun::Machin
   }
   auto&& [accumId, value] = res.value();
 
-  return workerContext().sendToGlobalAccumulator(accumId, value);
+  MessageData msg;
+  msg.reset(accumId, value, vertexData()._documentId);
+
+  return workerContext().sendToGlobalAccumulator(accumId, msg);
 }
 
 /*  Graph stuff */
@@ -366,7 +366,58 @@ VertexAccumulators const& VertexComputation::algorithm() const {
 };
 
 WorkerContext const& VertexComputation::workerContext() const {
-  return *static_cast<WorkerContext const *>(context());
+  return *static_cast<WorkerContext const*>(context());
+}
+
+void VertexComputation::traceMessage(MessageData const* msg) {
+  auto&& options = _algorithm.options();
+  auto&& accumName = msg->_accumulatorName;
+
+  if (options.debug) {
+    DebugInformation const& dinfo = options.debug.value();
+    LOG_DEVEL << "Debugging is turned on" << dinfo.traceMessages.begin()->first;
+    if (auto iter = dinfo.traceMessages.find(vertexData()._documentId);
+        iter != dinfo.traceMessages.end()) {
+      LOG_DEVEL << "message tracing enabled for this vertex";
+      bool traceMessage = true;
+      auto& traceOptions = iter->second;
+      if (traceOptions.filter) {
+        LOG_DEVEL << "message tracing has filter";
+        TraceMessagesFilterOptions const& filterOptions = traceOptions.filter.value();
+        if (!filterOptions.byAccumulator.empty() &&
+            filterOptions.byAccumulator.find(accumName) ==
+            std::end(filterOptions.byAccumulator)) {
+          LOG_DEVEL << "message not trace because accum is " << accumName << " not searched for";
+          traceMessage = false;
+        }
+        if (!filterOptions.bySender.empty() &&
+            filterOptions.bySender.find(msg->sender()) ==
+            std::end(filterOptions.bySender)) {
+          LOG_DEVEL << "message not trace because sender is " << msg->sender() << " not searched for";
+          traceMessage = false;
+        }
+      }
+
+      if (traceMessage) {
+        LOG_DEVEL << "message is traced!";
+        auto phase_index = *getAggregatedValue<uint32_t>("phase");
+        auto phase = _algorithm.options().phases.at(phase_index);
+
+        getReportManager()
+            .report(ReportLevel::INFO)
+            .with("pregel-id", pregelId())
+            .with("vertex", vertexData()._documentId)
+            .with("phase", phase.name)
+            .with("global-superstep", globalSuperstep())
+            .with("phase-step", phaseGlobalSuperstep())
+            .with("message", msg->_value.toJson())
+            .with("sender", msg->_sender)
+            .with("accumulator", accumName)
+            << "debug trace";
+      }
+    }
+  }
+
 }
 
 greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
@@ -376,7 +427,6 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
   for (const MessageData* msg : incomingMessages) {
     auto&& accumName = msg->_accumulatorName;
     auto&& accum = vertexData().accumulatorByName(accumName);
-
     auto res = accum->updateByMessage(*msg);
     if (res.fail()) {
       auto phase_index = *getAggregatedValue<uint32_t>("phase");

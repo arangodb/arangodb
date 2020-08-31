@@ -1,5 +1,4 @@
 ////////////////////////////////////////////////////////////////////////////////
-///
 /// DISCLAIMER
 ///
 /// Copyright 2020 ArangoDB GmbH, Cologne, Germany
@@ -18,30 +17,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Heiko Kernbach
 /// @author Lars Maier
-///
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_DESERIALIZER_H
-#define VELOCYPACK_DESERIALIZER_H
 
-#include <unordered_set>
+#ifndef ARANGODB_PREGEL_GREENSPUN_MATH_H
+#define ARANGODB_PREGEL_GREENSPUN_MATH_H 1
 
-#include "array.h"
-#include "attribute.h"
-#include "conditional.h"
-#include "context.h"
-#include "enum.h"
-#include "errors.h"
-#include "field-name-dependent.h"
-#include "field-value-dependent.h"
-#include "fixed-order.h"
-#include "map.h"
-#include "parameter-list.h"
-#include "try-alternatives.h"
-#include "types.h"
-#include "unpack-proxy.h"
-#include "validate.h"
-#include "value-reader.h"
-#include "values.h"
+#include <Pregel/Algos/AIR/Greenspun/Interpreter.h>
 
-#endif  // VELOCYPACK_DESERIALIZER_H
+namespace arangodb::greenspun {
+void RegisterAllMathFunctions(Machine& ctx);
+}  // namespace arangodb::greenspun
+
+#endif

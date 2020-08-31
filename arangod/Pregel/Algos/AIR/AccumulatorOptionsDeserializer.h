@@ -31,6 +31,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <map>
+#include <unordered_set>
 #include <string>
 
 #include <VPackDeserializer/errors.h>
@@ -40,6 +41,8 @@ namespace arangodb {
 namespace pregel {
 namespace algos {
 namespace accumulators {
+
+using PregelProgram = VPackBuilder;
 
 enum class AccumulatorType {
   MIN,
@@ -77,11 +80,11 @@ struct DataAccessDefinition {
 };
 
 struct CustomAccumulatorDefinition {
-  VPackBuilder clearProgram;
-  VPackBuilder updateProgram;
-  VPackBuilder setProgram;
-  VPackBuilder getProgram;
-  VPackBuilder finalizeProgram;
+  PregelProgram clearProgram;
+  PregelProgram updateProgram;
+  PregelProgram setProgram;
+  PregelProgram getProgram;
+  PregelProgram finalizeProgram;
 };
 
 // An accumulator declaration consists of a unique name
@@ -93,12 +96,33 @@ using DataAccessDefinitions = DataAccessDefinition;
 
 struct AlgorithmPhase {
   std::string name;
-  VPackBuilder initProgram;
-  VPackBuilder updateProgram;
-  VPackBuilder onHalt;
+  PregelProgram initProgram;
+  PregelProgram updateProgram;
+
+  PregelProgram onHalt;
+  PregelProgram onPreStep;
+  PregelProgram onPostStep;
 };
 
 using PhaseDeclarations = std::vector<AlgorithmPhase>;
+
+using IdentifierList = std::unordered_set<std::string>;
+
+struct TraceMessagesFilterOptions {
+  IdentifierList byReceiver;  // obsolete, plz remove
+  IdentifierList bySender;
+  IdentifierList byAccumulator;
+};
+
+struct TraceMessagesOptions {
+  std::optional<TraceMessagesFilterOptions> filter;
+};
+
+using TraceMessageVertexList = std::unordered_map<std::string, TraceMessagesOptions>;
+
+struct DebugInformation {
+  TraceMessageVertexList traceMessages;
+};
 
 /* The Pregel Algorithm */
 struct VertexAccumulatorOptions {
@@ -110,6 +134,7 @@ struct VertexAccumulatorOptions {
   BindingDeclarations bindings;
   PhaseDeclarations phases;
   uint64_t maxGSS;
+  std::optional<DebugInformation> debug;
 };
 
 std::ostream& operator<<(std::ostream&, AccumulatorOptions const&);

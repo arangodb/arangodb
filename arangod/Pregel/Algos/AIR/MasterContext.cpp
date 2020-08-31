@@ -72,6 +72,9 @@ greenspun::EvalResult MasterContext::air_GotoPhase(greenspun::Machine& ctx,
 greenspun::EvalResult MasterContext::air_Finish(greenspun::Machine& ctx,
                                                 VPackSlice const params,
                                                 VPackBuilder& result) {
+  if (!allowPhaseModifications) {
+    return greenspun::EvalError("not allowed in this context");
+  }
   if (params.isEmptyArray()) {
     finish();
     return {};
@@ -161,12 +164,12 @@ void MasterContext::finish() {
 }
 
 MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVertexesVotedHalt) {
-  if (!allVertexesVotedHalt) {
-    return ContinuationResult::DONT_CARE;
-  }
+  LOG_DEVEL << "master context post global";
 
   auto phase_index = *getAggregatedValue<uint32_t>("phase");
+  LOG_DEVEL << "phase index at.";
   auto phase = _algo->options().phases.at(phase_index);
+  LOG_DEVEL << "phase index at^2";
 
   if (getReportManager().getNumErrors() > 0) {
     getReportManager().report(ReportLevel::INFO).with("phase", phase.name)
@@ -174,10 +177,33 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
     return ContinuationResult::ERROR_ABORT;
   }
 
+  bool shouldTerminateUser = false;
+  if (!phase.onPostStep.isEmpty()) {
+    VPackBuilder onPostStepResult;
+    userSelectedNext = ContinuationResult::DONT_CARE;
+    auto res = greenspun::Evaluate(_airMachine, phase.onPostStep.slice(), onPostStepResult);
+    if (res.fail()) {
+      getReportManager().report(ReportLevel::ERROR).with("phase", phase.name)
+          << "onPreStep program of phase `" << phase.name
+          << "` returned and error: " << res.error().toString();
+      return ContinuationResult::ERROR_ABORT;
+    }
+    if (userSelectedNext == ContinuationResult::ABORT) {
+      LOG_DEVEL << "User aborted in onPostStep";
+      shouldTerminateUser = true;
+    }
+  }
+
+  if (!allVertexesVotedHalt && !shouldTerminateUser) {
+    return ContinuationResult::DONT_CARE;
+  }
+
   if (!phase.onHalt.isEmpty()) {
     VPackBuilder onHaltResult;
 
     userSelectedNext = ContinuationResult::DONT_CARE;
+    allowPhaseModifications = true;
+    TRI_DEFER({ allowPhaseModifications = false; })
     auto res = greenspun::Evaluate(_airMachine, phase.onHalt.slice(), onHaltResult);
     if (res.fail()) {
       getReportManager().report(ReportLevel::ERROR).with("phase", phase.name)
@@ -211,6 +237,7 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
 }
 
 void MasterContext::preGlobalSuperstepMessage(VPackBuilder& msg) {
+  LOG_DEVEL << "preGlobalStep message";
   // Send the current values of all global accumulators to the workers
   // where they will be received and passed to WorkerContext in preGlobalSuperstepMessage
   {
@@ -231,6 +258,7 @@ void MasterContext::preGlobalSuperstepMessage(VPackBuilder& msg) {
 }
 
 bool MasterContext::postGlobalSuperstepMessage(VPackSlice workerMsgs) {
+  LOG_DEVEL << "postGlobalStep message";
   if (!workerMsgs.isArray()) {
     LOG_DEVEL << "AIR MasterContext received invalid message from conductor: " << workerMsgs.toJson() << " expecting array of objects";
     return false;
@@ -269,27 +297,31 @@ bool MasterContext::postGlobalSuperstepMessage(VPackSlice workerMsgs) {
   return true;
 }
 
-
-void MasterContext::serializeValues(VPackBuilder& msg) {
-  {
-    VPackObjectBuilder msgGuard(&msg);
-    {
-      VPackObjectBuilder valuesGuard(&msg, "globalAccumulatorValues");
-
-      for (auto&& acc : globalAccumulators()) {
-        msg.add(VPackValue(acc.first));
-
-        if(auto result = acc.second->getValueIntoBuilder(msg); result.fail()) {
-          LOG_DEVEL << "AIR MasterContext, error serializing global accumulator "
-                    << acc.first << " " << result.error().toString();
-        }
-      }
-    }
-  }
-}
-
 std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const& MasterContext::globalAccumulators() {
   return _globalAccumulators;
+}
+
+bool MasterContext::preGlobalSuperstepWithResult() {
+  auto phase_index = *getAggregatedValue<uint32_t>("phase");
+  auto phase = _algo->options().phases.at(phase_index);
+
+  if (!phase.onPreStep.isEmpty()) {
+    VPackBuilder onPreStepResult;
+    userSelectedNext = ContinuationResult::DONT_CARE;
+    auto res = greenspun::Evaluate(_airMachine, phase.onPreStep.slice(), onPreStepResult);
+    if (res.fail()) {
+      getReportManager().report(ReportLevel::ERROR).with("phase", phase.name)
+          << "onPreStep program of phase `" << phase.name
+          << "` returned and error: " << res.error().toString();
+      return false;
+    }
+    if (userSelectedNext == ContinuationResult::ABORT) {
+      LOG_DEVEL << "User aborted in onPreStep";
+      return false;
+    }
+  }
+
+  return true;
 }
 
 }  // namespace arangodb::pregel::algos::accumulators

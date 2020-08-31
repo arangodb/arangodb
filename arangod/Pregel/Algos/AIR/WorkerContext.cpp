@@ -31,6 +31,7 @@ namespace arangodb::pregel::algos::accumulators {
 
 WorkerContext::WorkerContext(VertexAccumulators const* algorithm)
     : _algo(algorithm) {
+  LOG_DEVEL << "worker context construct";
   CustomAccumulatorDefinitions const& customDefinitions = _algo->options().customAccumulators;
   AccumulatorsDeclaration const& globalAccumulatorsDeclarations = _algo->options().globalAccumulators;
 
@@ -109,9 +110,9 @@ void WorkerContext::postGlobalSuperstepMasterMessage(VPackBuilder& msg) {
   }
 }
 
-greenspun::EvalResult WorkerContext::sendToGlobalAccumulator(std::string accumId, VPackSlice value) const {
+greenspun::EvalResult WorkerContext::sendToGlobalAccumulator(std::string accumId, MessageData const& msg) const {
   if (auto iter = _globalAccumulatorsUpdates.find(accumId); iter != std::end(_globalAccumulatorsUpdates)) {
-    return iter->second->updateBySlice(value).asResult();
+    return iter->second->updateByMessage(msg).asResult();
   }
   return greenspun::EvalError("global accumulator`" + accumId + "` not found");
 }

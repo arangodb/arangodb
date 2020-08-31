@@ -26,6 +26,7 @@
 #include "Interpreter.h"
 #include "Primitives.h"
 #include "lib/DateTime.h"
+#include "lib/Math.h"
 
 #include <iostream>
 #include <sstream>
@@ -43,6 +44,7 @@ void InitMachine(Machine& m) {
   // Also adds a dependency on Basics which is just a whole lot of pain I don't
   // want right now.
   // RegisterAllDateTimeFunctions(m);
+  RegisterAllMathFunctions(m);
 }
 
 EvalResult Apply(Machine& ctx, std::string const& function,

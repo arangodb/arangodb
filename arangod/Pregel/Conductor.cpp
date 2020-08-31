@@ -155,9 +155,9 @@ bool Conductor::_startGlobalStep() {
   {
     // TODO: lock?
     VPackArrayBuilder guard(&messagesFromWorkers);
-  // we are explicitly expecting an response containing the aggregated
-  // values as well as the count of active vertices
-  int res = _sendToAllDBServers(Utils::prepareGSSPath, b, [&](VPackSlice const& payload) {
+    // we are explicitly expecting an response containing the aggregated
+    // values as well as the count of active vertices
+    int res = _sendToAllDBServers(Utils::prepareGSSPath, b, [&](VPackSlice const& payload) {
     _aggregators->aggregateValues(payload);
 
     // TODO: locking necessary?
@@ -234,7 +234,10 @@ bool Conductor::_startGlobalStep() {
     _masterContext->_globalSuperstep = _globalSuperstep;
     _masterContext->_vertexCount = _totalVerticesCount;
     _masterContext->_edgeCount = _totalEdgesCount;
-    _masterContext->preGlobalSuperstep();
+    if (!_masterContext->preGlobalSuperstepWithResult()) {
+      LOG_DEVEL << "Aborting algorithm because of error in onPreStep";
+      return false;
+    }
     _masterContext->preGlobalSuperstepMessage(toWorkerMessages);
   }
 
@@ -838,7 +841,7 @@ VPackBuilder Conductor::toVelocyPack() const {
     result.add("edgeCount", VPackValue(_totalEdgesCount));
   }
   if (_masterContext) {
-    result.add(VPackValue("masterContext"));
+    VPackObjectBuilder ob(&result, "masterContext");
     _masterContext->serializeValues(result);
   }
   result.close();

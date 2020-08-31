@@ -51,6 +51,7 @@ class VertexComputation : public vertex_computation {
  private:
   greenspun::EvalResult clearAllVertexAccumulators();
   greenspun::EvalResultT<bool> processIncomingMessages(MessageIterator<MessageData> const& incomingMessages);
+  void traceMessage(MessageData const*);
 
   greenspun::EvalResult runProgram(greenspun::Machine& ctx, VPackSlice program);
 

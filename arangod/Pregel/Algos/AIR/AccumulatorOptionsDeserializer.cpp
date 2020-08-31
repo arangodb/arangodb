@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AccumulatorOptionsDeserializer.h"
+#include <unordered_set>
 
 #include <VPackDeserializer/deserializer.h>
 
@@ -32,6 +33,13 @@ namespace arangodb {
 namespace pregel {
 namespace algos {
 namespace accumulators {
+
+template <typename K, typename V>
+using my_map = std::unordered_map<K, V>;
+template <typename V>
+using my_vector = std::vector<V>;
+template <typename V>
+using my_unordered_set = std::unordered_set<V>;
 
 bool isValidAccumulatorOptions(const AccumulatorOptions& options);
 
@@ -141,16 +149,58 @@ using data_access_options_deserializer = utilities::constructing_deserializer<Da
 
 constexpr const char name[] = "name";
 constexpr const char onHalt[] = "onHalt";
+constexpr const char onPreStep[] = "onPreStep";
+constexpr const char onPostStep[] = "onPostStep";
 constexpr const char initProgram[] = "initProgram";
 
 using algorithm_phase_plan = parameter_list<
     factory_deserialized_parameter<name, values::value_deserializer<std::string>, true>,
     factory_builder_parameter<initProgram, false>,
     factory_builder_parameter<updateProgram, true>,
-    factory_builder_parameter<onHalt, false>
+    factory_builder_parameter<onHalt, false>,
+    factory_builder_parameter<onPreStep, false>,
+    factory_builder_parameter<onPostStep, false>
 >;
 
 using algorithm_phase_deserializer = utilities::constructing_deserializer<AlgorithmPhase, algorithm_phase_plan>;
+
+/* Debug */
+
+using identifier_list_deserializer = array_deserializer<values::value_deserializer<std::string>, my_unordered_set>;
+
+constexpr const char byReceiver[] = "byReceiver";
+constexpr const char bySender[] = "bySender";
+constexpr const char byAccumulator[] = "byAccumulator";
+
+using trace_messages_filter_options_deserializer_plan = parameter_list<
+    factory_deserialized_parameter<byReceiver, identifier_list_deserializer, false>,
+    factory_deserialized_parameter<bySender, identifier_list_deserializer, false>,
+    factory_deserialized_parameter<byAccumulator, identifier_list_deserializer, false>
+>;
+
+using trace_messages_filter_options_deserializer =
+  utilities::constructing_deserializer<TraceMessagesFilterOptions, trace_messages_filter_options_deserializer_plan>;
+
+constexpr const char filter[] = "filter";
+
+using trace_messages_options_deserializer_plan = parameter_list<
+    factory_optional_deserialized_parameter<filter, trace_messages_filter_options_deserializer>
+>;
+
+using trace_messages_options_deserializer =
+  utilities::constructing_deserializer<TraceMessagesOptions, trace_messages_options_deserializer_plan>;
+
+using trace_messages_vertex_list_deserializer = map_deserializer<trace_messages_options_deserializer, my_map>;
+
+constexpr const char traceMessages[] = "traceMessages";
+
+using debug_information_deserializer_plan = parameter_list<
+    factory_deserialized_parameter<traceMessages, trace_messages_vertex_list_deserializer, false>
+>;
+
+using debug_information_deserializer = utilities::constructing_deserializer<DebugInformation, debug_information_deserializer_plan>;
+
+/* Algorithm */
 
 constexpr const char resultField[] = "resultField";
 constexpr const char vertexAccumulators[] = "vertexAccumulators";
@@ -160,11 +210,8 @@ constexpr const char dataAccess[] = "dataAccess";
 constexpr const char bindings[] = "bindings";
 constexpr const char maxGSS[] = "maxGSS";
 constexpr const char phases[] = "phases";
+constexpr const char debug[] = "debug";
 
-template<typename K, typename V>
-using my_map = std::unordered_map<K, V>;
-template<typename V>
-using my_vector = std::vector<V>;
 
 template<typename D, template <typename> typename C>
 using non_empty_array_deserializer = validate<
@@ -183,10 +230,52 @@ using vertex_accumulator_options_plan = parameter_list<
     factory_deserialized_parameter<dataAccess, data_access_options_deserializer, false>,
     factory_deserialized_parameter<bindings, bindings_map_deserializer, /* required */ false>, // will be default constructed as empty map
     factory_deserialized_parameter<phases, phases_deserializer, true>,
-    factory_simple_parameter<maxGSS, uint64_t, false, values::numeric_value<uint64_t, 500>>>;
+    factory_simple_parameter<maxGSS, uint64_t, false, values::numeric_value<uint64_t, 500>>,
+    factory_optional_deserialized_parameter<debug, debug_information_deserializer>
+>;
 
-using vertex_accumulator_options_deserializer =
+// TODO: we could of course collect all parsing problems and return
+//       them in bulk
+struct vertex_accumulator_options_validator {
+
+  bool isDefinedCustomAccumulatorType(VertexAccumulatorOptions const& opts, std::string const& customTypeName) {
+    // C++2020 will have contains...
+    return opts.customAccumulators.find(customTypeName) != std::end(opts.customAccumulators);
+  }
+
+  std::optional<deserialize_error> validate(VertexAccumulatorOptions const& opts, accumulators_map_deserializer::constructed_type::value_type const& acc) {
+    if (acc.second.type == AccumulatorType::CUSTOM) {
+      // Custom accumulators have to have type set, this
+      // is ensured by the validator.
+      auto const& customTypeName = acc.second.customType.value();
+      if (!isDefinedCustomAccumulatorType(opts, customTypeName)) {
+        return deserialize_error{"unknown custom accumulator type `"
+          + customTypeName + "` for `" + acc.first + "`."};
+      }
+    }
+    return {};
+  }
+
+  std::optional<deserialize_error> operator()(VertexAccumulatorOptions const& opts) {
+    for(auto&& acc : opts.globalAccumulators) {
+      if (auto err = validate(opts, acc); err) {
+        return err->wrap("validating global accumulator");
+      }
+    }
+
+    for(auto&& acc : opts.vertexAccumulators) {
+      if (auto err = validate(opts, acc); err) {
+        return err->wrap("validating vertex accumulator");
+      }
+    }
+    return {};
+  }
+};
+
+using vertex_accumulator_options_deserializer_base =
   utilities::constructing_deserializer<VertexAccumulatorOptions, vertex_accumulator_options_plan>;
+
+using vertex_accumulator_options_deserializer = validator::validate<vertex_accumulator_options_deserializer_base, vertex_accumulator_options_validator>;
 
 /* clang-format on */
 
