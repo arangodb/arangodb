@@ -69,6 +69,21 @@ function cmpAccumulator(cmp) {
                 ],
                 [true, null]
             ],
+            aggregateStateProgram: [ "if"
+                                     [
+                                       [ "or",
+                                         ["not", ["attrib-get", "isSet", ["current-value"]]],
+                                         [cmp,
+                                          ["attrib-get", "value", ["input-state"]],
+                                          ["attrib-get", "value", ["current-value"]]]
+                                       ],
+                                       ["seq",
+                                        ["this-set!",
+                                         ["input-state"]],
+                                        "hot"]],
+                                     [true, "cold"]
+                                   ],
+          //  getStateProgram: [],
         };
     };
 }
