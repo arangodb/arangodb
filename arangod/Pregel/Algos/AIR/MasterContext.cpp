@@ -293,12 +293,12 @@ bool MasterContext::postGlobalSuperstepMessage(VPackSlice workerMsgs) {
           iter != std::end(globalAccumulators())) {
         auto res = iter->second->aggregateStateBySlice(upd.value);
         if (!res) {
-          LOG_DEVEL << "AIR MasterContext could not update global accumulator "
+          LOG_DEVEL << "AIR MasterContext could not aggregate state of global accumulator "
                     << accumName << ", " << res.error().toString();
           return false;
         }
       } else {
-        LOG_DEVEL << "AIR MasterContext received update for unknown global "
+        LOG_DEVEL << "AIR MasterContext received state for unknown global "
                      "accumulator "
                   << accumName;
       }

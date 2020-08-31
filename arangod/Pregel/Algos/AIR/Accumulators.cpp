@@ -162,7 +162,7 @@ auto CustomAccumulator<VPackSlice>::setStateBySlice(VPackSlice msg) -> greenspun
 
 auto CustomAccumulator<VPackSlice>::aggregateStateBySlice(VPackSlice msg) -> greenspun::EvalResult {
   this->inputSlice = msg;
-  TRI_DEFER({ this->inputSlice = VPackSlice::noneSlice(); });
+  TRI_DEFER({ this->inputState = VPackSlice::noneSlice(); });
 
   if (_definition.aggregateStateProgram.isEmpty()) {
     return greenspun::EvalError{"custom accumulator cannot be used as a global accumulator, because it does not have an aggregateStateProgram"};
@@ -217,6 +217,8 @@ void CustomAccumulator<VPackSlice>::SetupFunctions() {
                              &CustomAccumulator<VPackSlice>::AIR_InputSender, this);
   _machine.setFunctionMember("input-value",
                              &CustomAccumulator<VPackSlice>::AIR_InputValue, this);
+  _machine.setFunctionMember("input-state",
+                             &CustomAccumulator<VPackSlice>::AIR_InputState, this);
   _machine.setFunctionMember("current-value",
                              &CustomAccumulator<VPackSlice>::AIR_CurrentValue, this);
   _machine.setFunctionMember("get-current-value",
@@ -284,6 +286,13 @@ auto CustomAccumulator<VPackSlice>::AIR_InputSender(arangodb::greenspun::Machine
     return {};
   }
   return greenspun::EvalError("input-sender not available here");
+}
+
+auto CustomAccumulator<VPackSlice>::AIR_InputState(arangodb::greenspun::Machine& ctx,
+                                                   VPackSlice slice, VPackBuilder& result)
+  -> arangodb::greenspun::EvalResult {
+  result.add(stateSlice);
+  return {};
 }
 
 CustomAccumulator<VPackSlice>::~CustomAccumulator() = default;
