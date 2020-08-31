@@ -63,6 +63,8 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
   void preGlobalSuperstepMessage(VPackBuilder& msg) override;
   bool postGlobalSuperstepMessage(VPackSlice workerMsgs) override;
 
+  void serializeValues(VPackBuilder& msg) override;
+
   std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const& globalAccumulators();
 private:
   VertexAccumulators const* _algo;
