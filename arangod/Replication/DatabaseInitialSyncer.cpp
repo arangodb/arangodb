@@ -745,11 +745,11 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
   std::string const typeString = (coll->type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
 
   // statistics which will update the global replication metrics,
-  // periodically resetted 
+  // periodically reset
   ReplicationMetricsFeature::InitialSyncStats stats(vocbase().server().getFeature<ReplicationMetricsFeature>(), true);
 
   // local statistics that will be ever increasing inside this method
-  ReplicationMetricsFeature::InitialSyncStats cumulatedStats(vocbase().server().getFeature<ReplicationMetricsFeature>(), false);
+  ReplicationMetricsFeature::InitialSyncStats cumulativeStats(vocbase().server().getFeature<ReplicationMetricsFeature>(), false);
 
   TRI_ASSERT(_config.batch.id);  // should not be equal to 0
 
