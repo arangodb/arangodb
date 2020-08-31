@@ -146,6 +146,22 @@ function exec_test_write_vertex_on_graph(graphSpec, amount) {
 
 // TODO: Also add tests for nested paths e.g.: {a: {b: "value"}}
 
+function array_compare(a1, a2) {
+  if (a1.length != a2.length) {
+    return false;
+  }
+  for (var i in a1) {
+    if (a1[i] instanceof Array && a2[i] instanceof Array) {
+      if (!array_compare(a1[i], a2[i])) {
+        return false;
+      }
+    } else if (a1[i] !== a2[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function exec_test_read_vertex_on_graph(graphSpec, expectedKeys, nested) {
   let status = testhelpers.wait_for_pregel("AIR write-vertex", read_vertex(graphSpec.name, expectedKeys, nested));
 
@@ -159,12 +175,9 @@ function exec_test_read_vertex_on_graph(graphSpec, expectedKeys, nested) {
   let arrResult = result.toArray();
   let finalResult = false;
 
-  internal.print("Result: ");
-  internal.print(arrResult);
-
   for (let res of arrResult) {
     if (res) { // != null or undefined
-      if (_.get(expectedKeys, res)) {
+      if (_.get(expectedKeys, res) || array_compare(expectedKeys, res)) {
         finalResult = true;
       } else {
         internal.print("Error. Path: " + res + " not found.");
@@ -228,23 +241,38 @@ function exec_benchmark_write_vertex_on_graph(graphSpec, runs) {
 
 function exec_test_data_access() {
   // write vertex validation
-  //exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1), 100);
-  //exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9), 1000);
-  //exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18), 10000);
+  exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1), 100);
+  exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9), 1000);
+  exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18), 10000);
 
   // read vertex validation
-  /*exec_test_read_vertex_on_graph(
-    examplegraphs.create_line_graph("LineGraph100", 100, 1, ["a", "b", "c"]),
-    ["a", "b"]
-  );*/
-
-  // let vertexKeysToInsert = ["a", ["a", "b"], ["a", "c"], "d", "e"]; // original
-  let vertexKeysToInsert = ["a", ["a", "b"], ["a", "c"], ["a", "c", "x"], "d", "e"];
   exec_test_read_vertex_on_graph(
-    examplegraphs.create_line_graph("LineGraph100", 5, 1,
-      vertexKeysToInsert),
-    vertexKeysToInsert, true
+    examplegraphs.create_line_graph("LineGraph100", 100, 1, ["a", "b", "c"]),
+    ["a", "b", "c"]
   );
+
+  // nested inputs
+  let vertexKeysToInsertA = ["a", ["a", "b"], ["a", "c"], ["a", "c", "x"], "d", "e"];
+  let vertexKeysToInsertB = ["a", ["a", "b"], ["a", "c"], "d", "e"];
+  let readVertexTestInputs = [vertexKeysToInsertA, vertexKeysToInsertB];
+  readVertexTestInputs.forEach((input) => {
+    exec_test_read_vertex_on_graph(
+      examplegraphs.create_line_graph("LineGraph100", 100, 1,
+        input),
+      input, true
+    );
+    exec_test_read_vertex_on_graph(
+      examplegraphs.create_line_graph("LineGraph100", 1000, 9,
+        input),
+      input, true
+    );
+    exec_test_read_vertex_on_graph(
+      examplegraphs.create_line_graph("LineGraph10000", 10000, 18,
+        input),
+      input, true
+    );
+  });
+
 }
 
 function exec_benchmark_data_access() {
