@@ -342,11 +342,15 @@ void createPaths(std::list<std::list<std::string>>& finalPaths,
 void pathToBuilder(std::list<std::list<std::string>>& finalPaths, VPackBuilder& result) {
   result.openArray();
   for (auto const& path : finalPaths) {
-    result.openArray();
+    if (path.size() > 1) {
+      result.openArray();
+    }
     for (auto const& pathElement : path) {
       result.add(VPackValue(pathElement));
     }
-    result.close();
+    if (path.size() > 1) {
+      result.close();
+    }
   }
   result.close();
 }
@@ -365,7 +369,7 @@ EvalResult Prim_DictDirectory(Machine& ctx, VPackSlice const params, VPackBuilde
   std::list<std::string> currentPath;
   createPaths(finalPaths, obj, currentPath);
   pathToBuilder(finalPaths, result);
-  
+
   return {};
 }
 
