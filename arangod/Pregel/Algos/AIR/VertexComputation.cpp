@@ -548,7 +548,7 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
       return;
     }
 
-    if (!accumChanged.value() && phaseStep != 1) {
+    if (!this->isActive() && !accumChanged.value() && phaseStep != 1) {
       voteHalt();
       return;
     }
