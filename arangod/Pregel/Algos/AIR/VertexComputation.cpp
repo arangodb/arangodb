@@ -369,61 +369,64 @@ WorkerContext const& VertexComputation::workerContext() const {
   return *static_cast<WorkerContext const*>(context());
 }
 
+void VertexComputation::traceMessage(MessageData const* msg) {
+  auto&& options = _algorithm.options();
+  auto&& accumName = msg->_accumulatorName;
+
+  if (options.debug) {
+    DebugInformation const& dinfo = options.debug.value();
+    LOG_DEVEL << "Debugging is turned on" << dinfo.traceMessages.begin()->first;
+    if (auto iter = dinfo.traceMessages.find(vertexData()._documentId);
+        iter != dinfo.traceMessages.end()) {
+      LOG_DEVEL << "message tracing enabled for this vertex";
+      bool traceMessage = true;
+      auto& traceOptions = iter->second;
+      if (traceOptions.filter) {
+        LOG_DEVEL << "message tracing has filter";
+        TraceMessagesFilterOptions const& filterOptions = traceOptions.filter.value();
+        if (!filterOptions.byAccumulator.empty() &&
+            filterOptions.byAccumulator.find(accumName) ==
+            std::end(filterOptions.byAccumulator)) {
+          LOG_DEVEL << "message not trace because accum is " << accumName << " not searched for";
+          traceMessage = false;
+        }
+        if (!filterOptions.bySender.empty() &&
+            filterOptions.bySender.find(msg->sender()) ==
+            std::end(filterOptions.bySender)) {
+          LOG_DEVEL << "message not trace because sender is " << msg->sender() << " not searched for";
+          traceMessage = false;
+        }
+      }
+
+      if (traceMessage) {
+        LOG_DEVEL << "message is traced!";
+        auto phase_index = *getAggregatedValue<uint32_t>("phase");
+        auto phase = _algorithm.options().phases.at(phase_index);
+
+        getReportManager()
+            .report(ReportLevel::INFO)
+            .with("pregel-id", pregelId())
+            .with("vertex", vertexData()._documentId)
+            .with("phase", phase.name)
+            .with("global-superstep", globalSuperstep())
+            .with("phase-step", phaseGlobalSuperstep())
+            .with("message", msg->_value.toJson())
+            .with("sender", msg->_sender)
+            .with("accumulator", accumName)
+            << "debug trace";
+      }
+    }
+  }
+
+}
+
 greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
     MessageIterator<MessageData> const& incomingMessages) {
   auto accumChanged = bool{false};
 
-  auto& options = _algorithm.options();
-
   for (const MessageData* msg : incomingMessages) {
     auto&& accumName = msg->_accumulatorName;
     auto&& accum = vertexData().accumulatorByName(accumName);
-
-    if (options.debug) {
-      DebugInformation const& dinfo = options.debug.value();
-      LOG_DEVEL << "Debugging is turned on" << dinfo.traceMessages.begin()->first;
-      if (auto iter = dinfo.traceMessages.find(vertexData()._documentId);
-          iter != dinfo.traceMessages.end()) {
-        LOG_DEVEL << "message tracing enabled for this vertex";
-        bool traceMessage = true;
-        auto& traceOptions = iter->second;
-        if (traceOptions.filter) {
-          LOG_DEVEL << "message tracing has filter";
-          TraceMessagesFilterOptions const& filterOptions = traceOptions.filter.value();
-          if (!filterOptions.byAccumulator.empty() &&
-              filterOptions.byAccumulator.find(accumName) ==
-                  std::end(filterOptions.byAccumulator)) {
-            LOG_DEVEL << "message not trace because accum is " << accumName << " not searched for";
-            traceMessage = false;
-          }
-          if (!filterOptions.bySender.empty() &&
-              filterOptions.bySender.find(msg->sender()) ==
-                  std::end(filterOptions.bySender)) {
-            LOG_DEVEL << "message not trace because sender is " << msg->sender() << " not searched for";
-            traceMessage = false;
-          }
-        }
-
-        if (traceMessage) {
-          LOG_DEVEL << "message is traced!";
-          auto phase_index = *getAggregatedValue<uint32_t>("phase");
-          auto phase = _algorithm.options().phases.at(phase_index);
-
-          getReportManager()
-                  .report(ReportLevel::INFO)
-                  .with("pregel-id", pregelId())
-                  .with("vertex", vertexData()._documentId)
-                  .with("phase", phase.name)
-                  .with("global-superstep", globalSuperstep())
-                  .with("phase-step", phaseGlobalSuperstep())
-                  .with("message", msg->_value.toJson())
-                  .with("sender", msg->_sender)
-                  .with("accumulator", accumName)
-              << "debug trace";
-        }
-      }
-    }
-
     auto res = accum->updateByMessage(*msg);
     if (res.fail()) {
       auto phase_index = *getAggregatedValue<uint32_t>("phase");
