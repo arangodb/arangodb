@@ -33,6 +33,8 @@ ReportBuilder::ReportBuilder(ReportManager& manager, ReportLevel lvl)
 
 std::string arangodb::pregel::to_string(ReportLevel lvl) {
   switch(lvl) {
+    case ReportLevel::DEBUG:
+      return "debug";
     case ReportLevel::INFO:
       return "info";
     case ReportLevel::WARNING:
@@ -45,7 +47,9 @@ std::string arangodb::pregel::to_string(ReportLevel lvl) {
 
 namespace {
 ReportLevel levelFromString(std::string_view str) {
-  if (str == "info") {
+  if (str == "debug") {
+    return ReportLevel::DEBUG;
+  } else if (str == "info") {
     return ReportLevel::INFO;
   } else if (str == "warn") {
     return ReportLevel::WARNING;

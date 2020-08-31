@@ -31,7 +31,7 @@
 
 namespace arangodb::pregel {
 
-enum class ReportLevel { INFO, WARNING, ERROR };
+enum class ReportLevel { DEBUG, INFO, WARNING, ERROR };
 std::string to_string(ReportLevel);
 
 using ReportAnnotations = std::unordered_map<std::string, VPackBuilder>;
