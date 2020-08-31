@@ -161,7 +161,7 @@ auto CustomAccumulator<VPackSlice>::setStateBySlice(VPackSlice msg) -> greenspun
 }
 
 auto CustomAccumulator<VPackSlice>::aggregateStateBySlice(VPackSlice msg) -> greenspun::EvalResult {
-  this->inputSlice = msg;
+  this->inputState = msg;
   TRI_DEFER({ this->inputState = VPackSlice::noneSlice(); });
 
   if (_definition.aggregateStateProgram.isEmpty()) {
@@ -291,8 +291,11 @@ auto CustomAccumulator<VPackSlice>::AIR_InputSender(arangodb::greenspun::Machine
 auto CustomAccumulator<VPackSlice>::AIR_InputState(arangodb::greenspun::Machine& ctx,
                                                    VPackSlice slice, VPackBuilder& result)
   -> arangodb::greenspun::EvalResult {
-  result.add(stateSlice);
-  return {};
+  if (!inputState.isNone()){
+    result.add(inputState);
+    return {};
+  }
+  return greenspun::EvalError("input-state not available here");
 }
 
 CustomAccumulator<VPackSlice>::~CustomAccumulator() = default;

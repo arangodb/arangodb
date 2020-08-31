@@ -69,7 +69,7 @@ function cmpAccumulator(cmp) {
                 ],
                 [true, null]
             ],
-            aggregateStateProgram: [ "if"
+            aggregateStateProgram: [ "if",
                                      [
                                        [ "or",
                                          ["not", ["attrib-get", "isSet", ["current-value"]]],
@@ -80,7 +80,8 @@ function cmpAccumulator(cmp) {
                                        ["seq",
                                         ["this-set!",
                                          ["input-state"]],
-                                        "hot"]],
+                                        "hot"]
+                                     ],
                                      [true, "cold"]
                                    ],
           //  getStateProgram: [],
@@ -101,6 +102,11 @@ function sumAccumulator() {
         getProgram: ["current-value"],
         setProgram: ["this-set!", ["input-value"]],
         finalizeProgram: ["current-value"],
+      aggregateStateProgram: [ "seq",
+                               ["this-set!", ["+", ["current-value"], ["input-state"]]],
+                               "hot"
+                             ],
+
     };
 }
 
