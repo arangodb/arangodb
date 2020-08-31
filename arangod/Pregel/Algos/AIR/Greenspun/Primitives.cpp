@@ -327,7 +327,7 @@ void createPaths(
       finalPaths.emplace_back(currentTmpPath); // ["c"] <-- das hier gespeichert in finalPath result
 
       // ABER -> Pfad ist nicht abgeschlossen
-      std::cout << "Path not finalised!" << std::endl;
+
       currentPath.emplace_back(currentKey);
 
       std::cout << "We want to continue with path generation!" << std::endl;
@@ -335,28 +335,16 @@ void createPaths(
     } else {
       std::cout << "Path finalised!" << std::endl;
       // -> Pfad ist abgeschlossen!
-      std::list<std::string> currentTmpPath(currentPath); // Copy currentPath -> currentTmpPath
-      currentTmpPath.emplace_back(currentKey); // <-- Füge Key hinzu
+      std::list<std::string> currentTmpPath(currentPath);
+      currentTmpPath.emplace_back(currentKey);
       finalPaths.emplace_back(currentTmpPath);
-      //currentPath.clear();
     }
 
     if (iter.isLast()) {
-      std::cout << "address: " << std::endl;
-      std::cout << &currentPath << std::endl;
-      printPath(currentPath);
-      std::cout << " - Found last iterator, key: " << iter.key().toString() << ". Pop front now" << std::endl;
-      std::cout << "Size before: " << currentPath.size() << std::endl;
-
-      // HIER NOCH PFAD SCHREIBEN BEVOR WIR LÖSCHEN
-
       if (currentPath.size() > 0) {
         currentPath.pop_back();
       }
-
-      std::cout << "Size after: " << currentPath.size() << std::endl;
     }
-
   }
 }
 
