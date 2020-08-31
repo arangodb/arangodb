@@ -46,8 +46,10 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void stop() override final;
   void unprepare() override final;
 
-  // tracks a slow query by increasing the counter
-  void trackSlowQuery() { ++_slowQueriesCounter; }
+  // tracks a query, using execution time
+  void trackQuery(double time);
+  // tracks a slow query, using execution time
+  void trackSlowQuery(double time);
 
   bool trackSlowQueries() const { return _trackSlowQueries; }
   bool trackBindVars() const { return _trackBindVars; }
@@ -90,6 +92,10 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
 
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
 
+  Histogram<log_scale_t<double>>& _queryTimes;
+  Histogram<log_scale_t<double>>& _slowQueryTimes;
+  Counter& _totalQueryExecutionTime;
+  Counter& _queriesCounter;
   Counter& _slowQueriesCounter;
 };
 
