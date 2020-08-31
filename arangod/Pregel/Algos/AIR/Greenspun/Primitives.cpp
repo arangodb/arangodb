@@ -301,51 +301,54 @@ std::list<std::string> createObjectPaths(velocypack::Slice object,
 }
 
 void printPath(std::list<std::string>& path) {
-
+  // TODO: can be removed - internal debugging method
   std::cout << "Printing current path: " << std::endl;
-    std::cout << " [ ";
-    for (auto const& pathElement : path) {
-      std::cout << " " << pathElement << " ";
-    }
-    std::cout << " ] " << std::endl;
+  std::cout << " [ ";
+  for (auto const& pathElement : path) {
+    std::cout << " " << pathElement << " ";
+  }
+  std::cout << " ] " << std::endl;
 }
 
-void createPaths(
-    std::list<std::list<std::string>>& finalPaths,
-    velocypack::Slice object,
-    std::list<std::string>& currentPath) {
+void createPaths(std::list<std::list<std::string>>& finalPaths,
+                 velocypack::Slice object, std::list<std::string>& currentPath) {
   for (VPackObjectIterator iter(object); iter.valid(); iter++) {
-    std::string currentKey = iter.key().toString();  // <= a
-    VPackSlice currentValue = iter.value();          // <= {b:2 , c:2}
-    std::cout << "Current Key is: " << currentKey << std::endl;
-    std::cout << "Current Value is: " << currentValue.toString() << std::endl;
+    std::string currentKey = iter.key().toString();
+    VPackSlice currentValue = iter.value();
 
     if (currentValue.isObject()) {
-      std::cout << "We've found an object!" << std::endl;
-      std::list<std::string> currentTmpPath(currentPath); //= {currentKey}; // <-- muss schon gespeichert werden
-      currentTmpPath.emplace_back(currentKey);
-      finalPaths.emplace_back(currentTmpPath); // ["c"] <-- das hier gespeichert in finalPath result
-
-      // ABER -> Pfad ist nicht abgeschlossen
-
+      // path not done yet
       currentPath.emplace_back(currentKey);
 
-      std::cout << "We want to continue with path generation!" << std::endl;
+      std::list<std::string> currentTmpPath(currentPath);
+      finalPaths.emplace_back(currentTmpPath);
       createPaths(finalPaths, currentValue, currentPath);
     } else {
-      std::cout << "Path finalised!" << std::endl;
-      // -> Pfad ist abgeschlossen!
+      // path is done
       std::list<std::string> currentTmpPath(currentPath);
       currentTmpPath.emplace_back(currentKey);
       finalPaths.emplace_back(currentTmpPath);
     }
 
     if (iter.isLast()) {
+      // if end of path reached, remove last visited member
       if (currentPath.size() > 0) {
         currentPath.pop_back();
       }
     }
   }
+}
+
+void pathToBuilder(std::list<std::list<std::string>>& finalPaths, VPackBuilder& result) {
+  result.openArray();
+  for (auto const& path : finalPaths) {
+    result.openArray();
+    for (auto const& pathElement : path) {
+      result.add(VPackValue(pathElement));
+    }
+    result.close();
+  }
+  result.close();
 }
 
 EvalResult Prim_DictDirectory(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
@@ -357,26 +360,13 @@ EvalResult Prim_DictDirectory(Machine& ctx, VPackSlice const params, VPackBuilde
   if (!obj.isObject()) {
     return EvalError("expected object, found: " + obj.toJson());
   }
-  std::cout << "TEST: " << obj.toString() << std::endl;
 
-  std::list<std::list<std::string>> finalList;
+  std::list<std::list<std::string>> finalPaths;
   std::list<std::string> currentPath;
-  createPaths(finalList, obj, currentPath);
-  // finalList.emplace_back(createObjectPaths(obj, {}));
-
-  std::cout << "printing incoming object " << obj.toString() << std::endl
-            << std::endl;
-
-  std::cout << "Printing final vector row by row: " << std::endl;
-  for (auto const& path : finalList) {
-    std::cout << " [ ";
-    for (auto const& pathElement : path) {
-      std::cout << " " << pathElement << " ";
-    }
-    std::cout << " ] " << std::endl;
-  }
-
-  return {Prim_DictKeys(ctx, params, result)};
+  createPaths(finalPaths, obj, currentPath);
+  pathToBuilder(finalPaths, result);
+  
+  return {};
 }
 
 EvalResult MergeObjectSlice(VPackBuilder& result, VPackSlice const& sliceA,
