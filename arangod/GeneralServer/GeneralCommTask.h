@@ -64,6 +64,7 @@ class GeneralCommTask : public CommTask {
   
   /// default max chunksize is 30kb in arangodb (each read fits)
   static constexpr size_t ReadBlockSize = 1024 * 32;
+  static constexpr double WriteTimeout = 300.0;
     
   std::unique_ptr<AsioSocket<T>> _protocol;
   
