@@ -25,8 +25,9 @@ target_link_libraries(fuertetest
     boost_boost
     arango
     arango_v8server
+    ${MSVC_LIBS}
     ${OPENSSL_LIBRARIES}
-#    ${CMAKE_THREAD_LIBS_INIT}
+    ${CMAKE_THREAD_LIBS_INIT}
 )
 
 target_include_directories(fuertetest SYSTEM PRIVATE
