@@ -121,7 +121,7 @@ void GraphFormat::copyVertexData(std::string const& documentId,
                                  arangodb::velocypack::Slice vertexDocument,
                                  vertex_type& targetPtr) {
   // TODO: change GraphFormat interface here. Work with builder instead of Slice
-  if (_dataAccess.readVertex->slice().isArray()) {
+  if (_dataAccess.readVertex && _dataAccess.readVertex->slice().isArray()) {
     // copy only specified keys/key-paths to document
     VPackBuilder tmpBuilder;
     filterDocumentData(tmpBuilder, _dataAccess.readVertex->slice(), vertexDocument);
@@ -136,7 +136,7 @@ void GraphFormat::copyVertexData(std::string const& documentId,
 
 void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_type& targetPtr) {
   // TODO: change GraphFormat interface here. Work with builder instead of Slice
-  if (_dataAccess.readEdge->slice().isArray()) {
+  if (_dataAccess.readEdge && _dataAccess.readEdge->slice().isArray()) {
     // copy only specified keys/key-paths to document
     VPackBuilder tmpBuilder;
     filterDocumentData(tmpBuilder, _dataAccess.readEdge->slice(), edgeDocument);
@@ -149,7 +149,7 @@ void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_ty
 
 bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
                                       const vertex_type* ptr, size_t size) const {
-  if (ptr->_dataAccess.writeVertex->slice().isArray()) {
+  if (_dataAccess.writeVertex && _dataAccess.writeVertex->slice().isArray()) {
     greenspun::Machine m;
     InitMachine(m);
 
@@ -173,7 +173,7 @@ bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
                   });
 
     VPackBuilder tmpBuilder;
-    auto res = Evaluate(m, ptr->_dataAccess.writeVertex->slice(), tmpBuilder);
+    auto res = Evaluate(m, _dataAccess.writeVertex->slice(), tmpBuilder);
     if (res.fail()) {
       LOG_DEVEL << "finalize program failed: " << res.error().toString();
       THROW_ARANGO_EXCEPTION(res);
