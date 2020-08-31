@@ -906,11 +906,11 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
       _config.progress.set(
           std::string("finished initial dump for collection '") + coll->name() +
           "', type: " + typeString + ", id: " + leaderColl +
-          ", markers processed: " + itoa(cumulatedStats.numDumpDocuments) + 
-          ", bytes received: " + itoa(cumulatedStats.numDumpBytesReceived) +
-          ", dump requests: " + std::to_string(cumulatedStats.numDumpRequests) +
-          ", waited for dump: " + std::to_string(cumulatedStats.waitedForDump) + " s" +
-          ", apply time: " + std::to_string(cumulatedStats.waitedForDumpApply) + " s" +
+          ", markers processed: " + itoa(cumulativeStats.numDumpDocuments) + 
+          ", bytes received: " + itoa(cumulativeStats.numDumpBytesReceived) +
+          ", dump requests: " + std::to_string(cumulativeStats.numDumpRequests) +
+          ", waited for dump: " + std::to_string(cumulativeStats.waitedForDump) + " s" +
+          ", apply time: " + std::to_string(cumulativeStats.waitedForDumpApply) + " s" +
           ", total time: " + std::to_string(TRI_microtime() - startTime) + " s");
       return Result();
     }
