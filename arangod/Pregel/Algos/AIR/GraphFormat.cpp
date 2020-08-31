@@ -166,7 +166,7 @@ bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
 
                     if (auto iter = ptr->_vertexAccumulators.find(accumId);
                         iter != std::end(ptr->_vertexAccumulators)) {
-                      return iter->second->getValueIntoBuilder(tmpBuilder);
+                      return iter->second->getIntoBuilder(tmpBuilder);
                     }
                     return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                                                 "` not found");
