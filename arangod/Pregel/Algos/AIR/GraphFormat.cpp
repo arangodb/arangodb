@@ -153,6 +153,7 @@ bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
     greenspun::Machine m;
     InitMachine(m);
 
+    // TODO: Try to use "air_accumRef" here instead (Source: VertexData)
     m.setFunction("accum-ref",
                   [ptr](greenspun::Machine& ctx, VPackSlice const params,
                         VPackBuilder& tmpBuilder) -> greenspun::EvalResult {
