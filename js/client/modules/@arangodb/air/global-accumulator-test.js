@@ -112,7 +112,7 @@ function test_custom_vertex_accumulator_not_defined() {
 function global_accumulators_test_program(resultField) {
   return {
     resultField: resultField,
-    maxGSS: 5,
+    maxGSS: 5000,
     globalAccumulators: {
       numberOfVertices: {
         accumulatorType: "custom",
@@ -162,7 +162,6 @@ function global_accumulators_test_program(resultField) {
         ],
         onHalt: [
           "seq",
-          ["print", "global accum: ", ["global-accum-ref", "numberOfVertices"]],
           ["goto-phase", "second"]
         ],
       },
@@ -176,7 +175,6 @@ function global_accumulators_test_program(resultField) {
         updateProgram: ["vote-halt"],
         onHalt: [
           "seq",
-          ["print", "global accum: ", ["global-accum-ref", "minimalTest"]],
           ["goto-phase", "third"]
         ],
       },
@@ -190,7 +188,6 @@ function global_accumulators_test_program(resultField) {
         updateProgram: ["vote-halt"],
         onHalt: [
           "seq",
-          ["print", "global accum: ", ["global-accum-ref", "maximalTest"]],
           ["finish"]
         ]
       }
@@ -224,18 +221,30 @@ function exec_test_global_accumulators_test_on_graph(graphSpec, checkProc) {
  }
 
 function exec_test_vertex_degrees() {
+  spec = examplegraphs.create_line_graph("LineGraph100", 100, 5);
+  // YOLO, graph sometimes arrives too late.
+  internal.print("waiting?");
+  internal.wait(5);
   exec_test_global_accumulators_test_on_graph(
-    examplegraphs.create_line_graph("LineGraph100", 100, 5),
+    spec,
     checkVertexCount
   );
 
+  spec = examplegraphs.create_line_graph("LineGraph1000", 1000, 5),
+  // YOLO, graph sometimes arrives too late.
+  internal.print("waiting?");
+  internal.wait(5);
   exec_test_global_accumulators_test_on_graph(
-    examplegraphs.create_line_graph("LineGraph1000", 1000, 5),
+    spec,
     checkVertexCount
   );
 
+  spec = examplegraphs.create_wiki_vote_graph("WikiVote", 1),
+  // YOLO, graph sometimes arrives too late.
+  internal.print("waiting?");
+  internal.wait(5);
   exec_test_global_accumulators_test_on_graph(
-    examplegraphs.create_wiki_vote_graph("WikiVote", 1),
+    spec,
     checkVertexCount
   );
 }

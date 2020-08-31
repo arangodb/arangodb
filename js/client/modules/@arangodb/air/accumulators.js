@@ -25,7 +25,7 @@
 function cmpAccumulator(cmp) {
     return function() {
         return {
-            updateProgram: ["if",
+          updateProgram: ["if",
                 [
                     ["or",
                         ["not", ["attrib-get", "isSet", ["current-value"]]],
@@ -73,9 +73,11 @@ function cmpAccumulator(cmp) {
                                      [
                                        [ "or",
                                          ["not", ["attrib-get", "isSet", ["current-value"]]],
-                                         [cmp,
-                                          ["attrib-get", "value", ["input-state"]],
-                                          ["attrib-get", "value", ["current-value"]]]
+                                         ["and",
+                                          ["attrib-get", "isSet", ["input-state"]],
+                                          [cmp,
+                                           ["attrib-get", "value", ["input-state"]],
+                                           ["attrib-get", "value", ["current-value"]]]]
                                        ],
                                        ["seq",
                                         ["this-set!",
@@ -84,7 +86,6 @@ function cmpAccumulator(cmp) {
                                      ],
                                      [true, "cold"]
                                    ],
-          //  getStateProgram: [],
         };
     };
 }
