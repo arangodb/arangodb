@@ -947,3 +947,21 @@ void MaintenanceFeature::proceed() {
   _pauseUntil = std::chrono::steady_clock::duration::zero();
 }
 
+void MaintenanceFeature::addDirty(std::string&& database) {
+  MUTEX_LOCKER(guard, _dirtyLock);
+  if (_dirty == nullptr) {
+    auto tmp (std::make_unique<std::unordered_set<std::string>>());
+    _dirty = std::move(tmp);
+  }
+  _dirty->emplace(std::move(database));
+}
+void MaintenanceFeature::addDirty(std::string const& database) {
+  if (_dirty == nullptr) {
+    auto tmp (std::make_unique<std::unordered_set<std::string>>());
+    _dirty = std::move(tmp);
+  }
+  _dirty->emplace(database);
+}
+std::unordered_set<std::string> MaintenanceFeature::dirty() {
+  return std::move(*_dirty);
+}

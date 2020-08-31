@@ -766,7 +766,6 @@ void ClusterInfo::loadPlan() {
     }
     if (p != nullptr) {
       _consilium[std::string()] = p;
-      LOG_DEVEL << p->toJson();
     }
   }
 

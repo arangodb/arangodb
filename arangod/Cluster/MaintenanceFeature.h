@@ -301,6 +301,14 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
    */
   void delShardVersion(std::string const& shardId);
 
+  /**
+   * @brief list of dirty databases
+   */
+  void addDirty(std::string const& database);
+  void addDirty(std::string&& database);
+  std::unordered_set<std::string> dirty();
+  
+  
  protected:
   void initializeMetrics();
 
@@ -410,6 +418,11 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief shards have versions in order to be able to distinguish between
   /// independant actions
   std::unordered_map<std::string, size_t> _shardVersion;
+
+  /// @brief lock for dirty database list
+  mutable arangodb::Mutex _dirtyLock;
+  /// @brief dirty databases, where a job could not be posted)
+  std::unique_ptr<std::unordered_set<std::string>> _dirty;
 
   std::atomic<std::chrono::steady_clock::duration> _pauseUntil;
 
