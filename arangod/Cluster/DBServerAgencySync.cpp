@@ -60,7 +60,10 @@ void DBServerAgencySync::work() {
   _heartbeat->dispatchedJobResult(result);
 }
 
-Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
+Result DBServerAgencySync::getLocalCollections(
+  std::unordered_set<std::string> const& dirty,
+  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>>& databases) {
+
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
   using namespace arangodb::basics;
@@ -73,15 +76,23 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
   }
   DatabaseFeature& dbfeature = _server.getFeature<DatabaseFeature>();
 
-  VPackObjectBuilder c(&collections);
-
   dbfeature.enumerateDatabases([&](TRI_vocbase_t& vocbase) {
     if (!vocbase.use()) {
       return;
     }
     auto unuse = scopeGuard([&vocbase] { vocbase.release(); });
 
-    collections.add(VPackValue(vocbase.name()));
+    auto const dbname = vocbase.name();
+
+    auto [it,created] =
+      databases.try_emplace(dbname, std::maked_shared<VPackBuilder>());
+    if (!created) {
+      LOG_TOPIC("0e9d7", ERR, Logger::MAINTAINANCE)
+        << "Failed to emplace new entry in local collection cache";
+      FATAL_ERROR_EXIT();
+    }
+
+    collections = *it->second;
 
     VPackObjectBuilder db(&collections);
     auto cols = vocbase.collections(false);
@@ -158,9 +169,18 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   auto& clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo();
   uint64_t planIndex = 0;
-  auto plan = clusterInfo.getPlan(planIndex);
 
-  if (plan == nullptr) {
+  auto dirty = mfeature.dirty(); // Get all dirty databases
+
+  if (dirty.empty()) {
+    LOG_TOPIC("0a6f2", DEBUG, Logger::MAINTENANCE)
+      << "DBServerAgencySync::execute no dirty collections";
+    result.errorMessage = "DBServerAgencySync::execute no dirty collections";
+  }
+
+  auto plan = clusterInfo.getPlan(planIndex, dirty);
+
+  if (plan.empty()) {
     // TODO increase log level, except during shutdown?
     LOG_TOPIC("0a6f2", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::execute no plan";
@@ -170,8 +190,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   auto serverId = arangodb::ServerState::instance()->getId();
 
-  VPackBuilder local;
-  LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE) << "Before getLocalCollections for phaseOne";
+  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> local;
+  LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE)
+    << "Before getLocalCollections for phaseOne";
+
   Result glc = getLocalCollections(local);
   LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE) << "After getLocalCollections for phaseOne";
   if (!glc.ok()) {
@@ -191,8 +213,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     auto startTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne";
+
+    LOG_DEVEL << "phaseOne with " << plan << " and local info " << local;
     tmp = arangodb::maintenance::phaseOne(
-      plan->slice(), planIndex, local.slice(), serverId, mfeature, rb);
+      plan, planIndex, dirty, local, serverId, mfeature, rb);
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne done";
@@ -219,7 +243,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
 
     local.clear();
-    glc = getLocalCollections(local);
+    glc = getLocalCollections(local, dirty);
     // We intentionally refetch local collections here, such that phase 2
     // can already see potential changes introduced by phase 1. The two
     // phases are sufficiently independent that this is OK.
@@ -235,7 +259,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         << "DBServerAgencySync::phaseTwo";
 
     tmp = arangodb::maintenance::phaseTwo(
-      plan->slice(), current->slice(), local.slice(), serverId, mfeature, rb);
+      plan, current->slice(), dirty, local, serverId, mfeature, rb);
 
     LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";

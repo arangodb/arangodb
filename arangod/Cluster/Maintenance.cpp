@@ -372,7 +372,7 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
   * 1) (activeResign) We think we are the leader locally, but the plan says we are not. (including, we are resigned)
   * 2) (adjustResignState) We are not leading, and not in resigned state, but the plan says we should be resigend.
   *    - This triggers on rebooted servers, that were in resign process
-  *    - This triggers if the shard is moved from the server, before it actually took ownership. 
+  *    - This triggers if the shard is moved from the server, before it actually took ownership.
   */
 
   if (activeResign || adjustResignState) {
@@ -427,28 +427,38 @@ VPackBuilder getShardMap(VPackSlice const& plan) {
 
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal(
-    VPackSlice const& plan, uint64_t planIndex, VPackSlice const& local,
-    std::string const& serverId, MaintenanceFeature::errors_t& errors,
-    MaintenanceFeature& feature, std::vector<std::shared_ptr<ActionDescription>>& actions) {
+  std::unordered_map<std::unordered_map<std::shared_ptr<VPackBuilder>>> const& plans,
+  uint64_t planIndex, std::unordered_set<std::string> dirty, VPackSlice const& local,
+  std::string const& serverId, MaintenanceFeature::errors_t& errors,
+  MaintenanceFeature& feature, std::vector<std::shared_ptr<ActionDescription>>& actions) {
+
   arangodb::Result result;
   std::unordered_set<std::string> commonShrds;  // Intersection collections plan&local
   std::unordered_set<std::string> indis;  // Intersection indexes plan&local
 
   // Plan to local mismatch ----------------------------------------------------
   // Create or modify if local databases are affected
-  auto pdbs = plan.get(DATABASES);
-  for (auto const& pdb : VPackObjectIterator(pdbs, true)) {
-    if (!local.hasKey(pdb.key.stringRef())) {
-      auto dbname = pdb.key.copyString();
-      if (errors.databases.find(dbname) == errors.databases.end()) {
-        actions.emplace_back(std::make_shared<ActionDescription>(
-              std::map<std::string, std::string>{{std::string(NAME), std::string(CREATE_DATABASE)}, {std::string("tick"), std::to_string(TRI_NewTickServer())},
-               {std::string(DATABASE), std::move(dbname)}},
+  for (auto pb : plans) {
+    auto plan = pb.slice();
+    auto pdbs = ps.get(PLAN + DATABASES);
+
+    for (auto const& pdb : VPackObjectIterator(pdbs, true)) {
+      if (!local.hasKey(pdb.key.stringRef())) {
+        auto dbname = pdb.key.copyString();
+        if (errors.databases.find(dbname) == errors.databases.end()) {
+          actions.emplace_back(
+            std::make_shared<ActionDescription>(
+              std::map<std::string, std::string>{
+                {std::string(NAME), std::string(CREATE_DATABASE)},
+                {std::string("tick"), std::to_string(TRI_NewTickServer())},
+                {std::string(DATABASE), std::move(dbname)}
+              },
               HIGHER_PRIORITY,
               std::make_shared<VPackBuilder>(pdb.value)));
-      } else {
-        LOG_TOPIC("3a6a8", DEBUG, Logger::MAINTENANCE)
+        } else {
+          LOG_TOPIC("3a6a8", DEBUG, Logger::MAINTENANCE)
             << "Previous failure exists for creating database " << dbname << "skipping";
+        }
       }
     }
   }
@@ -456,10 +466,11 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
   // Drop databases, which are no longer in plan
   for (auto const& ldb : VPackObjectIterator(local, true)) {
     auto dbname = ldb.key.copyString();
+
     if (!plan.hasKey(std::vector<std::string>{DATABASES, dbname})) {
       actions.emplace_back(std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{{std::string(NAME), std::string(DROP_DATABASE)}, {std::string("tick"), std::to_string(TRI_NewTickServer())},
-           {std::string(DATABASE), std::move(dbname)}}, 
+           {std::string(DATABASE), std::move(dbname)}},
           HIGHER_PRIORITY));
     }
   }
@@ -611,7 +622,7 @@ arangodb::Result arangodb::maintenance::executePlan(VPackSlice const& plan,
     // open ACTIONS
     TRI_ASSERT(report.isOpenObject());
     report.add(ACTIONS, VPackValue(VPackValueType::Array));
-  
+
     // enact all
     for (auto& action : actions) {
       LOG_TOPIC("8513c", DEBUG, Logger::MAINTENANCE)
@@ -676,7 +687,7 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent(VPackSlice const& local
 arangodb::Result arangodb::maintenance::phaseOne(
   VPackSlice const& plan, uint64_t planIndex, VPackSlice const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report) {
-  
+
   auto start = std::chrono::steady_clock::now();
 
   arangodb::Result result;
@@ -691,7 +702,7 @@ arangodb::Result arangodb::maintenance::phaseOne(
     } catch (std::exception const& e) {
       LOG_TOPIC("55938", ERR, Logger::MAINTENANCE)
           << "Error executing plan: " << e.what() << ". " << __FILE__ << ":" << __LINE__;
-      // TODO: adjust result here? 
+      // TODO: adjust result here?
     }
   }
 
@@ -868,7 +879,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
   auto pdbs = plan.get(COLLECTIONS);
   auto shardMap = getShardMap(pdbs);
-    
+
   std::vector<std::string> cdbpath;
   cdbpath.reserve(3);
 
@@ -1168,17 +1179,17 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
 
   for (auto const& pdb : VPackObjectIterator(pdbs)) {
     VPackStringRef const dbname = pdb.key.stringRef();
-   
+
     VPackSlice const localdb = local.get(dbname);
     if (!localdb.isObject()) {
       continue;
     }
-    
+
     VPackSlice const cdb = cdbs.get(dbname);
     if (!cdb.isObject()) {
       continue;
     }
-    
+
     for (auto const& pcol : VPackObjectIterator(pdb.value)) {
       VPackStringRef const colname = pcol.key.stringRef();
 
@@ -1212,7 +1223,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
         if (indexOf(pservers, serverId) <= 0) {
           continue;
         }
-        
+
         // Current's servers
         VPackSlice const cservers = cshrd.get(SERVERS);
 
@@ -1229,7 +1240,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
               {SHARD, shname.toString()},
               {THE_LEADER, leader},
               {SHARD_VERSION, std::to_string(feature.shardVersion(shname.toString()))}},
-              SYNCHRONIZE_PRIORITY), 
+              SYNCHRONIZE_PRIORITY),
             false);
       }
     }
@@ -1265,7 +1276,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
         LOG_TOPIC("c9a75", ERR, Logger::MAINTENANCE)
             << "Error reporting in current: " << e.what() << ". " << __FILE__
             << ":" << __LINE__;
-        // TODO: adjust result here? 
+        // TODO: adjust result here?
       }
     }
 
@@ -1280,7 +1291,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
         LOG_TOPIC("7e286", ERR, Logger::MAINTENANCE)
             << "Error scheduling shards: " << e.what() << ". " << __FILE__
             << ":" << __LINE__;
-        // TODO: adjust result here? 
+        // TODO: adjust result here?
       }
     }
   }

@@ -51,11 +51,6 @@ constexpr int SYNCHRONIZE_PRIORITY = 1;
 
 using Transactions = std::vector<std::pair<VPackBuilder, VPackBuilder>>;
 
-arangodb::Result diffPlanLocalForDatabases(VPackSlice const&,
-                                           std::vector<std::string> const&,
-                                           std::vector<std::string>&,
-                                           std::vector<std::string>&);
-
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run
  *
@@ -69,18 +64,18 @@ arangodb::Result diffPlanLocalForDatabases(VPackSlice const&,
  *
  * @return         Result
  */
-arangodb::Result diffPlanLocal(VPackSlice const& plan, uint64_t planIndex,
-                               VPackSlice const& local,
-                               std::string const& serverId,
-                               MaintenanceFeature::errors_t& errors,
-                               MaintenanceFeature& feature,
-                               std::vector<std::shared_ptr<ActionDescription>>& actions);
+arangodb::Result diffPlanLocal(
+  std::unordered_map<std::unordered_map<std::shared_ptr<VPackBuilder>>> const& plan,
+  uint64_t planIndex, std::unordered_set<std::string> dirty, VPackSlice const& local,
+  std::string const& serverId, MaintenanceFeature::errors_t& errors,
+  MaintenanceFeature& feature, std::vector<std::shared_ptr<ActionDescription>>& actions);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run
  *
  * @param plan     Snapshot of agency's planned state
  * @param planIndex Raft index of this plan version
+ * @param dirty    List of dirty databases in this run
  * @param current  Snapshot of agency's current state
  * @param local    Snapshot of local state
  * @param serverId This server's UUID
@@ -89,9 +84,10 @@ arangodb::Result diffPlanLocal(VPackSlice const& plan, uint64_t planIndex,
  *
  * @return         Result
  */
-arangodb::Result executePlan(VPackSlice const& plan, uint64_t planIndex, VPackSlice const& local,
-                             std::string const& serverId,
-                             arangodb::MaintenanceFeature& feature, VPackBuilder& report);
+arangodb::Result executePlan(
+  std::unordered_map<std::unordered_map<std::shared_ptr<VPackBuilder>>> const& plan,
+  uint64_t planIndex, std::unordered_set<std::string> const& dirty, VPackSlice const& local,
+  std::string const& serverId, arangodb::MaintenanceFeature& feature, VPackBuilder& report);
 
 /**
  * @brief          Difference local and current states for phase 2 of
@@ -112,6 +108,7 @@ arangodb::Result diffLocalCurrent(VPackSlice const& local, VPackSlice const& cur
  *
  * @param plan     Snapshot of agency's planned state
  * @param planIndex Raft index of this version of the plan
+ * @param dirty    List of dirty databases in this run
  * @param current  Snapshot of agency's current state
  * @param local    Snapshot of local state
  * @param serverId This server's UUID
@@ -120,9 +117,10 @@ arangodb::Result diffLocalCurrent(VPackSlice const& local, VPackSlice const& cur
  *
  * @return         Result
  */
-arangodb::Result phaseOne(VPackSlice const& plan, uint64_t planIndex, VPackSlice const& local,
-                          std::string const& serverId,
-                          MaintenanceFeature& feature, VPackBuilder& report);
+arangodb::Result phaseOne(
+  std::unordered_map<std::unordered_map<std::shared_ptr<VPackBuilder>>> const& plan,
+  uint64_t planIndex, std::unordered_set<std::string> const& dirty, VPackSlice const& local,
+  std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report);
 
 /**
  * @brief          Phase two: Report in agency
@@ -136,9 +134,10 @@ arangodb::Result phaseOne(VPackSlice const& plan, uint64_t planIndex, VPackSlice
  *
  * @return         Result
  */
-arangodb::Result phaseTwo(VPackSlice const& plan, VPackSlice const& cur,
-                          VPackSlice const& local, std::string const& serverId,
-                          MaintenanceFeature& feature, VPackBuilder& report);
+arangodb::Result phaseTwo(
+    std::unordered_map<std::unordered_map<std::shared_ptr<VPackBuilder>>> const& plan,
+    VPackSlice const& cur, VPackSlice const& local, std::string const& serverId,
+    MaintenanceFeature& feature, VPackBuilder& report);
 
 /**
  * @brief          Report local changes to current
@@ -158,11 +157,11 @@ struct ShardStatistics {
   uint64_t numNotReplicated;
 };
 
-arangodb::Result reportInCurrent(VPackSlice const& plan, VPackSlice const& cur,
-                                 VPackSlice const& local,
-                                 MaintenanceFeature::errors_t const& allErrors,
-                                 std::string const& serverId, VPackBuilder& report,
-                                 ShardStatistics& shardStats);
+arangodb::Result reportInCurrent(
+  std::unordered_map<std::unordered_map<std::shared_ptr<VPackBuilder>>> const& plan,
+  std::unordered_set<std::string> const& dirty, VPackSlice const& cur,
+  VPackSlice const& local, MaintenanceFeature::errors_t const& allErrors,
+  std::string const& serverId, VPackBuilder& report, ShardStatistics& shardStats);
 
 /**
  * @brief            Schedule synchroneous replications
@@ -175,11 +174,10 @@ arangodb::Result reportInCurrent(VPackSlice const& plan, VPackSlice const& cur,
  *
  * @return           Success story (always ok)
  */
-arangodb::Result syncReplicatedShardsWithLeaders(VPackSlice const& plan,
-                                                 VPackSlice const& current,
-                                                 VPackSlice const& local,
-                                                 std::string const& serverId,
-                                                 MaintenanceFeature& feature);
+arangodb::Result syncReplicatedShardsWithLeaders(
+  std::unordered_map<std::unordered_map<std::shared_ptr<VPackBuilder>>> const& plan,
+  std::unordered_set<std::string> const& dirty, VPackSlice const& current,
+  VPackSlice const& local, std::string const& serverId, MaintenanceFeature& feature);
 
 }  // namespace maintenance
 }  // namespace arangodb

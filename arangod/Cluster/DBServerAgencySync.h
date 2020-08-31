@@ -67,7 +67,9 @@ class DBServerAgencySync {
    * @brief Get copy of current local state
    * @param  collections  Builder to fill to
    */
-  arangodb::Result getLocalCollections(VPackBuilder& collections);
+  arangodb::Result getLocalCollections(
+    std::unordered_set<std::string> const& dirty,
+    std::unordered_map<std::string, VPackBuilder>& collections);
 
  private:
   DBServerAgencySyncResult execute();

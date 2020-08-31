@@ -903,6 +903,8 @@ public:
 
   std::shared_ptr<VPackBuilder> getPlan();
   std::shared_ptr<VPackBuilder> getPlan(uint64_t& planIndex);
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
+    getPlan(uint64_t& planIndex, std::unordered_set<std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Current" structure

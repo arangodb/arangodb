@@ -47,6 +47,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/HeartbeatThread.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
@@ -760,9 +761,11 @@ void ClusterInfo::loadPlan() {
 
   auto [i, dbs, p] = agencyCache.planChangedSince(planIndex);
   {
+    auto& maintenance = _server.getFeature<MaintenanceFeature>();
     WRITE_LOCKER(writeLocker, _planProt.lock);
     for (auto const& j : dbs) {
       _consilium[j.first] = j.second;
+      maintenance.addDirty(j.first);
     }
     if (p != nullptr) {
       _consilium[std::string()] = p;
@@ -4849,6 +4852,24 @@ std::shared_ptr<VPackBuilder> ClusterInfo::getPlan(uint64_t& planIndex) {
   READ_LOCKER(readLocker, _planProt.lock);
   planIndex = _planIndex;
   return _plan;
+}
+
+std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
+ClusterInfo::getPlan(uint64_t& planIndex, std::unordered_set<std::string> const& dirty) {
+  if (!_planProt.isValid) {
+    loadPlan();
+  }
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> ret;
+  READ_LOCKER(readLocker, _planProt.lock);
+  planIndex = _planIndex;
+  for (auto const& i : dirty) {
+    auto it = _consilium.find(i);
+    if (it == _consilium.end()) {
+      continue;
+    }
+    ret.try_emplace(it->first, it->second);
+  }
+  return ret;
 }
 
 //////////////////////////////////////////////////////////////////////////////
