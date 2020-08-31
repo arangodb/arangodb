@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "Cluster/ServerState.h"
 #include "Containers/MerkleTree.h"
 #include "Replication/InitialSyncer.h"
+#include "Replication/ReplicationMetricsFeature.h"
 #include "Replication/utilities.h"
 #include "Utils/SingleCollectionTransaction.h"
 
@@ -45,7 +46,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
                                                   std::string const& keysId);
   friend ::arangodb::Result syncChunkRocksDB(
       DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
-      InitialSyncerIncrementalSyncStats& stats, std::string const& keysId,
+      ReplicationMetricsFeature::InitialSyncStats& stats, std::string const& keysId,
       uint64_t chunkId, std::string const& lowString,
       std::string const& highString, std::vector<std::string> const& markers);
 
@@ -151,7 +152,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   /// @brief order a new chunk from the /dump API
   void fetchDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
                       std::string const& baseUrl, arangodb::LogicalCollection* coll,
-                      std::string const& leaderColl, InitialSyncerDumpStats& stats,
+                      std::string const& leaderColl, 
                       int batch, TRI_voc_tick_t fromTick, uint64_t chunkSize);
 
   /// @brief fetch the server's inventory
