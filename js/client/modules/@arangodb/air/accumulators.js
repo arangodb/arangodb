@@ -121,7 +121,24 @@ function storeAccumulator(clearValue = null) {
     };
 }
 
+function orAccumulator() {
+  return {
+    // TODO: hot or not
+    updateProgram: ["this-set!", ["or", ["current-value"], ["input-value"]]],
+    clearProgram: ["this-set!", false],
+    getProgram: ["current-value"],
+    setProgram: ["this-set!", ["input-value"]],
+    finalizeProgram: ["current-value"],
+    aggregateStateProgram: [ "seq",
+                             ["this-set!", ["or", ["current-value"], ["input-state"]]],
+                             "hot"
+                           ],
+  };
+}
+
+
 exports.minAccumulator = cmpAccumulator("lt?");
 exports.maxAccumulator = cmpAccumulator("gt?");
 exports.sumAccumulator = sumAccumulator;
 exports.storeAccumulator = storeAccumulator;
+exports.orAccumulator = orAccumulator;

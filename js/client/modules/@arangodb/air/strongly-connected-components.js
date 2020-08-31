@@ -25,6 +25,7 @@
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
+const accumulators = require("@arangodb/air/accumulators");
 /*
 
 
@@ -43,8 +44,9 @@ function strongly_connected_components_program(resultField) {
       // that its min_f = min_b and hence determined its
       // SCC
       converged: {
-        accumulatorType: "or",
-        valueType: "bool",
+        accumulatorType: "custom",
+        valueType: "slice",
+        customType: "or"
       },
     },
     vertexAccumulators: {
@@ -68,6 +70,9 @@ function strongly_connected_components_program(resultField) {
         accumulatorType: "list",
         valueType: "slice",
       },
+    },
+    customAccumulators: {
+      or: accumulators.orAccumulator(),
     },
     phases: [
       {
