@@ -31,7 +31,6 @@ namespace arangodb::pregel::algos::accumulators {
 
 WorkerContext::WorkerContext(VertexAccumulators const* algorithm)
     : _algo(algorithm) {
-  LOG_DEVEL << "worker context construct";
   CustomAccumulatorDefinitions const& customDefinitions = _algo->options().customAccumulators;
   AccumulatorsDeclaration const& globalAccumulatorsDeclarations = _algo->options().globalAccumulators;
 
@@ -54,7 +53,6 @@ void WorkerContext::preGlobalSuperstep(uint64_t gss) {
 }
 
 void WorkerContext::preGlobalSuperstepMasterMessage(VPackSlice msg){
-  LOG_DEVEL << "pre gss" << msg.toJson();
   for (auto&& acc : globalAccumulatorsUpdates()) {
     auto res = acc.second->clear();
     if (!res) {
@@ -85,7 +83,6 @@ void WorkerContext::preGlobalSuperstepMasterMessage(VPackSlice msg){
       }
     }
   }
-  LOG_DEVEL << "pre gss done";
 }
 
 void WorkerContext::postGlobalSuperstep(uint64_t gss) {
@@ -93,7 +90,6 @@ void WorkerContext::postGlobalSuperstep(uint64_t gss) {
 
 // Send the updates for the global accumulators back to the conductor
 void WorkerContext::postGlobalSuperstepMasterMessage(VPackBuilder& msg) {
-  LOG_DEVEL << "post gss";
   {
     VPackObjectBuilder guard(&msg);
     {
@@ -111,10 +107,10 @@ void WorkerContext::postGlobalSuperstepMasterMessage(VPackBuilder& msg) {
       }
     }
   }
-  LOG_DEVEL << "post gss done " << msg.toJson();;
 }
 
 greenspun::EvalResult WorkerContext::sendToGlobalAccumulator(std::string accumId, VPackSlice msg) const {
+  LOG_DEVEL << "send to global accum " << accumId << " msg " << msg.toJson();
   if (auto iter = _globalAccumulatorsUpdates.find(accumId); iter != std::end(_globalAccumulatorsUpdates)) {
     return iter->second->updateByMessageSlice(msg).asResult();
   }

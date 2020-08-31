@@ -168,9 +168,7 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
   LOG_DEVEL << "master context post global";
 
   auto phase_index = *getAggregatedValue<uint32_t>("phase");
-  LOG_DEVEL << "phase index at.";
   auto phase = _algo->options().phases.at(phase_index);
-  LOG_DEVEL << "phase index at^2";
 
   if (getReportManager().getNumErrors() > 0) {
     getReportManager().report(ReportLevel::INFO).with("phase", phase.name)
@@ -239,7 +237,6 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
 }
 
 void MasterContext::preGlobalSuperstepMessage(VPackBuilder& msg) {
-  LOG_DEVEL << "preGlobalStep message";
   // Send the current values of all global accumulators to the workers
   // where they will be received and passed to WorkerContext in preGlobalSuperstepMessage
   {
@@ -261,7 +258,6 @@ void MasterContext::preGlobalSuperstepMessage(VPackBuilder& msg) {
 }
 
 bool MasterContext::postGlobalSuperstepMessage(VPackSlice workerMsgs) {
-  LOG_DEVEL << "postGlobalStep message";
   if (!workerMsgs.isArray()) {
     LOG_DEVEL << "AIR MasterContext received invalid message from conductor: "
               << workerMsgs.toJson() << " expecting array of objects";

@@ -340,9 +340,6 @@ greenspun::EvalResult VertexComputation::air_thisUniqueId(greenspun::Machine& ct
   combined <<= 16;
   combined |= pid.shard;
 
-  LOG_DEVEL << "vertexId" << this->vertexData()._vertexId << " shard " << pid.shard;
-  LOG_DEVEL << "combined " << combined;
-
   result.add(VPackValue(combined));
   return {};
 }
@@ -535,7 +532,6 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
   }
 
   if (phaseStep == 0) {
-    LOG_DEVEL << "init prog";
     if (auto res = runProgram(_airMachine, phase.initProgram.slice()); res.fail()) {
       LOG_DEVEL << res.error().toString();
       getReportManager()
@@ -549,9 +545,7 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
           << "` init-program failed: " << res.error().toString();
     }
   } else {
-    LOG_DEVEL << "update prog processing msgs";
     auto accumChanged = processIncomingMessages(incomingMessages);
-    LOG_DEVEL << "update prog process done";
     if (accumChanged.fail()) {
       voteHalt();
       return;
