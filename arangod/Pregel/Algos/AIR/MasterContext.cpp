@@ -152,7 +152,6 @@ bool MasterContext::gotoPhase(std::string_view nextPhase) {
   if (iter == std::end(phases)) {
     return false;
   }
-  LOG_DEVEL << "goto phase " << nextPhase;
   aggregate<uint32_t>("phase", iter - phases.begin());
   aggregate<uint64_t>("phase-first-step", globalSuperstep() + 1);
   userSelectedNext = ContinuationResult::ACTIVATE_ALL;
@@ -160,13 +159,10 @@ bool MasterContext::gotoPhase(std::string_view nextPhase) {
 }
 
 void MasterContext::finish() {
-  LOG_DEVEL << "onHalt decided that we have finished";
   userSelectedNext = ContinuationResult::ABORT;
 }
 
 MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVertexesVotedHalt) {
-  LOG_DEVEL << "master context post global";
-
   auto phase_index = *getAggregatedValue<uint32_t>("phase");
   auto phase = _algo->options().phases.at(phase_index);
 
