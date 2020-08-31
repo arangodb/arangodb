@@ -888,7 +888,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     double applyTime = TRI_microtime() - t;
     stats.waitedForDumpApply += applyTime;
 
-    cumulatedStats += stats;
+    cumulativeStats += stats;
 
     _config.progress.set(
         std::string("fetched leader collection dump for collection '") +
