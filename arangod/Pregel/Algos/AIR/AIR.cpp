@@ -75,7 +75,7 @@ auto VertexAccumulators::createComputation(WorkerConfig const* config) const
 }
 
 auto VertexAccumulators::inputFormat() const -> graph_format* {
-  // TODO: The resultField needs to be configurable from the u
+  // TODO: pass *this - (i.e. a reference to the algorithm object, and make accessor functions for the declarations in there.
   return new GraphFormat(_server, _options.resultField, _options.globalAccumulators,
                          _options.vertexAccumulators, _options.customAccumulators, _options.dataAccess);
 }
