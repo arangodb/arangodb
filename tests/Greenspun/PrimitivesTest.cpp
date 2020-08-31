@@ -1200,6 +1200,10 @@ TEST_CASE("Test [dict-keys] primitive", "[dict-keys]") {
   }
 }
 
+TEST_CASE("Test [dict-keys] primitive", "[dict-keys]") {
+  // TODO: to be implemented!
+}
+
 TEST_CASE("Test [str] primitive", "[str]") {
   Machine m;
   InitMachine(m);
