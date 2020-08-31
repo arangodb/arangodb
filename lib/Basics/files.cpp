@@ -2630,7 +2630,7 @@ arangodb::Result TRI_GetDiskSpace(std::string const& path,
 #if _WIN32
   PULARGE_INTEGER freeBytesAvailableToCaller;
   PULARGE_INTEGER totalNumberOfBytes;
-  if (GetDiskFreeSpaceExW(toWString(path).data(), &freeBytesAvailableToCaller, &totalNumberOfBytes, nullptr) == 0) {
+  if (GetDiskFreeSpaceExW(toWString(path).data(), freeBytesAvailableToCaller, totalNumberOfBytes, nullptr) == 0) {
     DWORD lastError = GetLastError();
     return {TRI_ERROR_SYS_ERROR, translateWindowsError(::GetLastError()) };
   }
