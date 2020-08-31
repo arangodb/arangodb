@@ -2309,6 +2309,46 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
   }
   return TRI_ERROR_NO_ERROR;
 }
+ 
+/// @brief compact the database on all DB servers
+Result compactOnAllDBServers(ClusterFeature& feature,
+                             bool changeLevel, bool compactBottomMostLevel) {
+  ClusterInfo& ci = feature.clusterInfo();
+
+  std::vector<ServerID> DBservers = ci.getCurrentDBServers();
+
+  auto* pool = feature.server().getFeature<NetworkFeature>().pool();
+
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(3600);
+  reqOpts.skipScheduler = true; // hack to avoid scheduler queue
+  reqOpts.param("changeLevel", (changeLevel ? "true" : "false"))
+         .param("compactBottomMostLevel", (compactBottomMostLevel ? "true" : "false"));
+
+  std::vector<Future<network::Response>> futures;
+  futures.reserve(DBservers.size());
+
+  VPackBufferUInt8 buffer;
+  VPackSlice const s = VPackSlice::emptyObjectSlice();
+  buffer.append(s.start(), s.byteSize());
+  for (std::string const& server : DBservers) {
+    futures.emplace_back(
+        network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Put,
+                                  "/_admin/compact", buffer, reqOpts));
+  }
+
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = f.get();
+
+    if (r.fail()) {
+      return {network::fuerteToArangoErrorCode(r), network::fuerteToArangoErrorMessage(r)};
+    }
+    if (r.response->statusCode() != fuerte::StatusOK) {
+      return network::resultFromBody(r.slice(), TRI_ERROR_INTERNAL);
+    }
+  }
+  return {};
+}
 
 #ifndef USE_ENTERPRISE
 

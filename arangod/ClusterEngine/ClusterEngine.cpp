@@ -272,8 +272,8 @@ void ClusterEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
 }
 
 /// @brief Add engine-specific V8 functions
-void ClusterEngine::addV8Functions() {
-  ClusterV8Functions::registerResources();
+void ClusterEngine::addV8Functions(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>& ArangoNS) {
+  ClusterV8Functions::registerResources(isolate, ArangoNS);
 }
 
 /// @brief Add engine-specific REST handlers

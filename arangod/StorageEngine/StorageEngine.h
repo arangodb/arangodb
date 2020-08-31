@@ -44,6 +44,13 @@
 
 #include <chrono>
 
+namespace v8 {
+class Isolate;
+class ObjectTemplate;
+template<class T> class Local;
+template<class T> using Handle = v8::Local<T>;
+}
+
 namespace arangodb {
 
 enum class RecoveryState : uint32_t {
@@ -307,7 +314,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void addOptimizerRules(aql::OptimizerRulesFeature&) {}
 
   /// @brief Add engine-specific V8 functions
-  virtual void addV8Functions() {}
+  virtual void addV8Functions(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>&) {}
 
   /// @brief Add engine-specific REST handlers
   virtual void addRestHandlers(rest::RestHandlerFactory& handlerFactory) {}
