@@ -65,6 +65,9 @@ devel
   GET `/_api/database/current` and GET `/_admin/metrics` on followers in active 
   failover deployments. This can help debugging and inspecting the follower.
 
+* Fix for issue BTS-183: added pending operations purging before ArangoSearch
+  index truncation
+
 * Don't allow creation of smart satellite graphs or collections (i.e. using
   `"isSmart":true` together with `"replicationFactor":"satellite"` when creating
   graphs or collections. This combination of parameters makes no sense, so that
