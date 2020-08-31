@@ -1129,7 +1129,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     {
       READ_LOCKER(idxGuard, _indexesLock);
       for (std::shared_ptr<Index> const& idx : _indexes) {
-        idx->afterTruncate(seq);  // clears caches / clears links (if applicable)
+        idx->afterTruncate(seq, &trx);  // clears caches / clears links (if applicable)
       }
     }
     bufferTruncate(seq);
