@@ -155,12 +155,12 @@ TEST_P(ConcurrentConnectionF, CreateDocumentsParallel){
 }
 
 static const ConnectionTestParams params[] = {
-  {._protocol=fu::ProtocolType::Http, ._threads=2, ._repeat=500},
-  {._protocol=fu::ProtocolType::Http2, ._threads=2, ._repeat=500},
-  {._protocol=fu::ProtocolType::Vst, ._threads=2, ._repeat=500},
-  {._protocol=fu::ProtocolType::Http, ._threads=4, ._repeat=5000},
-  {._protocol=fu::ProtocolType::Http2, ._threads=4, ._repeat=5000},
-  {._protocol=fu::ProtocolType::Vst, ._threads=4, ._repeat=5000},
+  {/*._protocol=*/fu::ProtocolType::Http,/* ._threads=*/2, /*._repeat=*/500},
+  {/*._protocol=*/fu::ProtocolType::Http2,/* ._threads=*/2, /*._repeat=*/500},
+  {/*._protocol=*/fu::ProtocolType::Vst,/* ._threads=*/2, /*._repeat=*/500},
+  {/*._protocol=*/fu::ProtocolType::Http,/* ._threads=*/4, /*._repeat=*/5000},
+  {/*._protocol=*/fu::ProtocolType::Http2,/* ._threads=*/4, /*._repeat=*/5000},
+  {/*._protocol=*/fu::ProtocolType::Vst,/* ._threads=*/4, /*._repeat=*/5000},
 };
 
 INSTANTIATE_TEST_CASE_P(ConcurrentRequestsTests, ConcurrentConnectionF,

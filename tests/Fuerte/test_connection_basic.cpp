@@ -147,12 +147,12 @@ TEST_P(ConnectionTestF, ShortAndLongASync){
 
 // threads parameter has no effect in this testsuite
 static const ConnectionTestParams connectionTestBasicParams[] = {
-  {._protocol = fu::ProtocolType::Http, ._threads=1, ._repeat=100},
-  {._protocol = fu::ProtocolType::Http2, ._threads=1, ._repeat=100},
-  {._protocol = fu::ProtocolType::Vst, ._threads=1, ._repeat=100},
-  {._protocol = fu::ProtocolType::Http, ._threads=1, ._repeat=2500},
-  {._protocol = fu::ProtocolType::Http2, ._threads=1, ._repeat=2500},
-  {._protocol = fu::ProtocolType::Vst, ._threads=1, ._repeat=2500}
+  {/*._protocol = */fu::ProtocolType::Http,/*._threads=*/1, /*._repeat=*/100},
+  {/*._protocol = */fu::ProtocolType::Http2,/*._threads=*/1, /*._repeat=*/100},
+  {/*._protocol = */fu::ProtocolType::Vst,/*._threads=*/1, /*._repeat=*/100},
+  {/*._protocol = */fu::ProtocolType::Http,/*._threads=*/1, /*._repeat=*/2500},
+  {/*._protocol = */fu::ProtocolType::Http2,/*._threads=*/1, /*._repeat=*/2500},
+  {/*._protocol = */fu::ProtocolType::Vst,/*._threads=*/1, /*._repeat=*/2500}
 };
 
 INSTANTIATE_TEST_CASE_P(BasicConnectionTests, ConnectionTestF,
