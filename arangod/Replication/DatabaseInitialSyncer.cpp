@@ -893,8 +893,8 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     _config.progress.set(
         std::string("fetched leader collection dump for collection '") +
         coll->name() + "', type: " + typeString + ", id: " + leaderColl +
-        ", batch " + itoa(batch) + ", markers processed: " + itoa(cumulatedStats.numDumpDocuments) + 
-        ", bytes received: " + itoa(cumulatedStats.numDumpBytesReceived) +
+        ", batch " + itoa(batch) + ", markers processed: " + itoa(cumulativeStats.numDumpDocuments) + 
+        ", bytes received: " + itoa(cumulativeStats.numDumpBytesReceived) +
         ", apply time: " + std::to_string(applyTime) + " s");
 
     if (!res.ok()) {
