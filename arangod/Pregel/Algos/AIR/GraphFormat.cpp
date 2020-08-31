@@ -120,6 +120,7 @@ void filterDocumentData(VPackBuilder& finalBuilder, VPackSlice const& arraySlice
 void GraphFormat::copyVertexData(std::string const& documentId,
                                  arangodb::velocypack::Slice vertexDocument,
                                  vertex_type& targetPtr) {
+  // TODO: change GraphFormat interface here. Work with builder instead of Slice
   if (_dataAccess.readVertex->slice().isArray()) {
     // copy only specified keys/key-paths to document
     VPackBuilder tmpBuilder;
@@ -134,6 +135,7 @@ void GraphFormat::copyVertexData(std::string const& documentId,
 }
 
 void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_type& targetPtr) {
+  // TODO: change GraphFormat interface here. Work with builder instead of Slice
   if (_dataAccess.readEdge->slice().isArray()) {
     // copy only specified keys/key-paths to document
     VPackBuilder tmpBuilder;
