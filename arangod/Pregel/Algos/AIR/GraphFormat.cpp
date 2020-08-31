@@ -109,6 +109,8 @@ void filterDocumentData(VPackBuilder& finalBuilder, VPackSlice const& arraySlice
       finalBuilder.clear();
       finalBuilder.add(tmp.slice());
     } else {
+      // TODO: this cannot happen anymore if we introduce type checking within the deserializer
+      LOG_DEVEL << "filterDocumentData: Expecting key to be a string nor an array, got: " << key.toJson();
       TRI_ASSERT(false);
     }
   }
@@ -171,7 +173,7 @@ bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
     auto res = Evaluate(m, ptr->_dataAccess.writeVertex->slice(), tmpBuilder);
     if (res.fail()) {
       LOG_DEVEL << "finalize program failed: " << res.error().toString();
-      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(res);
     }
 
     if (tmpBuilder.slice().isObject()) {
@@ -189,7 +191,7 @@ bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
       b.add(VPackValue(acc.first));
       if (auto res = acc.second->finalizeIntoBuilder(b); res.fail()) {
         LOG_DEVEL << "finalize program failed: " << res.error().toString();
-        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION(res);
       }
     }
   }
