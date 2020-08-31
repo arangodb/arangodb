@@ -22,7 +22,7 @@ __AQL query (if applicable)__:
 
 
 ```
-__AQL explain or profile (if applicable)__:
+__AQL explain and/or profile (if applicable)__:
 <!-- output of  db._explain("<my aql query>")  or  db._profileQuery("<my aql query>") -->
 
 
