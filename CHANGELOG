@@ -8,6 +8,9 @@ devel
 * Serialize maintenance actions for each shard. This addresses lost document
   problems found in chaos testing.
 
+* Fix for issue BTS-183: added pending operations purging before ArangoSearch
+  index truncation
+  
 * Allow calling of REST APIs `/_api/engine/stats`, GET `/_api/collection` and
   GET `/_api/database/current` on followers in active failover deployments. 
   This can help debugging and inspecting the follower.
