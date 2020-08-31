@@ -227,21 +227,6 @@ function objectInsertHelper(arr, valueToInsert) {
     } else {
       // array expected (toplevel -> n-level)
       _.set(obj, key, valueToInsert);
-
-      //let pathAsArray = key;
-      //let pathAsString = "";
-      /*for (let pos = 0; pos < pathAsArray.length; pos++) {
-        if (pos === 0) {
-          // first iteration
-          pathAsString = pathAsArray[pos];
-        } else if (pos < (pathAsArray.length - 1)) {
-          // middle iteration (object buildup)
-          pathAsString += '.' + pathAsArray[pos];
-        } else {
-          // last step (also insert value i here)
-          _.set(obj, pathAsString, )
-        }
-      }*/
     }
   });
   obj.id = valueToInsert;
