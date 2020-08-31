@@ -330,11 +330,11 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto* ctx = dynamic_cast<LinkTrxState*>(state.cookie(key));
 #else
-    auto *ctx = static_cast<LinkTrxState*>(state.cookie(key));
+    auto* ctx = static_cast<LinkTrxState*>(state.cookie(key));
 #endif
 
     if (ctx) {
-      ctx->reset(); // throw away all pending operations
+      ctx->reset(); // throw away all pending operations as clear will overwrite them all
       state.cookie(key, nullptr); // force active segment release to allow commit go and avoid deadlock in clear
     }
   }
