@@ -34,6 +34,8 @@
 #include <Basics/VelocyPackHelper.h>
 #include <velocypack/Iterator.h>
 
+int TRI_Levenshtein(std::string const& lhs, std::string const& rhs);
+
 using namespace arangodb::velocypack;
 
 namespace arangodb::greenspun {
@@ -608,6 +610,7 @@ EvalResult Machine::unsetFunction(std::string_view name) {
   return {};
 }
 
+
 EvalResult Machine::applyFunction(std::string function, VPackSlice const params,
                                   VPackBuilder& result) {
   TRI_ASSERT(params.isArray());
@@ -618,7 +621,19 @@ EvalResult Machine::applyFunction(std::string function, VPackSlice const params,
       err.wrapCall(function, params);
     });
   }
-  return EvalError("function not found `" + function + "`");
+
+  std::string minFunctionName;
+  int minDistance = std::numeric_limits<int>::max();
+
+  for (auto&& [key, value] : functions) {
+    int distance = TRI_Levenshtein(function, key);
+    if (distance < minDistance) {
+      minFunctionName = key;
+      minDistance = distance;
+    }
+  }
+
+  return EvalError("function not found `" + function + "`" + (!minFunctionName.empty() ? ", did you mean `" + minFunctionName + "`?" : ""));
 }
 
 std::string EvalError::toString() const {

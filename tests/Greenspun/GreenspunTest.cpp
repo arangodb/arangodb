@@ -21,6 +21,39 @@ int compare(arangodb::velocypack::Slice, arangodb::velocypack::Slice, bool,
 }  // namespace arangodb::basics::VelocyPackHelper
 
 
+#include <numeric>
+int TRI_Levenshtein(std::string const& lhs, std::string const& rhs) {
+  int const lhsLength = static_cast<int>(lhs.size());
+  int const rhsLength = static_cast<int>(rhs.size());
+
+  int* col = new int[lhsLength + 1];
+  int start = 1;
+  // fill with initial values
+  std::iota(col + start, col + lhsLength + 1, start);
+
+  for (int x = start; x <= rhsLength; ++x) {
+    col[0] = x;
+    int last = x - start;
+    for (int y = start; y <= lhsLength; ++y) {
+      int const save = col[y];
+      col[y] = (std::min)({
+                              col[y] + 1,                                // deletion
+                              col[y - 1] + 1,                            // insertion
+                              last + (lhs[y - 1] == rhs[x - 1] ? 0 : 1)  // substitution
+                          });
+      last = save;
+    }
+  }
+
+  // fetch final value
+  int result = col[lhsLength];
+  // free memory
+  delete[] col;
+
+  return result;
+}
+
+
 int main(int argc, char** argv) {
   InitInterpreter();
 
