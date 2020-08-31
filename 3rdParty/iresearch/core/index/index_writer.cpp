@@ -2304,6 +2304,7 @@ index_writer::pending_context_t index_writer::flush_all() {
           }
         }
 
+        bool segment_modified{ false };
         // mask documents matching filters from all flushed segment_contexts (i.e. from new operations)
         for (auto& modifications: ctx->pending_segment_contexts_) {
           auto modifications_begin = modifications.modification_offset_begin_;
@@ -2316,9 +2317,12 @@ index_writer::pending_context_t index_writer::flush_all() {
             modifications_end - modifications_begin
           );
 
-          add_document_mask_modified_records(
+          segment_modified |= add_document_mask_modified_records(
             modification_queries, flush_segment_ctx, cached_readers_
           );
+        }
+        if (segment_modified) {
+          ctx->segment_mask_.emplace(flush_segment_ctx.segment_.meta);
         }
       }
     }
@@ -2328,7 +2332,8 @@ index_writer::pending_context_t index_writer::flush_all() {
       // if have a writer with potential update-replacement records then check if they were seen
       add_document_mask_unused_updates(segment_ctx);
 
-      // mask empty segments
+      // after mismatched replaces here could be also empty segment
+      // so masking is needed
       if (!segment_ctx.segment_.meta.live_docs_count) {
         ctx->segment_mask_.emplace(segment_ctx.segment_.meta);
         continue;
@@ -2354,6 +2359,10 @@ index_writer::pending_context_t index_writer::flush_all() {
 
   // only flush a new index version upon a new index or a metadata change
   if (!modified) {
+    // even if nothing to commit, we may have populated readers cache! Need to cleanup.
+    if (!ctx->segment_mask_.empty()) {
+      cached_readers_.purge(ctx->segment_mask_);
+    }
     return pending_context_t();
   }
 
