@@ -32,6 +32,7 @@
 #include "Network/ConnectionPool.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -77,7 +78,10 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
       _idleTtlMilli(config.idleConnectionMilli),
       _numIOThreads(config.numIOThreads),
       _verifyHosts(config.verifyHosts),
-      _prepared(false) {
+      _prepared(false),
+      _forwardedRequests(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_network_forwarded_requests", 0, "Number of requests forwarded to another coordinator")) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
@@ -225,6 +229,10 @@ void NetworkFeature::setPoolTesting(arangodb::network::ConnectionPool* pool) {
 
 bool NetworkFeature::prepared() const {
   return _prepared;
+}
+
+void NetworkFeature::trackForwardedRequest() {
+  ++_forwardedRequests;
 }
 
 }  // namespace arangodb

@@ -26,11 +26,13 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
+#include "Replication/ReplicationMetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -127,10 +129,14 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
                             "&collection=" + StringUtils::urlEncode(collectionName);
 
     // send request
+    double start = TRI_microtime();
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      ++_stats.numTailingRequests;
       response.reset(client->request(rest::RequestType::GET, url, nullptr, 0));
     });
+
+    _stats.waitedForTailing += TRI_microtime() - start;
 
     if (replutils::hasFailed(response.get())) {
       until = fromTick;
@@ -141,6 +147,10 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
       // HTTP 204 No content: this means we are done
       until = fromTick;
       return Result();
+    }
+  
+    if (response->hasContentLength()) {
+      _stats.numTailingBytesReceived += response->getContentLength();
     }
 
     bool found;
@@ -176,6 +186,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     if (!fromIncluded && fromTick > 0) {
       until = fromTick;
       abortOngoingTransactions();
+      ++_stats.numFollowTickNotPresent;
       return Result(
           TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
           std::string("required follow tick value '") + StringUtils::itoa(lastIncludedTick) +
@@ -231,6 +242,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     }
     LOG_TOPIC("2598f", DEBUG, Logger::REPLICATION) << "Fetching more data, fromTick: " << fromTick
                                           << ", lastScannedTick: " << lastScannedTick;
+
+    _stats.publish();
   }
 }
 
