@@ -328,7 +328,7 @@ void IResearchRocksDBRecoveryHelper::LogData(
       if (coll != nullptr) {
         auto const links = lookupLinks(*coll);
         for (auto link : links) {
-          link->afterTruncate(tick);
+          link->afterTruncate(tick, nullptr);
         }
       }
 
