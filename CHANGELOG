@@ -1,6 +1,8 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Add exit code for ICU database loading startup errors.
+
 * Fixed issue #12507: SegFault when using an AQL for loop through edges.
 
 * Make the `IS_IPV4` AQL function behave identical on macOS as on other
