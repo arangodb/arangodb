@@ -48,10 +48,6 @@ void mangleStringField(
   std::string& name,
   arangodb::iresearch::FieldMeta::Analyzer const& analyzer);
 
-void demangleStringField(
-  std::string& name,
-  arangodb::iresearch::FieldMeta::Analyzer const& analyzer);
-
 }  // namespace kludge
 }  // namespace iresearch
 }  // namespace arangodb

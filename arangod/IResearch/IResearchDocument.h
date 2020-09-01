@@ -208,6 +208,7 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   AnalyzerIterator _begin{};
   AnalyzerIterator _end{};
   std::vector<Level> _stack;
+  size_t _prefixLength{};
   std::shared_ptr<std::string> _nameBuffer;  // buffer for field name
   std::shared_ptr<std::string> _valueBuffer;  // need temporary buffer for custom types in VelocyPack
   arangodb::transaction::Methods* _trx;

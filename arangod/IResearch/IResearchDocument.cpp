@@ -529,11 +529,9 @@ void FieldIterator::next() {
   auto& name = nameBuffer();
 
   while (true) {
-    for (auto const* prev = _begin; ++_begin != _end;) {
-      auto& name = nameBuffer();
-
+    for (; ++_begin != _end;) {
       // remove previous suffix
-      arangodb::iresearch::kludge::demangleStringField(name, *prev);
+      name.resize(_prefixLength);
 
       // can have multiple analyzers for string values only
       if (setStringValue(topValue().value, *_begin)) {
@@ -575,6 +573,7 @@ void FieldIterator::next() {
         // set value
         _begin = nullptr;
         _end = 1 + _begin;  // set surrogate analyzers
+        _prefixLength = name.size(); // save current prefix length
 
         if (!setAttributeValue(*context)) {
           break;

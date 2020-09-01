@@ -59,16 +59,6 @@ void mangleStringField(
   name += analyzer._shortName;
 }
 
-void demangleStringField(
-    std::string& name,
-    arangodb::iresearch::FieldMeta::Analyzer const& analyzer) {
-  // +1 for preceding '\1'
-  auto const suffixSize = 1 + analyzer._shortName.size();
-
-  TRI_ASSERT(name.size() >= suffixSize);
-  name.resize(name.size() - suffixSize);
-}
-
 }  // namespace kludge
 }  // namespace iresearch
 }  // namespace arangodb
