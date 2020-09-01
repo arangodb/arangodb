@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,6 +27,7 @@
 #include "Basics/system-functions.h"
 #include "Indexes/IndexIterator.h"
 #include "Replication/DatabaseInitialSyncer.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/utilities.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBIterators.h"
@@ -52,7 +54,7 @@ namespace arangodb {
 // remove all keys that are below first remote key or beyond last remote key
 Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
                               OperationOptions& options,
-                              InitialSyncerIncrementalSyncStats& stats) {
+                              ReplicationMetricsFeature::InitialSyncStats& stats) {
   size_t const numChunks = chunkSlice.length();
 
   if (numChunks == 0) {
@@ -163,7 +165,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
 }
 
 Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
-                        InitialSyncerIncrementalSyncStats& stats,
+                        ReplicationMetricsFeature::InitialSyncStats& stats,
                         std::string const& keysId, uint64_t chunkId,
                         std::string const& lowString, std::string const& highString,
                         std::vector<std::string> const& markers) {
@@ -569,7 +571,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   TRI_voc_tick_t const chunkSize = 5000;
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
 
-  InitialSyncerIncrementalSyncStats stats;
+  ReplicationMetricsFeature::InitialSyncStats stats(syncer.vocbase().server().getFeature<ReplicationMetricsFeature>(), true);
 
   std::unique_ptr<httpclient::SimpleHttpResult> response;
 
@@ -872,7 +874,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       return res;
     }
   }
-
+  
   syncer.setProgress(
       std::string("incremental sync statistics for collection '") + col->name() +
       "': " + "keys requests: " + std::to_string(stats.numKeysRequests) + ", " +
@@ -889,4 +891,5 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
   return Result();
 }
+
 }  // namespace arangodb

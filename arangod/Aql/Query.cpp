@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -144,9 +144,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
   _warnings.updateOptions(_queryOptions);
   
   // store name of user that started the query
-  if (!ServerState::instance()->isDBServer()) {
-    _user = ExecContext::current().user();
-  }
+  _user = ExecContext::current().user();
 }
 
 /// @brief public constructor, Used to construct a full query

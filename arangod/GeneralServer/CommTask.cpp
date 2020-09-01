@@ -1,7 +1,7 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -189,6 +189,7 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
       if (!::startsWith(path, "/_admin/shutdown") &&
           !::startsWith(path, "/_admin/cluster/health") &&
           !::startsWith(path, "/_admin/log") &&
+          !::startsWith(path, "/_admin/metrics") &&
           !::startsWith(path, "/_admin/server/") &&
           !::startsWith(path, "/_admin/status") &&
           !::startsWith(path, "/_admin/statistics") &&

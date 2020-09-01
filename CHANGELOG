@@ -5,9 +5,91 @@ devel
   but either in an incomprehensible error (in 3.7), or undefined behaviour
   during execution (pre 3.7).
 
-* Allow calling of REST APIs `/_api/engine/stats`, GET `/_api/collection` and
-  GET `/_api/database/current` on followers in active failover deployments. 
-  This can help debugging and inspecting the follower.
+* Apply user-defined idle connection timeouts for HTTP/2 and VST connections.
+  The timeout value for idle HTTP/2 and VST connections can now be configured 
+  via the configuration option `--http.keep-alive-timeout` in the same way
+  as for HTTP/1 connections. 
+  HTTP/2 and VST connections that are sending data back to the client are now 
+  closed after 300 seconds or the configured idle timeout (the higher of both
+  values is used here).
+  Before this change, the timeouts for HTTP/2 and VST connections were hard-
+  coded to 120 seconds, and even non-idle connections were closed after this
+  timeout.
+
+* Added new metric `arangodb_network_forwarded_requests` to track the number
+  of requests forwarded from one coordinator to another in a load-balancing
+  context.
+
+* Added new metrics for tracking AQL queries and slow queries:
+  * `arangodb_aql_query_time`: histogram with AQL query times distribution.
+  * `arangodb_aql_slow_query_time`: histogram with AQL slow query times 
+    distribution.
+  * `arangodb_aql_all_query`: total number of all AQL queries.
+
+* Added new metrics for replication:
+  * `arangodb_replication_dump_requests`: number of replication dump requests
+    made.
+  * `arangodb_replication_dump_bytes_received`: number of bytes received in 
+    replication dump requests.
+  * `arangodb_replication_dump_documents`: number of documents received in
+    replication dump requests.
+  * `arangodb_replication_dump_request_time`: wait time for replication dump 
+    requests.
+  * `arangodb_replication_dump_apply_time`: time required for applying data
+    from replication dump responses.
+  * `arangodb_replication_initial_sync_keys_requests`: number of replication 
+    initial sync keys requests made.
+  * `arangodb_replication_initial_sync_docs_requests`: number of replication 
+    initial sync docs requests made.
+  * `arangodb_replication_initial_sync_docs_requested`: number of documents 
+    requested via replication initial sync requests.
+  * `arangodb_replication_initial_sync_docs_inserted`: number of documents 
+    inserted by replication initial sync.
+  * `arangodb_replication_initial_sync_docs_removed`: number of documents 
+    inserted by replication initial sync.
+  * `arangodb_replication_initial_chunks_requests_time`: wait time histogram 
+    for replication key chunks determination requests.
+  * `arangodb_replication_initial_keys_requests_time`: wait time for replication
+    keys requests.
+  * `arangodb_replication_initial_docs_requests_time`: time needed to apply
+    replication docs data.
+  * `arangodb_replication_initial_insert_apply_time`: time needed to apply
+    replication initial sync insertions.
+  * `arangodb_replication_initial_remove_apply_time`: time needed to apply
+    replication initial sync removals.
+  * `arangodb_replication_initial_lookup_time`: time needed for replication 
+    initial sync key lookups.
+  * `arangodb_replication_tailing_requests`: number of replication tailing 
+    requests.
+  * `arangodb_replication_tailing_follow_tick_failures`: number of replication 
+    tailing failures due to missing tick on leader.
+  * `arangodb_replication_tailing_markers`: number of replication tailing 
+    markers processed.
+  * `arangodb_replication_tailing_documents`: number of replication tailing 
+    document inserts/replaces processed.
+  * `arangodb_replication_tailing_removals`: number of replication tailing 
+    document removals processed.
+  * `arangodb_replication_tailing_bytes_received`: number of bytes received 
+    for replication tailing requests.
+  * `arangodb_replication_tailing_request_time`: wait time for replication
+    tailing requests.
+  * `arangodb_replication_tailing_apply_time`: time needed to apply replication
+    tailing markers.
+
+* Allow calling of REST APIs `/_api/engine/stats`, GET `/_api/collection`,
+  GET `/_api/database/current` and GET `/_admin/metrics` on followers in active 
+  failover deployments. This can help debugging and inspecting the follower.
+
+* Added metrics for V8 contexts usage:
+  * `arangodb_v8_context_alive`: number of V8 contexts currently alive.
+  * `arangodb_v8_context_busy`: number of V8 contexts currently busy.
+  * `arangodb_v8_context_dirty`: number of V8 contexts currently dirty.
+  * `arangodb_v8_context_free`: number of V8 contexts currently free.
+  * `arangodb_v8_context_max`: maximum number of concurrent V8 contexts.
+  * `arangodb_v8_context_min`: minimum number of concurrent V8 contexts.
+
+* Fix for issue BTS-183: added pending operations purging before ArangoSearch
+  index truncation
 
 * Don't allow creation of smart satellite graphs or collections (i.e. using
   `"isSmart":true` together with `"replicationFactor":"satellite"` when creating
