@@ -91,7 +91,8 @@ class IResearchLink {
     return !(*this == meta);
   }
 
-  void afterTruncate(TRI_voc_tick_t tick); // arangodb::Index override
+  void afterTruncate(TRI_voc_tick_t tick,
+                     transaction::Methods* trx); // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert a set of ArangoDB documents into an iResearch View using

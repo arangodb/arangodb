@@ -38,8 +38,10 @@ namespace iresearch {
 
 class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResearchLink {
  public:
-  void afterTruncate(TRI_voc_tick_t tick) override {
-    IResearchLink::afterTruncate(tick);
+
+  void afterTruncate(TRI_voc_tick_t tick,
+                     arangodb::transaction::Methods* trx) override {
+    IResearchLink::afterTruncate(tick, trx);
   }
 
   bool canBeDropped() const override {
