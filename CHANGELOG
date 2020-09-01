@@ -1,6 +1,11 @@
 devel
 -----
 
+* Add option `--rocksdb.max-write-buffer-size-to-maintain` with default of 0.
+  This configures how much memory RocksDB is allowed to use for immutable
+  flushed memtables/write-buffers. The default of 0 will usually be good
+  for all purposes and restores the 3.6 memory usage for write-buffers.
+
 * Apply user-defined idle connection timeouts for HTTP/2 and VST connections.
   The timeout value for idle HTTP/2 and VST connections can now be configured 
   via the configuration option `--http.keep-alive-timeout` in the same way
