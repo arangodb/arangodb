@@ -1,6 +1,9 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Fix for issue BTS-183: added pending operations purging before ArangoSearch
+  index truncation.
+
 * Fixed: More cases in AQL can now react to a query being killed, so reaction
   time to query abortion is now shortened. This was a regression in comparison
   to 3.6 series.
