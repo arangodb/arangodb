@@ -26,6 +26,30 @@ Expects an array of objects, each specifying a field (attribute path) and a
 sort direction (`"asc` for ascending, `"desc"` for descending):
 `[ { "field": "attr", "direction": "asc"}, … ]`
 
+@RESTBODYPARAM{primarySortCompression,string,optional,string}
+Defines how to compress the primary sort data (introduced in v3.7.1).
+ArangoDB v3.5 and v3.6 always compress the index using LZ4.
+This option is immutable.
+- `"lz4"` (default): use LZ4 fast compression.
+- `"none"`: disable compression to trade space for speed.
+
+@RESTBODYPARAM{storedValues,array,optional,object}
+An array of objects to describe which document attributes to store in the View
+index (introduced in v3.7.1). It can then cover search queries, which means the
+data can be taken from the index directly and accessing the storage engine can
+be avoided.<br/>
+Each object is expected in the form
+`{ "fields": [ "attr1", "attr2", ... "attrN" ], "compression": "none" }`,
+where the required `fields` attribute is an array of strings with one or more
+document attribute paths. The specified attributes are placed into a single
+column of the index. A column with all fields that are involved in common
+search queries is ideal for performance. The column should not include too many
+unneeded fields however. The optional `compression` attribute defines the
+compression type used for the internal column-store, which can be `"lz4"`
+(LZ4 fast compression, default) or `"none"` (no compression).<br/>
+This option is immutable. Not to be confused with `storeValues`, which allows
+to store meta data about attribute values in the View index.
+
 @RESTBODYPARAM{cleanupIntervalStep,integer,optional,int64}
 Wait at least this many commits between removing unused files in the
 ArangoSearch data directory (default: 2, to disable use: 0).

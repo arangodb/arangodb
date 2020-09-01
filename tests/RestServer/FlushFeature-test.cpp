@@ -65,11 +65,11 @@ class FlushFeatureTest
   FlushFeatureTest() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),
                           false);  // required for ClusterFeature::prepare()
     features.emplace_back(server.addFeature<arangodb::ClusterFeature>(), false);  // required for V8DealerFeature::prepare()
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);  // required for MMFilesWalRecoverState constructor
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false); 
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
 

@@ -45,6 +45,8 @@ V8Context::V8Context(size_t id, v8::Isolate* isolate)
       _isolate(isolate),
       _locker(nullptr),
       _creationStamp(TRI_microtime()),
+      _acquired(0.0),
+      _description("(none)"),
       _lastGcStamp(0.0),
       _invocations(0),
       _invocationsSinceLastGc(0),
