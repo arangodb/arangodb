@@ -1,6 +1,21 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Add attributes `database` and `user` when tracking current and slow AQL
+  queries.
+  `database` contains the name of the database the query is/was running in,
+  `user` contains the name of the user that started the query.
+  These attributes will be returned in addition when calling the APIs for
+  current and slow query inspection:
+  * GET `/_api/query/current` and `require("arangodb/aql/queries").current()`
+  * GET `/_api/query/slow` and `require("arangodb/aql/queries").slow()`
+
+  The "slow query" log message has also been augmented to contain the database
+  name and the user name.
+
+  The `user` attribute is now also displayed in the web interface in the
+  "Running queries" and "Slow queries" views.
+
 * Added metrics for V8 contexts usage:
   * `arangodb_v8_context_alive`: number of V8 contexts currently alive.
   * `arangodb_v8_context_busy`: number of V8 contexts currently busy.

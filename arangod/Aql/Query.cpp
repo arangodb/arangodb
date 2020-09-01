@@ -149,6 +149,9 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 
   _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
   _warnings.updateOptions(_queryOptions);
+
+  // store name of user that started the query
+  _user = ExecContext::current().user();
 }
 
 /// @brief public constructor, Used to construct a full query
@@ -188,6 +191,11 @@ Query::~Query() {
   LOG_TOPIC("f5cee", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime)
       << " Query::~Query this: " << (uintptr_t)this;
+}
+  
+/// @brief return the user that started the query
+std::string const& Query::user() const {
+  return _user;
 }
 
 bool Query::killed() const {
