@@ -1,3 +1,10 @@
+v3.6.7 (XXXX-XX-XX)
+-------------------
+
+* Fixed internal issue #744: LIMIT with only offset and constrained heap
+  optimization will use estimation value for ArangoSearch views.
+
+
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
