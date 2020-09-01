@@ -1060,7 +1060,7 @@ void ClusterInfo::loadPlan() {
       if (!vocbase) {
         // No database with this name found.
         // We have an invalid state here.
-        LOG_TOPIC("83d4c", WARN, Logger::AGENCY)
+        LOG_TOPIC("83d4c", DEBUG, Logger::AGENCY)
             << "No database '" << databaseName << "' found,"
             << " corresponding collection will be ignored for now and the "
             << "invalid information will be repaired. VelocyPack: "
@@ -5483,10 +5483,10 @@ void ClusterInfo::SyncerThread::run() {
         _f();
       } catch (std::exception const& ex) {
         LOG_TOPIC("752c4", ERR, arangodb::Logger::CLUSTER)
-          << "Caugt an error while loading " << _section << ": " << ex.what();
+          << "Caught an error while loading " << _section << ": " << ex.what();
       } catch (...) {
         LOG_TOPIC("30968", ERR, arangodb::Logger::CLUSTER)
-          << "Caugt an error while loading " << _section;
+          << "Caught an error while loading " << _section;
       }
     }
     // next round...

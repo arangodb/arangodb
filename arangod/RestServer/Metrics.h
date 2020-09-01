@@ -55,11 +55,9 @@ class Metric {
 };
 
 struct Metrics {
-
   using counter_type = gcl::counter::simplex<uint64_t, gcl::counter::atomicity::full>;
   using hist_type = gcl::counter::simplex_array<uint64_t, gcl::counter::atomicity::full>;
-  using buffer_type = gcl::counter::buffer<uint64_t>;
-
+  using buffer_type = gcl::counter::buffer<uint64_t, gcl::counter::atomicity::full, gcl::counter::atomicity::full>;
 };
 
 
