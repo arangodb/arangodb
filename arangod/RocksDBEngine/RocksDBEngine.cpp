@@ -437,6 +437,7 @@ void RocksDBEngine::start() {
   _options.enable_pipelined_write = opts._enablePipelinedWrite;
   _options.write_buffer_size = static_cast<size_t>(opts._writeBufferSize);
   _options.max_write_buffer_number = static_cast<int>(opts._maxWriteBufferNumber);
+  _options.max_write_buffer_size_to_maintain = static_cast<int64_t>(opts._maxWriteBufferSizeToMaintain);
   _options.delayed_write_rate = opts._delayedWriteRate;
   _options.min_write_buffer_number_to_merge =
       static_cast<int>(opts._minWriteBufferNumberToMerge);
