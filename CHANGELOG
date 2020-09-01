@@ -8,6 +8,10 @@ v3.7.2.2 (XXXX-XX-XX)
 * Fix for issue BTS-183: added pending operations purging before ArangoSearch
   index truncation.
 
+* Fixed: More cases in AQL can now react to a query being killed, so reaction
+  time to query abortion is now shortened. This was a regression in comparison
+  to 3.6 series.
+
 * Fixed internal issue #741: STARTS_WITH fails to accept 'array' as variable.
 
 * Fixed internal issue #738: PHRASE doesn't accept a reference to an array of
