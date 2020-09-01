@@ -1010,6 +1010,10 @@ static void JS_QueriesCurrentAql(v8::FunctionCallbackInfo<v8::Value> const& args
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
       obj->Set(TRI_V8_ASCII_STRING(isolate, "id"),
                TRI_V8UInt64String<TRI_voc_tick_t>(isolate, q.id));
+      obj->Set(TRI_V8_ASCII_STRING(isolate, "database"),
+               TRI_V8_STD_STRING(isolate, q.database));
+      obj->Set(TRI_V8_ASCII_STRING(isolate, "user"),
+               TRI_V8_STD_STRING(isolate, q.user));
       obj->Set(TRI_V8_ASCII_STRING(isolate, "query"),
                TRI_V8_STD_STRING(isolate, q.queryString));
       if (q.bindParameters != nullptr) {
@@ -1066,6 +1070,10 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
       obj->Set(TRI_V8_ASCII_STRING(isolate, "id"),
                TRI_V8UInt64String<TRI_voc_tick_t>(isolate, q.id));
+      obj->Set(TRI_V8_ASCII_STRING(isolate, "database"),
+               TRI_V8_STD_STRING(isolate, q.database));
+      obj->Set(TRI_V8_ASCII_STRING(isolate, "user"),
+               TRI_V8_STD_STRING(isolate, q.user));
       obj->Set(TRI_V8_ASCII_STRING(isolate, "query"),
                TRI_V8_STD_STRING(isolate, q.queryString));
       if (q.bindParameters != nullptr) {

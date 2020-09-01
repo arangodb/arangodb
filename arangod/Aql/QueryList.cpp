@@ -43,11 +43,14 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string&& queryString,
+QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string const& database,
+                               std::string const& user, std::string&& queryString,
                                std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
                                double started, double runTime,
                                QueryExecutionState::ValueType state, bool stream)
     : id(id),
+      database(database),
+      user(user),
       queryString(std::move(queryString)),
       bindParameters(bindParameters),
       started(started),
@@ -57,7 +60,7 @@ QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string&& queryString,
 
 /// @brief create a query list
 QueryList::QueryList(QueryRegistryFeature& feature, TRI_vocbase_t*)
-    : _lock(),
+    : _queryRegistryFeature(feature),
       _current(),
       _slow(),
       _slowCount(0),
@@ -130,6 +133,8 @@ void QueryList::remove(Query* query) {
     // check if we need to push the query into the list of slow queries
     if (now - started >= threshold && !query->killed()) {
       // yes.
+  
+      _queryRegistryFeature.trackSlowQuery();
 
       TRI_IF_FAILURE("QueryList::remove") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -166,10 +171,11 @@ void QueryList::remove(Query* query) {
       } else {
         LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
             << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
-            << bindParameters << ", took: " << Logger::FIXED(now - started) << " s";
+            << bindParameters << ", database: " << query->vocbase().name()
+            << ", user: " << query->user() << ", took: " << Logger::FIXED(now - started) << " s";
       }
 
-      _slow.emplace_back(query->id(), std::move(q),
+      _slow.emplace_back(query->id(), query->vocbase().name(), query->user(), std::move(q),
                          _trackBindVars ? query->bindParameters() : nullptr,
                          started, now - started,
                          query->killed() ? QueryExecutionState::ValueType::KILLED : QueryExecutionState::ValueType::FINISHED, isStreaming);
@@ -256,7 +262,8 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
 
       double const started = query->startTime();
 
-      result.emplace_back(query->id(), extractQueryString(query, maxLength),
+      result.emplace_back(query->id(), query->vocbase().name(), query->user(),
+                          extractQueryString(query, maxLength),
                           _trackBindVars ? query->bindParameters() : nullptr, started,
                           now - started, 
                           query->killed() ? QueryExecutionState::ValueType::KILLED : query->state(),
