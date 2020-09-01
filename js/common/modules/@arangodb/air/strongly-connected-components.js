@@ -179,15 +179,22 @@ function strongly_connected_components(graphName, resultField) {
 }
 
 function exec_test_scc_on_graph(graphSpec) {
-  return testhelpers.wait_for_pregel(
+  let status = testhelpers.wait_for_pregel(
     "Air Strongly Connected Components",
     strongly_connected_components(graphSpec.name, "SCC")
   );
+
+  if (status.state === "fatal error") {
+    return false;
+  } else {
+    return true;
+  }
 }
 
 function exec_test_scc() {
+  // TODO: After fix, re-enable all tests here!
 //    exec_test_scc_on_graph(examplegraphs.create_complete_graph("testComplete_5shard", 5));
-  exec_test_scc_on_graph(examplegraphs.create_tadpole_graph("testTadpole_5shard", 5));
+  return exec_test_scc_on_graph(examplegraphs.create_tadpole_graph("testTadpole_5shard", 5));
 //  exec_test_scc_on_graph(examplegraphs.create_disjoint_circle_and_complete_graph("testCircleComplete_1shard", 1));
 //  exec_test_scc_on_graph(examplegraphs.create_disjoint_circle_and_complete_graph("testCircleComplete_5shard", 5));
 /*  exec_test_scc_on_graph(
@@ -196,5 +203,5 @@ function exec_test_scc() {
 }
 
 function test() {
-  exec_test_scc();
+  return exec_test_scc();
 }
