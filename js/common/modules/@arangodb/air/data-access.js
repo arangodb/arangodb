@@ -23,6 +23,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
+const db = internal.db;
 const _ = require("lodash");
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
@@ -240,39 +241,46 @@ function exec_benchmark_write_vertex_on_graph(graphSpec, runs) {
 }
 
 function exec_test_data_access() {
+  let results = [];
+
   // write vertex validation
-  exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1), 100);
-  exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9), 1000);
-  exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18), 10000);
+  results.push(exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1), 100));
+  results.push(exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9), 1000));
+  results.push(exec_test_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18), 10000));
 
   // read vertex validation
-  exec_test_read_vertex_on_graph(
+  results.push(exec_test_read_vertex_on_graph(
     examplegraphs.create_line_graph("LineGraph100", 100, 1, ["a", "b", "c"]),
     ["a", "b", "c"]
-  );
+  ));
 
   // nested inputs
   let vertexKeysToInsertA = ["a", ["a", "b"], ["a", "c"], ["a", "c", "x"], "d", "e"];
   let vertexKeysToInsertB = ["a", ["a", "b"], ["a", "c"], "d", "e"];
   let readVertexTestInputs = [vertexKeysToInsertA, vertexKeysToInsertB];
   readVertexTestInputs.forEach((input) => {
-    exec_test_read_vertex_on_graph(
+    results.push(exec_test_read_vertex_on_graph(
       examplegraphs.create_line_graph("LineGraph100", 100, 1,
         input),
       input, true
-    );
-    exec_test_read_vertex_on_graph(
+    ));
+    results.push(exec_test_read_vertex_on_graph(
       examplegraphs.create_line_graph("LineGraph100", 1000, 9,
         input),
       input, true
-    );
-    exec_test_read_vertex_on_graph(
+    ));
+    results.push(exec_test_read_vertex_on_graph(
       examplegraphs.create_line_graph("LineGraph10000", 10000, 18,
         input),
       input, true
-    );
+    ));
   });
 
+  if (results.includes(false)) {
+    return false;
+  } else {
+    return true;
+  }
 }
 
 function exec_benchmark_data_access() {
@@ -282,7 +290,7 @@ function exec_benchmark_data_access() {
 
 // run tests
 function test() {
-  exec_test_data_access();
+  return exec_test_data_access();
 }
 
 function benchmark() {
