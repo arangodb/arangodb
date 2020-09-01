@@ -50,6 +50,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
     size_t dirty;
     size_t free;
     size_t max;
+    size_t min;
   };
   struct DetailedContextStatistics {
     size_t id;

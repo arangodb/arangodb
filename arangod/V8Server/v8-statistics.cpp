@@ -138,6 +138,8 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
                      v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.free)));
   v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "max"),
                      v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.max)));
+  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "min"),
+                     v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.min)));
 
   auto memoryStatistics = dealer.getCurrentContextDetails();
 

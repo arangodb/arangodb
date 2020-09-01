@@ -435,6 +435,7 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
     b.add("dirty", VPackValue(v8Counters.dirty));
     b.add("free", VPackValue(v8Counters.free));
     b.add("max", VPackValue(v8Counters.max));
+    b.add("min", VPackValue(v8Counters.min));
     {
       b.add("memory", VPackValue(VPackValueType::Array));
       for (auto const& memStatistic : memoryStatistics) {

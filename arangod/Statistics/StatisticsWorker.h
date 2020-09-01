@@ -72,6 +72,9 @@ class StatisticsWorker final : public Thread {
 
   // save one statistics object
   void saveSlice(velocypack::Slice const&, std::string const&) const;
+  
+  void appendMetric(
+    std::string& result, std::string const& val, std::string const& label) const;
 
   static constexpr uint64_t STATISTICS_INTERVAL = 10;    // 10 secs
   static constexpr uint64_t GC_INTERVAL = 8 * 60;        //  8 mins
