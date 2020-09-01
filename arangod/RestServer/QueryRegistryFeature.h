@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/QueryRegistry.h"
+#include "RestServer/MetricsFeature.h"
 
 namespace arangodb {
 
@@ -56,6 +57,9 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   uint64_t maxQueryPlans() const { return _maxQueryPlans; }
   aql::QueryRegistry* queryRegistry() const { return _queryRegistry.get(); }
 
+  // tracks a slow query by increasing the counter
+  void trackSlowQuery() { ++_slowQueriesCounter; }
+
  private:
   bool _trackSlowQueries;
   bool _trackBindVars;
@@ -71,6 +75,8 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   double _slowStreamingQueryThreshold;
   double _queryRegistryTTL;
   std::string _queryCacheMode;
+  
+  Counter& _slowQueriesCounter;
 
  private:
   static std::atomic<aql::QueryRegistry*> QUERY_REGISTRY;

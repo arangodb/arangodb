@@ -266,6 +266,12 @@ class Query {
   /// @brief mark a query as modification query
   void setIsModificationQuery() { _isModificationQuery = true; }
 
+  /// @brief return the user that started the query
+  std::string const& user() const { return _user; }
+  
+  /// @brief set the user that started the query
+  void user(std::string const& user) { _user = user; }
+
   /// @brief prepare a V8 context for execution for this expression
   /// this needs to be called once before executing any V8 function in this
   /// expression
@@ -388,6 +394,9 @@ class Query {
 
   /// @brief parsed query options
   QueryOptions _queryOptions;
+
+  /// @brief user that started the query
+  std::string _user;
 
   /// @brief collections used in the query
   Collections _collections;
