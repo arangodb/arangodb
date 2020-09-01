@@ -188,12 +188,17 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
       // the following paths are allowed on followers
       if (!::startsWith(path, "/_admin/shutdown") &&
           !::startsWith(path, "/_admin/cluster/health") &&
+          !(path == "/_admin/compact") &&
           !::startsWith(path, "/_admin/log") &&
           !::startsWith(path, "/_admin/server/") &&
           !::startsWith(path, "/_admin/status") &&
           !::startsWith(path, "/_admin/statistics") &&
           !::startsWith(path, "/_api/agency/agency-callbacks") &&
           !::startsWith(path, "/_api/cluster/") &&
+          !(req.requestType() == RequestType::GET && 
+            (path == "/_api/database/current" || path == "/_api/database")) &&
+          !(req.requestType() == RequestType::GET && path == "/_api/database/current") &&
+          !::startsWith(path, "/_api/engine/stats") &&
           !::startsWith(path, "/_api/replication") &&
           !::startsWith(path, "/_api/ttl/statistics") &&
           (mode == ServerState::Mode::TRYAGAIN ||
