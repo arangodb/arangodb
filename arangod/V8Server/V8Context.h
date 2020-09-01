@@ -97,11 +97,23 @@ class V8Context {
   bool hasGlobalMethodsQueued();
   void setCleaned(double stamp);
 
+  double acquired() const noexcept { return _acquired; }
+  char const* description() const noexcept { return _description; }
+  // sets acquisition description (char const* must stay valid forever) and
+  // acquisition timestamp
+  void setDescription(char const* description, double acquired) noexcept {
+    _description = description;
+    _acquired = acquired;
+  }
+  void clearDescription() noexcept { _description = "none"; }
+
   size_t const _id;
   v8::Persistent<v8::Context> _context;
   v8::Isolate* _isolate;
   v8::Locker* _locker;
   double const _creationStamp;
+  double _acquired;
+  char const* _description;
   double _lastGcStamp;
   uint64_t _invocations;
   uint64_t _invocationsSinceLastGc;

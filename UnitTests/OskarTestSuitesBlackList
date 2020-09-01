@@ -8,3 +8,4 @@ server_secrets
 shell_client_http2
 shell_client_aql_http2
 resilience_analyzers
+fuerte

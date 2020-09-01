@@ -9,6 +9,54 @@ v3.6.7 (XXXX-XX-XX)
   * `arangodb_v8_context_max`: maximum number of concurrent V8 contexts.
   * `arangodb_v8_context_min`: minimum number of concurrent V8 contexts.
 
+* Fixed internal issue #747: fixed possible dangling open files in ArangoSearch
+  index after remove operations.
+
+* Add exit code for ICU database loading errors.
+
+* Added new metric "arangodb_aql_slow_query" for slow AQL queries, so this can
+  be monitored more easily.
+
+* Added new metric "arangodb_scheduler_queue_length" for the scheduler's
+  internal queue length.
+
+* Added new metric "arangodb_scheduler_queue_full_failures" for tracking cases
+  of a full scheduler queue and dropping requests.
+
+* Added new metrics for the number of V8 contexts dynamically created and
+  destroyed ("arangodb_v8_context_created" and "arangodb_v8_context_destroyed")
+  and for the number of times a V8 context was entered and left
+  ("arangodb_v8_context_entered" and "arangodb_v8_context_exited"). There is
+  also a new metric for tracking the cases when a V8 context cannot be
+  successfully acquired and an operation is not performed
+  ("arangodb_v8_context_enter_failures").
+
+* Added extra info to "queue full" and "giving up waiting for unused v8 context"
+  log messages.
+
+* Request to the `/_admin/statistics` API now processed via the CLIENT_FAST
+  lane.
+  Previously they were handled in the CLIENT_SLOW lane, meaning that monitoring
+  requests using that API didn't get through when the queue was rather full.
+
+* Add attributes `database` and `user` when tracking current and slow AQL
+  queries.
+  `database` contains the name of the database the query is/was running in,
+  `user` contains the name of the user that started the query.
+  These attributes will be returned in addition when calling the APIs for
+  current and slow query inspection:
+  * GET `/_api/query/current` and `require("arangodb/aql/queries").current()`
+  * GET `/_api/query/slow` and `require("arangodb/aql/queries").slow()`
+
+  The "slow query" log message has also been augmented to contain the database
+  name and the user name.
+
+  The `user` attribute is now also displayed in the web interface in the
+  "Running queries" and "Slow queries" views.
+
+* Fixed internal issue #744: LIMIT with only offset and constrained heap
+  optimization will use estimation value for ArangoSearch views.
+
 
 v3.6.6 (2020-08-21)
 -------------------

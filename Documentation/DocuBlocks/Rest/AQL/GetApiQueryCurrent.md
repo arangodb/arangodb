@@ -10,6 +10,10 @@ database. Each query is a JSON object with the following attributes:
 
 - *id*: the query's id
 
+- *database*: the name of the database the query runs in
+
+- *user*: the name of the user that started the query
+
 - *query*: the query string (potentially truncated)
 
 - *bindVars*: the bind parameter values used by the query
