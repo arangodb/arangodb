@@ -1,6 +1,10 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed: More cases in AQL can now react to a query being killed, so reaction
+  time to query abortion is now shortened. This was a regression in comparison
+  to 3.6 series.
+
 * Don't allow creation of smart satellite graphs or collections (i.e. using
   `"isSmart":true` together with `"replicationFactor":"satellite"` when creating
   graphs or collections. This combination of parameters makes no sense, so that
