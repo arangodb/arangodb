@@ -1,6 +1,12 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Don't allow creation of smart satellite graphs or collections (i.e. using
+  `"isSmart":true` together with `"replicationFactor":"satellite"` when creating
+  graphs or collections. This combination of parameters makes no sense, so that
+  the server will now respond with "bad parameter" and an HTTP status code of
+  HTTP 400 ("Bad request").
+
 * Fixed internal issue #741: STARTS_WITH fails to accept 'array' as variable.
 
 * Fixed internal issue #738: PHRASE doesn't accept a reference to an array of
