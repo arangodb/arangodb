@@ -920,10 +920,11 @@ void RocksDBEdgeIndex::handleValNode(VPackBuilder* keys,
   }
 }
 
-void RocksDBEdgeIndex::afterTruncate(TRI_voc_tick_t tick) {
+void RocksDBEdgeIndex::afterTruncate(TRI_voc_tick_t tick,
+                                     arangodb::transaction::Methods* trx) {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->bufferTruncate(tick);
-  RocksDBIndex::afterTruncate(tick);
+  RocksDBIndex::afterTruncate(tick, trx);
 }
 
 RocksDBCuckooIndexEstimator<uint64_t>* RocksDBEdgeIndex::estimator() {

@@ -1279,13 +1279,14 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
   return lookup(trx, searchSlice, !opts.ascending);
 }
 
-void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick) {
+void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick,
+                                      arangodb::transaction::Methods* trx) {
   if (unique()) {
     return;
   }
   TRI_ASSERT(_estimator != nullptr);
   _estimator->bufferTruncate(tick);
-  RocksDBIndex::afterTruncate(tick);
+  RocksDBIndex::afterTruncate(tick, trx);
 }
 
 RocksDBCuckooIndexEstimator<uint64_t>* RocksDBVPackIndex::estimator() {

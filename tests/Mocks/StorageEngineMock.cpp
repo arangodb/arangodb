@@ -180,7 +180,7 @@ class EdgeIndexMock final : public arangodb::Index {
 
   void load() override {}
   void unload() override {}
-  void afterTruncate(TRI_voc_tick_t) override {
+  void afterTruncate(TRI_voc_tick_t, arangodb::transaction::Methods*) override {
     _edgesFrom.clear();
     _edgesTo.clear();
   }
@@ -733,7 +733,7 @@ class HashIndexMock final : public arangodb::Index {
 
   void unload() override {}
 
-  void afterTruncate(TRI_voc_tick_t) override {
+  void afterTruncate(TRI_voc_tick_t, arangodb::transaction::Methods*) override {
     _hashData.clear();
   }
 

@@ -68,8 +68,9 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
   Result drop() override { return _wrapped->drop(); }
 
-  void afterTruncate(TRI_voc_tick_t tick) override {
-    _wrapped->afterTruncate(tick);
+  void afterTruncate(TRI_voc_tick_t tick,
+                     arangodb::transaction::Methods* trx) override {
+    _wrapped->afterTruncate(tick, trx);
   }
 
   void load() override { _wrapped->load(); }
