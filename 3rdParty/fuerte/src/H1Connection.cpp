@@ -465,7 +465,6 @@ void H1Connection<ST>::setIOTimeout() {
 
   const bool wasReading = this->_reading;
   const bool wasWriting = this->_writing;
-  this->_timeoutOnReadWrite = false;
   auto tp = _item ? _item->expires : Clock::now() + this->_config._idleTimeout;
 
   // expires_after cancels pending ops
@@ -481,8 +480,8 @@ void H1Connection<ST>::setIOTimeout() {
         if ((wasWriting && me._writing) || (wasReading && me._reading)) {
           FUERTE_LOG_DEBUG << "HTTP-Request timeout"
                            << " this=" << &me << "\n";
-          me._proto.cancel();
           me._timeoutOnReadWrite = true;
+          me._proto.cancel();
           // We simply cancel all ongoing asynchronous operations, the
           // completion handlers will do the rest.
           return;
