@@ -22,6 +22,7 @@
 
 #include "ClusterEngine.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -31,6 +32,8 @@
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/build.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterMethods.h"
 #include "ClusterEngine/ClusterCollection.h"
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "ClusterEngine/ClusterRestHandlers.h"
@@ -259,6 +262,11 @@ Result ClusterEngine::changeView(TRI_vocbase_t& vocbase,
     return {};
   }
   return TRI_ERROR_NOT_IMPLEMENTED;
+}
+
+Result ClusterEngine::compactAll(bool changeLevel, bool compactBottomMostLevel) {
+  auto& feature = server().getFeature<ClusterFeature>();
+  return compactOnAllDBServers(feature, changeLevel, compactBottomMostLevel);
 }
 
 /// @brief Add engine-specific optimizer rules

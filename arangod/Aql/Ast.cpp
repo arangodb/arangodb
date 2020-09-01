@@ -1626,6 +1626,13 @@ void Ast::injectBindParameters(BindParameters& parameters,
           }
         } else {
           TRI_ASSERT(node->type == NODE_TYPE_PARAMETER_DATASOURCE);
+         
+          if (!value.isString()) {
+            // we can get here in case `WITH @col ...` when the value of @col
+            // is not a string
+            _query.warnings().registerError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, param.c_str());
+            // query will have been aborted here
+          }
 
           // bound data source parameter
           TRI_ASSERT(value.isString());
