@@ -1,9 +1,13 @@
-v3.7.2 (XXXX-XX-XX)
+v3.7.3 (XXXX-XX-XX)
 -------------------
 
 * Fixed: More cases in AQL can now react to a query being killed, so reaction
   time to query abortion is now shortened. This was a regression in comparison
   to 3.6 series.
+
+
+v3.7.2 (XXXX-XX-XX)
+-------------------
 
 * Fixed internal issue #744: LIMIT with only offset and constrained heap
   optimization will use estimation value for ArangoSearch views.
