@@ -1,6 +1,8 @@
 v3.6.7 (XXXX-XX-XX)
 -------------------
 
+* Add exit code for ICU database loading errors.
+
 * Added new metric "arangodb_aql_slow_query" for slow AQL queries, so this can
   be monitored more easily.
 
