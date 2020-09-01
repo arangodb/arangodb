@@ -130,7 +130,7 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   Field const& operator*() const noexcept { return _value; }
 
   FieldIterator& operator++() {
-    next(true);
+    next();
     return *this;
   }
 
@@ -149,17 +149,15 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
     return !(*this == rhs);
   }
 
-  void reset(velocypack::Slice const& doc,
+  void reset(velocypack::Slice slice,
              FieldMeta const& linkMeta);
 
  private:
-  typedef FieldMeta::Analyzer const* AnalyzerIterator;
+  using AnalyzerIterator = FieldMeta::Analyzer const*;
 
-  typedef bool(*Filter)( // filter
-    std::string& buffer,  // buffer
-    FieldMeta const*& rootMeta, // root link meta
-    IteratorValue const& value // value
-  );
+  using Filter = bool(*)(std::string& buffer,
+                         FieldMeta const*& rootMeta,
+                         IteratorValue const& value);
 
   struct Level {
     Level(velocypack::Slice slice,
@@ -198,7 +196,7 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   FieldIterator(FieldIterator const&) = delete;
   FieldIterator& operator=(FieldIterator const&) = delete;
 
-  void next(bool step);
+  void next();
   bool setAttributeValue(FieldMeta const& context);
   bool setStringValue(
     arangodb::velocypack::Slice const value,
@@ -214,7 +212,7 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   std::shared_ptr<std::string> _valueBuffer;  // need temporary buffer for custom types in VelocyPack
   arangodb::transaction::Methods* _trx;
   Field _value;  // iterator's value
-};               // FieldIterator
+}; // FieldIterator
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief represents stored primary key of the ArangoDB document

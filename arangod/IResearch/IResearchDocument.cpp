@@ -336,7 +336,7 @@ std::string& FieldIterator::valueBuffer() {
   return *_valueBuffer;
 }
 
-void FieldIterator::reset(VPackSlice const& doc, FieldMeta const& linkMeta) {
+void FieldIterator::reset(VPackSlice doc, FieldMeta const& linkMeta) {
   // set surrogate analyzers
   _begin = nullptr;
   _end = 1 + _begin;
@@ -351,9 +351,10 @@ void FieldIterator::reset(VPackSlice const& doc, FieldMeta const& linkMeta) {
   }
 
   // push the provided 'doc' on stack and initialize current value
-  _stack.emplace_back(doc, 0, linkMeta, getFilter(doc, linkMeta));
+  auto const filter = getFilter(doc, linkMeta);
+  _stack.emplace_back(doc, 0, linkMeta, filter);
 
-  next(false);
+  next();
 }
 
 void FieldIterator::setBoolValue(VPackSlice const value) {
@@ -521,7 +522,7 @@ bool FieldIterator::setAttributeValue(FieldMeta const& context) {
   }
 }
 
-void FieldIterator::next(bool step) {
+void FieldIterator::next() {
   TRI_ASSERT(valid());
 
   FieldMeta const* context = top().meta;
@@ -540,14 +541,9 @@ void FieldIterator::next(bool step) {
       }
     }
 
-    if (step) {
-      top().it.next();
-      step = false;
-    }
-
     while (true) {
       // pop all exhausted iterators
-      for (; !top().it.valid(); top().it.next()) {
+      for (; !top().it.next(); ) {
         _stack.pop_back();
 
         if (!valid()) {
@@ -556,36 +552,36 @@ void FieldIterator::next(bool step) {
         }
       }
 
-      // reset name to previous size
-      name.resize(top().nameLength);
-
       auto& level = top();
+      auto& it = level.it;
       context = level.meta;
 
-      if (level.filter(name, context, level.it.value())) {
-        auto const slice = topValue().value;
-        if (isArrayOrObject(slice)) {
-          if (!name.empty() && !slice.isArray()) {
-            name += NESTING_LEVEL_DELIMITER;
-          }
+      // reset name to previous size
+      name.resize(level.nameLength);
 
-          auto const filter = getFilter(slice, *context);
-          _stack.emplace_back(slice, name.size(), *context, filter);
-          continue;
-        } else {
-          // set value
-          _begin = nullptr;
-          _end = 1 + _begin;  // set surrogate analyzers
-
-          if (setAttributeValue(*context)) {
-            return;
-          } else {
-            break;
-          }
-        }
+      if (!level.filter(name, context, it.value())) {
+        continue;
       }
 
-      level.it.next();
+      auto const slice = topValue().value;
+      if (isArrayOrObject(slice)) {
+        if (!name.empty() && !slice.isArray()) {
+          name += NESTING_LEVEL_DELIMITER;
+        }
+
+        _stack.emplace_back(slice, name.size(), *context,
+                            getFilter(slice, *context));
+      } else {
+        // set value
+        _begin = nullptr;
+        _end = 1 + _begin;  // set surrogate analyzers
+
+        if (setAttributeValue(*context)) {
+          return;
+        } else {
+          break;
+        }
+      }
     }
   }
 }
