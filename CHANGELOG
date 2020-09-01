@@ -1,4 +1,4 @@
-v3.7.2 (XXXX-XX-XX)
+v3.7.3 (XXXX-XX-XX)
 -------------------
 
 * Don't allow creation of smart satellite graphs or collections (i.e. using
@@ -6,6 +6,10 @@ v3.7.2 (XXXX-XX-XX)
   graphs or collections. This combination of parameters makes no sense, so that
   the server will now respond with "bad parameter" and an HTTP status code of
   HTTP 400 ("Bad request").
+
+
+v3.7.2 (XXXX-XX-XX)
+-------------------
 
 * Fixed internal issue #744: LIMIT with only offset and constrained heap
   optimization will use estimation value for ArangoSearch views.
