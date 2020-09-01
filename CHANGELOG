@@ -1,4 +1,4 @@
-v3.7.2 (XXXX-XX-XX)
+v3.7.3 (XXXX-XX-XX)
 -------------------
 
 * Added new metric "arangodb_aql_slow_query" for slow AQL queries, so this can 
@@ -20,6 +20,10 @@ v3.7.2 (XXXX-XX-XX)
 * Request to the `/_admin/statistics` API now processed via the CLIENT_FAST lane. 
   Previously they were handled in the CLIENT_SLOW lane, meaning that monitoring 
   requests using that API didn't get through when the queue was rather full.
+
+
+v3.7.2 (XXXX-XX-XX)
+-------------------
 
 * Fixed internal issue #744: LIMIT with only offset and constrained heap
   optimization will use estimation value for ArangoSearch views.
