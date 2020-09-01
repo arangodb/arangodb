@@ -90,11 +90,6 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   virtual void start() = 0;
   virtual void stop() = 0;
 
-  // returns the number of scheduled requests
-  std::size_t getRequestCount() const { return _requestCount; }
-
-  void setKeepAliveTimeoutReached() { _keepAliveTimeoutReached = true; }
-
  protected:
 
   virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
@@ -163,8 +158,6 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   
   ConnectionStatistics::Item _connectionStatistics;
   std::chrono::milliseconds _keepAliveTimeout;
-  std::size_t _requestCount = 0;
-  bool _keepAliveTimeoutReached = false;
   AuthenticationFeature* _auth;
 
   mutable std::mutex _statisticsMutex;

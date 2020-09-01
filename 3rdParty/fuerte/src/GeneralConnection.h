@@ -100,6 +100,9 @@ class GeneralConnection : public fuerte::Connection {
   std::shared_ptr<asio_ns::io_context> _io_context;
   /// @brief underlying socket
   Socket<ST> _proto;
+  
+  /// elements to send out
+  boost::lockfree::queue<RT*, boost::lockfree::capacity<32>> _queue;
 
   /// default max chunksize is 30kb in arangodb
   static constexpr size_t READ_BLOCK_SIZE = 1024 * 32;
