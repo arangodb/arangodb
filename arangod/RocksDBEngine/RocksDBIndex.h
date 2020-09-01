@@ -75,7 +75,8 @@ class RocksDBIndex : public Index {
 
   Result drop() override;
 
-  virtual void afterTruncate(TRI_voc_tick_t tick) override;
+  virtual void afterTruncate(TRI_voc_tick_t tick,
+                             transaction::Methods* trx) override;
 
   void load() override;
   void unload() override;

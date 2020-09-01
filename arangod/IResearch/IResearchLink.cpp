@@ -350,7 +350,8 @@ bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
   return _meta == meta;
 }
 
-void IResearchLink::afterTruncate(TRI_voc_tick_t tick) {
+void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
+                                  arangodb::transaction::Methods* trx) {
   SCOPED_LOCK(_asyncSelf->mutex());  // '_dataStore' can be asynchronously modified
 
   TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
@@ -366,6 +367,24 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick) {
   }
 
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
+
+  if (trx != nullptr) {
+    auto* key = this;
+
+    auto& state = *(trx->state());
+
+    // TODO FIXME find a better way to look up a ViewState
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* ctx = dynamic_cast<LinkTrxState*>(state.cookie(key));
+#else
+    auto* ctx = static_cast<LinkTrxState*>(state.cookie(key));
+#endif
+
+    if (ctx) {
+      ctx->reset(); // throw away all pending operations as clear will overwrite them all
+      state.cookie(key, nullptr); // force active segment release to allow commit go and avoid deadlock in clear
+    }
+  }
 
   auto const lastCommittedTick = _lastCommittedTick;
   bool recoverCommittedTick = true;

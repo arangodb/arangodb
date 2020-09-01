@@ -1077,7 +1077,7 @@ void ClusterInfo::loadPlan() {
       if (!vocbase) {
         // No database with this name found.
         // We have an invalid state here.
-        LOG_TOPIC("83d4c", WARN, Logger::AGENCY)
+        LOG_TOPIC("83d4c", DEBUG, Logger::AGENCY)
             << "No database '" << databaseName << "' found,"
             << " corresponding collection will be ignored for now and the "
             << "invalid information will be repaired. VelocyPack: "

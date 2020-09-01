@@ -26,7 +26,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
-#include "Replication/GlobalReplicationApplier.h"
 
 struct TRI_vocbase_t;
 
@@ -36,10 +35,12 @@ class ApplicationServer;
 }
 
 class GeneralResponse;
+class GlobalReplicationApplier;
 
 class ReplicationFeature final : public application_features::ApplicationFeature {
  public:
   explicit ReplicationFeature(application_features::ApplicationServer& server);
+  ~ReplicationFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions> options) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
