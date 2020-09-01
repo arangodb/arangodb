@@ -5,7 +5,7 @@ v3.6.7 (XXXX-XX-XX)
   optimization will use estimation value for ArangoSearch views.
 
 
-v3.6.6 (XXXX-XX-XX)
+v3.6.6 (2020-08-21)
 -------------------
 
 * Make UPSERT statement with collection bind parameter behave identical to its
