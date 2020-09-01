@@ -163,6 +163,8 @@ class AqlItemBlock {
         throw;
       }
     }
+
+    _maxModifiedRowIndex = std::max<size_t>(_maxModifiedRowIndex, index + 1);
   }
 
   /// @brief eraseValue, erase the current value of a register and freeing it
@@ -204,6 +206,9 @@ class AqlItemBlock {
   /// All entries _data[i] for numEntries() <= i < _data.size() always have to
   /// be erased, i.e. empty / none!
   size_t numEntries() const;
+
+  /// @brief number of modified entries
+  size_t maxModifiedEntries() const;
 
   size_t capacity() const noexcept;
 
@@ -360,6 +365,9 @@ class AqlItemBlock {
 
   /// @brief _nrRegs, number of columns
   RegisterCount _nrRegs = 0;
+  
+  /// @brief highest index of modified row
+  size_t _maxModifiedRowIndex = 0;
 
   /// @brief manager for this item block
   AqlItemBlockManager& _manager;

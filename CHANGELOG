@@ -4,8 +4,50 @@ v3.7.3 (XXXX-XX-XX)
 * Fixed internal issue #747: fixed possible dangling open files in ArangoSearch
   index after remove operations.
 
+* Add exit code for ICU database loading startup errors.
 
-v3.7.2 (XXXX-XX-XX)
+* Fixed issue #12507: SegFault when using an AQL for loop through edges.
+
+* Make the `IS_IPV4` AQL function behave identical on macOS as on other
+  platforms. It previously allowed leading zeros in octets on macOS, whereas on
+  other platforms they were disallowed.
+  Now this is disallowed on macOS as well.
+
+* Added new metric "arangodb_aql_slow_query" for slow AQL queries, so this can
+  be monitored more easily.
+
+* Added new metric "arangodb_scheduler_queue_length" for the scheduler's
+  internal queue length.
+
+* Added new metric "arangodb_scheduler_queue_full_failures" for tracking cases
+  of a full scheduler queue and dropping requests.
+
+* Added new metrics for the number of V8 contexts dynamically created and
+  destroyed ("arangodb_v8_context_created" and "arangodb_v8_context_destroyed")
+  and for the number of times a V8 context was entered and left
+  ("arangodb_v8_context_entered" and "arangodb_v8_context_exited"). There is
+  also a new metric for tracking the cases when a V8 context cannot be
+  successfully acquired and an operation is not performed
+  ("arangodb_v8_context_enter_failures").
+
+* Added extra info to "queue full" and "giving up waiting for unused v8 context"
+  log messages.
+
+* Request to the `/_admin/statistics` API now processed via the CLIENT_FAST
+  lane.
+  Previously they were handled in the CLIENT_SLOW lane, meaning that monitoring
+  requests using that API didn't get through when the queue was rather full.
+
+* Introduce an internal high-water mark for the maximum row number that was
+  written to in an AqlItemBlock. Using this number several operations on the
+  whole block, such as cleaning up or copying can be made more efficient when
+  run on only partially filled blocks.
+
+* Fixed issue BTS-169: cost estimation for LIMIT nodes showed wrong number of
+  estimated items.
+
+
+v3.7.2 (2020-08-21)
 -------------------
 
 * Fixed internal issue #744: LIMIT with only offset and constrained heap
@@ -58,7 +100,7 @@ v3.7.2 (XXXX-XX-XX)
   UI in case the query was canceled using the "Cancel" button in web UI's query
   editor.
 
-* Fixed bad behaviour in agency supervision in some corner cases involving
+* Fixed bad behavior in agency supervision in some corner cases involving
   already resigned leaders in Current.
 
 * Fixed issue ES-664: the optimizer rule `inline-subqueries` must not pull out
