@@ -21,23 +21,23 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_REST_COMPACT_HANDLER_H
-#define ARANGOD_ROCKSDB_REST_COMPACT_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_COMPACT_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_COMPACT_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
 
-class RocksDBRestCompactHandler : public arangodb::RestBaseHandler {
+class RestCompactHandler : public arangodb::RestBaseHandler {
  public:
-  RocksDBRestCompactHandler(application_features::ApplicationServer&,
-                            GeneralRequest*, GeneralResponse*);
+  RestCompactHandler(application_features::ApplicationServer&,
+                     GeneralRequest*, GeneralResponse*);
 
 
  public:
   RestStatus execute() override;
-  char const* name() const override { return "RocksDBRestCompactHandler"; }
+  char const* name() const override { return "RestCompactHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 };
 }  // namespace arangodb

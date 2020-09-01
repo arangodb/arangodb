@@ -23,7 +23,6 @@
 
 #include "ClusterRestHandlers.h"
 #include "ClusterEngine/ClusterRestCollectionHandler.h"
-#include "ClusterEngine/ClusterRestCompactHandler.h"
 #include "ClusterEngine/ClusterRestExportHandler.h"
 #include "ClusterEngine/ClusterRestReplicationHandler.h"
 #include "ClusterEngine/ClusterRestWalHandler.h"
@@ -41,6 +40,4 @@ void ClusterRestHandlers::registerResources(rest::RestHandlerFactory* handlerFac
                                    RestHandlerCreator<ClusterRestReplicationHandler>::createNoData);
   handlerFactory->addPrefixHandler("/_admin/wal",
                                    RestHandlerCreator<ClusterRestWalHandler>::createNoData);
-  handlerFactory->addHandler("/_admin/compact",
-                             RestHandlerCreator<ClusterRestCompactHandler>::createNoData);
 }

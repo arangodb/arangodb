@@ -28,7 +28,6 @@
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBRestCollectionHandler.h"
-#include "RocksDBEngine/RocksDBRestCompactHandler.h"
 #include "RocksDBEngine/RocksDBRestExportHandler.h"
 #include "RocksDBEngine/RocksDBRestReplicationHandler.h"
 #include "RocksDBEngine/RocksDBRestWalHandler.h"
@@ -47,6 +46,4 @@ void RocksDBRestHandlers::registerResources(rest::RestHandlerFactory* handlerFac
                                    RestHandlerCreator<RocksDBRestReplicationHandler>::createNoData);
   handlerFactory->addPrefixHandler("/_admin/wal",
                                    RestHandlerCreator<RocksDBRestWalHandler>::createNoData);
-  handlerFactory->addHandler("/_admin/compact",
-                             RestHandlerCreator<RocksDBRestCompactHandler>::createNoData);
 }
