@@ -21,20 +21,25 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterRestCompactHandler.h"
-#include "Cluster/ClusterFeature.h"
+#include "RestCompactHandler.h"
+#include "Basics/debugging.h"
 #include "Cluster/ClusterMethods.h"
+#include "RocksDBEngine/RocksDBCommon.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/ExecContext.h"
 
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
+using namespace arangodb::rest;
 
-ClusterRestCompactHandler::ClusterRestCompactHandler(application_features::ApplicationServer& server,
-                                                     GeneralRequest* request, GeneralResponse* response)
+RestCompactHandler::RestCompactHandler(application_features::ApplicationServer& server,
+                                       GeneralRequest* request,
+                                       GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-RestStatus ClusterRestCompactHandler::execute() {
+RestStatus RestCompactHandler::execute() {
   if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
     generateError(
         rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN, "compaction is only allowed for superusers");
@@ -48,9 +53,10 @@ RestStatus ClusterRestCompactHandler::execute() {
 
   bool changeLevel = _request->parsedValue("changeLevel", false);
   bool compactBottomMostLevel = _request->parsedValue("compactBottomMostLevel", false);
-  
-  auto& feature = server().getFeature<ClusterFeature>();
-  Result res = compactOnAllDBServers(feature, changeLevel, compactBottomMostLevel);
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  Result res = engine->compactAll(db, changeLevel, compactBottomMostLevel);
   if (res.fail()) {
     generateError(
         GeneralResponse::responseCode(res.errorNumber()), res.errorNumber(), std::string("database compaction failied: ") + res.errorMessage());

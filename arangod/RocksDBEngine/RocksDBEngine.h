@@ -282,6 +282,8 @@ class RocksDBEngine final : public StorageEngine {
   }
 
   arangodb::Result dropView(TRI_vocbase_t const& vocbase, LogicalView const& view) override;
+  
+  arangodb::Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
 
   void destroyView(TRI_vocbase_t const& vocbase, LogicalView const& view) noexcept override;
 
@@ -293,7 +295,7 @@ class RocksDBEngine final : public StorageEngine {
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 
   /// @brief Add engine-specific V8 functions
-  void addV8Functions(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>& ArangoNS) override;
+  void addV8Functions() override;
 
   /// @brief Add engine-specific REST handlers
   void addRestHandlers(rest::RestHandlerFactory& handlerFactory) override;

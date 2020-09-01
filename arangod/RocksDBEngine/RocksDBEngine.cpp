@@ -1582,15 +1582,19 @@ int RocksDBEngine::shutdownDatabase(TRI_vocbase_t& vocbase) {
   return TRI_ERROR_NO_ERROR;
 }
 
+Result RocksDBEngine::compactAll(bool changeLevel, bool compactBottomMostLevel) {
+  return rocksutils::compactAll(_db->GetRootDB(), changeLevel, compactBottomMostLevel);
+}
+
 /// @brief Add engine-specific optimizer rules
 void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
   RocksDBOptimizerRules::registerResources(feature);
 }
 
 /// @brief Add engine-specific V8 functions
-void RocksDBEngine::addV8Functions(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>& ArangoNS) {
+void RocksDBEngine::addV8Functions() {
   // there are no specific V8 functions here
-  RocksDBV8Functions::registerResources(isolate, ArangoNS);
+  RocksDBV8Functions::registerResources();
 }
 
 /// @brief Add engine-specific REST handlers

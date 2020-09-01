@@ -22,6 +22,7 @@
 
 #include "ClusterEngine.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -31,6 +32,8 @@
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/build.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterMethods.h"
 #include "ClusterEngine/ClusterCollection.h"
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "ClusterEngine/ClusterRestHandlers.h"
@@ -331,6 +334,11 @@ int ClusterEngine::shutdownDatabase(TRI_vocbase_t& vocbase) {
   return TRI_ERROR_NO_ERROR;
 }
 
+Result ClusterEngine::compactAll(bool changeLevel, bool compactBottomMostLevel) {
+  auto& feature = server().getFeature<ClusterFeature>();
+  return compactOnAllDBServers(feature, changeLevel, compactBottomMostLevel);
+}
+
 /// @brief Add engine-specific optimizer rules
 void ClusterEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
   if (engineType() == ClusterEngineType::MMFilesEngine) {
@@ -344,8 +352,8 @@ void ClusterEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
 }
 
 /// @brief Add engine-specific V8 functions
-void ClusterEngine::addV8Functions(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>& ArangoNS) {
-  ClusterV8Functions::registerResources(isolate, ArangoNS);
+void ClusterEngine::addV8Functions() {
+  ClusterV8Functions::registerResources();
 }
 
 /// @brief Add engine-specific REST handlers
