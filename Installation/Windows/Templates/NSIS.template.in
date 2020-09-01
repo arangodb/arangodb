@@ -217,6 +217,8 @@ Function un.ReadSettings
 FunctionEnd
 
 Function check_previous_install
+  DetailPrint "checking whether $DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\SERVER exists"
+
   StrCpy $UpgradeInstall "0"
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\SERVER" OldFound
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\ENGINE" OldFound
@@ -962,6 +964,13 @@ Section "-Core installation"
   push "$INSTDIR\${ARANGO_INI}"
   call ReadINIFileKeys
   Delete "$newCfgValuesFile"
+
+  ${If} $LOGDIR != ""
+    CreateDirectory $LOGDIR
+  ${EndIf}
+
+  ; non-interactive install only hits us here?
+  Call check_previous_install
 
   CreateDirectory $APPDIR
   Call assignFileRights
