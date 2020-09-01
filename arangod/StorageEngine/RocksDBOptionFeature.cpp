@@ -212,7 +212,9 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption("--rocksdb.max-write-buffer-size-to-maintain",
                      "maximum size of immutable write buffers that build up in memory "
                      "per column family (larger values mean that more in-memory data "
-                     "can be used for transaction conflict checking (0 = use automatic default value)",
+                     "can be used for transaction conflict checking (-1 = use automatic default value, "
+                     "0 = do not keep immutable flushed write buffers, which is the default and usually "
+                     "correct))",
                      new Int64Parameter(&_maxWriteBufferSizeToMaintain));
 
   options->addOption("--rocksdb.max-total-wal-size",
