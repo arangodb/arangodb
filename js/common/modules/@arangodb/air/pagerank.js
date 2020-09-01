@@ -22,6 +22,8 @@
 // / @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const arangodb = require("@arangodb");
+const db = arangodb.db;
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
@@ -161,15 +163,22 @@ function exec_test_pagerank_on_graph(graphSpec, vertex) {
 }
 
 function exec_test_pagerank(vertex) {
-  //exec_test_pagerank_on_graph(examplegraphs.create_pagerank_graph("PageRankGraph1", 1), vertex);
-  exec_test_pagerank_on_graph(examplegraphs.create_pagerank_graph("PageRankGraph9", 9), vertex);
-  /*exec_test_pagerank_on_graph(examplegraphs.create_pagerank_graph("PageRankGraph18", 18), vertex);
+  let results = [];
 
-  exec_test_pagerank_on_graph(examplegraphs.create_wiki_vote_graph("WikiVoteGraph1", 1));
-  exec_test_pagerank_on_graph(examplegraphs.create_wiki_vote_graph("WikiVoteGraph9", 9));
-  exec_test_pagerank_on_graph(examplegraphs.create_wiki_vote_graph("WikiVoteGraph18", 18));*/
+  results.push(exec_test_pagerank_on_graph(examplegraphs.create_pagerank_graph("PageRankGraph1", 1), vertex));
+  results.push(exec_test_pagerank_on_graph(examplegraphs.create_pagerank_graph("PageRankGraph9", 9), vertex));
+  results.push(exec_test_pagerank_on_graph(examplegraphs.create_pagerank_graph("PageRankGraph18", 18), vertex));
+
+  results.push(exec_test_pagerank_on_graph(examplegraphs.create_wiki_vote_graph("WikiVoteGraph1", 1)));
+  results.push(exec_test_pagerank_on_graph(examplegraphs.create_wiki_vote_graph("WikiVoteGraph9", 9)));
+  results.push(exec_test_pagerank_on_graph(examplegraphs.create_wiki_vote_graph("WikiVoteGraph18", 18)));
+
+  if (results.includes(false)) {
+    return false;
+  }
+  return true;
 }
 
 function test(vertex = "") {
-  exec_test_pagerank(vertex);
+  return exec_test_pagerank(vertex);
 }
