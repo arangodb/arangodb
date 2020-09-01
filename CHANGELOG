@@ -1,4 +1,4 @@
-v3.6.6 (XXXX-XX-XX)
+v3.6.7 (XXXX-XX-XX)
 -------------------
 
 * Make followers in active failover run a compaction after they process a
@@ -22,6 +22,10 @@ v3.6.6 (XXXX-XX-XX)
 
   This command requires superuser access and is only available for the RocksDB
   storage engine.
+
+
+v3.6.6 (2020-08-21)
+-------------------
 
 * Make UPSERT statement with collection bind parameter behave identical to its
   non-bind parameter counterpart.
