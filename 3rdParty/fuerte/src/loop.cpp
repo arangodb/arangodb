@@ -38,7 +38,7 @@ EventLoopService::EventLoopService(unsigned int threadCount, char const* name)
     _ioContexts.emplace_back(std::make_shared<asio_ns::io_context>(1));
     _guards.emplace_back(asio_ns::make_work_guard(*_ioContexts.back()));
     asio_ns::io_context* ctx = _ioContexts.back().get();
-    _threads.emplace_back([ctx, name]() { 
+    _threads.emplace_back([=]() {
 #ifdef __linux__
       // set name of threadpool thread, so threads can be distinguished from each other
       if (name != nullptr && *name != '\0') {
