@@ -330,7 +330,7 @@ protected:
   Socket<ST> _proto;
   
   /// elements to send out
-  boost::lockfree::queue<RT*, boost::lockfree::capacity<64>> _queue;
+  boost::lockfree::queue<RT*, boost::lockfree::capacity<32>> _queue;
 
   /// default max chunksize is 30kb in arangodb
   static constexpr size_t READ_BLOCK_SIZE = 1024 * 32;

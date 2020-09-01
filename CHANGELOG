@@ -16,6 +16,17 @@ devel
 
   This command requires superuser access.
 
+* Apply user-defined idle connection timeouts for HTTP/2 and VST connections.
+  The timeout value for idle HTTP/2 and VST connections can now be configured 
+  via the configuration option `--http.keep-alive-timeout` in the same way
+  as for HTTP/1 connections. 
+  HTTP/2 and VST connections that are sending data back to the client are now 
+  closed after 300 seconds or the configured idle timeout (the higher of both
+  values is used here).
+  Before this change, the timeouts for HTTP/2 and VST connections were hard-
+  coded to 120 seconds, and even non-idle connections were closed after this
+  timeout.
+
 * Added new metric `arangodb_network_forwarded_requests` to track the number
   of requests forwarded from one coordinator to another in a load-balancing
   context.
