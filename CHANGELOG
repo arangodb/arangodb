@@ -1,10 +1,14 @@
-v3.7.2 (XXXX-XX-XX)
+v3.7.3 (XXXX-XX-XX)
 -------------------
 
 * Fixed internal issue #741: STARTS_WITH fails to accept 'array' as variable.
 
 * Fixed internal issue #738: PHRASE doesn't accept a reference to an array of
   arguments.
+
+
+v3.7.2 (XXXX-XX-XX)
+-------------------
 
 * Fixed internal issue #744: LIMIT with only offset and constrained heap
   optimization will use estimation value for ArangoSearch views.
