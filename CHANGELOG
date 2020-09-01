@@ -1,6 +1,8 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Add exit code for ICU database loading startup errors.
+
 * Make UPSERT statement with collection bind parameter behave identical to its
   non-bind parameter counterpart.
 
