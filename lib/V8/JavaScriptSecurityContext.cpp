@@ -25,6 +25,28 @@
 
 using namespace arangodb;
 
+/// @brief return the context type as a string
+char const* JavaScriptSecurityContext::typeName() const {
+  switch (_type) {
+    case Type::Restricted:
+      return "restricted";
+    case Type::Internal:
+      return "internal";
+    case Type::AdminScript:
+      return "admin script";
+    case Type::Query:
+      return "query";
+    case Type::Task:
+      return "task";
+    case Type::RestAction:
+      return "rest action";
+    case Type::RestAdminScriptAction:
+      return "rest admin script action";
+  }
+  // should not happen
+  return "unknown";
+}
+
 void JavaScriptSecurityContext::reset() {
   _canUseDatabase = false;
 }
