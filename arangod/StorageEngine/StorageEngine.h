@@ -44,13 +44,6 @@
 
 #include <chrono>
 
-namespace v8 {
-class Isolate;
-class ObjectTemplate;
-template<class T> class Local;
-template<class T> using Handle = v8::Local<T>;
-}
-
 namespace arangodb {
 
 enum class RecoveryState : uint32_t {
@@ -297,6 +290,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual arangodb::Result dropView(TRI_vocbase_t const& vocbase,
                                     LogicalView const& view) = 0;
 
+  // Compacts the entire database
+  virtual arangodb::Result compactAll(bool changeLevel, bool compactBottomMostLevel) = 0;
+
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate
   // information about indexes.
@@ -314,7 +310,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void addOptimizerRules(aql::OptimizerRulesFeature&) {}
 
   /// @brief Add engine-specific V8 functions
-  virtual void addV8Functions(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>&) {}
+  virtual void addV8Functions() {}
 
   /// @brief Add engine-specific REST handlers
   virtual void addRestHandlers(rest::RestHandlerFactory& handlerFactory) {}

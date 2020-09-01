@@ -261,6 +261,11 @@ Result ClusterEngine::changeView(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
+Result ClusterEngine::compactAll(bool changeLevel, bool compactBottomMostLevel) {
+  auto& feature = server().getFeature<ClusterFeature>();
+  return compactOnAllDBServers(feature, changeLevel, compactBottomMostLevel);
+}
+
 /// @brief Add engine-specific optimizer rules
 void ClusterEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
   if (engineType() == ClusterEngineType::RocksDBEngine) {
@@ -272,8 +277,8 @@ void ClusterEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
 }
 
 /// @brief Add engine-specific V8 functions
-void ClusterEngine::addV8Functions(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>& ArangoNS) {
-  ClusterV8Functions::registerResources(isolate, ArangoNS);
+void ClusterEngine::addV8Functions() {
+  ClusterV8Functions::registerResources();
 }
 
 /// @brief Add engine-specific REST handlers
