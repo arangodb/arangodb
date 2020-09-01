@@ -1,6 +1,9 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed internal issue #747: fixed possible dangling open files in ArangoSearch
+  index after remove operations.
+
 * Add exit code for ICU database loading startup errors.
 
 * Fixed issue #12507: SegFault when using an AQL for loop through edges.
