@@ -41,6 +41,7 @@ exports.test = test;
 function test_custom_global_accumulator_not_defined() {
   internal.print("Testing: custom global accumulator declared");
 
+  let finalResult = false;
   const tgname = "LineGraph100";
   examplegraphs.create_line_graph(tgname, 100, 5);
   try {
@@ -66,15 +67,18 @@ function test_custom_global_accumulator_not_defined() {
   } catch(e) {
     if (e.errorNum === 10 && e.code === 400) {
       internal.print("\u001b[32mOK:   Error signaled when custom type used that is not declared\u001b[0m");
-      return;
+      finalResult = true;
     } else {
       internal.print("\u001b[31mFAIL: Expected errorNum == 10 and code == 400, received errorNum ", e.errorNum, " and code ", e.code, "\u001b[0m");
+      finalResult = false;
     }
   }
+  return finalResult;
 }
 
 function test_custom_vertex_accumulator_not_defined() {
   internal.print("Testing: custom vertex accumulators declared");
+  let finalResult = false;
 
   const tgname = "LineGraph100";
   examplegraphs.create_line_graph(tgname, 100, 5);
@@ -101,11 +105,13 @@ function test_custom_vertex_accumulator_not_defined() {
   } catch(e) {
     if (e.errorNum === 10 && e.code === 400) {
       internal.print("\u001b[32mOK:   Error signaled when custom type used that is not declared\u001b[0m");
-      return;
+      finalResult = true;
     } else {
       internal.print("\u001b[31mFAIL: Expected errorNum == 10 and code == 400, received errorNum ", e.errorNum, " and code ", e.code, "\u001b[0m");
+      finalResult = false;
     }
   }
+  return finalResult;
 }
 
 /* returns a program that compputes the vertex degree of every vertex */
@@ -210,6 +216,7 @@ function checkVertexCount(graphSpec, presult) {
   if (agg_numberOfVertices !== exp_numberOfVertices) {
     throw "expected " + agg_numberOfVertices + " to be equal to " + exp_numberOfVertices;
   }
+  return true;
 }
 
 function exec_test_global_accumulators_test_on_graph(graphSpec, checkProc) {
@@ -217,41 +224,60 @@ function exec_test_global_accumulators_test_on_graph(graphSpec, checkProc) {
     "AIR global-accumulators",
     global_accumulators_test(graphSpec.name, "globalAccumulators")
   );
-  checkProc(graphSpec, presult);
+  return checkProc(graphSpec, presult);
  }
 
 function exec_test_vertex_degrees() {
+  let results = [];
   spec = examplegraphs.create_line_graph("LineGraph100", 100, 5);
   // YOLO, graph sometimes arrives too late.
   internal.print("waiting?");
   internal.wait(5);
-  exec_test_global_accumulators_test_on_graph(
+  results.push(exec_test_global_accumulators_test_on_graph(
     spec,
     checkVertexCount
-  );
+  ));
 
   spec = examplegraphs.create_line_graph("LineGraph1000", 1000, 5),
   // YOLO, graph sometimes arrives too late.
   internal.print("waiting?");
   internal.wait(5);
-  exec_test_global_accumulators_test_on_graph(
+  results.push(exec_test_global_accumulators_test_on_graph(
     spec,
     checkVertexCount
-  );
+  ));
 
   spec = examplegraphs.create_wiki_vote_graph("WikiVote", 1),
   // YOLO, graph sometimes arrives too late.
   internal.print("waiting?");
   internal.wait(5);
-  exec_test_global_accumulators_test_on_graph(
+  results.push(exec_test_global_accumulators_test_on_graph(
     spec,
     checkVertexCount
-  );
+  ));
+
+  if (results.includes(false)) {
+    return false;
+  }
+  return true;
 }
 
 // run tests
 function test() {
-  test_custom_global_accumulator_not_defined();
-  test_custom_vertex_accumulator_not_defined();
-  exec_test_vertex_degrees();
+  if (!test_custom_global_accumulator_not_defined()) {
+    internal.print('Test: "test_custom_global_accumulator_not_defined" failed!');
+    return false;
+  }
+
+  if (!test_custom_vertex_accumulator_not_defined()) {
+    internal.print('Test: "test_custom_vertex_accumulator_not_defined" failed!');
+    return false;
+  }
+
+  if (!exec_test_vertex_degrees()) {
+    internal.print('Test: "exec_test_vertex_degrees" failed!');
+    return false;
+  }
+
+  return true;
 }
