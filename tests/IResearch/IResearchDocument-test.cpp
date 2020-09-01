@@ -109,6 +109,52 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
 
 REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
 
+class VPackAnalyzer: public irs::analysis::analyzer {
+ public:
+  static constexpr irs::string_ref type_name() noexcept {
+    return "iresearch-vpack-analyzer";
+  }
+  static ptr make(irs::string_ref const&) {
+    PTR_NAMED(EmptyAnalyzer, ptr);
+    return ptr;
+  }
+  static bool normalize(irs::string_ref const&, std::string& out) {
+    out.resize(VPackSlice::emptyObjectSlice().byteSize());
+    std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
+    return true;
+  }
+
+  VPackAnalyzer() : irs::analysis::analyzer(irs::type<VPackAnalyzer>::get()) { }
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (type == irs::type<irs::term_attribute>::id()) {
+      return &_term;
+    }
+    if (type == irs::type<irs::increment>::id()) {
+      return &_inc;
+    }
+    return nullptr;
+  }
+  virtual bool next() override {
+    if (!_term.value.null()) {
+      return false;
+    }
+    _term.value = irs::ref_cast<irs::byte_type>(_buf);
+    return true;
+  }
+  virtual bool reset(irs::string_ref const& data) override {
+    _buf = arangodb::iresearch::slice(data).toString();
+    _term.value = irs::bytes_ref::NIL;
+    return true;
+  }
+
+ private:
+  std::string _buf;
+  irs::term_attribute _term;
+  irs::increment _inc;
+};
+
+REGISTER_ANALYZER_VPACK(VPackAnalyzer, VPackAnalyzer::make, VPackAnalyzer::normalize);
+
 class InvalidAnalyzer : public irs::analysis::analyzer {
  public:
   static bool returnNullFromMake;
@@ -646,6 +692,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
                     "::iresearch-document-empty", arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
       "iresearch-document-empty"));   // add analyzer
   linkMeta._includeAllFields = true;  // include all fields
+  linkMeta._primitiveOffset = linkMeta._analyzers.size();
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
@@ -1436,6 +1483,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
         analyzers.get(arangodb::StaticStrings::SystemDatabase + "::invalid", arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
         "invalid"));                    // add analyzer
     linkMeta._includeAllFields = true;  // include all fields
+    linkMeta._primitiveOffset = linkMeta._analyzers.size();
 
     // acquire analyzer, another one should be created
     auto analyzer = linkMeta._analyzers.back()._pool->get();  // cached instance should have been acquired
@@ -1502,6 +1550,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
         analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty", arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
         "empty"));                      // add analyzer
     linkMeta._includeAllFields = true;  // include all fields
+    linkMeta._primitiveOffset = linkMeta._analyzers.size();
 
     // acquire analyzer, another one should be created
     auto analyzer = linkMeta._analyzers.front()._pool->get();  // cached instance should have been acquired

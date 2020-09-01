@@ -28,6 +28,7 @@
 #endif
 
 #include "analysis/analyzers.hpp"
+#include "analysis/geo_token_stream.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/text_token_stream.hpp"
 #include "analysis/delimited_token_stream.hpp"
@@ -1097,6 +1098,15 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
     FATAL_ERROR_EXIT();
   }
 }
+
+arangodb::iresearch::AnalyzerScope getAnalyzerScope(irs::type_info::type_id type) noexcept {
+  if (type == irs::type<irs::analysis::geo_token_stream>::id()) {
+    return arangodb::iresearch::AnalyzerScope::COMPLEX_TYPE;
+  }
+
+  return arangodb::iresearch::AnalyzerScope::PRIMITIVE_TYPE;
+}
+
 } // namespace
 
 namespace arangodb {
@@ -1181,6 +1191,7 @@ bool AnalyzerPool::operator==(AnalyzerPool const& rhs) const {
   // intentionally do not check revision! Revision does not affects analyzer functionality!
   return _name == rhs._name &&
       _type == rhs._type &&
+      _scope == rhs._scope &&
       _features == rhs._features &&
       basics::VelocyPackHelper::equal(_properties, rhs._properties, true);
 }
@@ -1226,6 +1237,7 @@ bool AnalyzerPool::init(
         _type = irs::string_ref(_config.c_str() + _properties.byteSize() , type.size());
       }
 
+      _scope = getAnalyzerScope(instance->type());
       _features = features;  // store only requested features
       _revision = revision;
       return true;

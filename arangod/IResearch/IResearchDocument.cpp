@@ -345,17 +345,15 @@ void FieldIterator::reset(VPackSlice const& doc, FieldMeta const& linkMeta) {
   // clear field name
   _nameBuffer->clear();
 
-  if (!isArrayOrObject(doc)) {
-    // can't handle plain objects
+  if (!isArrayOrObject(doc) || 0 == doc.length()) {
+    // can handle non-empty arrays/objects only
     return;
   }
 
-  auto const* context = &linkMeta;
+  // push the provided 'doc' on stack and initialize current value
+  _stack.emplace_back(doc, 0, linkMeta, getFilter(doc, linkMeta));
 
-  // push the provided 'doc' to stack and initialize current value
-  if (!pushAndSetValue(doc, context)) {
-    next();
-  }
+  next(false);
 }
 
 void FieldIterator::setBoolValue(VPackSlice const value) {
@@ -475,45 +473,6 @@ bool FieldIterator::setStringValue(arangodb::velocypack::Slice const value,
   return true;
 }
 
-bool FieldIterator::pushAndSetValue(VPackSlice slice, FieldMeta const*& context) {
-  auto& name = nameBuffer();
-
-  while (isArrayOrObject(slice)) {
-    if (!name.empty() && !slice.isArray()) {
-      name += NESTING_LEVEL_DELIMITER;
-    }
-
-    auto const filter = getFilter(slice, *context);
-
-    _stack.emplace_back(slice, name.size(), *context, filter);
-
-    auto& it = top().it;
-
-    if (!it.valid()) {
-      // empty object or array, skip it
-      return false;
-    }
-
-    auto& value = it.value();
-
-    if (!filter(name, context, value)) {
-      // filtered out
-      TRI_ASSERT(context);
-      return false;
-    }
-
-    slice = value.value;
-  }
-
-  TRI_ASSERT(context);
-
-  // set value
-  _begin = nullptr;
-  _end = 1 + _begin;  // set surrogate analyzers
-
-  return setAttributeValue(*context);
-}
-
 bool FieldIterator::setAttributeValue(FieldMeta const& context) {
   auto const value = topValue().value;
 
@@ -550,65 +509,85 @@ bool FieldIterator::setAttributeValue(FieldMeta const& context) {
       TRI_ASSERT(nameBuffer() == arangodb::StaticStrings::IdString);
       [[fallthrough]];
     case VPackValueType::String:
-      resetAnalyzers(context);  // reset string analyzers
+      {
+        auto const& analyzers = context._analyzers;
+
+        _begin = analyzers.data();
+        _end = _begin + context._primitiveOffset;
+      }
       return setStringValue(value, *_begin);
     default:
       return false;
   }
 }
 
-void FieldIterator::next() {
+void FieldIterator::next(bool step) {
   TRI_ASSERT(valid());
 
-  for (auto const* prev = _begin; ++_begin != _end;) {
-    auto& name = nameBuffer();
-
-    // remove previous suffix
-    arangodb::iresearch::kludge::demangleStringField(name, *prev);
-
-    // can have multiple analyzers for string values only
-    if (setStringValue(topValue().value, *_begin)) {
-      return;
-    }
-  }
-
-  FieldMeta const* context;
-
+  FieldMeta const* context = top().meta;
   auto& name = nameBuffer();
 
-  auto nextTop = [this, &name]() {
-    auto& level = top();
-    auto& it = level.it;
-    auto const* context = level.meta;
-    auto const filter = level.filter;
+  while (true) {
+    for (auto const* prev = _begin; ++_begin != _end;) {
+      auto& name = nameBuffer();
 
-    name.resize(level.nameLength);
-    while (it.next() && !filter(name, context, it.value())) {
-      // filtered out
-      name.resize(level.nameLength);
+      // remove previous suffix
+      arangodb::iresearch::kludge::demangleStringField(name, *prev);
+
+      // can have multiple analyzers for string values only
+      if (setStringValue(topValue().value, *_begin)) {
+        return;
+      }
     }
 
-    return context;
-  };
+    if (step) {
+      top().it.next();
+      step = false;
+    }
 
-  do {
-    // advance top iterator
-    context = nextTop();
+    while (true) {
+      // pop all exhausted iterators
+      for (; !top().it.valid(); top().it.next()) {
+        _stack.pop_back();
 
-    // pop all exhausted iterators
-    for (; !top().it.valid(); context = nextTop()) {
-      _stack.pop_back();
-
-      if (!valid()) {
-        // reached the end
-        return;
+        if (!valid()) {
+          // reached the end
+          return;
+        }
       }
 
       // reset name to previous size
       name.resize(top().nameLength);
-    }
 
-  } while (!pushAndSetValue(topValue().value, context));
+      auto& level = top();
+      context = level.meta;
+
+      if (level.filter(name, context, level.it.value())) {
+        auto const slice = topValue().value;
+        if (isArrayOrObject(slice)) {
+          if (!name.empty() && !slice.isArray()) {
+            name += NESTING_LEVEL_DELIMITER;
+          }
+
+          auto const filter = getFilter(slice, *context);
+          _stack.emplace_back(slice, name.size(), *context, filter);
+          continue;
+        } else {
+          // set value
+          _begin = nullptr;
+          _end = 1 + _begin;  // set surrogate analyzers
+
+          if (setAttributeValue(*context)) {
+            return;
+          } else {
+            break;
+          }
+        }
+      }
+
+      level.it.next();
+    }
+  }
 }
 
 // ----------------------------------------------------------------------------

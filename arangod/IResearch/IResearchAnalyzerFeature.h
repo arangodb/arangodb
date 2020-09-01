@@ -79,6 +79,11 @@ class ApplicationServer;
 namespace arangodb {
 namespace iresearch {
 
+enum class AnalyzerScope : uint32_t {
+  PRIMITIVE_TYPE = 0,
+  COMPLEX_TYPE
+};
+
 // thread-safe analyzer pool
 class AnalyzerPool : private irs::util::noncopyable {
  public:
@@ -89,7 +94,8 @@ class AnalyzerPool : private irs::util::noncopyable {
   std::string const& name() const noexcept { return _name; }
   VPackSlice properties() const noexcept { return _properties; }
   irs::string_ref const& type() const noexcept { return _type; }
-  AnalyzersRevision::Revision  revision() const noexcept { return _revision; }
+  AnalyzersRevision::Revision revision() const noexcept { return _revision; }
+  AnalyzerScope scope() const noexcept { return _scope; }
   // definition to be stored in _analyzers collection or shown to the end user
   void toVelocyPack(velocypack::Builder& builder,
                     bool forPersistence = false);
@@ -124,6 +130,8 @@ class AnalyzerPool : private irs::util::noncopyable {
 
   mutable irs::unbounded_object_pool<Builder> _cache;  // cache of irs::analysis::analyzer
                                                        // (constructed via AnalyzerBuilder::make(...))
+
+  AnalyzerScope _scope{AnalyzerScope::PRIMITIVE_TYPE};
   std::string _config;     // non-null type + non-null properties + key
   irs::flags _features;    // cached analyzer features
   irs::string_ref _key;    // the key of the persisted configuration for this pool,

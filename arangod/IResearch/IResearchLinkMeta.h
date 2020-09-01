@@ -29,8 +29,9 @@
 #include <vector>
 
 #include "analysis/analyzer.hpp"
-#include "utils/object_pool.hpp"
 #include "utils/compression.hpp"
+#include "utils/object_pool.hpp"
+#include "utils/range.hpp"
 
 #include "Containers.h"
 #include "IResearchAnalyzerFeature.h"
@@ -173,6 +174,7 @@ struct FieldMeta {
   size_t memory() const noexcept;
 
   std::vector<Analyzer> _analyzers; // analyzers to apply to every field
+  size_t _primitiveOffset;
   Fields _fields;  // explicit list of fields to be indexed with optional overrides
   ValueStorage _storeValues{ ValueStorage::NONE };  // how values should be stored inside the view
   bool _includeAllFields{ false }; // include all fields or only fields listed in '_fields'

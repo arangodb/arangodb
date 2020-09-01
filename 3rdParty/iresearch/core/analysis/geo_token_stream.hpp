@@ -37,6 +37,8 @@ class geo_token_stream final
   : public frozen_attributes<3, token_stream>,
     private util::noncopyable {
  public:
+  static constexpr string_ref type_name() noexcept { return "geo"; }
+
   static void init(); // for triggering registration in a static build
 
   explicit geo_token_stream(const S2RegionTermIndexer::Options& opts,

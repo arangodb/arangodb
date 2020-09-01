@@ -130,7 +130,7 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   Field const& operator*() const noexcept { return _value; }
 
   FieldIterator& operator++() {
-    next();
+    next(true);
     return *this;
   }
 
@@ -178,7 +178,7 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
     size_t nameLength;              // length of the name at the current level
     FieldMeta const* meta;  // metadata
     Filter filter;
-  };  // Level
+  }; // Level
 
   Level& top() noexcept {
     TRI_ASSERT(!_stack.empty());
@@ -198,23 +198,14 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   FieldIterator(FieldIterator const&) = delete;
   FieldIterator& operator=(FieldIterator const&) = delete;
 
-  void next();
-  bool pushAndSetValue(arangodb::velocypack::Slice slice, FieldMeta const*& topMeta);
+  void next(bool step);
   bool setAttributeValue(FieldMeta const& context);
-  bool setStringValue( // set value
-    arangodb::velocypack::Slice const value, // value
-    FieldMeta::Analyzer const& valueAnalyzer // analyzer to use
-  );
+  bool setStringValue(
+    arangodb::velocypack::Slice const value,
+    FieldMeta::Analyzer const& valueAnalyzer);
   void setNullValue(VPackSlice const value);
   void setNumericValue(VPackSlice const value);
   void setBoolValue(VPackSlice const value);
-
-  void resetAnalyzers(FieldMeta const& context) noexcept {
-    auto const& analyzers = context._analyzers;
-
-    _begin = analyzers.data();
-    _end = _begin + analyzers.size();
-  }
 
   AnalyzerIterator _begin{};
   AnalyzerIterator _end{};
