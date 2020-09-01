@@ -332,11 +332,11 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
   }
 }
 
-void handleLocalShard(std::string const& dbname, std::string const& colname,
-                      VPackSlice const& cprops, VPackSlice const& shardMap,
-                      std::unordered_set<std::string>& commonShrds,
-                      std::unordered_set<std::string>& indis, std::string const& serverId,
-                      std::vector<std::shared_ptr<ActionDescription>>& actions) {
+void handleLocalShard(
+  std::string const& dbname, std::string const& colname, VPackSlice const& cprops,
+  VPackSlice const& shardMap, std::unordered_set<std::string>& commonShrds,
+  std::unordered_set<std::string>& indis, std::string const& serverId,
+  std::vector<std::shared_ptr<ActionDescription>>& actions) {
 
   std::unordered_set<std::string>::const_iterator it =
       std::find(commonShrds.begin(), commonShrds.end(), colname);
@@ -410,17 +410,12 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
 }
 
 /// @brief Get a map shardName -> servers
-VPackBuilder getShardMap(VPackSlice const& plan) {
+VPackBuilder getShardMap(VPackSlice const& collection) {
   VPackBuilder shardMap;
   {
     VPackObjectBuilder o(&shardMap);
-    for (auto database : VPackObjectIterator(plan, true)) {
-      for (auto collection : VPackObjectIterator(database.value)) {
-        for (auto shard : VPackObjectIterator(collection.value.get(SHARDS))) {
-          shardMap.add(shard.key.stringRef(), shard.value);
-        }
-      }
-    }
+    for (auto shard : collection.get(SHARDS))) {
+    shardMap.add(shard.key.stringRef(), shard.value);
   }
   return shardMap;
 }
@@ -440,8 +435,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
   // Create or modify if local databases are affected
   for (auto pb : plans) {
     auto plan = pb.slice();
-    auto pdbs = ps.get(PLAN + DATABASES);
-
+    auto pdbs = ps.get(std::vector<std::string>{AgencyCommHelper::path(), PLAN, DATABASES});
     for (auto const& pdb : VPackObjectIterator(pdbs, true)) {
       if (!local.hasKey(pdb.key.stringRef())) {
         auto dbname = pdb.key.copyString();
@@ -463,50 +457,60 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     }
   }
 
-  // Drop databases, which are no longer in plan
-  for (auto const& ldb : VPackObjectIterator(local, true)) {
-    auto dbname = ldb.key.copyString();
-
-    if (!plan.hasKey(std::vector<std::string>{DATABASES, dbname})) {
-      actions.emplace_back(std::make_shared<ActionDescription>(
-          std::map<std::string, std::string>{{std::string(NAME), std::string(DROP_DATABASE)}, {std::string("tick"), std::to_string(TRI_NewTickServer())},
-           {std::string(DATABASE), std::move(dbname)}},
+  // Drop databases, which are no longer in plan ONLY DIRTY
+  for (auto const& dbname : dirty) {
+    if (!plan.hasKey(std::vector<std::string>{
+          AgencyCommHelper::path(), DATABASES, dbname})) {
+      actions.emplace_back(
+        std::make_shared<ActionDescription>(
+          std::map<std::string, std::string>{
+            {std::string(NAME), std::string(DROP_DATABASE)},
+            {std::string("tick"), std::to_string(TRI_NewTickServer())},
+            {std::string(DATABASE), std::move(dbname)}},
           HIGHER_PRIORITY));
     }
   }
 
-  // Check errors for databases, which are no longer in plan and remove from
-  // errors
+  // Check errors for databases, which are no longer in plan and remove from errors
   for (auto& database : errors.databases) {
-    if (!plan.hasKey(std::vector<std::string>{DATABASES, database.first})) {
-      database.second.reset();
+    auto const& dbname = database.first;
+    if (dirty.find(dbname) != dirty.end()) {
+      if (!plan.hasKey(
+            std::vector<std::string>{AgencyCommHelper::path(), DATABASES, dbname})) {
+        database.second.reset();
+      }
     }
   }
 
   // Create or modify if local collections are affected
-  pdbs = plan.get(COLLECTIONS);
-  for (auto const& pdb : VPackObjectIterator(pdbs, true)) {  // for each db in Plan
-    if (local.hasKey(pdb.key.stringRef())) {  // have database in both
-      auto dbname = pdb.key.copyString();
-      auto const& ldb = local.get(dbname);
-      for (auto const& pcol : VPackObjectIterator(pdb.value, true)) {  // for each plan collection
-        auto const& cprops = pcol.value;
-        for (auto const& shard : VPackObjectIterator(cprops.get(SHARDS))) {  // for each shard in plan collection
-          if (shard.value.isArray()) {
-            for (auto const& dbs : VPackArrayIterator(shard.value)) {  // for each db server with that shard
-              // We only care for shards, where we find us as "serverId" or
-              // "_serverId"
-              if (dbs.isEqualString(serverId) || dbs.isEqualString(UNDERSCORE + serverId)) {
-                // at this point a shard is in plan, we have the db for it
-                handlePlanShard(planIndex, cprops, ldb, dbname, pcol.key.copyString(),
-                                shard.key.copyString(), serverId,
-                                shard.value[0].copyString(), commonShrds, indis,
-                                errors, feature, actions);
-                break;
+  for (auto const& dbname : dirty) {  // each dirty database
+    auto const lit = local.find(dbname);
+    if (lit != local.end()) {
+      try {
+        auto const& ldb = lit->second->slice();
+        for (auto const& pcol : VPackObjectIterator(ldb, true)) { // each plan collection
+          auto const& cprops = pcol.value;
+          // for each shard
+          for (auto const& shard : VPackObjectIterator(cprops.get(SHARDS))) { // each shard
+
+            if (shard.value.isArray()) {
+              for (auto const& dbs : VPackArrayIterator(shard.value)) { // each db server with that shard
+                // We only care for shards, where we find us as "serverId" or "_serverId"
+                if (dbs.isEqualString(serverId) || dbs.isEqualString(UNDERSCORE + serverId)) {
+                  // at this point a shard is in plan, we have the db for it
+                  handlePlanShard(planIndex, cprops, ldb, dbname, pcol.key.copyString(),
+                                  shard.key.copyString(), serverId,
+                                  shard.value[0].copyString(), commonShrds, indis,
+                                  errors, feature, actions);
+                  break;
+                }
               }
-            }
-          }  // else if (!shard.value.isArray()) - intentionally do nothing
+            }  // else if (!shard.value.isArray()) - intentionally do nothing
+          }
         }
+      } catch (std::exception const& e) {
+        LOG_TOPIC("49e89", WARN, Logger::MAINTENANCE)
+          << "Failed to get collection from local information: " << e.what();
       }
     }
   }
@@ -515,39 +519,72 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
   // this server, are in Plan and their database is present
 
   // Compare local to plan -----------------------------------------------------
-  auto const shardMap = getShardMap(pdbs);             // plan shards -> servers
-  for (auto const& db : VPackObjectIterator(local, true)) {  // for each local databases
-    if (pdbs.hasKey(db.key.stringRef())) {                                // if in plan
-      auto dbname = db.key.copyString();
-      for (auto const& sh : VPackObjectIterator(db.value)) {  // for each local shard
-        std::string shName = sh.key.copyString();
-        handleLocalShard(dbname, shName, sh.value, shardMap.slice(),
-                         commonShrds, indis, serverId, actions);
+  // TODO: getShardMaps still needed?
+  
+  for (auto const& db : local) {  // for each local databases
+    auto const& dbname = db.first;
+    auto const pit = plans.find(dbname);
+    if (pit != plans.end()) {     // have in plan
+      auto const& dbvpack = db.second; // local
+      auto plan = pit->second.slice().get(
+        std::vector<std::string>{AgencyCommHelper::path(), PLAN, COLLECTIONS});// plan slice
+      for (auto const& lcol : VPackObjectIterator(dbvpack.slice())) {
+        auto const& colname = lcol.key.stringRef();
+        Slice pcol = plan.get(colname); // TODO? is there?
+        auto const shardMap = getShardMap(pcol);             // plan shards -> servers
+        for (auto const& sh : VPackObjectIterator(lcol.value.get(SHARDS))) { // for each local shard
+          std::string shName = sh.key.copyString();
+          handleLocalShard(dbname, shName, sh.value, shardMap.slice(),
+                           commonShrds, indis, serverId, actions);
+        }
       }
     }
   }
-
+        
+        
   // See if shard errors can be thrown out:
+  // Check all shard errors in feature, if database or collection gone -> reset error
+
   for (auto& shard : errors.shards) {
     std::vector<std::string> path = split(shard.first, '/');
-    path.pop_back();           // Get rid of shard
-    if (!pdbs.hasKey(path)) {  // we can drop the local error
-      shard.second.reset();
+    auto const& dbname = path[0];
+    auto const& colname = path[1];
+
+    if (dirty.find(dbname) != dirty.end()) { // only if among dirty
+      auto const planit = plan.find(dbname);
+      if (planit == plan.end() ||                        // database gone
+          planit->scond.hasKey(std::vector<std::string>{ // collection gone
+              AgencyCommHelper::path(), PLAN, COLLECTIONS, dbname, colname})) {
+        shard.second.reset();
+      }
     }
   }
 
   // See if index errors can be thrown out:
+  // Check all shard errors in feature, if database, collection or index gone -> reset error
+        
   for (auto& shard : errors.indexes) {
-    std::vector<std::string> path = split(shard.first, '/');  // dbname, collection, shardid
-    path.pop_back();             // dbname, collection
-    path.emplace_back(INDEXES);  // dbname, collection, indexes
-    VPackSlice indexes = pdbs.get(path);
-    if (!indexes.isArray()) {  // collection gone, can drop errors
-      for (auto& index : shard.second) {
+    std::vector<std::string> path = split(shard.first, '/'); // dbname, collection, shardid
+    auto const& dbname = path[0];
+    auto const& colname = path[1];
+
+    if (dirty.find(dbname) != dirty.end()) { // only if among dirty
+    
+      path.pop_back();             // dbname, collection
+      path.emplace_back(INDEXES);  // dbname, collection, indexes
+      auto const planit = plan.find(dbname);
+
+      if (planit == plan.end() ||                        // database gone
+          planit->scond.hasKey(std::vector<std::string>{ // collection gone
+              AgencyCommHelper::path(), PLAN, COLLECTIONS, dbname, colname})) {
         index.second.reset();
-      }
-    } else {  // need to look at individual errors and indexes:
-      for (auto& p : shard.second) {
+      } else {
+        // TODO secure?
+        VPackSlice indexes = planit->second.get(std::vector<std::string>{
+            AgencyCommHelper::path(), PLAN, COLLECTIONS, dbname, colname, INDEXES});
+        VPackSlice indexes = pdbs.get(path);
+
+        for (auto& p : shard.second) {
         std::string const& id = p.first;
         bool found = false;
         for (auto const& ind : VPackArrayIterator(indexes)) {
@@ -567,12 +604,11 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 }
 
 /// @brief handle plan for local databases
-arangodb::Result arangodb::maintenance::executePlan(VPackSlice const& plan,
-                                                    uint64_t planIndex,
-                                                    VPackSlice const& local,
-                                                    std::string const& serverId,
-                                                    MaintenanceFeature& feature,
-                                                    VPackBuilder& report) {
+arangodb::Result arangodb::maintenance::executePlan(
+  std::unordered_map<std::unordered_map<std::shared_ptr<VPackBuilder>>> const& plan,
+  uint64_t planIndex, std::unordered_set<std::string> const& dirty, VPackSlice const& local,
+  std::string const& serverId, arangodb::MaintenanceFeature& feature, VPackBuilder& report) {
+
   // Errors from maintenance feature
   MaintenanceFeature::errors_t errors;
   arangodb::Result result = feature.copyAllErrors(errors);
