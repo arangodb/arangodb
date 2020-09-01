@@ -6,7 +6,7 @@ devel
 
   * `arangodb_rocksdb_free_disk_space`: provides the free disk space for
     the mount, in bytes
-  * `arangodb_rocksdb_free_disk_space`: provides the total disk space of
+  * `arangodb_rocksdb_total_disk_space`: provides the total disk space of
     the mount, in bytes
 
 * Apply user-defined idle connection timeouts for HTTP/2 and VST connections.
