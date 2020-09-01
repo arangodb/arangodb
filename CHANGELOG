@@ -1,6 +1,8 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to 0.7.11.
+
 * Make followers in active failover run a compaction after they process a
   truncate operation and the truncate removed more than 4k documents. This can
   help to reclaim disk space on the follower earlier than without running the
@@ -47,8 +49,6 @@ v3.5.6 (XXXX-XX-XX)
 
 * Fixed internal issue #747: fixed possible dangling open files in ArangoSearch
   index after remove operations.
-
-* Updated arangosync to 0.7.10.
 
 * Fixed internal issue #742: Add tick storage in index meta payload for
   ArangoSearch view links after collection truncate operation.
@@ -130,8 +130,6 @@ v3.5.6 (XXXX-XX-XX)
   report success when it failed.
 
 * Fix unreasonable precondition on removeServer.
-
-* Updated arangosync to 0.7.7.
 
 * Fixed a document parsing bug in the Web UI. This issue occured in the
   document list view in case a document had an attribute called `length`.
