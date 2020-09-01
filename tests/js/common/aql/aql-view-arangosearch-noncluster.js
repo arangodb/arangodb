@@ -2174,7 +2174,7 @@ function iResearchAqlTestSuite () {
     
     testVolatileFilter : function() {
       let result = db._query("FOR doc IN AnotherUnitTestsCollection LET kk = NOEVAL(doc.id) "
-                             + " FOR c IN UnitTestsWithArrayView SEARCH c.c == kk SORT c.c RETURN c ").toArray();
+                             + " FOR c IN UnitTestsWithArrayView SEARCH c.c == kk OPTIONS { waitForSync : true } SORT c.c RETURN c ").toArray();
       assertEqual(2, result.length);
       assertEqual(result[0].c, 0);
       assertEqual(result[1].c, 1);
@@ -2182,7 +2182,7 @@ function iResearchAqlTestSuite () {
     
     testQueryWithMultipleSortView : function() {
       let res= db._query("FOR doc IN WithPrimarySort SEARCH ANALYZER(doc.field3 == 1, 'customAnalyzer') "
-      + " SORT doc._key  LIMIT 0, 50  RETURN doc ").toArray();
+      + " OPTIONS { waitForSync : true } SORT doc._key  LIMIT 0, 50  RETURN doc ").toArray();
       assertEqual(1, res.length);
     }
   };
