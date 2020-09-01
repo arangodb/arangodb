@@ -536,7 +536,8 @@ static void JS_WaitForEstimatorSync(v8::FunctionCallbackInfo<v8::Value> const& a
   TRI_V8_TRY_CATCH_END
 }
 
-void MMFilesV8Functions::registerResources(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>& ArangoNS) {
+void MMFilesV8Functions::registerResources() {
+  ISOLATE;
   v8::HandleScope scope(isolate);
 
   TRI_GET_GLOBALS();

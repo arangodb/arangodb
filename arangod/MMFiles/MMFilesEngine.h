@@ -304,6 +304,8 @@ class MMFilesEngine final : public StorageEngine {
   std::string createViewDirectoryName(std::string const& basePath, TRI_voc_cid_t id);
 
   void saveViewInfo(TRI_vocbase_t const& vocbase, LogicalView const& view, bool sync) const;
+  
+  arangodb::Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
 
   void signalCleanup(TRI_vocbase_t& vocbase) override;
 
@@ -340,7 +342,7 @@ class MMFilesEngine final : public StorageEngine {
   void addOptimizerRules(aql::OptimizerRulesFeature&) override;
 
   /// @brief Add engine-specific V8 functions
-  void addV8Functions(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>& ArangoNS) override;
+  void addV8Functions() override;
 
   /// @brief Add engine-specific REST handlers
   void addRestHandlers(rest::RestHandlerFactory&) override;
