@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -7711,7 +7711,7 @@ AqlValue Functions::SchemaGet(ExpressionContext* expressionContext,
   }
 
   transaction::BuilderLeaser builder(trx);
-  logicalCollection->validatorsToVelocyPack(*builder.get());
+  logicalCollection->schemaToVelocyPack(*builder.get());
   VPackSlice slice = builder->slice();
 
   if (!slice.isObject()) {

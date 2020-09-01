@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -1592,7 +1593,7 @@ V8DealerFeature::Statistics V8DealerFeature::getCurrentContextNumbers() {
   CONDITION_LOCKER(guard, _contextCondition);
 
   return {_contexts.size(), _busyContexts.size(), _dirtyContexts.size(),
-          _idleContexts.size(), _nrMaxContexts};
+          _idleContexts.size(), _nrMaxContexts, _nrMinContexts};
 }
 
 std::vector<V8DealerFeature::DetailedContextStatistics> V8DealerFeature::getCurrentContextDetails() {

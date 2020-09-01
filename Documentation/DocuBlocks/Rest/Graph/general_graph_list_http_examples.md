@@ -52,6 +52,9 @@ Can also be the string `"satellite"` for a SmartGraph (Enterprise Edition only).
 @RESTSTRUCT{isSmart,graph_representation,boolean,required,}
 Whether the graph is a SmartGraph (Enterprise Edition only).
 
+@RESTSTRUCT{isDisjoint,graph_representation,boolean,required,}
+Whether the graph is a Disjoint SmartGraph (Enterprise Edition only).
+
 @RESTSTRUCT{smartGraphAttribute,graph_representation,string,optional,}
 Name of the sharding attribute in the SmartGraph case (Enterprise Edition only).
 

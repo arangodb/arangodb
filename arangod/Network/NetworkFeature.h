@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Network/ConnectionPool.h"
+#include "RestServer/Metrics.h"
 #include "Scheduler/Scheduler.h"
 
 #include <atomic>
@@ -54,6 +56,9 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   void setPoolTesting(arangodb::network::ConnectionPool* pool);
 #endif
 
+  /// @brief increase the counter for forwarded requests
+  void trackForwardedRequest();
+
  private:
   std::string _protocol;
   uint64_t _maxOpenConnections;
@@ -69,6 +74,11 @@ class NetworkFeature final : public application_features::ApplicationFeature {
 
   std::unique_ptr<network::ConnectionPool> _pool;
   std::atomic<network::ConnectionPool*> _poolPtr;
+
+  /// @brief number of cluster-internal forwarded requests
+  /// (from one coordinator to another, in case load-balancing
+  /// is used)
+  Counter& _forwardedRequests;
 };
 
 }  // namespace arangodb

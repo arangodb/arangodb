@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -76,11 +77,6 @@ void AqlFeature::unlease() noexcept { ::leases.fetch_sub(1); }
 
 void AqlFeature::start() {
   ::leases.fetch_or(::readyBit);
-
-  // register query time metrics
-  server().getFeature<arangodb::MetricsFeature>().counter(
-      StaticStrings::AqlQueryRuntimeMs, 0,
-      "Total execution time of all queries");
 
   LOG_TOPIC("cf921", DEBUG, Logger::QUERIES) << "AQL feature started";
 }

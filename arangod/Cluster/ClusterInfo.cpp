@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1059,7 +1059,7 @@ void ClusterInfo::loadPlan() {
       if (!vocbase) {
         // No database with this name found.
         // We have an invalid state here.
-        LOG_TOPIC("83d4c", WARN, Logger::AGENCY)
+        LOG_TOPIC("83d4c", DEBUG, Logger::AGENCY)
             << "No database '" << databaseName << "' found,"
             << " corresponding collection will be ignored for now and the "
             << "invalid information will be repaired. VelocyPack: "
@@ -2899,7 +2899,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
            VPackValue(info->usesRevisionsAsDocumentIds()));
   temp.add(StaticStrings::SyncByRevision, VPackValue(info->syncByRevision()));
   temp.add(VPackValue(StaticStrings::Schema));
-  info->validatorsToVelocyPack(temp);
+  info->schemaToVelocyPack(temp);
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
 

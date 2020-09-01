@@ -1,7 +1,8 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,15 +31,15 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
 template <SocketType T>
 GeneralCommTask<T>::GeneralCommTask(GeneralServer& server,
                                     ConnectionInfo info,
                                     std::unique_ptr<AsioSocket<T>> socket)
-: CommTask(server, std::move(info)), _protocol(std::move(socket)), _stopped(false) {
+: CommTask(server, std::move(info)),
+  _protocol(std::move(socket)),
+  _reading(false),
+  _writing(false),
+  _stopped(false) {
   if (AsioSocket<T>::supportsMixedIO()) {
     _protocol->setNonBlocking(true);
   }
@@ -77,27 +78,6 @@ void GeneralCommTask<T>::close(asio_ns::error_code const& ec) {
   }
 }
 
-/// set / reset connection timeout
-template <SocketType T>
-void GeneralCommTask<T>::setTimeout(std::chrono::milliseconds millis) {
-  _protocol->timer.expires_after(millis);
-  _protocol->timer.async_wait([self = CommTask::weak_from_this(), oldRequestCount = getRequestCount()](asio_ns::error_code ec) {
-    std::shared_ptr<CommTask> s;
-    if (ec || !(s = self.lock())) {  // was canceled / deallocated
-      return;
-    }
-
-    if (s->getRequestCount() != oldRequestCount) {
-      return;
-    }
-
-    s->setKeepAliveTimeoutReached();
-    LOG_TOPIC("5c1e0", INFO, Logger::REQUESTS)
-        << "keep alive timeout, closing stream!";
-    static_cast<GeneralCommTask<T>&>(*s).close(ec);
-  });
-}
-
 template <SocketType T>
 void GeneralCommTask<T>::asyncReadSome() try {
   asio_ns::error_code ec;
@@ -128,20 +108,15 @@ void GeneralCommTask<T>::asyncReadSome() try {
     return;
   }
   
-  // VST and H2 get a simple timeout here
-  if (enableReadTimeout()) {
-    setTimeout(DefaultTimeout);
-  }
-
   auto mutableBuff = _protocol->buffer.prepare(ReadBlockSize);
+  
+  _reading = true;
+  setIOTimeout();
   _protocol->socket.async_read_some(
       mutableBuff, [self = shared_from_this()](asio_ns::error_code const& ec, size_t nread) {
         auto& me = static_cast<GeneralCommTask<T>&>(*self);
+        me._reading = false;
         me._protocol->buffer.commit(nread);
-  
-        if (me.enableReadTimeout()) {
-          me._protocol->timer.cancel();
-        }
 
         try {
           if (me.readCallback(ec)) {
