@@ -56,7 +56,7 @@ RestStatus RestCompactHandler::execute() {
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
-  Result res = engine->compactAll(db, changeLevel, compactBottomMostLevel);
+  Result res = engine->compactAll(changeLevel, compactBottomMostLevel);
   if (res.fail()) {
     generateError(
         GeneralResponse::responseCode(res.errorNumber()), res.errorNumber(), std::string("database compaction failied: ") + res.errorMessage());
