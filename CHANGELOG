@@ -1,6 +1,11 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Make the `IS_IPV4` AQL function behave identical on macOS as on other
+  platforms. It previously allowed leading zeros in octets on macOS, whereas on
+  other platforms they were disallowed.
+  Now this is disallowed on macOS as well.
+
 * Added new metric "arangodb_aql_slow_query" for slow AQL queries, so this can
   be monitored more easily.
 
