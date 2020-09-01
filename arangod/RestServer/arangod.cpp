@@ -77,6 +77,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Replication/ReplicationFeature.h"
+#include "Replication/ReplicationMetricsFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
@@ -216,6 +217,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<QueryRegistryFeature>();
     server.addFeature<RandomFeature>();
     server.addFeature<ReplicationFeature>();
+    server.addFeature<ReplicationMetricsFeature>();
     server.addFeature<ReplicationTimeoutFeature>();
     server.addFeature<RocksDBOptionFeature>();
     server.addFeature<SchedulerFeature>();
