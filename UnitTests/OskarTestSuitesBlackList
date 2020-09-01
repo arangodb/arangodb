@@ -3,7 +3,6 @@ upgrade_data_3.3.*
 upgrade_data_3.6.*
 upgrade_data_3.7.*
 audit
-fuerte
 server_parameters
 server_secrets
 shell_client_vst
@@ -13,3 +12,4 @@ shell_client_aql_http2
 communication
 communication_ssl
 resilience_analyzers
+fuerte
