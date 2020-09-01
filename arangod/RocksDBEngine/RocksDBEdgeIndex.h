@@ -109,7 +109,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   void warmup(arangodb::transaction::Methods* trx,
               std::shared_ptr<basics::LocalTaskQueue> queue) override;
 
-  void afterTruncate(TRI_voc_tick_t tick) override;
+  void afterTruncate(TRI_voc_tick_t tick, arangodb::transaction::Methods* trx) override;
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,

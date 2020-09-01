@@ -53,6 +53,13 @@ v3.6.7 (XXXX-XX-XX)
 v3.6.6 (2020-08-21)
 -------------------
 
+* Fix for issue BTS-183: added pending operations purging before ArangoSearch
+  index truncation.
+
+
+v3.6.6 (2020-08-21)
+-------------------
+
 * Make UPSERT statement with collection bind parameter behave identical to its
   non-bind parameter counterpart.
 

@@ -2814,7 +2814,7 @@ Result MMFilesCollection::truncate(transaction::Methods& trx, OperationOptions& 
     ++idx;  // skip primary index
     for (; idx != _indexes.end(); ++idx) {
       TRI_ASSERT((*idx)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-      (*idx)->afterTruncate(tick);
+      (*idx)->afterTruncate(tick, &trx);
     }
   }
 
