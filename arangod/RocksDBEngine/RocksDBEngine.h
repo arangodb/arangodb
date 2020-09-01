@@ -282,6 +282,8 @@ class RocksDBEngine final : public StorageEngine {
   }
 
   arangodb::Result dropView(TRI_vocbase_t const& vocbase, LogicalView const& view) override;
+  
+  arangodb::Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
 
   void destroyView(TRI_vocbase_t const& vocbase, LogicalView const& view) noexcept override;
 

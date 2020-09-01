@@ -1105,10 +1105,6 @@ void DatabaseFeature::updateContexts() {
         TRI_InitV8Queries(isolate, context);
         TRI_InitV8Cluster(isolate, context);
         TRI_InitV8Agency(isolate, context);
-
-        StorageEngine* engine = EngineSelectorFeature::ENGINE;
-        TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
-        engine->addV8Functions();
       },
       vocbase);
 }

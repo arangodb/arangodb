@@ -328,12 +328,15 @@ class StorageEngine : public application_features::ApplicationFeature {
   // to "dropView" returns
   virtual arangodb::Result dropView(TRI_vocbase_t const& vocbase,
                                     LogicalView const& view) = 0;
-
+  
   // perform a physical deletion of the view
   // After this call data of this view is corrupted, only perform if
   // assured that no one is using the view anymore
   // 'noexcept' becuase it may be used in destructor
   virtual void destroyView(TRI_vocbase_t const& vocbase, LogicalView const& view) noexcept = 0;
+  
+  // Compacts the entire database
+  virtual arangodb::Result compactAll(bool changeLevel, bool compactBottomMostLevel) = 0;
 
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate

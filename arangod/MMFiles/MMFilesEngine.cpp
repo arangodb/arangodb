@@ -1504,6 +1504,10 @@ Result MMFilesEngine::changeView(TRI_vocbase_t& vocbase,
   return {};
 }
 
+Result MMFilesEngine::compactAll(bool changeLevel, bool compactBottomMostLevel) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 // asks the storage engine to create an index as specified in the VPack
 // Slice object and persist the creation info. The database id, collection id
 // and index data are passed in the Slice object. Note that this function

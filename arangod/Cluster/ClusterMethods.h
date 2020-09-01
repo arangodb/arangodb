@@ -218,6 +218,9 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
 int flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
                            bool waitForCollector, double maxWaitTime = -1.0);
 
+/// @brief compact the database on all DB servers
+Result compactOnAllDBServers(ClusterFeature&, bool changeLevel, bool compactBottomMostLevel);
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief create hotbackup on a coordinator
 //////////////////////////////////////////////////////////////////////////////
