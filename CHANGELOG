@@ -9,6 +9,33 @@ v3.6.7 (XXXX-XX-XX)
   * `arangodb_v8_context_max`: maximum number of concurrent V8 contexts.
   * `arangodb_v8_context_min`: minimum number of concurrent V8 contexts.
 
+* Updated arangosync to 0.7.11.
+
+* Make followers in active failover run a compaction after they process a
+  truncate operation and the truncate removed more than 4k documents. This can
+  help to reclaim disk space on the follower earlier than without running the
+  truncate.
+
+* The REST API PUT `/_api/collection/<name>/truncate` will now also run a
+  compaction if the truncation affected more than 4k documents. This may add
+  extra latency to the truncate operation, but can help to reclaim disk space
+  earlier.
+
+* Added REST API PUT `/_admin/compact` for compacting the entire database data.
+  This endpoint can be used to reclaim disk space after substantial data
+  deletions have taken place. The command is also exposed via the JavaScript API
+  as `db._compact();`.
+
+  This command can cause a full rewrite of all data in all databases, which may
+  take very long for large databases. It should thus only be used with care and
+  only when additional I/O load can be tolerated for a prolonged time.
+
+  This command requires superuser access and is only available for the RocksDB
+  storage engine.
+
+* Fix for issue BTS-183: added pending operations purging before ArangoSearch
+  index truncation.
+
 * Fixed internal issue #747: fixed possible dangling open files in ArangoSearch
   index after remove operations.
 

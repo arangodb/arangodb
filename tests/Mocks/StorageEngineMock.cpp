@@ -174,7 +174,7 @@ class EdgeIndexMock final : public arangodb::Index {
 
   void load() override {}
   void unload() override {}
-  void afterTruncate(TRI_voc_tick_t) override {
+  void afterTruncate(TRI_voc_tick_t, arangodb::transaction::Methods*) override {
     _edgesFrom.clear();
     _edgesTo.clear();
   }
@@ -725,7 +725,7 @@ class HashIndexMock final : public arangodb::Index {
 
   void unload() override {}
 
-  void afterTruncate(TRI_voc_tick_t) override {
+  void afterTruncate(TRI_voc_tick_t, arangodb::transaction::Methods*) override {
     _hashData.clear();
   }
 
@@ -1429,7 +1429,9 @@ void StorageEngineMock::addRestHandlers(arangodb::rest::RestHandlerFactory& hand
   TRI_ASSERT(false);
 }
 
-void StorageEngineMock::addV8Functions() { TRI_ASSERT(false); }
+void StorageEngineMock::addV8Functions() {
+  TRI_ASSERT(false); 
+}
 
 void StorageEngineMock::changeCollection(TRI_vocbase_t& vocbase,
                                          arangodb::LogicalCollection const& collection,
@@ -1529,6 +1531,11 @@ arangodb::Result StorageEngineMock::createView(TRI_vocbase_t& vocbase, TRI_voc_c
   views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
 
   return arangodb::Result(TRI_ERROR_NO_ERROR);  // assume mock view persisted OK
+}
+  
+arangodb::Result StorageEngineMock::compactAll(bool changeLevels, bool compactBottomMostLevel) {
+  TRI_ASSERT(false);
+  return arangodb::Result();
 }
 
 void StorageEngineMock::getViewProperties(TRI_vocbase_t& vocbase,

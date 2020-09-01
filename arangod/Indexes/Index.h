@@ -383,7 +383,9 @@ class Index {
 
   /// @brief called after the collection was truncated
   /// @param tick at which truncate was applied
-  virtual void afterTruncate(TRI_voc_tick_t tick) {}
+  /// @param trx pointer for transaction or nullptr if none
+  virtual void afterTruncate(TRI_voc_tick_t,
+                             arangodb::transaction::Methods*) {}
 
   /// @brief whether or not the filter condition is supported by the index
   /// returns detailed information about the costs associated with using this index

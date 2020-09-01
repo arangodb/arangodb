@@ -223,6 +223,8 @@ class ClusterEngine final : public StorageEngine {
   void signalCleanup(TRI_vocbase_t& vocbase) override;
 
   int shutdownDatabase(TRI_vocbase_t& vocbase) override;
+  
+  arangodb::Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
 
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
