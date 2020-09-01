@@ -207,6 +207,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
       arangodb::transaction::Options const& options) override;
   virtual arangodb::Result createView(TRI_vocbase_t& vocbase, arangodb::DataSourceId id,
                                       arangodb::LogicalView const& view) override;
+  virtual arangodb::Result compactAll(bool changeLevels, bool compactBottomMostLevel) override;
   virtual TRI_voc_tick_t currentTick() const override;
   virtual std::string dataPath() const override;
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const override;

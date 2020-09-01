@@ -1561,6 +1561,10 @@ Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
   return rocksutils::convertStatus(res);
 }
 
+Result RocksDBEngine::compactAll(bool changeLevel, bool compactBottomMostLevel) {
+  return rocksutils::compactAll(_db->GetRootDB(), changeLevel, compactBottomMostLevel);
+}
+
 /// @brief Add engine-specific optimizer rules
 void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
   RocksDBOptimizerRules::registerResources(feature);
@@ -2322,6 +2326,22 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   if (_listener) {
     builder.add("rocksdbengine.throttle.bps", VPackValue(_listener->GetThrottle()));
   }  // if
+  
+  {
+    // total disk space in database directory
+    uint64_t totalSpace = 0;
+    // free disk space in database directory
+    uint64_t freeSpace = 0;
+    Result res = TRI_GetDiskSpace(_basePath, totalSpace, freeSpace);
+    if (res.ok()) {
+      builder.add("rocksdb.free-disk-space", VPackValue(freeSpace));
+      builder.add("rocksdb.total-disk-space", VPackValue(totalSpace));
+    } else {
+      builder.add("rocksdb.free-disk-space", VPackValue(VPackValueType::Null));
+      builder.add("rocksdb.total-disk-space", VPackValue(VPackValueType::Null));
+    }
+  }
+
 
   builder.close();
 }

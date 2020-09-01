@@ -6,6 +6,30 @@ devel
   flushed memtables/write-buffers. The default of 0 will usually be good
   for all purposes and restores the 3.6 memory usage for write-buffers.
 
+* Make followers in active failover run a compaction after they process a
+  truncate operation and the truncate removed more than 4k documents. This
+  can help to reclaim disk space on the follower earlier than without running
+  the truncate.
+
+* Added REST API PUT `/_admin/compact` for compacting the entire database
+  data. This endpoint can be used to reclaim disk space after substantial data 
+  deletions have taken place. The command is also exposed via the JavaScript
+  API as `db._compact();`.
+
+  This command can cause a full rewrite of all data in all databases, which 
+  may take very long for large databases. It should thus only be used with care
+  and only when additional I/O load can be tolerated for a prolonged time.
+  
+  This command requires superuser access.
+
+* Added new metrics for the total and the free disk space for the mount
+  used for the RocksDB database directory:
+
+  * `arangodb_rocksdb_free_disk_space`: provides the free disk space for
+    the mount, in bytes
+  * `arangodb_rocksdb_total_disk_space`: provides the total disk space of
+    the mount, in bytes
+
 * Apply user-defined idle connection timeouts for HTTP/2 and VST connections.
   The timeout value for idle HTTP/2 and VST connections can now be configured 
   via the configuration option `--http.keep-alive-timeout` in the same way
@@ -441,7 +465,7 @@ as well as the identifiers:
   Without this fix, the workaround for is to either drop the graph (or the database) before the
   restore call, yielding an identical result.
   
-* Keep the list of last-acknowledged entires in Agency more consistent.
+* Keep the list of last-acknowledged entries in Agency more consistent.
   During leadership take-over it was possible to get into a situation that
   the new leader does not successfully report the agency config, which
   was eventually fixed by the Agent itself. Now this situation is impossible.
