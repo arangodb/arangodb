@@ -1043,7 +1043,7 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
             V8DealerFeature& dealer = _server.getFeature<V8DealerFeature>();
             if (dealer.isEnabled()) {
                 v8Counters = dealer.getCurrentContextNumbers();
-                // see below: memoryStatistics = dealer.getCurrentMemoryNumbers();
+                // see below: memoryStatistics = dealer.getCurrentMemoryDetails();
             }
         }
         builder.add("available", VPackValue(v8Counters.available));
@@ -1193,7 +1193,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
     V8DealerFeature& dealer = _server.getFeature<V8DealerFeature>();
     if (dealer.isEnabled()) {
       v8Counters = dealer.getCurrentContextNumbers();
-      // see below: memoryStatistics = dealer.getCurrentMemoryNumbers();
+      // see below: memoryStatistics = dealer.getCurrentMemoryDetails();
     }
   }
   builder.add("available", VPackValue(v8Counters.available));

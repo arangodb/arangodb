@@ -105,6 +105,8 @@ bool RestQueryHandler::readQuery(bool slow) {
 
     result.add(VPackValue(VPackValueType::Object));
     result.add("id", VPackValue(StringUtils::itoa(q.id)));
+    result.add("database", VPackValue(q.database));
+    result.add("user", VPackValue(q.user));
     result.add("query", VPackValue(q.queryString));
     if (q.bindParameters != nullptr) {
       result.add("bindVars", q.bindParameters->slice());

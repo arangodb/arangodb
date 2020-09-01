@@ -57,7 +57,10 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _slowQueryThreshold(10.0),
       _slowStreamingQueryThreshold(10.0),
       _queryRegistryTTL(0.0),
-      _queryCacheMode("off") {
+      _queryCacheMode("off"),
+      _slowQueriesCounter(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_aql_slow_query", 0, "Number of slow AQL queries")) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
