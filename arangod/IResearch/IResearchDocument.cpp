@@ -543,7 +543,7 @@ void FieldIterator::next() {
 
     while (true) {
       // pop all exhausted iterators
-      for (; !top().it.next(); ) {
+      while (!top().it.next()) {
         _stack.pop_back();
 
         if (!valid()) {
@@ -576,11 +576,11 @@ void FieldIterator::next() {
         _begin = nullptr;
         _end = 1 + _begin;  // set surrogate analyzers
 
-        if (setAttributeValue(*context)) {
-          return;
-        } else {
+        if (!setAttributeValue(*context)) {
           break;
         }
+
+        return;
       }
     }
   }
