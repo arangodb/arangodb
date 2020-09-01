@@ -92,7 +92,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(7 + 2),  // number of column families plus 2
-      _maxWriteBufferSizeToMaintain(0), 
+      _maxWriteBufferSizeToMaintain(0),
       _maxTotalWalSize(80 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
       _minWriteBufferNumberToMerge(rocksDBDefaults.min_write_buffer_number_to_merge),
@@ -213,7 +213,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "maximum size of immutable write buffers that build up in memory "
                      "per column family (larger values mean that more in-memory data "
                      "can be used for transaction conflict checking (0 = use automatic default value)",
-                     new UInt64Parameter(&_maxWriteBufferSizeToMaintain));
+                     new Int64Parameter(&_maxWriteBufferSizeToMaintain));
 
   options->addOption("--rocksdb.max-total-wal-size",
                      "maximum total size of WAL files that will force flush "
