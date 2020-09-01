@@ -1,7 +1,7 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -188,13 +188,17 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
       // the following paths are allowed on followers
       if (!::startsWith(path, "/_admin/shutdown") &&
           !::startsWith(path, "/_admin/cluster/health") &&
+          !(path == "/_admin/compact") &&
           !::startsWith(path, "/_admin/log") &&
+          !::startsWith(path, "/_admin/metrics") &&
           !::startsWith(path, "/_admin/server/") &&
           !::startsWith(path, "/_admin/status") &&
           !::startsWith(path, "/_admin/statistics") &&
           !::startsWith(path, "/_api/agency/agency-callbacks") &&
           !(req.requestType() == RequestType::GET && ::startsWith(path, "/_api/collection")) &&
           !::startsWith(path, "/_api/cluster/") &&
+          !(req.requestType() == RequestType::GET && 
+            (path == "/_api/database/current" || path == "/_api/database")) &&
           !(req.requestType() == RequestType::GET && path == "/_api/database/current") &&
           !::startsWith(path, "/_api/engine/stats") &&
           !::startsWith(path, "/_api/replication") &&

@@ -253,6 +253,25 @@ ArangoDatabase.prototype.toString = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief compacts the entire database
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._compact = function (options) {
+  let url = "/_admin/compact?";
+  if (options && options.changeLevel) {
+    url += "changeLevel=true&";
+  } 
+  if (options && options.bottomMost) {
+    url += "bottomMost=true";
+  }
+  var requestResult = this._connection.PUT(url, {});
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.result;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief return all collections from the database
 // //////////////////////////////////////////////////////////////////////////////
 

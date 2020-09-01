@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,6 +32,7 @@
 #include "Network/ConnectionPool.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -76,7 +78,10 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
       _idleTtlMilli(config.idleConnectionMilli),
       _numIOThreads(config.numIOThreads),
       _verifyHosts(config.verifyHosts),
-      _prepared(false) {
+      _prepared(false),
+      _forwardedRequests(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_network_forwarded_requests", 0, "Number of requests forwarded to another coordinator")) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
@@ -87,25 +92,25 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
 void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("network", "Configure cluster-internal networking");
 
-  options->addOption("--network.io-threads", "number of network IO threads",
+  options->addOption("--network.io-threads", "number of network IO threads for cluster-internal communication",
                      new UInt32Parameter(&_numIOThreads))
                      .setIntroducedIn(30600);
   options->addOption("--network.max-open-connections",
-                     "max open network connections",
+                     "max open network connections for cluster-internal communication",
                      new UInt64Parameter(&_maxOpenConnections))
                      .setIntroducedIn(30600);
   options->addOption("--network.idle-connection-ttl",
-                     "default time-to-live of idle connections (in milliseconds)",
+                     "default time-to-live of idle connections for cluster-internal communication (in milliseconds)",
                      new UInt64Parameter(&_idleTtlMilli))
                      .setIntroducedIn(30600);
-  options->addOption("--network.verify-hosts", "verify hosts when using TLS",
+  options->addOption("--network.verify-hosts", "verify hosts when using TLS in cluster-internal communication",
                      new BooleanParameter(&_verifyHosts))
                      .setIntroducedIn(30600);
 
   std::unordered_set<std::string> protos = {
       "", "http", "http2", "h2", "vst"};
 
-  options->addOption("--network.protocol", "network protocol to use",
+  options->addOption("--network.protocol", "network protocol to use for cluster-internal communication",
                      new DiscreteValuesParameter<StringParameter>(&_protocol, protos))
                      .setIntroducedIn(30700);
 }
@@ -224,6 +229,10 @@ void NetworkFeature::setPoolTesting(arangodb::network::ConnectionPool* pool) {
 
 bool NetworkFeature::prepared() const {
   return _prepared;
+}
+
+void NetworkFeature::trackForwardedRequest() {
+  ++_forwardedRequests;
 }
 
 }  // namespace arangodb

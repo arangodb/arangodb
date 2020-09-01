@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -86,7 +86,7 @@ enum class EncodingType {
   UNSET
 };
 
-enum class AuthenticationMethod { BASIC, JWT, NONE };
+enum class AuthenticationMethod : uint8_t { BASIC = 1, JWT = 2, NONE = 0 };
 
 enum class ResponseCode {
   CONTINUE = 100,

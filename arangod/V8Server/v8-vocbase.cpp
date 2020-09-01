@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -229,6 +229,46 @@ static void JS_EnableNativeBacktraces(v8::FunctionCallbackInfo<v8::Value> const&
   }
 
   arangodb::basics::Exception::SetVerbose(TRI_ObjectToBoolean(isolate, args[0]));
+
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+  
+  if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+  }
+
+  bool changeLevel = false;
+  bool compactBottomMostLevel = false;
+  
+  if (args.Length() > 0) {
+    if (args[0]->IsObject()) {
+      v8::Handle<v8::Object> obj =
+          args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      if (TRI_HasProperty(context, isolate, obj, "changeLevel")) {
+        changeLevel = TRI_ObjectToBoolean(
+            isolate, obj->Get(context, TRI_V8_ASCII_STRING(isolate, "changeLevel")).FromMaybe(v8::Local<v8::Value>()));
+      }
+      if (TRI_HasProperty(context, isolate, obj, "compactBottomMostLevel")) {
+        compactBottomMostLevel = TRI_ObjectToBoolean(
+            isolate, obj->Get(context, TRI_V8_ASCII_STRING(isolate, "compactBottomMostLevel")).FromMaybe(v8::Local<v8::Value>()));
+      }
+    }
+  }
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  Result res = engine->compactAll(changeLevel, compactBottomMostLevel);
+
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION_FULL(res.errorNumber(), res.errorMessage());
+  }
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -2065,6 +2105,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   // for any database function added here, be sure to add it to in function
   // JS_CompletionsVocbase, too for the auto-completion
+  TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING(isolate, "_compact"), JS_Compact);
 
   TRI_AddMethodVocbase(isolate, ArangoNS,
                        TRI_V8_ASCII_STRING(isolate, "_engine"), JS_Engine);
@@ -2113,6 +2154,10 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_InitV8GeneralGraph(context, &vocbase, v8g, isolate);
 
   TRI_InitV8cursor(context, v8g);
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
+  engine->addV8Functions();
 
   // .............................................................................
   // generate global functions

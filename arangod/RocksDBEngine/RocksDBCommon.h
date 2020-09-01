@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -90,6 +90,11 @@ std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&, bool prefix_sam
 /// Should mainly be used to implement the drop() call
 Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
                         bool prefixSameAsStart, bool useRangeDelete);
+
+/// @brief compacts the entire key range of the database.
+/// warning: may cause a full rewrite of the entire database, which will
+/// take long for large databases - use with care!
+Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLeve);
 
 // optional switch to std::function to reduce amount of includes and
 // to avoid template

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -222,6 +222,9 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
 
 int flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
                            bool waitForCollector, double maxWaitTime = -1.0);
+
+/// @brief compact the database on all DB servers
+Result compactOnAllDBServers(ClusterFeature&, bool changeLevel, bool compactBottomMostLevel);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief create hotbackup on a coordinator
