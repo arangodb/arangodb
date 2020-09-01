@@ -2040,7 +2040,7 @@
       
       testQueryWithMultipleSortView : function() {
         let res= db._query("FOR doc IN WithPrimarySort SEARCH ANALYZER(doc.field3 == 1, 'customAnalyzer') "
-        + " SORT doc._key  LIMIT 0, 50  RETURN doc ").toArray();
+        + " OPTIONS { waitForSync : true } SORT doc._key  LIMIT 0, 50  RETURN doc ").toArray();
         assertEqual(1, res.length);
       }
     };
