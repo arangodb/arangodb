@@ -23,6 +23,26 @@ v3.5.6 (XXXX-XX-XX)
   This command requires superuser access and is only available for the RocksDB
   storage engine.
 
+* Make UPSERT statement with collection bind parameter behave identical to its
+  non-bind parameter counterpart.
+
+  For example, the query
+
+      FOR d IN ["key_1", "key_2", "key_3", "key_1"]
+        UPSERT d INSERT d UPDATE d IN @@collection
+
+  would fail with "unique constraint violation" when used with a collection bind
+  parameter, but the equivalent query
+
+      FOR d IN ["key_1", "key_2", "key_3", "key_1"]
+        UPSERT d INSERT d UPDATE d IN collectionName
+
+  with a hard-coded collection name would succeed. This is now fixed so both
+  queries have the same behavior (no failure) in single server.
+
+* Fixed internal issue #747: fixed possible dangling open files in ArangoSearch
+  index after remove operations.
+
 * Updated arangosync to 0.7.10.
 
 * Fixed internal issue #742: Add tick storage in index meta payload for
