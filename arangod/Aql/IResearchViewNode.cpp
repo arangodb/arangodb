@@ -1234,8 +1234,41 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
   if (_dependencies.empty()) {
     return aql::CostEstimate::empty();
   }
-  // TODO: get a better guess from view
-  aql::CostEstimate estimate = _dependencies[0]->getCost();
+
+  TRI_ASSERT(_plan && _plan->getAst());
+  transaction::Methods* trx = _plan->getAst()->query()->trx();
+  if (trx->status() != transaction::Status::RUNNING) {
+    return aql::CostEstimate::empty();
+  }
+
+  auto const collections = _plan->getAst()->query()->collections();
+
+  size_t estimatedNrItems = 0;
+  auto visitor = [&trx, &estimatedNrItems, &collections](TRI_voc_cid_t cid) -> bool {
+    auto const id = basics::StringUtils::itoa(cid);
+    auto const* collection = collections->get(id);
+
+    if (collection) {
+      // FIXME better to gather count for multiple collections at once
+      estimatedNrItems += collection->count(trx);
+    } else {
+      LOG_TOPIC("ee276", WARN, arangodb::iresearch::TOPIC)
+          << "collection with id '" << id << "' is not registered with the query";
+    }
+
+    return true;
+  };
+
+  if (_options.restrictSources) {
+    for (auto const cid : _options.sources) {
+      visitor(cid);
+    }
+  } else {
+    _view->visitCollections(visitor);
+  }
+
+  aql::CostEstimate estimate = _dependencies.at(0)->getCost();
+  estimate.estimatedNrItems *= estimatedNrItems;
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }

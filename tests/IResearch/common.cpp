@@ -432,6 +432,16 @@ bool assertRules(TRI_vocbase_t& vocbase, std::string const& queryString,
   return expectedRules.empty();
 }
 
+arangodb::aql::QueryResult explainQuery(TRI_vocbase_t& vocbase, std::string const& queryString,
+                                        std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
+                                        std::string const& optionsString /*= "{}"*/) {
+  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), bindVars,
+                             arangodb::velocypack::Parser::fromJson(optionsString),
+                             arangodb::aql::PART_MAIN);
+
+  return query.explain();
+}
+
 arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase, std::string const& queryString,
                                         std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
                                         std::string const& optionsString /*= "{}"*/
