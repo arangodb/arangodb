@@ -428,7 +428,7 @@ void RocksDBOptionFeature::start() {
       << ", write_buffer_size: " << _writeBufferSize
       << ", total_write_buffer_size: " << _totalWriteBufferSize
       << ", max_write_buffer_number: " << _maxWriteBufferNumber
-      << ", max_write_buffer_size_to_maintain: " << _maxWriteBufferSizeToMaintain
+      << ", max_write_buffer_number_to_maintain: " << _maxWriteBufferNumberToMaintain
       << ", max_total_wal_size: " << _maxTotalWalSize
       << ", delayed_write_rate: " << _delayedWriteRate
       << ", min_write_buffer_number_to_merge: " << _minWriteBufferNumberToMerge
