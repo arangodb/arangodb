@@ -100,11 +100,10 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(VPackSlice const& firs
   return result;
 }
 
-static VPackBuilder compareIndexes(std::string const& dbname, std::string const& collname,
-                                   std::string const& shname,
-                                   VPackSlice const& plan, VPackSlice const& local,
-                                   MaintenanceFeature::errors_t const& errors,
-                                   std::unordered_set<std::string>& indis) {
+static VPackBuilder compareIndexes(
+  std::string const& dbname, std::string const& collname, std::string const& shname,
+  VPackSlice const& plan, VPackSlice const& local,
+  MaintenanceFeature::errors_t const& errors, std::unordered_set<std::string>& indis) {
   TRI_ASSERT(plan.isArray());
 
   VPackBuilder builder;
@@ -414,16 +413,18 @@ VPackBuilder getShardMap(VPackSlice const& collection) {
   VPackBuilder shardMap;
   {
     VPackObjectBuilder o(&shardMap);
-    for (auto shard : collection.get(SHARDS))) {
-    shardMap.add(shard.key.stringRef(), shard.value);
+    for (auto shard : VPackObjectIterator(collection.get(SHARDS))) {
+      shardMap.add(shard.key.stringRef(), shard.value);
+    }
   }
   return shardMap;
 }
 
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal(
-  std::unordered_map<std::unordered_map<std::shared_ptr<VPackBuilder>>> const& plans,
-  uint64_t planIndex, std::unordered_set<std::string> dirty, VPackSlice const& local,
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
+  uint64_t planIndex, std::unordered_set<std::string> dirty,
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature::errors_t& errors,
   MaintenanceFeature& feature, std::vector<std::shared_ptr<ActionDescription>>& actions) {
 
@@ -433,41 +434,40 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
   // Plan to local mismatch ----------------------------------------------------
   // Create or modify if local databases are affected
-  for (auto pb : plans) {
-    auto plan = pb.slice();
-    auto pdbs = ps.get(std::vector<std::string>{AgencyCommHelper::path(), PLAN, DATABASES});
-    for (auto const& pdb : VPackObjectIterator(pdbs, true)) {
-      if (!local.hasKey(pdb.key.stringRef())) {
-        auto dbname = pdb.key.copyString();
-        if (errors.databases.find(dbname) == errors.databases.end()) {
-          actions.emplace_back(
-            std::make_shared<ActionDescription>(
-              std::map<std::string, std::string>{
-                {std::string(NAME), std::string(CREATE_DATABASE)},
-                {std::string("tick"), std::to_string(TRI_NewTickServer())},
-                {std::string(DATABASE), std::move(dbname)}
-              },
-              HIGHER_PRIORITY,
-              std::make_shared<VPackBuilder>(pdb.value)));
-        } else {
-          LOG_TOPIC("3a6a8", DEBUG, Logger::MAINTENANCE)
-            << "Previous failure exists for creating database " << dbname << "skipping";
-        }
+  for (auto p : plan) {
+    auto const& dbname = p.first;
+    auto pb = p.second->slice();
+    auto const& pdb = pb.get(
+      std::vector<std::string>{AgencyCommHelper::path(), PLAN, DATABASES, dbname});
+    
+    if (local.find(dbname) == local.end()) {
+      if (errors.databases.find(dbname) == errors.databases.end()) {
+        actions.emplace_back(
+          std::make_shared<ActionDescription>(
+            std::map<std::string, std::string>{
+              {std::string(NAME), std::string(CREATE_DATABASE)},
+              {std::string("tick"), std::to_string(TRI_NewTickServer())},
+              {std::string(DATABASE), std::move(dbname)}
+            }, HIGHER_PRIORITY, std::make_shared<VPackBuilder>(pdb)));
+      } else {
+        LOG_TOPIC("3a6a8", DEBUG, Logger::MAINTENANCE)
+          << "Previous failure exists for creating database " << dbname << "skipping";
       }
     }
   }
-
+  
   // Drop databases, which are no longer in plan ONLY DIRTY
   for (auto const& dbname : dirty) {
-    if (!plan.hasKey(std::vector<std::string>{
-          AgencyCommHelper::path(), DATABASES, dbname})) {
-      actions.emplace_back(
-        std::make_shared<ActionDescription>(
-          std::map<std::string, std::string>{
-            {std::string(NAME), std::string(DROP_DATABASE)},
-            {std::string("tick"), std::to_string(TRI_NewTickServer())},
-            {std::string(DATABASE), std::move(dbname)}},
-          HIGHER_PRIORITY));
+    if (local.find(dbname) != local.end()) {
+      if (plan.find(dbname) == plan.end()) {
+        actions.emplace_back(
+          std::make_shared<ActionDescription>(
+            std::map<std::string, std::string>{
+              {std::string(NAME), std::string(DROP_DATABASE)},
+              {std::string("tick"), std::to_string(TRI_NewTickServer())},
+              {std::string(DATABASE), std::move(dbname)}},
+            HIGHER_PRIORITY));
+      }
     }
   }
 
@@ -475,8 +475,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
   for (auto& database : errors.databases) {
     auto const& dbname = database.first;
     if (dirty.find(dbname) != dirty.end()) {
-      if (!plan.hasKey(
-            std::vector<std::string>{AgencyCommHelper::path(), DATABASES, dbname})) {
+      if (plan.find(dbname) == plan.end()) {
         database.second.reset();
       }
     }
@@ -605,7 +604,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
 /// @brief handle plan for local databases
 arangodb::Result arangodb::maintenance::executePlan(
-  std::unordered_map<std::unordered_map<std::shared_ptr<VPackBuilder>>> const& plan,
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
   uint64_t planIndex, std::unordered_set<std::string> const& dirty, VPackSlice const& local,
   std::string const& serverId, arangodb::MaintenanceFeature& feature, VPackBuilder& report) {
 

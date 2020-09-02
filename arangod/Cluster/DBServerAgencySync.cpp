@@ -85,9 +85,9 @@ Result DBServerAgencySync::getLocalCollections(
     auto const dbname = vocbase.name();
 
     auto [it,created] =
-      databases.try_emplace(dbname, std::maked_shared<VPackBuilder>());
+      databases.try_emplace(dbname, std::make_shared<VPackBuilder>());
     if (!created) {
-      LOG_TOPIC("0e9d7", ERR, Logger::MAINTAINANCE)
+      LOG_TOPIC("0e9d7", ERR, Logger::MAINTENANCE)
         << "Failed to emplace new entry in local collection cache";
       FATAL_ERROR_EXIT();
     }

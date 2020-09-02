@@ -116,29 +116,17 @@ public:
   consensus::Store& store();
 
   /**
-   * @brief        Get a list of planned changes and other databases and
-   *               the according RAFT index
+   * @brief         Get a list of planned/current  changes and other
+   *                databases and the corresponding RAFT index
    *
-   * @param last   Last index known to the caller
-   * @param other  List of additional databases
+   * @param section Plan/Current
+   * @param last    Last index known to the caller
    *
-   * @return       The currently last noted RAFT index and  a velocypack
-   *               representation of planned and other desired databases
-   *                
+   * @return        The currently last noted RAFT index and  a velocypack
+   *                representation of planned and other desired databases
    */
-  change_set_t const planChangedSince(consensus::index_t const& last,
-    std::vector<std::string> const& others = std::vector<std::string>{}) const;
-
-  /**
-   * @brief get a list of changes and other databases and the according RAFT index
-   * @param last   Last index known to the caller
-   * @param other  List of additional databases
-   * @return       The currently last noted RAFT index and  a velocypack
-   *               representation of planned and other desired databases
-   *                
-   */
-  change_set_t const currentChangedSince(consensus::index_t const& last,
-    std::vector<std::string> const& others = std::vector<std::string>{}) const;
+  change_set_t const changedSince(
+    std::string const& section, consensus::index_t const& last) const;
   
 private:
 
@@ -178,11 +166,12 @@ private:
   mutable std::mutex _waitLock;
   std::multimap<consensus::index_t, futures::Promise<arangodb::Result>> _waiting;
 
-  /// @ brief Index lock of planned changes
+  /// @ brief changes of index to plan and current 
   std::multimap<consensus::index_t, std::string> _planChanges;
-  
-  /// @ brief Index lock of current changes
   std::multimap<consensus::index_t, std::string> _currentChanges;
+
+  /// @brief snapshot note for client 
+  consensus::index_t _lastSnapshot;
   
 };
 

@@ -241,9 +241,10 @@ void MaintenanceRestHandler::getAction() {
 
       auto& cluster = server().getFeature<ClusterFeature>();
       auto thread = cluster.heartbeatThread();
-      if (thread) {
-        thread->agencySync().getLocalCollections(builder);
-      }
+      //TODO 
+      //if (thread) {
+      //  thread->agencySync().getLocalCollections(builder);
+      //}
     }
   }
 

@@ -69,7 +69,7 @@ class DBServerAgencySync {
    */
   arangodb::Result getLocalCollections(
     std::unordered_set<std::string> const& dirty,
-    std::unordered_map<std::string, VPackBuilder>& collections);
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>>& collections);
 
  private:
   DBServerAgencySyncResult execute();

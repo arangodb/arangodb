@@ -950,23 +950,19 @@ void MaintenanceFeature::proceed() {
 
 void MaintenanceFeature::addDirty(std::string&& database) {
   MUTEX_LOCKER(guard, _dirtyLock);
-  if (_dirty == nullptr) {
-    auto tmp (std::make_unique<std::unordered_set<std::string>>());
-    _dirty = std::move(tmp);
-  }
-  if (_dirty->emplace(std::move(database)).second) {
+  if (_dirty.emplace(std::move(database)).second) {
     LOG_TOPIC("35b74", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databsases";
   }
 }
 void MaintenanceFeature::addDirty(std::string const& database) {
-  if (_dirty == nullptr) {
-    auto tmp (std::make_unique<std::unordered_set<std::string>>());
-    _dirty = std::move(tmp);
-  }
-  if (_dirty->emplace(database).second) {
+  MUTEX_LOCKER(guard, _dirtyLock);
+  if (_dirty.emplace(database).second) {
     LOG_TOPIC("357b4", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databsases";
   }
 }
 std::unordered_set<std::string> MaintenanceFeature::dirty() {
-  return std::move(*_dirty);
+  MUTEX_LOCKER(guard, _dirtyLock);
+  std::unordered_set<std::string > ret;
+  ret.swap(_dirty);
+  return ret;
 }

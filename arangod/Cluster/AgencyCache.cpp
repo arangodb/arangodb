@@ -54,7 +54,8 @@ AgencyCache::AgencyCache(
   application_features::ApplicationServer& server,
   AgencyCallbackRegistry& callbackRegistry)
   : Thread(server, "AgencyCache"), _commitIndex(0),
-    _readDB(server, nullptr, "readDB"), _callbackRegistry(callbackRegistry) {}
+    _readDB(server, nullptr, "readDB"), _callbackRegistry(callbackRegistry),
+    _lastSnapshot(0) {}
 
 
 AgencyCache::~AgencyCache() {
@@ -312,10 +313,12 @@ void AgencyCache::run() {
                 if (firstIndex > 0) {
                   // Do incoming logs match our cache's index?
                   if (firstIndex != curIndex + 1) {
-                    LOG_TOPIC("a9a09", WARN, Logger::CLUSTER) <<
-                      "Logs from poll start with index " << firstIndex <<
-                      " we requested logs from and including " << curIndex << " retrying.";
-                    LOG_TOPIC("457e9", TRACE, Logger::CLUSTER) << "Incoming: " << rs.toJson();
+                    LOG_TOPIC("a9a09", WARN, Logger::CLUSTER)
+                      << "Logs from poll start with index " << firstIndex 
+                      << " we requested logs from and including " << curIndex
+                      << " retrying.";
+                    LOG_TOPIC("457e9", TRACE, Logger::CLUSTER)
+                      << "Incoming: " << rs.toJson();
                     increaseWaitTime();
                   } else {
                     TRI_ASSERT(rs.hasKey("log"));
@@ -351,6 +354,7 @@ void AgencyCache::run() {
                     "Fresh start: overwriting agency cache with " << rs.toJson();
                   _readDB = rs;                  // overwrite
                   _commitIndex = commitIndex;
+                  _lastSnapshot = commitIndex;
                 }
                 triggerWaiting(commitIndex);
                 if (firstIndex > 0) {
@@ -554,39 +558,52 @@ void AgencyCache::invokeAllCallbacks() const {
 }
 
 
-AgencyCache::change_set_t const AgencyCache::planChangedSince(
-  consensus::index_t const& last, std::vector<std::string> const& others) const {
+//TODO Snapshot case to do
+AgencyCache::change_set_t const AgencyCache::changedSince(
+  std::string const& what, consensus::index_t const& last) const {
 
+  static std::vector<std::string> const planGoodies ({
+      AgencyCommHelper::path(PLAN_ANALYZERS) + "/",
+      AgencyCommHelper::path(PLAN_COLLECTIONS) + "/",
+      AgencyCommHelper::path(PLAN_DATABASES) + "/",
+      AgencyCommHelper::path(PLAN_VIEWS) + "/"});
+  static std::vector<std::string> const currentGoodies ({
+      AgencyCommHelper::path(CURRENT_COLLECTIONS) + "/",
+      AgencyCommHelper::path(CURRENT_DATABASES) + "/"});
+  
   bool get_rest = false;
   std::unordered_map<std::string, query_t> db_res;
   query_t rest_res = nullptr;
 
-  std::vector<std::string> databases;
-  for (auto const& db : others) {
-    if (std::find(databases.begin(), databases.end(), db) == databases.end()) {
-      databases.push_back(db);
-    }
-  }
-
+  decltype(_planChanges) const& changes = (what == PLAN) ? _planChanges : _currentChanges;
+  std::vector<std::string> const& goodies = (what == PLAN) ? planGoodies : currentGoodies;
+  
+  std::unordered_set<std::string> databases;
   std::shared_lock_guard g(_storeLock);
 
-  std::multimap<consensus::index_t, std::string>::const_iterator it =
-    _planChanges.lower_bound(last+1); 
-  if (it != _planChanges.end()) {
-    for (; it != _planChanges.end(); ++it) {
-      if (it->second.empty()) { // Need to get rest of Plan
-        get_rest = true;
-      }
-      if (std::find(databases.begin(), databases.end(), it->second) == databases.end()) {
-        databases.push_back(it->second);
-      }
+  if (last < _lastSnapshot) {
+    get_rest = true;
+    auto keys = _readDB.nodePtr(AgencyCommHelper::path(what) + "/" + DATABASES)->keys();
+    for (auto const& i : keys) {
+      databases.emplace(i);
     }
-    LOG_TOPIC("d5743", TRACE, Logger::CLUSTER) << "collecting " << databases << " from agency cache";
   } else {
-    LOG_TOPIC("d5734", DEBUG, Logger::CLUSTER) << "no changed databases since " << last;
-    return change_set_t(_commitIndex, std::move(db_res), std::move(rest_res));
+    auto it = changes.lower_bound(last+1); 
+    if (it != changes.end()) {
+      for (; it != changes.end(); ++it) {
+        if (it->second.empty()) { // Need to get rest
+          get_rest = true;
+        }
+        databases.emplace(it->second);
+      }
+      LOG_TOPIC("d5743", TRACE, Logger::CLUSTER)
+        << "collecting " << databases << " from agency cache";
+    } else {
+      LOG_TOPIC("d5734", DEBUG, Logger::CLUSTER) << "no changed databases since " << last;
+      return change_set_t(_commitIndex, std::move(db_res), std::move(rest_res));
+    }
   }
-
+  
   if (databases.empty()) {
     return change_set_t(_commitIndex, std::move(db_res), std::move(rest_res));
   }
@@ -598,10 +615,10 @@ AgencyCache::change_set_t const AgencyCache::planChangedSince(
         auto query = std::make_shared<arangodb::velocypack::Builder>();
         { VPackArrayBuilder outer(query.get());
           { VPackArrayBuilder inner(query.get());
-            query->add(VPackValue(AgencyCommHelper::path(PLAN_ANALYZERS) + "/" + i));
-            query->add(VPackValue(AgencyCommHelper::path(PLAN_COLLECTIONS) + "/" + i));
-            query->add(VPackValue(AgencyCommHelper::path(PLAN_DATABASES) + "/" + i));
-            query->add(VPackValue(AgencyCommHelper::path(PLAN_VIEWS) + "/" + i)); }}
+            for (auto const& g : goodies) { // Get goodies for database
+              query->add(VPackValue(g + i));
+            }
+          }}
         auto [entry,created] = db_res.try_emplace(i, std::make_shared<VPackBuilder>());
         if (created) {
           _readDB.read(query, entry->second);
@@ -615,10 +632,10 @@ AgencyCache::change_set_t const AgencyCache::planChangedSince(
     }
   }
 
-  if (get_rest) { // All the rest, i.e. All keys of Plan excluding the usual suspects
+  if (get_rest) { // All the rest, i.e. All keys excluding the usual suspects
     static std::vector<std::string> const exc {
       "Analyzers", "Collections", "Databases", "Views"};
-    auto keys = _readDB.nodePtr(AgencyCommHelper::path(PLAN))->keys();
+    auto keys = _readDB.nodePtr(AgencyCommHelper::path(what))->keys();
     keys.erase(
       std::remove_if(
         std::begin(keys), std::end(keys),
@@ -630,7 +647,7 @@ AgencyCache::change_set_t const AgencyCache::planChangedSince(
       VPackArrayBuilder outer(query.get());
       for (auto const& i : keys) {
         VPackArrayBuilder inner(query.get());
-        query->add(VPackValue(AgencyCommHelper::path(PLAN) + "/" + i));
+        query->add(VPackValue(AgencyCommHelper::path(what) + "/" + i));
       }
     }
     if (_commitIndex > 0) { // Databases
@@ -642,12 +659,6 @@ AgencyCache::change_set_t const AgencyCache::planChangedSince(
   return change_set_t(_commitIndex, std::move(db_res), std::move(rest_res));
 
 }
-
-AgencyCache::change_set_t const AgencyCache::currentChangedSince(
-  consensus::index_t const& last, std::vector<std::string> const& others) const {
-  return planChangedSince(last, others);
-}
-
 
 std::ostream& operator<<(std::ostream& o, AgencyCache::change_set_t const& c) {
   o << c.ind;
