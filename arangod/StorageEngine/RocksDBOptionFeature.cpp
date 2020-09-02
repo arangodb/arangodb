@@ -92,6 +92,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(7 + 2),  // number of column families plus 2
+      _maxWriteBufferSizeToMaintain(0),
       _maxTotalWalSize(80 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
       _minWriteBufferNumberToMerge(rocksDBDefaults.min_write_buffer_number_to_merge),
@@ -207,6 +208,15 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "(default: number of column families + 2 = 9 write buffers). "
                      "You can increase the amount only",
                      new UInt64Parameter(&_maxWriteBufferNumber));
+
+  options->addOption("--rocksdb.max-write-buffer-size-to-maintain",
+                     "maximum size of immutable write buffers that build up in memory "
+                     "per column family (larger values mean that more in-memory data "
+                     "can be used for transaction conflict checking (-1 = use automatic default value, "
+                     "0 = do not keep immutable flushed write buffers, which is the default and usually "
+                     "correct))",
+                     new Int64Parameter(&_maxWriteBufferSizeToMaintain))
+                     .setIntroducedIn(30703);
 
   options->addOption("--rocksdb.max-total-wal-size",
                      "maximum total size of WAL files that will force flush "
@@ -498,6 +508,7 @@ void RocksDBOptionFeature::start() {
       << ", write_buffer_size: " << _writeBufferSize
       << ", total_write_buffer_size: " << _totalWriteBufferSize
       << ", max_write_buffer_number: " << _maxWriteBufferNumber
+      << ", max_write_buffer_size_to_maintain: " << _maxWriteBufferSizeToMaintain
       << ", max_total_wal_size: " << _maxTotalWalSize
       << ", delayed_write_rate: " << _delayedWriteRate
       << ", min_write_buffer_number_to_merge: " << _minWriteBufferNumberToMerge
