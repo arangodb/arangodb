@@ -670,6 +670,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_empt
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._analyzers.clear();        // clear all analyzers
+  linkMeta._primitiveOffset = 0;
   linkMeta._includeAllFields = true;  // include all fields
 
   std::vector<std::string> EMPTY;

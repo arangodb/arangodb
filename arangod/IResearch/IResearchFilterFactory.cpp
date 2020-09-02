@@ -499,7 +499,7 @@ arangodb::Result byTerm(irs::by_term* filter, std::string&& name,
         }
 
         TRI_ASSERT(filterCtx.analyzer._pool);
-        kludge::mangleStringField(name, filterCtx.analyzer);
+        kludge::mangleField(name, filterCtx.analyzer);
         *filter->mutable_field() = std::move(name);
         filter->boost(filterCtx.boost);
         irs::assign(filter->mutable_options()->term,
@@ -675,7 +675,7 @@ arangodb::Result byRange(irs::boolean_filter* filter, arangodb::aql::AstNode con
         auto& range = filter->add<irs::by_range>();
 
         TRI_ASSERT(filterCtx.analyzer._pool);
-        kludge::mangleStringField(name, filterCtx.analyzer);
+        kludge::mangleField(name, filterCtx.analyzer);
         *range.mutable_field() = std::move(name);
         range.boost(filterCtx.boost);
 
@@ -768,7 +768,7 @@ arangodb::Result byRange(irs::boolean_filter* filter, std::string name, const Sc
         auto& range = filter->add<irs::by_range>();
 
         TRI_ASSERT(filterCtx.analyzer._pool);
-        kludge::mangleStringField(name, filterCtx.analyzer);
+        kludge::mangleField(name, filterCtx.analyzer);
         *range.mutable_field() = std::move(name);
         range.boost(filterCtx.boost);
         auto* opts = range.mutable_options();
@@ -1898,7 +1898,7 @@ arangodb::Result fromFuncExists(
           // concrete analyzer from the context
           {TypeAnalyzer,
            [](std::string& name, arangodb::iresearch::FieldMeta::Analyzer const& analyzer)->bool {
-             kludge::mangleStringField(name, analyzer);
+             kludge::mangleField(name, analyzer);
              return false;  // not a prefix match
            }},
           {irs::string_ref("numeric"),
@@ -2995,7 +2995,7 @@ arangodb::Result fromFuncPhrase(
       };
     }
 
-    kludge::mangleStringField(name, analyzerPool);
+    kludge::mangleField(name, analyzerPool);
 
     phrase = &filter->add<irs::by_phrase>();
     *phrase->mutable_field() = std::move(name);
@@ -3138,7 +3138,7 @@ arangodb::Result fromFuncNgramMatch(
     }
 
 
-    kludge::mangleStringField(name, analyzerPool);
+    kludge::mangleField(name, analyzerPool);
 
     auto& ngramFilter = filter->add<irs::by_ngram_similarity>();
     *ngramFilter.mutable_field() = std::move(name);
@@ -3278,7 +3278,7 @@ arangodb::Result fromFuncStartsWith(
     }
 
     TRI_ASSERT(filterCtx.analyzer);
-    kludge::mangleStringField(name, filterCtx.analyzer);
+    kludge::mangleField(name, filterCtx.analyzer);
     filter->boost(filterCtx.boost);
 
     if (isMultiPrefix) {
@@ -3381,7 +3381,7 @@ arangodb::Result fromFuncLike(
     }
 
     TRI_ASSERT(filterCtx.analyzer);
-    kludge::mangleStringField(name, filterCtx.analyzer);
+    kludge::mangleField(name, filterCtx.analyzer);
 
     auto& wildcardFilter = filter->add<irs::by_wildcard>();
     *wildcardFilter.mutable_field() = std::move(name);
@@ -3420,7 +3420,7 @@ arangodb::Result fromFuncLevenshteinMatch(
     }
 
     TRI_ASSERT(filterCtx.analyzer);
-    kludge::mangleStringField(name, filterCtx.analyzer);
+    kludge::mangleField(name, filterCtx.analyzer);
 
     auto& levenshtein_filter = filter->add<irs::by_edit_distance>();
     levenshtein_filter.boost(filterCtx.boost);
@@ -3504,7 +3504,7 @@ arangodb::Result fromFuncGeoContainsIntersect(
     }
 
     TRI_ASSERT(filterCtx.analyzer);
-    kludge::mangleStringField(name, filterCtx.analyzer);
+    kludge::mangleField(name, filterCtx.analyzer);
 
     auto& geo_filter = filter->add<irs::by_geo_terms>();
     *geo_filter.mutable_field() = std::move(name);

@@ -198,9 +198,8 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   FieldIterator& operator=(FieldIterator const&) = delete;
 
   void next();
-  bool setStringValue(
-    arangodb::velocypack::Slice const value,
-    FieldMeta::Analyzer const& valueAnalyzer);
+  bool setValue(VPackSlice const value,
+                FieldMeta::Analyzer const& valueAnalyzer);
   void setNullValue(VPackSlice const value);
   void setNumericValue(VPackSlice const value);
   void setBoolValue(VPackSlice const value);

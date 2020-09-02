@@ -53,9 +53,9 @@ void mangleNumeric(std::string& name) {
   name.append(NUMERIC_SUFFIX.c_str(), NUMERIC_SUFFIX.size());
 }
 
-void mangleStringField(
+void mangleField(
     std::string& name,
-    arangodb::iresearch::FieldMeta::Analyzer const& analyzer) {
+    iresearch::FieldMeta::Analyzer const& analyzer) {
   name += ANALYZER_DELIMITER;
   name += analyzer._shortName;
 }

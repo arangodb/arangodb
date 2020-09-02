@@ -45,9 +45,9 @@ void mangleNull(std::string& name);
 void mangleBool(std::string& name);
 void mangleNumeric(std::string& name);
 
-void mangleStringField(
+void mangleField(
   std::string& name,
-  arangodb::iresearch::FieldMeta::Analyzer const& analyzer);
+  iresearch::FieldMeta::Analyzer const& analyzer);
 
 }  // namespace kludge
 }  // namespace iresearch

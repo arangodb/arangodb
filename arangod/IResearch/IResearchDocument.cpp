@@ -407,29 +407,41 @@ void FieldIterator::setNullValue(VPackSlice const value) {
   _value._features = &irs::flags::empty_instance();
 }
 
-bool FieldIterator::setStringValue(arangodb::velocypack::Slice const value,
-                                   FieldMeta::Analyzer const& valueAnalyzer) {
+bool FieldIterator::setValue(VPackSlice const value,
+                             FieldMeta::Analyzer const& valueAnalyzer) {
   TRI_ASSERT(  // assert
       (value.isCustom() && nameBuffer() == arangodb::StaticStrings::IdString)  // custom string
-      || value.isString());  // verbatim string
+      || value.isObject()
+      || value.isArray()
+      || value.isString()); // verbatim string
 
   irs::string_ref valueRef;
 
-  if (value.isCustom()) {
-    if (_stack.empty()) {
-      // base object isn't set
+  switch (value.type()) {
+    case VPackValueType::Array:
+    case VPackValueType::Object: {
+      valueRef = iresearch::ref<char>(value);
+    } break;
+    case VPackValueType::String: {
+      valueRef = iresearch::getStringRef(value);
+    } break;
+    case VPackValueType::Custom: {
+      if (!valid()) {
+        // base object isn't set
+        return false;
+      }
+
+      auto const baseSlice = _stack.front().it.slice();
+      auto& buffer = valueBuffer();
+
+      buffer = transaction::helpers::extractIdString(
+        _trx->resolver(), value, baseSlice);
+
+      valueRef = buffer;
+    } break;
+    default:
+      TRI_ASSERT(false);
       return false;
-    }
-
-    auto const baseSlice = _stack.front().it.slice();
-    auto& buffer = valueBuffer();
-
-    buffer = transaction::helpers::extractIdString(
-      _trx->resolver(), value, baseSlice);
-
-    valueRef = buffer;
-  } else {
-    valueRef = iresearch::getStringRef(value);
   }
 
   auto& pool = valueAnalyzer._pool;
@@ -445,7 +457,7 @@ bool FieldIterator::setStringValue(arangodb::velocypack::Slice const value,
 
   // it's important to unconditionally mangle name
   // since we unconditionally unmangle it in 'next'
-  iresearch::kludge::mangleStringField(name, valueAnalyzer);
+  iresearch::kludge::mangleField(name, valueAnalyzer);
 
   // init stream
   auto analyzer = pool->get();
@@ -480,7 +492,7 @@ setAnalyzers:
       name.resize(_prefixLength);
 
       // can have multiple analyzers for string values only
-      if (setStringValue(topValue().value, *_begin++)) {
+      if (setValue(topValue().value, *_begin++)) {
         return;
       }
     }
@@ -524,10 +536,19 @@ setAnalyzers:
             name += NESTING_LEVEL_DELIMITER;
           }
           [[fallthrough]];
-        case VPackValueType::Array:
+        case VPackValueType::Array: {
           _stack.emplace_back(slice, name.size(), *context,
                               getFilter(slice, *context));
-          break;
+
+          auto const& analyzers = context->_analyzers;
+          _begin = analyzers.data() + context->_primitiveOffset;
+          _end = analyzers.data() + analyzers.size();
+          _prefixLength = name.size(); // save current prefix length
+
+          if (_begin != _end) {
+            goto setAnalyzers;
+          }
+        } break;
         case VPackValueType::Double:
           setNumericValue(slice);
           return;
@@ -539,14 +560,13 @@ setAnalyzers:
         case VPackValueType::Custom:
           TRI_ASSERT(nameBuffer() == arangodb::StaticStrings::IdString);
           [[fallthrough]];
-        case VPackValueType::String:
+        case VPackValueType::String: {
+          auto const& analyzers = context->_analyzers;
+          _begin = analyzers.data();
+          _end = _begin + context->_primitiveOffset;
           _prefixLength = name.size(); // save current prefix length
-          {
-            auto const& analyzers = context->_analyzers;
-            _begin = analyzers.data();
-            _end = _begin + context->_primitiveOffset;
-          }
           goto setAnalyzers;
+        }
         default:
           break;
       }

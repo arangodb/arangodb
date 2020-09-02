@@ -550,8 +550,8 @@ std::string mangleString(std::string name, std::string suffix) {
 }
 
 std::string mangleStringIdentity(std::string name) {
-  arangodb::iresearch::kludge::mangleStringField(name, arangodb::iresearch::FieldMeta::Analyzer()  // args
-  );
+  arangodb::iresearch::kludge::mangleField(
+    name, arangodb::iresearch::FieldMeta::Analyzer());
 
   return name;
 }
