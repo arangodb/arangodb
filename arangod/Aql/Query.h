@@ -98,6 +98,9 @@ class Query : public QueryContext {
 
   constexpr static uint64_t DontCache = 0;
 
+  /// @brief return the user that started the query
+  std::string const& user() const override;
+
   /// @brief whether or not the query is killed
   bool killed() const override;
 
@@ -289,6 +292,9 @@ class Query : public QueryContext {
 
   /// @brief hash for this query. will be calculated only once when needed
   mutable uint64_t _queryHash = DontCache;
+
+  /// @brief user that started the query
+  std::string _user;
   
   /// Track in which phase of execution we are, in order to implement
   /// repeatability.
