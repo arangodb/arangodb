@@ -1,11 +1,6 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
-* Add option `--rocksdb.max-write-buffer-size-to-maintain` with default of 0.
-  This configures how much memory RocksDB is allowed to use for immutable
-  flushed memtables/write-buffers. The default of 0 will usually be good
-  for all purposes and restores the 3.6 memory usage for write-buffers.
-
 * Add attributes `database` and `user` when tracking current and slow AQL
   queries.
   `database` contains the name of the database the query is/was running in,
