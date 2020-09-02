@@ -6,6 +6,8 @@ devel
   flushed memtables/write-buffers. The default of 0 will usually be good
   for all purposes and restores the 3.6 memory usage for write-buffers.
 
+* Updated arangosync to 0.7.10.
+
 * Make followers in active failover run a compaction after they process a
   truncate operation and the truncate removed more than 4k documents. This
   can help to reclaim disk space on the follower earlier than without running
