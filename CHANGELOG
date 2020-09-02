@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed an issue with audit logging misreporting some document requests as 
+  internal instead of logging the proper request information
+
 * Added new metric `arangodb_network_forwarded_requests` to track the number
   of requests forwarded from one coordinator to another in a load-balancing
   context.
