@@ -424,11 +424,8 @@ bool FieldIterator::setStringValue(arangodb::velocypack::Slice const value,
     auto const baseSlice = _stack.front().it.slice();
     auto& buffer = valueBuffer();
 
-    buffer = transaction::helpers::extractIdString(  // extract id
-        _trx->resolver(),                            // resolver
-        value,                                       // value
-        baseSlice                                    // base slice
-    );
+    buffer = transaction::helpers::extractIdString(
+      _trx->resolver(), value, baseSlice);
 
     valueRef = buffer;
   } else {
@@ -522,12 +519,12 @@ setAnalyzers:
         case VPackValueType::Bool:
           setBoolValue(slice);
           return;
-        case VPackValueType::Array:
         case VPackValueType::Object:
-          if (!name.empty() && !slice.isArray()) {
+          if (!name.empty()) {
             name += NESTING_LEVEL_DELIMITER;
           }
-
+          [[fallthrough]];
+        case VPackValueType::Array:
           _stack.emplace_back(slice, name.size(), *context,
                               getFilter(slice, *context));
           break;
