@@ -124,7 +124,7 @@ struct Field {
 /// @brief allows to iterate over the provided VPack accoring the specified
 ///        IResearchLinkMeta
 ////////////////////////////////////////////////////////////////////////////////
-class FieldIterator : public std::iterator<std::forward_iterator_tag, Field const> {
+class FieldIterator {
  public:
   explicit FieldIterator(arangodb::transaction::Methods& trx);
 
@@ -140,15 +140,6 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   // expensive and useless
 
   bool valid() const noexcept { return !_stack.empty(); }
-
-  bool operator==(FieldIterator const& rhs) const noexcept {
-    TRI_ASSERT(_trx == rhs._trx); // compatibility
-    return _stack == rhs._stack;
-  }
-
-  bool operator!=(FieldIterator const& rhs) const noexcept {
-    return !(*this == rhs);
-  }
 
   void reset(velocypack::Slice slice,
              FieldMeta const& linkMeta);
@@ -169,12 +160,8 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
         meta(&meta), filter(filter) {
     }
 
-    bool operator==(Level const& rhs) const noexcept { return it == rhs.it; }
-
-    bool operator!=(Level const& rhs) const noexcept { return !(*this == rhs); }
-
     Iterator it;
-    size_t nameLength;              // length of the name at the current level
+    size_t nameLength; // length of the name at the current level
     FieldMeta const* meta;  // metadata
     Filter filter;
   }; // Level
@@ -204,6 +191,7 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   void setNumericValue(VPackSlice const value);
   void setBoolValue(VPackSlice const value);
 
+  VPackSlice _slice; // input slice
   AnalyzerIterator _begin{};
   AnalyzerIterator _end{};
   std::vector<Level> _stack;

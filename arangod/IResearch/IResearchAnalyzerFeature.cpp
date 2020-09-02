@@ -1105,6 +1105,12 @@ arangodb::iresearch::AnalyzerScope getAnalyzerScope(irs::type_info::type_id type
     return arangodb::iresearch::AnalyzerScope::COMPLEX_TYPE;
   }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  if ("iresearch-vpack-analyzer" == type().name()) {
+    return arangodb::iresearch::AnalyzerScope::COMPLEX_TYPE;
+  }
+#endif
+
   return arangodb::iresearch::AnalyzerScope::PRIMITIVE_TYPE;
 }
 

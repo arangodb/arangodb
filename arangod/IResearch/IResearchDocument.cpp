@@ -338,12 +338,10 @@ std::string& FieldIterator::valueBuffer() {
 }
 
 void FieldIterator::reset(VPackSlice doc, FieldMeta const& linkMeta) {
-  // set surrogate analyzers
+  _slice = doc;
   _begin = nullptr;
   _end = nullptr;
-  // clear stack
   _stack.clear();
-  // clear field name
   _nameBuffer->clear();
 
   // push the provided 'doc' on stack and initialize current value
@@ -426,16 +424,12 @@ bool FieldIterator::setValue(VPackSlice const value,
       valueRef = iresearch::getStringRef(value);
     } break;
     case VPackValueType::Custom: {
-      if (!valid()) {
-        // base object isn't set
-        return false;
-      }
+      TRI_ASSERT(!_slice.isNone());
 
-      auto const baseSlice = _stack.front().it.slice();
       auto& buffer = valueBuffer();
 
       buffer = transaction::helpers::extractIdString(
-        _trx->resolver(), value, baseSlice);
+        _trx->resolver(), value, _slice);
 
       valueRef = buffer;
     } break;

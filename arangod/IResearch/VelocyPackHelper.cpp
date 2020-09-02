@@ -164,21 +164,23 @@ bool mergeSliceSkipOffsets(arangodb::velocypack::Builder& builder,
 }
 
 // can't make it noexcept since VPackSlice::getNthOffset is not noexcept
-void Iterator::reset() {
-  TRI_ASSERT(isArrayOrObject(_slice));
-  _length = _slice.length();
+Iterator::Iterator(VPackSlice slice) {
+  TRI_ASSERT(isArrayOrObject(slice));
+  _length = slice.length();
 
   if (0 == _length) {
     return;
   }
 
   // according to Iterator.h:160 and Iterator.h:194
-  auto const offset = isCompactArrayOrObject(_slice)
-                         ? _slice.getNthOffset(0)
-                         : _slice.findDataOffset(_slice.head());
-  _begin = _slice.start() + offset;
+  auto const offset = isCompactArrayOrObject(slice)
+                         ? slice.getNthOffset(0)
+                         : slice.findDataOffset(slice.head());
+  _begin = slice.start() + offset;
 
-  _value.type = _slice.type();
+  _value.type = slice.type();
+
+  static_assert(!std::numeric_limits<VPackValueLength>::is_signed);
   _value.pos = VPackValueLength(0) - 1;
 }
 

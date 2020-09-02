@@ -348,34 +348,17 @@ struct IteratorValue {
 
 class Iterator {
  public:
-  explicit Iterator(VPackSlice slice)
-      : _slice(slice) {
-    reset();
-  }
+  explicit Iterator(VPackSlice slice);
 
   // returns true if iterator exhausted
   bool next() noexcept;
-  void reset();
-
-  VPackSlice slice() const noexcept { return _slice; }
+  bool valid() const noexcept { return 0 != _length; }
 
   IteratorValue const& value() const noexcept { return operator*(); }
 
   IteratorValue const& operator*() const noexcept { return _value; }
 
-  bool valid() const noexcept { return 0 != _length; }
-
-  bool operator==(Iterator const& rhs) const noexcept {
-    return _slice.start() == rhs._slice.start() &&
-           _value.pos == rhs._value.pos;
-  }
-
-  bool operator!=(Iterator const& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
  private:
-  VPackSlice _slice;
   VPackValueLength _length;
   uint8_t const* _begin;
   IteratorValue _value;
