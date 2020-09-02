@@ -1,3 +1,12 @@
+v3.7.2.1 (2020-01-02)
+---------------------
+
+* Add option `--rocksdb.max-write-buffer-size-to-maintain` with default of 0.
+  This configures how much memory RocksDB is allowed to use for immutable
+  flushed memtables/write-buffers. The default of 0 will usually be good for all
+  purposes and restores the 3.6 memory usage for write-buffers.
+
+
 v3.7.2 (2020-08-21)
 -------------------
 
