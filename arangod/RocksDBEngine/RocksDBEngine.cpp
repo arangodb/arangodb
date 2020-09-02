@@ -437,7 +437,7 @@ void RocksDBEngine::start() {
   // of memory in immutable flushed write buffers, which is bad for small deployments.
   // Therefore, by default, we now set this to 1 if the available memory is less than 4GB,
   // and to 0 otherwise.
-  _options.max_write_buffer_number_to_maintain = opts._maxWriteBufferNumberToMaintain;
+  _options.max_write_buffer_number_to_maintain = static_cast<int>(opts._maxWriteBufferNumberToMaintain);
   _options.delayed_write_rate = opts._delayedWriteRate;
   _options.min_write_buffer_number_to_merge =
       static_cast<int>(opts._minWriteBufferNumberToMerge);
