@@ -432,6 +432,12 @@ void RocksDBEngine::start() {
   _options.enable_pipelined_write = opts._enablePipelinedWrite;
   _options.write_buffer_size = static_cast<size_t>(opts._writeBufferSize);
   _options.max_write_buffer_number = static_cast<int>(opts._maxWriteBufferNumber);
+  // The following setting deserves an explanation: We found that if we leave the
+  // default for max_write_buffer_number_to_maintain at 0, then RocksDB keeps a lot 
+  // of memory in immutable flushed write buffers, which is bad for small deployments.
+  // Therefore, by default, we now set this to 1 if the available memory is less than 4GB,
+  // and to 0 otherwise.
+  _options.max_write_buffer_number_to_maintain = opts._maxWriteBufferNumberToMaintain;
   _options.delayed_write_rate = opts._delayedWriteRate;
   _options.min_write_buffer_number_to_merge =
       static_cast<int>(opts._minWriteBufferNumberToMerge);

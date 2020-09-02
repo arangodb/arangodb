@@ -59,6 +59,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(7 + 2),  // number of column families plus 2
+      _maxWriteBufferNumberToMaintain(
+          TRI_PhysicalMemory >= (static_cast<uint64_t>(4) << 30) ? 0 : 1),
       _maxTotalWalSize(80 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
       _minWriteBufferNumberToMerge(rocksDBDefaults.min_write_buffer_number_to_merge),
@@ -163,6 +165,15 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "(default: number of column families + 2 = 9 write buffers). "
                      "You can increase the amount only",
                      new UInt64Parameter(&_maxWriteBufferNumber));
+
+  options->addOption("--rocksdb.max-write-buffer-number-to-maintain",
+                     "maximum number of immutable write buffers that build up in memory "
+                     "per column family (larger values mean that more in-memory data "
+                     "can be used for transaction conflict checking (default depends "
+                     "on RAM size, set to 1 for not to keep immutable flushed write "
+                     "buffers, set to 0 for default size of RocksDB))",
+                     new Int64Parameter(&_maxWriteBufferNumberToMaintain))
+                     .setIntroducedIn(30607);
 
   options->addOption("--rocksdb.max-total-wal-size",
                      "maximum total size of WAL files that will force flush "
@@ -417,6 +428,7 @@ void RocksDBOptionFeature::start() {
       << ", write_buffer_size: " << _writeBufferSize
       << ", total_write_buffer_size: " << _totalWriteBufferSize
       << ", max_write_buffer_number: " << _maxWriteBufferNumber
+      << ", max_write_buffer_size_to_maintain: " << _maxWriteBufferSizeToMaintain
       << ", max_total_wal_size: " << _maxTotalWalSize
       << ", delayed_write_rate: " << _delayedWriteRate
       << ", min_write_buffer_number_to_merge: " << _minWriteBufferNumberToMerge
