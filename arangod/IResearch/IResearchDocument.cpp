@@ -252,21 +252,21 @@ typedef bool (*Filter)(std::string& buffer, arangodb::iresearch::FieldMeta const
                        arangodb::iresearch::IteratorValue const& value);
 
 Filter const valueAcceptors[] = {
-    // type == Object, nestListValues == false, // includeAllValues == false
+    // type == Object, nestListValues == false, includeAllValues == false
     &inObjectFiltered,
-    // type == Object, nestListValues == false, includeAllValues == // true
+    // type == Object, nestListValues == false, includeAllValues == true
     &inObject,
-    // type == Object, nestListValues == true , // includeAllValues == false
+    // type == Object, nestListValues == true , includeAllValues == false
     &inObjectFiltered,
-    // type == Object, nestListValues == true , includeAllValues == // true
+    // type == Object, nestListValues == true , includeAllValues == true
     &inObject,
-    // type == Array , nestListValues == flase, includeAllValues == // false
+    // type == Array , nestListValues == flase, includeAllValues == false
     &inArray,
-    // type == Array , nestListValues == flase, includeAllValues == // true
+    // type == Array , nestListValues == flase, includeAllValues == true
     &inArray,
-    // type == Array , nestListValues == true, // includeAllValues == false
+    // type == Array , nestListValues == true, includeAllValues == false
     &inArrayOrdered,
-    // type == Array , nestListValues == true, includeAllValues // == true
+    // type == Array , nestListValues == true, includeAllValues == true
     &inArrayOrdered};
 
 inline Filter getFilter(VPackSlice value, arangodb::iresearch::FieldMeta const& meta) noexcept {
@@ -340,16 +340,11 @@ std::string& FieldIterator::valueBuffer() {
 void FieldIterator::reset(VPackSlice doc, FieldMeta const& linkMeta) {
   // set surrogate analyzers
   _begin = nullptr;
-  _end = 1 + _begin;
+  _end = nullptr;
   // clear stack
   _stack.clear();
   // clear field name
   _nameBuffer->clear();
-
-  if (!isArrayOrObject(doc) || 0 == doc.length()) {
-    // can handle non-empty arrays/objects only
-    return;
-  }
 
   // push the provided 'doc' on stack and initialize current value
   auto const filter = getFilter(doc, linkMeta);
@@ -475,54 +470,6 @@ bool FieldIterator::setStringValue(arangodb::velocypack::Slice const value,
   return true;
 }
 
-bool FieldIterator::setAttributeValue(FieldMeta const& context) {
-  auto const value = topValue().value;
-
-  _value._storeValues = context._storeValues;
-  _value._value = irs::bytes_ref::NIL;
-
-  switch (value.type()) {
-    case VPackValueType::None:
-    case VPackValueType::Illegal:
-      return false;
-    case VPackValueType::Null:
-      setNullValue(value);
-      return true;
-    case VPackValueType::Bool:
-      setBoolValue(value);
-      return true;
-    case VPackValueType::Array:
-    case VPackValueType::Object:
-      return true;
-    case VPackValueType::Double:
-      setNumericValue(value);
-      return true;
-    case VPackValueType::UTCDate:
-    case VPackValueType::External:
-    case VPackValueType::MinKey:
-    case VPackValueType::MaxKey:
-      return false;
-    case VPackValueType::Int:
-    case VPackValueType::UInt:
-    case VPackValueType::SmallInt:
-      setNumericValue(value);
-      return true;
-    case VPackValueType::Custom:
-      TRI_ASSERT(nameBuffer() == arangodb::StaticStrings::IdString);
-      [[fallthrough]];
-    case VPackValueType::String:
-      {
-        auto const& analyzers = context._analyzers;
-
-        _begin = analyzers.data();
-        _end = _begin + context._primitiveOffset;
-      }
-      return setStringValue(value, *_begin);
-    default:
-      return false;
-  }
-}
-
 void FieldIterator::next() {
   TRI_ASSERT(valid());
 
@@ -530,12 +477,13 @@ void FieldIterator::next() {
   auto& name = nameBuffer();
 
   while (true) {
-    for (; ++_begin != _end;) {
+setAnalyzers:
+    while (_begin != _end) {
       // remove previous suffix
       name.resize(_prefixLength);
 
       // can have multiple analyzers for string values only
-      if (setStringValue(topValue().value, *_begin)) {
+      if (setStringValue(topValue().value, *_begin++)) {
         return;
       }
     }
@@ -562,25 +510,48 @@ void FieldIterator::next() {
         continue;
       }
 
-      auto const slice = topValue().value;
-      if (isArrayOrObject(slice)) {
-        if (!name.empty() && !slice.isArray()) {
-          name += NESTING_LEVEL_DELIMITER;
-        }
+      _value._storeValues = context->_storeValues;
+      _value._value = irs::bytes_ref::NIL;
+      _begin = nullptr;
+      _end = nullptr;
 
-        _stack.emplace_back(slice, name.size(), *context,
-                            getFilter(slice, *context));
-      } else {
-        // set value
-        _begin = nullptr;
-        _end = 1 + _begin;  // set surrogate analyzers
-        _prefixLength = name.size(); // save current prefix length
+      switch (auto const slice = topValue().value; slice.type()) {
+        case VPackValueType::Null:
+          setNullValue(slice);
+          return;
+        case VPackValueType::Bool:
+          setBoolValue(slice);
+          return;
+        case VPackValueType::Array:
+        case VPackValueType::Object:
+          if (!name.empty() && !slice.isArray()) {
+            name += NESTING_LEVEL_DELIMITER;
+          }
 
-        if (!setAttributeValue(*context)) {
+          _stack.emplace_back(slice, name.size(), *context,
+                              getFilter(slice, *context));
           break;
-        }
-
-        return;
+        case VPackValueType::Double:
+          setNumericValue(slice);
+          return;
+        case VPackValueType::Int:
+        case VPackValueType::UInt:
+        case VPackValueType::SmallInt:
+          setNumericValue(slice);
+          return;
+        case VPackValueType::Custom:
+          TRI_ASSERT(nameBuffer() == arangodb::StaticStrings::IdString);
+          [[fallthrough]];
+        case VPackValueType::String:
+          _prefixLength = name.size(); // save current prefix length
+          {
+            auto const& analyzers = context->_analyzers;
+            _begin = analyzers.data();
+            _end = _begin + context->_primitiveOffset;
+          }
+          goto setAnalyzers;
+        default:
+          break;
       }
     }
   }

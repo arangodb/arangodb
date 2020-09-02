@@ -283,6 +283,25 @@ TEST_F(IResearchDocumentTest, FieldIterator_construct) {
   EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx));
 }
 
+TEST_F(IResearchDocumentTest, FieldIterator_empty_object) {
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
+  auto sysVocbase = sysDatabase.use();
+
+  std::vector<std::string> EMPTY;
+  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
+                                     EMPTY, EMPTY, EMPTY,
+                                     arangodb::transaction::Options());
+
+
+  arangodb::iresearch::IResearchLinkMeta linkMeta;
+  linkMeta._includeAllFields = true;  // include all fields
+
+  arangodb::iresearch::FieldIterator it(trx);
+  it.reset(VPackSlice::emptyObjectSlice(), linkMeta);
+  EXPECT_FALSE(it.valid());
+  EXPECT_EQ(it, arangodb::iresearch::FieldIterator(trx));
+}
+
 TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_nested_delimiter) {
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
