@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -650,15 +651,17 @@ arangodb::Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& httpClie
   using arangodb::Logger;
 
   arangodb::Result result{};
-  VPackSlice const parameters = jobData.collection.get("parameters");
   VPackSlice const indexes = jobData.collection.get("indexes");
   // re-create indexes
   if (indexes.length() > 0) {
     // we actually have indexes
-    if (jobData.options.progress) {
-      std::string const cname =
-          arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name",
+  
+    VPackSlice const parameters = jobData.collection.get("parameters");
+      
+    std::string const cname =
+        arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name",
                                                              "");
+    if (jobData.options.progress) {
       LOG_TOPIC("d88c6", INFO, Logger::RESTORE)
           << "# Creating indexes for collection '" << cname << "'...";
     }
@@ -666,9 +669,6 @@ arangodb::Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& httpClie
     result = ::sendRestoreIndexes(httpClient, jobData.options, jobData.collection);
 
     if (result.fail()) {
-      std::string const cname =
-          arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name",
-                                                             "");
       if (jobData.options.force) {
         LOG_TOPIC("db937", WARN, Logger::RESTORE)
             << "Error while creating indexes for collection '" << cname
@@ -1778,6 +1778,8 @@ void RestoreFeature::start() {
       LOG_TOPIC("a74e8", ERR, arangodb::Logger::RESTORE) << "caught unknown exception";
       result = {TRI_ERROR_INTERNAL};
     }
+
+    _clientTaskQueue.waitForIdle();
 
     if (result.fail()) {
       break;

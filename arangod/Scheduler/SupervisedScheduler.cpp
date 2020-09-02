@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,7 +61,7 @@ time_point lastQueueFullWarning[3];
 int64_t fullQueueEvents[3] = {0, 0, 0};
 std::mutex fullQueueWarningMutex[3];
 
-void logQueueWarningEveryNowAndThen(int64_t events, uint64_t maxQueueSize) {
+void logQueueWarningEveryNowAndThen(int64_t events, uint64_t maxQueueSize, uint64_t approxQueueLength) {
   auto const now = std::chrono::steady_clock::now();
   uint64_t totalEvents;
   bool printLog = false;
@@ -81,7 +81,8 @@ void logQueueWarningEveryNowAndThen(int64_t events, uint64_t maxQueueSize) {
   if (printLog) {
     LOG_TOPIC("dead2", WARN, Logger::THREADS)
         << "Scheduler queue with max capacity " << maxQueueSize
-        << " is filled more than 50% in last " << sinceLast.count()
+        << " has approximately " << approxQueueLength 
+        << " tasks and is filled more than 50% in last " << sinceLast.count()
         << "s (happened " << totalEvents << " times since last message)";
   }
 }
@@ -172,7 +173,9 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
           "Number of awake worker threads")),
       _metricsNumWorkerThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           StaticStrings::SchedulerNumWorker, 0,
-          "Number of worker threads")) {
+          "Number of worker threads")),
+      _metricsQueueFull(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_scheduler_queue_full_failures", 0, "Tasks dropped and not added to internal queue")) {
   _queues[0].reserve(maxQueueSize);
   _queues[1].reserve(fifo1Size);
   _queues[2].reserve(fifo2Size);
@@ -213,6 +216,7 @@ bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> h
     LOG_TOPIC("98d94", DEBUG, Logger::THREADS)
         << "unable to push job to scheduler queue: queue is full";
     logQueueFullEveryNowAndThen(queueNo, maxSize);
+    ++_metricsQueueFull;
     return false;
   }
 
@@ -223,10 +227,10 @@ bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> h
     if ((::queueWarningTick++ & 0xFFu) == 0) {
       auto const& now = std::chrono::steady_clock::now();
       if (::conditionQueueFullSince == time_point{}) {
-        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize);
+        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize, approxQueueLength);
         ::conditionQueueFullSince = now;
       } else if (now - ::conditionQueueFullSince > std::chrono::seconds(5)) {
-        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize);
+        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize, approxQueueLength);
         ::queueWarningTick = 0;
         ::conditionQueueFullSince = now;
       }
@@ -274,6 +278,7 @@ bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> h
   for (auto& state : _workerStates) {
     std::unique_lock<std::mutex> guard2(state->_mutex);
     if (state->_sleeping) {
+      guard2.unlock();
       state->_conditionWork.notify_one();
       break;
     }
@@ -322,6 +327,7 @@ void SupervisedScheduler::shutdown() {
     for (auto& state : _workerStates) {
       std::unique_lock<std::mutex> guard2(state->_mutex);
       state->_stop = true;
+      guard2.unlock();
       state->_conditionWork.notify_one();
     }
   }
@@ -354,30 +360,31 @@ void SupervisedScheduler::runWorker() {
   std::shared_ptr<WorkerState> state;
 
   {
-    {
-      std::lock_guard<std::mutex> guard1(_mutex);
-      id = _numWorkers++;  // increase the number of workers here, to obtain the id
-      // copy shared_ptr with worker state
-      state = _workerStates.back();
-    }
-
-    state->_sleepTimeout_ms = 20 * (id + 1);
-    // cap the timeout to some boundary value
-    if (state->_sleepTimeout_ms >= 1000) {
-      state->_sleepTimeout_ms = 1000;
-    }
-
-    if (id < 5U) {
-      state->_queueRetryTime_us = (uint64_t(32) >> id) + 1;
-    } else {
-      state->_queueRetryTime_us = 0;
-    }
-
-    // inform the supervisor that this thread is alive
-    state->_ready = true;
-    std::lock_guard<std::mutex> guard(_mutexSupervisor);
-    _conditionSupervisor.notify_one();
+    std::lock_guard<std::mutex> guard1(_mutex);
+    id = _numWorkers++;  // increase the number of workers here, to obtain the id
+    // copy shared_ptr with worker state
+    state = _workerStates.back();
   }
+
+  state->_sleepTimeout_ms = 20 * (id + 1);
+  // cap the timeout to some boundary value
+  if (state->_sleepTimeout_ms >= 1000) {
+    state->_sleepTimeout_ms = 1000;
+  }
+
+  if (id < 5U) {
+    state->_queueRetryTime_us = (uint64_t(32) >> id) + 1;
+  } else {
+    state->_queueRetryTime_us = 0;
+  }
+
+  // inform the supervisor that this thread is alive
+  state->_ready = true;
+  {
+    std::lock_guard<std::mutex> guard(_mutexSupervisor);
+  }
+  _conditionSupervisor.notify_one();
+
   _nrAwake.fetch_add(1, std::memory_order_relaxed);
   while (true) {
     try {
@@ -447,11 +454,12 @@ void SupervisedScheduler::runSupervisor() {
     lastQueueLength = queueLength;
     lastJobsSubmitted = jobsSubmitted;
 
-    if (roundCount % 8 == 0) {
-      // approx every 0.8s update the metrics
+    if (roundCount++ >= 5) {
+      // approx every 0.5s update the metrics
       _metricsQueueLength.operator=(queueLength);
       _metricsAwakeThreads.operator=(awake);
       _metricsNumWorkerThreads.operator=(numWorker);
+      roundCount = 0;
     }
 
     try {
@@ -682,9 +690,9 @@ void SupervisedScheduler::stopOneThread() {
   {
     std::unique_lock<std::mutex> guard(state->_mutex);
     state->_stop = true;
-    state->_conditionWork.notify_one();
     // _stop is set under the mutex, then the worker thread is notified.
   }
+  state->_conditionWork.notify_one();
 
   // However the thread may be working on a long job. Hence we enqueue it on
   // the cleanup list and wait for its termination.

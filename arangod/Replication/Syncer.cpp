@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,8 +70,8 @@ arangodb::velocypack::StringRef const databaseRef("database");
 arangodb::velocypack::StringRef const globallyUniqueIdRef("globallyUniqueId");
 
 /// @brief extract the collection id from VelocyPack
-TRI_voc_cid_t getCid(arangodb::velocypack::Slice const& slice) {
-  return arangodb::basics::VelocyPackHelper::extractIdValue(slice);
+arangodb::DataSourceId getCid(arangodb::velocypack::Slice const& slice) {
+  return arangodb::DataSourceId{arangodb::basics::VelocyPackHelper::extractIdValue(slice)};
 }
 
 /// @brief extract the collection name from VelocyPack
@@ -81,7 +81,7 @@ std::string getCName(arangodb::velocypack::Slice const& slice) {
 
 /// @brief extract the collection by either id or name, may return nullptr!
 std::shared_ptr<arangodb::LogicalCollection> getCollectionByIdOrName(
-    TRI_vocbase_t& vocbase, TRI_voc_cid_t cid, std::string const& name) {
+    TRI_vocbase_t& vocbase, arangodb::DataSourceId cid, std::string const& name) {
   auto idCol = vocbase.lookupCollection(cid);
   std::shared_ptr<arangodb::LogicalCollection> nameCol;
 
@@ -462,7 +462,7 @@ SyncerId newSyncerId() {
 }
 
 Syncer::SyncerState::SyncerState(Syncer* syncer, ReplicationApplierConfiguration const& configuration)
-    : syncerId{newSyncerId()}, applier{configuration}, connection{syncer, configuration}, master{configuration} {}
+    : syncerId{newSyncerId()}, applier{configuration}, connection{syncer, configuration}, leader{configuration} {}
 
 Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     : _state{this, configuration} {
@@ -487,14 +487,10 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
   _state.localServerId = ServerIdFeature::getId();
   _state.localServerIdString = basics::StringUtils::itoa(_state.localServerId.id());
 
-  _state.master.endpoint = _state.applier._endpoint;
+  _state.leader.endpoint = _state.applier._endpoint;
 }
 
-Syncer::~Syncer() {
-  if (!_state.isChildSyncer) {
-    _state.barrier.remove(_state.connection);
-  }
-}
+Syncer::~Syncer() = default;
 
 /// @brief request location rewriter (injects database name)
 std::string Syncer::rewriteLocation(void* data, std::string const& location) {
@@ -509,14 +505,6 @@ std::string Syncer::rewriteLocation(void* data, std::string const& location) {
     return "/_db/" + s->_state.databaseName + location;
   }
   return "/_db/" + s->_state.databaseName + "/" + location;
-}
-
-/// @brief steal the barrier id from the syncer
-TRI_voc_tick_t Syncer::stealBarrier() {
-  auto id = _state.barrier.id;
-  _state.barrier.id = 0;
-  _state.barrier.updateTime = 0;
-  return id;
 }
 
 void Syncer::setAborted(bool value) { _state.connection.setAborted(value); }
@@ -563,9 +551,9 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
     TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
   // extract "cid"
-  TRI_voc_cid_t cid = ::getCid(slice);
+  DataSourceId cid = ::getCid(slice);
 
-  if (!_state.master.simulate32Client() || cid == 0) {
+  if (!_state.leader.simulate32Client() || cid.empty()) {
     VPackSlice uuid;
 
     if ((uuid = slice.get(::cuidRef)).isString()) {
@@ -575,7 +563,7 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
     }
   }
 
-  if (cid == 0) {
+  if (cid.empty()) {
     LOG_TOPIC("fbf1a", ERR, Logger::REPLICATION)
         << "Invalid replication response: Was unable to resolve"
         << " collection from marker: " << slice.toJson();
@@ -651,13 +639,13 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   auto col = resolveCollection(vocbase, slice);
 
   if (col != nullptr && col->type() == type &&
-      (!_state.master.simulate32Client() || col->name() == name)) {
+      (!_state.leader.simulate32Client() || col->name() == name)) {
     // collection already exists. TODO: compare attributes
     return Result();
   }
 
   bool forceRemoveCid = false;
-  if (col != nullptr && _state.master.simulate32Client()) {
+  if (col != nullptr && _state.leader.simulate32Client()) {
     forceRemoveCid = true;
     LOG_TOPIC("01f9f", INFO, Logger::REPLICATION)
         << "would have got a wrong collection!";
@@ -669,7 +657,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
 
   if (col != nullptr) {
     if (col->system()) {
-      TRI_ASSERT(!_state.master.simulate32Client() || col->guid() == col->name());
+      TRI_ASSERT(!_state.leader.simulate32Client() || col->guid() == col->name());
       SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
                                       *col, AccessMode::Type::WRITE);
       trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
@@ -701,7 +689,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   s.openObject();
   s.add(StaticStrings::DataSourceSystem, VPackValue(true));
 
-  if ((uuid.isString() && !_state.master.simulate32Client()) || forceRemoveCid) {  // need to use cid for 3.2 master
+  if ((uuid.isString() && !_state.leader.simulate32Client()) || forceRemoveCid) {  // need to use cid for 3.2 leader
     // if we received a globallyUniqueId from the remote, then we will always
     // use this id so we can discard the "cid" and "id" values for the
     // collection

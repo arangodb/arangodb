@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -156,7 +156,8 @@ struct Job {
   static std::string findNonblockedCommonHealthyInSyncFollower(Node const& snap,
                                                                std::string const& db,
                                                                std::string const& col,
-                                                               std::string const& shrd);
+                                                               std::string const& shrd,
+                                                               std::string const& serverToAvoid);
 
   JOB_STATUS _status;
   Node const& _snapshot;

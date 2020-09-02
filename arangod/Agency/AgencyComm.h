@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -217,7 +217,7 @@ class AgencyPrecondition {
         builder(std::make_shared<VPackBuilder>()) {
     builder->add(VPackValue(v));
     value = builder->slice();
-  };
+  }
 
   AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path, Type, bool e);
   AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
@@ -228,7 +228,7 @@ class AgencyPrecondition {
       : key(path->str()), type(t), empty(false), builder(std::make_shared<VPackBuilder>()) {
     builder->add(VPackValue(v));
     value = builder->slice();
-  };
+  }
 
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
@@ -276,7 +276,6 @@ class AgencyOperation {
 
  public:
   uint64_t _ttl = 0;
-  velocypack::Slice _oldValue;
 
  private:
   std::string const _key;
@@ -470,15 +469,15 @@ struct AgencyWriteTransaction : public AgencyTransaction {
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
 
-  inline virtual std::string const& path() const override final {
+  inline std::string const& path() const override final {
     return AgencyTransaction::TypeUrl[1];
   }
 
-  inline virtual std::string getClientId() const override final {
+  inline std::string getClientId() const override final {
     return clientId;
   }
 
-  virtual bool validate(AgencyCommResult const& result) const override final;
+  bool validate(AgencyCommResult const& result) const override final;
   char const* typeName() const override { return "AgencyWriteTransaction"; }
 
   std::vector<AgencyPrecondition> preconditions;
@@ -525,11 +524,11 @@ struct AgencyTransientTransaction : public AgencyTransaction {
     return AgencyTransaction::TypeUrl[3];
   }
 
-  inline virtual std::string getClientId() const override final {
+  inline std::string getClientId() const override final {
     return std::string();
   }
 
-  virtual bool validate(AgencyCommResult const& result) const override final;
+  bool validate(AgencyCommResult const& result) const override final;
   char const* typeName() const override { return "AgencyTransientTransaction"; }
 
   std::vector<AgencyPrecondition> preconditions;
@@ -552,15 +551,15 @@ struct AgencyReadTransaction : public AgencyTransaction {
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
 
-  inline virtual std::string const& path() const override final {
+  inline std::string const& path() const override final {
     return AgencyTransaction::TypeUrl[0];
   }
 
-  inline virtual std::string getClientId() const override final {
+  inline std::string getClientId() const override final {
     return std::string();
   }
 
-  virtual bool validate(AgencyCommResult const& result) const override final;
+  bool validate(AgencyCommResult const& result) const override final;
   char const* typeName() const override { return "AgencyReadTransaction"; }
 
   std::vector<std::string> keys;
@@ -573,8 +572,8 @@ struct AgencyReadTransaction : public AgencyTransaction {
 class AgencyComm {
  private:
   static std::string const AGENCY_URL_PREFIX;
-  static uint64_t const INITIAL_SLEEP_TIME = 5000;
-  static uint64_t const MAX_SLEEP_TIME = 50000;
+  static uint64_t const INITIAL_SLEEP_TIME = 5000; // microseconds
+  static uint64_t const MAX_SLEEP_TIME = 50000; // microseconds
 
 #ifdef DEBUG_SYNC_REPLICATION
  public:

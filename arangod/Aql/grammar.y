@@ -382,6 +382,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> in_or_into_collection;
 %type <node> in_or_into_collection_name;
 %type <node> bind_parameter;
+%type <node> bind_parameter_datasource_expected;
 %type <strval> variable_name;
 %type <node> numeric_value;
 %type <intval> update_or_replace;
@@ -397,14 +398,7 @@ with_collection:
     T_STRING {
       $$ = parser->ast()->createNodeValueString($1.value, $1.length);
     }
-  | bind_parameter {
-      char const* p = $1->getStringValue();
-      size_t const len = $1->getStringLength();
-
-      if (len < 2 || *p != '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), p, yylloc.first_line, yylloc.first_column);
-      }
-
+  | bind_parameter_datasource_expected {
       $$ = $1;
     }
   ;
@@ -1722,7 +1716,7 @@ graph_collection:
     T_STRING {
       $$ = parser->ast()->createNodeValueString($1.value, $1.length);
     }
-  | bind_parameter {
+  | bind_parameter_datasource_expected {
       $$ = $1;
     }
   | graph_direction T_STRING {
@@ -2024,6 +2018,19 @@ bind_parameter:
     }
   | T_PARAMETER {
       $$ = parser->ast()->createNodeParameter($1.value, $1.length);
+    }
+  ;
+
+bind_parameter_datasource_expected:
+    T_DATA_SOURCE_PARAMETER {
+      if ($1.length < 2 || $1.value[0] != '@') {
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
+      }
+
+      $$ = parser->ast()->createNodeParameterDatasource($1.value, $1.length);
+    }
+  | T_PARAMETER {
+      $$ = parser->ast()->createNodeParameterDatasource($1.value, $1.length);
     }
   ;
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,16 +57,10 @@ class RemoteNode final : public DistributeConsumerNode {
   friend class ExecutionBlock;
 
  public:
-  /// @brief Type of API; the legacy pre-3.7 getSome/skipSome API, or the
-  ///        execute API. Used for rolling upgrades. Can be removed in 3.8.
-  ///        It is serialized as an integral, changing the values will break the
-  ///        API!
-  enum class Api { GET_SOME = 0, EXECUTE = 1 };
-
   /// @brief constructor with an id
   RemoteNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
              std::string server, std::string const& ownName,
-             std::string queryId, Api = Api::EXECUTE)
+             std::string queryId)
       : DistributeConsumerNode(plan, id, ownName),
         _vocbase(vocbase),
         _server(std::move(server)),
@@ -92,7 +86,7 @@ class RemoteNode final : public DistributeConsumerNode {
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
     return cloneHelper(std::make_unique<RemoteNode>(plan, _id, _vocbase, _server,
-                                                    getDistributeId(), _queryId, _apiToUse),
+                                                    getDistributeId(), _queryId),
                        withDependencies, withProperties);
   }
 
@@ -119,12 +113,6 @@ class RemoteNode final : public DistributeConsumerNode {
     _queryId = arangodb::basics::StringUtils::itoa(queryId);
   }
 
-  [[nodiscard]] auto api() const noexcept -> Api;
-
- private:
-  static auto apiToVpack(Api) -> velocypack::Value;
-  static auto getApiProperty(VPackSlice slice, std::string const& key) -> Api;
-
  private:
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
@@ -134,10 +122,6 @@ class RemoteNode final : public DistributeConsumerNode {
 
   /// @brief the ID of the query on the server as a string
   std::string _queryId;
-
-  /// @brief Whether to use the pre-3.7 getSome/skipSome API, instead of the
-  ///        execute API. Used for rolling upgrades, so can be removed in 3.8.
-  Api _apiToUse = Api::EXECUTE;
 };
 
 /// @brief class ScatterNode

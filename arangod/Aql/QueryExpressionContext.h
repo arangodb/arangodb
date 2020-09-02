@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,7 @@ class QueryExpressionContext : public ExpressionContext {
  public:
   explicit QueryExpressionContext(transaction::Methods& trx,
                                   QueryContext& query,
-                                  AqlFunctionsInternalCache& cache)
+                                  AqlFunctionsInternalCache& cache) noexcept
       : ExpressionContext(),
         _trx(trx), _query(query), _aqlFunctionsInternalCache(cache) {}
 

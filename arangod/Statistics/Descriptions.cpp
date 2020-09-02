@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -430,21 +431,23 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   if (dealer.isEnabled()) {
     b.add("v8Context", VPackValue(VPackValueType::Object, true));
     auto v8Counters = dealer.getCurrentContextNumbers();
-    auto memoryStatistics = dealer.getCurrentMemoryNumbers();
+    auto memoryStatistics = dealer.getCurrentContextDetails();
     b.add("available", VPackValue(v8Counters.available));
     b.add("busy", VPackValue(v8Counters.busy));
     b.add("dirty", VPackValue(v8Counters.dirty));
     b.add("free", VPackValue(v8Counters.free));
     b.add("max", VPackValue(v8Counters.max));
+    b.add("min", VPackValue(v8Counters.min));
     {
       b.add("memory", VPackValue(VPackValueType::Array));
-      for (auto memStatistic : memoryStatistics) {
+      for (auto const& memStatistic : memoryStatistics) {
         b.add(VPackValue(VPackValueType::Object));
         b.add("contextId", VPackValue(memStatistic.id));
         b.add("tMax", VPackValue(memStatistic.tMax));
         b.add("countOfTimes", VPackValue(memStatistic.countOfTimes));
         b.add("heapMax", VPackValue(memStatistic.heapMax));
         b.add("heapMin", VPackValue(memStatistic.heapMin));
+        b.add("invocations", VPackValue(memStatistic.invocations));
         b.close();
       }
       b.close();

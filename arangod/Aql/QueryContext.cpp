@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,6 +26,7 @@
 #include "Aql/Ast.h"
 #include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
@@ -80,6 +82,11 @@ Collections const& QueryContext::collections() const {
 std::vector<std::string> QueryContext::collectionNames() const {
   TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
   return _collections.collectionNames();
+}
+  
+/// @brief return the user that started the query
+std::string const& QueryContext::user() const {
+  return StaticStrings::Empty;
 }
 
 /// @brief look up a graph either from our cache list or from the _graphs

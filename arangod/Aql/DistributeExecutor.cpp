@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -126,7 +127,7 @@ auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult
   choosenMap.reserve(blockMap.size());
 
   if (block != nullptr) {
-    for (size_t i = 0; i < block->size(); ++i) {
+    for (size_t i = 0; i < block->numRows(); ++i) {
       if (block->isShadowRow(i)) {
         // ShadowRows need to be added to all Clients
         for (auto const& [key, value] : blockMap) {

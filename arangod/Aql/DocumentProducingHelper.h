@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,11 +33,13 @@
 
 #include "Aql/types.h"
 #include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/AttributeNamePath.h"
+#include "Aql/Projections.h"
 #include "Indexes/IndexIterator.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-class LocalDocumentId;
 namespace transaction {
 class Methods;
 }
@@ -48,29 +50,18 @@ class Slice;
 namespace aql {
 struct AqlValue;
 class Expression;
+class ExpressionContext;
 class InputAqlItemRow;
 class OutputAqlItemRow;
 class QueryContext;
-class ExpressionContext;
-
-enum class ProjectionType : uint32_t {
-  IdAttribute,
-  KeyAttribute,
-  OtherAttribute
-};
-
-void handleProjections(std::vector<std::pair<ProjectionType, std::string>> const& projections,
-                       transaction::Methods const* trxPtr, velocypack::Slice slice,
-                       velocypack::Builder& b);
-
+  
 struct DocumentProducingFunctionContext {
  public:
   DocumentProducingFunctionContext(InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
                                    RegisterId outputRegister, bool produceResult,
                                    aql::QueryContext& query,
                                    transaction::Methods& trx, Expression* filter,
-                                   std::vector<std::string> const& projections,
-                                   std::vector<size_t> const& coveringIndexAttributePositions,
+                                   arangodb::aql::Projections const& projections,
                                    bool allowCoveringIndexOptimization,
                                    bool checkUniqueness);
 
@@ -82,7 +73,7 @@ struct DocumentProducingFunctionContext {
 
   bool getProduceResult() const noexcept;
 
-  std::vector<std::pair<ProjectionType, std::string>> const& getProjections() const noexcept;
+  arangodb::aql::Projections const& getProjections() const noexcept;
 
   transaction::Methods* getTrxPtr() const noexcept;
 
@@ -124,22 +115,19 @@ struct DocumentProducingFunctionContext {
   arangodb::velocypack::Builder& getBuilder() noexcept;
 
  private:
-  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
-
   bool checkFilter(ExpressionContext& ctx);
 
-  
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   InputAqlItemRow const& _inputRow;
   OutputAqlItemRow* _outputRow;
   aql::QueryContext& _query;
   transaction::Methods& _trx;
   Expression* _filter;
-  std::vector<std::pair<ProjectionType, std::string>> _projections;
-  std::vector<size_t> const& _coveringIndexAttributePositions;
+  arangodb::aql::Projections const& _projections;
   size_t _numScanned;
   size_t _numFiltered;
 
-  /// @brief Builder that is reused to generate projections 
+  /// @brief Builder that is reused to generate projection results 
   arangodb::velocypack::Builder _objectBuilder;
 
   /// @brief set of already returned documents. Used to make the result distinct

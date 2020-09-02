@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -93,15 +93,30 @@ class V8Context {
   void unlockAndExit();
   uint64_t invocations() const { return _invocations; }
   uint64_t invocationsSinceLastGc() const { return _invocationsSinceLastGc; }
+  double acquired() const noexcept { return _acquired; }
+  char const* description() const noexcept { return _description; }
   bool shouldBeRemoved(double maxAge, uint64_t maxInvocations) const;
   bool hasGlobalMethodsQueued();
   void setCleaned(double stamp);
+
+  // sets acquisition description (char const* must stay valid forever) and
+  // acquisition timestamp
+  void setDescription(char const* description, double acquired) noexcept {
+    _description = description;
+    _acquired = acquired;
+  }
+  void clearDescription() noexcept { _description = "none"; }
 
   size_t const _id;
   v8::Persistent<v8::Context> _context;
   v8::Isolate* _isolate;
   v8::Locker* _locker;
   double const _creationStamp;
+  /// @brief timestamp of when the context was last entered
+  double _acquired;
+  /// @brief description of what the context is doing. pointer must be valid 
+  /// through the entire program lifetime
+  char const* _description;
   double _lastGcStamp;
   uint64_t _invocations;
   uint64_t _invocationsSinceLastGc;

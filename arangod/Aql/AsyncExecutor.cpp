@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -126,16 +127,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<AsyncExecutor>::initializeC
   
   std::lock_guard<std::mutex> guard(_mutex);
   auto res = ExecutionBlock::initializeCursor(input);
-  _returnBlock = nullptr;
-  _returnState = ExecutionState::HASMORE;
-  _internalState = AsyncState::Empty;
-  return res;
-}
-
-/// @brief shutdown, will be called exactly once for the whole query
-std::pair<ExecutionState, Result> ExecutionBlockImpl<AsyncExecutor>::shutdown(int errorCode) {
-  std::lock_guard<std::mutex> guard(_mutex);
-  auto res = ExecutionBlock::shutdown(errorCode);
   _returnBlock = nullptr;
   _returnState = ExecutionState::HASMORE;
   _internalState = AsyncState::Empty;

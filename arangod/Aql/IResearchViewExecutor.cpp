@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -64,11 +65,11 @@ constexpr irs::payload NoPayload;
 
 inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find collection
     arangodb::transaction::Methods& trx,  // transaction
-    TRI_voc_cid_t cid,                    // collection identifier
+    DataSourceId cid,                     // collection identifier
     aql::QueryContext& query) {
   TRI_ASSERT(trx.state());
 
-  // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
+  // `Methods::documentCollection(DataSourceId)` may throw exception
   auto* collection = trx.state()->collection(cid, arangodb::AccessMode::Type::READ);
 
   if (!collection) {
@@ -868,7 +869,7 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
       // CID is constant until the next resetIterator(). Save the corresponding
       // collection so we don't have to look it up every time.
 
-      TRI_voc_cid_t const cid = this->_reader->cid(_readerOffset);
+      DataSourceId const cid = this->_reader->cid(_readerOffset);
       aql::QueryContext& query = this->_infos.getQuery();
       auto collection = lookupCollection(this->_trx, cid, query);
 
@@ -876,7 +877,7 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
         std::stringstream msg;
         msg << "failed to find collection while reading document from "
                "arangosearch view, cid '"
-            << cid << "'";
+            << cid.id() << "'";
         query.warnings().registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
 
         // We don't have a collection, skip the current reader.
@@ -1064,7 +1065,7 @@ void IResearchViewExecutor<ordered, materializeType>::saveCollection() {
     // CID is constant until the next resetIterator(). Save the corresponding
     // collection so we don't have to look it up every time.
 
-    TRI_voc_cid_t const cid = this->_reader->cid(_readerOffset);
+    DataSourceId const cid = this->_reader->cid(_readerOffset);
     aql::QueryContext& query = this->_infos.getQuery();
     auto collection = lookupCollection(this->_trx, cid, query);
 
@@ -1072,7 +1073,7 @@ void IResearchViewExecutor<ordered, materializeType>::saveCollection() {
       std::stringstream msg;
       msg << "failed to find collection while reading document from "
              "arangosearch view, cid '"
-          << cid << "'";
+          << cid.id() << "'";
       query.warnings().registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
 
       // We don't have a collection, skip the current reader.
@@ -1220,7 +1221,7 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
       }
     }
 
-    TRI_voc_cid_t const cid = this->_reader->cid(i);
+    DataSourceId const cid = this->_reader->cid(i);
     aql::QueryContext& query = this->_infos.getQuery();
     auto collection = lookupCollection(this->_trx, cid, query);
 
@@ -1228,7 +1229,7 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
       std::stringstream msg;
       msg << "failed to find collection while reading document from "
              "arangosearch view, cid '"
-          << cid << "'";
+          << cid.id() << "'";
       query.warnings().registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
 
       // We don't have a collection, skip the current segment.

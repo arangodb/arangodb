@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -67,7 +68,7 @@ struct BuilderTrx : public arangodb::transaction::Methods {
   }
 
  private:
-  TRI_voc_cid_t _cid;
+  DataSourceId _cid;
 };
 
 struct BuilderCookie : public arangodb::TransactionState::Cookie {
@@ -391,7 +392,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
     if (column_family_id == _index.columnFamily()->GetID() &&
         RocksDBKey::objectId(begin_key) == _objectId &&
         RocksDBKey::objectId(end_key) == _objectId) {
-      _index.afterTruncate(_currentSequence);
+      _index.afterTruncate(_currentSequence, &_trx);
     }
     return rocksdb::Status();  // make WAL iterator happy
   }

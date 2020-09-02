@@ -1,6 +1,365 @@
 devel
 -----
 
+* Add option `--rocksdb.max-write-buffer-size-to-maintain` with default of 0.
+  This configures how much memory RocksDB is allowed to use for immutable
+  flushed memtables/write-buffers. The default of 0 will usually be good
+  for all purposes and restores the 3.6 memory usage for write-buffers.
+
+* Updated arangosync to 0.7.10.
+
+* Make followers in active failover run a compaction after they process a
+  truncate operation and the truncate removed more than 4k documents. This
+  can help to reclaim disk space on the follower earlier than without running
+  the truncate.
+
+* Added REST API PUT `/_admin/compact` for compacting the entire database
+  data. This endpoint can be used to reclaim disk space after substantial data 
+  deletions have taken place. The command is also exposed via the JavaScript
+  API as `db._compact();`.
+
+  This command can cause a full rewrite of all data in all databases, which 
+  may take very long for large databases. It should thus only be used with care
+  and only when additional I/O load can be tolerated for a prolonged time.
+  
+  This command requires superuser access.
+
+* Added new metrics for the total and the free disk space for the mount
+  used for the RocksDB database directory:
+
+  * `arangodb_rocksdb_free_disk_space`: provides the free disk space for
+    the mount, in bytes
+  * `arangodb_rocksdb_total_disk_space`: provides the total disk space of
+    the mount, in bytes
+
+* Apply user-defined idle connection timeouts for HTTP/2 and VST connections.
+  The timeout value for idle HTTP/2 and VST connections can now be configured 
+  via the configuration option `--http.keep-alive-timeout` in the same way
+  as for HTTP/1 connections. 
+  HTTP/2 and VST connections that are sending data back to the client are now 
+  closed after 300 seconds or the configured idle timeout (the higher of both
+  values is used here).
+  Before this change, the timeouts for HTTP/2 and VST connections were hard-
+  coded to 120 seconds, and even non-idle connections were closed after this
+  timeout.
+
+* Added new metric `arangodb_network_forwarded_requests` to track the number
+  of requests forwarded from one coordinator to another in a load-balancing
+  context.
+
+* Added new metrics for tracking AQL queries and slow queries:
+  * `arangodb_aql_query_time`: histogram with AQL query times distribution.
+  * `arangodb_aql_slow_query_time`: histogram with AQL slow query times 
+    distribution.
+  * `arangodb_aql_all_query`: total number of all AQL queries.
+
+* Added new metrics for replication:
+  * `arangodb_replication_dump_requests`: number of replication dump requests
+    made.
+  * `arangodb_replication_dump_bytes_received`: number of bytes received in 
+    replication dump requests.
+  * `arangodb_replication_dump_documents`: number of documents received in
+    replication dump requests.
+  * `arangodb_replication_dump_request_time`: wait time for replication dump 
+    requests.
+  * `arangodb_replication_dump_apply_time`: time required for applying data
+    from replication dump responses.
+  * `arangodb_replication_initial_sync_keys_requests`: number of replication 
+    initial sync keys requests made.
+  * `arangodb_replication_initial_sync_docs_requests`: number of replication 
+    initial sync docs requests made.
+  * `arangodb_replication_initial_sync_docs_requested`: number of documents 
+    requested via replication initial sync requests.
+  * `arangodb_replication_initial_sync_docs_inserted`: number of documents 
+    inserted by replication initial sync.
+  * `arangodb_replication_initial_sync_docs_removed`: number of documents 
+    inserted by replication initial sync.
+  * `arangodb_replication_initial_chunks_requests_time`: wait time histogram 
+    for replication key chunks determination requests.
+  * `arangodb_replication_initial_keys_requests_time`: wait time for replication
+    keys requests.
+  * `arangodb_replication_initial_docs_requests_time`: time needed to apply
+    replication docs data.
+  * `arangodb_replication_initial_insert_apply_time`: time needed to apply
+    replication initial sync insertions.
+  * `arangodb_replication_initial_remove_apply_time`: time needed to apply
+    replication initial sync removals.
+  * `arangodb_replication_initial_lookup_time`: time needed for replication 
+    initial sync key lookups.
+  * `arangodb_replication_tailing_requests`: number of replication tailing 
+    requests.
+  * `arangodb_replication_tailing_follow_tick_failures`: number of replication 
+    tailing failures due to missing tick on leader.
+  * `arangodb_replication_tailing_markers`: number of replication tailing 
+    markers processed.
+  * `arangodb_replication_tailing_documents`: number of replication tailing 
+    document inserts/replaces processed.
+  * `arangodb_replication_tailing_removals`: number of replication tailing 
+    document removals processed.
+  * `arangodb_replication_tailing_bytes_received`: number of bytes received 
+    for replication tailing requests.
+  * `arangodb_replication_tailing_request_time`: wait time for replication
+    tailing requests.
+  * `arangodb_replication_tailing_apply_time`: time needed to apply replication
+    tailing markers.
+
+* Allow calling of REST APIs `/_api/engine/stats`, GET `/_api/collection`,
+  GET `/_api/database/current` and GET `/_admin/metrics` on followers in active 
+  failover deployments. This can help debugging and inspecting the follower.
+
+* Added metrics for V8 contexts usage:
+  * `arangodb_v8_context_alive`: number of V8 contexts currently alive.
+  * `arangodb_v8_context_busy`: number of V8 contexts currently busy.
+  * `arangodb_v8_context_dirty`: number of V8 contexts currently dirty.
+  * `arangodb_v8_context_free`: number of V8 contexts currently free.
+  * `arangodb_v8_context_max`: maximum number of concurrent V8 contexts.
+  * `arangodb_v8_context_min`: minimum number of concurrent V8 contexts.
+
+* Fix for issue BTS-183: added pending operations purging before ArangoSearch
+  index truncation
+
+* Don't allow creation of smart satellite graphs or collections (i.e. using
+  `"isSmart":true` together with `"replicationFactor":"satellite"` when creating
+  graphs or collections. This combination of parameters makes no sense, so that
+  the server will now respond with "bad parameter" and an HTTP status code of
+  HTTP 400 ("Bad request").
+
+* Fixed: More cases in AQL can now react to a query being killed, so reaction
+  time to query abortion is now shortened. This was a regression in comparison
+  to 3.6 series.
+
+* Support projections on sub-attributes (e.g. `a.b.c`).
+
+  In previous versions of ArangoDB, projections were only supported on 
+  top-level attributes. For example, in the query
+    
+      FOR doc IN collection
+        RETURN doc.a.b
+
+  the projection that was used was just `a`. Now the projection will be `a.b`,
+  which can help reduce the amount of data to be extracted from documents,
+  when only some sub-attributes are accessed.
+
+  In addition, indexes can now be used to extract the data of sub-attributes
+  for projections. If for the above example query an index on `a.b` exists, 
+  it will be used now. Previously, no index could be used for this projection.
+
+  Projections now can also be fed by any attribute in a combined index. For 
+  example, in the query
+
+    FOR doc IN collection
+      RETURN doc.b
+
+  the projection can be satisfied by a single-attribute index on attribute `b`,
+  but now also by a combined index on attributes `a` and `b` (or `b` and `a`).
+
+* Remove some JavaScript files containing testsuites and test utilities from our
+  official release packages.
+
+* Fixed internal issue #741: STARTS_WITH fails to accept 'array' as variable.
+
+* Fixed internal issue #738: PHRASE doesn't accept a reference to an array of
+  arguments.
+
+* Fixed internal issue #747: fixed possible dangling open files in ArangoSearch
+  index after remove operations.
+
+* Make the `IS_IPV4` AQL function behave identical on MacOS as on other
+  platforms. It previously allowed leading zeros in octets on MacOS,
+  whereas on other platforms they were disallowed.
+  Now this is disallowed on MacOS as well.
+
+* Added new metric "arangodb_aql_slow_query" for slow AQL queries, so this can 
+  be monitored more easily.
+
+* Added new metric "arangodb_scheduler_queue_full_failures" for tracking cases
+  of a full scheduler queue and dropping requests.
+
+* Added new metrics for the number of V8 contexts dynamically created and destroyed
+  ("arangodb_v8_context_created" and "arangodb_v8_context_destroyed") and for the
+  number of times a V8 context was entered and left ("arangodb_v8_context_entered"
+  and "arangodb_v8_context_exited"). There is also a new metric for tracking the
+  cases when a V8 context cannot be successfully acquired and an operation is not
+  performed ("arangodb_v8_context_enter_failures").
+    
+* Added extra info to "queue full" and "giving up waiting for unused v8 context" 
+  log messages.
+
+* Request to the `/_admin/statistics` API now processed via the CLIENT_FAST lane. 
+  Previously they were handled in the CLIENT_SLOW lane, meaning that monitoring 
+  requests using that API didn't get through when the queue was rather full.
+
+* Fixed issue BTS-169: cost estimation for LIMIT nodes showed wrong number of
+  estimated items.
+
+* Fixed issue #12507: SegFault when using an AQL for loop through edges.
+
+* Add attributes `database` and `user` when tracking current and slow AQL queries.
+  `database` contains the name of the database the query is/was running in, `user`
+  contains the name of the user that started the query.
+  These attributes will be returned in addition when calling the APIs for current
+  and slow query inspection:
+  * GET `/_api/query/current` and `require("arangodb/aql/queries").current()`
+  * GET `/_api/query/slow` and `require("arangodb/aql/queries").slow()`
+
+  The "slow query" log message has also been augmented to contain the database
+  name and the user name.
+
+  The `user` attribute is now also displayed in the web interface in the "Running
+  queries" and "Slow queries" views.
+
+* Introduce an internal high-water mark for the maximum row number that was
+  written to in an AqlItemBlock. Using this number several operations on the
+  whole block, such as cleaning up or copying can be made more efficient when
+  run on only partially filled blocks.
+
+* Updated arangosync to 0.7.10.
+
+* Make UPSERT statement with collection bind parameter behave identical to its
+  non-bind parameter counterpart.
+
+  For example, the query 
+
+      FOR d IN ["key_1", "key_2", "key_3", "key_1"] 
+        UPSERT d INSERT d UPDATE d IN @@collection
+
+  would fail with "unique constraint violation" when used with a collection bind
+  parameter, but the equivalent query
+      
+      FOR d IN ["key_1", "key_2", "key_3", "key_1"] 
+        UPSERT d INSERT d UPDATE d IN collectionName
+
+  with a hard-coded collection name would succeed. This is now fixed so both
+  queries have the same behavior (no failure) in single server. 
+
+* Fixed internal issue #744: LIMIT with only offset and constrained heap
+  optimization will use estimation value for ArangoSearch views.
+
+* Fix internal issue #742: Add tick storage in index meta payload after 
+  truncate operation
+
+* Fixed: During a move-shard job which moves the leader there is a
+  situation in which the old owner of a shard can reclaim ownership
+  (after having resigned already), with a small race where it allows to
+  write documents only locally, but then continue the move-shard to a
+  server without those documents. An additional bug in the MoveShard
+  Supervision job would then leave the shard in a bad configuration
+  with a resigned leader permanently in charge.
+
+* Fixed issue #12304: insert in transaction causing com.arangodb.ArangoDBException: 
+  Response: 500, Error: 4 - Builder value not yet sealed. 
+
+  This happened when too deeply-nested documents (more than 63 levels of nesting)
+  were inserted. While indefinite nesting is still not supported, the error message
+  has been corrected from the internal HTTP 500 error "Builder value not yet sealed"
+  to the correct HTTP 400 "Bad parameter".
+
+* Show optimizer rules with highest execution times in explain output.
+
+* Renamed "master" to "leader" and "slave" to "follower" in replication messages.
+  This will change the contents of replication log messages as well the string
+  contents of replication-related error messages.
+
+The messages of the error codes 1402, 1403 and 1404 were also changed accordingly,
+as well as the identifiers:
+- `TRI_ERROR_REPLICATION_MASTER_ERROR` renamed to `TRI_ERROR_REPLICATION_LEADER_ERROR`
+- `TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE` renamed to `TRI_ERROR_REPLICATION_LEADER_INCOMPATIBLE`
+- `TRI_ERROR_REPLICATION_MASTER_CHANGE` renamed to `TRI_ERROR_REPLICATION_LEADER_CHANGE`
+
+  This change also renames the API endpoint `/_api/replication/make-slave` to 
+  `/_api/replication/make-follower`. The API is still available under the old
+  name, but using it is deprecated.
+
+* Fixed that dropping a vanished follower works again. An exception response
+  to the replication request is now handled properly.
+
+* Make optimizer rule "remove-filters-covered-by-index" remove FILTERs that were
+  referring to aliases of the collection variable, e.g.
+    
+      FOR doc IN collection
+        LET value = doc.indexedAttribute
+        FILTER value == ...
+
+  Previously, FILTERs that were using aliases were not removed by that optimizer
+  rule.
+  In addition, the optimizer rule "remove-unnecessary-calculations" will now run
+  again in case it successfully removed variables. This can unlock further removal
+  of unused variables in sequences such as
+
+      FOR doc IN collection
+        LET value = doc.indexedAttribute
+        LET tmp1 = value > ...
+        LET tmp2 = value < ...
+
+  when the removal of `tmp1` and `tmp2` makes it possible to also remove the 
+  calculation of `value`.
+
+* Fixed bad behavior in agency supervision in some corner cases involving
+  already resigned leaders in Current.
+
+* Fixed a problem with potentially lost updates because a failover could
+  happen at a wrong time or a restarted leader could come back at an
+  unlucky time.
+
+* Fixed issue BTS-168: Fixed undefined behavior that did trigger
+  segfaults on cluster startups. It is only witnessed for
+  MacOS based builds. The issue could be triggered by any network connection.
+  This behavior is not part of any released version.
+
+* Fixed issue ES-664: the optimizer rule `inline-subqueries` must not pull out
+  subqueries that contains a COLLECT statement if the subquery is itself called
+	from within a loop. Otherwise the COLLECT will be applied to the values in the
+	outer FOR loop, which can produce a different result.
+
+* Fixed a blockage on hotbackup when writes are happening concurrently, since
+  followers could no longer replicate leader transactions.
+
+* Updated arangosync to 0.7.9.
+
+* Fixed hotbackup S3 credentials validation and error reporting for upload
+  and download.
+
+* Make AQL user-defined functions (UDFs) work in a cluster in case the UDF runs
+  an AQL query inside its own function code (BTS-159).
+
+* Fix: writeConcern is now honored correctly (ES-655).
+
+* Fix: The 'sorted' COLLECT variant would return undefined instead of null when
+  grouping by a null value.
+
+* Hard-code returned "planVersion" attribute of collections to a value of 1.
+  Before 3.7, the most recent Plan version from the agency was returned inside
+  "planVersion".
+  In 3.7, the attribute contained the Plan version that was in use when the 
+  in-memory LogicalCollection object was last constructed. The object was
+  always reconstructed in case the underlying Plan data for the collection
+  changed or when a collection contained links to arangosearch views.
+  This made the attribute relatively useless for any real-world use cases, and
+  so we are now hard-coding it to simplify the internal code. Using the attribute
+  in client applications is also deprecated.
+
+* Slightly improve the performance of cluster DDL maintenance operations.
+
+* Don't prevent concurrent synchronization of different shards from the same
+  database. Previously only one shard was synchronized at a time per database.
+
+* Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late materialzation
+  after OneShard optimization
+  
+* Improve performance of many non-subquery AQL queries, by optimizing away
+  some storage overhead for subquery context data.
+
+* Improve performance of internal cluster Plan and Current reload operations. 
+
+* Fixed issue #12349: arangosh compact Arangoerror 404.
+
+* Wait until restore task queue is idle before shutting down.
+
+* Fix a race problem in the unit tests w.r.t. PlanSyncer.
+
+* Always fetch data for /_api/cluster/agency-dump from leader of the agency.
+  Add option "redirectToLeader=true" to internal /_api/agency/state API.
+
 * Fixed issue #12297: ArangoDB 3.6.5 Swagger Error?
   This issue caused the Swagger UI for displaying the APIs of user-defined Foxx
   services to remain invisible in the web UI, because of a JavaScript exception.
@@ -108,7 +467,7 @@ devel
   Without this fix, the workaround for is to either drop the graph (or the database) before the
   restore call, yielding an identical result.
   
-* Keep the list of last-acknowledged entires in Agency more consistent.
+* Keep the list of last-acknowledged entries in Agency more consistent.
   During leadership take-over it was possible to get into a situation that
   the new leader does not successfully report the agency config, which
   was eventually fixed by the Agent itself. Now this situation is impossible.

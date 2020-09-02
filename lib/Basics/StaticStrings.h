@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -300,7 +301,6 @@ class StaticStrings {
 
   // aql api strings
   static std::string const SerializationFormat;
-  static std::string const AqlRemoteApi;
   static std::string const AqlRemoteExecute;
   static std::string const AqlRemoteCallStack;
   static std::string const AqlRemoteLimit;
@@ -360,8 +360,6 @@ class StaticStrings {
   static std::string const ShardsNotReplicated;
 
   static std::string const AgencyCommRequestTimeMs;
-
-  static std::string const AqlQueryRuntimeMs;
 
   static std::string const SchedulerQueueLength;
   static std::string const SchedulerAwakeWorkers;

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -492,7 +493,7 @@ static void resolveInfo(TRI_vocbase_t* vocbase, CollectionID const& collectionID
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, collectionID);
     }
 
-    collectionPlanIdMap.try_emplace(collectionID, std::to_string(lc->planId()));
+    collectionPlanIdMap.try_emplace(collectionID, std::to_string(lc->planId().id()));
     allShards.push_back(collectionID);
     serverMap[ss->getId()][collectionID].push_back(collectionID);
 
@@ -503,10 +504,10 @@ static void resolveInfo(TRI_vocbase_t* vocbase, CollectionID const& collectionID
     if (lc->deleted()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, collectionID);
     }
-    collectionPlanIdMap.try_emplace(collectionID, std::to_string(lc->planId()));
+    collectionPlanIdMap.try_emplace(collectionID, std::to_string(lc->planId().id()));
 
     std::shared_ptr<std::vector<ShardID>> shardIDs =
-        ci.getShardList(std::to_string(lc->id()));
+        ci.getShardList(std::to_string(lc->id().id()));
     allShards.insert(allShards.end(), shardIDs->begin(), shardIDs->end());
 
     for (auto const& shard : *shardIDs) {

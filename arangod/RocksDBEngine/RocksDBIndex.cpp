@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -232,7 +232,7 @@ Result RocksDBIndex::drop() {
   return r;
 }
 
-void RocksDBIndex::afterTruncate(TRI_voc_tick_t) {
+void RocksDBIndex::afterTruncate(TRI_voc_tick_t, arangodb::transaction::Methods*) {
   // simply drop the cache and re-create it
   if (_cacheEnabled) {
     destroyCache();
@@ -318,9 +318,9 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type, uint64_t objectI
     case RocksDBIndex::TRI_IDX_TYPE_TTL_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX:
       if (unique) {
-        return RocksDBKeyBounds::UniqueVPackIndex(objectId);
+        return RocksDBKeyBounds::UniqueVPackIndex(objectId, false);
       }
-      return RocksDBKeyBounds::VPackIndex(objectId);
+      return RocksDBKeyBounds::VPackIndex(objectId, false);
     case RocksDBIndex::TRI_IDX_TYPE_FULLTEXT_INDEX:
       return RocksDBKeyBounds::FulltextIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_GEO1_INDEX:

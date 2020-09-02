@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, fail*/
+/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotUndefined, fail*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for iresearch usage
@@ -42,6 +42,20 @@
     var cg;
     var vg;
     var meta;
+
+    function getNodes(query, type, bindVars, options) {
+      let stmt = db._createStatement(query);
+      if (typeof bindVars === "object") {
+        stmt.bind(bindVars);
+      }
+      if (typeof options === "object") {
+        stmt.setOptions(options);
+      }
+      return stmt.explain()
+                 .plan
+                 .nodes
+                 .filter(node => node.type === type);
+    }
 
     console.info("Test suite arguments: " + JSON.stringify(args));
 
@@ -156,6 +170,40 @@
           }
         };
         arrayV.properties(meta);
+        
+        db._drop("TestsCollectionWithManyFields");
+        let mfc = db._create("TestsCollectionWithManyFields");
+        mfc.save({field1:"1value", field2:"2value", field3: 1, field4: 11111, field5: 1, field6: 1});
+        mfc.save({field1:"1value1", field2:"2value1", field3: 2, field4: 11112, field5: 2, field6: 2});
+        mfc.save({field1:"1value2", field2:"2value2", field3: 3, field4: 11113, field5: 3, field6: 3});
+        mfc.save({field1:"1value3", field2:"2value3", field3: 4, field4: 11114, field5: 4, field6: 4});
+        
+        try { analyzers.remove("customAnalyzer", true); } catch(err) {}
+        analyzers.save("customAnalyzer", "text",  {"locale": "en.utf-8",
+                                                   "case": "lower",
+                                                   "stopwords": [],
+                                                   "accent": false,
+                                                   "stemming": false},
+                                                   ["position", "norm", "frequency"]);
+                                                   
+        let wps = db._createView("WithPrimarySort", "arangosearch", 
+                                 {primarySort: [{field: "field1", direction: "asc"},
+                                                {field: "field2", direction: "asc"},
+                                                {field: "field3", direction: "asc"},
+                                                {field: "field4", direction: "asc"},
+                                                {field: "_key", direction: "asc"}]});
+                                      
+        wps.properties({links:{TestsCollectionWithManyFields: {
+                                storeValues: "id",
+                                analyzers: ["customAnalyzer"],
+                                fields: {
+                                  field1: {},
+                                  field2: {},
+                                  field3: {},
+                                  field4: {},
+                                  field5: {},
+                                  field6: {},
+                                  _key: {}}}}});
       },
 
       tearDownAll : function () {
@@ -177,6 +225,9 @@
         db._drop("AuxUnitTestsCollection");
         db._dropView("UnitTestsWithArrayView");
         db._drop("UnitTestsWithArrayCollection");
+        db._dropView("WithPrimarySort");
+        db._drop("TestsCollectionWithManyFields");
+        analyzers.remove("customAnalyzer", true);
       },
 
       testViewInFunctionCall : function () {
@@ -438,6 +489,15 @@
         assertEqual(result[1].c, 0);
       },
 
+      testStartsWithFilterArrayWithoutMinMatchCountViaReference : function () {
+        var result = db._query("LET x = NOOPT(['fo', 'g']) FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, x) OPTIONS { waitForSync : true } RETURN doc").toArray();
+  
+        assertEqual(result.length, 10);
+        result.forEach(function(res) {
+          assertEqual(res.a, 'foo');
+        });
+      },
+
       testStartsWithFilterArrayWithoutMinMatchCount : function () {
         var result = db._query("FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc.a, ['fo', 'g']) OPTIONS { waitForSync : true } RETURN doc").toArray();
 
@@ -560,6 +620,19 @@
 
         assertEqual(result3.length, 1);
         assertEqual(result3[0].name, 'full');
+        
+        var result6v = db._query("LET phraseStruct = NOOPT([' fox',  ' jumps']) "
+                               + "FOR doc IN UnitTestsView SEARCH ANALYZER(PHRASE(doc.text,  'quick ', 0, 'brown', 0, phraseStruct), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+        assertEqual(result6v.length, 1);
+        assertEqual(result6v[0].name, 'full');
+      
+            
+        var result6v2 = db._query("LET phraseStruct = NOOPT(['quick ', 0, 'brown', 0, [' fox',  ' jumps']]) "
+                               + "FOR doc IN UnitTestsView SEARCH ANALYZER(PHRASE(doc.text, phraseStruct), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+        assertEqual(result6v2.length, 1);
+        assertEqual(result6v2[0].name, 'full');
       },
 
       testExistsFilter : function () {
@@ -776,13 +849,28 @@
         expected.push({ a: "foo", b: "bar", c: 0 });
         expected.push({ a: "foo", b: "baz", c: 0 });
 
-        var result = db._query(
-          "FOR doc0 IN CompoundView OPTIONS { collections: ['UnitTestsCollection2'], waitForSync:true } " +
-          "  FOR doc1 IN UnitTestsView SEARCH doc0.c == doc1.c && STARTS_WITH(doc1['a'], doc0.a) OPTIONS { waitForSync: true } " +
-          "FILTER doc1.c < 2 " +
-          "SORT doc1.c DESC, doc1.a, doc1.b " +
-          "RETURN doc1"
-        , null, { waitForSync: true }).toArray();
+        var query = "FOR doc0 IN CompoundView OPTIONS { collections: ['UnitTestsCollection2'], waitForSync:true } " +
+                  "  FOR doc1 IN UnitTestsView SEARCH doc0.c == doc1.c && STARTS_WITH(doc1['a'], doc0.a) OPTIONS { waitForSync: true } " +
+                  "FILTER doc1.c < 2 " +
+                  "SORT doc1.c DESC, doc1.a, doc1.b " +
+                  "RETURN doc1";
+
+        var viewNodes = getNodes(query, "EnumerateViewNode");
+        assertEqual(2, viewNodes.length);
+        var remoteNodes = getNodes(query, "RemoteNode");
+        assertEqual(3, remoteNodes.length);
+
+        var viewNode0 = viewNodes[0];
+        assertNotUndefined(viewNode0);
+        assertEqual(db.UnitTestsCollection2.count(), viewNode0.estimatedNrItems);
+        assertEqual(viewNode0.estimatedCost, viewNode0.estimatedNrItems + 1);
+
+        var viewNode1 = viewNodes[1];
+        assertNotUndefined(viewNode1);
+        assertEqual(db.UnitTestsCollection2.count()*db.UnitTestsCollection.count(), viewNode1.estimatedNrItems);
+        assertEqual(viewNode1.estimatedCost, remoteNodes[1].estimatedCost + viewNode1.estimatedNrItems);
+
+        var result = db._query(query, null, { waitForSync: true }).toArray();
 
         assertEqual(result.length, expected.length);
         var i = 0;
@@ -1001,8 +1089,14 @@
       },
 
       testAttributeInRangeOpenInterval : function () {
-        var result = db._query("FOR doc IN UnitTestsView SEARCH IN_RANGE(doc.c, 1, 3, false, false) OPTIONS { waitForSync : true } RETURN doc").toArray();
+        var query = "FOR doc IN UnitTestsView SEARCH IN_RANGE(doc.c, 1, 3, false, false) OPTIONS { waitForSync : true } RETURN doc";
 
+        var viewNode = getNodes(query, "EnumerateViewNode")[0];
+        assertNotUndefined(viewNode);
+        assertEqual(db.UnitTestsCollection.count(), viewNode.estimatedNrItems);
+        assertEqual(viewNode.estimatedCost, viewNode.estimatedNrItems + 1);
+
+        var result = db._query(query).toArray();
         assertEqual(result.length, 4);
         result.forEach(function(res) {
           assertTrue(res.c > 1 && res.c < 3);
@@ -1934,6 +2028,20 @@
       testPhraseInRangeViaArray : function () {
         var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, [{IN_RANGE: ['quic', 'ruick', false, true]}, 'brown'], 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
         assertEqual(1, result.length);
+      },
+
+      testVolatileFilter : function() {
+        let result = db._query("FOR doc IN AnotherUnitTestsCollection LET kk = NOEVAL(doc.id) "
+                               + " FOR c IN UnitTestsWithArrayView SEARCH c.c == kk SORT c.c RETURN c ").toArray();
+        assertEqual(2, result.length);
+        assertEqual(result[0].c, 0);
+        assertEqual(result[1].c, 1);
+      },
+      
+      testQueryWithMultipleSortView : function() {
+        let res= db._query("FOR doc IN WithPrimarySort SEARCH ANALYZER(doc.field3 == 1, 'customAnalyzer') "
+        + " SORT doc._key  LIMIT 0, 50  RETURN doc ").toArray();
+        assertEqual(1, res.length);
       }
     };
   };

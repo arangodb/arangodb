@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,9 +36,9 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/TimedAction.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -118,7 +119,17 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
       _nextId(0),
       _stopping(false),
       _gcFinished(false),
-      _dynamicContextCreationBlockers(0) {
+      _dynamicContextCreationBlockers(0),
+      _contextsCreated(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_v8_context_created", 0, "V8 contexts created")),
+      _contextsDestroyed(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_v8_context_destroyed", 0, "V8 contexts destroyed")),
+      _contextsEntered(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_v8_context_entered", 0, "V8 context enter events")),
+      _contextsExited(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_v8_context_exited", 0, "V8 context exit events")),
+      _contextsEnterFailures(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_v8_context_enter_failures", 0, "V8 context enter failures")) {
   setOptional(true);
   startsAfter<ClusterFeaturePhase>();
 
@@ -458,6 +469,7 @@ void V8DealerFeature::start() {
         delete context;
         throw;
       }
+      ++_contextsCreated;
     }
 
     TRI_ASSERT(_contexts.size() > 0);
@@ -628,6 +640,8 @@ V8Context* V8DealerFeature::addContext() {
     // no other thread can use the context when we are here, as the
     // context has not been added to the global list of contexts yet
     loadJavaScriptFileInContext(database.get(), "server/initialize.js", context, nullptr);
+
+    ++_contextsCreated;
 
     return context;
   } catch (...) {
@@ -954,14 +968,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
     return nullptr;
   }
 
-  TimedAction exitWhenNoContext(
-      [](double waitTime) {
-        LOG_TOPIC("e1807", WARN, arangodb::Logger::V8)
-            << "giving up waiting for unused V8 context after "
-            << Logger::FIXED(waitTime) << " s";
-      },
-      60);
 
+  double const startTime = TRI_microtime();
   TRI_ASSERT(v8::Isolate::GetCurrent() == nullptr);
 
   V8Context* context = nullptr;
@@ -1013,6 +1021,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
           // oops
           delete context;
           context = nullptr;
+          ++_contextsDestroyed;
           continue;
         }
 
@@ -1027,6 +1036,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
           _contexts.pop_back();
           TRI_ASSERT(context != nullptr);
           delete context;
+          ++_contextsDestroyed;
         }
 
         guard.broadcast();
@@ -1034,12 +1044,38 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
       }
 
       TRI_ASSERT(guard.isLocked());
-      guard.wait(100000);
 
-      if (exitWhenNoContext.tick()) {
+      constexpr double maxWaitTime = 60.0;
+      double const now = TRI_microtime();
+      if (now - startTime >= maxWaitTime) {
         vocbase->release();
+
+        ++_contextsEnterFailures;
+        
+        LOG_TOPIC("e1807", WARN, arangodb::Logger::V8)
+            << "giving up waiting for unused V8 context for '"
+            << securityContext.typeName() << "' operation after "
+            << Logger::FIXED(maxWaitTime) << " s - "
+            << "contexts: " << _contexts.size() << "/" << _nrMaxContexts 
+            << ", idle: " << _idleContexts.size() 
+            << ", busy: " << _busyContexts.size() 
+            << ", dirty: " << _dirtyContexts.size() 
+            << ", in flight: " << _nrInflightContexts
+            << " - context overview following...";
+
+        size_t i = 0;
+        for (auto const& it : _contexts) {
+          ++i;
+          LOG_TOPIC("74439", WARN, arangodb::Logger::V8)
+              << "- context #" << it->id() 
+              << " (" << i << "/" << _contexts.size() << ")"
+              << ": acquired: " << Logger::FIXED(now - it->acquired()) << " s ago" 
+              << ", performing '" << it->description() << "' operation";
+        }
         return nullptr;
       }
+      
+      guard.wait(100000);
     }
 
     TRI_ASSERT(guard.isLocked());
@@ -1062,6 +1098,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
 
     // should not fail because we reserved enough space beforehand
     _busyContexts.emplace(context);
+
+    context->setDescription(securityContext.typeName(), TRI_microtime());
   }
 
   TRI_ASSERT(context != nullptr);
@@ -1069,6 +1107,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
   context->assertLocked();
 
   prepareLockedContext(vocbase, context, securityContext);
+  ++_contextsEntered;
+
   return context;
 }
 
@@ -1197,6 +1237,8 @@ void V8DealerFeature::exitContext(V8Context* context) {
     context->unlockAndExit();
     CONDITION_LOCKER(guard, _contextCondition);
 
+    context->clearDescription();
+
     if (performGarbageCollection && (forceGarbageCollection || !_idleContexts.empty())) {
       // only add the context to the dirty list if there is at least one other
       // free context
@@ -1219,6 +1261,8 @@ void V8DealerFeature::exitContext(V8Context* context) {
     context->unlockAndExit();
     CONDITION_LOCKER(guard, _contextCondition);
 
+    context->clearDescription();
+
     _busyContexts.erase(context);
     // note that re-adding the context here should not fail as we reserved
     // enough room for all contexts during startup
@@ -1228,6 +1272,8 @@ void V8DealerFeature::exitContext(V8Context* context) {
         << "returned dirty V8 context #" << context->id() << " back into free";
     guard.broadcast();
   }
+
+  ++_contextsExited;
 }
 
 void V8DealerFeature::defineContextUpdate(
@@ -1547,24 +1593,25 @@ V8DealerFeature::Statistics V8DealerFeature::getCurrentContextNumbers() {
   CONDITION_LOCKER(guard, _contextCondition);
 
   return {_contexts.size(), _busyContexts.size(), _dirtyContexts.size(),
-          _idleContexts.size(), _nrMaxContexts};
+          _idleContexts.size(), _nrMaxContexts, _nrMinContexts};
 }
 
-std::vector<V8DealerFeature::MemoryStatistics> V8DealerFeature::getCurrentMemoryNumbers() {
-  std::vector<V8DealerFeature::MemoryStatistics> result;
+std::vector<V8DealerFeature::DetailedContextStatistics> V8DealerFeature::getCurrentContextDetails() {
+  std::vector<V8DealerFeature::DetailedContextStatistics> result;
   {
     CONDITION_LOCKER(guard, _contextCondition);
     result.reserve(_contexts.size());
     for (auto oneCtx : _contexts) {
       auto isolate = oneCtx->_isolate;
       TRI_GET_GLOBALS();
-      result.push_back(MemoryStatistics
+      result.push_back(DetailedContextStatistics
                        {
                         v8g->_id,
                         v8g->_lastMaxTime,
                         v8g->_countOfTimes,
                         v8g->_heapMax,
-                        v8g->_heapLow
+                        v8g->_heapLow,
+                        oneCtx->invocations()
                        });
     }
   }
@@ -1683,6 +1730,7 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   LOG_TOPIC("34c28", TRACE, arangodb::Logger::V8) << "closed V8 context #" << context->id();
 
   delete context;
+  ++_contextsDestroyed;
 }
 
 V8ContextGuard::V8ContextGuard(TRI_vocbase_t* vocbase,

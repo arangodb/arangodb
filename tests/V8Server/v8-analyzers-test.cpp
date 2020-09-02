@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -266,8 +267,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
                                                      args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -317,8 +317,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
                                                      args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -345,7 +344,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsObject());
     VPackBuilder resultVPack;
-    ASSERT_EQ(TRI_ERROR_NO_ERROR, TRI_V8ToVPack(isolate.get(), resultVPack, result.ToLocalChecked(), false));
+    TRI_V8ToVPack(isolate.get(), resultVPack, result.ToLocalChecked(), false);
     EXPECT_EQUAL_SLICES(
         resultVPack.slice(),
         VPackSlice::emptyObjectSlice());
@@ -369,8 +368,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -417,8 +415,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -506,8 +503,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -537,8 +533,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -569,8 +564,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -601,8 +595,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -633,8 +626,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -664,8 +656,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -731,8 +722,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -925,8 +915,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                                                     args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1040,8 +1029,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                                                     args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_EQ(TRI_ERROR_NO_ERROR, TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1104,8 +1092,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                                                     args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1156,8 +1143,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                                                     args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1186,8 +1172,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                                               static_cast<int>(args.size()),
                                               args.data());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1218,8 +1203,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                                                     args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1628,8 +1612,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1660,8 +1643,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1692,8 +1674,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     ASSERT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1731,8 +1712,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     ASSERT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1848,8 +1828,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     ASSERT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&

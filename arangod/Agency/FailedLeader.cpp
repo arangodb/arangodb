@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -190,7 +190,7 @@ bool FailedLeader::start(bool& aborts) {
 
   // Get healthy in Sync follower common to all prototype + clones
   auto commonHealthyInSync =
-      findNonblockedCommonHealthyInSyncFollower(_snapshot, _database, _collection, _shard);
+      findNonblockedCommonHealthyInSyncFollower(_snapshot, _database, _collection, _shard, _from);
   if (commonHealthyInSync.empty()) {
     return false;
   } else {
@@ -203,10 +203,9 @@ bool FailedLeader::start(bool& aborts) {
   using namespace std::chrono;
 
   // Current servers vector
-  auto const& current = _snapshot
-                            .hasAsSlice(curColPrefix + _database + "/" +
-                                        _collection + "/" + _shard + "/servers")
-                            .first;
+  std::string curPath = curColPrefix + _database + "/" + _collection + "/" + _shard;
+  auto const& current = _snapshot.hasAsSlice(curPath + "/servers").first;
+
   // Planned servers vector
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
@@ -273,9 +272,17 @@ bool FailedLeader::start(bool& aborts) {
         {
           VPackArrayBuilder servers(&ns);
           ns.add(VPackValue(_to));
+          // We prefer servers in sync and want to put them early in the new Plan
+          // (behind the leader). This helps so that RemoveFollower prefers others
+          // to remove.
           for (auto const& i : VPackArrayIterator(current)) {
             std::string s = i.copyString();
+            if (s.size() > 0 && s[0] == '_') {
+              s = s.substr(1);
+            }
             if (s != _from && s != _to) {
+              TRI_ASSERT(std::find(planv.begin(), planv.end(), s) != planv.end());
+              // A server in Current ought to be in the Plan, if not, we want to know this.
               ns.add(i);
               planv.erase(std::remove(planv.begin(), planv.end(), s), planv.end());
             }
@@ -302,6 +309,13 @@ bool FailedLeader::start(bool& aborts) {
         addPreconditionServerHealth(pending, _to, "GOOD");
         // Server list in plan still as before
         addPreconditionUnchanged(pending, planPath, planned);
+        // Server list in Current still as known
+        addPreconditionUnchanged(pending, curPath + "/servers", current);
+        // Failover candidates in Current still as known
+        auto const& failoverCandidates = _snapshot.hasAsSlice(curPath + "/failoverCandidates");
+        if (failoverCandidates.second) {
+          addPreconditionUnchanged(pending, curPath + "/failoverCandidates", failoverCandidates.first);
+        }
         // Destination server should not be blocked by another job
         addPreconditionServerNotBlocked(pending, _to);
         // Shard to be handled is block by another job

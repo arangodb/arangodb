@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -122,8 +122,11 @@ class SortNode : public ExecutionNode {
 
   SorterType sorterType() const;
 
-  // reinsert node when building gather node - this is used e.g for the
-  // geo-index
+  /// @brief if this node is needed on DBServers in cluster.
+  /// if set to false that means some optimizer rule
+  /// has already included sorting in some other node and
+  /// this node is left in plan only in sake of GatherNode 
+  /// to properly handle merging.
   bool _reinsertInCluster;
 
  private:

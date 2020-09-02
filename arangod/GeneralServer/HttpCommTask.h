@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -47,12 +48,11 @@ class HttpCommTask final : public GeneralCommTask<T> {
   void start() override;
 
  protected:
-  // set a read timeout in asyncReadSome
-  bool enableReadTimeout() const override { return false; }
-
   bool readCallback(asio_ns::error_code ec) override;
+  void setIOTimeout() override;
 
-  void sendResponse(std::unique_ptr<GeneralResponse> response, RequestStatistics::Item stat) override;
+  void sendResponse(std::unique_ptr<GeneralResponse> response,
+                    RequestStatistics::Item stat) override;
 
   std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode, uint64_t messageId) override;
 

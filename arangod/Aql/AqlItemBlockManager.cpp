@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,8 +43,8 @@ AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor,
 AqlItemBlockManager::~AqlItemBlockManager() = default;
 
 /// @brief request a block with the specified size
-SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, RegisterCount nrRegs) {
-  size_t const targetSize = nrItems * (nrRegs + 1);
+SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t numRows, RegisterCount numRegisters) {
+  size_t const targetSize = numRows * numRegisters;
 
   AqlItemBlock* block = nullptr;
   uint32_t i = Bucket::getId(targetSize);
@@ -67,15 +67,16 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, Register
   // perform potentially expensive allocation/cleanup tasks outside
   // of the locked section
   if (block == nullptr) {
-    block = new AqlItemBlock(*this, nrItems, nrRegs);
+    block = new AqlItemBlock(*this, numRows, numRegisters);
   } else {
-    block->rescale(nrItems, nrRegs);
+    block->rescale(numRows, numRegisters);
   }
 
   TRI_ASSERT(block != nullptr);
-  TRI_ASSERT(block->size() == nrItems);
-  TRI_ASSERT(block->getNrRegs() == nrRegs);
+  TRI_ASSERT(block->numRows() == numRows);
+  TRI_ASSERT(block->numRegisters() == numRegisters);
   TRI_ASSERT(block->numEntries() == targetSize);
+  TRI_ASSERT(block->numEffectiveEntries() == 0);
   TRI_ASSERT(block->getRefCount() == 0);
   TRI_ASSERT(block->hasShadowRows() == false);
 
@@ -126,13 +127,13 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestAndInitBlock(arangodb::velocyp
   if (nrItemsSigned <= 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
   }
-  auto const nrItems = static_cast<size_t>(nrItemsSigned);
+  auto const numRows = static_cast<size_t>(nrItemsSigned);
 
-  SharedAqlItemBlockPtr block = requestBlock(nrItems, nrRegs);
+  SharedAqlItemBlockPtr block = requestBlock(numRows, nrRegs);
   block->initFromSlice(slice);
 
-  TRI_ASSERT(block->size() == nrItems);
-  TRI_ASSERT(block->getNrRegs() == nrRegs);
+  TRI_ASSERT(block->numRows() == numRows);
+  TRI_ASSERT(block->numRegisters() == nrRegs);
 
   return block;
 }

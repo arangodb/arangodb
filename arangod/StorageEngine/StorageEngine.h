@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +35,7 @@
 #include "StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -110,7 +111,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId, transaction::Options const& options) = 0;
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
-      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) = 0;
+      TransactionState& state, DataSourceId cid, AccessMode::Type accessType) = 0;
 
   // when a new collection is created, this method is called to augment the
   // collection creation data with engine-specific information
@@ -135,7 +136,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void getDatabases(arangodb::velocypack::Builder& result) = 0;
 
   // fills the provided builder with information about the collection
-  virtual void getCollectionInfo(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+  virtual void getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
                                  arangodb::velocypack::Builder& result,
                                  bool includeIndexes, TRI_voc_tick_t maxTick) = 0;
 
@@ -276,7 +277,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // and throw only then, so that subsequent view creation requests will not
   // fail. the WAL entry for the view creation will be written *after* the call
   // to "createCview" returns
-  virtual arangodb::Result createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
+  virtual arangodb::Result createView(TRI_vocbase_t& vocbase, DataSourceId id,
                                       arangodb::LogicalView const& view) = 0;
 
   // asks the storage engine to drop the specified view and persist the
@@ -289,6 +290,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   // to "dropView" returns
   virtual arangodb::Result dropView(TRI_vocbase_t const& vocbase,
                                     LogicalView const& view) = 0;
+
+  // Compacts the entire database
+  virtual arangodb::Result compactAll(bool changeLevel, bool compactBottomMostLevel) = 0;
 
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate

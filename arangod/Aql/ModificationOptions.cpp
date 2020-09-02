@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,12 +52,6 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice)
   consultAqlWriteFilter =
       basics::VelocyPackHelper::getBooleanValue(obj, "consultAqlWriteFilter", false);
   exclusive = basics::VelocyPackHelper::getBooleanValue(obj, "exclusive", false);
-
-  // legacy: remove in ArangoDB 3.8 
-  VPackSlice s = obj.get("nullMeansRemove");
-  if (s.isBoolean()) {
-    keepNull = !s.getBoolean();
-  }
 }
 
 void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
@@ -81,7 +75,4 @@ void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("readCompleteInput", VPackValue(readCompleteInput));
   builder.add("consultAqlWriteFilter", VPackValue(consultAqlWriteFilter));
   builder.add("exclusive", VPackValue(exclusive));
-
-  // legacy: remove in ArangoDB 3.8 
-  builder.add("nullMeansRemove", VPackValue(!keepNull));
 }

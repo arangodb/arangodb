@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -42,8 +43,9 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
  public:
   IResearchRocksDBLink(IndexId iid, arangodb::LogicalCollection& collection);
 
-  void afterTruncate(TRI_voc_tick_t /*tick*/) override {
-    IResearchLink::afterTruncate();
+  void afterTruncate(TRI_voc_tick_t tick,
+                     arangodb::transaction::Methods* trx) override {
+    IResearchLink::afterTruncate(tick, trx);
   }
 
   bool canBeDropped() const override {

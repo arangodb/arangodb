@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -54,10 +55,6 @@ class DependencyProxy {
    *                     pass a reference to an empty vector, but as soon as
    *                     the DependencyProxy is used, the condition must be
    *                     satisfied.
-   * @param itemBlockManager All blocks fetched via dependencies[0]->getSome()
-   *                         will later be returned to this AqlItemBlockManager.
-   * @param inputRegisters Set of registers the current ExecutionBlock is
-   *                       allowed to read.
    * @param nrInputRegisters Total number of registers of the AqlItemBlocks
    *                         here. Called nrInputRegisters to discern between
    *                         the widths of input and output blocks.
@@ -68,9 +65,7 @@ class DependencyProxy {
    * DependencyProxyMock) to create them *after* the parent class was constructed.
    */
   DependencyProxy(std::vector<ExecutionBlock*> const& dependencies,
-                  AqlItemBlockManager& itemBlockManager,
-                  RegIdSet const& inputRegisters,
-                  RegisterCount nrInputRegisters, velocypack::Options const*);
+                  RegisterCount nrInputRegisters);
 
   TEST_VIRTUAL ~DependencyProxy() = default;
 
@@ -80,27 +75,7 @@ class DependencyProxy {
   TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeForDependency(
       size_t dependency, AqlCallStack& stack);
 
-  // This is only TEST_VIRTUAL, so we ignore this lint warning:
-  // NOLINTNEXTLINE google-default-arguments
-  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(
-      size_t atMost = ExecutionBlock::DefaultBatchSize);
-
-  // This fetches a block from the given dependency.
-  // NOTE: It is not allowed to be used in conjunction with prefetching
-  // of blocks and will work around the blockQueue
-  // This is only TEST_VIRTUAL, so we ignore this lint warning:
-  // NOLINTNEXTLINE google-default-arguments
-  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(
-      size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize);
-
-  [[nodiscard]] TEST_VIRTUAL RegisterCount getNrInputRegisters() const;
-
-  // Tries to fetch a block from upstream and push it, wrapped, onto
-  // _blockQueue. If it succeeds, it returns HASMORE (the returned state
-  // regards the _blockQueue). If it doesn't it's either because
-  //  - upstream returned WAITING - then so does prefetchBlock().
-  //  - or upstream returned a nullptr with DONE - then so does prefetchBlock().
-  [[nodiscard]] ExecutionState prefetchBlock(size_t atMost = ExecutionBlock::DefaultBatchSize);
+  [[nodiscard]] RegisterCount getNrInputRegisters() const;
 
   [[nodiscard]] TEST_VIRTUAL size_t numberDependencies() const;
 
@@ -108,15 +83,7 @@ class DependencyProxy {
 
   void setDistributeId(std::string const& distId) { _distributeId = distId; }
 
-  [[nodiscard]] velocypack::Options const* velocypackOptions() const noexcept;
-
-  //@deprecated
-  auto useStack(AqlCallStack stack) -> void { _injectedStack = stack; }
-
  protected:
-  [[nodiscard]] AqlItemBlockManager& itemBlockManager();
-  [[nodiscard]] AqlItemBlockManager const& itemBlockManager() const;
-
   [[nodiscard]] ExecutionBlock& upstreamBlock();
 
   [[nodiscard]] ExecutionBlock& upstreamBlockForDependency(size_t index);
@@ -126,22 +93,11 @@ class DependencyProxy {
 
  private:
   std::vector<ExecutionBlock*> const& _dependencies;
-  AqlItemBlockManager& _itemBlockManager;
-  RegIdSet const& _inputRegisters;
   RegisterCount const _nrInputRegisters;
   std::string _distributeId;
 
-  // A queue would suffice, but for the clear() call in reset().
-  std::deque<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockQueue;
-  // only used in case of allowBlockPassthrough:
-  std::deque<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockPassThroughQueue;
   // only modified in case of multiple dependencies + Passthrough otherwise always 0
   size_t _currentDependency;
-  size_t _skipped;
-  velocypack::Options const* const _vpackOptions;
-
-  // @deprecated
-  AqlCallStack _injectedStack;
 };
 
 }  // namespace arangodb::aql

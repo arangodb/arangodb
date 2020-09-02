@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,11 +68,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // extract objects
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(args[0]);
   auto builder = std::make_shared<VPackBuilder>();
-  int res = TRI_V8ToVPack(isolate, *builder, array, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_TYPE_ERROR("cannot convert <array> to JSON");
-  }
+  TRI_V8ToVPack(isolate, *builder, array, false);
 
   // maximum number of results to return at once
   uint32_t batchSize = 1000;
@@ -310,11 +306,7 @@ struct V8Cursor final {
       }
       if (args[1]->IsObject()) {
         bindVars.reset(new VPackBuilder);
-        int res = TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          TRI_V8_THROW_EXCEPTION(res);
-        }
+        TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
       }
     }
 
@@ -326,10 +318,7 @@ struct V8Cursor final {
         TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
       }
 
-      int res = TRI_V8ToVPack(isolate, *options, args[2], false);
-      if (res != TRI_ERROR_NO_ERROR) {
-        TRI_V8_THROW_EXCEPTION(res);
-      }
+      TRI_V8ToVPack(isolate, *options, args[2], false);
     } else {
       VPackObjectBuilder guard(options.get());
     }

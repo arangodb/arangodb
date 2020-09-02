@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -119,7 +119,7 @@ class WalAccess {
     TRI_voc_tick_t vocbase = 0;
     /// Only output data from this collection
     /// FIXME: make a set of collections
-    TRI_voc_cid_t collection = 0;
+    DataSourceId collection = DataSourceId::none();
 
     /// only include these transactions, up to
     /// (not including) firstRegularTick
@@ -150,7 +150,7 @@ class WalAccess {
                                            TransactionCallback const&) const = 0;
 
   virtual WalAccessResult tail(Filter const& filter, size_t chunkSize,
-                               TransactionId barrierId, MarkerCallback const&) const = 0;
+                               MarkerCallback const&) const = 0;
 };
 
 /// @brief helper class used to resolve vocbases
@@ -165,22 +165,16 @@ struct WalAccessContext {
   bool shouldHandleDB(TRI_voc_tick_t dbid) const;
 
   /// @brief check if view should be handled, might already be deleted
-  bool shouldHandleView(TRI_voc_tick_t dbid, TRI_voc_cid_t vid) const;
+  bool shouldHandleView(TRI_voc_tick_t dbid, DataSourceId vid) const;
 
   /// @brief Check if collection is in filter, will load collection
   /// and prevent deletion
-  bool shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);
+  bool shouldHandleCollection(TRI_voc_tick_t dbid, DataSourceId cid);
 
   /// @brief try to get collection, may return null
   TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbid);
 
-  LogicalCollection* loadCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);
-
-  /// @brief get global unique id
-  /*std::string const& cidToUUID(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);
-
-  /// @brief cid to collection name
-  std::string cidToName(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);*/
+  LogicalCollection* loadCollection(TRI_voc_tick_t dbid, DataSourceId cid);
 
  public:
   /// @brief arbitrary collection filter (inclusive)
@@ -198,7 +192,7 @@ struct WalAccessContext {
   std::map<TRI_voc_tick_t, DatabaseGuard> _vocbases;
 
   // @brief collection replication UUID cache
-  std::map<TRI_voc_cid_t, CollectionGuard> _collectionCache;
+  std::map<DataSourceId, CollectionGuard> _collectionCache;
 };
 
 }  // namespace arangodb

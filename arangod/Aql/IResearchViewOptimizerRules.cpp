@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -79,9 +80,10 @@ bool addView(arangodb::LogicalView const& view, arangodb::aql::QueryContext& que
   auto& collections = query.collections();
 
   // linked collections
-  auto visitor = [&collections](TRI_voc_cid_t cid) {
-    collections.add(arangodb::basics::StringUtils::itoa(cid),
-                    arangodb::AccessMode::Type::READ, arangodb::aql::Collection::Hint::Collection);
+  auto visitor = [&collections](arangodb::DataSourceId cid) {
+    collections.add(arangodb::basics::StringUtils::itoa(cid.id()),
+                    arangodb::AccessMode::Type::READ,
+                    arangodb::aql::Collection::Hint::Collection);
     return true;
   };
 
@@ -521,6 +523,8 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
             // Moreover we pass raw collection pointer - this must not cross process border!
             if (sortNode != nullptr) {
               stopSearch = true;
+            } else {
+              stickToSortNode = true;
             }
             break;
           default: // make clang happy
@@ -621,9 +625,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
               plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp, var));
         TRI_ASSERT(materializeNode);
 
-        // on cluster we need to materialize node stay close to sort node on db server (to avoid network hop for materialization calls)
-        // however on single server we move it to limit node to make materialization as lazy as possible
-        auto* materializeDependency = ServerState::instance()->isCoordinator() || stickToSortNode ? sortNode : limitNode;
+        auto* materializeDependency = stickToSortNode ? sortNode : limitNode;
         TRI_ASSERT(materializeDependency);
         auto* dependencyParent = materializeDependency->getFirstParent();
         TRI_ASSERT(dependencyParent);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -100,7 +100,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const RestoreData;
   static std::string const RestoreView;
   static std::string const Sync;
-  static std::string const MakeSlave;
+  static std::string const MakeFollower;
   static std::string const ServerId;
   static std::string const ApplierConfig;
   static std::string const ApplierStart;
@@ -123,10 +123,10 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   bool isCoordinatorError();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief turn the server into a slave of another
+  /// @brief turn the server into a follower of another
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommandMakeSlave();
+  void handleCommandMakeFollower();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief forward a command in the coordinator case
@@ -263,7 +263,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the state of the replication logger
   /// @route GET logger-state
-  /// @caller Syncer::getMasterState
+  /// @caller Syncer::getLeaderState
   /// @response VPackObject describing the ServerState in a certain point
   ///           * state (server state)
   ///           * server (version / id)

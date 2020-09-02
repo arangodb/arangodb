@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -79,7 +80,11 @@ Result Response::combinedResult() const {
 }
 
 auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
-                    RequestOptions const& options, Headers headers) {
+                    RequestOptions const& options, Headers headers,
+                    std::chrono::duration<double> timeout) {
+  TRI_ASSERT(path.find("/_db/") == std::string::npos);
+  TRI_ASSERT(path.find('?') == std::string::npos);
+  
   auto req = fuerte::createRequest(type, path, options.parameters, std::move(payload));
 
   req->header.database = options.database;
@@ -95,8 +100,8 @@ auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
   TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
   req->header.addMeta(StaticStrings::HLCHeader,
                       arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp));
-
-  req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(options.timeout));
+  
+  req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(timeout));
 
   auto state = ServerState::instance();
   if (state->isCoordinator() || state->isDBServer()) {
@@ -109,6 +114,28 @@ auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
   }
 
   return req;
+}
+
+/// @brief Function to produce a response object from thin air:
+static std::unique_ptr<fuerte::Response> buildResponse(fuerte::StatusCode statusCode, Result const& res) {
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
+  {
+    VPackObjectBuilder guard(&builder);
+    auto errorNum = res.errorNumber();
+    builder.add(StaticStrings::Error, VPackValue(errorNum != TRI_ERROR_NO_ERROR));
+    builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
+    if (errorNum != TRI_ERROR_NO_ERROR) {
+      builder.add(StaticStrings::ErrorMessage, VPackValue(res.errorMessage()));
+    }
+    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(statusCode)));
+  }
+  fuerte::ResponseHeader responseHeader;
+  responseHeader.responseCode = statusCode;
+  responseHeader.contentType(ContentType::VPack);
+  auto resp = std::make_unique<fuerte::Response>(responseHeader);
+  resp->setPayload(std::move(buffer), 0);
+  return resp;
 }
 
 /// @brief send a request to a given destination
@@ -124,7 +151,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
   try {
 
     auto req = prepareRequest(type, std::move(path), std::move(payload),
-                              options, std::move(headers));
+                              options, std::move(headers), options.timeout);
 
     if (!pool || !pool->config().clusterInfo) {
       LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION)
@@ -135,8 +162,10 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     arangodb::network::EndpointSpec spec;
     int res = resolveDestination(*pool->config().clusterInfo, dest, spec);
     if (res != TRI_ERROR_NO_ERROR) {
-      return futures::makeFuture<network::Response>(
-          arangodb::basics::Exception(res, __FILE__, __LINE__));
+      // We fake a successful request with statusCode 503 and a backend not available
+      // error here:
+      auto resp = buildResponse(fuerte::StatusServiceUnavailable, Result{res});
+      return futures::makeFuture(Response{std::move(dest), Error::NoError, std::move(resp), std::move(req)});
     }
     TRI_ASSERT(!spec.endpoint.empty());
 
@@ -234,6 +263,13 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
   // scheduler requests that are due
   void startRequest() {
+    if (ADB_UNLIKELY(!_pool)) {
+      LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION)
+          << "connection pool unavailable";
+      callResponse(Error::Canceled, nullptr, std::move(_request));
+      return;
+    }
+
     auto now = std::chrono::steady_clock::now();
     if (now > _endTime || _pool->config().clusterInfo->server().isStopping()) {
       callResponse(Error::Timeout, nullptr, std::move(_request));
@@ -243,24 +279,23 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     arangodb::network::EndpointSpec spec;
     int res = resolveDestination(*_pool->config().clusterInfo, _destination, spec);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
-      errorResponse(Result{res}, __FILE__, __LINE__);
+      // We fake a successful request with statusCode 503 and a backend not available
+      // error here:
+      auto resp = buildResponse(fuerte::StatusServiceUnavailable, Result{res});
+      callResponse(Error::NoError, std::move(resp), std::move(_request));
       return;
     }
-
-    if (!_pool) {
-      LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION)
-          << "connection pool unavailable";
-      callResponse(Error::Canceled, nullptr, std::move(_request));
-      return;
+    
+    // simon: shorten actual request timeouts to allow time for retry
+    //        otherwise resilience_failover tests likely fail
+    auto t = _endTime - now;
+    if (t >= std::chrono::duration<double>(100)) {
+      t -= std::chrono::seconds(30);
     }
-
-    auto localOptions = _options;
-    localOptions.timeout =
-        std::chrono::duration_cast<std::chrono::milliseconds>(_endTime - now);
-    TRI_ASSERT(localOptions.timeout.count() > 0);
-
+    TRI_ASSERT(t.count() > 0);
+    
     auto conn = _pool->leaseConnection(spec.endpoint);
-    auto req = prepareRequest(_type, _path, _payload, localOptions, _headers);
+    auto req = prepareRequest(_type, _path, _payload, _options, _headers, t);
     conn->sendRequest(std::move(req),
                       [self = shared_from_this()](fuerte::Error err,
                                                   std::unique_ptr<fuerte::Request> req,
@@ -349,25 +384,6 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       default:  // a "proper error" which has to be returned to the client
         callResponse(err, std::move(res), std::move(req));
         return true; // done
-    }
-  }
-
-  void errorResponse(arangodb::Result&& result, char const* file, int line) {
-    TRI_ASSERT(result.fail());
-    Scheduler* sch = SchedulerFeature::SCHEDULER;
-    if (_options.skipScheduler || sch == nullptr) {
-      _promise.setException(arangodb::basics::Exception(std::move(result), file, line));
-      return;
-    }
-
-    bool queued =
-        sch->queue(RequestLane::CLUSTER_INTERNAL, [self = shared_from_this(), result]() {
-          self->_promise.setException(
-              arangodb::basics::Exception(std::move(result), __FILE__, __LINE__));
-        });
-    if (ADB_UNLIKELY(!queued)) {
-      // Unable to queue the error, so handle it here, do not drop it over to the queue error.
-      _promise.setException(arangodb::basics::Exception(std::move(result), __FILE__, __LINE__));
     }
   }
 

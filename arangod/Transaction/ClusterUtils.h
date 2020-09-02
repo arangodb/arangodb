@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +24,7 @@
 #ifndef ARANGOD_TRANSACTION_CLUSTER_UTILS_H
 #define ARANGOD_TRANSACTION_CLUSTER_UTILS_H 1
 
-#include "VocBase/voc-types.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 
 namespace arangodb {
 class ClusterInfo;
@@ -33,8 +34,8 @@ namespace transaction {
 namespace cluster {
   
 void abortTransactions(LogicalCollection& coll);
-void abortLeaderTransactionsOnShard(TRI_voc_cid_t cid);
-void abortFollowerTransactionsOnShard(TRI_voc_cid_t cid);
+void abortLeaderTransactionsOnShard(DataSourceId cid);
+void abortFollowerTransactionsOnShard(DataSourceId cid);
 void abortTransactionsWithFailedServers(ClusterInfo&);
 
 }  // namespace cluster

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,6 +33,8 @@
 
 #include <chrono>
 
+#include <fuerte/helper.h>
+
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -52,6 +55,7 @@ struct RequestMeta {
   std::string url;
   std::vector<std::string> clientIds;
   network::Headers headers;
+  fuerte::StringMap params;
   clock::time_point startTime;
   uint64_t requestId;
   bool skipScheduler;
@@ -264,16 +268,16 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
       << " " << meta.url << " body: " << VPackSlice(body.data()).toJson() << " delay: "
       << std::chrono::duration_cast<std::chrono::milliseconds>(waitTime).count() << "ms"
       << " timeout: " << meta.timeout.count() << "s";
-
+  
   // after a possible small delay (if required)
-  auto future = agencyAsyncWait(meta, waitTime);
-  return std::move(future).thenValue([meta = std::move(meta), &man,
-                                      body = std::move(body)](auto) mutable {
+  return agencyAsyncWait(meta, waitTime).thenValue([meta = std::move(meta), &man,
+                                                    body = std::move(body)](auto) mutable {
     // acquire the current endpoint
     std::string endpoint = man.getCurrentEndpoint();
     network::RequestOptions opts;
     opts.timeout = meta.timeout;
     opts.skipScheduler = meta.skipScheduler;
+    opts.parameters = meta.params;
 
     auto requestId = meta.requestId;
 
@@ -393,8 +397,8 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
     arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout,
     RequestType type, uint64_t index) const {
   std::vector<ClientId> clientIds;
-  VPackBuffer<uint8_t> body;
-  return sendWithFailover(method, url + "?index=" + std::to_string(index), timeout, type, clientIds, std::move(body));
+  return sendWithFailover(method, url + "?index=" + std::to_string(index), timeout,
+                          type, clientIds, VPackBuffer<uint8_t>{});
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
@@ -405,15 +409,17 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
-    arangodb::fuerte::RestVerb method, std::string const& url,
+    arangodb::fuerte::RestVerb method, std::string const& urlIn,
     network::Timeout timeout, RequestType type, std::vector<ClientId> clientIds,
     velocypack::Buffer<uint8_t>&& body) const {
-  network::Headers headers;
   uint64_t requestId = _manager.nextRequestId();
+  
+  fuerte::StringMap params;
+  std::string url = fuerte::extractPathParameters(urlIn, params);
 
   return agencyAsyncSend(_manager,
                          RequestMeta({timeout, method, type, url, std::move(clientIds),
-                                      std::move(headers), clock::now(), requestId,
+                                      network::Headers{}, std::move(params), clock::now(), requestId,
                                       _skipScheduler || _manager.getSkipScheduler(), 0}),
                          std::move(body))
       .then([requestId](futures::Try<AsyncAgencyCommResult>&& e) {

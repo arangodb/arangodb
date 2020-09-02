@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,9 +37,6 @@
 
 /// @brief tick type (56bit)
 typedef uint64_t TRI_voc_tick_t;
-
-/// @brief collection identifier type
-typedef uint64_t TRI_voc_cid_t;
 
 /// @brief enum for write operations
 enum TRI_voc_document_operation_e : uint8_t {

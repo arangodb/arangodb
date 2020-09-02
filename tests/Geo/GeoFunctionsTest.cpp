@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test sr AQL Geo Constructors
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -59,7 +56,7 @@ auto clearVector = [](SmallVector<AqlValue>& v) {
 };
 
 class GeoEqualsTest : public ::testing::Test {
-protected:
+ protected:
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext;
 
@@ -82,6 +79,8 @@ protected:
           paramsC{arena} {
       fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&context);
       fakeit::When(Method(contextMock, getVPackOptions)).AlwaysReturn(&velocypack::Options::Defaults);
+      fakeit::When(Method(contextMock, leaseBuilder)).AlwaysDo([]() { return new arangodb::velocypack::Builder(); });
+      fakeit::When(Method(contextMock, returnBuilder)).AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
     }
 
     ~GeoEqualsTest() {
@@ -95,469 +94,473 @@ protected:
 namespace geo_equals_point {
 class GeoEqualsPointTest : public GeoEqualsTest {};
 
-    TEST_F(GeoEqualsPointTest, checking_two_equal_points) {
-      VPackBuilder foo;
-      foo.openArray();
-      foo.add(VPackValue(1));
-      foo.add(VPackValue(-2.2));
-      foo.close();
-      paramsA.emplace_back(foo.slice().at(0));
-      paramsA.emplace_back(foo.slice().at(1));
-      AqlValue pointA = Functions::GeoPoint(&expressionContext, &trx, paramsA);
+TEST_F(GeoEqualsPointTest, checking_two_equal_points) {
+  VPackBuilder foo;
+  foo.openArray();
+  foo.add(VPackValue(1));
+  foo.add(VPackValue(-2.2));
+  foo.close();
+  paramsA.emplace_back(foo.slice().at(0));
+  paramsA.emplace_back(foo.slice().at(1));
+  AqlValue pointA = Functions::GeoPoint(&expressionContext, &trx, paramsA);
 
-      paramsC.emplace_back(pointA.clone());
-      paramsC.emplace_back(pointA.clone());
-      pointA.destroy();
+  paramsC.emplace_back(pointA.clone());
+  paramsC.emplace_back(pointA.clone());
+  pointA.destroy();
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool());
-    }
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isBoolean());
+  EXPECT_TRUE(resC.slice().getBool());
+}
 
-    TEST_F(GeoEqualsPointTest, checking_two_unequal_points) {
-      VPackBuilder foo;
-      foo.openArray();
-      foo.add(VPackValue(1));
-      foo.add(VPackValue(-2.2));
-      foo.close();
-      paramsA.emplace_back(foo.slice().at(0));
-      paramsA.emplace_back(foo.slice().at(1));
-      AqlValue pointA = Functions::GeoPoint(&expressionContext, &trx, paramsA);
-      paramsC.emplace_back(pointA.clone());
-      pointA.destroy();
-      
-      VPackBuilder bar;
-      bar.openArray();
-      bar.add(VPackValue(-2.2));
-      bar.add(VPackValue(-1));
-      bar.close();
-      paramsB.emplace_back(bar.slice().at(0));
-      paramsB.emplace_back(bar.slice().at(1));
-      AqlValue pointB = Functions::GeoPoint(&expressionContext, &trx, paramsB);
-      paramsC.emplace_back(pointB.clone());
-      pointB.destroy();
+TEST_F(GeoEqualsPointTest, checking_two_unequal_points) {
+  VPackBuilder foo;
+  foo.openArray();
+  foo.add(VPackValue(1));
+  foo.add(VPackValue(-2.2));
+  foo.close();
+  paramsA.emplace_back(foo.slice().at(0));
+  paramsA.emplace_back(foo.slice().at(1));
+  AqlValue pointA = Functions::GeoPoint(&expressionContext, &trx, paramsA);
+  paramsC.emplace_back(pointA.clone());
+  pointA.destroy();
+  
+  VPackBuilder bar;
+  bar.openArray();
+  bar.add(VPackValue(-2.2));
+  bar.add(VPackValue(-1));
+  bar.close();
+  paramsB.emplace_back(bar.slice().at(0));
+  paramsB.emplace_back(bar.slice().at(1));
+  AqlValue pointB = Functions::GeoPoint(&expressionContext, &trx, paramsB);
+  paramsC.emplace_back(pointB.clone());
+  pointB.destroy();
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_FALSE(resC.slice().getBool());
-    }
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isBoolean());
+  EXPECT_FALSE(resC.slice().getBool());
+}
 
 } // geo_equals_point
 
 namespace geo_equals_multipoint {
-class GeoEqualsMultipointTest : public GeoEqualsTest {  };
+class GeoEqualsMultipointTest : public GeoEqualsTest {};
 
-    TEST_F(GeoEqualsMultipointTest, checking_two_equal_multipoints) {
-      char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
-      size_t lA = strlen(polyA);
+TEST_F(GeoEqualsMultipointTest, checking_two_equal_multipoints) {
+  char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
+  size_t lA = strlen(polyA);
 
-      std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
-      VPackSlice jsonA = builderA->slice();
+  std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
+  VPackSlice jsonA = builderA->slice();
 
-      paramsA.emplace_back(jsonA);
+  paramsA.emplace_back(jsonA);
 
-      AqlValue resA = Functions::GeoMultiPoint(&expressionContext, &trx, paramsA);
-      paramsC.emplace_back(resA.clone());
-      paramsC.emplace_back(resA.clone());
-      resA.destroy();
+  AqlValue resA = Functions::GeoMultiPoint(&expressionContext, &trx, paramsA);
+  paramsC.emplace_back(resA.clone());
+  paramsC.emplace_back(resA.clone());
+  resA.destroy();
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool());
-    }
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isBoolean());
+  EXPECT_TRUE(resC.slice().getBool());
+}
 
-    TEST_F(GeoEqualsMultipointTest, checking_two_unequal_multipoints) {
-      char const* polyA = "[[0.5, 1.5], [3.0, 4.0], [5.0, 6.0], [0.5, 1.5]]";
-      size_t lA = strlen(polyA);
-      char const* polyB = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
-      size_t lB = strlen(polyB);
+TEST_F(GeoEqualsMultipointTest, checking_two_unequal_multipoints) {
+  char const* polyA = "[[0.5, 1.5], [3.0, 4.0], [5.0, 6.0], [0.5, 1.5]]";
+  size_t lA = strlen(polyA);
+  char const* polyB = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
+  size_t lB = strlen(polyB);
 
-      std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
-      VPackSlice jsonA = builderA->slice();
-      std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(polyB, lB);
-      VPackSlice jsonB = builderB->slice();
+  std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
+  VPackSlice jsonA = builderA->slice();
+  std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(polyB, lB);
+  VPackSlice jsonB = builderB->slice();
 
-      paramsA.emplace_back(jsonA);
-      paramsB.emplace_back(jsonB);
+  paramsA.emplace_back(jsonA);
+  paramsB.emplace_back(jsonB);
 
-      AqlValue resA = Functions::GeoMultiPoint(&expressionContext, &trx, paramsA);
-      paramsC.emplace_back(resA);
-      AqlValue resB = Functions::GeoMultiPoint(&expressionContext, &trx, paramsB);
-      paramsC.emplace_back(resB);
+  AqlValue resA = Functions::GeoMultiPoint(&expressionContext, &trx, paramsA);
+  paramsC.emplace_back(resA);
+  AqlValue resB = Functions::GeoMultiPoint(&expressionContext, &trx, paramsB);
+  paramsC.emplace_back(resB);
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_FALSE(resC.slice().getBool());
-    }
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isBoolean());
+  EXPECT_FALSE(resC.slice().getBool());
+}
 
 
 } // geo_equals_multipoint
 
 namespace geo_equals_polygon {
-  class GeoEqualsPolygonTest : public GeoEqualsTest {  };
-    TEST_F(GeoEqualsPolygonTest, checking_two_equal_polygons) {
-      char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
-      size_t lA = strlen(polyA);
+class GeoEqualsPolygonTest : public GeoEqualsTest {};
 
-      std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
-      VPackSlice jsonA = builderA->slice();
+TEST_F(GeoEqualsPolygonTest, checking_two_equal_polygons) {
+  char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
+  size_t lA = strlen(polyA);
 
-      paramsA.emplace_back(jsonA);
+  std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
+  VPackSlice jsonA = builderA->slice();
 
-      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
-      paramsC.emplace_back(resA.clone());
-      paramsC.emplace_back(resA.clone());
-      resA.destroy();
+  paramsA.emplace_back(jsonA);
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      resC.destroy();
-      EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool());
-    }
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  paramsC.emplace_back(resA.clone());
+  paramsC.emplace_back(resA.clone());
+  resA.destroy();
 
-    TEST_F(GeoEqualsPolygonTest, checking_two_equal_more_detailed_polygons) {
-      char const* polyA = "[[6.888427734375,50.91602169392645],[6.9632720947265625,50.87921050161489],[7.013397216796875,50.89480467658874],[7.0731353759765625,50.92424609910128],[7.093048095703125,50.94804539355076],[7.03948974609375,50.9709677364145],[6.985244750976562,51.000360974529464],[6.8891143798828125,50.996471761616284],[6.867828369140624,50.95669666276118],[6.888427734375,50.91602169392645]]";
-      size_t lA = strlen(polyA);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  resC.destroy();
+  EXPECT_TRUE(resC.slice().isBoolean());
+  EXPECT_TRUE(resC.slice().getBool());
+}
 
-      std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
-      VPackSlice jsonA = builderA->slice();
+TEST_F(GeoEqualsPolygonTest, checking_two_equal_more_detailed_polygons) {
+  char const* polyA = "[[6.888427734375,50.91602169392645],[6.9632720947265625,50.87921050161489],[7.013397216796875,50.89480467658874],[7.0731353759765625,50.92424609910128],[7.093048095703125,50.94804539355076],[7.03948974609375,50.9709677364145],[6.985244750976562,51.000360974529464],[6.8891143798828125,50.996471761616284],[6.867828369140624,50.95669666276118],[6.888427734375,50.91602169392645]]";
+  size_t lA = strlen(polyA);
 
-      paramsA.emplace_back(jsonA);
+  std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
+  VPackSlice jsonA = builderA->slice();
 
-      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
-      paramsC.emplace_back(resA.clone());
-      paramsC.emplace_back(resA.clone());
-      resA.destroy();
+  paramsA.emplace_back(jsonA);
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool());
-    }
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  paramsC.emplace_back(resA.clone());
+  paramsC.emplace_back(resA.clone());
+  resA.destroy();
 
-    TEST_F(GeoEqualsPolygonTest, checking_two_unequal_polygons) {
-      char const* polyA = "[[0.5, 1.5], [3.0, 4.0], [5.0, 6.0], [0.5, 1.5]]";
-      size_t lA = strlen(polyA);
-      char const* polyB = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
-      size_t lB = strlen(polyB);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isBoolean());
+  EXPECT_TRUE(resC.slice().getBool());
+}
 
-      std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
-      VPackSlice jsonA = builderA->slice();
-      std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(polyB, lB);
-      VPackSlice jsonB = builderB->slice();
+TEST_F(GeoEqualsPolygonTest, checking_two_unequal_polygons) {
+  char const* polyA = "[[0.5, 1.5], [3.0, 4.0], [5.0, 6.0], [0.5, 1.5]]";
+  size_t lA = strlen(polyA);
+  char const* polyB = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
+  size_t lB = strlen(polyB);
 
-      paramsA.emplace_back(jsonA);
-      paramsB.emplace_back(jsonB);
+  std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
+  VPackSlice jsonA = builderA->slice();
+  std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(polyB, lB);
+  VPackSlice jsonB = builderB->slice();
 
-      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
-      paramsC.emplace_back(resA);
-      AqlValue resB = Functions::GeoPolygon(&expressionContext, &trx, paramsB);
-      paramsC.emplace_back(resB);
+  paramsA.emplace_back(jsonA);
+  paramsB.emplace_back(jsonB);
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_FALSE(resC.slice().getBool());
-    }
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  paramsC.emplace_back(resA);
+  AqlValue resB = Functions::GeoPolygon(&expressionContext, &trx, paramsB);
+  paramsC.emplace_back(resB);
 
-    TEST_F(GeoEqualsPolygonTest, checking_two_nested_equal_polygons) {
-      char const* polyA = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
-      size_t lA = strlen(polyA);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isBoolean());
+  EXPECT_FALSE(resC.slice().getBool());
+}
 
-      std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
-      VPackSlice jsonA = builderA->slice();
+TEST_F(GeoEqualsPolygonTest, checking_two_nested_equal_polygons) {
+  char const* polyA = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
+  size_t lA = strlen(polyA);
 
-      paramsA.emplace_back(jsonA);
+  std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
+  VPackSlice jsonA = builderA->slice();
 
-      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
-      paramsC.emplace_back(resA.clone());
-      paramsC.emplace_back(resA.clone());
-      resA.destroy();
+  paramsA.emplace_back(jsonA);
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool());
-    }
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  paramsC.emplace_back(resA.clone());
+  paramsC.emplace_back(resA.clone());
+  resA.destroy();
 
-    TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_outer_loop_difference) {
-      char const* polyA = "[[[30, 10], [45, 45], [15, 40], [10, 20], [30, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
-      size_t lA = strlen(polyA);
-      char const* polyB = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
-      size_t lB = strlen(polyB);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isBoolean());
+  EXPECT_TRUE(resC.slice().getBool());
+}
 
-      std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
-      VPackSlice jsonA = builderA->slice();
-      std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(polyB, lB);
-      VPackSlice jsonB = builderB->slice();
+TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_outer_loop_difference) {
+  char const* polyA = "[[[30, 10], [45, 45], [15, 40], [10, 20], [30, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
+  size_t lA = strlen(polyA);
+  char const* polyB = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
+  size_t lB = strlen(polyB);
 
-      paramsA.emplace_back(jsonA);
-      paramsB.emplace_back(jsonB);
+  std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
+  VPackSlice jsonA = builderA->slice();
+  std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(polyB, lB);
+  VPackSlice jsonB = builderB->slice();
 
-      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
-      paramsC.emplace_back(resA);
-      AqlValue resB = Functions::GeoPolygon(&expressionContext, &trx, paramsB);
-      paramsC.emplace_back(resB);
+  paramsA.emplace_back(jsonA);
+  paramsB.emplace_back(jsonB);
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_FALSE(resC.slice().getBool());
-    }
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  paramsC.emplace_back(resA);
+  AqlValue resB = Functions::GeoPolygon(&expressionContext, &trx, paramsB);
+  paramsC.emplace_back(resB);
 
-    TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_inner_loop_difference) {
-      char const* polyA = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[15, 30], [35, 35], [30, 20], [15, 30]]]";
-      size_t lA = strlen(polyA);
-      char const* polyB = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
-      size_t lB = strlen(polyB);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isBoolean());
+  EXPECT_FALSE(resC.slice().getBool());
+}
 
-      std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
-      VPackSlice jsonA = builderA->slice();
-      std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(polyB, lB);
-      VPackSlice jsonB = builderB->slice();
+TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_inner_loop_difference) {
+  char const* polyA = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[15, 30], [35, 35], [30, 20], [15, 30]]]";
+  size_t lA = strlen(polyA);
+  char const* polyB = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
+  size_t lB = strlen(polyB);
 
-      paramsA.emplace_back(jsonA);
-      paramsB.emplace_back(jsonB);
+  std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
+  VPackSlice jsonA = builderA->slice();
+  std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(polyB, lB);
+  VPackSlice jsonB = builderB->slice();
 
-      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
-      paramsC.emplace_back(resA);
-      AqlValue resB = Functions::GeoPolygon(&expressionContext, &trx, paramsB);
-      paramsC.emplace_back(resB);
+  paramsA.emplace_back(jsonA);
+  paramsB.emplace_back(jsonB);
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_FALSE(resC.slice().getBool());
-    }
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  paramsC.emplace_back(resA);
+  AqlValue resB = Functions::GeoPolygon(&expressionContext, &trx, paramsB);
+  paramsC.emplace_back(resB);
 
-    TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_inner_and_outer_polygons) {
-      char const* polyA = "[[[30, 10], [45, 45], [15, 40], [10, 20], [30, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
-      size_t lA = strlen(polyA);
-      char const* polyB = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[15, 30], [35, 35], [30, 20], [15, 30]]]";
-      size_t lB = strlen(polyB);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isBoolean());
+  EXPECT_FALSE(resC.slice().getBool());
+}
 
-      std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
-      VPackSlice jsonA = builderA->slice();
-      std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(polyB, lB);
-      VPackSlice jsonB = builderB->slice();
+TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_inner_and_outer_polygons) {
+  char const* polyA = "[[[30, 10], [45, 45], [15, 40], [10, 20], [30, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
+  size_t lA = strlen(polyA);
+  char const* polyB = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[15, 30], [35, 35], [30, 20], [15, 30]]]";
+  size_t lB = strlen(polyB);
 
-      paramsA.emplace_back(jsonA);
-      paramsB.emplace_back(jsonB);
+  std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
+  VPackSlice jsonA = builderA->slice();
+  std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(polyB, lB);
+  VPackSlice jsonB = builderB->slice();
 
-      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
-      paramsC.emplace_back(resA);
-      AqlValue resB = Functions::GeoPolygon(&expressionContext, &trx, paramsB);
-      paramsC.emplace_back(resB);
+  paramsA.emplace_back(jsonA);
+  paramsB.emplace_back(jsonB);
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_FALSE(resC.slice().getBool());
-    }
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  paramsC.emplace_back(resA);
+  AqlValue resB = Functions::GeoPolygon(&expressionContext, &trx, paramsB);
+  paramsC.emplace_back(resB);
 
-    TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_first_parameter) {
-      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-      });
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isBoolean());
+  EXPECT_FALSE(resC.slice().getBool());
+}
 
-      char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
-      size_t lA = strlen(polyA);
-      char const* nullValue = "null";
-      size_t lB = strlen(nullValue);
+TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_first_parameter) {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  });
 
-      std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
-      VPackSlice jsonA = builderA->slice();
-      
-      std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(nullValue, lB);
-      VPackSlice jsonB = builderB->slice();
+  char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
+  size_t lA = strlen(polyA);
+  char const* nullValue = "null";
+  size_t lB = strlen(nullValue);
 
-      paramsA.emplace_back(jsonA);
+  std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
+  VPackSlice jsonA = builderA->slice();
+  
+  std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(nullValue, lB);
+  VPackSlice jsonB = builderB->slice();
 
-      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
-      paramsC.emplace_back(resA);
-      paramsC.emplace_back(jsonB);
+  paramsA.emplace_back(jsonA);
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isNull());
-    }
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  paramsC.emplace_back(resA);
+  paramsC.emplace_back(jsonB);
 
-    TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_second_parameter) {
-      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-      });
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isNull());
+}
 
-      char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
-      size_t lA = strlen(polyA);
-      char const* nullValue = "null";
-      size_t lB = strlen(nullValue);
+TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_second_parameter) {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  });
 
-      std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
-      VPackSlice jsonA = builderA->slice();
-      
-      std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(nullValue, lB);
-      VPackSlice jsonB = builderB->slice();
+  char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
+  size_t lA = strlen(polyA);
+  char const* nullValue = "null";
+  size_t lB = strlen(nullValue);
 
-      paramsA.emplace_back(jsonA);
+  std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
+  VPackSlice jsonA = builderA->slice();
+  
+  std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(nullValue, lB);
+  VPackSlice jsonB = builderB->slice();
 
-      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
-      paramsC.emplace_back(jsonB);
-      paramsC.emplace_back(resA);
+  paramsA.emplace_back(jsonA);
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isNull());
-    }
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  paramsC.emplace_back(jsonB);
+  paramsC.emplace_back(resA);
+
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isNull());
+}
 } // geo_equals_polygon
 
 namespace geo_equals_linestring {
-  class GeoEqualsLinestringTest : public GeoEqualsTest {  };
+class GeoEqualsLinestringTest : public GeoEqualsTest {};
 
-    TEST_F(GeoEqualsLinestringTest, checking_two_equal_linestrings) {
-      char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
-      size_t lA = strlen(polyA);
+TEST_F(GeoEqualsLinestringTest, checking_two_equal_linestrings) {
+  char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
+  size_t lA = strlen(polyA);
 
-      std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
-      VPackSlice jsonA = builderA->slice();
+  std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
+  VPackSlice jsonA = builderA->slice();
 
-      paramsA.emplace_back(jsonA);
+  paramsA.emplace_back(jsonA);
 
-      AqlValue resA = Functions::GeoLinestring(&expressionContext, &trx, paramsA);
+  AqlValue resA = Functions::GeoLinestring(&expressionContext, &trx, paramsA);
 
-      paramsC.emplace_back(resA.clone());
-      paramsC.emplace_back(resA.clone());
-      resA.destroy();
+  paramsC.emplace_back(resA.clone());
+  paramsC.emplace_back(resA.clone());
+  resA.destroy();
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool());
-    }
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isBoolean());
+  EXPECT_TRUE(resC.slice().getBool());
+}
 
-    TEST_F(GeoEqualsLinestringTest, checking_two_unequal_linestrings) {
-      char const* polyA = "[[0.5, 1.5], [3.0, 4.0], [5.0, 6.0], [0.5, 1.5]]";
-      size_t lA = strlen(polyA);
-      char const* polyB = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
-      size_t lB = strlen(polyB);
+TEST_F(GeoEqualsLinestringTest, checking_two_unequal_linestrings) {
+  char const* polyA = "[[0.5, 1.5], [3.0, 4.0], [5.0, 6.0], [0.5, 1.5]]";
+  size_t lA = strlen(polyA);
+  char const* polyB = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
+  size_t lB = strlen(polyB);
 
-      std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
-      VPackSlice jsonA = builderA->slice();
-      std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(polyB, lB);
-      VPackSlice jsonB = builderB->slice();
+  std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
+  VPackSlice jsonA = builderA->slice();
+  std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(polyB, lB);
+  VPackSlice jsonB = builderB->slice();
 
-      paramsA.emplace_back(jsonA);
-      paramsB.emplace_back(jsonB);
+  paramsA.emplace_back(jsonA);
+  paramsB.emplace_back(jsonB);
 
-      AqlValue resA = Functions::GeoLinestring(&expressionContext, &trx, paramsA);
-      AqlValue resB = Functions::GeoLinestring(&expressionContext, &trx, paramsB);
+  AqlValue resA = Functions::GeoLinestring(&expressionContext, &trx, paramsA);
+  AqlValue resB = Functions::GeoLinestring(&expressionContext, &trx, paramsB);
 
-      paramsC.emplace_back(resA);
-      paramsC.emplace_back(resB);
+  paramsC.emplace_back(resA);
+  paramsC.emplace_back(resB);
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_FALSE(resC.slice().getBool());
-    }
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isBoolean());
+  EXPECT_FALSE(resC.slice().getBool());
+}
+
 } // geo_equals_linestring
 
 namespace geo_equals_multilinestring {
-  class GeoEqualsMultilinestringTest : public GeoEqualsTest {  };
+class GeoEqualsMultilinestringTest : public GeoEqualsTest {};
 
-    TEST_F(GeoEqualsMultilinestringTest, checking_two_equal_multilinestrings) {
-      char const* polyA = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]] ]";
-      size_t lA = strlen(polyA);
+TEST_F(GeoEqualsMultilinestringTest, checking_two_equal_multilinestrings) {
+  char const* polyA = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]] ]";
+  size_t lA = strlen(polyA);
 
-      std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
-      VPackSlice jsonA = builderA->slice();
+  std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
+  VPackSlice jsonA = builderA->slice();
 
-      paramsA.emplace_back(jsonA);
+  paramsA.emplace_back(jsonA);
 
-      AqlValue resA = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsA);
-      paramsC.emplace_back(resA.clone());
-      paramsC.emplace_back(resA.clone());
-      resA.destroy();
+  AqlValue resA = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsA);
+  paramsC.emplace_back(resA.clone());
+  paramsC.emplace_back(resA.clone());
+  resA.destroy();
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool());
-    }
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isBoolean());
+  EXPECT_TRUE(resC.slice().getBool());
+}
 
-    TEST_F(GeoEqualsMultilinestringTest, checking_two_unequal_multilinestrings) {
-      char const* polyA = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [5.0, 6.0]] ]";
-      size_t lA = strlen(polyA);
-      char const* polyB = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]] ]";
-      size_t lB = strlen(polyB);
+TEST_F(GeoEqualsMultilinestringTest, checking_two_unequal_multilinestrings) {
+  char const* polyA = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [5.0, 6.0]] ]";
+  size_t lA = strlen(polyA);
+  char const* polyB = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]] ]";
+  size_t lB = strlen(polyB);
 
-      std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
-      VPackSlice jsonA = builderA->slice();
-      std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(polyB, lB);
-      VPackSlice jsonB = builderB->slice();
+  std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
+  VPackSlice jsonA = builderA->slice();
+  std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(polyB, lB);
+  VPackSlice jsonB = builderB->slice();
 
-      paramsA.emplace_back(jsonA);
-      paramsB.emplace_back(jsonB);
+  paramsA.emplace_back(jsonA);
+  paramsB.emplace_back(jsonB);
 
-      AqlValue resA = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsA);
-      AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsB);
+  AqlValue resA = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsA);
+  AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsB);
 
-      paramsC.emplace_back(resA);
-      paramsC.emplace_back(resB);
+  paramsC.emplace_back(resA);
+  paramsC.emplace_back(resB);
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_FALSE(resC.slice().getBool());
-    }
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isBoolean());
+  EXPECT_FALSE(resC.slice().getBool());
+}
+
 }  // geo_equals_multilinestring
 
 namespace geo_equals_mixings {
-  class GeoEqualsMixedTypeTest : public GeoEqualsTest {  };
+class GeoEqualsMixedTypeTest : public GeoEqualsTest {};
 
-    TEST_F(GeoEqualsMixedTypeTest, checking_polygon_with_multilinestring) {
-      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-      });
+TEST_F(GeoEqualsMixedTypeTest, checking_polygon_with_multilinestring) {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  });
 
-      char const* polyA = "[ [[1.0, 2.0], [3.0, 4.0], [3.3, 4.4], [1.0, 2.0]] ]";
-      size_t lA = strlen(polyA);
-      char const* lineB = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]] ]";
-      size_t lB = strlen(lineB);
+  char const* polyA = "[ [[1.0, 2.0], [3.0, 4.0], [3.3, 4.4], [1.0, 2.0]] ]";
+  size_t lA = strlen(polyA);
+  char const* lineB = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]] ]";
+  size_t lB = strlen(lineB);
 
-      std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
-      VPackSlice jsonA = builderA->slice();
-      std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(lineB, lB);
-      VPackSlice jsonB = builderB->slice();
+  std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
+  VPackSlice jsonA = builderA->slice();
+  std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(lineB, lB);
+  VPackSlice jsonB = builderB->slice();
 
-      paramsA.emplace_back(jsonA);
-      paramsB.emplace_back(jsonB);
+  paramsA.emplace_back(jsonA);
+  paramsB.emplace_back(jsonB);
 
-      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
-      AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsB);
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsB);
 
-      paramsC.emplace_back(resA);
-      paramsC.emplace_back(resB);
+  paramsC.emplace_back(resA);
+  paramsC.emplace_back(resB);
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_FALSE(resC.slice().getBool());
-    }
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isBoolean());
+  EXPECT_FALSE(resC.slice().getBool());
+}
 
-    TEST_F(GeoEqualsMixedTypeTest, checking_multipoint_with_multilinestring) {
-      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-      });
+TEST_F(GeoEqualsMixedTypeTest, checking_multipoint_with_multilinestring) {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+    ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  });
 
-      char const* polyA = "[ [1.0, 2.0], [3.0, 4.0], [1.0, 2.0], [5.0, 6.0] ]";
-      size_t lA = strlen(polyA);
-      char const* lineB = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]] ]";
-      size_t lB = strlen(lineB);
+  char const* polyA = "[ [1.0, 2.0], [3.0, 4.0], [1.0, 2.0], [5.0, 6.0] ]";
+  size_t lA = strlen(polyA);
+  char const* lineB = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]] ]";
+  size_t lB = strlen(lineB);
 
-      std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
-      VPackSlice jsonA = builderA->slice();
-      std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(lineB, lB);
-      VPackSlice jsonB = builderB->slice();
+  std::shared_ptr<VPackBuilder> builderA = VPackParser::fromJson(polyA, lA);
+  VPackSlice jsonA = builderA->slice();
+  std::shared_ptr<VPackBuilder> builderB = VPackParser::fromJson(lineB, lB);
+  VPackSlice jsonB = builderB->slice();
 
-      paramsA.emplace_back(jsonA);
-      paramsB.emplace_back(jsonB);
+  paramsA.emplace_back(jsonA);
+  paramsB.emplace_back(jsonB);
 
-      AqlValue resA = Functions::GeoMultiPoint(&expressionContext, &trx, paramsA);
-      paramsC.emplace_back(resA);
-      AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsB);
-      paramsC.emplace_back(resB);
+  AqlValue resA = Functions::GeoMultiPoint(&expressionContext, &trx, paramsA);
+  paramsC.emplace_back(resA);
+  AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsB);
+  paramsC.emplace_back(resB);
 
-      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_FALSE(resC.slice().getBool());
-    }
+  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  EXPECT_TRUE(resC.slice().isBoolean());
+  EXPECT_FALSE(resC.slice().getBool());
+}
+
 }  // geo_equals_mixings
 
 }  // geo_functions_aql

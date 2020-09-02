@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,6 +60,7 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   uint64_t _writeBufferSize;
   // Update max_write_buffer_number above if you change number of families used
   uint64_t _maxWriteBufferNumber;
+  int64_t _maxWriteBufferSizeToMaintain;
   uint64_t _maxTotalWalSize;
   uint64_t _delayedWriteRate;
   uint64_t _minWriteBufferNumberToMerge;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -182,8 +182,11 @@ class ServerState {
   }
 
   /// @brief check whether the server is a single or coordinator
-  bool isSingleServerOrCoordinator() {
-    RoleEnum role = loadRole();
+  bool isSingleServerOrCoordinator() const {
+    return isSingleServerOrCoordinator(loadRole());
+  }
+  
+  static bool isSingleServerOrCoordinator(ServerState::RoleEnum role) {
     return isCoordinator(role) || isSingleServer(role);
   }
 

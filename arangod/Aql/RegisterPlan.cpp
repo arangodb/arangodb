@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -449,10 +449,6 @@ void RegisterPlanT<T>::toVelocyPackEmpty(VPackBuilder& builder) {
   builder.add(VPackValue("varInfoList"));
   { VPackArrayBuilder guard(&builder); }
   builder.add(VPackValue("nrRegs"));
-  { VPackArrayBuilder guard(&builder); }
-  // nrRegsHere is not used anymore and is intentionally left empty
-  // can be removed in ArangoDB 3.8
-  builder.add(VPackValue("nrRegsHere"));
   { VPackArrayBuilder guard(&builder); }
   builder.add("totalNrRegs", VPackValue(0));
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,28 @@
 #include "JavaScriptSecurityContext.h"
 
 using namespace arangodb;
+
+/// @brief return the context type as a string
+char const* JavaScriptSecurityContext::typeName() const {
+  switch (_type) {
+    case Type::Restricted:
+      return "restricted";
+    case Type::Internal:
+      return "internal";
+    case Type::AdminScript:
+      return "admin script";
+    case Type::Query:
+      return "query";
+    case Type::Task:
+      return "task";
+    case Type::RestAction:
+      return "rest action";
+    case Type::RestAdminScriptAction:
+      return "rest admin script action";
+  }
+  // should not happen
+  return "unknown";
+}
 
 void JavaScriptSecurityContext::reset() {
   _canUseDatabase = false;

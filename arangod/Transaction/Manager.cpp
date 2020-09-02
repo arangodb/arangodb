@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -88,24 +88,39 @@ struct MGMethods final : arangodb::transaction::Methods {
 Manager::Manager(ManagerFeature& feature)
   : _feature(feature),
     _nrRunning(0),
+    _nrReadLocked(0),
     _disallowInserts(false),
     _writeLockHeld(false),
     _streamingLockTimeout(feature.streamingLockTimeout()) {}
 
-void Manager::registerTransaction(TransactionId /*transactionId*/, bool isReadOnlyTransaction) {
-  if (!isReadOnlyTransaction) {
+void Manager::registerTransaction(TransactionId transactionId,
+                                  bool isReadOnlyTransaction,
+                                  bool isFollowerTransaction) {
+  // If isFollowerTransaction is set then either the transactionId should be
+  // an isFollowerTransactionId or it should be a legacy transactionId:
+  TRI_ASSERT(!isFollowerTransaction ||
+             transactionId.isFollowerTransactionId() ||
+             transactionId.isLegacyTransactionId());
+  if (!isReadOnlyTransaction && !isFollowerTransaction) {
+    LOG_TOPIC("ccdea", TRACE, Logger::TRANSACTIONS) << "Acquiring read lock for tid " << transactionId.id();
     _rwLock.lockRead();
+    _nrReadLocked.fetch_add(1, std::memory_order_relaxed);
+    LOG_TOPIC("ccdeb", TRACE, Logger::TRANSACTIONS) << "Got read lock for tid " << transactionId.id() << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
   }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
 }
 
 // unregisters a transaction
-void Manager::unregisterTransaction(TransactionId transactionId, bool isReadOnlyTransaction) {
+void Manager::unregisterTransaction(TransactionId transactionId,
+                                    bool isReadOnlyTransaction,
+                                    bool isFollowerTransaction) {
   // always perform an unlock when we leave this function
-  auto guard = scopeGuard([this, &isReadOnlyTransaction]() {
-    if (!isReadOnlyTransaction) {
+  auto guard = scopeGuard([this, transactionId, &isReadOnlyTransaction, &isFollowerTransaction]() {
+    if (!isReadOnlyTransaction && !isFollowerTransaction) {
       _rwLock.unlockRead();
+      _nrReadLocked.fetch_sub(1, std::memory_order_relaxed);
+      LOG_TOPIC("ccded", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId.id() << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
     }
   });
 
@@ -287,7 +302,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   }
 
   LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
-      << "managed trx creating: '" << tid << "'";
+      << "managed trx creating: '" << tid.id() << "'";
 
   const size_t bucket = getBucket(tid);
 
@@ -322,14 +337,14 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   CollectionNameResolver resolver(vocbase);
   auto lockCols = [&](std::vector<std::string> const& cols, AccessMode::Type mode) {
     for (auto const& cname : cols) {
-      TRI_voc_cid_t cid = 0;
+      DataSourceId cid = DataSourceId::none();
       if (state->isCoordinator()) {
         cid = resolver.getCollectionIdCluster(cname);
       } else {  // only support local collections / shards
         cid = resolver.getCollectionIdLocal(cname);
       }
 
-      if (cid == 0) {
+      if (cid.empty()) {
         // not found
         res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
@@ -595,7 +610,7 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
              status == transaction::Status::ABORTED);
 
   LOG_TOPIC("7bd2f", DEBUG, Logger::TRANSACTIONS)
-      << "managed trx '" << tid << " updating to '" << status << "'";
+      << "managed trx '" << tid << " updating to '" << (status == transaction::Status::COMMITTED ? "COMMITED" : "ABORTED") << "'";
 
   Result res;
   size_t const bucket = getBucket(tid);

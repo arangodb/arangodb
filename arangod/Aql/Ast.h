@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,6 +37,7 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/AstResources.h"
+#include "Aql/AttributeNamePath.h"
 #include "Aql/Scopes.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/types.h"
@@ -402,14 +403,22 @@ class Ast {
   /// @brief count how many times a variable is referenced in an expression
   static size_t countReferences(AstNode const*, Variable const*);
 
-  /// @brief determines the top-level attributes in an expression, grouped by
+  /// @brief determines the top-level attributes used in an expression, grouped by
   /// variable
   static TopLevelAttributes getReferencedAttributes(AstNode const*, bool&);
-  static std::unordered_set<std::string> getReferencedAttributesForKeep(
-      AstNode const*, Variable const* searchVariable, bool&);
-
+  
+  /// @brief determines the top-level attributes used in an expression for the
+  /// specified variable
   static bool getReferencedAttributes(AstNode const*, Variable const*,
                                       std::unordered_set<std::string>&);
+  
+  /// @brief determines the attributes and subattributes used in an expression for the
+  /// specified variable
+  static bool getReferencedAttributesRecursive(AstNode const*, Variable const*,
+                                               std::unordered_set<arangodb::aql::AttributeNamePath>&);
+
+  static std::unordered_set<std::string> getReferencedAttributesForKeep(
+      AstNode const*, Variable const* searchVariable, bool&);
 
   /// @brief replace an attribute access with just the variable
   static AstNode* replaceAttributeAccess(AstNode* node, Variable const* variable,
@@ -586,6 +595,8 @@ class Ast {
   std::vector<AstNode*> _queries;
 
   /// @brief which collection is going to be modified in the query
+  /// maps from NODE_TYPE_COLLECTION/NODE_TYPE_PARAMETER_DATASOURCE to 
+  /// whether the collection is used in exclusive mode
   std::vector<std::pair<AstNode const*, bool>> _writeCollections;
 
   /// @brief whether or not function calls may access collection data

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,6 +47,7 @@ class ExecutionBlock;
 class ExecutionEngine;
 class ExecutionPlan;
 class Expression;
+class Projections;
 template<typename T> struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 
@@ -116,10 +117,6 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   /// @brief getIndexes, hand out the indexes used
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() const;
 
-  /// @brief called to build up the matching positions of the index values for
-  /// the projection attributes (if any)
-  void initIndexCoversProjections();
-
   bool isLateMaterialized() const noexcept {
     TRI_ASSERT((_outNonMaterializedDocId == nullptr && _outNonMaterializedIndVars.second.empty()) ||
                !(_outNonMaterializedDocId == nullptr || _outNonMaterializedIndVars.second.empty()));
@@ -127,7 +124,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   }
 
   bool canApplyLateDocumentMaterializationRule() const {
-    return isProduceResult() && coveringIndexAttributePositions().empty();
+    return isProduceResult() && !_projections.supportsCoveringIndex();
   }
 
   struct IndexVariable {
@@ -144,6 +141,8 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
 
   void setLateMaterialized(aql::Variable const* docIdVariable, IndexId commonIndexId,
                            IndexVarsInfo const& indexVariables);
+
+  void setProjections(arangodb::aql::Projections projections);
 
  private:
   void initializeOnce(bool& hasV8Expression, std::vector<Variable const*>& inVars,
@@ -163,7 +162,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
 
   /// @brief the index(es) condition
   std::unique_ptr<Condition> _condition;
-
+  
   /// @brief the index sort order - this is the same order for all indexes
   bool _needsGatherNodeSort;
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -79,8 +79,7 @@ class LogicalCollection : public LogicalDataSource {
 
  public:
   LogicalCollection() = delete;
-  LogicalCollection(TRI_vocbase_t& vocbase, velocypack::Slice const& info,
-                    bool isAStub, uint64_t planVersion = 0);
+  LogicalCollection(TRI_vocbase_t& vocbase, velocypack::Slice const& info, bool isAStub);
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   ~LogicalCollection() override;
@@ -315,7 +314,7 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
-  void validatorsToVelocyPack(VPackBuilder&) const;
+  void schemaToVelocyPack(VPackBuilder&) const;
   Result validate(VPackSlice newDoc, VPackOptions const*) const; // insert
   Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const*) const; // update / replace
 
@@ -340,7 +339,7 @@ class LogicalCollection : public LogicalDataSource {
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
                                            Serialization context) const override;
 
-  Result updateValidators(VPackSlice validatorArray);
+  Result updateSchema(VPackSlice schema);
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
@@ -415,10 +414,9 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief sharding information
   std::unique_ptr<ShardingInfo> _sharding;
 
-  using ValidatorVec = std::vector<std::unique_ptr<arangodb::ValidatorBase>>;
-  // `_validators` must be used with atomic accessors only!!
+  // `_schema` must be used with atomic accessors only!!
   // We use relaxed access (load/store) as we only care about atomicity.
-  std::shared_ptr<ValidatorVec> _validators;
+  std::shared_ptr<arangodb::ValidatorBase> _schema;
 };
 
 }  // namespace arangodb

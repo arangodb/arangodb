@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,7 +50,7 @@ class CollectionGuard {
   }
 
   /// @brief create the guard, using a collection id
-  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid)
+  CollectionGuard(TRI_vocbase_t* vocbase, DataSourceId cid)
       : _vocbase(vocbase),
         _collection(_vocbase->useCollection(cid, /*checkPermissions*/ true)) {
     // useCollection will throw if the collection does not exist
@@ -62,8 +62,9 @@ class CollectionGuard {
       : _vocbase(vocbase),
         _collection(nullptr) {
     if (!name.empty() && name[0] >= '0' && name[0] <= '9') {
-      TRI_voc_cid_t id =
-          NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
+      DataSourceId id{
+          NumberUtils::atoi_zero<DataSourceId::BaseType>(name.data(),
+                                                         name.data() + name.size())};
       _collection = _vocbase->useCollection(id, /*checkPermissions*/ true);
     } else {
       _collection = _vocbase->useCollection(name, /*checkPermissions*/ true);

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -218,19 +219,19 @@ bool RestRepairHandler::repairAllCollections(
     VPackBuilder& response) {
   bool allCollectionsSucceeded = true;
 
-  std::unordered_map<CollectionID, DatabaseID> databaseByCollectionId;
+  std::unordered_map<CollectionID, DatabaseID> databaseByDataSourceId;
 
   for (auto const& dbIt : VPackObjectIterator(planCollections)) {
     DatabaseID database = dbIt.key.copyString();
     for (auto const& colIt : VPackObjectIterator(dbIt.value)) {
       CollectionID collectionId = colIt.key.copyString();
-      databaseByCollectionId[collectionId] = database;
+      databaseByDataSourceId[collectionId] = database;
     }
   }
 
   for (auto const& it : repairOperationsByCollection) {
     CollectionID collectionId = it.first;
-    DatabaseID databaseId = databaseByCollectionId.at(collectionId);
+    DatabaseID databaseId = databaseByDataSourceId.at(collectionId);
     auto repairOperationsResult = it.second;
     auto nameResult = getDbAndCollectionName(planCollections, collectionId);
     if (nameResult.fail()) {
@@ -536,8 +537,8 @@ ResultT<std::string> RestRepairHandler::getDbAndCollectionName(VPackSlice const 
   for (auto const& db : VPackObjectIterator{planCollections}) {
     std::string dbName = db.key.copyString();
     for (auto const& collection : VPackObjectIterator{db.value}) {
-      std::string currentCollectionId = collection.key.copyString();
-      if (currentCollectionId == collectionID) {
+      std::string currentDataSourceId = collection.key.copyString();
+      if (currentDataSourceId == collectionID) {
         return dbName + "/" + collection.value.get("name").copyString();
       }
     }

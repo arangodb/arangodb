@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -157,7 +157,7 @@ void TRI_vocbase_t::checkCollectionInvariants() const {
 /// caller must hold _dataSourceLock in write mode or set doLock
 void TRI_vocbase_t::registerCollection(bool doLock, std::shared_ptr<arangodb::LogicalCollection> const& collection) {
   std::string name = collection->name();
-  TRI_voc_cid_t cid = collection->id();
+  DataSourceId cid = collection->id();
   {
     RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock,
                                  _dataSourceLockWriteOwner, doLock);
@@ -171,9 +171,9 @@ void TRI_vocbase_t::registerCollection(bool doLock, std::shared_ptr<arangodb::Lo
     if (!it.second) {
       std::string msg;
       msg.append(std::string("duplicate entry for collection name '") + name +
-                 "'. collection id " + std::to_string(cid) +
+                 "'. collection id " + std::to_string(cid.id()) +
                  " has same name as already added collection " +
-                 std::to_string(_dataSourceByName[name]->id()));
+                 std::to_string(_dataSourceByName[name]->id().id()));
       LOG_TOPIC("405f9", ERR, arangodb::Logger::FIXME) << msg;
 
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_NAME, msg);
@@ -186,8 +186,8 @@ void TRI_vocbase_t::registerCollection(bool doLock, std::shared_ptr<arangodb::Lo
       if (!it2.second) {
         std::string msg;
         msg.append(std::string("duplicate collection identifier ") +
-                   std::to_string(collection->id()) + " for name '" + name +
-                   "'");
+                   std::to_string(collection->id().id()) + " for name '" +
+                   name + "'");
         LOG_TOPIC("0ef12", ERR, arangodb::Logger::FIXME) << msg;
 
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, msg);
@@ -439,7 +439,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
 /// collection lock by yourself.
 arangodb::Result TRI_vocbase_t::loadCollection(arangodb::LogicalCollection& collection, 
                                                bool checkPermissions) {
-  TRI_ASSERT(collection.id() != 0);
+  TRI_ASSERT(collection.id().isSet());
 
   if (checkPermissions) {
     std::string const& dbName = _info.getName();
@@ -546,7 +546,7 @@ arangodb::Result TRI_vocbase_t::loadCollection(arangodb::LogicalCollection& coll
     // disk activity, index creation etc.)
     locker.unlock();
 
-    TRI_UpdateTickServer(collection.id());
+    TRI_UpdateTickServer(collection.id().id());
 
     // lock again to adjust the status
     locker.lockEventual();
@@ -825,7 +825,7 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
   WRITE_LOCKER_EVENTUAL(writeLock, _inventoryLock);
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
-  std::unordered_map<TRI_voc_cid_t, std::shared_ptr<LogicalDataSource>> dataSourceById;
+  std::unordered_map<DataSourceId, std::shared_ptr<LogicalDataSource>> dataSourceById;
 
   // copy collection pointers into vector so we can work with the copy without
   // the global lock
@@ -869,7 +869,7 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
     }
 
     // In cluster case cids are not created by ticks but by cluster uniqIds
-    if (!ServerState::instance()->isRunningInCluster() && collection->id() > maxTick) {
+    if (!ServerState::instance()->isRunningInCluster() && collection->id().id() > maxTick) {
       // collection is too new
       continue;
     }
@@ -883,7 +883,7 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
       continue;
     }
 
-    if (collection->id() <= maxTick) {
+    if (collection->id().id() <= maxTick) {
       result.openObject();
 
       // why are indexes added separately, when they are added by
@@ -925,7 +925,7 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
 }
 
 /// @brief looks up a collection by identifier
-std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(TRI_voc_cid_t id) const
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(DataSourceId id) const
     noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   return std::dynamic_pointer_cast<arangodb::LogicalCollection>(lookupDataSource(id));
@@ -972,8 +972,8 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollectionByUu
 }
 
 /// @brief looks up a data-source by identifier
-std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
-    TRI_voc_cid_t id) const noexcept {
+std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(DataSourceId id) const
+    noexcept {
   RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
   auto itr = _dataSourceById.find(id);
 
@@ -989,9 +989,8 @@ std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
 
   // lookup by id if the data-source name is passed as a stringified id
   bool success = false;
-  auto id =
-      arangodb::NumberUtils::atoi<TRI_voc_cid_t>(nameOrId.data(),
-                                                 nameOrId.data() + nameOrId.size(), success);
+  DataSourceId id{arangodb::NumberUtils::atoi<DataSourceId::BaseType>(
+      nameOrId.data(), nameOrId.data() + nameOrId.size(), success)};
 
   if (success) {
     return lookupDataSource(id);
@@ -1013,7 +1012,7 @@ std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
 }
 
 /// @brief looks up a view by identifier
-std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(TRI_voc_cid_t id) const {
+std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(DataSourceId id) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1150,8 +1149,8 @@ arangodb::Result TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* co
 }
 
 /// @brief drops a collection
-arangodb::Result TRI_vocbase_t::dropCollection(TRI_voc_cid_t cid,
-                                               bool allowDropSystem, double timeout) {
+arangodb::Result TRI_vocbase_t::dropCollection(DataSourceId cid, bool allowDropSystem,
+                                               double timeout) {
   auto collection = lookupCollection(cid);
   std::string const& dbName = _info.getName();
 
@@ -1221,7 +1220,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(TRI_voc_cid_t cid,
 }
 
 /// @brief renames a view
-arangodb::Result TRI_vocbase_t::renameView(TRI_voc_cid_t cid, std::string const& oldName) {
+arangodb::Result TRI_vocbase_t::renameView(DataSourceId cid, std::string const& oldName) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto const view = lookupView(cid);
   std::string const& dbName = _info.getName();
@@ -1309,8 +1308,7 @@ arangodb::Result TRI_vocbase_t::renameView(TRI_voc_cid_t cid, std::string const&
 }
 
 /// @brief renames a collection
-arangodb::Result TRI_vocbase_t::renameCollection(TRI_voc_cid_t cid,
-                                                 std::string const& newName) {
+arangodb::Result TRI_vocbase_t::renameCollection(DataSourceId cid, std::string const& newName) {
   auto collection = lookupCollection(cid);
 
   if (!collection) {
@@ -1418,7 +1416,8 @@ arangodb::Result TRI_vocbase_t::renameCollection(TRI_voc_cid_t cid,
 }
 
 /// @brief locks a (document) collection for usage by id
-std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollection(TRI_voc_cid_t cid, bool checkPermissions) {
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollection(DataSourceId cid,
+                                                                          bool checkPermissions) {
   return useCollectionInternal(lookupCollection(cid), checkPermissions);
 }
 
@@ -1546,7 +1545,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
 }
 
 /// @brief drops a view
-arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem) {
+arangodb::Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto const view = lookupView(cid);
   std::string const& dbName = _info.getName();

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -2486,6 +2486,17 @@ void ExecutionPlan::prepareTraversalOptions() {
   }
 }
 
+AstNode const* ExecutionPlan::resolveVariableAlias(AstNode const* node) const {
+  if (node->type == NODE_TYPE_REFERENCE) {
+    auto setter = getVarSetBy(static_cast<Variable const*>(node->getData())->id);
+    if (setter != nullptr && setter->getType() == ExecutionNode::CALCULATION) {
+      auto cn = ExecutionNode::castTo<CalculationNode const*>(setter);
+      node = cn->expression()->node();
+    }
+  }
+  return node;
+}
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
 
@@ -2524,7 +2535,7 @@ struct Shower final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUn
     }
   }
 
-  static LoggerStream& logNode(LoggerStream& log, ExecutionNode const& node) {
+  static LoggerStreamBase& logNode(LoggerStreamBase& log, ExecutionNode const& node) {
     return log << "[" << node.id() << "]" << detailedNodeType(node);
   }
 

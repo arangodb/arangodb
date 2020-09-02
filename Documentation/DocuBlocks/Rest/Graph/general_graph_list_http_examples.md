@@ -47,13 +47,16 @@ concurrent modifications to this graph.
 
 @RESTSTRUCT{replicationFactor,graph_representation,integer,required,}
 The replication factor used for every new collection in the graph.
-Can also be the string `"satellite"` for a SmartGraph.
+Can also be the string `"satellite"` for a SmartGraph (Enterprise Edition only).
 
 @RESTSTRUCT{isSmart,graph_representation,boolean,required,}
 Whether the graph is a SmartGraph (Enterprise Edition only).
 
+@RESTSTRUCT{isDisjoint,graph_representation,boolean,required,}
+Whether the graph is a Disjoint SmartGraph (Enterprise Edition only).
+
 @RESTSTRUCT{smartGraphAttribute,graph_representation,string,optional,}
-The name of the sharding attribute in SmartGraph case (Enterprise Edition only)
+Name of the sharding attribute in the SmartGraph case (Enterprise Edition only).
 
 @RESTSTRUCT{isSatellite,graph_representation,boolean,required,}
 Flag if the graph is a SatelliteGraph (Enterprise Edition only) or not.

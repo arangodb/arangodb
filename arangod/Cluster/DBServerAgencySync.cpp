@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -133,7 +133,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   AgencyComm comm(_server);
 
-
   LOG_TOPIC("62fd8", DEBUG, Logger::MAINTENANCE)
       << "DBServerAgencySync::execute starting";
   DBServerAgencySyncResult result;
@@ -157,12 +156,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     return result;
   }
 
-  Result tmp;
-  VPackBuilder rb;
   auto& clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo();
   uint64_t planIndex = 0;
   auto plan = clusterInfo.getPlan(planIndex);
-  auto serverId = arangodb::ServerState::instance()->getId();
 
   if (plan == nullptr) {
     // TODO increase log level, except during shutdown?
@@ -171,6 +167,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     result.errorMessage = "DBServerAgencySync::execute no plan";
     return result;
   }
+
+  auto serverId = arangodb::ServerState::instance()->getId();
 
   VPackBuilder local;
   LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE) << "Before getLocalCollections for phaseOne";
@@ -183,6 +181,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
   LOG_TOPIC("54263", TRACE, Logger::MAINTENANCE) << "local for phaseOne: " << local.toJson();
 
+  VPackBuilder rb;
+  Result tmp;
   try {
     // in previous life handlePlanChange
 

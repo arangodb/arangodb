@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -82,6 +83,9 @@ class QueryContext {
 
   /// @brief return the names of collections used in the query
   std::vector<std::string> collectionNames() const;
+
+  /// @brief return the user that started the query
+  virtual std::string const& user() const;
   
   /// warnings access is thread safe
   QueryWarnings& warnings() { return _warnings; }
@@ -133,7 +137,7 @@ public:
  protected:
   
   const TRI_voc_tick_t _queryId;
-  
+
   /// @brief current resources and limits used by query
   ResourceMonitor _resourceMonitor;
   
@@ -145,7 +149,7 @@ public:
 
   /// @brief pointer to vocbase the query runs in
   TRI_vocbase_t& _vocbase;
-
+  
   /// @brief graphs used in query, identified by name
   std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;
 

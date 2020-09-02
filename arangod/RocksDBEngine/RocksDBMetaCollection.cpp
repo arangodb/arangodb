@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -488,7 +489,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
       LOG_TOPIC("d1e53", WARN, arangodb::Logger::ENGINES)
           << "failed to begin transaction to rebuild revision tree "
              "for collection '"
-          << _logicalCollection.id() << "'";
+          << _logicalCollection.id().id() << "'";
       return res;
     }
     auto* state = RocksDBTransactionState::toState(&trx);
@@ -499,7 +500,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
       LOG_TOPIC("d1e54", WARN, arangodb::Logger::ENGINES)
           << "failed to retrieve replication iterator to rebuild revision tree "
              "for collection '"
-          << _logicalCollection.id() << "'";
+          << _logicalCollection.id().id() << "'";
       return Result(TRI_ERROR_INTERNAL);
     }
     RevisionReplicationIterator& it =

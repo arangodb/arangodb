@@ -31,7 +31,7 @@
 'use strict';
 
 const expect = require('chai').expect;
-const helper = require('@arangodb/user-helper');
+const helper = require('@arangodb/testutils/user-helper');
 const foxxManager = require('@arangodb/foxx/manager');
 const fs = require('fs');
 const internal = require('internal');

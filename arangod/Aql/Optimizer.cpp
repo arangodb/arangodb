@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryOptions.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -314,17 +315,30 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         }
 
         p->findVarUsage();
-
-        // all optimizer rule functions must obey the following guidelines:
-        // - the original plan passed to the rule function must be deleted if
-        //   and only if it has not been added (back) to the optimizer (using
-        //   addPlan).
-        // - if the rule throws, then the original plan will be deleted by the
-        // optimizer.
-        //   thus the rule must not have deleted the plan itself or add it
-        //   back to the optimizer
         p->setValidity(false);
-        rule.func(this, std::move(p), rule);
+
+        if (queryOptions.getProfileLevel() >= PROFILE_LEVEL_BASIC) {
+          // run rule with tracing optimizer rule execution time
+          if (_stats.executionTimes == nullptr) {
+            // allocate the map lazily, so we can save the initial memory allocation
+            // in case tracing is disabled.
+            _stats.executionTimes = std::make_unique<std::unordered_map<int, double>>();
+          }
+          TRI_ASSERT(_stats.executionTimes != nullptr);
+
+          double time = TRI_microtime();
+          rule.func(this, std::move(p), rule);
+          time = TRI_microtime() - time;
+          auto [it, inserted] = _stats.executionTimes->try_emplace(rule.level, time);
+          if (!inserted) {
+            // a rule may have been executed before already. in this case, just add to the
+            // already tracked time
+            (*it).second += time;
+          }
+        } else {
+          // run rule without tracing optimizer rules
+          rule.func(this, std::move(p), rule);
+        }
 
         if (!rule.isHidden()) {
           ++_stats.rulesExecuted;
@@ -435,5 +449,20 @@ void Optimizer::enableRule(ExecutionPlan* plan, arangodb::velocypack::StringRef 
     }
   } else {
     enableRule(plan, OptimizerRulesFeature::translateRule(name));
+  }
+}
+    
+void Optimizer::Stats::toVelocyPack(velocypack::Builder& b) const {
+  velocypack::ObjectBuilder guard(&b, true);
+  b.add("rulesExecuted", velocypack::Value(rulesExecuted));
+  b.add("rulesSkipped", velocypack::Value(rulesSkipped));
+  b.add("plansCreated", velocypack::Value(plansCreated));
+
+  if (executionTimes != nullptr) {
+    b.add("rules", velocypack::Value(velocypack::ValueType::Object));
+    for (auto const& it : *executionTimes) {
+      b.add(OptimizerRulesFeature::translateRule(it.first), velocypack::Value(it.second));
+    }
+    b.close();
   }
 }

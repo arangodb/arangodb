@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -256,6 +257,78 @@ TEST_F(IResearchQueryStartsWithTest, test) {
   // execution outside arangosearch (true) via []
   {
     auto queryResult = arangodb::tests::executeQuery(vocbase, "RETURN starts_with('abc', ['a', 'ab'])");
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(1, resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      ASSERT_TRUE(resolved.isBool());
+      ASSERT_TRUE(resolved.getBool());
+    }
+  }
+
+  // execution outside arangosearch (true) via expresssion
+  {
+    auto queryResult = arangodb::tests::executeQuery(vocbase, "LET x = NOOPT(['a', 'ab']) RETURN starts_with('abc', x)");
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(1, resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      ASSERT_TRUE(resolved.isBool());
+      ASSERT_TRUE(resolved.getBool());
+    }
+  }
+
+  // execution outside arangosearch (true) via expresssion
+  {
+    auto queryResult = arangodb::tests::executeQuery(vocbase, "LET x = NOOPT(['a', 'ab']) RETURN starts_with('abc', x, 2)");
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(1, resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      ASSERT_TRUE(resolved.isBool());
+      ASSERT_TRUE(resolved.getBool());
+    }
+  }
+
+  // execution outside arangosearch (false) via expresssion
+  {
+    auto queryResult = arangodb::tests::executeQuery(vocbase, "LET x = NOOPT(['a', 'b']) RETURN starts_with('abc', x, 2)");
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(1, resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      ASSERT_TRUE(resolved.isBool());
+      ASSERT_FALSE(resolved.getBool());
+    }
+  }
+
+  // execution outside arangosearch (true) via expresssion
+  {
+    auto queryResult = arangodb::tests::executeQuery(vocbase, "LET x = NOOPT(['a', 'b']) RETURN starts_with('abc', x, 1)");
     ASSERT_TRUE(queryResult.result.ok());
 
     auto result = queryResult.data->slice();
@@ -749,6 +822,43 @@ TEST_F(IResearchQueryStartsWithTest, test) {
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
+  }
+
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs{
+        {"A", &insertedDocs[0]}, {"B", &insertedDocs[1]}};
+
+    auto queryResult = arangodb::tests::executeQuery(
+        vocbase, "LET x = NOOPT(['A', 'B']) FOR d IN testView SEARCH starts_with(d.name, x) RETURN d");
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    EXPECT_EQ(expectedDocs.size(), resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      ASSERT_NE(expectedDoc, expectedDocs.end());
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
+                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                           resolved, true));
+      expectedDocs.erase(expectedDoc);
+    }
+    EXPECT_TRUE(expectedDocs.empty());
+  }
+
+  // invalid prefix
+  {
+    auto queryResult = arangodb::tests::executeQuery(
+        vocbase, "LET x = NOOPT([1, 'B']) FOR d IN testView SEARCH starts_with(d.name, x) RETURN d");
+    ASSERT_FALSE(queryResult.result.ok());
+    ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, queryResult.result.errorNumber());
   }
 
   // exact term, unordered via [] min match count = 1

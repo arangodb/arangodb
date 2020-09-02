@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -74,7 +74,7 @@ arangodb::Result diffPlanLocal(VPackSlice const& plan, uint64_t planIndex,
                                std::string const& serverId,
                                MaintenanceFeature::errors_t& errors,
                                MaintenanceFeature& feature,
-                               std::vector<ActionDescription>& actions);
+                               std::vector<std::shared_ptr<ActionDescription>>& actions);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run
@@ -171,17 +171,15 @@ arangodb::Result reportInCurrent(VPackSlice const& plan, VPackSlice const& cur,
  * @param  current   Current's scnapshot
  * @param  local     Local snapshot
  * @param  serverId  My server's uuid
- * @param  actions   Resulting actions
- * @param  rescheduleForSync Report to DBServerAgencySync, that we need to rerun
+ * @param  feature   Maintenance feature
  *
- * @return           Success story
+ * @return           Success story (always ok)
  */
 arangodb::Result syncReplicatedShardsWithLeaders(VPackSlice const& plan,
                                                  VPackSlice const& current,
                                                  VPackSlice const& local,
                                                  std::string const& serverId,
-                                                 MaintenanceFeature& feature,
-                                                 std::vector<ActionDescription>& actions);
+                                                 MaintenanceFeature& feature);
 
 }  // namespace maintenance
 }  // namespace arangodb

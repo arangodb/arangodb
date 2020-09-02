@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_REST_HANDLER_REST_ADMIN_CLUSTER_HANDLER_H
@@ -97,15 +98,18 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
     std::string fromServer;
     std::string toServer;
     std::string collectionID;
+    bool remainsFollower;
 
     MoveShardContext(std::string database, std::string collection, std::string shard,
-                     std::string from, std::string to, std::string collectionID)
+                     std::string from, std::string to, std::string collectionID,
+                     bool remainsFollower)
         : database(std::move(database)),
           collection(std::move(collection)),
           shard(std::move(shard)),
           fromServer(std::move(from)),
           toServer(std::move(to)),
-          collectionID(std::move(collectionID)) {}
+          collectionID(std::move(collectionID)),
+          remainsFollower(true) {}
 
     static std::unique_ptr<MoveShardContext> fromVelocyPack(arangodb::velocypack::Slice slice);
   };

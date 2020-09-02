@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -172,7 +172,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   scratch.reserve(10485760);  // reserve 10MB of scratch space to work with
   for (auto const& pair : mappings) {
     TRI_voc_tick_t dbid = pair.first;
-    TRI_voc_cid_t cid = pair.second;
+    DataSourceId cid = pair.second;
     TRI_vocbase_t* vocbase = dbfeature->useDatabase(dbid);
     if (!vocbase) {
       continue;

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Basics/ConditionVariable.h"
+#include "RestServer/MetricsFeature.h"
 #include "V8/JSLoader.h"
 
 #include <velocypack/Builder.h>
@@ -51,13 +53,15 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
     size_t dirty;
     size_t free;
     size_t max;
+    size_t min;
   };
-  struct MemoryStatistics {
+  struct DetailedContextStatistics {
     size_t id;
     double tMax;
     size_t countOfTimes;
     size_t heapMax;
     size_t heapMin;
+    size_t invocations;
   };
 
   explicit V8DealerFeature(application_features::ApplicationServer& server);
@@ -115,7 +119,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   void setMaximumContexts(size_t nr) { _nrMaxContexts = nr; }
 
   Statistics getCurrentContextNumbers();
-  std::vector<MemoryStatistics> getCurrentMemoryNumbers();
+  std::vector<DetailedContextStatistics> getCurrentContextDetails();
 
   void defineBoolean(std::string const& name, bool value) {
     _definedBooleans[name] = value;
@@ -166,6 +170,12 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   std::map<std::string, std::string> _definedStrings;
 
   std::vector<std::pair<std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>, TRI_vocbase_t*>> _contextUpdates;
+
+  Counter& _contextsCreated;
+  Counter& _contextsDestroyed;
+  Counter& _contextsEntered;
+  Counter& _contextsExited;
+  Counter& _contextsEnterFailures;
 };
 
 /// @brief enters and exits a context and provides an isolate

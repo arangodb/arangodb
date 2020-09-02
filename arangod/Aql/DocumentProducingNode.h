@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "Aql/Projections.h"
+
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -53,16 +55,12 @@ class DocumentProducingNode {
   /// @brief return the out variable
   Variable const* outVariable() const;
 
-  std::vector<std::string> const& projections() const noexcept;
-
-  void projections(std::vector<std::string> const& projections);
-
-  void projections(std::vector<std::string>&& projections) noexcept;
-
-  void projections(std::unordered_set<std::string>&& projections);
-
-  std::vector<size_t> const& coveringIndexAttributePositions() const noexcept;
+  arangodb::aql::Projections const& projections() const noexcept;
   
+  arangodb::aql::Projections& projections() noexcept;
+  
+  void setProjections(arangodb::aql::Projections projections);
+
   /// @brief remember the condition to execute for early filtering
   void setFilter(std::unique_ptr<Expression> filter);
 
@@ -87,16 +85,8 @@ class DocumentProducingNode {
   Variable const* _outVariable;
 
   /// @brief produce only the following attributes
-  std::vector<std::string> _projections;
+  arangodb::aql::Projections _projections;
 
-  /// @brief vector (built up in order of projection attributes) that contains
-  /// the position of the index attribute value in the data returned by the
-  /// index example, if the index is on ["a", "b", "c"], and the projections are
-  /// ["b", "a"], then this vector will contain [1, 0] the vector will only be
-  /// populated by IndexNodes, and will be left empty by
-  /// EnumerateCollectionNodes
-  std::vector<std::size_t> mutable _coveringIndexAttributePositions;
-  
   /// @brief early filtering condition
   std::unique_ptr<Expression> _filter;
 

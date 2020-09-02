@@ -1,7 +1,8 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 EMC Corporation
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
@@ -32,6 +33,7 @@
 
 #include <velocypack/Builder.h>
 
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
 #include "index/index_writer.hpp"
 
@@ -165,8 +167,8 @@ struct IResearchViewMetaState {
     explicit Mask(bool mask = false) noexcept;
   };
 
-  std::unordered_set<TRI_voc_cid_t> _collections;  // collection links added to this view via IResearchLink
-                                                   // creation (may contain no-longer valid cids)
+  std::unordered_set<DataSourceId> _collections;  // collection links added to this view via IResearchLink
+                                                  // creation (may contain no-longer valid cids)
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!

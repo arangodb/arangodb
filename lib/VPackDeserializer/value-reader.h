@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-///
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Lars Maier
-///
 ////////////////////////////////////////////////////////////////////////////////
 #ifndef VELOCYPACK_VALUE_READER_H
 #define VELOCYPACK_VALUE_READER_H
@@ -37,36 +36,10 @@ namespace deserializer {
  * for all types that can be read. It is expected to have a static `read` function
  * that receives a slice and returns a `result<double, deserialize_error>`.
  */
-template <typename T>
+template <typename T, typename V = void>
 struct value_reader {
   static_assert(utilities::always_false_v<T>,
                 "no value reader for the given type available");
-};
-
-template <>
-struct value_reader<double> {
-  using value_type = double;
-  using result_type = result<double, deserialize_error>;
-  static result_type read(::arangodb::velocypack::deserializer::slice_type s) {
-    if (s.isNumber<double>()) {
-      return result_type{s.getNumber<double>()};
-    }
-
-    return result_type{deserialize_error{"value is not a double"}};
-  }
-};
-
-template <>
-struct value_reader<unsigned int> {
-  using value_type = unsigned int;
-  using result_type = result<unsigned int, deserialize_error>;
-  static result_type read(::arangodb::velocypack::deserializer::slice_type s) {
-    if (s.isNumber<unsigned int>()) {
-      return result_type{s.getNumber<unsigned int>()};
-    }
-
-    return result_type{deserialize_error{"value is not a unsigned int"}};
-  }
 };
 
 template <>
@@ -105,6 +78,18 @@ struct value_reader<bool> {
     }
 
     return result_type{deserialize_error{"value is not a bool"}};
+  }
+};
+
+template <typename T>
+struct value_reader<T, std::void_t<std::enable_if_t<std::is_arithmetic_v<T>>>> {
+  using value_type = T;
+  using result_type = result<T, deserialize_error>;
+  static result_type read(::arangodb::velocypack::deserializer::slice_type s) {
+    if (s.isNumber<T>()) {
+      return result_type{s.getNumber<T>()};
+    }
+    return result_type{deserialize_error{"value is not a number that fits the required type"}};
   }
 };
 

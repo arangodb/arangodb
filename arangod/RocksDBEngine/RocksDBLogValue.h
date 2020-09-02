@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,6 +33,7 @@
 
 #include "Basics/Common.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/Identifiers/RevisionId.h"
@@ -51,30 +53,31 @@ class RocksDBLogValue {
   static RocksDBLogValue DatabaseCreate(TRI_voc_tick_t id);
   static RocksDBLogValue DatabaseDrop(TRI_voc_tick_t id);
 
-  static RocksDBLogValue CollectionCreate(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);
-  static RocksDBLogValue CollectionDrop(TRI_voc_tick_t dbid, TRI_voc_cid_t cid,
+  static RocksDBLogValue CollectionCreate(TRI_voc_tick_t dbid, DataSourceId cid);
+  static RocksDBLogValue CollectionDrop(TRI_voc_tick_t dbid, DataSourceId cid,
                                         arangodb::velocypack::StringRef const& uuid);
-  static RocksDBLogValue CollectionRename(TRI_voc_tick_t dbid, TRI_voc_cid_t cid,
+  static RocksDBLogValue CollectionRename(TRI_voc_tick_t dbid, DataSourceId cid,
                                           arangodb::velocypack::StringRef const& oldName);
-  static RocksDBLogValue CollectionChange(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);
+  static RocksDBLogValue CollectionChange(TRI_voc_tick_t dbid, DataSourceId cid);
   static RocksDBLogValue CollectionTruncate(TRI_voc_tick_t dbid,
-                                            TRI_voc_cid_t cid, uint64_t objectId);
+                                            DataSourceId cid, uint64_t objectId);
 
-  static RocksDBLogValue IndexCreate(TRI_voc_tick_t dbid, TRI_voc_cid_t cid,
+  static RocksDBLogValue IndexCreate(TRI_voc_tick_t dbid, DataSourceId cid,
                                      VPackSlice const& indexInfo);
-  static RocksDBLogValue IndexDrop(TRI_voc_tick_t dbid, TRI_voc_cid_t cid, IndexId indexId);
+  static RocksDBLogValue IndexDrop(TRI_voc_tick_t dbid, DataSourceId cid, IndexId indexId);
 
-  static RocksDBLogValue ViewCreate(TRI_voc_tick_t, TRI_voc_cid_t);
-  static RocksDBLogValue ViewDrop(TRI_voc_tick_t, TRI_voc_cid_t, arangodb::velocypack::StringRef const& uuid);
-  static RocksDBLogValue ViewChange(TRI_voc_tick_t, TRI_voc_cid_t);
+  static RocksDBLogValue ViewCreate(TRI_voc_tick_t, DataSourceId);
+  static RocksDBLogValue ViewDrop(TRI_voc_tick_t, DataSourceId,
+                                  arangodb::velocypack::StringRef const& uuid);
+  static RocksDBLogValue ViewChange(TRI_voc_tick_t, DataSourceId);
 
   static RocksDBLogValue BeginTransaction(TRI_voc_tick_t vocbaseId, TransactionId tid);
   static RocksDBLogValue CommitTransaction(TRI_voc_tick_t vocbaseId, TransactionId tid);
   static RocksDBLogValue DocumentRemoveV2(RevisionId rid);
 
-  static RocksDBLogValue SinglePut(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid);
+  static RocksDBLogValue SinglePut(TRI_voc_tick_t vocbaseId, DataSourceId cid);
   static RocksDBLogValue SingleRemoveV2(TRI_voc_tick_t vocbaseId,
-                                        TRI_voc_cid_t cid, RevisionId rid);
+                                        DataSourceId cid, RevisionId rid);
 
   static RocksDBLogValue TrackedDocumentInsert(LocalDocumentId, velocypack::Slice const&);
   static RocksDBLogValue TrackedDocumentRemove(LocalDocumentId, velocypack::Slice const&);
@@ -86,8 +89,8 @@ class RocksDBLogValue {
   static RocksDBLogType type(rocksdb::Slice const&);
   static TRI_voc_tick_t databaseId(rocksdb::Slice const&);
   static TransactionId transactionId(rocksdb::Slice const&);
-  static TRI_voc_cid_t collectionId(rocksdb::Slice const&);
-  static TRI_voc_cid_t viewId(rocksdb::Slice const&);
+  static DataSourceId collectionId(rocksdb::Slice const&);
+  static DataSourceId viewId(rocksdb::Slice const&);
   static IndexId indexId(rocksdb::Slice const&);
 
   /// CollectionTruncate contains an object id
@@ -110,7 +113,7 @@ class RocksDBLogValue {
   static std::pair<LocalDocumentId, velocypack::Slice> trackedDocument(rocksdb::Slice const&);
 
   static bool containsDatabaseId(RocksDBLogType type);
-  static bool containsCollectionId(RocksDBLogType type);
+  static bool containsDataSourceId(RocksDBLogType type);
   static bool containsViewId(RocksDBLogType type);
 
  public:

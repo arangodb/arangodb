@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@
 #include <boost/lockfree/queue.hpp>
 
 namespace arangodb {
+class LogGroup;
 namespace application_features {
 class ApplicationServer;
 }
@@ -40,6 +41,11 @@ class ConditionVariable;
 struct LogMessage;
 
 class LogThread final : public Thread {
+  struct MessageEnvelope {
+    LogGroup* group;
+    LogMessage* msg;
+  };
+
  public:
   explicit LogThread(application_features::ApplicationServer& server,
                      std::string const& name);
@@ -49,8 +55,8 @@ class LogThread final : public Thread {
   bool isSystem() const override { return true; }
   bool isSilent() const override { return true; }
   void run() override;
-  
-  bool log(std::unique_ptr<LogMessage>&);
+
+  bool log(LogGroup&, std::unique_ptr<LogMessage>&);
   // flush all pending log messages
   void flush() noexcept;
 
@@ -65,7 +71,7 @@ class LogThread final : public Thread {
 
  private:
   arangodb::basics::ConditionVariable _condition;
-  boost::lockfree::queue<LogMessage*> _messages;
+  boost::lockfree::queue<MessageEnvelope> _messages;
 };
 }  // namespace arangodb
 

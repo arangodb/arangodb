@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -86,7 +86,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
 #ifdef USE_ENTERPRISE
     if (query.trxForOptimization().isInaccessibleCollection(col->id())) {
       _inaccessible.insert(col->name());
-      _inaccessible.insert(std::to_string(col->id()));
+      _inaccessible.insert(std::to_string(col->id().id()));
     }
 #endif
     _edgeCollections.emplace_back(
@@ -102,7 +102,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
 #ifdef USE_ENTERPRISE
     if (query.trxForOptimization().isInaccessibleCollection(col->id())) {
       _inaccessible.insert(col->name());
-      _inaccessible.insert(std::to_string(col->id()));
+      _inaccessible.insert(std::to_string(col->id().id()));
     }
 #endif
     auto shards = getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards));
@@ -261,7 +261,7 @@ void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) 
 //   the DBServers will clean up their snippets after a TTL.
 Result EngineInfoContainerDBServerServerBased::buildEngines(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-    MapRemoteToSnippet& snippetIds, std::map<std::string, QueryId>& serverToQueryId,
+    MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverToQueryId,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
   // This needs to be a set with a defined order, it is important, that we contact
   // the database servers only in this specific order to avoid cluster-wide deadlock situations.
@@ -295,8 +295,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   options.skipScheduler = true;  // hack to speed up future.get()
   options.param("ttl", std::to_string(_query.queryOptions().ttl));
 
-  for (auto const& server : dbServers) {
-    std::string const serverDest = "server:" + server;
+  for (ServerID const& server : dbServers) {
+    std::string serverDest = "server:" + server;
 
     LOG_TOPIC("4bbe6", DEBUG, arangodb::Logger::AQL)
         << "Building Engine Info for " << server;
@@ -379,8 +379,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     if (!result.ok()) {
       return result;
     }
-    auto insert = serverToQueryId.try_emplace(serverDest, globalId);
-    TRI_ASSERT(insert.second);
+    serverToQueryId.emplace_back(std::move(serverDest), globalId);
   }
   cleanupGuard.cancel();
   return TRI_ERROR_NO_ERROR;
@@ -567,7 +566,7 @@ void EngineInfoContainerDBServerServerBased::addOptionsPart(arangodb::velocypack
         for (ShardID const& sid : _shardLocking.getShardsForCollection(server, coll)) {
           opts.inaccessibleCollections.insert(sid);
         }
-        opts.inaccessibleCollections.insert(std::to_string(coll->id()));
+        opts.inaccessibleCollections.insert(std::to_string(coll->id().id()));
       }
     }
     opts.toVelocyPack(builder, true);

@@ -95,10 +95,10 @@ class Context {
   void returnString(std::string* str) noexcept;
 
   /// @brief temporarily lease a Builder object
-  arangodb::velocypack::Builder* leaseBuilder();
+  TEST_VIRTUAL arangodb::velocypack::Builder* leaseBuilder();
 
   /// @brief return a temporary Builder object
-  void returnBuilder(arangodb::velocypack::Builder*) noexcept;
+  TEST_VIRTUAL void returnBuilder(arangodb::velocypack::Builder*) noexcept;
 
   /// @brief get velocypack options with a custom type handler
   TEST_VIRTUAL arangodb::velocypack::Options* getVPackOptions();
@@ -109,7 +109,8 @@ class Context {
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
   void storeTransactionResult(TransactionId id, bool wasRegistered,
-                              bool isReadOnlyTransaction) noexcept;
+                              bool isReadOnlyTransaction,
+                              bool isFollowerTranaction) noexcept;
 
  public:
   /// @brief get a custom type handler
@@ -165,6 +166,7 @@ class Context {
   struct {
     TransactionId id;
     bool isReadOnlyTransaction;
+    bool isFollowerTransaction;
   } _transaction;
 
   bool _ownsResolver;

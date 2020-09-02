@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for metrics
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,10 +27,205 @@
 
 #include "RestServer/Metrics.h"
 
+#include <atomic>
+#include <thread>
+#include <vector>
+
+namespace {
+constexpr size_t numThreads = 4;
+constexpr uint64_t numOpsPerThread = 25 * 1000 * 1000;
+}
+
 class MetricsTest : public ::testing::Test {
 protected:
   MetricsTest () {}
 };
+
+TEST_F(MetricsTest, test_counter_concurrency) {
+  Counter c(0, "counter", "Counter");
+
+  ASSERT_EQ(c.load(),  0);
+
+  std::atomic<bool> go = false;
+
+  std::vector<std::thread> threads;
+  threads.reserve(::numThreads);
+  for (size_t i = 0; i < ::numThreads; ++i) {
+    threads.emplace_back([&]() {
+      while (!go.load()) {
+        // wait until all threads are created, so they can 
+        // start at the approximate same time
+      }
+      for (uint64_t i = 0; i < ::numOpsPerThread; ++i) {
+        ++c;
+      }
+    });
+  }
+
+  go.store(true);
+  
+  for (auto& thread : threads) {
+    thread.join();
+  }
+  
+  ASSERT_EQ(c.load(), ::numThreads * ::numOpsPerThread);
+}
+
+TEST_F(MetricsTest, test_histogram_concurrency_same) {
+  lin_scale_t scale(1, 100, 4);
+  Histogram h(scale, "histogram", "Histogram");
+
+  ASSERT_EQ(h.load(0), 0);
+  ASSERT_EQ(h.load(1), 0);
+  ASSERT_EQ(h.load(2), 0);
+  ASSERT_EQ(h.load(3), 0);
+  
+  std::atomic<bool> go = false;
+
+  std::vector<std::thread> threads;
+  threads.reserve(::numThreads);
+  for (size_t i = 0; i < ::numThreads; ++i) {
+    threads.emplace_back([&]() {
+      while (!go.load()) {
+        // wait until all threads are created, so they can 
+        // start at the approximate same time
+      }
+      for (uint64_t i = 0; i < ::numOpsPerThread; ++i) {
+        h.count(1);
+      }
+    });
+  }
+  
+  go.store(true);
+  
+  for (auto& thread : threads) {
+    thread.join();
+  }
+  
+  ASSERT_EQ(h.load(0), ::numThreads * ::numOpsPerThread);
+  ASSERT_EQ(h.load(1), 0);
+  ASSERT_EQ(h.load(2), 0);
+  ASSERT_EQ(h.load(3), 0);
+}
+
+TEST_F(MetricsTest, test_histogram_concurrency_distributed) {
+  lin_scale_t scale(1, 100, 4);
+  Histogram h(scale, "histogram", "Histogram");
+
+  ASSERT_EQ(h.load(0), 0);
+  ASSERT_EQ(h.load(1), 0);
+  ASSERT_EQ(h.load(2), 0);
+  ASSERT_EQ(h.load(3), 0);
+  
+  std::atomic<bool> go = false;
+
+  std::vector<std::thread> threads;
+  threads.reserve(::numThreads);
+  for (size_t i = 0; i < ::numThreads; ++i) {
+    threads.emplace_back([&](uint64_t value) {
+      while (!go.load()) {
+        // wait until all threads are created, so they can 
+        // start at the approximate same time
+      }
+      for (uint64_t i = 0; i < ::numOpsPerThread; ++i) {
+        h.count(value);
+      }
+    }, i * 30);
+  }
+  
+  go.store(true);
+  
+  for (auto& thread : threads) {
+    thread.join();
+  }
+  
+  ASSERT_EQ(h.load(0), ::numOpsPerThread);
+  ASSERT_EQ(h.load(1), (::numThreads > 1 ? 1 : 0) * ::numOpsPerThread);
+  ASSERT_EQ(h.load(2), (::numThreads > 2 ? 1 : 0) * ::numOpsPerThread);
+  ASSERT_EQ(h.load(3), (::numThreads > 3 ? (::numThreads - 3) : 0) * ::numOpsPerThread);
+}
+
+TEST_F(MetricsTest, test_histogram_simple) {
+  lin_scale_t scale(1, 100, 4);
+  Histogram h(scale, "histogram", "Histogram");
+
+  ASSERT_EQ(h.load(0), 0);
+  ASSERT_EQ(h.load(1), 0);
+  ASSERT_EQ(h.load(2), 0);
+  ASSERT_EQ(h.load(3), 0);
+
+  h.count(0);
+  ASSERT_EQ(h.load(0), 1);
+  ASSERT_EQ(h.load(1), 0);
+  ASSERT_EQ(h.load(2), 0);
+  ASSERT_EQ(h.load(3), 0);
+  
+  h.count(0);
+  ASSERT_EQ(h.load(0), 2);
+  ASSERT_EQ(h.load(1), 0);
+  ASSERT_EQ(h.load(2), 0);
+  ASSERT_EQ(h.load(3), 0);
+  
+  h.count(1);
+  ASSERT_EQ(h.load(0), 3);
+  ASSERT_EQ(h.load(1), 0);
+  ASSERT_EQ(h.load(2), 0);
+  ASSERT_EQ(h.load(3), 0);
+  
+  h.count(1);
+  ASSERT_EQ(h.load(0), 4);
+  ASSERT_EQ(h.load(1), 0);
+  ASSERT_EQ(h.load(2), 0);
+  ASSERT_EQ(h.load(3), 0);
+  
+  h.count(30);
+  ASSERT_EQ(h.load(0), 4);
+  ASSERT_EQ(h.load(1), 1);
+  ASSERT_EQ(h.load(2), 0);
+  ASSERT_EQ(h.load(3), 0);
+  
+  h.count(30);
+  ASSERT_EQ(h.load(0), 4);
+  ASSERT_EQ(h.load(1), 2);
+  ASSERT_EQ(h.load(2), 0);
+  ASSERT_EQ(h.load(3), 0);
+  
+  h.count(60);
+  ASSERT_EQ(h.load(0), 4);
+  ASSERT_EQ(h.load(1), 2);
+  ASSERT_EQ(h.load(2), 1);
+  ASSERT_EQ(h.load(3), 0);
+  
+  h.count(60);
+  ASSERT_EQ(h.load(0), 4);
+  ASSERT_EQ(h.load(1), 2);
+  ASSERT_EQ(h.load(2), 2);
+  ASSERT_EQ(h.load(3), 0);
+  
+  h.count(90);
+  ASSERT_EQ(h.load(0), 4);
+  ASSERT_EQ(h.load(1), 2);
+  ASSERT_EQ(h.load(2), 2);
+  ASSERT_EQ(h.load(3), 1);
+  
+  h.count(90);
+  ASSERT_EQ(h.load(0), 4);
+  ASSERT_EQ(h.load(1), 2);
+  ASSERT_EQ(h.load(2), 2);
+  ASSERT_EQ(h.load(3), 2);
+  
+  h.count(10000);
+  ASSERT_EQ(h.load(0), 4);
+  ASSERT_EQ(h.load(1), 2);
+  ASSERT_EQ(h.load(2), 2);
+  ASSERT_EQ(h.load(3), 3);
+  
+  h.count(10000000);
+  ASSERT_EQ(h.load(0), 4);
+  ASSERT_EQ(h.load(1), 2);
+  ASSERT_EQ(h.load(2), 2);
+  ASSERT_EQ(h.load(3), 4);
+}
 
 
 TEST_F(MetricsTest, test_counter) {

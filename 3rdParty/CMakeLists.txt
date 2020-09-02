@@ -174,6 +174,13 @@ set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/nghttp2/)
 
 ################################################################################
+## IMMER
+################################################################################
+
+set(IMMER_VERSION "0.6.2")
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/immer/v${IMMER_VERSION} EXCLUDE_FROM_ALL)
+
+################################################################################
 ## LINK_DIRECTORIES
 ################################################################################
 
@@ -211,7 +218,6 @@ endif()
 add_library(fuerte STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/ConnectionBuilder.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/GeneralConnection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/helper.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/H1Connection.cpp

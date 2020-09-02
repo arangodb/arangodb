@@ -1,7 +1,8 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 EMC Corporation
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
@@ -799,13 +800,15 @@ bool IResearchViewMetaState::init(arangodb::velocypack::Slice const& slice,
       for (arangodb::velocypack::ArrayIterator itr(field); itr.valid(); ++itr) {
         decltype(_collections)::key_type value;
 
-        if (!getNumber(value,
+        DataSourceId::BaseType tmp;
+        if (!getNumber(tmp,
                        itr.value())) {  // [ <collectionId 1> ... <collectionId N> ]
           errorField = fieldName + "[" +
                        arangodb::basics::StringUtils::itoa(itr.index()) + "]";
 
           return false;
         }
+        value = DataSourceId{tmp};
 
         _collections.emplace(value);
       }
@@ -831,7 +834,7 @@ bool IResearchViewMetaState::json(arangodb::velocypack::Builder& builder,
       arangodb::velocypack::ArrayBuilder subBuilderWrapper(&subBuilder);
 
       for (auto& cid : _collections) {
-        subBuilderWrapper->add(arangodb::velocypack::Value(cid));
+        subBuilderWrapper->add(arangodb::velocypack::Value(cid.id()));
       }
     }
 
@@ -844,7 +847,7 @@ bool IResearchViewMetaState::json(arangodb::velocypack::Builder& builder,
 size_t IResearchViewMetaState::memory() const {
   auto size = sizeof(IResearchViewMetaState);
 
-  size += sizeof(TRI_voc_cid_t) * _collections.size();
+  size += sizeof(DataSourceId) * _collections.size();
 
   return size;
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -257,10 +257,6 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   SyncerId const syncerId = SyncerId::fromRequest(*_request);
   std::string const clientInfo = _request->value("clientInfo");
 
-  // check if a barrier id was specified in request
-  TransactionId barrierId{
-      _request->parsedValue("barrier", static_cast<TransactionId::BaseType>(0))};
-
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   bool found = false;
@@ -287,7 +283,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   size_t length = 0;
 
   if (useVst) {
-    result = wal->tail(filter, chunkSize, barrierId,
+    result = wal->tail(filter, chunkSize,
                        [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                          length++;
 
@@ -308,7 +304,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
     // note: we need the CustomTypeHandler here
     VPackDumper dumper(&adapter, &opts);
-    result = wal->tail(filter, chunkSize, barrierId,
+    result = wal->tail(filter, chunkSize,
                        [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                          length++;
 

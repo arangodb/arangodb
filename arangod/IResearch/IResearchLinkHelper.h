@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,10 +27,11 @@
 
 #include <memory>
 
+#include <utils/type_id.hpp>
 #include "Basics/Result.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
-#include <utils/type_id.hpp>
 
 namespace arangodb {
 namespace application_features {
@@ -139,11 +141,11 @@ struct IResearchLinkHelper {
   /// @param links the link modification definitions, null link == link removal
   /// @param stale links to remove if there is no creation definition in 'links'
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result updateLinks( // update links
-      std::unordered_set<TRI_voc_cid_t>& modified, // odified cids
-      arangodb::LogicalView& view, // modified view
-      arangodb::velocypack::Slice const& links, // link definitions to apply
-      std::unordered_set<TRI_voc_cid_t> const& stale = {} //stale view links
+  static arangodb::Result updateLinks(             // update links
+      std::unordered_set<DataSourceId>& modified,  // modified cids
+      arangodb::LogicalView& view,                 // modified view
+      arangodb::velocypack::Slice const& links,    // link definitions to apply
+      std::unordered_set<DataSourceId> const& stale = {}  // stale view links
   );
 
  private:

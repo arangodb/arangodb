@@ -1,7 +1,8 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 EMC Corporation
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
@@ -144,7 +145,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
 
 class TransactionCollectionMock : public arangodb::TransactionCollection {
  public:
-  TransactionCollectionMock(arangodb::TransactionState* state, TRI_voc_cid_t cid,
+  TransactionCollectionMock(arangodb::TransactionState* state, arangodb::DataSourceId cid,
                             arangodb::AccessMode::Type accessType);
   virtual bool canAccess(arangodb::AccessMode::Type accessType) const override;
   virtual bool hasOperations() const override;
@@ -178,7 +179,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
   static TRI_voc_tick_t recoveryTickResult;
   static std::string versionFilenameResult;
   static std::function<void()> recoveryTickCallback;
-  std::map<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>, arangodb::velocypack::Builder> views;
+  std::map<std::pair<TRI_voc_tick_t, arangodb::DataSourceId>, arangodb::velocypack::Builder> views;
   std::atomic<size_t> vocbaseCount;
 
   explicit StorageEngineMock(arangodb::application_features::ApplicationServer& server);
@@ -198,15 +199,16 @@ class StorageEngineMock : public arangodb::StorageEngine {
       arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& info) override;
   virtual arangodb::Result createTickRanges(VPackBuilder&) override;
   virtual std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(
-      arangodb::TransactionState& state, TRI_voc_cid_t cid,
+      arangodb::TransactionState& state, arangodb::DataSourceId cid,
       arangodb::AccessMode::Type) override;
   virtual std::unique_ptr<arangodb::transaction::Manager> createTransactionManager(
       arangodb::transaction::ManagerFeature&) override;
   virtual std::shared_ptr<arangodb::TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
       arangodb::transaction::Options const& options) override;
-  virtual arangodb::Result createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
+  virtual arangodb::Result createView(TRI_vocbase_t& vocbase, arangodb::DataSourceId id,
                                       arangodb::LogicalView const& view) override;
+  virtual arangodb::Result compactAll(bool changeLevels, bool compactBottomMostLevel) override;
   virtual TRI_voc_tick_t currentTick() const override;
   virtual std::string dataPath() const override;
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const override;
@@ -219,7 +221,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual std::vector<std::string> currentWalFiles() const override;
   virtual arangodb::Result flushWal(bool waitForSync, bool waitForCollector,
                                     bool writeShutdownFile) override;
-  virtual void getCollectionInfo(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+  virtual void getCollectionInfo(TRI_vocbase_t& vocbase, arangodb::DataSourceId cid,
                                  arangodb::velocypack::Builder& result,
                                  bool includeIndexes, TRI_voc_tick_t maxTick) override;
   virtual int getCollectionsAndIndexes(TRI_vocbase_t& vocbase,

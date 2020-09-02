@@ -244,6 +244,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AstResources.cpp
   Aql/AsyncExecutor.cpp
   Aql/AttributeAccessor.cpp
+  Aql/AttributeNamePath.cpp
   Aql/BindParameters.cpp
   Aql/BlocksWithClients.cpp
   Aql/CalculationExecutor.cpp
@@ -270,6 +271,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/DocumentIndexExpressionContext.cpp
   Aql/DocumentProducingHelper.cpp
   Aql/DocumentProducingNode.cpp
+  Aql/ClusterQuery.cpp
   Aql/EngineInfoContainerCoordinator.cpp
   Aql/EngineInfoContainerDBServerServerBased.cpp
   Aql/EnumerateCollectionExecutor.cpp
@@ -328,6 +330,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/OutputAqlItemRow.cpp
   Aql/ParallelUnsortedGatherExecutor.cpp
   Aql/Parser.cpp
+  Aql/Projections.cpp
   Aql/Quantifier.cpp
   Aql/Query.cpp
   Aql/QueryCache.cpp
@@ -395,6 +398,7 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   Utils/CursorRepository.cpp
   Utils/DatabaseGuard.cpp
   Utils/SingleCollectionTransaction.cpp
+  VocBase/Identifiers/DataSourceId.cpp
   VocBase/Identifiers/IndexId.cpp
   VocBase/Identifiers/LocalDocumentId.cpp
   VocBase/Identifiers/RevisionId.cpp
@@ -486,6 +490,7 @@ set(LIB_ARANGO_REPLICATION_SOURCES
   Replication/ReplicationApplierState.cpp
   Replication/ReplicationClients.cpp
   Replication/ReplicationFeature.cpp
+  Replication/ReplicationMetricsFeature.cpp
   Replication/Syncer.cpp
   Replication/SyncerId.cpp
   Replication/TailingSyncer.cpp
@@ -652,6 +657,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestAuthReloadHandler.cpp
   RestHandler/RestBaseHandler.cpp
   RestHandler/RestBatchHandler.cpp
+  RestHandler/RestCompactHandler.cpp
   RestHandler/RestCursorHandler.cpp
   RestHandler/RestDatabaseHandler.cpp
   RestHandler/RestDebugHandler.cpp
@@ -868,6 +874,7 @@ target_link_libraries(arango_aql arango_graph)
 target_link_libraries(arango_aql arango_indexes)
 target_link_libraries(arango_aql arango_iresearch)
 target_link_libraries(arango_aql arango_network)
+target_link_libraries(arango_aql immer)
 
 target_link_libraries(arango_cache arango)
 target_link_libraries(arango_cache boost_system)

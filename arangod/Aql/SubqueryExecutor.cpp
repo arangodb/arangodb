@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -152,7 +153,7 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
         if (_infos.returnsData()) {
           TRI_ASSERT(_subqueryResults != nullptr);
           INTERNAL_LOG_SQ << uint64_t(this)
-                       << " store subquery result for writing " << block->size();
+                       << " store subquery result for writing " << block->numRows();
           _subqueryResults->emplace_back(std::move(block));
         }
       }
@@ -211,25 +212,6 @@ void SubqueryExecutor<isModificationSubquery>::writeOutput(OutputAqlItemRow& out
   _input = InputAqlItemRow(CreateInvalidInputRowHint{});
   TRI_ASSERT(output.produced());
   output.advanceRow();
-}
-
-/// @brief shutdown, tell dependency and the subquery
-template <bool isModificationSubquery>
-std::pair<ExecutionState, Result> SubqueryExecutor<isModificationSubquery>::shutdown(int errorCode) {
-  // Note this shutdown needs to be repeatable.
-  // Also note the ordering of this shutdown is different
-  // from earlier versions we now shutdown subquery first
-  ExecutionState state = ExecutionState::DONE;
-  if (!_shutdownDone) {
-    // We take ownership of _state here for shutdown state
-    std::tie(state, _shutdownResult) = _subquery.shutdown(errorCode);
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(_shutdownResult.ok());
-      return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
-    }
-    _shutdownDone = true;
-  }
-  return {state, _shutdownResult};
 }
 
 template <bool isModificationSubquery>

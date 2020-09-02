@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,7 +41,7 @@ namespace rocksutils {
 // from the corresponding database; releases dumping resources
 RocksDBReplicationResult tailWal(TRI_vocbase_t* vocbase, uint64_t tickStart,
                                  uint64_t tickEnd, size_t chunkSize,
-                                 bool includeSystem, TRI_voc_cid_t collectionId,
+                                 bool includeSystem, DataSourceId collectionId,
                                  arangodb::velocypack::Builder& builder);
 
 arangodb::TRI_replication_operation_e convertLogType(RocksDBLogType t);

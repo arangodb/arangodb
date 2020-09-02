@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@
 #include "Basics/operating-system.h"
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogAppenderSyslog.h"
+#include "Logger/LogGroup.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
@@ -43,21 +44,22 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 arangodb::Mutex LogAppender::_appendersLock;
-  
-std::vector<std::shared_ptr<LogAppender>> LogAppender::_globalAppenders;
 
-std::map<size_t, std::vector<std::shared_ptr<LogAppender>>> LogAppender::_topics2appenders;
+std::array<std::vector<std::shared_ptr<LogAppender>>, LogGroup::Count> LogAppender::_globalAppenders;
 
-std::map<std::string, std::shared_ptr<LogAppender>> LogAppender::_definition2appenders;
+std::array<std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>, LogGroup::Count> LogAppender::_topics2appenders;
+
+std::array<std::map<std::string, std::shared_ptr<LogAppender>>, LogGroup::Count> LogAppender::_definition2appenders;
 
 bool LogAppender::_allowStdLogging = true;
 
-void LogAppender::addGlobalAppender(std::shared_ptr<LogAppender> appender) {
+void LogAppender::addGlobalAppender(LogGroup const& group,
+                                    std::shared_ptr<LogAppender> appender) {
   MUTEX_LOCKER(guard, _appendersLock);
-  _globalAppenders.emplace_back(std::move(appender));
+  _globalAppenders[group.id()].emplace_back(std::move(appender));
 }
-  
-void LogAppender::addAppender(std::string const& definition) {
+
+void LogAppender::addAppender(LogGroup const& group, std::string const& definition) {
   std::string topicName;
   std::string output;
   LogTopic* topic = nullptr;
@@ -78,33 +80,38 @@ void LogAppender::addAppender(std::string const& definition) {
 
   std::shared_ptr<LogAppender> appender;
 
-  MUTEX_LOCKER(guard, _appendersLock);
-  
-  auto it = _definition2appenders.find(key);
+  auto& definitionsMap = _definition2appenders[group.id()];
 
-  if (it != _definition2appenders.end()) {
+  MUTEX_LOCKER(guard, _appendersLock);
+
+  auto it = definitionsMap.find(key);
+
+  if (it != definitionsMap.end()) {
     // found an existing appender
     appender = it->second;
   } else {
     // build a new appender from the definition
-    appender = buildAppender(output);
+    appender = buildAppender(group, output);
     if (appender == nullptr) {
       // cannot create appender, for whatever reason
       return;
     }
-  
-    _definition2appenders[key] = appender;
+
+    definitionsMap[key] = appender;
   }
 
   TRI_ASSERT(appender != nullptr);
 
+  auto& topicsMap = _topics2appenders[group.id()];
   size_t n = (topic == nullptr) ? LogTopic::MAX_LOG_TOPICS : topic->id();
-  if (std::find(_topics2appenders[n].begin(), _topics2appenders[n].end(), appender) == _topics2appenders[n].end()) {
-    _topics2appenders[n].emplace_back(appender);
+  if (std::find(topicsMap[n].begin(), topicsMap[n].end(), appender) ==
+      topicsMap[n].end()) {
+    topicsMap[n].emplace_back(appender);
   }
 }
 
-std::shared_ptr<LogAppender> LogAppender::buildAppender(std::string const& output) {
+std::shared_ptr<LogAppender> LogAppender::buildAppender(LogGroup const& group,
+                                                        std::string const& output) {
 #ifdef ARANGODB_ENABLE_SYSLOG
   // first handle syslog-logging
   if (StringUtils::isPrefix(output, "syslog://")) {
@@ -122,7 +129,7 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(std::string const& outpu
 #endif
 
   if (output == "+" || output == "-") {
-    for (auto const& it : _definition2appenders) {
+    for (auto const& it : _definition2appenders[group.id()]) {
       if (it.first == "+" || it.first == "-") {
         // alreay got a logger for stderr/stdout
         return nullptr;
@@ -144,22 +151,26 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(std::string const& outpu
   return result;
 }
 
-void LogAppender::logGlobal(LogMessage const& message) {
+void LogAppender::logGlobal(LogGroup const& group, LogMessage const& message) {
   MUTEX_LOCKER(guard, _appendersLock);
-  
+
+  auto& appenders = _globalAppenders[group.id()];
+
   // append to global appenders first
-  for (auto const& appender : _globalAppenders) {
+  for (auto const& appender : appenders) {
     appender->logMessage(message);
   }
 }
 
-void LogAppender::log(LogMessage const& message) {
+void LogAppender::log(LogGroup const& group, LogMessage const& message) {
   // output to appenders
-  auto output = [&message](size_t n) -> bool {
+  auto& topicsMap = _topics2appenders[group.id()];
+  auto output = [&topicsMap](LogGroup const& group, LogMessage const& message,
+                             size_t n) -> bool {
     bool shown = false;
 
-    auto const& it = _topics2appenders.find(n);
-    if (it != _topics2appenders.end()) {
+    auto const& it = topicsMap.find(n);
+    if (it != topicsMap.end() && !it->second.empty()) {
       auto const& appenders = it->second;
 
       for (auto const& appender : appenders) {
@@ -170,7 +181,7 @@ void LogAppender::log(LogMessage const& message) {
 
     return shown;
   };
-  
+
   bool shown = false;
 
   // try to find a topic-specific appender
@@ -179,12 +190,12 @@ void LogAppender::log(LogMessage const& message) {
   MUTEX_LOCKER(guard, _appendersLock);
  
   if (topicId < LogTopic::MAX_LOG_TOPICS) {
-    shown = output(topicId);
+    shown = output(group, message, topicId);
   }
 
   // otherwise use the general topic appender
   if (!shown) {
-    output(LogTopic::MAX_LOG_TOPICS);
+    output(group, message, LogTopic::MAX_LOG_TOPICS);
   }
 }
 
@@ -196,9 +207,11 @@ void LogAppender::shutdown() {
 #endif
   LogAppenderFile::closeAll();
 
-  _globalAppenders.clear();
-  _topics2appenders.clear();
-  _definition2appenders.clear();
+  for (std::size_t i = 0; i < LogGroup::Count; ++i) {
+    _globalAppenders[i].clear();
+    _topics2appenders[i].clear();
+    _definition2appenders[i].clear();
+  }
 }
 
 void LogAppender::reopen() {
@@ -260,4 +273,10 @@ Result LogAppender::parseDefinition(std::string const& definition,
   }
  
   return Result();
+}
+
+bool LogAppender::haveAppenders(LogGroup const& group, size_t topicId) {
+  return !_topics2appenders[group.id()][topicId].empty() ||
+         !_topics2appenders[group.id()][LogTopic::MAX_LOG_TOPICS].empty() ||
+         !_globalAppenders[group.id()].empty();
 }
