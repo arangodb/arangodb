@@ -44,6 +44,10 @@
 #include <windows.h>
 #endif
 
+#ifndef _WIN32
+#include <sys/statvfs.h>
+#endif
+
 #ifdef TRI_HAVE_DIRENT_H
 #include <dirent.h>
 #endif
@@ -332,8 +336,7 @@ bool TRI_CreateSymbolicLink(std::string const& target,
   int res = symlink(target.c_str(), linkpath.c_str());
 
   if (res < 0) {
-    error = "failed to create a symlink " + target + " -> " + linkpath + " - " +
-            strerror(errno);
+    error = "failed to create a symlink " + target + " -> " + linkpath + " - " + strerror(errno);
   }
   return res == 0;
 #endif
@@ -2618,6 +2621,33 @@ bool TRI_PathIsAbsolute(std::string const& path) {
 #else
   return (!path.empty()) && path.c_str()[0] == '/';
 #endif
+}
+
+/// @brief return the amount of total and free disk space for the given path
+arangodb::Result TRI_GetDiskSpace(std::string const& path, 
+                                  uint64_t& totalSpace, 
+                                  uint64_t& freeSpace) {
+#if _WIN32
+  ULARGE_INTEGER freeBytesAvailableToCaller;
+  ULARGE_INTEGER totalNumberOfBytes;
+  if (GetDiskFreeSpaceExW(toWString(path).data(), &freeBytesAvailableToCaller, &totalNumberOfBytes, nullptr) == 0) {
+    DWORD lastError = GetLastError();
+    return translateWindowsError(::GetLastError());
+  }
+  freeSpace = static_cast<uint64_t>(freeBytesAvailableToCaller.QuadPart);
+  totalSpace = static_cast<uint64_t>(totalNumberOfBytes.QuadPart);
+#else
+  struct statvfs stat;
+
+  if (statvfs(path.c_str(), &stat) == -1) {
+    TRI_SYSTEM_ERROR();
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    return {TRI_errno(), TRI_last_error()};
+  }
+  totalSpace = static_cast<uint64_t>(stat.f_frsize) * static_cast<uint64_t>(stat.f_blocks);
+  freeSpace = static_cast<uint64_t>(stat.f_frsize) * static_cast<uint64_t>(stat.f_bfree);
+#endif
+  return {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
