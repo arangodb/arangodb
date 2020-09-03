@@ -21,46 +21,25 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_BLOCK_COLLECTOR_H
-#define ARANGOD_AQL_BLOCK_COLLECTOR_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_COMPACT_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_COMPACT_HANDLER_H 1
 
-#include "Aql/SharedAqlItemBlockPtr.h"
-#include "Aql/types.h"
-
-#include <cstdint>
-#include <vector>
+#include "Basics/Common.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-namespace aql {
-class AqlItemBlock;
-class AqlItemBlockManager;
 
-class BlockCollector {
-  friend class AqlItemBlock;
+class RestCompactHandler : public arangodb::RestBaseHandler {
+ public:
+  RestCompactHandler(application_features::ApplicationServer&,
+                     GeneralRequest*, GeneralResponse*);
+
 
  public:
-  BlockCollector(BlockCollector const&) = delete;
-  BlockCollector& operator=(BlockCollector const&) = delete;
-
-  explicit BlockCollector(AqlItemBlockManager*);
-  ~BlockCollector();
-
-  size_t totalSize() const;
-  RegisterId nrRegs() const;
-
-  void clear();
-
-  void add(SharedAqlItemBlockPtr block);
-
-  SharedAqlItemBlockPtr steal();
-
- private:
-  AqlItemBlockManager* _blockManager;
-  std::vector<SharedAqlItemBlockPtr> _blocks;
-  size_t _totalSize;
+  RestStatus execute() override;
+  char const* name() const override { return "RestCompactHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 };
-
-}  // namespace aql
 }  // namespace arangodb
 
 #endif
