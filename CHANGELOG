@@ -1,11 +1,11 @@
 v3.6.7 (XXXX-XX-XX)
 -------------------
 
-* Add option `--rocksdb.max-write-buffer-number-to-maintain` with default 
-  of 1 for small RAM size and 0 for large RAM size.
+* Add option `--rocksdb.max-write-buffer-number-to-maintain` with default of 1
+  for small RAM size and 0 for large RAM size.
   This configures how much memory RocksDB is allowed to use for immutable
-  flushed memtables/write-buffers. The default of 1 will usually be good
-  for small machines and 0 for all other cases.
+  flushed memtables/write-buffers. The default of 1 will usually be good for
+  small machines and 0 for all other cases.
 
 * Added metrics for V8 contexts usage:
   * `arangodb_v8_context_alive`: number of V8 contexts currently alive.
