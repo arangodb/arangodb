@@ -51,6 +51,7 @@
 #include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
 #include "Futures/Utilities.h"
+#include "GeneralServer/RestHandler.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Network/Methods.h"
@@ -792,19 +793,23 @@ Future<OperationResult> transaction::Methods::documentAsync(std::string const& c
                                                VPackSlice const value,
                                                OperationOptions& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+  GeneralRequest const* req = rest::RestHandler::CURRENT_HANDLER
+                                  ? rest::RestHandler::CURRENT_HANDLER->request()
+                                  : nullptr;
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
     events::ReadDocument(vocbase().name(), cname, value, options,
-                         TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+                         TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID, req);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
   if (_state->isCoordinator()) {
     return addTracking(documentCoordinator(cname, value, options), value,
                        [=](OperationResult const& opRes, VPackSlice data) {
-      events::ReadDocument(vocbase().name(), cname, data, opRes._options, opRes.errorNumber());
-    });
+                         events::ReadDocument(vocbase().name(), cname, data,
+                                              opRes._options, opRes.errorNumber(), req);
+                       });
   } else {
     return documentLocal(cname, value, options);
   }
@@ -896,7 +901,11 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
     res.reset(); // With babies the reporting is handled somewhere else.
   }
 
-  events::ReadDocument(vocbase().name(), collectionName, value, options, res.errorNumber());
+  GeneralRequest const* req = rest::RestHandler::CURRENT_HANDLER
+                                  ? rest::RestHandler::CURRENT_HANDLER->request()
+                                  : nullptr;
+  events::ReadDocument(vocbase().name(), collectionName, value, options,
+                       res.errorNumber(), req);
 
   return futures::makeFuture(OperationResult(std::move(res), resultBuilder.steal(),
                                              options, countErrorCodes));
@@ -909,15 +918,18 @@ Future<OperationResult> transaction::Methods::insertAsync(std::string const& cna
                                                           VPackSlice const value,
                                                           OperationOptions const& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+  GeneralRequest const* req = rest::RestHandler::CURRENT_HANDLER
+                                  ? rest::RestHandler::CURRENT_HANDLER->request()
+                                  : nullptr;
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
     events::CreateDocument(vocbase().name(), cname, value, options,
-                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID, req);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (value.isArray() && value.length() == 0) {
-    events::CreateDocument(vocbase().name(), cname, value, options, TRI_ERROR_NO_ERROR);
+    events::CreateDocument(vocbase().name(), cname, value, options, TRI_ERROR_NO_ERROR, req);
     return emptyResult(options);
   }
 
@@ -929,12 +941,11 @@ Future<OperationResult> transaction::Methods::insertAsync(std::string const& cna
     f = insertLocal(cname, value, optionsCopy);
   }
 
-  return addTracking(std::move(f), value,
-                     [=](OperationResult const& opRes, VPackSlice data) {
-                       events::CreateDocument(vocbase().name(), cname,
-                                              (opRes.ok() && opRes._options.returnNew) ? opRes.slice() : data,
-                                              opRes._options, opRes.errorNumber());
-                     });
+  return addTracking(std::move(f), value, [=](OperationResult const& opRes, VPackSlice data) {
+    events::CreateDocument(vocbase().name(), cname,
+                           (opRes.ok() && opRes._options.returnNew) ? opRes.slice() : data,
+                           opRes._options, opRes.errorNumber(), req);
+  });
 }
 
 /// @brief create one or multiple documents in a collection, coordinator
@@ -1178,16 +1189,19 @@ Future<OperationResult> transaction::Methods::updateAsync(std::string const& cna
                                                           VPackSlice const newValue,
                                                           OperationOptions const& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+  GeneralRequest const* req = rest::RestHandler::CURRENT_HANDLER
+                                  ? rest::RestHandler::CURRENT_HANDLER->request()
+                                  : nullptr;
 
   if (!newValue.isObject() && !newValue.isArray()) {
     // must provide a document object or an array of documents
     events::ModifyDocument(vocbase().name(), cname, newValue, options,
-                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID, req);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (newValue.isArray() && newValue.length() == 0) {
     events::ModifyDocument(vocbase().name(), cname, newValue, options,
-                           TRI_ERROR_NO_ERROR);
+                           TRI_ERROR_NO_ERROR, req);
     return emptyResult(options);
   }
 
@@ -1198,10 +1212,9 @@ Future<OperationResult> transaction::Methods::updateAsync(std::string const& cna
     OperationOptions optionsCopy = options;
     f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
   }
-  return addTracking(std::move(f), newValue, [=](OperationResult const& opRes,
-                                                 VPackSlice data) {
-    events::ModifyDocument(vocbase().name(), cname, data,
-                           opRes._options, opRes.errorNumber());
+  return addTracking(std::move(f), newValue, [=](OperationResult const& opRes, VPackSlice data) {
+    events::ModifyDocument(vocbase().name(), cname, data, opRes._options,
+                           opRes.errorNumber(), req);
   });
 }
 
@@ -1236,16 +1249,19 @@ Future<OperationResult> transaction::Methods::replaceAsync(std::string const& cn
                                               VPackSlice const newValue,
                                               OperationOptions const& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+  GeneralRequest const* req = rest::RestHandler::CURRENT_HANDLER
+                                  ? rest::RestHandler::CURRENT_HANDLER->request()
+                                  : nullptr;
 
   if (!newValue.isObject() && !newValue.isArray()) {
     // must provide a document object or an array of documents
     events::ReplaceDocument(vocbase().name(), cname, newValue, options,
-                            TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+                            TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID, req);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (newValue.isArray() && newValue.length() == 0) {
     events::ReplaceDocument(vocbase().name(), cname, newValue, options,
-                            TRI_ERROR_NO_ERROR);
+                            TRI_ERROR_NO_ERROR, req);
     return futures::makeFuture(emptyResult(options));
   }
 
@@ -1256,10 +1272,9 @@ Future<OperationResult> transaction::Methods::replaceAsync(std::string const& cn
     OperationOptions optionsCopy = options;
     f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
   }
-  return addTracking(std::move(f), newValue, [=](OperationResult const& opRes,
-                                                 VPackSlice data) {
-    events::ReplaceDocument(vocbase().name(), cname, data,
-                           opRes._options, opRes.errorNumber());
+  return addTracking(std::move(f), newValue, [=](OperationResult const& opRes, VPackSlice data) {
+    events::ReplaceDocument(vocbase().name(), cname, data, opRes._options,
+                            opRes.errorNumber(), req);
   });
 }
 
@@ -1446,15 +1461,18 @@ Future<OperationResult> transaction::Methods::removeAsync(std::string const& cna
                                                           VPackSlice const value,
                                                           OperationOptions const& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+  GeneralRequest const* req = rest::RestHandler::CURRENT_HANDLER
+                                  ? rest::RestHandler::CURRENT_HANDLER->request()
+                                  : nullptr;
 
   if (!value.isObject() && !value.isArray() && !value.isString()) {
     // must provide a document object or an array of documents
     events::DeleteDocument(vocbase().name(), cname, value, options,
-                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID, req);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (value.isArray() && value.length() == 0) {
-    events::DeleteDocument(vocbase().name(), cname, value, options, TRI_ERROR_NO_ERROR);
+    events::DeleteDocument(vocbase().name(), cname, value, options, TRI_ERROR_NO_ERROR, req);
     return emptyResult(options);
   }
 
@@ -1465,10 +1483,9 @@ Future<OperationResult> transaction::Methods::removeAsync(std::string const& cna
     OperationOptions optionsCopy = options;
     f = removeLocal(cname, value, optionsCopy);
   }
-  return addTracking(std::move(f), value, [=](OperationResult const& opRes,
-                                              VPackSlice data) {
-    events::DeleteDocument(vocbase().name(), cname, data,
-                            opRes._options, opRes.errorNumber());
+  return addTracking(std::move(f), value, [=](OperationResult const& opRes, VPackSlice data) {
+    events::DeleteDocument(vocbase().name(), cname, data, opRes._options,
+                           opRes.errorNumber(), req);
   });
 }
 
