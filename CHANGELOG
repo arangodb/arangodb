@@ -1,6 +1,11 @@
 devel
 -----
 
+* Add option `--rocksdb.max-write-buffer-size-to-maintain` with default of 0.
+  This configures how much memory RocksDB is allowed to use for immutable
+  flushed memtables/write-buffers. The default of 0 will usually be good
+  for all purposes and restores the 3.6 memory usage for write-buffers.
+
 * Updated arangosync to 0.7.10.
 
 * Make followers in active failover run a compaction after they process a
