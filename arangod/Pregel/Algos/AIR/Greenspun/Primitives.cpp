@@ -762,15 +762,15 @@ EvalResult Prim_Map(Machine& ctx, VPackSlice const paramsList, VPackBuilder& res
 }
 
 EvalResult Prim_Filter(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
-  return EvalError("not implemented");
+  return EvalError("Prim_Filter not implemented");
 }
 
 EvalResult Prim_Foldl(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
-  return EvalError("not implemented");
+  return EvalError("Prim_Foldl not implemented");
 }
 
 EvalResult Prim_Foldl1(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
-  return EvalError("not implemented");
+  return EvalError("Prim_Foldl1 not implemented");
 }
 
 EvalResult Prim_EmptyArrayHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
