@@ -47,7 +47,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/HeartbeatThread.h"
-#include "Cluster/MaintenanceFeature.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
@@ -686,6 +685,7 @@ void ClusterInfo::loadPlan() {
   // '_newPlannedViews' member instead of '_plannedViews'
 
   // set plan loader
+  TRI_ASSERT(_newPlannedViews.empty());
   _planLoader = std::this_thread::get_id();
 
   // ensure we'll eventually reset plan loader
