@@ -1293,7 +1293,20 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
                 {THE_LEADER, leader},
                 {SHARD_VERSION, std::to_string(feature.shardVersion(shname.toString()))}},
             SYNCHRONIZE_PRIORITY, true);
-        feature.addAction(description, false);
+        std::string shardName = description->get(SHARD);
+        bool ok = feature.lockShard(shardName, description);
+        TRI_ASSERT(ok);
+        try {
+          Result res = feature.addAction(std::move(description), false);
+          if (res.fail()) {
+            feature.unlockShard(shardName);
+          }
+        } catch (std::exception const& exc) {
+          feature.unlockShard(shardName);
+          LOG_TOPIC("86763", INFO, Logger::MAINTENANCE)
+          << "Exception caught when adding synchronize shard action, unlocking shard "
+          << shardName << " again: " << exc.what();
+        }
       }
     }
   }
