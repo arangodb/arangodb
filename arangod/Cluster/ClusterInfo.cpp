@@ -947,7 +947,7 @@ void ClusterInfo::loadPlan() {
     std::vector<std::string> analyzersPath {
       AgencyCommHelper::path(), "Plan", "Analyzers", databaseName};
     if(!analyzerSlice.hasKey(analyzersPath)) { // DB Gone
-      _dbAnalyzersRevision.erase(databaseName);
+      newDbAnalyzersRevision.erase(databaseName);
     }
     analyzerSlice = database.second->slice().get(analyzersPath);
     
