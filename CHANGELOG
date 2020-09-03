@@ -1,3 +1,13 @@
+v3.6.6.1 (XXXX-XX-XX)
+---------------------
+
+* Add option `--rocksdb.max-write-buffer-number-to-maintain` with default of 1
+  for small RAM size and 0 for large RAM size.
+  This configures how much memory RocksDB is allowed to use for immutable
+  flushed memtables/write-buffers. The default of 1 will usually be good for
+  small machines and 0 for all other cases.
+
+
 v3.6.6 (2020-08-21)
 -------------------
 
