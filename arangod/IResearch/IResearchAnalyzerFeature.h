@@ -50,24 +50,10 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Auth/Common.h"
 #include "Basics/Result.h"
-#include "Cluster/ClusterTypes.h"
 #include "Basics/Identifier.h" // this include only need to make clang see << operator for Identifier
+#include "Cluster/ClusterTypes.h"
+#include "IResearch/IResearchVPackFormat.h"
 #include "Scheduler/SchedulerFeature.h"
-
-namespace iresearch {
-namespace text_format {
-
-struct vpack {
-  static constexpr irs::string_ref type_name() noexcept {
-    return "vpack";
-  }
-};
-
-} // iresearch
-} // text_format
-
-#define REGISTER_ANALYZER_VPACK(analyzer_name, factory, normalizer) \
-  REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::vpack, factory, normalizer)
 
 struct TRI_vocbase_t; // forward declaration
 

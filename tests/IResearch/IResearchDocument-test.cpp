@@ -48,6 +48,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchPrimaryKeyFilter.h"
@@ -70,8 +71,49 @@
 #endif
 
 namespace {
+
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+
+using AssertFieldFunc = void(arangodb::tests::mocks::MockAqlServer&,
+                             arangodb::iresearch::FieldIterator const&);
+
+using IdentityAnalyzer = arangodb::iresearch::IdentityAnalyzer;
+
+template<typename Analyzer, typename Server>
+void assertField(
+    Server& server,
+    arangodb::iresearch::Field const& value,
+    std::string const& expectedName) {
+  SCOPED_TRACE(testing::Message("Expected name: ") << expectedName);
+
+  auto* analyzer = dynamic_cast<Analyzer*>(&value.get_tokens());
+  ASSERT_NE(nullptr, analyzer);
+  if constexpr (std::is_base_of_v<irs::analysis::analyzer, Analyzer>) {
+    ASSERT_EQ(mangleString(expectedName, irs::type<Analyzer>::name()), value.name());
+    auto& analyzers = server.template getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    const auto expectedAnalyzerPtr = irs::analysis::analyzers::get(
+      irs::type<Analyzer>::name(),
+      irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+    ASSERT_NE(nullptr, expectedAnalyzerPtr);
+
+    const auto prefix = !std::is_same_v<arangodb::iresearch::IdentityAnalyzer, Analyzer>
+      ? arangodb::StaticStrings::SystemDatabase + "::"
+      : "";
+
+    auto const expectedArangoSearchAnalyzerPtr = analyzers.get(
+      prefix + std::string(irs::type<Analyzer>::name()),
+      arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+      true);
+    ASSERT_NE(nullptr, expectedArangoSearchAnalyzerPtr);
+
+    ASSERT_EQ(expectedAnalyzerPtr->type(), analyzer->type());
+    ASSERT_EQ(expectedArangoSearchAnalyzerPtr->features(), value.features());
+  } else if constexpr (std::is_base_of_v<irs::token_stream, Analyzer>) {
+    ASSERT_EQ(expectedName, value.name());
+  }
+}
 
 struct TestAttribute : public irs::attribute {
   static constexpr irs::string_ref type_name() noexcept {
@@ -234,7 +276,7 @@ class IResearchDocumentTest
         arangodb::StaticStrings::SystemDatabase + "::iresearch-document-empty",
         "iresearch-document-empty",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
-        irs::flags{irs::type<irs::frequency>::get()});  // cache analyzer
+        irs::flags{irs::type<irs::frequency>::get()});
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(
@@ -243,7 +285,7 @@ class IResearchDocumentTest
             "::iresearch-document-invalid",
         "iresearch-document-invalid",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
-        irs::flags{irs::type<irs::frequency>::get()});  // cache analyzer
+        irs::flags{irs::type<irs::frequency>::get()});
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(
@@ -251,7 +293,7 @@ class IResearchDocumentTest
         arangodb::StaticStrings::SystemDatabase + "::iresearch-vpack-analyzer",
         "iresearch-vpack-analyzer",
         VPackSlice::emptyObjectSlice(),
-        irs::flags{});  // cache analyzer
+        irs::flags{});
     EXPECT_TRUE(res.ok());
   }
 };
@@ -1362,11 +1404,11 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   EXPECT_FALSE(it.valid());
 }
 
-/*TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_inheritance_object_analyzer) {
+TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_inheritance_object_analyzer) {
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
-  auto json = arangodb::velocypack::Parser::fromJson(
+  auto const json = arangodb::velocypack::Parser::fromJson(
   "{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
@@ -1383,15 +1425,13 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     ] \
   }");
 
-  auto const slice = json->slice();
-
-  auto linkMetaJson = arangodb::velocypack::Parser::fromJson(
+  auto const linkMetaJson = arangodb::velocypack::Parser::fromJson(
       "{ \
     \"includeAllFields\" : true, \
     \"trackListPositions\" : true, \
     \"fields\" : { \
        \"boost\" : { \"analyzers\": [ \"identity\" ] }, \
-       \"keys\" : { \"trackListPositions\" : false, \"analyzers\": [ \"identity\" ] }, \
+       \"keys\" : { \"trackListPositions\" : false, \"analyzers\": [ \"identity\", \"iresearch-vpack-analyzer\" ] }, \
        \"depth\" : { \"trackListPositions\" : true }, \
        \"fields\" : { \"includeAllFields\" : false, \"fields\" : { \"fieldA\" : { \"includeAllFields\" : true } } }, \
        \"listValuation\" : { \"includeAllFields\" : false }, \
@@ -1403,7 +1443,6 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   }");
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
-
   std::string error;
   ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), false,
                             error, sysVocbase.get()));
@@ -1413,302 +1452,70 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
                                      EMPTY, EMPTY, EMPTY,
                                      arangodb::transaction::Options());
 
+  std::function<AssertFieldFunc> const assertFields[] = {
+    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "nested"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "nested.foo"); },
+    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "nested.foo"); },
+    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "keys"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "keys"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "keys"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "keys"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "keys"); },
+    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "analyzers"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "boost"); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("depth")); },
+    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "fields"); },
+    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "fields.fieldA"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "fields.fieldA.name"); },
+    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "fields.fieldA.name"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "listValuation"); },
+    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "listValuation"); },
+    [](auto& server, auto const& it) { assertField<irs::null_token_stream>(server, *it, mangleNull("locale")); },
+    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array"); },
+    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[0]"); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[0].id")); },
+    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[0].subarr"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[0].subarr"); },
+    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[0].subarr"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[0].subarr"); },
+    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[0].subarr"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[0].subarr"); },
+    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[0].subarr"); },
+    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[0].subobj"); },
+    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[1]"); },
+    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[1].subarr"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[1].subarr"); },
+    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[1].subarr"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[1].subarr"); },
+    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[1].subarr"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[1].subarr"); },
+    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[1].subarr"); },
+    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[1].subobj"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[1].id"); },
+    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[1].id"); },
+    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[2]"); },
+    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[2].id")); },
+    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[2].subarr"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[2].subarr"); },
+    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[2].subarr"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[2].subarr"); },
+    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[2].subarr"); },
+    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[2].subarr"); },
+    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[2].subarr"); },
+    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[2].subobj"); },
+  };
+
   arangodb::iresearch::FieldIterator it(trx);
-  it.reset(slice, linkMeta);
-  ASSERT_TRUE(it.valid());
+  it.reset(json->slice(), linkMeta);
 
-  // nested.foo (with IdentityAnalyzer)
-  {
-    auto& value = *it;
-    EXPECT_EQ(mangleStringIdentity("nested.foo"), value.name());
-    const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(
-                                          VPackSlice::emptyObjectSlice()));
-    auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
-    EXPECT_EQ(expected_features, value.features());
-    EXPECT_EQ(expected_analyzer->type(), analyzer.type());
-  }
-
-  ++it;
-  ASSERT_TRUE(it.valid());
-
-  // nested.foo (with EmptyAnalyzer)
-  {
-    auto& value = *it;
-    EXPECT_EQ(mangleString("nested.foo", "iresearch-document-empty"), value.name());
-    auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
-    EXPECT_FALSE(analyzer.next());
-  }
-
-  // keys[]
-  for (size_t i = 0; i < 4; ++i) {
-    ++it;
+  for (auto& assertField : assertFields) {
     ASSERT_TRUE(it.valid());
-
-    auto& value = *it;
-    EXPECT_EQ(mangleStringIdentity("keys"), value.name());
-    const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
-    auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features, value.features());
-    EXPECT_EQ(expected_analyzer->type(), analyzer.type());
-  }
-
-  ++it;
-  ASSERT_TRUE(it.valid());
-
-  // boost
-  {
-    auto& value = *it;
-    EXPECT_EQ(mangleStringIdentity("boost"), value.name());
-    const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
-    auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features, value.features());
-    EXPECT_EQ(expected_analyzer->type(), analyzer.type());
-  }
-
-  ++it;
-  ASSERT_TRUE(it.valid());
-
-  // depth
-  {
-    auto& value = *it;
-    EXPECT_EQ(mangleNumeric("depth"), value.name());
-    auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
-    EXPECT_TRUE(analyzer.next());
-  }
-
-  ++it;
-  ASSERT_TRUE(it.valid());
-
-  // fields.fieldA (with IdenityAnalyzer)
-  {
-    auto& value = *it;
-    EXPECT_EQ(mangleStringIdentity("fields.fieldA.name"), value.name());
-    const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
-    auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features, value.features());
-    EXPECT_EQ(expected_analyzer->type(), analyzer.type());
-  }
-
-  ++it;
-  ASSERT_TRUE(it.valid());
-
-  // fields.fieldA (with EmptyAnalyzer)
-  {
-    auto& value = *it;
-    EXPECT_TRUE(mangleString("fields.fieldA.name",
-                             "iresearch-document-empty") == value.name());
-    auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
-    EXPECT_FALSE(analyzer.next());
-  }
-
-  ++it;
-  ASSERT_TRUE(it.valid());
-
-  // listValuation (with IdenityAnalyzer)
-  {
-    auto& value = *it;
-    EXPECT_EQ(mangleStringIdentity("listValuation"), value.name());
-    const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
-    auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features, value.features());
-    EXPECT_EQ(expected_analyzer->type(), analyzer.type());
-  }
-
-  ++it;
-  ASSERT_TRUE(it.valid());
-
-  // listValuation (with EmptyAnalyzer)
-  {
-    auto& value = *it;
-    EXPECT_TRUE(mangleString("listValuation", "iresearch-document-empty") ==
-                value.name());
-    auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
-    EXPECT_FALSE(analyzer.next());
-  }
-
-  ++it;
-  ASSERT_TRUE(it.valid());
-
-  // locale
-  {
-    auto& value = *it;
-    EXPECT_EQ(mangleNull("locale"), value.name());
-    auto& analyzer = dynamic_cast<irs::null_token_stream&>(value.get_tokens());
-    EXPECT_TRUE(analyzer.next());
-  }
-
-  ++it;
-  ASSERT_TRUE(it.valid());
-
-  // array[0].id
-  {
-    auto& value = *it;
-    EXPECT_EQ(mangleNumeric("array[0].id"), value.name());
-    auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
-    EXPECT_TRUE(analyzer.next());
-  }
-
-  // array[0].subarr[0-2]
-  for (size_t i = 0; i < 3; ++i) {
+    assertField(server, it);
     ++it;
-    ASSERT_TRUE(it.valid());
-
-    // IdentityAnalyzer
-    {
-      auto& value = *it;
-      EXPECT_EQ(mangleStringIdentity("array[0].subarr"), value.name());
-      const auto expected_analyzer =
-          irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(),
-                                        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-      auto& analyzers =
-          server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-      auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
-      auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-      EXPECT_EQ(expected_features, value.features());
-      EXPECT_EQ(expected_analyzer->type(), analyzer.type());
-    }
-
-    ++it;
-    ASSERT_TRUE(it.valid());
-
-    // EmptyAnalyzer
-    {
-      auto& value = *it;
-      EXPECT_TRUE(mangleString("array[0].subarr", "iresearch-document-empty") ==
-                  value.name());
-      auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
-      EXPECT_FALSE(analyzer.next());
-    }
   }
 
-  // array[1].subarr[0-2]
-  for (size_t i = 0; i < 3; ++i) {
-    ++it;
-    ASSERT_TRUE(it.valid());
-
-    // IdentityAnalyzer
-    {
-      auto& value = *it;
-      EXPECT_EQ(mangleStringIdentity("array[1].subarr"), value.name());
-      const auto expected_analyzer =
-          irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(),
-                                        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-      auto& analyzers =
-          server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-      auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
-      auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-      EXPECT_EQ(expected_features, value.features());
-      EXPECT_EQ(expected_analyzer->type(), analyzer.type());
-    }
-
-    ++it;
-    ASSERT_TRUE(it.valid());
-
-    // EmptyAnalyzer
-    {
-      auto& value = *it;
-      EXPECT_TRUE(mangleString("array[1].subarr", "iresearch-document-empty") ==
-                  value.name());
-      auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
-      EXPECT_FALSE(analyzer.next());
-    }
-  }
-
-  ++it;
-  ASSERT_TRUE(it.valid());
-
-  // array[1].id (IdentityAnalyzer)
-  {
-    auto& value = *it;
-    EXPECT_EQ(mangleStringIdentity("array[1].id"), value.name());
-    const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
-    auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features, value.features());
-    EXPECT_EQ(expected_analyzer->type(), analyzer.type());
-  }
-
-  ++it;
-  ASSERT_TRUE(it.valid());
-
-  // array[1].id (EmptyAnalyzer)
-  {
-    auto& value = *it;
-    EXPECT_EQ(mangleString("array[1].id", "iresearch-document-empty"), value.name());
-    auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
-    EXPECT_FALSE(analyzer.next());
-  }
-
-  ++it;
-  ASSERT_TRUE(it.valid());
-
-  // array[2].id (IdentityAnalyzer)
-  {
-    auto& value = *it;
-    EXPECT_EQ(mangleNumeric("array[2].id"), value.name());
-    auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
-    EXPECT_TRUE(analyzer.next());
-  }
-
-  // array[2].subarr[0-2]
-  for (size_t i = 0; i < 3; ++i) {
-    ++it;
-    ASSERT_TRUE(it.valid());
-
-    // IdentityAnalyzer
-    {
-      auto& value = *it;
-      EXPECT_EQ(mangleStringIdentity("array[2].subarr"), value.name());
-      const auto expected_analyzer =
-          irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(),
-                                        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-      auto& analyzers =
-          server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-      auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
-      auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-      EXPECT_EQ(expected_features, value.features());
-      EXPECT_EQ(expected_analyzer->type(), analyzer.type());
-    }
-
-    ++it;
-    ASSERT_TRUE(it.valid());
-
-    // EmptyAnalyzer
-    {
-      auto& value = *it;
-      EXPECT_TRUE(mangleString("array[2].subarr", "iresearch-document-empty") ==
-                  value.name());
-      auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
-      EXPECT_FALSE(analyzer.next());
-    }
-  }
-
-  ++it;
-  EXPECT_FALSE(it.valid());
-}*/
+  ASSERT_FALSE(it.valid());
+}
 
 TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();

@@ -59,7 +59,7 @@ class IRESEARCH_API analyzer_registrar {
 };
 
 #define REGISTER_ANALYZER__(analyzer_name, args_format, factory, normalizer, line, source) \
-  static iresearch::analysis::analyzer_registrar analyzer_registrar ## _ ## line(::iresearch::type<analyzer_name>::get(), ::iresearch::type<args_format>::get(), &factory, &normalizer, source)
+  static ::iresearch::analysis::analyzer_registrar analyzer_registrar ## _ ## line(::iresearch::type<analyzer_name>::get(), ::iresearch::type<args_format>::get(), &factory, &normalizer, source)
 #define REGISTER_ANALYZER_EXPANDER__(analyzer_name, args_format, factory, normalizer, file, line) REGISTER_ANALYZER__(analyzer_name, args_format, factory, normalizer, line, file ":" TOSTRING(line))
 #define REGISTER_ANALYZER(analyzer_name, args_format, factory, normalizer) REGISTER_ANALYZER_EXPANDER__(analyzer_name, args_format, factory, normalizer, __FILE__, __LINE__)
 #define REGISTER_ANALYZER_CSV(analyzer_name, factory, normalizer) REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::csv, factory, normalizer)

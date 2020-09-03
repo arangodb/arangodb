@@ -356,7 +356,6 @@ void FieldIterator::setBoolValue(VPackSlice const value) {
 
   auto& name = nameBuffer();
 
-  // mangle name
   arangodb::iresearch::kludge::mangleBool(name);
 
   // init stream
@@ -374,7 +373,6 @@ void FieldIterator::setNumericValue(VPackSlice const value) {
 
   auto& name = nameBuffer();
 
-  // mangle name
   arangodb::iresearch::kludge::mangleNumeric(name);
 
   // init stream
@@ -392,7 +390,6 @@ void FieldIterator::setNullValue(VPackSlice const value) {
 
   auto& name = nameBuffer();
 
-  // mangle name
   arangodb::iresearch::kludge::mangleNull(name);
 
   // init stream
@@ -449,8 +446,6 @@ bool FieldIterator::setValue(VPackSlice const value,
 
   auto& name = nameBuffer();
 
-  // it's important to unconditionally mangle name
-  // since we unconditionally unmangle it in 'next'
   iresearch::kludge::mangleField(name, valueAnalyzer);
 
   // init stream
@@ -476,6 +471,11 @@ bool FieldIterator::setValue(VPackSlice const value,
 void FieldIterator::next() {
   TRI_ASSERT(valid());
 
+  auto inObjectScope = [this]() {
+    auto const size = _stack.size();
+    return size > 1 && _stack[size-2].it.value().value.isObject();
+  };
+
   FieldMeta const* context = top().meta;
   auto& name = nameBuffer();
 
@@ -486,7 +486,7 @@ setAnalyzers:
       name.resize(_prefixLength);
 
       // can have multiple analyzers for string values only
-      if (setValue(topValue().value, *_begin++)) {
+      if (setValue(_valueSlice, *_begin++)) {
         return;
       }
     }
@@ -504,52 +504,62 @@ setAnalyzers:
 
       auto& level = top();
       auto& it = level.it;
+      auto& value = it.value();
       context = level.meta;
 
       // reset name to previous size
       name.resize(level.nameLength);
 
-      if (!level.filter(name, context, it.value())) {
+      //if (_valueSlice.isObject()) {
+      //  if (!name.empty()) {
+      //    name += NESTING_LEVEL_DELIMITER;
+      //  }
+      //}
+
+      if (inObjectScope()) {
+        name += NESTING_LEVEL_DELIMITER;
+      }
+
+      if (!level.filter(name, context, value)) {
         continue;
       }
 
       _value._storeValues = context->_storeValues;
       _value._value = irs::bytes_ref::NIL;
+      _valueSlice = VPackSlice::noneSlice();
       _begin = nullptr;
       _end = nullptr;
 
-      switch (auto const slice = topValue().value; slice.type()) {
+      switch (auto const valueSlice = value.value; valueSlice.type()) {
         case VPackValueType::Null:
-          setNullValue(slice);
+          setNullValue(valueSlice);
           return;
         case VPackValueType::Bool:
-          setBoolValue(slice);
+          setBoolValue(valueSlice);
           return;
         case VPackValueType::Object:
-          if (!name.empty()) {
-            name += NESTING_LEVEL_DELIMITER;
-          }
-          [[fallthrough]];
         case VPackValueType::Array: {
-          _stack.emplace_back(slice, name.size(), *context,
-                              getFilter(slice, *context));
+          _stack.emplace_back(valueSlice, name.size(), *context,
+                              getFilter(valueSlice, *context));
 
           auto const& analyzers = context->_analyzers;
           _begin = analyzers.data() + context->_primitiveOffset;
           _end = analyzers.data() + analyzers.size();
+
           _prefixLength = name.size(); // save current prefix length
+          _valueSlice = valueSlice;
 
           if (_begin != _end) {
             goto setAnalyzers;
           }
         } break;
         case VPackValueType::Double:
-          setNumericValue(slice);
+          setNumericValue(valueSlice);
           return;
         case VPackValueType::Int:
         case VPackValueType::UInt:
         case VPackValueType::SmallInt:
-          setNumericValue(slice);
+          setNumericValue(valueSlice);
           return;
         case VPackValueType::Custom:
           TRI_ASSERT(nameBuffer() == arangodb::StaticStrings::IdString);
@@ -558,7 +568,9 @@ setAnalyzers:
           auto const& analyzers = context->_analyzers;
           _begin = analyzers.data();
           _end = _begin + context->_primitiveOffset;
+
           _prefixLength = name.size(); // save current prefix length
+          _valueSlice = valueSlice;
           goto setAnalyzers;
         }
         default:

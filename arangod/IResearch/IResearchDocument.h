@@ -192,6 +192,7 @@ class FieldIterator {
   void setBoolValue(VPackSlice const value);
 
   VPackSlice _slice; // input slice
+  VPackSlice _valueSlice;
   AnalyzerIterator _begin{};
   AnalyzerIterator _end{};
   std::vector<Level> _stack;

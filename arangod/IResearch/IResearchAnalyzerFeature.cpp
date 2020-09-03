@@ -55,9 +55,10 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
-#include "IResearchAnalyzerFeature.h"
-#include "IResearchCommon.h"
-#include "IResearchLink.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchIdentityAnalyzer.h"
+#include "IResearch/IResearchLink.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -91,7 +92,6 @@ static char const ANALYZER_PREFIX_DELIM = ':'; // name prefix delimiter (2 chars
 static size_t const ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024; // arbitrary value
 static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
 static std::string const FEATURE_NAME("ArangoSearchAnalyzer");
-static irs::string_ref constexpr IDENTITY_ANALYZER_NAME("identity");
 
 bool normalize(std::string& out,
                irs::string_ref const& type,
@@ -108,60 +108,6 @@ bool normalize(std::string& out,
     arangodb::iresearch::ref<char>(properties),
     false);
 }
-
-class IdentityAnalyzer final : public irs::analysis::analyzer {
- public:
-  static constexpr irs::string_ref type_name() noexcept {
-    return IDENTITY_ANALYZER_NAME;
-  }
-
-  static bool normalize(const irs::string_ref& /*args*/, std::string& out) {
-    out.resize(VPackSlice::emptyObjectSlice().byteSize());
-    std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
-    return true;
-  }
-
-  static irs::analysis::analyzer::ptr make(irs::string_ref const& /*args*/) {
-    return std::make_shared<IdentityAnalyzer>();
-  }
-
-  IdentityAnalyzer()
-    : irs::analysis::analyzer(irs::type<IdentityAnalyzer>::get()),
-      _empty(true) {
-  }
-
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    if (type == irs::type<irs::increment>::id()) {
-      return &_inc;
-    }
-
-    return type == irs::type<irs::term_attribute>::id()
-        ? &_term
-        : nullptr;
-  }
-
-  virtual bool next() noexcept override {
-    auto const empty = _empty;
-
-    _empty = true;
-
-    return !empty;
-  }
-
-  virtual bool reset(irs::string_ref const& data) noexcept override {
-    _empty = false;
-    _term.value = irs::ref_cast<irs::byte_type>(data);
-
-    return true;
-  }
-
- private:
-  irs::term_attribute _term;
-  irs::increment _inc;
-  bool _empty;
-}; // IdentityAnalyzer
-
-REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
 
 // Delimiter analyzer vpack routines ////////////////////////////
 namespace delimiter_vpack {
@@ -2075,7 +2021,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
       {
         irs::flags const extraFeatures = {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()};
 
-        auto pool = std::make_shared<AnalyzerPool>(IDENTITY_ANALYZER_NAME);
+        auto pool = std::make_shared<AnalyzerPool>(IdentityAnalyzer::type_name());
 
 
         if (!pool || !pool->init(irs::type<IdentityAnalyzer>::name(),
@@ -2085,7 +2031,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
           LOG_TOPIC("26de1", WARN, iresearch::TOPIC)
               << "failure creating an arangosearch static analyzer instance "
                  "for name '"
-              << IDENTITY_ANALYZER_NAME << "'";
+              << IdentityAnalyzer::type_name() << "'";
 
           // this should never happen, treat as an assertion failure
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -2161,7 +2107,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     Identity() {
       // find the 'identity' analyzer pool in the static analyzers
       auto& staticAnalyzers = getStaticAnalyzers();
-      auto key = irs::make_hashed_ref(IDENTITY_ANALYZER_NAME, std::hash<irs::string_ref>());
+      auto key = irs::make_hashed_ref(IdentityAnalyzer::type_name(), std::hash<irs::string_ref>());
       auto itr = staticAnalyzers.find(key);
 
       if (itr != staticAnalyzers.end()) {
