@@ -912,6 +912,8 @@ public:
 
   std::shared_ptr<VPackBuilder> getCurrent();
   std::shared_ptr<VPackBuilder> getCurrent(uint64_t& currentIndex);
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
+    getCurrent(uint64_t& currentIndex, std::unordered_set<std::string> const&);
 
   std::vector<std::string> getFailedServers() {
     MUTEX_LOCKER(guard, _failedServersMutex);
@@ -1113,9 +1115,9 @@ public:
   std::unordered_map<ServerShortID, ServerID> _coordinatorIdMap;
   ProtectionData _mappingsProt;
 
-  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> _plan;
-  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> _current;
-
+  std::unordered_map<DatabaseID, std::shared_ptr<VPackBuilder>> _plan;
+  std::unordered_map<DatabaseID, std::shared_ptr<VPackBuilder>> _current;
+  
   std::string _clusterId;
 
   std::unordered_map<DatabaseID, VPackSlice> _plannedDatabases;  // from Plan/Databases

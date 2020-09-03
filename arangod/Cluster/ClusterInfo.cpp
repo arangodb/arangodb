@@ -311,7 +311,6 @@ void ClusterInfo::cleanup() {
 
   {
     WRITE_LOCKER(writeLocker, _planProt.lock);
-    TRI_ASSERT(_newPlannedViews.empty());  // only non-empty during loadPlan()
     _plannedViews.clear();
     _plannedCollections.clear();
     _shards.clear();
@@ -687,12 +686,10 @@ void ClusterInfo::loadPlan() {
   // '_newPlannedViews' member instead of '_plannedViews'
 
   // set plan loader
-  TRI_ASSERT(_newPlannedViews.empty());
   _planLoader = std::this_thread::get_id();
 
   // ensure we'll eventually reset plan loader
   auto resetLoader = scopeGuard([this, start]() {
-    _newPlannedViews.clear();
     _planLoader = std::thread::id();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -740,34 +737,36 @@ void ClusterInfo::loadPlan() {
     }
   }
 
-  // reserve 8Kb here for fetching the Plan. this is very conservative,
-  // but will save a few memory re-allocations plans of all sizes
   uint64_t planIndex;
   {
     READ_LOCKER(guard, _planProt.lock);
     planIndex = _planIndex;
   }
 
+  bool changed = false;
   auto changeSet = agencyCache.changedSince("Plan", planIndex);
   {
     auto& maintenance = _server.getFeature<MaintenanceFeature>();
     WRITE_LOCKER(writeLocker, _planProt.lock);
     for (auto const& db : changeSet.dbs) { // Databases
       _plan[db.first] = db.second;
-      maintenance.addDirty(db.first);
+      maintenance.addDirty(db.first); // TODO this goes last
+      changed = true;
     }
     if (changeSet.rest != nullptr) {       // Rest
       _plan[std::string()] = changeSet.rest;
+      changed = true;
     }
   }
 
+  if (!changed) {
+    return;
+  }
+
+  
   decltype(_plannedDatabases) newDatabases;
   std::set<std::string> buildingDatabases;
-  decltype(_plannedCollections) newCollections;  // map<string /*database id*/
-  //    ,map<string /*collection id*/
-  //        ,shared_ptr<LogicalCollection>
-  //        >
-  //    >
+  decltype(_plannedCollections) newCollections; 
   decltype(_shards) newShards;
   decltype(_shardServers) newShardServers;
   decltype(_shardToName) newShardToName;
@@ -776,17 +775,43 @@ void ClusterInfo::loadPlan() {
   bool swapCollections = false;
   bool swapViews = false;
   bool swapAnalyzers = false;
+
+  {
+    READ_LOCKER(guard, _planProt.lock);
+    newDatabases = _plannedDatabases;
+    newCollections = _plannedCollections;
+    newShards = _shards;
+    newShardServers = _shardServers;
+    newShardToName = _shardToName;
+    newDbAnalyzersRevision = _dbAnalyzersRevision;
+  }
+
   std::string name;
 
-  for (auto const& database : _plan) {
+  // mark for swap even if no databases present to ensure dangling datasources are removed
+  // TODO: Maybe optimize. Else remove alltogether
+  if (!changeSet.dbs.empty()) {
+    swapDatabases = true;
+    swapCollections = true;
+    swapViews = true;
+    swapAnalyzers = true;
+  }
+
+  for (auto const& database : changeSet.dbs) {
 
     if (database.first.empty()) { // Rest of plan
       continue;
     }
-
+    
     name = database.first;
-    auto dbSlice = database.second->slice().get(
-      std::vector<std::string>{AgencyCommHelper::path(), "Plan", "Databases", name});
+    auto dbSlice = database.second->slice();
+    std::vector<std::string> dbPath{AgencyCommHelper::path(), "Plan", "Databases", name};
+    if (!dbSlice.hasKey(dbPath)) { // Dropped from Plan
+      newDatabases.erase(name);
+      continue;
+    }
+
+    dbSlice = dbSlice.get(dbPath);
     bool const isBuilding = dbSlice.hasKey(StaticStrings::AttrIsBuilding);
 
     // We create the database object on the coordinator here, because
@@ -820,7 +845,7 @@ void ClusterInfo::loadPlan() {
     if (isCoordinator && isBuilding) {
       buildingDatabases.emplace(std::move(name));
     } else {
-      newDatabases.try_emplace(std::move(name), dbSlice);
+      newDatabases[std::move(name)] = dbSlice;
     }
   }
 
@@ -841,27 +866,23 @@ void ClusterInfo::loadPlan() {
   //  },...
   //  }}
 
-  // Now the same for views:
-  for (auto const& database : _plan) {
+  // Now the same for views: // TODO change
+  for (auto const& database : changeSet.dbs) {
 
     if (database.first.empty()) { // Rest of plan
       continue;
     }
-
     auto const& databaseName = database.first;
-    auto const& viewsSlice = database.second->slice().get(
-      std::vector<std::string>{
-        AgencyCommHelper::path(), "Plan", "Views", databaseName});
+    std::vector<std::string> viewsPath {
+      AgencyCommHelper::path(), "Plan", "Views", databaseName};
+    auto viewsSlice = database.second->slice();
 
-    if (!viewsSlice.isObject()) {
-      LOG_TOPIC("0ee7f", INFO, Logger::AGENCY)
-        << "Views in the plan is not a valid json object."
-        << " Views will be ignored for now and the invalid information"
-        << " will be repaired. VelocyPack: " << viewsSlice.toJson();
-
+    /*if (!viewsSlice.hasKey(viewsPath)) { // database gone
+      newViews.erase(databaseName);
       continue;
-    }
-
+      }*/  // TODO: we might need something like this
+    viewsSlice = database.second->slice().get(viewsPath);
+    
     auto* vocbase = databaseFeature.lookupDatabase(databaseName);
 
     if (!vocbase) {
@@ -873,10 +894,10 @@ void ClusterInfo::loadPlan() {
         << "invalid information will be repaired. VelocyPack: "
         << viewsSlice.toJson();
       planValid &= !viewsSlice.length();  // cannot find vocbase for defined views (allow empty views for missing vocbase)
-
       continue;
     }
 
+    DatabaseViews views;
     for (auto const& viewPairSlice : velocypack::ObjectIterator(viewsSlice, true)) {
       auto const& viewSlice = viewPairSlice.value;
 
@@ -885,12 +906,11 @@ void ClusterInfo::loadPlan() {
           << "View entry is not a valid json object."
           << " The view will be ignored for now and the invalid "
           << "information will be repaired. VelocyPack: " << viewSlice.toJson();
-
         continue;
       }
 
       auto const viewId = viewPairSlice.key.copyString();
-
+      
       try {
         LogicalView::ptr view;
         auto res = LogicalView::instantiate(view, *vocbase, viewPairSlice.value);
@@ -901,17 +921,17 @@ void ClusterInfo::loadPlan() {
             << "'. The view will be ignored for now and the invalid "
             << "information will be repaired. VelocyPack: " << viewSlice.toJson();
           planValid = false;  // view creation failure
-
           continue;
         }
-
+        
         auto& views = _newPlannedViews[databaseName];
-
+        
         // register with guid/id/name
         views.reserve(views.size() + 3);
         views[viewId] = view;
         views[view->name()] = view;
         views[view->guid()] = view;
+        
       } catch (std::exception const& ex) {
         // The Plan contains invalid view information.
         // This should not happen in healthy situations.
@@ -935,7 +955,6 @@ void ClusterInfo::loadPlan() {
       }
     }
   }
-
   // "Plan":{"Analyzers": {
   //  "_system": {
   //    "Revision": 0,
@@ -945,19 +964,22 @@ void ClusterInfo::loadPlan() {
   //  },...
   // }}
   // Now the same for analyzers:
-  for (auto const& database : _plan) {
+  for (auto const& database : changeSet.dbs) {
 
     if (database.first.empty()) { // Rest of plan
       continue;
     }
-
     auto const& databaseName = database.first;
-    auto const& analyzerSlice = database.second->slice().get(
-      std::vector<std::string>{
-        AgencyCommHelper::path(), "Plan", "Analyzers", databaseName});
-
+    auto analyzerSlice = database.second->slice();
+    std::vector<std::string> analyzersPath {
+      AgencyCommHelper::path(), "Plan", "Analyzers", databaseName};
+    if(!analyzerSlice.hasKey(analyzersPath)) { // DB Gone
+      _dbAnalyzersRevision.erase(databaseName);
+    }
+    analyzerSlice = database.second->slice().get(analyzersPath);
+    
     auto* vocbase = databaseFeature.lookupDatabase(databaseName);
-
+    
     if (!vocbase) {
       // No database with this name found.
       // We have an invalid state here.
@@ -967,9 +989,10 @@ void ClusterInfo::loadPlan() {
         << "invalid information will be repaired. VelocyPack: "
         << analyzerSlice.toJson();
       planValid &= !analyzerSlice.length();  // cannot find vocbase for defined analyzers (allow empty analyzers for missing vocbase)
+      
       continue;
     }
-
+    
     std::string revisionError;
     auto revision = AnalyzersRevision::fromVelocyPack(analyzerSlice, revisionError);
     if (revision) {
@@ -986,6 +1009,7 @@ void ClusterInfo::loadPlan() {
   TRI_IF_FAILURE("AlwaysSwapAnalyzersRevision") {
     swapAnalyzers = true;
   }
+
   // Immediate children of "Collections" are database names, then ids
   // of collections, then one JSON object with the description:
 
@@ -1034,26 +1058,32 @@ void ClusterInfo::loadPlan() {
   //    },...
   //  },...
   // }}
-
-  for (auto const& database : _plan) {
+  for (auto const& database : changeSet.dbs) {
 
     if (database.first.empty()) { // Rest of plan
       continue;
     }
 
     auto const& databaseName = database.first;
-    auto const& collectionsSlice = database.second->slice().get(
-      std::vector<std::string>{
-        AgencyCommHelper::path(), "Plan", "Collections", databaseName});
-
-    if (!collectionsSlice.isObject()) {
-      LOG_TOPIC("e2e7a", INFO, Logger::AGENCY)
-        << "Collections in the plan is not a valid json object."
-        << " Collections will be ignored for now and the invalid "
-        << "information will be repaired. VelocyPack: " << collectionsSlice.toJson();
-
+    auto collectionsSlice = database.second->slice();
+    std::vector<std::string> collectionsPath{
+      AgencyCommHelper::path(), "Plan", "Collections", databaseName};
+    if (!collectionsSlice.hasKey(collectionsPath)) {
+      // TODO Get all shards from all collections from databaseName 
+      // _shards, _shardsServers, shardToName erase shards
+      auto it = newCollections.find(databaseName);
+      if (it != newCollections.end()) {
+        for (auto collection : it->second) {
+          auto collectionId = collection.first;
+          newShards.erase(collectionId); // delete from shards
+          newShardToName.erase(collectionId);
+          it = newCollections.erase(it);
+        }
+      }
       continue;
     }
+    
+    collectionsSlice = collectionsSlice.get(collectionsPath);
 
     DatabaseCollections databaseCollections;
 
@@ -1303,17 +1333,21 @@ void ClusterInfo::loadCurrent() {
     }
   }
 
-  consensus::index_t idx;
-  auto changeSet = agencyCache.changedSince(idx);
+  uint64_t currentIndex;
+  {
+    READ_LOCKER(guard, _currentProt.lock);
+    currentIndex = _currentIndex;
+  }
+  auto changeSet = agencyCache.changedSince("Current", currentIndex);
   {
     auto& maintenance = _server.getFeature<MaintenanceFeature>();
-    WRITE_LOCKER(writeLocker, _planProt.lock);
+    WRITE_LOCKER(writeLocker, _currentProt.lock);
     for (auto const& db : changeSet.dbs) { // Databases
-      _statum[db.first] = db.second;
+      _current[db.first] = db.second;
       maintenance.addDirty(db.first);
     }
-    if (p != nullptr) {                    // Rest
-      _statum[std::string()] = p;
+    if (changeSet.rest != nullptr) {       // Rest
+      _current[std::string()] = changeSet.rest;
     }
   }
 
@@ -1321,83 +1355,100 @@ void ClusterInfo::loadCurrent() {
   decltype(_currentCollections) newCollections;
   decltype(_shardIds) newShardIds;
 
+  {
+    READ_LOCKER(guard, _currentProt.lock);
+    newDatabases = _currentDatabases;
+    newCollections = _currentCollections;
+    newShardIds = _shardIds;
+  }  
+
   bool swapDatabases = false;
   bool swapCollections = false;
 
-  auto currentDatabasesSlice = currentSlice.get("Databases");
+  // Current/Databases
+  for (auto const& database : changeSet.dbs) {
 
-  if (currentDatabasesSlice.isObject()) {
-    swapDatabases = true;
-
-    for (auto const& databaseSlicePair : velocypack::ObjectIterator(currentDatabasesSlice, true)) {
-      if (!databaseSlicePair.value.isObject()) {
-        continue;
-      }
-
-      auto const database = databaseSlicePair.key.copyString();
-      std::unordered_map<ServerID, velocypack::Slice> serverList;
-
-      for (auto const& serverSlicePair :
-           velocypack::ObjectIterator(databaseSlicePair.value)) {
-        serverList.try_emplace(serverSlicePair.key.copyString(), serverSlicePair.value);
-      }
-
-      newDatabases.try_emplace(std::move(database), std::move(serverList));
+    auto const databaseName = database.first;
+    if (databaseName.empty()) {
+      continue;
     }
+
+    std::vector<std::string> dbPath{
+      AgencyCommHelper::path(), "Current", "Databases", databaseName};
+    auto databaseSlice = database.second->slice();
+    if (!databaseSlice.hasKey(dbPath)) {
+      newDatabases.erase(databaseName);
+    }
+    databaseSlice = databaseSlice.get(dbPath);
+    
+    std::unordered_map<ServerID, velocypack::Slice> serverList;
+    for (auto const& serverSlicePair : VPackObjectIterator(databaseSlice)) {
+      serverList.try_emplace(databaseName, serverSlicePair.value);
+    }
+
+    newDatabases.try_emplace(std::move(databaseName), std::move(serverList));
   }
 
-  auto currentCollectionsSlice = currentSlice.get("Collections");
+  // Current/Collections
+  for (auto const& database : changeSet.dbs) {
 
-  if (currentCollectionsSlice.isObject()) {
+    auto const databaseName = database.first;
+    if (databaseName.empty()) {
+      continue;
+    }
     swapCollections = true;
 
-    for (auto const& databaseSlice : velocypack::ObjectIterator(currentCollectionsSlice)) {
-      std::string databaseName = databaseSlice.key.copyString();
-      DatabaseCollectionsCurrent databaseCollections;
-
-      for (auto const& collectionSlice :
-           velocypack::ObjectIterator(databaseSlice.value)) {
-        std::string collectionName = collectionSlice.key.copyString();
-
-        auto collectionDataCurrent =
-            std::make_shared<CollectionInfoCurrent>(newCurrentVersion);
-
-        for (auto const& shardSlice : velocypack::ObjectIterator(collectionSlice.value)) {
-          std::string shardID = shardSlice.key.copyString();
-
-          collectionDataCurrent->add(shardID, shardSlice.value);
-
-          // Note that we have only inserted the CollectionInfoCurrent under
-          // the collection ID and not under the name! It is not possible
-          // to query the current collection info by name. This is because
-          // the correct place to hold the current name is in the plan.
-          // Thus: Look there and get the collection ID from there. Then
-          // ask about the current collection info.
-
-          // Now take note of this shard and its responsible server:
-          auto servers = std::make_shared<std::vector<ServerID>>(
-              collectionDataCurrent->servers(shardID)  // args
-          );
-
-          newShardIds.try_emplace(std::move(shardID), std::move(servers));
-        }
-
-        databaseCollections.try_emplace(std::move(collectionName), std::move(collectionDataCurrent));
-      }
-
-      newCollections.try_emplace(std::move(databaseName), std::move(databaseCollections));
+    std::vector<std::string> dbPath{
+      AgencyCommHelper::path(), "Current", "Collections", databaseName};
+    auto databaseSlice = database.second->slice();
+    if (!databaseSlice.hasKey(dbPath)) { //TODO
+      LOG_DEVEL << "TODO";
+        //newDatabases.erase(database);
     }
+    databaseSlice = databaseSlice.get(dbPath);
+
+    DatabaseCollectionsCurrent databaseCollections;
+
+    for (auto const& collectionSlice : VPackObjectIterator(databaseSlice)) {
+      std::string collectionName = collectionSlice.key.copyString();
+
+      auto collectionDataCurrent =
+        std::make_shared<CollectionInfoCurrent>(newCurrentVersion);
+
+      for (auto const& shardSlice : velocypack::ObjectIterator(collectionSlice.value)) {
+        std::string shardID = shardSlice.key.copyString();
+        
+        collectionDataCurrent->add(shardID, shardSlice.value);
+        
+        // Note that we have only inserted the CollectionInfoCurrent under
+        // the collection ID and not under the name! It is not possible
+        // to query the current collection info by name. This is because
+        // the correct place to hold the current name is in the plan.
+        // Thus: Look there and get the collection ID from there. Then
+        // ask about the current collection info.
+        
+        // Now take note of this shard and its responsible server:
+        auto servers = std::make_shared<std::vector<ServerID>>(
+          collectionDataCurrent->servers(shardID)  // args
+          );
+        
+        newShardIds.try_emplace(std::move(shardID), std::move(servers));
+      }
+      
+      databaseCollections.try_emplace(std::move(collectionName), std::move(collectionDataCurrent));
+    }
+    
+    newCollections.try_emplace(std::move(databaseName), std::move(databaseCollections));
   }
 
   // Now set the new value:
   WRITE_LOCKER(writeLocker, _currentProt.lock);
 
-  _current = std::move(currentBuilder);
   _currentVersion = newCurrentVersion;
-  _currentIndex = idx;
+  _currentIndex = changeSet.ind;
   LOG_TOPIC("feddd", DEBUG, Logger::CLUSTER)
       << "Updating current in ClusterInfo: version=" << newCurrentVersion
-      << " index=" << idx;
+      << " index=" << _currentIndex;
 
   if (swapDatabases) {
     _currentDatabases.swap(newDatabases);
@@ -1414,7 +1465,7 @@ void ClusterInfo::loadCurrent() {
 
   {
     std::lock_guard w(_waitCurrentLock);
-    triggerWaiting(_waitCurrent, idx);
+    triggerWaiting(_waitCurrent, _currentIndex);
     auto heartbeatThread = _server.getFeature<ClusterFeature>().heartbeatThread();
     if (heartbeatThread) {
       // In the unittests, there is no heartbeatthread, and we do not need to notify
@@ -4830,16 +4881,16 @@ void ClusterInfo::invalidateCurrentMappings() {
 //////////////////////////////////////////////////////////////////////////////
 
 std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
-ClusterInfo::getPlan(uint64_t& planIndex, std::unordered_set<std::string> const& dirty) {
+ClusterInfo::getPlan(uint64_t& index, std::unordered_set<std::string> const& dirty) {
   if (!_planProt.isValid) {
     loadPlan();
   }
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> ret;
   READ_LOCKER(readLocker, _planProt.lock);
-  planIndex = _planIndex;
+  index = _planIndex;
   for (auto const& i : dirty) {
-    auto it = _consilium.find(i);
-    if (it == _consilium.end()) {
+    auto it = _plan.find(i);
+    if (it == _plan.end()) {
       continue;
     }
     ret.try_emplace(it->first, it->second);
@@ -4851,21 +4902,22 @@ ClusterInfo::getPlan(uint64_t& planIndex, std::unordered_set<std::string> const&
 /// @brief get current "Current" structure
 //////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> ClusterInfo::getCurrent() {
+std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
+ClusterInfo::getCurrent(uint64_t& index, std::unordered_set<std::string> const& dirty) {
   if (!_currentProt.isValid) {
     loadCurrent();
   }
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> ret;
   READ_LOCKER(readLocker, _currentProt.lock);
-  return _current;
-}
-
-std::shared_ptr<VPackBuilder> ClusterInfo::getCurrent(uint64_t& currentIndex) {
-  if (!_currentProt.isValid) {
-    loadCurrent();
+  index = _currentIndex;
+  for (auto const& i : dirty) {
+    auto it = _current.find(i);
+    if (it == _current.end()) {
+      continue;
+    }
+    ret.try_emplace(it->first, it->second);
   }
-  READ_LOCKER(readLocker, _currentProt.lock);
-  currentIndex = _currentIndex;
-  return _current;
+  return ret;
 }
 
 std::unordered_map<ServerID, std::string> ClusterInfo::getServers() {
@@ -5569,7 +5621,7 @@ VPackBuilder ClusterInfo::toVelocyPack() {
   {
     VPackObjectBuilder d(&dump);
     READ_LOCKER(readLocker, _planProt.lock);
-    for (auto const& i : _consilium) {
+    for (auto const& i : _plan) {
       dump.add(i.first, i.second->slice());
     }
   }
