@@ -659,7 +659,7 @@ arangodb::Result arangodb::maintenance::executePlan(VPackSlice const& plan,
       VPackObjectBuilder b(&report);
       action->toVelocyPack(report);
     }
-    if (!action->isForced()) {
+    if (!action->isRunEvenIfDuplicate()) {
       feature.addAction(std::move(action), false);
     } else {
       std::string shardName = action->get(SHARD);

@@ -51,7 +51,7 @@ enum ActionState {
 };
 
 /**
- * @brief Action description for mainenance actions
+ * @brief Action description for maintenance actions
  *
  * This structure holds once initialized constant parameters of a maintenance
  * action. Members are declared const, thus thread safety guards are omitted.
@@ -65,7 +65,7 @@ struct ActionDescription final {
   ActionDescription(
       std::map<std::string, std::string> description,
       int priority,
-      bool forced,
+      bool runEvenIfDuplicate,
       std::shared_ptr<VPackBuilder> properties = std::make_shared<VPackBuilder>());
 
   /**
@@ -167,8 +167,8 @@ struct ActionDescription final {
    * will not sort out duplicates by hashing the description. Rather, the action
    * will always be submitted.
    */
-  bool isForced() const {
-    return _forced;
+  bool isRunEvenIfDuplicate() const {
+    return _runEvenIfDuplicate;
   }
 
  private:
@@ -181,8 +181,8 @@ struct ActionDescription final {
   /** @brief priority */
   int _priority;
 
-  /// @brief forced flag to not sort out duplicates by hashing
-  bool _forced;
+  /// @brief flag to not sort out duplicates by hashing
+  bool _runEvenIfDuplicate;
 };
 
 }  // namespace maintenance

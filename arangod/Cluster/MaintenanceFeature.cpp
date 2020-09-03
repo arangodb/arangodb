@@ -450,7 +450,7 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescript
     std::shared_ptr<Action> curAction;
 
     WRITE_LOCKER(wLock, _actionRegistryLock);
-    if (!description->isForced()) {
+    if (!description->isRunEvenIfDuplicate()) {
       size_t action_hash = description->hash();
 
       curAction = findFirstActionHashNoLock(action_hash, ::findNotDoneActions);
