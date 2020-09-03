@@ -471,11 +471,6 @@ bool FieldIterator::setValue(VPackSlice const value,
 void FieldIterator::next() {
   TRI_ASSERT(valid());
 
-  auto inObjectScope = [this]() {
-    auto const size = _stack.size();
-    return size > 1 && _stack[size-2].it.value().value.isObject();
-  };
-
   FieldMeta const* context = top().meta;
   auto& name = nameBuffer();
 
@@ -510,13 +505,9 @@ setAnalyzers:
       // reset name to previous size
       name.resize(level.nameLength);
 
-      //if (_valueSlice.isObject()) {
-      //  if (!name.empty()) {
-      //    name += NESTING_LEVEL_DELIMITER;
-      //  }
-      //}
-
-      if (inObjectScope()) {
+      // check if we're in object scope
+      if (auto const parent = _stack.end() - 2;
+          parent >= _stack.begin() && parent->it.value().value.isObject()) {
         name += NESTING_LEVEL_DELIMITER;
       }
 
@@ -526,7 +517,6 @@ setAnalyzers:
 
       _value._storeValues = context->_storeValues;
       _value._value = irs::bytes_ref::NIL;
-      _valueSlice = VPackSlice::noneSlice();
       _begin = nullptr;
       _end = nullptr;
 
