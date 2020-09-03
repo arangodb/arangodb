@@ -580,6 +580,9 @@ AgencyCache::change_set_t const AgencyCache::changedSince(
   
   std::unordered_set<std::string> databases;
   std::shared_lock_guard g(_storeLock);
+  
+  auto tmp = _readDB.nodePtr()->hasAsUInt(AgencyCommHelper::path(what) + "/" + VERSION);
+  uint64_t version = tmp.second ? tmp.first : 0;
 
   if (last < _lastSnapshot) {
     get_rest = true;
@@ -600,12 +603,12 @@ AgencyCache::change_set_t const AgencyCache::changedSince(
         << "collecting " << databases << " from agency cache";
     } else {
       LOG_TOPIC("d5734", DEBUG, Logger::CLUSTER) << "no changed databases since " << last;
-      return change_set_t(_commitIndex, std::move(db_res), std::move(rest_res));
+      return change_set_t(_commitIndex, version, std::move(db_res), std::move(rest_res));
     }
   }
   
   if (databases.empty()) {
-    return change_set_t(_commitIndex, std::move(db_res), std::move(rest_res));
+    return change_set_t(_commitIndex, version, std::move(db_res), std::move(rest_res));
   }
 
   auto query = std::make_shared<arangodb::velocypack::Builder>();
@@ -656,7 +659,7 @@ AgencyCache::change_set_t const AgencyCache::changedSince(
     }
   }
 
-  return change_set_t(_commitIndex, std::move(db_res), std::move(rest_res));
+  return change_set_t(_commitIndex, version, std::move(db_res), std::move(rest_res));
 
 }
 

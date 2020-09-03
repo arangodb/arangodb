@@ -47,6 +47,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/HeartbeatThread.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
@@ -686,6 +687,7 @@ void ClusterInfo::loadPlan() {
 
   // set plan loader
   TRI_ASSERT(_newPlannedViews.empty());
+  _newPlannedViews.clear();
   _planLoader = std::this_thread::get_id();
 
   // ensure we'll eventually reset plan loader
@@ -705,46 +707,16 @@ void ClusterInfo::loadPlan() {
   bool planValid = true;  // has the loadPlan completed without skipping valid objects
                           // we will set in the end
 
-  auto [b,i] = agencyCache.get("Plan/Version");
-  // TODO get out quick, if i == 0. No need to check.
-  if (i == 0) {
-    LOG_TOPIC("d68ae", WARN, Logger::CLUSTER)
-      << "Failed to load Plan/Version from presitine agency cache. Will retry.";
-    return;
-  }
-  TRI_ASSERT(b->slice().isArray());
-  TRI_ASSERT(b->slice().length() == 1);
-  TRI_ASSERT(b->slice()[0].isNumber());
-  uint64_t newPlanVersion = b->slice()[0].getNumber<uint64_t>();
-
-  LOG_TOPIC("c6303", TRACE, Logger::CLUSTER) << "loadPlan: newPlanVersion=" << newPlanVersion;
-
-  if (newPlanVersion == 0) {
-    LOG_TOPIC("d68ae", WARN, Logger::CLUSTER)
-        << "Attention: /arango/Plan/Version in the agency is not set or not a "
-           "positive number.";
-    return;
-  }
-
-  {
-    READ_LOCKER(guard, _planProt.lock);
-    if (_planProt.isValid && newPlanVersion <= _planVersion) {
-      LOG_TOPIC("20450", DEBUG, Logger::CLUSTER)
-          << "We already know this or a later version, do not update. "
-          << "newPlanVersion=" << newPlanVersion << " _planVersion=" << _planVersion;
-
-      return;
-    }
-  }
-
   uint64_t planIndex;
+  uint64_t planVersion;
   {
     READ_LOCKER(guard, _planProt.lock);
     planIndex = _planIndex;
+    planVersion = _planVersion;
   }
 
   bool changed = false;
-  auto changeSet = agencyCache.changedSince("Plan", planIndex);
+  auto changeSet = agencyCache.changedSince("Plan", planIndex); // also delivers plan/version
   {
     auto& maintenance = _server.getFeature<MaintenanceFeature>();
     WRITE_LOCKER(writeLocker, _planProt.lock);
@@ -759,10 +731,11 @@ void ClusterInfo::loadPlan() {
     }
   }
 
-  if (!changed) {
+  if (!changed && planVersion == changeSet.version) {
+    WRITE_LOCKER(writeLocker, _planProt.lock);
+    _planIndex = changeSet.ind;
     return;
   }
-
   
   decltype(_plannedDatabases) newDatabases;
   std::set<std::string> buildingDatabases;
@@ -771,6 +744,7 @@ void ClusterInfo::loadPlan() {
   decltype(_shardServers) newShardServers;
   decltype(_shardToName) newShardToName;
   decltype(_dbAnalyzersRevision) newDbAnalyzersRevision;
+  decltype(_plan) newPlan;
   bool swapDatabases = false;
   bool swapCollections = false;
   bool swapViews = false;
@@ -897,7 +871,6 @@ void ClusterInfo::loadPlan() {
       continue;
     }
 
-    DatabaseViews views;
     for (auto const& viewPairSlice : velocypack::ObjectIterator(viewsSlice, true)) {
       auto const& viewSlice = viewPairSlice.value;
 
@@ -1137,7 +1110,7 @@ void ClusterInfo::loadPlan() {
         // the cache check is very coarse-grained: it simply hashes the Plan VelocyPack
         // data for the collection, and will only reuse a collection from the cache if
         // the hash is identical.
-      CollectionWithHash cwh = buildCollection(isBuilding, existingCollections, collectionId, collectionSlice, *vocbase, newPlanVersion);
+      CollectionWithHash cwh = buildCollection(isBuilding, existingCollections, collectionId, collectionSlice, *vocbase, changeSet.version);
       auto& newCollection = cwh.collection;
       TRI_ASSERT(newCollection != nullptr);
 
@@ -1229,10 +1202,11 @@ void ClusterInfo::loadPlan() {
 
   WRITE_LOCKER(writeLocker, _planProt.lock);
 
-  _planVersion = newPlanVersion;
+  _planVersion = changeSet.version;
   _planIndex = changeSet.ind;
+  _plan.swap(newPlan);
   LOG_TOPIC("54321", DEBUG, Logger::CLUSTER)
-    << "Updating ClusterInfo plan: version=" << newPlanVersion << " index=" << _planIndex;
+    << "Updating ClusterInfo plan: version=" << _planVersion << " index=" << _planIndex;
 
   if (swapDatabases) {
     _plannedDatabases.swap(newDatabases);
@@ -1303,41 +1277,14 @@ void ClusterInfo::loadCurrent() {
   // reread from the agency!
   MUTEX_LOCKER(mutexLocker, _currentProt.mutex);  // only one may work at a time
 
-  auto [b,i] = agencyCache.get(prefixCurrent);
-  if (i == 0) {
-    LOG_TOPIC("e080a", WARN, Logger::CLUSTER)
-        << "Failed to load Current/Version from prestine agency cache. Will retry.";
-    return;
-  }
-  TRI_ASSERT(b->slice().isArray());
-  TRI_ASSERT(b->slice().length() == 1);
-  TRI_ASSERT(b->slice()[0].isNumber());
-
-  newCurrentVersion = b->slice()[0].getNumber<uint64_t>();
-  if (newCurrentVersion == 0) {
-    LOG_TOPIC("e088e", WARN, Logger::CLUSTER)
-        << "Attention: /arango/Current/Version in the agency is not set or not "
-           "a positive number.";
-    return;
-  }
-
-  {
-    READ_LOCKER(guard, _currentProt.lock);
-    if (_currentProt.isValid && newCurrentVersion <= _currentVersion) {
-      LOG_TOPIC("00d58", DEBUG, Logger::CLUSTER)
-          << "We already know this or a later version, do not update. "
-          << "newCurrentVersion=" << newCurrentVersion
-          << " _currentVersion=" << _currentVersion;
-
-      return;
-    }
-  }
-
   uint64_t currentIndex;
+  uint64_t currentVersion;
   {
     READ_LOCKER(guard, _currentProt.lock);
     currentIndex = _currentIndex;
+    currentVersion = _currentVersion;
   }
+  bool changed = false;
   auto changeSet = agencyCache.changedSince("Current", currentIndex);
   {
     auto& maintenance = _server.getFeature<MaintenanceFeature>();
@@ -1345,12 +1292,20 @@ void ClusterInfo::loadCurrent() {
     for (auto const& db : changeSet.dbs) { // Databases
       _current[db.first] = db.second;
       maintenance.addDirty(db.first);
+      changed = true;
     }
     if (changeSet.rest != nullptr) {       // Rest
       _current[std::string()] = changeSet.rest;
+      changed = true;
     }
   }
 
+  if (!changed && currentVersion == changeSet.version) {
+    WRITE_LOCKER(writeLocker, _currentProt.lock);
+    _currentIndex = changeSet.ind;
+    return;
+  }
+    
   decltype(_currentDatabases) newDatabases;
   decltype(_currentCollections) newCollections;
   decltype(_shardIds) newShardIds;

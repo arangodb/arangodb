@@ -41,18 +41,18 @@ class AgencyCache final : public arangodb::Thread {
 public:
 
   struct change_set_t {
-    consensus::index_t ind;
-    std::unordered_map<std::string, consensus::query_t> dbs;
-    consensus::query_t rest;
-    change_set_t (consensus::index_t const& i,
+    consensus::index_t ind;  // Raft index
+    uint64_t version;        // Plan / Current version
+    std::unordered_map<std::string, consensus::query_t> dbs; // touched databases
+    consensus::query_t rest; // Plan / Current rest
+    change_set_t (consensus::index_t const& i, uint64_t const& v,
                   std::unordered_map<std::string, consensus::query_t> const& d,
                   consensus::query_t const& r) :
-      ind(i), dbs(d), rest(r) {};
-    change_set_t (consensus::index_t&& i,
+      ind(i), version(v), dbs(d), rest(r) {};
+    change_set_t (consensus::index_t&& i, uint64_t&& v,
                   std::unordered_map<std::string, consensus::query_t>&& d,
                   consensus::query_t&& r) :
-      ind(std::move(i)), dbs(std::move(d)), rest(std::move(r)) {};
-    void index(consensus::index_t const& i) { ind = i; }
+      ind(std::move(i)), version(std::move(v)), dbs(std::move(d)), rest(std::move(r)) {};
   };
 
   /// @brief start off with our server
