@@ -1,6 +1,9 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed an issue with audit logging misreporting some document requests as 
+  internal instead of logging the proper request information.
+  
 * Add attributes `database` and `user` when tracking current and slow AQL
   queries.
   `database` contains the name of the database the query is/was running in,
