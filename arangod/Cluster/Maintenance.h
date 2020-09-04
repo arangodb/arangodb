@@ -141,7 +141,9 @@ arangodb::Result phaseOne(
  */
 arangodb::Result phaseTwo(
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
-  VPackSlice const& cur, std::unordered_map<std::string, std::shared_ptr<VPackBuilder>>,
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& cur,
+  std::unordered_set<std::string> const& dirty,
+  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report);
 
 /**
@@ -164,7 +166,8 @@ struct ShardStatistics {
 
 arangodb::Result reportInCurrent(
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
-  std::unordered_set<std::string> const& dirty, VPackSlice const& cur,
+  std::unordered_set<std::string> const& dirty,
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& cur,
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
   VPackBuilder& report, ShardStatistics& shardStats);

@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
@@ -76,14 +77,17 @@ Result DBServerAgencySync::getLocalCollections(
   }
   DatabaseFeature& dbfeature = _server.getFeature<DatabaseFeature>();
 
-  dbfeature.enumerateDatabases([&](TRI_vocbase_t& vocbase) {
+  for (auto const& dbname : dirty) {
+    TRI_vocbase_t* tmp = dbfeature.lookupDatabase(dbname);
+    if (tmp == nullptr) {
+      continue;
+    }
+    TRI_vocbase_t& vocbase = *tmp;
     if (!vocbase.use()) {
-      return;
+      continue;
     }
     auto unuse = scopeGuard([&vocbase] { vocbase.release(); });
-
-    auto const dbname = vocbase.name();
-
+    
     auto [it,created] =
       databases.try_emplace(dbname, std::make_shared<VPackBuilder>());
     if (!created) {
@@ -92,8 +96,7 @@ Result DBServerAgencySync::getLocalCollections(
       FATAL_ERROR_EXIT();
     }
 
-    collections = *it->second;
-
+    auto collections = *it->second;
     VPackObjectBuilder db(&collections);
     auto cols = vocbase.collections(false);
 
@@ -111,11 +114,11 @@ Result DBServerAgencySync::getLocalCollections(
         // generate a collection definition identical to that which would be
         // persisted in the case of SingleServer
         collection->properties(collections, LogicalDataSource::Serialization::Persistence);
-
+        
         auto const& folls = collection->followers();
         std::string const theLeader = folls->getLeader();
         bool theLeaderTouched = folls->getLeaderTouched();
-
+        
         // Note that whenever theLeader was set explicitly since the collection
         // object was created, we believe it. Otherwise, we do not accept
         // that we are the leader. This is to circumvent the problem that
@@ -131,7 +134,7 @@ Result DBServerAgencySync::getLocalCollections(
         }
       }
     }
-  });
+  }
 
   return Result();
 }
@@ -190,18 +193,17 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   auto serverId = arangodb::ServerState::instance()->getId();
 
-  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> local;
   LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE)
     << "Before getLocalCollections for phaseOne";
-
-  Result glc = getLocalCollections(local);
+  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> local;
+  Result glc = getLocalCollections(dirty, local);
   LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE) << "After getLocalCollections for phaseOne";
   if (!glc.ok()) {
     result.errorMessage = "Could not do getLocalCollections for phase 1: '";
     result.errorMessage.append(glc.errorMessage()).append("'");
     return result;
   }
-  LOG_TOPIC("54263", TRACE, Logger::MAINTENANCE) << "local for phaseOne: " << local.toJson();
+  LOG_TOPIC("54263", TRACE, Logger::MAINTENANCE) << "local for phaseOne: " << local;
 
   VPackBuilder rb;
   Result tmp;
@@ -231,8 +233,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    auto current = clusterInfo.getCurrent();
-    if (current == nullptr) {
+    auto current = clusterInfo.getCurrent(planIndex, dirty);
+    if (current.empty()) {
       // TODO increase log level, except during shutdown?
       LOG_TOPIC("ab562", DEBUG, Logger::MAINTENANCE)
           << "DBServerAgencySync::execute no current";
@@ -240,15 +242,15 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       return result;
     }
     LOG_TOPIC("675fd", TRACE, Logger::MAINTENANCE)
-        << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
+        << "DBServerAgencySync::phaseTwo - current state: " << current;
 
     local.clear();
-    glc = getLocalCollections(local, dirty);
+    glc = getLocalCollections(dirty, local);
     // We intentionally refetch local collections here, such that phase 2
     // can already see potential changes introduced by phase 1. The two
     // phases are sufficiently independent that this is OK.
     LOG_TOPIC("d15b5", TRACE, Logger::MAINTENANCE)
-        << "DBServerAgencySync::phaseTwo - local state: " << local.toJson();
+        << "DBServerAgencySync::phaseTwo - local state: " << local;
     if (!glc.ok()) {
       result.errorMessage = "Could not do getLocalCollections for phase 2: '";
       result.errorMessage.append(glc.errorMessage()).append("'");
@@ -259,7 +261,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         << "DBServerAgencySync::phaseTwo";
 
     tmp = arangodb::maintenance::phaseTwo(
-      plan, current->slice(), dirty, local, serverId, mfeature, rb);
+      plan, current, dirty, local, serverId, mfeature, rb);
 
     LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";
