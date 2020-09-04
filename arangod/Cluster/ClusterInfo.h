@@ -554,11 +554,11 @@ public:
 
   TEST_VIRTUAL std::shared_ptr<LogicalCollection> getCollectionNT(DatabaseID const&,
                                                                   CollectionID const&);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection or a view
   /// If it is not found in the cache, the cache is reloaded once. The second
-  /// argument can be a collection ID or a collection name (both cluster-wide) 
+  /// argument can be a collection ID or a collection name (both cluster-wide)
   /// or a view ID or name.
   /// will not throw but return nullptr if the collection/view isn't found.
   //////////////////////////////////////////////////////////////////////////////
@@ -1117,7 +1117,7 @@ public:
 
   std::unordered_map<DatabaseID, std::shared_ptr<VPackBuilder>> _plan;
   std::unordered_map<DatabaseID, std::shared_ptr<VPackBuilder>> _current;
-  
+
   std::string _clusterId;
 
   std::unordered_map<DatabaseID, VPackSlice> _plannedDatabases;  // from Plan/Databases
@@ -1234,16 +1234,16 @@ public:
 
   /// @brief histogram for loadPlan runtime
   Histogram<log_scale_t<float>>& _lpTimer;
-  
+
   /// @brief total time for loadPlan runtime
   Counter& _lpTotal;
-  
+
   /// @brief histogram for loadCurrent runtime
   Histogram<log_scale_t<float>>& _lcTimer;
-  
+
   /// @brief total time for loadCurrent runtime
   Counter& _lcTotal;
-    
+
 };
 
 namespace cluster {

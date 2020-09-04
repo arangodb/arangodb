@@ -34,22 +34,6 @@
 using namespace arangodb;
 using namespace arangodb::consensus;
 
-namespace std {
-class shared_lock_guard {
-private:
-  std::shared_mutex& m;
-
-public:
-  explicit shared_lock_guard(std::shared_mutex& m_): m(m_) {
-    m.lock_shared();
-  }
-  shared_lock_guard(std::shared_mutex& m_, std::adopt_lock_t): m(m_) {}
-  ~shared_lock_guard() {
-    m.unlock_shared();
-  }
-};
-}
-
 AgencyCache::AgencyCache(
   application_features::ApplicationServer& server,
   AgencyCallbackRegistry& callbackRegistry)
@@ -75,7 +59,7 @@ bool AgencyCache::start() {
 // Fill existing Builder from readDB, mainly /Plan /Current
 index_t AgencyCache::get(VPackBuilder& result, std::string const& path) const {
   result.clear();
-  std::shared_lock_guard g(_storeLock);
+  std::shared_lock g(_storeLock);
   if (_commitIndex > 0) {
     _readDB.get("arango/" + path, result, false);
   }
@@ -100,7 +84,7 @@ query_t AgencyCache::dump() const {
 
   auto ret = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder o(ret.get());
-    std::shared_lock_guard g(_storeLock);
+    std::shared_lock g(_storeLock);
     ret->add("index", VPackValue(_commitIndex));
     ret->add(VPackValue("cache"));
     _readDB.read(query, ret);
@@ -120,7 +104,7 @@ std::tuple<query_t, index_t> AgencyCache::read(std::vector<std::string> const& p
   }
 
   auto result = std::make_shared<arangodb::velocypack::Builder>();
-  std::shared_lock_guard g(_storeLock);
+  std::shared_lock g(_storeLock);
 
   if (_commitIndex > 0) {
     _readDB.read(query, result);
@@ -129,7 +113,7 @@ std::tuple<query_t, index_t> AgencyCache::read(std::vector<std::string> const& p
 }
 
 futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
-  std::shared_lock_guard s(_storeLock);
+  std::shared_lock s(_storeLock);
   if (index <= _commitIndex) {
     return futures::makeFuture(arangodb::Result());
   }
@@ -139,7 +123,7 @@ futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
 }
 
 index_t AgencyCache::index() const {
-  std::shared_lock_guard g(_storeLock);
+  std::shared_lock g(_storeLock);
   return _commitIndex;
 }
 
@@ -255,7 +239,7 @@ void AgencyCache::run() {
     [&]() {
       index_t commitIndex = 0;
       {
-        std::shared_lock_guard g(_storeLock);
+        std::shared_lock g(_storeLock);
         commitIndex = _commitIndex + 1;
       }
       LOG_TOPIC("afede", TRACE, Logger::CLUSTER)
@@ -512,14 +496,14 @@ void AgencyCache::beginShutdown() {
 }
 
 bool AgencyCache::has(std::string const& path) const {
-  std::shared_lock_guard g(_storeLock);
+  std::shared_lock g(_storeLock);
   return _readDB.has(AgencyCommHelper::path(path));
 }
 
 std::vector<bool> AgencyCache::has(std::vector<std::string> const& paths) const {
   std::vector<bool> ret;
   ret.reserve(paths.size());
-  std::shared_lock_guard g(_storeLock);
+  std::shared_lock g(_storeLock);
   for (auto const& i : paths) {
     ret.push_back(_readDB.has(i));
   }
@@ -579,7 +563,7 @@ AgencyCache::change_set_t const AgencyCache::changedSince(
   std::vector<std::string> const& goodies = (what == PLAN) ? planGoodies : currentGoodies;
   
   std::unordered_set<std::string> databases;
-  std::shared_lock_guard g(_storeLock);
+  std::shared_lock g(_storeLock);
   
   auto tmp = _readDB.nodePtr()->hasAsUInt(AgencyCommHelper::path(what) + "/" + VERSION);
   uint64_t version = tmp.second ? tmp.first : 0;
