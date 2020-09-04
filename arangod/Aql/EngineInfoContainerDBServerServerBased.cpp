@@ -314,8 +314,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     infoBuilder.add("isModificationQuery", VPackValue(_query.isModificationQuery()));
     infoBuilder.add("isAsyncQuery", VPackValue(_query.isAsyncQuery()));
 
-    infoBuilder.add(StaticStrings::coordinatorRebootId, VPackValue(ServerState::instance()->getRebootId().value()));
-    infoBuilder.add(StaticStrings::coordiantorId, VPackValue(ServerState::instance()->getId()));
+    infoBuilder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(ServerState::instance()->getRebootId().value()));
+    infoBuilder.add(StaticStrings::AttrCoordiantorId, VPackValue(ServerState::instance()->getId()));
 
     addSnippetPart(nodesById, infoBuilder, _shardLocking, nodeAliases, server);
     TRI_ASSERT(infoBuilder.isOpenObject());
