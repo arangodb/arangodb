@@ -39,6 +39,10 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/CallbackGuard.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "Logger/LogMacros.h"
@@ -184,6 +188,12 @@ void RestAqlHandler::setupClusterQuery() {
                   "body must be an object with attribute \"variables\"");
     return;
   }
+
+
+  VPackSlice coordinatorRebootIdSlice = querySlice.get("coordinatorRebootId");
+  VPackSlice coordinatorIdSlice = querySlice.get("coordinatorId");
+  // Valid to not exist for upgrade scenarios!
+
   // If we have a new format then it has to be included here.
   // If not default to classic (old coordinator will not send it)
   auto format = static_cast<SerializationFormat>(
@@ -267,9 +277,39 @@ void RestAqlHandler::setupClusterQuery() {
 
   answerBuilder.close(); // result
   answerBuilder.close();
-  
-  _queryRegistry->insertQuery(std::move(q), ttl);
 
+  cluster::CallbackGuard rGuard;
+
+  // Now set an alarm for the case that the coordinator is restarted which
+  // initiated this query. In that case, we want to drop our piece here:
+  if (coordinatorRebootIdSlice.isInteger() && coordinatorIdSlice.isString()) {
+    RebootId rebootId(0);
+    try {
+      // The following will throw for negative numbers, which should not happen:
+      rebootId = RebootId(coordinatorRebootIdSlice.getUInt());
+    } catch (...) {
+    }  // simply ignore if negative
+    std::string coordinatorId = coordinatorIdSlice.copyString();
+    if (rebootId.initialized()) {
+      LOG_TOPIC("42512", TRACE, Logger::AQL)
+          << "Setting RebootTracker on coordinator " << coordinatorId
+          << " for query with id " << q->id();
+      auto& clusterFeature = _server.getFeature<ClusterFeature>();
+      auto& clusterInfo = clusterFeature.clusterInfo();
+      rGuard = clusterInfo.rebootTracker().callMeOnChange(
+          cluster::RebootTracker::PeerState(coordinatorId, rebootId),
+          [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(), queryId = q->id()]() {
+            queryRegistry->destroyQuery(vocbaseName, queryId, TRI_ERROR_TRANSACTION_ABORTED);
+            LOG_TOPIC("42511", DEBUG, Logger::AQL)
+                << "Query snippet destroyed as consequence of "
+                   "RebootTracker for coordinator, db="
+                << vocbaseName << " queryId=" << queryId;
+          },
+          "Query aborted since coordinator rebooted or failed.");
+    }
+  }
+
+  _queryRegistry->insertQuery(std::move(q), ttl, std::move(rGuard));
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
