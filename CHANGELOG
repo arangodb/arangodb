@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed an issue with audit logging misreporting some document requests as 
+  internal instead of logging the proper request information
+
 * Add option `--rocksdb.max-write-buffer-size-to-maintain` with default of 0.
   This configures how much memory RocksDB is allowed to use for immutable
   flushed memtables/write-buffers. The default of 0 will usually be good
