@@ -65,6 +65,14 @@
 
 namespace {
 
+arangodb::LocalDocumentId generateDocumentId(arangodb::LogicalCollection const& collection,
+                                             arangodb::RevisionId revisionId,
+                                             uint64_t& documentId) {
+  bool useRev = collection.usesRevisionsAsDocumentIds();
+  return useRev ? arangodb::LocalDocumentId::create(revisionId)
+                : arangodb::LocalDocumentId::create(++documentId);
+}
+
 /// @brief hard-coded vector of the index attributes
 /// note that the attribute names must be hard-coded here to avoid an init-order
 /// fiasco with StaticStrings::FromString etc.
@@ -1110,8 +1118,9 @@ arangodb::Result PhysicalCollectionMock::insert(
   TRI_ASSERT(builder.slice().get(arangodb::StaticStrings::KeyString).isString());
 
   arangodb::velocypack::StringRef key{builder.slice().get(arangodb::StaticStrings::KeyString)};
+  arangodb::LocalDocumentId id = ::generateDocumentId(_logicalCollection, revisionId, _lastDocumentId);
   auto const& [ref, didInsert] =
-      _documents.emplace(key, DocElement{builder.steal(), ++_lastDocumentId});
+      _documents.emplace(key, DocElement{builder.steal(), id.id()});
   TRI_ASSERT(didInsert);
 
   result.setManaged(ref->second.vptr());
