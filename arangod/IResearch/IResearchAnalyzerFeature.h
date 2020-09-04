@@ -118,7 +118,6 @@ class AnalyzerPool : private irs::util::noncopyable {
   mutable irs::unbounded_object_pool<Builder> _cache;  // cache of irs::analysis::analyzer
                                                        // (constructed via AnalyzerBuilder::make(...))
 
-  AnalyzerScope _scope{AnalyzerScope::PRIMITIVE_TYPE};
   std::string _config;     // non-null type + non-null properties + key
   irs::flags _features;    // cached analyzer features
   irs::string_ref _key;    // the key of the persisted configuration for this pool,
@@ -127,6 +126,7 @@ class AnalyzerPool : private irs::util::noncopyable {
   VPackSlice _properties;  // IResearch analyzer configuration
   irs::string_ref _type;   // IResearch analyzer name
   arangodb::AnalyzersRevision::Revision _revision{ arangodb::AnalyzersRevision::MIN };
+  AnalyzerScope _scope{ AnalyzerScope::PRIMITIVE_TYPE };
 }; // AnalyzerPool
 
 ////////////////////////////////////////////////////////////////////////////////

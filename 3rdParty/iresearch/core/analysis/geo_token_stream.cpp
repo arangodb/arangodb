@@ -25,18 +25,19 @@
 NS_ROOT
 NS_BEGIN(analysis)
 
-geo_token_stream::geo_token_stream(const S2RegionTermIndexer::Options& opts,
-                                   const string_ref& prefix)
+geo_analyzer::geo_analyzer(const S2RegionTermIndexer::Options& opts,
+                           const string_ref& prefix)
   : attributes{{
       { irs::type<increment>::id(), &inc_       },
       { irs::type<offset>::id(), &offset_       },
-      { irs::type<term_attribute>::id(), &term_ }
-    }},
+      { irs::type<term_attribute>::id(), &term_ }},
+      irs::type<geo_analyzer>::get()
+    },
     indexer_(opts),
     prefix_(prefix) {
 }
 
-bool geo_token_stream::next() noexcept {
+bool geo_analyzer::next() noexcept {
   if (begin_ >= end_) {
     return false;
   }
@@ -50,14 +51,26 @@ bool geo_token_stream::next() noexcept {
   return true;
 }
 
-void geo_token_stream::reset(const S2Point& point) {
+void geo_analyzer::reset_for_indexing(const S2Point& point) {
   terms_ = indexer_.GetIndexTerms(point, prefix_);
   begin_ = terms_.data();
   end_ = begin_ + terms_.size();
 }
 
-void geo_token_stream::reset(const S2Region& region) {
+void geo_analyzer::reset_for_querying(const S2Point& point) {
+  terms_ = indexer_.GetQueryTerms(point, prefix_);
+  begin_ = terms_.data();
+  end_ = begin_ + terms_.size();
+}
+
+void geo_analyzer::reset_for_indexing(const S2Region& region) {
   terms_ = indexer_.GetIndexTerms(region, prefix_);
+  begin_ = terms_.data();
+  end_ = begin_ + terms_.size();
+}
+
+void geo_analyzer::reset_for_querying(const S2Region& region) {
+  terms_ = indexer_.GetQueryTerms(region, prefix_);
   begin_ = terms_.data();
   end_ = begin_ + terms_.size();
 }

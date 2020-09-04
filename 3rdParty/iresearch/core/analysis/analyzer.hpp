@@ -37,6 +37,9 @@ class IRESEARCH_API analyzer : public token_stream {
   explicit analyzer(const type_info& type) noexcept;
 
   virtual bool reset(const string_ref& data) = 0;
+  virtual bool reset_for_querying(const string_ref& data) {
+    return reset(data);
+  }
 
   constexpr type_info::type_id type() const noexcept { return type_; }
 

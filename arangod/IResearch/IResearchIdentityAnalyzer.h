@@ -35,15 +35,9 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
     return "identity";
   }
 
-  static bool normalize(const irs::string_ref& /*args*/, std::string& out) {
-    out.resize(VPackSlice::emptyObjectSlice().byteSize());
-    std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
-    return true;
-  }
+  static bool normalize(const irs::string_ref& /*args*/, std::string& out);
 
-  static arangodb::iresearch::IdentityAnalyzer::ptr make(irs::string_ref const& /*args*/) {
-    return std::make_shared<IdentityAnalyzer>();
-  }
+  static ptr make(irs::string_ref const& /*args*/);
 
   IdentityAnalyzer() noexcept;
 

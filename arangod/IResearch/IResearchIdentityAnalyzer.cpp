@@ -27,13 +27,23 @@
 namespace arangodb {
 namespace iresearch {
 
-REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
+/*static*/ bool IdentityAnalyzer::normalize(
+    const irs::string_ref& /*args*/,
+    std::string& out) {
+  out.resize(VPackSlice::emptyObjectSlice().byteSize());
+  std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
+  return true;
+}
+
+/*static*/ irs::analysis::analyzer::ptr IdentityAnalyzer::make(
+    irs::string_ref const& /*args*/) {
+  return std::make_shared<IdentityAnalyzer>();
+}
 
 IdentityAnalyzer::IdentityAnalyzer() noexcept
   : irs::analysis::analyzer(irs::type<IdentityAnalyzer>::get()),
     _empty(true) {
 }
-
 
 irs::attribute* IdentityAnalyzer::get_mutable(irs::type_info::type_id type) noexcept {
   if (type == irs::type<irs::increment>::id()) {

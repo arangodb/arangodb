@@ -27,27 +27,35 @@
 
 #include "shared.hpp"
 #include "analysis/token_attributes.hpp"
-#include "analysis/token_stream.hpp"
+#include "analysis/analyzer.hpp"
 #include "utils/frozen_attributes.hpp"
 
 NS_ROOT
 NS_BEGIN(analysis)
 
-class geo_token_stream final
-  : public frozen_attributes<3, token_stream>,
+class geo_analyzer
+  : public frozen_attributes<3, analyzer>,
     private util::noncopyable {
  public:
   static constexpr string_ref type_name() noexcept { return "geo"; }
 
   static void init(); // for triggering registration in a static build
 
-  explicit geo_token_stream(const S2RegionTermIndexer::Options& opts,
-                            const string_ref& prefix);
+  explicit geo_analyzer(const S2RegionTermIndexer::Options& opts,
+                        const string_ref& prefix);
 
-  virtual bool next() noexcept override;
+  virtual bool next() noexcept final;
 
-  void reset(const S2Point& point);
-  void reset(const S2Region& region);
+  void reset_for_querying(const S2Point& point);
+  void reset_for_querying(const S2Region& region);
+  void reset_for_indexing(const S2Point& point);
+  void reset_for_indexing(const S2Region& region);
+
+ protected:
+  virtual bool reset(const irs::string_ref&) override {
+    terms_.clear();
+    return false;
+  }
 
  private:
   S2RegionTermIndexer indexer_;
