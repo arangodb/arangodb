@@ -57,7 +57,7 @@ function single_source_shortest_paths_program(
       },
     },
     customAccumulators: {
-      "my_min": accumulators.minAccumulator
+      "my_min": accumulators.minAccumulator()
     },
     phases: [
       {
@@ -190,9 +190,9 @@ function exec_test_shortest_path_impl(graphSpec) {
       return false;
     } else {
       internal.print("\u001b[32mOK  : shortest path is ok to ", to_vertex, "\u001b[0m");
-      return true;
     }
   }
+  return true;
 }
 
 function exec_test_shortest_path() {

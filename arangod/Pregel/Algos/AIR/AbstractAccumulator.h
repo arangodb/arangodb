@@ -132,6 +132,7 @@ class Accumulator : public AccumulatorBase {
       return greenspun::EvalError("not implemented");
     }
   }
+
   auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> override {
     VPackSlice const& s = msg._value.slice();
     if constexpr (std::is_same_v<T, bool>) {
