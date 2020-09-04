@@ -629,6 +629,8 @@ bool isFilter(arangodb::aql::Function const& func) noexcept {
          func.implementation == &contextFunc ||
          func.implementation == &minMatchFunc ||
          func.implementation == &startsWithFunc ||
+         func.implementation == &aql::Functions::GeoContains ||
+         func.implementation == &aql::Functions::GeoIntersects ||
          func.implementation == &aql::Functions::LevenshteinMatch ||
          func.implementation == &aql::Functions::Like ||
          func.implementation == &aql::Functions::NgramMatch ||

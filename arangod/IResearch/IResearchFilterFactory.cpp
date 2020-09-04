@@ -74,7 +74,7 @@ using namespace std::literals::string_literals;
 
 namespace {
 
-char const* GEO_INTERSECT_FUNC = "GEO_INTERSECT";
+char const* GEO_INTERSECT_FUNC = "GEO_INTERSECTS";
 
 namespace error {
 
@@ -3458,7 +3458,13 @@ arangodb::Result fromFuncGeoContainsIntersect(
   }
 
   // 2nd argument defines a shape
-  ScopedAqlValue shapeValue;
+  auto const* shapeNode = args.getMemberUnchecked(1);
+
+  if (!shapeNode) {
+    return error::invalidAttribute(funcName, 2);
+  }
+
+  ScopedAqlValue shapeValue(*shapeNode);
   arangodb::geo::ShapeContainer shape;
 
   if (filter || shapeValue.isConstant()) {
