@@ -189,9 +189,32 @@ void RestAqlHandler::setupClusterQuery() {
     return;
   }
 
-
-  VPackSlice coordinatorRebootIdSlice = querySlice.get("coordinatorRebootId");
-  VPackSlice coordinatorIdSlice = querySlice.get("coordinatorId");
+  VPackSlice coordinatorRebootIdSlice = querySlice.get(StaticStrings::AttrCoordinatorRebootId);
+  VPackSlice coordinatorIdSlice = querySlice.get(StaticStrings::AttrCoordinatorId);
+  RebootId rebootId(0);
+  std::string coordinatorId;
+  if (!coordinatorRebootIdSlice.isNone() || !coordinatorIdSlice.isNone()) {
+    bool good = false;
+    if (coordinatorRebootIdSlice.isInteger() && coordinatorIdSlice.isString()) {
+      coordinatorId = coordinatorIdSlice.copyString();
+      try {
+        // The following will throw for negative numbers, which should not happen:
+        rebootId = RebootId(coordinatorRebootIdSlice.getUInt());
+        good = true;
+      } catch (...) {
+      }
+    }
+    if (!good) {
+      LOG_TOPIC("4251a", ERR, arangodb::Logger::AQL)
+          << "Invalid VelocyPack: \"" << StaticStrings::AttrCoordinatorRebootId
+          << "\" needs to be a positive number and \""
+          << StaticStrings::AttrCoordinatorId << "\" needs to be a non-empty string";
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
+                    "body must be an object with attribute \"" + StaticStrings::AttrCoordinatorRebootId +
+                        "\" and \"" + StaticStrings::AttrCoordinatorId + "\"");
+      return;
+    }
+  }
   // Valid to not exist for upgrade scenarios!
 
   // If we have a new format then it has to be included here.
@@ -282,31 +305,23 @@ void RestAqlHandler::setupClusterQuery() {
 
   // Now set an alarm for the case that the coordinator is restarted which
   // initiated this query. In that case, we want to drop our piece here:
-  if (coordinatorRebootIdSlice.isInteger() && coordinatorIdSlice.isString()) {
-    RebootId rebootId(0);
-    try {
-      // The following will throw for negative numbers, which should not happen:
-      rebootId = RebootId(coordinatorRebootIdSlice.getUInt());
-    } catch (...) {
-    }  // simply ignore if negative
-    std::string coordinatorId = coordinatorIdSlice.copyString();
-    if (rebootId.initialized()) {
-      LOG_TOPIC("42512", TRACE, Logger::AQL)
-          << "Setting RebootTracker on coordinator " << coordinatorId
-          << " for query with id " << q->id();
-      auto& clusterFeature = _server.getFeature<ClusterFeature>();
-      auto& clusterInfo = clusterFeature.clusterInfo();
-      rGuard = clusterInfo.rebootTracker().callMeOnChange(
-          cluster::RebootTracker::PeerState(coordinatorId, rebootId),
-          [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(), queryId = q->id()]() {
-            queryRegistry->destroyQuery(vocbaseName, queryId, TRI_ERROR_TRANSACTION_ABORTED);
-            LOG_TOPIC("42511", DEBUG, Logger::AQL)
-                << "Query snippet destroyed as consequence of "
-                   "RebootTracker for coordinator, db="
-                << vocbaseName << " queryId=" << queryId;
-          },
-          "Query aborted since coordinator rebooted or failed.");
-    }
+  if (rebootId.initialized()) {
+    LOG_TOPIC("42512", TRACE, Logger::AQL)
+        << "Setting RebootTracker on coordinator " << coordinatorId
+        << " for query with id " << q->id();
+    auto& clusterFeature = _server.getFeature<ClusterFeature>();
+    auto& clusterInfo = clusterFeature.clusterInfo();
+    rGuard = clusterInfo.rebootTracker().callMeOnChange(
+        cluster::RebootTracker::PeerState(coordinatorId, rebootId),
+        [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(),
+         queryId = q->id()]() {
+          queryRegistry->destroyQuery(vocbaseName, queryId, TRI_ERROR_TRANSACTION_ABORTED);
+          LOG_TOPIC("42511", DEBUG, Logger::AQL)
+              << "Query snippet destroyed as consequence of "
+                 "RebootTracker for coordinator, db="
+              << vocbaseName << " queryId=" << queryId;
+        },
+        "Query aborted since coordinator rebooted or failed.");
   }
 
   _queryRegistry->insertQuery(std::move(q), ttl, std::move(rGuard));
