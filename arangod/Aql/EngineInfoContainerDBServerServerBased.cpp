@@ -315,7 +315,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     infoBuilder.add("isAsyncQuery", VPackValue(_query.isAsyncQuery()));
 
     infoBuilder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(ServerState::instance()->getRebootId().value()));
-    infoBuilder.add(StaticStrings::AttrCoordiantorId, VPackValue(ServerState::instance()->getId()));
+    infoBuilder.add(StaticStrings::AttrCoordinatorId, VPackValue(ServerState::instance()->getId()));
 
     addSnippetPart(nodesById, infoBuilder, _shardLocking, nodeAliases, server);
     TRI_ASSERT(infoBuilder.isOpenObject());
