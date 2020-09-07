@@ -135,13 +135,7 @@ function gtestRunner(options) {
   ];
   if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
     argv.push('--gtest_filter=' + options.testCase);
-  } /*else {
-    argv.push('--gtest_filter=-*_LongRunning');
-    let greylist =  readGreylist();
-    greylist.forEach(function(greyItem) {
-      argv.push('--gtest_filter=-'+greyItem);
-    });
-  }*/
+  }
   // all non gtest args have to come last
   argv.push('--log.line-number');
   argv.push(options.extremeVerbosity ? "true" : "false");
@@ -159,16 +153,9 @@ function gtestRunner(options) {
   }
   results = getGTestResults(testResultJsonFile, results);
 
-
   print('Shutting down...');
 
-  // if (result[te].status === false) {
-  //   options.cleanup = false;
-  // }
-
   results['shutdown'] = pu.shutdownInstance(instanceInfo, options);
-
-  print('done.');
 
   return results;
 }

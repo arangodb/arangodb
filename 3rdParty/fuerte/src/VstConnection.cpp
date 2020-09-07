@@ -368,7 +368,7 @@ std::unique_ptr<fu::Response> VstConnection<ST>::createResponse(
 
   return response;
 }
-/// abort ongoing / unfinished requests expiring before given timpoint
+/// abort ongoing / unfinished requests expiring before given timepoint
 template <SocketType ST>
 void VstConnection<ST>::abortRequests(
     fuerte::Error err, std::chrono::steady_clock::time_point now) {
