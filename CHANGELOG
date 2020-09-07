@@ -1,6 +1,113 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Add attributes `database` and `user` when tracking current and slow AQL
+  queries.
+  `database` contains the name of the database the query is/was running in,
+  `user` contains the name of the user that started the query.
+  These attributes will be returned in addition when calling the APIs for
+  current and slow query inspection:
+  * GET `/_api/query/current` and `require("arangodb/aql/queries").current()`
+  * GET `/_api/query/slow` and `require("arangodb/aql/queries").slow()`
+
+  The "slow query" log message has also been augmented to contain the database
+  name and the user name.
+
+  The `user` attribute is now also displayed in the web interface in the
+  "Running queries" and "Slow queries" views.
+
+* Added metrics for V8 contexts usage:
+  * `arangodb_v8_context_alive`: number of V8 contexts currently alive.
+  * `arangodb_v8_context_busy`: number of V8 contexts currently busy.
+  * `arangodb_v8_context_dirty`: number of V8 contexts currently dirty.
+  * `arangodb_v8_context_free`: number of V8 contexts currently free.
+  * `arangodb_v8_context_max`: maximum number of concurrent V8 contexts.
+  * `arangodb_v8_context_min`: minimum number of concurrent V8 contexts.
+
+* Updated arangosync to 0.7.11.
+
+* Make followers in active failover run a compaction after they process a
+  truncate operation and the truncate removed more than 4k documents. This can
+  help to reclaim disk space on the follower earlier than without running the
+  truncate.
+
+* The REST API PUT `/_api/collection/<name>/truncate` will now also run a
+  compaction if the truncation affected more than 4k documents. This may add
+  extra latency to the truncate operation, but can help to reclaim disk space
+  earlier.
+
+* Added REST API PUT `/_admin/compact` for compacting the entire database data.
+  This endpoint can be used to reclaim disk space after substantial data
+  deletions have taken place. The command is also exposed via the JavaScript API
+  as `db._compact();`.
+
+  This command can cause a full rewrite of all data in all databases, which may
+  take very long for large databases. It should thus only be used with care and
+  only when additional I/O load can be tolerated for a prolonged time.
+
+  This command requires superuser access and is only available for the RocksDB
+  storage engine.
+
+* Fix for issue BTS-183: added pending operations purging before ArangoSearch
+  index truncation.
+
+* Fixed: More cases in AQL can now react to a query being killed, so reaction
+  time to query abortion is now shortened. This was a regression in comparison
+  to 3.6 series.
+
+* Don't allow creation of smart satellite graphs or collections (i.e. using
+  `"isSmart":true` together with `"replicationFactor":"satellite"` when creating
+  graphs or collections. This combination of parameters makes no sense, so that
+  the server will now respond with "bad parameter" and an HTTP status code of
+  HTTP 400 ("Bad request").
+
+* Fixed internal issue #741: STARTS_WITH fails to accept 'array' as variable.
+
+* Fixed internal issue #738: PHRASE doesn't accept a reference to an array of
+  arguments.
+
+* Fixed internal issue #747: fixed possible dangling open files in ArangoSearch
+  index after remove operations.
+
+* Add exit code for ICU database loading startup errors.
+
+* Fixed issue #12507: SegFault when using an AQL for loop through edges.
+
+* Make the `IS_IPV4` AQL function behave identical on macOS as on other
+  platforms. It previously allowed leading zeros in octets on macOS, whereas on
+  other platforms they were disallowed.
+  Now this is disallowed on macOS as well.
+
+* Added new metric "arangodb_aql_slow_query" for slow AQL queries, so this can
+  be monitored more easily.
+
+* Added new metric "arangodb_scheduler_queue_length" for the scheduler's
+  internal queue length.
+
+* Added new metric "arangodb_scheduler_queue_full_failures" for tracking cases
+  of a full scheduler queue and dropping requests.
+
+* Added new metrics for the number of V8 contexts dynamically created and
+  destroyed ("arangodb_v8_context_created" and "arangodb_v8_context_destroyed")
+  and for the number of times a V8 context was entered and left
+  ("arangodb_v8_context_entered" and "arangodb_v8_context_exited"). There is
+  also a new metric for tracking the cases when a V8 context cannot be
+  successfully acquired and an operation is not performed
+  ("arangodb_v8_context_enter_failures").
+
+* Added extra info to "queue full" and "giving up waiting for unused v8 context"
+  log messages.
+
+* Request to the `/_admin/statistics` API now processed via the CLIENT_FAST
+  lane.
+  Previously they were handled in the CLIENT_SLOW lane, meaning that monitoring
+  requests using that API didn't get through when the queue was rather full.
+
+* Introduce an internal high-water mark for the maximum row number that was
+  written to in an AqlItemBlock. Using this number several operations on the
+  whole block, such as cleaning up or copying can be made more efficient when
+  run on only partially filled blocks.
+
 * Fixed issue BTS-169: cost estimation for LIMIT nodes showed wrong number of
   estimated items.
 
@@ -58,7 +165,7 @@ v3.7.2 (2020-08-21)
   UI in case the query was canceled using the "Cancel" button in web UI's query
   editor.
 
-* Fixed bad behaviour in agency supervision in some corner cases involving
+* Fixed bad behavior in agency supervision in some corner cases involving
   already resigned leaders in Current.
 
 * Fixed issue ES-664: the optimizer rule `inline-subqueries` must not pull out

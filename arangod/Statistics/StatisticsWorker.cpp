@@ -848,7 +848,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
     "Bytes received for a request"}},
   {"userTime",
    {"arangodb_process_statistics_user_time", "gauge",
-    "On Windows, this figure contains the total amount of memory that the memory manager has committed for the arangod process. On other systems, this figure contains The size of the virtual memory the process is using\n"}},
+    "Amount of time that this process has been scheduled in user mode, measured in seconds\n"}},
   {"systemTime",
    {"arangodb_process_statistics_system_time", "gauge",
     "Amount of time that this process has been scheduled in kernel mode, measured in seconds\n"}},
@@ -944,7 +944,25 @@ std::map<std::string, std::vector<std::string>> statStrings{
     "Number of seconds elapsed since server start\n"}},
   {"physicalSize",
    {"arangodb_server_statistics_physical_memory", "gauge",
-    "Physical memory in bytes\n"}}
+    "Physical memory in bytes\n"}},
+  {"v8ContextAvailable",
+   {"arangodb_v8_context_alive", "gauge",
+    "Number of V8 contexts currently alive\n"}},
+  {"v8ContextBusy",
+   {"arangodb_v8_context_busy", "gauge",
+    "Number of V8 contexts currently busy\n"}},
+  {"v8ContextDirty",
+   {"arangodb_v8_context_dirty", "gauge",
+    "Number of V8 contexts currently dirty\n"}},
+  {"v8ContextFree",
+   {"arangodb_v8_context_free", "gauge",
+    "Number of V8 contexts currently free\n"}},
+  {"v8ContextMax",
+   {"arangodb_v8_context_max", "gauge",
+    "Maximum number of concurrent V8 contexts\n"}},
+  {"v8ContextMin",
+   {"arangodb_v8_context_min", "gauge",
+    "Minimum number of concurrent V8 contexts\n"}},
 };
 
 void StatisticsWorker::generateRawStatistics(std::string& result, double const& now) {
@@ -1006,6 +1024,19 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
   appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::ILLEGAL].get()), "httpReqsOther");
   appendMetric(result, std::to_string(connectionStats.totalRequests.get()), "httpReqsTotal");
 
+  V8DealerFeature::Statistics v8Counters{};
+  if (_server.hasFeature<V8DealerFeature>()) {
+    V8DealerFeature& dealer = _server.getFeature<V8DealerFeature>();
+    if (dealer.isEnabled()) {
+      v8Counters = dealer.getCurrentContextNumbers();
+    }
+  }
+  appendMetric(result, std::to_string(v8Counters.available), "v8ContextAvailable");
+  appendMetric(result, std::to_string(v8Counters.busy), "v8ContextBusy");
+  appendMetric(result, std::to_string(v8Counters.dirty), "v8ContextDirty");
+  appendMetric(result, std::to_string(v8Counters.free), "v8ContextFree");
+  appendMetric(result, std::to_string(v8Counters.min), "v8ContextMin");
+  appendMetric(result, std::to_string(v8Counters.max), "v8ContextMax");
   result += "\n";
 }
 
@@ -1154,13 +1185,14 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
     V8DealerFeature& dealer = _server.getFeature<V8DealerFeature>();
     if (dealer.isEnabled()) {
       v8Counters = dealer.getCurrentContextNumbers();
-      // see below: memoryStatistics = dealer.getCurrentMemoryNumbers();
+      // see below: memoryStatistics = dealer.getCurrentMemoryDetails();
     }
   }
   builder.add("available", VPackValue(v8Counters.available));
   builder.add("busy", VPackValue(v8Counters.busy));
   builder.add("dirty", VPackValue(v8Counters.dirty));
   builder.add("free", VPackValue(v8Counters.free));
+  builder.add("min", VPackValue(v8Counters.min));
   builder.add("max", VPackValue(v8Counters.max));
   /* at the time being we don't want to write this into the database so the data volume doesn't increase.
   {
