@@ -78,45 +78,45 @@ function strongly_connected_components_program(resultField) {
       {
         name: "init",
         initProgram: ["seq",
-                      ["accum-set!", "isDisabled", false],
-                      "vote-halt"],
+          ["accum-set!", "isDisabled", false],
+          "vote-halt"],
         updateProgram: "vote-halt",
       },
       {
         // Active vertices broadcast their pregel id to all their neighbours
         name: "broadcast",
-        initProgram: [ "seq",
-                       ["accum-set!", "activeInbound", ["quote"]],
-                       ["if",
-                        [ ["not", ["accum-ref", "isDisabled"]],
-                          ["send-to-all-neighbours", "activeInbound", ["this-pregel-id"]]],
-                        [true, "vote-halt"]], // else
-                       "vote-halt",
-                     ],
+        initProgram: ["seq",
+          ["accum-set!", "activeInbound", ["quote"]],
+          ["if",
+            [["not", ["accum-ref", "isDisabled"]],
+              ["send-to-all-neighbours", "activeInbound", ["this-pregel-id"]]],
+            [true, "vote-halt"]], // else
+          "vote-halt",
+        ],
         updateProgram: "vote-halt",
         onHalt: ["seq",
-                 ["global-accum-clear!", "converged"],
-                 ["goto-phase", "forward"]]
+          ["global-accum-clear!", "converged"],
+          ["goto-phase", "forward"]]
       },
       {
         name: "forward",
-        initProgram: [ "seq",
-                       ["if",
-                        [["accum-ref", "isDisabled"], "vote-halt"],
-                        [true, // else
-                         ["seq",
-                          ["accum-set!", "forwardMin", ["this-unique-id"]],
-                          "vote-active"],
-                        ],
-                       ]],
+        initProgram: ["seq",
+          ["if",
+            [["accum-ref", "isDisabled"], "vote-halt"],
+            [true, // else
+              ["seq",
+                ["accum-set!", "forwardMin", ["this-unique-id"]],
+                "vote-active"],
+            ],
+          ]],
         updateProgram: [
           "if",
           [["accum-ref", "isDisabled"], "vote-halt"],
           [true, // else
-           ["seq",
-            ["send-to-all-neighbours", "forwardMin", ["accum-ref", "forwardMin"]],
-            "vote-halt"
-           ]],
+            ["seq",
+              ["send-to-all-neighbours", "forwardMin", ["accum-ref", "forwardMin"]],
+              "vote-halt"
+            ]],
         ],
       },
       {
@@ -128,42 +128,42 @@ function strongly_connected_components_program(resultField) {
         onHalt: [
           "seq",
           ["if",
-           [ ["not", ["global-accum-ref", "converged"]],
-             ["seq",
-              ["finish"] ] ],
-           [true, ["seq",
-                   ["goto-phase", "broadcast"]]],
+            [["not", ["global-accum-ref", "converged"]],
+              ["seq",
+                ["finish"]]],
+            [true, ["seq",
+              ["goto-phase", "broadcast"]]],
           ],
         ],
         initProgram: ["seq",
           ["if",
-           [["accum-ref", "isDisabled"], "vote-halt"],
-           [["eq?", ["this-unique-id"], ["accum-ref", "forwardMin"]],
-            ["seq",
-             ["accum-set!", "backwardMin", ["accum-ref", "forwardMin"]],
-             "vote-active"]],
-           [true, ["seq", "vote-halt"]],
-        ]],
+            [["accum-ref", "isDisabled"], "vote-halt"],
+            [["eq?", ["this-unique-id"], ["accum-ref", "forwardMin"]],
+              ["seq",
+                ["accum-set!", "backwardMin", ["accum-ref", "forwardMin"]],
+                "vote-active"]],
+            [true, ["seq", "vote-halt"]],
+          ]],
         updateProgram: [
           "if",
           [["accum-ref", "isDisabled"], "vote-halt"],
           [["eq?", ["accum-ref", "backwardMin"], ["accum-ref", "forwardMin"]],
             ["seq",
-             ["accum-set!", "isDisabled", true],
-             ["accum-set!", "mySCC", ["accum-ref", "forwardMin"]],
-             ["for-each",
-              ["vertex", ["accum-ref", "activeInbound"]],
-              ["seq", [
-                "send-to-accum",
-                ["var-ref", "vertex"],
-                "backwardMin",
-                ["accum-ref", "backwardMin"]]]],
-             ["send-to-global-accum", "converged", true],
-             "vote-halt",
+              ["accum-set!", "isDisabled", true],
+              ["accum-set!", "mySCC", ["accum-ref", "forwardMin"]],
+              ["for-each",
+                ["vertex", ["accum-ref", "activeInbound"]],
+                ["seq", [
+                  "send-to-accum",
+                  ["var-ref", "vertex"],
+                  "backwardMin",
+                  ["accum-ref", "backwardMin"]]]],
+              ["send-to-global-accum", "converged", true],
+              "vote-halt",
             ],
           ],
           [true, ["seq",
-                  "vote-halt"]],
+            "vote-halt"]],
         ],
       },
     ],
@@ -184,6 +184,7 @@ function exec_test_scc_on_graph(graphSpec) {
     strongly_connected_components(graphSpec.name, "SCC")
   );
 
+  // TODO: Verify SSC result
   if (status.state === "fatal error") {
     return false;
   } else {
@@ -192,14 +193,19 @@ function exec_test_scc_on_graph(graphSpec) {
 }
 
 function exec_test_scc() {
-  // TODO: After fix, re-enable all tests here!
-//    exec_test_scc_on_graph(examplegraphs.create_complete_graph("testComplete_5shard", 5));
-  return exec_test_scc_on_graph(examplegraphs.create_tadpole_graph("testTadpole_5shard", 5));
-//  exec_test_scc_on_graph(examplegraphs.create_disjoint_circle_and_complete_graph("testCircleComplete_1shard", 1));
-//  exec_test_scc_on_graph(examplegraphs.create_disjoint_circle_and_complete_graph("testCircleComplete_5shard", 5));
-/*  exec_test_scc_on_graph(
+  let results = [];
+  results.push(exec_test_scc_on_graph(examplegraphs.create_complete_graph("testComplete_5shard", 5)));
+  /*results.push(exec_test_scc_on_graph(examplegraphs.create_tadpole_graph("testTadpole_5shard", 5)));
+  results.push(exec_test_scc_on_graph(examplegraphs.create_disjoint_circle_and_complete_graph("testCircleComplete_1shard", 1)));
+  results.push(exec_test_scc_on_graph(examplegraphs.create_disjoint_circle_and_complete_graph("testCircleComplete_5shard", 5)));
+  results.push(exec_test_scc_on_graph(
     examplegraphs.create_line_graph("LineGraph100", 100, 1)
-  ); */
+  ));*/
+
+  if (results.includes(false)) {
+    return false;
+  }
+  return true;
 }
 
 function test() {
