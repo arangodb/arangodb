@@ -764,9 +764,10 @@ TEST_F(MaintenanceTestActionPhaseOne, local_databases_one_more_empty_database_sh
 
   localNodes.begin()->second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
 
-  arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
+  arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                        localNodes.begin()->second.toBuilder().slice(),
-                                       localNodes.begin()->first, errors, *feature, actions);
+                                       localNodes.begin()->first, errors, *feature, actions,
+                                       MaintenanceFeature::ShardActionMap{});
 
   if (actions.size() != 1) {
     std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
@@ -781,9 +782,10 @@ TEST_F(MaintenanceTestActionPhaseOne,
   std::vector<ActionDescription> actions;
   localNodes.begin()->second("db3/col") = arangodb::velocypack::Slice::emptyObjectSlice();
 
-  arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
+  arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                        localNodes.begin()->second.toBuilder().slice(),
-                                       localNodes.begin()->first, errors, *feature, actions);
+                                       localNodes.begin()->first, errors, *feature, actions,
+                                       MaintenanceFeature::ShardActionMap{});
 
   ASSERT_EQ(actions.size(), 1);
   ASSERT_EQ(actions.front().name(), "DropDatabase");
@@ -834,12 +836,12 @@ TEST_F(MaintenanceTestActionPhaseOne,
   std::string shardName = shards.first.begin()->first;
 
   for (auto node : localNodes) {
-    std::vector<std::shared_ptr<ActionDescription>> actions;
+    std::vector<ActionDescription> actions;
 
     node.second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
 
     arangodb::maintenance::diffPlanLocal(
-        plan.toBuilder().slice(), 0, node.second.toBuilder().slice(),
+        plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, errors, *feature, actions,
         arangodb::MaintenanceFeature::ShardActionMap{
             {shardName, std::make_shared<ActionDescription>(
@@ -1538,9 +1540,9 @@ TEST_F(MaintenanceTestActionPhaseOne, removed_follower_in_plan_must_be_dropped) 
     if (node.first == followerName) {
       // Must see an action dropping the shard
       ASSERT_EQ(actions.size(), 1);
-      ASSERT_EQ(actions[0]->name(), "DropCollection");
-      ASSERT_EQ(actions[0]->get(DATABASE), dbname);
-      ASSERT_EQ(actions[0]->get(SHARD), shname);
+      ASSERT_EQ(actions[0].name(), "DropCollection");
+      ASSERT_EQ(actions[0].get(DATABASE), dbname);
+      ASSERT_EQ(actions[0].get(SHARD), shname);
     } else if (node.first == leaderName) {
       // Must see an UpdateCollection action to drop the follower
       ASSERT_EQ(actions.size(), 1);
