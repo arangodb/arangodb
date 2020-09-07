@@ -141,25 +141,25 @@ function exec_test_shortest_path_impl(graphSpec) {
 
     internal.print(" -- computing shortest paths using kShortestPath AQL to ", to_vertex);
     const shortest_paths_result = db._query(`
-        FOR p IN OUTBOUND K_SHORTEST_PATHS @from TO @to
+            FOR p IN OUTBOUND K_SHORTEST_PATHS @from TO @to
             GRAPH @graph
-            LET path = p.vertices[*]._id
-            COLLECT len = LENGTH(path) INTO paths = path
             LIMIT 1
-            RETURN paths`, {"from": from_vertex, "to": to_vertex, "graph": graphSpec.name})
+            RETURN p`, {"from": from_vertex, "to": to_vertex, "graph": graphSpec.name})
       .toArray();
 
     internal.print(" -- collecting Pregel SSSP Path to ", to_vertex);
     const found_path_result = db._query(`
-            FOR v, e, p in 1..10000 INBOUND @to GRAPH @graph
-                PRUNE v._id == @from || e._to == p.vertices[-1].SSSP.distance.sender
+            FOR v, e, p in 0..10000 INBOUND @to GRAPH @graph
+                PRUNE v._id == @from || (e != null && e._from != p.vertices[-2].SSSP.distance.sender)
+                OPTIONS {uniqueVertices: "path"}
                 FILTER v._id == @from
+                LIMIT 1
                 RETURN REVERSE(p.vertices[*]._id)`,
       {"from": from_vertex, "to": to_vertex, "graph": graphSpec.name}).toArray();
 
     if ((found_path_result.length !== 0) !== (shortest_paths_result.length !== 0)) {
       internal.print("\u001b[31mFAIL: did not agree on the existance of a shortest path to ", to_vertex, "\u001b[0m");
-      continue;
+      return false;
     } else if (found_path_result.length === 0) {
       internal.print("\u001b[32mOK  : no path found to ", to_vertex, ", as expected", "\u001b[0m");
       continue;
@@ -167,26 +167,8 @@ function exec_test_shortest_path_impl(graphSpec) {
     const shortest_paths = shortest_paths_result[0];
     const found_path = found_path_result[0];
 
-    // now test if the shortest path found is actually in the list of shortest paths
-    let found = false;
-    for (let path of shortest_paths) {
-      if (path.length === found_path.length) {
-        let isSame = true;
-        for (let i = 0; i < path.length; i++) {
-          if (path[i] !== found_path[i]) {
-            isSame = false;
-            break;
-          }
-        }
-        if (isSame) {
-          found = true;
-          break;
-        }
-      }
-    }
-
-    if (!found) {
-      internal.print("\u001b[32mOK  : sssp path was not in the list of shortest paths, sssp: ", found_path, " all shortest paths: ", shortest_paths, "\u001b[0m");
+    if (shortest_paths.vertices.length !== found_path.length) {
+      internal.print("\u001b[32mOK  : sssp path was not a shortest path, sssp: ", found_path.length, " all shortest paths: ", shortest_paths.vertices.length, "\u001b[0m");
       return false;
     } else {
       internal.print("\u001b[32mOK  : shortest path is ok to ", to_vertex, "\u001b[0m");
@@ -198,22 +180,24 @@ function exec_test_shortest_path_impl(graphSpec) {
 function exec_test_shortest_path() {
   let results = [];
 
-  results.push(exec_test_shortest_path_impl(examplegraphs.create_line_graph("LineGraph100", 100, 1)));
-  results.push(exec_test_shortest_path_impl(examplegraphs.create_line_graph("LineGraph1000", 1000, 9)));
-  results.push(exec_test_shortest_path_impl(examplegraphs.create_line_graph("LineGraph10000", 10000, 18)));
+  results.push(exec_test_shortest_path_impl(examplegraphs.create_line_graph("LineGraph10", 10, 1)));
+  results.push(exec_test_shortest_path_impl(examplegraphs.create_line_graph("LineGraph100", 100, 9)));
+  results.push(exec_test_shortest_path_impl(examplegraphs.create_line_graph("LineGraph1000", 1000, 18)));
 
   results.push(exec_test_shortest_path_impl(examplegraphs.create_circle_graph("Circle10", 10, 1)));
   results.push(exec_test_shortest_path_impl(examplegraphs.create_circle_graph("Circle100", 100, 6)));
   results.push(exec_test_shortest_path_impl(examplegraphs.create_circle_graph("Circle1000", 1000, 18)));
 
+  results.push(exec_test_shortest_path_impl(examplegraphs.create_complete_graph("Complete4", 10, 4)));
+  results.push(exec_test_shortest_path_impl(examplegraphs.create_complete_graph("Complete10", 10, 10)));
+  results.push(exec_test_shortest_path_impl(examplegraphs.create_complete_graph("Complete100", 10, 100)));
+
   results.push(exec_test_shortest_path_impl(examplegraphs.create_wiki_vote_graph("WikiVote", 1)));
   results.push(exec_test_shortest_path_impl(examplegraphs.create_wiki_vote_graph("WikiVote", 9)));
   results.push(exec_test_shortest_path_impl(examplegraphs.create_wiki_vote_graph("WikiVote", 18)));
 
-  if (results.includes(false)) {
-    return false;
-  }
-  return true;
+  return !results.includes(false);
+
 }
 
 function test() {

@@ -143,13 +143,13 @@ function create_circle_graph(name, shards) {
 }
 exports.create_circle_graph = create_circle_graph;
 
-function create_complete_graph(name, shards) {
+function create_complete_graph(name, shards, numVertices = 100) {
   var spec = create_graph_spec(name, "id", shards);
 
-  for (var i = 0; i < 100; i++) {
+  for (var i = 0; i < numVertices; i++) {
     spec.vertices.push({ "id": "A" + i});
   }
-  add_complete(spec, _.range(100));
+  add_complete(spec, _.range(numVertices));
   create_graph(spec);
 
   return spec;
