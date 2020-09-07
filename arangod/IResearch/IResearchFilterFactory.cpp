@@ -74,7 +74,8 @@ using namespace std::literals::string_literals;
 
 namespace {
 
-char const* GEO_INTERSECT_FUNC = "GEO_INTERSECTS";
+constexpr char const* GEO_INTERSECT_FUNC = "GEO_INTERSECTS";
+constexpr char const* TERMS_FUNC = "TERMS";
 
 namespace error {
 
@@ -2756,14 +2757,12 @@ irs::string_ref const maxStrValue = getStringRef(max);
   return {};
 }
 
-constexpr char const* termsFuncName = "TERMS";
-
-std::map<std::string, ConversionPhraseHandler> const FCallSystemConversionPhraseHandlers {
+std::map<irs::string_ref, ConversionPhraseHandler> const FCallSystemConversionPhraseHandlers {
   {"TERM", fromFuncPhraseTerm},
   {"STARTS_WITH", fromFuncPhraseStartsWith},
   {"WILDCARD", fromFuncPhraseLike}, // 'LIKE' is a key word
   {"LEVENSHTEIN_MATCH", fromFuncPhraseLevenshteinMatch},
-  {termsFuncName, fromFuncPhraseTerms<VPackSlice>},
+  {TERMS_FUNC, fromFuncPhraseTerms<VPackSlice>},
   {"IN_RANGE", fromFuncPhraseInRange}
 };
 arangodb::Result processPhraseArgObjectType(char const* funcName,
@@ -2854,7 +2853,7 @@ arangodb::Result processPhraseArgs(char const* funcName,
           offset = 0;
           continue;
         } else {
-          auto res = fromFuncPhraseTerms(funcName, idx, termsFuncName, phrase, ctx, ElementTraits::valueSlice(valueArg),
+          auto res = fromFuncPhraseTerms(funcName, idx, TERMS_FUNC, phrase, ctx, ElementTraits::valueSlice(valueArg),
                                          offset, analyzer);
           if (res.fail()) {
             return res;
@@ -3578,22 +3577,22 @@ arangodb::Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& 
   return entry->second(entry->first.c_str(), filter, ctx, filterCtx, *args);
 }
 
-std::map<std::string, ConvertionHandler> const FCallSystemConvertionHandlers{
-    // filter functions
-    {"PHRASE", fromFuncPhrase},
-    {"STARTS_WITH", fromFuncStartsWith},
-    {"EXISTS", fromFuncExists},
-    {"MIN_MATCH", fromFuncMinMatch},
-    {"IN_RANGE", fromFuncInRange},
-    {"LIKE", fromFuncLike },
-    {"LEVENSHTEIN_MATCH", fromFuncLevenshteinMatch},
-    {"NGRAM_MATCH", fromFuncNgramMatch},
-    // geo function
-    {GEO_INTERSECT_FUNC, fromFuncGeoContainsIntersect},
-    {"GEO_CONTAINS", fromFuncGeoContainsIntersect},
-    // context functions
-    {"BOOST", fromFuncBoost},
-    {"ANALYZER", fromFuncAnalyzer},
+std::map<irs::string_ref, ConvertionHandler> const FCallSystemConvertionHandlers{
+  // filter functions
+  {"PHRASE", fromFuncPhrase},
+  {"STARTS_WITH", fromFuncStartsWith},
+  {"EXISTS", fromFuncExists},
+  {"MIN_MATCH", fromFuncMinMatch},
+  {"IN_RANGE", fromFuncInRange},
+  {"LIKE", fromFuncLike },
+  {"LEVENSHTEIN_MATCH", fromFuncLevenshteinMatch},
+  {"NGRAM_MATCH", fromFuncNgramMatch},
+  // geo function
+  {GEO_INTERSECT_FUNC, fromFuncGeoContainsIntersect},
+  {"GEO_CONTAINS", fromFuncGeoContainsIntersect},
+  // context functions
+  {"BOOST", fromFuncBoost},
+  {"ANALYZER", fromFuncAnalyzer},
 };
 
 arangodb::Result fromFCall(
