@@ -22,10 +22,12 @@
 // / @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const internal = require("internal");
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
 const accumulators = require("@arangodb/air/accumulators");
+const _ = require("lodash");
 /*
 
 
@@ -88,9 +90,11 @@ function strongly_connected_components_program(resultField) {
         initProgram: ["seq",
           ["accum-set!", "activeInbound", ["quote"]],
           ["if",
-            [["not", ["accum-ref", "isDisabled"]],
-              ["send-to-all-neighbours", "activeInbound", ["this-pregel-id"]]],
-            [true, "vote-halt"]], // else
+            [
+                ["not", ["accum-ref", "isDisabled"]],
+                ["send-to-all-neighbours", "activeInbound", ["this-pregel-id"]]
+            ],
+          ], // else
           "vote-halt",
         ],
         updateProgram: "vote-halt",
@@ -178,7 +182,7 @@ function strongly_connected_components(graphName, resultField) {
   );
 }
 
-function exec_test_scc_on_graph(graphSpec) {
+function exec_test_scc_on_graph(graphSpec, components = []) {
   let status = testhelpers.wait_for_pregel(
     "Air Strongly Connected Components",
     strongly_connected_components(graphSpec.name, "SCC")
@@ -188,24 +192,32 @@ function exec_test_scc_on_graph(graphSpec) {
   if (status.state === "fatal error") {
     return false;
   } else {
-    return true;
+
+    const found_components = db._query(`
+      for doc in @@graph
+        collect scc = doc.SCC.mySCC WITH COUNT INTO size
+        sort size
+        return size`,
+        {"@graph": graphSpec.vname}).toArray();
+
+    if (_.isEqual(components, found_components)) {
+      internal.print("\u001b[32mOK  : found ", components.length, " components", "\u001b[0m");
+      return true;
+    } else {
+      internal.print("\u001b[31mFAIL: scc's not as expected: ", found_components, " expected: ", components, "\u001b[0m");
+      return false;
+    }
   }
 }
 
 function exec_test_scc() {
   let results = [];
-  results.push(exec_test_scc_on_graph(examplegraphs.create_complete_graph("testComplete_5shard", 5)));
-  /*results.push(exec_test_scc_on_graph(examplegraphs.create_tadpole_graph("testTadpole_5shard", 5)));
-  results.push(exec_test_scc_on_graph(examplegraphs.create_disjoint_circle_and_complete_graph("testCircleComplete_1shard", 1)));
-  results.push(exec_test_scc_on_graph(examplegraphs.create_disjoint_circle_and_complete_graph("testCircleComplete_5shard", 5)));
-  results.push(exec_test_scc_on_graph(
-    examplegraphs.create_line_graph("LineGraph100", 100, 1)
-  ));*/
+  results.push(exec_test_scc_on_graph(examplegraphs.create_complete_graph("testComplete_5shard", 5), [100]));
+  results.push(exec_test_scc_on_graph(examplegraphs.create_circle_graph("Circle10", 10, 3), [10]));
+  results.push(exec_test_scc_on_graph(examplegraphs.create_tadpole_graph("Tadpole", 10, 3), [1, 1, 1, 1, 6]));
+  results.push(exec_test_scc_on_graph(examplegraphs.create_line_graph("LineGraph10", 10, 3), [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]));
 
-  if (results.includes(false)) {
-    return false;
-  }
-  return true;
+  return !results.includes(false);
 }
 
 function test() {

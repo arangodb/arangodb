@@ -86,6 +86,9 @@ struct AccumulatorBase {
   virtual auto finalizeIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult = 0;
 };
 
+template<typename T>
+constexpr auto always_false_v = false;
+
 template <typename T>
 class Accumulator : public AccumulatorBase {
  public:
@@ -139,7 +142,12 @@ class Accumulator : public AccumulatorBase {
       return this->update(s.getBool());
     } else if constexpr (std::is_arithmetic_v<T>) {
       return this->update(s.getNumericValue<T>());
+    } else if constexpr (std::is_same_v<VPackSlice, T>) {
+      return this->update(s);
+    } else if constexpr (std::is_same_v<std::string, T>) {
+      return this->update(s.copyString());
     } else {
+      static_assert(always_false_v<T>);
       return greenspun::EvalError("update by message not implemented");
     }
   }
@@ -167,12 +175,7 @@ class Accumulator : public AccumulatorBase {
   }
 
   auto finalizeIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override {
-    if constexpr (std::is_same_v<T, VPackSlice>) {
-      result.add(_value);
-    } else {
-      result.add(VPackValue(_value));
-    }
-    return {};
+    return getIntoBuilder(result);
   }
 
 protected:
