@@ -174,7 +174,6 @@ arangodb::Result syncReplicatedShardsWithLeaders(VPackSlice const& plan,
                                                  VPackSlice const& local,
                                                  std::string const& serverId,
                                                  MaintenanceFeature& feature,
-                                                 std::vector<ActionDescription>& actions,
                                                  MaintenanceFeature::ShardActionMap const& shardActionMap);
 
 }  // namespace maintenance

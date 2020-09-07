@@ -853,7 +853,7 @@ void MaintenanceFeature::pause(std::chrono::seconds const& s) {
   _pauseUntil = std::chrono::steady_clock::duration::zero();
 }
 
-std::shared_ptr<maintenance::ActionDescription> MaintenanceFeature::isShardLocked(ShardID const& shardId) const {
+std::shared_ptr<maintenance::ActionDescription> MaintenanceFeature::isShardLocked(std::string const& shardId) const {
   auto it = _shardActionMap.find(shardId);
   if (it == _shardActionMap.end()) {
     return nullptr;
@@ -861,7 +861,7 @@ std::shared_ptr<maintenance::ActionDescription> MaintenanceFeature::isShardLocke
   return it->second;
 }
 
-bool MaintenanceFeature::lockShard(ShardID const& shardId,
+bool MaintenanceFeature::lockShard(std::string const& shardId,
                                    std::shared_ptr<maintenance::ActionDescription> const& description) {
   LOG_TOPIC("aaed2", DEBUG, Logger::MAINTENANCE) << "Locking shard " << shardId << " for action " << *description;
   std::lock_guard<std::mutex> guard(_shardActionMapMutex);
@@ -869,7 +869,7 @@ bool MaintenanceFeature::lockShard(ShardID const& shardId,
   return pair.second;
 }
 
-bool MaintenanceFeature::unlockShard(ShardID const& shardId) {
+bool MaintenanceFeature::unlockShard(std::string const& shardId) {
   std::lock_guard<std::mutex> guard(_shardActionMapMutex);
   auto it = _shardActionMap.find(shardId);
   if (it == _shardActionMap.end()) {

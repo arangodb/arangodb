@@ -26,6 +26,7 @@
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Cluster/RebootTracker.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "RestServer/VocbaseContext.h"
 
@@ -109,7 +110,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
                         std::shared_ptr<arangodb::velocypack::Builder> const& options,
                         std::shared_ptr<transaction::Context> const& ctx,
                         double const ttl, aql::SerializationFormat format,
-                        bool& needToLock, arangodb::velocypack::Builder& answer);
+                        bool& needToLock, arangodb::velocypack::Builder& answer,
+                        RebootId rebootId, std::string coordinatorId);
 
   bool registerTraverserEngines(arangodb::velocypack::Slice const traversers,
                                 std::shared_ptr<transaction::Context> const& ctx,

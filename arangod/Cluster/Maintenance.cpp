@@ -212,7 +212,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
     return;
   }
 
-  ActionDescription description;
+  std::shared_ptr<ActionDescription> description;
 
   bool shouldBeLeading = serverId == leaderId;
 
@@ -269,7 +269,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
     if (!properties->slice().isObject() || properties->slice().length() > 0 ||
         !followersToDropString.empty()) {
       if (errors.shards.find(fullShardLabel) == errors.shards.end()) {
-        description = ActionDescription(
+        description = std::make_shared<ActionDescription>(
             std::map<std::string, std::string>{{NAME, UPDATE_COLLECTION},
              {DATABASE, dbname},
              {COLLECTION, colname},
@@ -277,7 +277,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
              {SERVER_ID, serverId},
              {FOLLOWERS_TO_DROP, followersToDropString}},
             HIGHER_PRIORITY, true, std::move(properties));
-        actions.emplace_back(std::move(description));
+        actions.emplace_back(std::move(*description));
       } else {
         LOG_TOPIC("0285b", DEBUG, Logger::MAINTENANCE)
             << "Previous failure exists for local shard " << dbname << "/" << shname
@@ -291,7 +291,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
           << ", local leader: " << lcol.get(THE_LEADER).copyString()
           << ", leader id: " << leaderId << ", my id: " << serverId
           << ", should be leader: ";
-      description = ActionDescription(
+      description = std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{{NAME, TAKEOVER_SHARD_LEADERSHIP},
                                              {DATABASE, dbname},
                                              {COLLECTION, colname},
@@ -300,7 +300,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
                                              {LOCAL_LEADER, std::string(localLeader)},
                                              {OLD_CURRENT_COUNTER, std::to_string(feature.getCurrentCounter())}},
           LEADER_PRIORITY, true);
-      actions.emplace_back(std::move(description));
+      actions.emplace_back(std::move(*description));
     }
 
     // Indexes
@@ -334,7 +334,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
     if (errors.shards.find(dbname + "/" + colname + "/" + shname) ==
         errors.shards.end()) {
       auto props = createProps(cprops);  // Only once might need often!
-      description = ActionDescription(
+      description = std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{{NAME, CREATE_COLLECTION},
                                              {COLLECTION, colname},
                                              {SHARD, shname},
@@ -342,7 +342,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
                                              {SERVER_ID, serverId},
                                              {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
           shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true, std::move(props));
-      actions.emplace_back(std::move(description));
+      actions.emplace_back(std::move(*description));
     } else {
       LOG_TOPIC("c1d8e", DEBUG, Logger::MAINTENANCE)
           << "Previous failure exists for creating local shard " << dbname << "/"
@@ -355,7 +355,7 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
                       VPackSlice const& cprops, VPackSlice const& shardMap,
                       std::unordered_set<std::string>& commonShrds,
                       std::unordered_set<std::string>& indis, std::string const& serverId,
-                      std::vector<std::shared_ptr<ActionDescription>>& actions,
+                      std::vector<ActionDescription>& actions,
                       MaintenanceFeature::ShardActionMap const& shardActionMap) {
   // First check if the shard is locked:
   auto iter = shardActionMap.find(colname);
@@ -366,7 +366,7 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
     return;
   }
 
-  ActionDescription description;
+  std::shared_ptr<ActionDescription> description;
 
   std::unordered_set<std::string>::const_iterator it =
       std::find(commonShrds.begin(), commonShrds.end(), colname);
@@ -375,13 +375,13 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
   bool const isLeading = localLeader.empty();
   if (it == commonShrds.end()) {
     // This collection is not planned anymore, can drop it
-    description = ActionDescription(
+    description = std::make_shared<ActionDescription>(
         std::map<std::string, std::string>{
             {NAME, DROP_COLLECTION},
             {DATABASE, dbname},
             {SHARD, colname}},
         isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true);
-    actions.emplace_back(std::move(description));
+    actions.emplace_back(std::move(*description));
     return;
   }
   // We dropped out before
@@ -408,12 +408,12 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
   */
 
   if (activeResign || adjustResignState) {
-    description = ActionDescription(
+    description = std::make_shared<ActionDescription>(
         std::map<std::string, std::string>{{NAME, RESIGN_SHARD_LEADERSHIP},
                                            {DATABASE, dbname},
                                            {SHARD, colname}},
         RESIGN_PRIORITY, true);
-    actions.emplace_back(description);
+    actions.emplace_back(std::move(*description));
   }
 
   // We only drop indexes, when collection is not being dropped already
@@ -618,7 +618,7 @@ arangodb::Result arangodb::maintenance::executePlan(VPackSlice const& plan,
   {
     // TODO: Just putting an empty array does not make any sense here!
     VPackArrayBuilder a(&report);
-    diffPlanLocal(plan, planIndex, local, serverId, errors, feature, actions, shardActionMap);
+    diffPlanLocal(plan, local, serverId, errors, feature, actions, shardActionMap);
   }
 
   for (auto const& i : errors.databases) {
@@ -654,19 +654,20 @@ arangodb::Result arangodb::maintenance::executePlan(VPackSlice const& plan,
   // enact all
   for (auto& action : actions) {
     LOG_TOPIC("8513c", DEBUG, Logger::MAINTENANCE)
-        << "adding action " << action.get() << " to feature ";
+        << "adding action " << action << " to feature ";
     if (debugActions) {
       VPackObjectBuilder b(&report);
-      action->toVelocyPack(report);
+      action.toVelocyPack(report);
     }
-    if (!action->isRunEvenIfDuplicate()) {
-      feature.addAction(std::move(action), false);
+    auto actionp = std::make_shared<ActionDescription>(action);
+    if (!actionp->isRunEvenIfDuplicate()) {
+      feature.addAction(std::move(actionp), false);
     } else {
-      std::string shardName = action->get(SHARD);
-      bool ok = feature.lockShard(shardName, action);
+      std::string shardName = action.get(SHARD);
+      bool ok = feature.lockShard(shardName, actionp);
       TRI_ASSERT(ok);
       try {
-        Result res = feature.addAction(std::make_shared<ActionDescription>(action), false);
+        Result res = feature.addAction(std::move(actionp), false);
         if (res.fail()) {
           feature.unlockShard(shardName);
         }
@@ -733,7 +734,7 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent(
 
 /// @brief Phase one: Compare plan and local and create descriptions
 arangodb::Result arangodb::maintenance::phaseOne(
-    VPackSlice const& plan, uint64_t planIndex, VPackSlice const& local,
+    VPackSlice const& plan, VPackSlice const& local,
     std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap) {
   arangodb::Result result;
@@ -744,7 +745,7 @@ arangodb::Result arangodb::maintenance::phaseOne(
 
     // Execute database changes
     try {
-      result = executePlan(plan, planIndex, local, serverId, feature, report, shardActionMap);
+      result = executePlan(plan, local, serverId, feature, report, shardActionMap);
     } catch (std::exception const& e) {
       LOG_TOPIC("55938", ERR, Logger::MAINTENANCE)
           << "Error executing plan: " << e.what() << ". " << __FILE__ << ":" << __LINE__;
@@ -1198,7 +1199,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
     VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local,
     std::string const& serverId, MaintenanceFeature& feature,
-    std::vector<ActionDescription>& actions, MaintenanceFeature::ShardActionMap const& shardActionMap) {
+    MaintenanceFeature::ShardActionMap const& shardActionMap) {
   auto pdbs = plan.get(COLLECTIONS);
   auto cdbs = current.get(COLLECTIONS);
 
@@ -1217,7 +1218,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
             }
 
             // First check if the shard is locked:
-            auto it = shardActionMap.find(shname.toString());
+            auto it = shardActionMap.find(shname);
             if (it != shardActionMap.end()) {
               LOG_TOPIC("aaed5", DEBUG, Logger::MAINTENANCE)
                   << "Skipping SyncReplicatedShardsWithLeader for shard " << shname
@@ -1267,11 +1268,11 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
             std::shared_ptr<ActionDescription> description = std::make_shared<ActionDescription>(
                 std::map<std::string, std::string>{
                     {NAME, SYNCHRONIZE_SHARD},
-                    {DATABASE, dbname.toString()},
-                    {COLLECTION, colname.toString()},
-                    {SHARD, shname.toString()},
+                    {DATABASE, dbname},
+                    {COLLECTION, colname},
+                    {SHARD, shname},
                     {THE_LEADER, leader},
-                    {SHARD_VERSION, std::to_string(feature.shardVersion(shname.toString()))}},
+                    {SHARD_VERSION, std::to_string(feature.shardVersion(shname))}},
                 SYNCHRONIZE_PRIORITY, true);
             std::string shardName = description->get(SHARD);
             bool ok = feature.lockShard(shardName, description);

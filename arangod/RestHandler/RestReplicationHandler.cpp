@@ -3107,9 +3107,9 @@ Result RestReplicationHandler::createBlockingTransaction(
     std::string comment = std::string("SynchronizeShard from ") + serverId +
                           " for " + col.name() + " access mode " +
                           AccessMode::typeString(access);
-    std::unique_ptr<CallbackGuard> rGuard = nullptr;
+    CallbackGuard rGuard;
     if (!serverId.empty()) {
-      rGuard = std::make_unique<CallbackGuard>(
+      rGuard = CallbackGuard(
         ci.rebootTracker().callMeOnChange(RebootTracker::PeerState(serverId, rebootId),
                                           f, comment));
     }

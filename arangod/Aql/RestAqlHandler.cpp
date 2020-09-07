@@ -386,14 +386,14 @@ bool RestAqlHandler::registerSnippets(
       if (rebootId.initialized()) {
         LOG_TOPIC("42512", TRACE, Logger::AQL)
             << "Setting RebootTracker on coordinator " << coordinatorId
-            << " for query with id " << q->id();
+            << " for query with id " << qId;
         auto& clusterFeature = _server.getFeature<ClusterFeature>();
         auto& clusterInfo = clusterFeature.clusterInfo();
         rGuard = clusterInfo.rebootTracker().callMeOnChange(
             cluster::RebootTracker::PeerState(coordinatorId, rebootId),
             [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(),
              queryId = qId]() {
-              queryRegistry->destroyQuery(vocbaseName, queryId, TRI_ERROR_TRANSACTION_ABORTED);
+              queryRegistry->destroy(vocbaseName, queryId, TRI_ERROR_TRANSACTION_ABORTED, false);
               LOG_TOPIC("42511", DEBUG, Logger::AQL)
                   << "Query snippet destroyed as consequence of "
                      "RebootTracker for coordinator, db="

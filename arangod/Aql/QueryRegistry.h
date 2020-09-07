@@ -60,7 +60,9 @@ class QueryRegistry {
   /// The callback guard needs to be stored with the query to prevent it from
   /// firing. This is used for the RebootTracker to destroy the query when
   /// the coordinator which created it restarts or fails.
-  TEST_VIRTUAL void insert(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
+  TEST_VIRTUAL void insert(
+    QueryId id, Query* query, double ttl, bool isPrepare, bool keepLease,
+    arangodb::cluster::CallbackGuard guard);
 
   /// @brief open, find a query in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
@@ -127,7 +129,7 @@ class QueryRegistry {
     QueryInfo& operator=(QueryInfo const&) = delete;
 
     QueryInfo(QueryId id, Query* query, double ttl, bool isPrepared,
-              arangodb::cluster::CallbackGuard> rebootGuard);
+              arangodb::cluster::CallbackGuard rebootGuard);
     ~QueryInfo();
 
     TRI_vocbase_t* _vocbase;  // the vocbase

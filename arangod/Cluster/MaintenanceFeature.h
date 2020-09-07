@@ -62,6 +62,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
     std::unordered_map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>> databases;
   };
 
+  typedef std::map<std::string, std::shared_ptr<maintenance::ActionDescription>> ShardActionMap;
+
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -126,15 +128,15 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief Check if a shard is locked for a maintenance action.
   /// returns the ActionDescription of the job if locked. If the shard
   /// is not locked, a nullptr is returned.
-  std::shared_ptr<maintenance::ActionDescription> isShardLocked(ShardID const& shardId) const;
+  std::shared_ptr<maintenance::ActionDescription> isShardLocked(std::string const& shardId) const;
 
   /// @brief Lock a shard for a certain action description. Returns `false` if
   /// the shard is already locked and `true` otherwise. If the lock succeeds, the
   /// action description is retained for later query.
-  bool lockShard(ShardID const& shardId, std::shared_ptr<maintenance::ActionDescription> const& description);
+  bool lockShard(std::string const& shardId, std::shared_ptr<maintenance::ActionDescription> const& description);
 
   /// @brief Release shard lock. Returns `true` if the shard was locked and `false` otherwise.
-  bool unlockShard(ShardID const& shardId);
+  bool unlockShard(std::string const& shardId);
 
   /// @brief Get shard locks, this copies the whole map of shard locks.
   ShardActionMap getShardLocks() const;
@@ -469,6 +471,12 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   /// @brief mutex protecting _shardActionMap
   mutable std::mutex _shardActionMapMutex;
+
+  /// @brief Mutex for the current counter condition variable
+  mutable std::mutex _currentCounterLock;
+
+  /// @brief Condition variable where Actions can wait on until _currentCounter increased
+  std::condition_variable _currentCounterCondition;
 
   /// @brief  counter for load_current requests.
   uint64_t _currentCounter;

@@ -31,6 +31,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ScopeGuard.h"
+#include "Cluster/CallbackGuard.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "VocBase/ticks.h"
@@ -93,7 +94,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     double ttl = query.queryOptions().ttl;
     TRI_ASSERT(ttl > 0);
     try {
-      queryRegistry->insert(_id, &query, ttl, true, false);
+      queryRegistry->insert(_id, &query, ttl, true, false, cluster::CallbackGuard());
     } catch (basics::Exception const& e) {
       coordinatorQueryIds.pop_back();
       return {e.code(), e.message()};
