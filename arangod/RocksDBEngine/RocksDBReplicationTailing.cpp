@@ -47,10 +47,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rocksutils;
 
-namespace {
-static std::string const emptyString;
-}
-
 /// an incomplete convert function, basically only use for DDL ops
 TRI_replication_operation_e rocksutils::convertLogType(RocksDBLogType t) {
   switch (t) {

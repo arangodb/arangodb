@@ -39,6 +39,10 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/CallbackGuard.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "Logger/LogMacros.h"
@@ -161,7 +165,35 @@ void RestAqlHandler::setupClusterQuery() {
                   "body must be an object with attribute \"variables\"");
     return;
   }
-  
+
+  VPackSlice coordinatorRebootIdSlice = querySlice.get(StaticStrings::AttrCoordinatorRebootId);
+  VPackSlice coordinatorIdSlice = querySlice.get(StaticStrings::AttrCoordinatorId);
+  RebootId rebootId(0);
+  std::string coordinatorId;
+  if (!coordinatorRebootIdSlice.isNone() || !coordinatorIdSlice.isNone()) {
+    bool good = false;
+    if (coordinatorRebootIdSlice.isInteger() && coordinatorIdSlice.isString()) {
+      coordinatorId = coordinatorIdSlice.copyString();
+      try {
+        // The following will throw for negative numbers, which should not happen:
+        rebootId = RebootId(coordinatorRebootIdSlice.getUInt());
+        good = true;
+      } catch (...) {
+      }
+    }
+    if (!good) {
+      LOG_TOPIC("4251a", ERR, arangodb::Logger::AQL)
+          << "Invalid VelocyPack: \"" << StaticStrings::AttrCoordinatorRebootId
+          << "\" needs to be a positive number and \""
+          << StaticStrings::AttrCoordinatorId << "\" needs to be a non-empty string";
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
+                    "body must be an object with attribute \"" + StaticStrings::AttrCoordinatorRebootId +
+                        "\" and \"" + StaticStrings::AttrCoordinatorId + "\"");
+      return;
+    }
+  }
+  // Valid to not exist for upgrade scenarios!
+
   // Now we need to create shared_ptr<VPackBuilder>
   // That contains the old-style cluster snippet in order
   // to prepare create a Query object.
@@ -243,9 +275,31 @@ void RestAqlHandler::setupClusterQuery() {
 
   answerBuilder.close(); // result
   answerBuilder.close();
-  
-  _queryRegistry->insertQuery(std::move(q), ttl);
 
+  cluster::CallbackGuard rGuard;
+
+  // Now set an alarm for the case that the coordinator is restarted which
+  // initiated this query. In that case, we want to drop our piece here:
+  if (rebootId.initialized()) {
+    LOG_TOPIC("42512", TRACE, Logger::AQL)
+        << "Setting RebootTracker on coordinator " << coordinatorId
+        << " for query with id " << q->id();
+    auto& clusterFeature = _server.getFeature<ClusterFeature>();
+    auto& clusterInfo = clusterFeature.clusterInfo();
+    rGuard = clusterInfo.rebootTracker().callMeOnChange(
+        cluster::RebootTracker::PeerState(coordinatorId, rebootId),
+        [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(),
+         queryId = q->id()]() {
+          queryRegistry->destroyQuery(vocbaseName, queryId, TRI_ERROR_TRANSACTION_ABORTED);
+          LOG_TOPIC("42511", DEBUG, Logger::AQL)
+              << "Query snippet destroyed as consequence of "
+                 "RebootTracker for coordinator, db="
+              << vocbaseName << " queryId=" << queryId;
+        },
+        "Query aborted since coordinator rebooted or failed.");
+  }
+
+  _queryRegistry->insertQuery(std::move(q), ttl, std::move(rGuard));
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
