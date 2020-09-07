@@ -123,6 +123,22 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   std::shared_ptr<maintenance::Action> postAction(
       std::shared_ptr<maintenance::ActionDescription> const& description);
 
+  /// @brief Check if a shard is locked for a maintenance action.
+  /// returns the ActionDescription of the job if locked. If the shard
+  /// is not locked, a nullptr is returned.
+  std::shared_ptr<maintenance::ActionDescription> isShardLocked(ShardID const& shardId) const;
+
+  /// @brief Lock a shard for a certain action description. Returns `false` if
+  /// the shard is already locked and `true` otherwise. If the lock succeeds, the
+  /// action description is retained for later query.
+  bool lockShard(ShardID const& shardId, std::shared_ptr<maintenance::ActionDescription> const& description);
+
+  /// @brief Release shard lock. Returns `true` if the shard was locked and `false` otherwise.
+  bool unlockShard(ShardID const& shardId);
+
+  /// @brief Get shard locks, this copies the whole map of shard locks.
+  ShardActionMap getShardLocks() const;
+
  protected:
   std::shared_ptr<maintenance::Action> createAction(
       std::shared_ptr<maintenance::ActionDescription> const& description);
@@ -441,11 +457,18 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   std::atomic<std::chrono::steady_clock::duration> _pauseUntil;
 
-  /// @brief Mutex for the current counter condition variable
-  mutable std::mutex _currentCounterLock;
+  /// @brief shard action map, this map holds information which job (can only
+  /// be one) is currently scheduled or executing for a given shard name. An
+  /// entry is added whenever an ActionDescription is created in Maintenance
+  /// and is removed, when the action for the shard is finished. The main Maintenance
+  /// loop with phaseOne and phaseTwo creates a copy of this map before it does
+  /// getLocalCollections and then avoids pondering over any shard which has an
+  /// entry in the map. In this way, shard deliberations as well as shard actions
+  /// are serialized and only one is happening at a time.
+  ShardActionMap _shardActionMap;
 
-  /// @brief Condition variable where Actions can wait on until _currentCounter increased
-  std::condition_variable _currentCounterCondition;
+  /// @brief mutex protecting _shardActionMap
+  mutable std::mutex _shardActionMapMutex;
 
   /// @brief  counter for load_current requests.
   uint64_t _currentCounter;

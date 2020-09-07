@@ -315,6 +315,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     addVariablesPart(infoBuilder);
     TRI_ASSERT(infoBuilder.isOpenObject());
 
+    infoBuilder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(ServerState::instance()->getRebootId().value()));
+    infoBuilder.add(StaticStrings::AttrCoordinatorId, VPackValue(ServerState::instance()->getId()));
+
     addSnippetPart(infoBuilder, _shardLocking, nodeAliases, server);
     TRI_ASSERT(infoBuilder.isOpenObject());
     auto shardMapping = _shardLocking.getShardMapping();

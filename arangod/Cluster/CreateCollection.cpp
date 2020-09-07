@@ -203,9 +203,11 @@ bool CreateCollection::first() {
 
 void CreateCollection::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
-    TRI_ASSERT(_description.has("shard"));
-    _feature.incShardVersion(_description.get("shard"));
+    TRI_ASSERT(_description.has(SHARD));
+    _feature.unlockShard(_description.get(SHARD));
+    if (!_doNotIncrement) {
+      _feature.incShardVersion(_description.get(SHARD));
+    }
   }
-
   ActionBase::setState(state);
 }

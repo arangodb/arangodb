@@ -57,9 +57,10 @@ class QueryRegistry {
   /// With keepLease == true the query will be kept open and it is guaranteed
   /// that the caller can continue to use it exclusively.
   /// This is identical to an atomic sequence of insert();open();
-  TEST_VIRTUAL void insert(
-    QueryId id, Query* query, double ttl, bool isPrepare, bool keepLease,
-    std::unique_ptr<arangodb::cluster::CallbackGuard>&& = nullptr);
+  /// The callback guard needs to be stored with the query to prevent it from
+  /// firing. This is used for the RebootTracker to destroy the query when
+  /// the coordinator which created it restarts or fails.
+  TEST_VIRTUAL void insert(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
 
   /// @brief open, find a query in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
@@ -126,7 +127,7 @@ class QueryRegistry {
     QueryInfo& operator=(QueryInfo const&) = delete;
 
     QueryInfo(QueryId id, Query* query, double ttl, bool isPrepared,
-              std::unique_ptr<arangodb::cluster::CallbackGuard>&& rebootGuard = nullptr);
+              arangodb::cluster::CallbackGuard> rebootGuard);
     ~QueryInfo();
 
     TRI_vocbase_t* _vocbase;  // the vocbase
@@ -137,8 +138,7 @@ class QueryRegistry {
     bool _isPrepared;
     double _timeToLive;  // in seconds
     double _expires;     // UNIX UTC timestamp of expiration
-    std::unique_ptr<arangodb::cluster::CallbackGuard> _rebootGuard;
-                         // Callback to remove query, when rebootId changes
+    cluster::CallbackGuard _rebootTrackerCallbackGuard;
   };
 
   /// @brief _queries, the actual map of maps for the registry

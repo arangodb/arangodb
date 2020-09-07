@@ -257,6 +257,7 @@ class StaticStrings {
   // generic attribute names
   static std::string const AttrCoordinator;
   static std::string const AttrCoordinatorRebootId;
+  static std::string const AttrCoordinatorId;
   static std::string const AttrIsBuilding;
 
   // misc strings

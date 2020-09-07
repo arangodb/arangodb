@@ -40,6 +40,7 @@ class ResignShardLeadership : public ActionBase {
   virtual ~ResignShardLeadership();
 
   virtual bool first() override final;
+  void setState(ActionState state) override final;
 
   static std::string const LeaderNotYetKnownString;
 };
