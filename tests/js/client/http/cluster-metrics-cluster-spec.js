@@ -52,7 +52,9 @@ const MetricNames = {
   HEARTBEAT_BUCKET: "arangodb_heartbeat_send_time_msec_bucket",
   HEARTBEAT_COUNT: "arangodb_heartbeat_send_time_msec_count",
   SUPERVISION_BUCKET: "arangodb_agency_supervision_runtime_msec_bucket",
-  SUPERVISION_COUNT: "arangodb_agency_supervision_runtime_msec_count"
+  SUPERVISION_COUNT: "arangodb_agency_supervision_runtime_msec_count",
+  SLOW_QUERY_COUNT: "arangodb_aql_slow_query",
+  CLIENT_CONNECTIONS: "arangodb_client_connection_statistics_client_connections"
 };
 
 class Watcher {
@@ -174,6 +176,30 @@ class AgentBucketWatcher extends Watcher {
 class QueryTimeWatcher extends CoordinatorValueWatcher {
   constructor(minChange) {
     super(MetricNames.QUERY_TIME);
+    this._minChange = minChange;
+  }
+
+  afterCoordinator(metrics) {
+    const after =  metrics[this._metric];
+    expect(after).to.be.at.least(this._before + this._minChange);
+  };
+}
+
+class SlowQueryCountWatcher extends CoordinatorValueWatcher {
+  constructor(minChange) {
+    super(MetricNames.SLOW_QUERY_COUNT);
+    this._minChange = minChange;
+  }
+
+  afterCoordinator(metrics) {
+    const after =  metrics[this._metric];
+    expect(after).to.be.equal(this._before + this._minChange);
+  };
+}
+
+class ConnecntionCountWatcher extends CoordinatorValueWatcher {
+  constructor(minChange) {
+    super(MetricNames.CLIENT_CONNECTIONS);
     this._minChange = minChange;
   }
 
@@ -414,6 +440,37 @@ describe('_admin/metrics', () => {
       }, [new QueryTimeWatcher(1000)]);
     });
 
+    it('aql slow query count ', () => {
+      runTest(() => {
+        const queries = require("@arangodb/aql/queries");
+        const oldThreshold = queries.properties().slowQueryThreshold;
+        queries.properties({slowQueryThreshold: 1});
+        const query = `return sleep(1)`;
+        db._query(query);
+        queries.properties({slowQueryThreshold: oldThreshold});       
+      }, [new SlowQueryCountWatcher(1)]);
+    });
+
+    
+    
+    it('client connections count ', () => {
+      runTest(() => {
+        //conect
+        const url = `${servers.get("coordinator")[0]}/_admin/metrics`;
+
+        const res = request({
+          json: true,
+          method: 'GET',
+          url
+        });
+        expect(res.statusCode).to.equal(200);
+
+      }, [new ConnecntionCountWatcher(1)]);
+    });
+
+
+
+
     it('collection and index', () => {
       try {
         runTest(() => {
@@ -437,4 +494,6 @@ describe('_admin/metrics', () => {
         require("internal").wait(1.0);
       }, [new HeartBeatWatcher(), new SupervisionWatcher()]);
     });
+
+    
 });
