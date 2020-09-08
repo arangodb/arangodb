@@ -334,7 +334,19 @@ Result PhysicalCollection::mergeObjectsForUpdate(
     if (!keepNull && s.isNull()) {
       continue;
     }
-    b.addUnchecked(it.first.data(), it.first.size(), s);
+    if (!keepNull && s.isObject()) {
+      b.addUnchecked(it.first.data(), it.first.size(),
+                     arangodb::basics::VelocyPackHelper::merge(
+                       arangodb::velocypack::Slice::emptyObjectSlice(), s, true, true).slice());
+    } else if (!keepNull && s.isArray()) {
+      /* TODO
+      b.addUnchecked(it.first.data(), it.first.size(),
+                     arangodb::basics::VelocyPackHelper::merge(
+                       arangodb::velocypack::Slice::emptyObjectSlice(), s, true, true).slice());
+      */
+    } else {
+      b.addUnchecked(it.first.data(), it.first.size(), s);
+    }
   }
 
   b.close();
