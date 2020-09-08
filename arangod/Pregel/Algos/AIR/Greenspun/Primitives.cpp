@@ -854,6 +854,24 @@ EvalResult Prim_ListAppend(Machine& ctx, VPackSlice const paramsList, VPackBuild
   return {};
 }
 
+EvalResult Prim_Assert(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  VPackArrayIterator iter(paramsList);
+  if (!iter.valid()) {
+    return EvalError("expected at least one argument");
+  }
+
+  VPackSlice value = *iter;
+  if (ValueConsideredFalse(value)) {
+    iter++;
+    std::string errorMessage = "assertion failed";
+    if (iter.valid()) {
+      errorMessage = paramsToString(iter);
+    }
+    return EvalError(errorMessage);
+  }
+
+  return {};
+}
 
 void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_type&& f) {
   ctx.setFunction(name, std::move(f));
@@ -888,6 +906,7 @@ void RegisterAllPrimitives(Machine& ctx) {
   // Debug operators
   ctx.setFunction("print", Prim_PrintLn);
   ctx.setFunction("error", Prim_Error);
+  ctx.setFunction("assert", Prim_Assert);
 
   // Constructors
   ctx.setFunction("dict", Prim_Dict);

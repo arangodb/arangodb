@@ -127,7 +127,7 @@ function foldAccumulator(operator, initValue) {
                 ["new-value",
                     [operator,
                         ["current-value"],
-                        ["input-value"]
+                        ["true?", ["input-value"]]
                     ]]
             ], ["if",
                 [
