@@ -106,7 +106,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
   }
 
   try {
-    rest::ResponseCode responseCode = rest::ResponseCode::OK;
+    //rest::ResponseCode responseCode = rest::ResponseCode::OK; TODO
 
     if (!server().hasFeature<ClusterFeature>()) {
       LOG_TOPIC("b57dc", ERR, arangodb::Logger::CLUSTER)
@@ -129,6 +129,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       generateError(res);
       return RestStatus::DONE;
     }
+    /* TODO 
     std::shared_ptr<VPackBuilder> planBuilder = clusterInfo.getPlan();
 
     VPackSlice plan = planBuilder->slice();
@@ -191,12 +192,12 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       errorOccurred = !allCollectionsSucceeded;
 
       response.close();
-    }
+      }
 
     response.close();
 
     generateResult(responseCode, response, errorOccurred);
-
+    */
     if (auto res = waitForNewPlan(); !res.ok()) {
       LOG_TOPIC("293c5", WARN, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::repairDistributeShardsLike: "

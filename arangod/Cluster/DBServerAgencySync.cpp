@@ -193,10 +193,13 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   auto serverId = arangodb::ServerState::instance()->getId();
 
-  LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE)
-    << "Before getLocalCollections for phaseOne";
+  // It is crucial that the following happens before we do `getLocalCollections`!
+  MaintenanceFeature::ShardActionMap currentShardLocks = mfeature.getShardLocks();
+
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> local;
+  LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE) << "Before getLocalCollections for phaseOne";
   Result glc = getLocalCollections(dirty, local);
+
   LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE) << "After getLocalCollections for phaseOne";
   if (!glc.ok()) {
     result.errorMessage = "Could not do getLocalCollections for phase 1: '";
@@ -218,7 +221,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     LOG_DEVEL << "phaseOne with " << plan << " and local info " << local;
     tmp = arangodb::maintenance::phaseOne(
-      plan, planIndex, dirty, local, serverId, mfeature, rb);
+      plan, planIndex, dirty, local, serverId, mfeature, rb, currentShardLocks);
+
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne done";
@@ -244,6 +248,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("675fd", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current;
 
+    // It is crucial that the following happens before we do `getLocalCollections`!
+    currentShardLocks = mfeature.getShardLocks();
+
     local.clear();
     glc = getLocalCollections(dirty, local);
     // We intentionally refetch local collections here, such that phase 2
@@ -261,7 +268,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         << "DBServerAgencySync::phaseTwo";
 
     tmp = arangodb::maintenance::phaseTwo(
-      plan, current, dirty, local, serverId, mfeature, rb);
+      plan, current, dirty, local, serverId, mfeature, rb, currentShardLocks);
 
     LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";

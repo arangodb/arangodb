@@ -447,11 +447,14 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescript
   try {
     std::shared_ptr<Action> newAction;
 
-    size_t action_hash = description->hash();
-    WRITE_LOCKER(wLock, _actionRegistryLock);
+    std::shared_ptr<Action> curAction;
 
-    std::shared_ptr<Action> curAction =
-        findFirstActionHashNoLock(action_hash, ::findNotDoneActions);
+    WRITE_LOCKER(wLock, _actionRegistryLock);
+    if (!description->isRunEvenIfDuplicate()) {
+      size_t action_hash = description->hash();
+
+      curAction = findFirstActionHashNoLock(action_hash, ::findNotDoneActions);
+    }
 
     // similar action not in the queue (or at least no longer viable)
     if (!curAction) {
@@ -965,4 +968,40 @@ std::unordered_set<std::string> MaintenanceFeature::dirty() {
   std::unordered_set<std::string > ret;
   ret.swap(_dirty);
   return ret;
+}
+
+std::shared_ptr<maintenance::ActionDescription> MaintenanceFeature::isShardLocked(
+  ShardID const& shardId) const {
+  auto it = _shardActionMap.find(shardId);
+  if (it == _shardActionMap.end()) {
+    return nullptr;
+  }
+  return it->second;
+}
+
+bool MaintenanceFeature::lockShard(
+  ShardID const& shardId, std::shared_ptr<maintenance::ActionDescription> const& description) {
+  LOG_TOPIC("aaed2", DEBUG, Logger::MAINTENANCE)
+    << "Locking shard " << shardId << " for action " << *description;
+  std::lock_guard<std::mutex> guard(_shardActionMapMutex);
+  auto pair = _shardActionMap.emplace(shardId, description);
+  return pair.second;
+}
+
+bool MaintenanceFeature::unlockShard(ShardID const& shardId) {
+  std::lock_guard<std::mutex> guard(_shardActionMapMutex);
+  auto it = _shardActionMap.find(shardId);
+  if (it == _shardActionMap.end()) {
+    return false;
+  }
+  LOG_TOPIC("aaed3", DEBUG, Logger::MAINTENANCE)
+    << "Unlocking shard " << shardId << " for action " << *it->second;
+  _shardActionMap.erase(it);
+  return true;
+}
+
+MaintenanceFeature::ShardActionMap MaintenanceFeature::getShardLocks() const {
+  LOG_TOPIC("aaed4", DEBUG, Logger::MAINTENANCE) << "Copy of shard action map taken.";
+  std::lock_guard<std::mutex> guard(_shardActionMapMutex);
+  return _shardActionMap;
 }
