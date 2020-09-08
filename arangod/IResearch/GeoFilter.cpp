@@ -88,6 +88,8 @@ static bool shape(VPackSlice loc, geo::ShapeContainer& shape) {
   return false;
 }
 
+constexpr double_t EXTRA_COST = 1.5;
+
 }
 
 namespace arangodb {
@@ -102,18 +104,34 @@ class GeoIterator : public irs::doc_iterator {
   GeoIterator(
       doc_iterator::ptr&& approx,
       doc_iterator::ptr&& columnIt,
-      Acceptor&& acceptor)
+      Acceptor&& acceptor,
+      const irs::sub_reader& reader,
+      const irs::term_reader& field,
+      const irs::byte_type* query_stats,
+      irs::order::prepared const& order,
+      irs::boost_t boost)
     : _approx(std::move(approx)),
       _columnIt(std::move(columnIt)),
       _storedValue(irs::get<irs::payload>(*_columnIt)),
       _doc(irs::get_mutable<irs::document>(_approx.get())),
-      _cost([this](){ return irs::cost::extract(*_approx); }), // FIXME find a better estimation
+      _cost([this](){
+        // FIXME find a better estimation
+        return static_cast<irs::cost::cost_t>(EXTRA_COST*irs::cost::extract(*_approx));
+      }),
       _attrs{{
         { irs::type<irs::document>::id(),  _doc    },
         { irs::type<irs::cost>::id(),      &_cost  },
         { irs::type<irs::score>::id(),     &_score },
       }},
       _acceptor(std::move(acceptor)) {
+    if (!order.empty()) {
+      irs::order::prepared::scorers scorers(
+        order, reader, field,
+        query_stats, _score.data(),
+        *this, boost);
+
+      irs::reset(_score, std::move(scorers));
+    }
   }
 
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
@@ -146,7 +164,8 @@ class GeoIterator : public irs::doc_iterator {
 
  private:
   bool accept() {
-    if (_doc->value != _columnIt->seek(_doc->value)) {
+    if (_doc->value != _columnIt->seek(_doc->value) ||
+        _storedValue->value.empty()) {
       return false;
     }
 
@@ -172,19 +191,24 @@ template<typename Acceptor>
 irs::doc_iterator::ptr make_iterator(
     typename Disjunction::doc_iterators_t&& itrs,
     irs::doc_iterator::ptr&& columnIt,
+    const irs::sub_reader& reader,
+    const irs::term_reader& field,
+    const irs::byte_type* query_stats,
+    irs::order::prepared const& order,
+    irs::boost_t boost,
     Acceptor&& acceptor) {
   return irs::memory::make_managed<GeoIterator<Acceptor>>(
     irs::make_disjunction<Disjunction>(std::move(itrs)),
-    std::move(columnIt),
-    std::move(acceptor));
+    std::move(columnIt), std::move(acceptor),
+    reader, field, query_stats, order, boost);
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct GeoState
 /// @brief cached per reader state
 //////////////////////////////////////////////////////////////////////////////
-struct GeoState{
-  using term_state = irs::seek_term_iterator::seek_cookie::ptr;
+struct GeoState {
+  using TermState = irs::seek_term_iterator::seek_cookie::ptr;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief corresponding stored field
@@ -202,6 +226,10 @@ struct GeoState{
   std::vector<irs::seek_term_iterator::seek_cookie::ptr> states;
 }; // GeoState
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class GeoQuery
+/// @brief compiled GeoFilter
+//////////////////////////////////////////////////////////////////////////////
 class GeoQuery final : public irs::filter::prepared {
  public:
   using States = irs::states_cache<GeoState>;
@@ -231,6 +259,7 @@ class GeoQuery final : public irs::filter::prepared {
     }
 
     // get terms iterator
+    TRI_ASSERT(state->reader);
     auto terms = state->reader->iterator();
 
     if (IRS_UNLIKELY(!terms)) {
@@ -273,23 +302,23 @@ class GeoQuery final : public irs::filter::prepared {
     switch (_type) {
       case GeoFilterType::INTERSECTS: {
         return make_iterator(
-          std::move(itrs),
-          std::move(columnIt),
+          std::move(itrs), std::move(columnIt),
+          segment, *state->reader, _stats.c_str(), ord, boost(),
           [this](geo::ShapeContainer const& shape) {
             return _filterShape.intersects(&shape);
         });
       }
       case GeoFilterType::CONTAINS:
         return make_iterator(
-          std::move(itrs),
-          std::move(columnIt),
+          std::move(itrs), std::move(columnIt),
+          segment, *state->reader, _stats.c_str(), ord, boost(),
           [this](geo::ShapeContainer const& shape) {
             return _filterShape.contains(&shape);
         });
       case GeoFilterType::IS_CONTAINED:
         return make_iterator(
-          std::move(itrs),
-          std::move(columnIt),
+          std::move(itrs), std::move(columnIt),
+          segment, *state->reader, _stats.c_str(), ord, boost(),
           [this](geo::ShapeContainer const& shape) {
             return shape.contains(&_filterShape);
         });
@@ -304,7 +333,7 @@ class GeoQuery final : public irs::filter::prepared {
   irs::bstring _stats;
   geo::ShapeContainer _filterShape;
   GeoFilterType _type;
-};
+}; // GeoQuery
 
 NS_END
 
@@ -346,7 +375,7 @@ irs::filter::prepared::ptr GeoFilter::prepare(
   irs::string_ref const storedField = options().storedField;
   irs::field_collectors fieldStats(order);
   GeoQuery::States states(index.size());
-  std::vector<GeoState::term_state> termStates;
+  std::vector<GeoState::TermState> termStates;
 
   for (auto& segment : index) {
     auto* reader = segment.field(field);
