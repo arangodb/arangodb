@@ -59,21 +59,23 @@ TEST(GeoFilterTest, ctor) {
   ASSERT_EQ(irs::type<GeoFilter>::id(), q.type());
   ASSERT_EQ("", q.field());
   ASSERT_EQ(irs::no_boost(), q.boost());
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
   ASSERT_EQ(GeoFilterOptions{}, q.options());
+#endif
 }
 
 TEST(GeoFilterTest, equal) {
-  S2PointRegion point{S2Point{1., 2., 3.}};
-
   GeoFilter q;
   q.mutable_options()->type = GeoFilterType::INTERSECTS;
-  q.mutable_options()->shape.reset(&point, geo::ShapeContainer::Type::S2_POINT);
+  q.mutable_options()->shape.reset(std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+                                   geo::ShapeContainer::Type::S2_POINT);
   *q.mutable_field() = "field";
 
   {
     GeoFilter q1;
     q1.mutable_options()->type = GeoFilterType::INTERSECTS;
-    q1.mutable_options()->shape.reset(&point, geo::ShapeContainer::Type::S2_POINT);
+    q1.mutable_options()->shape.reset(std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+                                      geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field";
     ASSERT_EQ(q, q1);
     ASSERT_EQ(q.hash(), q1.hash());
@@ -83,7 +85,9 @@ TEST(GeoFilterTest, equal) {
     GeoFilter q1;
     q1.boost(1.5);
     q1.mutable_options()->type = GeoFilterType::INTERSECTS;
-    q1.mutable_options()->shape.reset(&point, geo::ShapeContainer::Type::S2_POINT);
+    q1.mutable_options()->shape.reset(std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+                                      geo::ShapeContainer::Type::S2_POINT);
+    *q1.mutable_field() = "field";
     ASSERT_EQ(q, q1);
     ASSERT_EQ(q.hash(), q1.hash());
   }
@@ -91,7 +95,8 @@ TEST(GeoFilterTest, equal) {
   {
     GeoFilter q1;
     q1.mutable_options()->type = GeoFilterType::INTERSECTS;
-    q1.mutable_options()->shape.reset(&point, geo::ShapeContainer::Type::S2_POINT);
+    q1.mutable_options()->shape.reset(std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+                                      geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field1";
     ASSERT_NE(q, q1);
   }
@@ -99,29 +104,29 @@ TEST(GeoFilterTest, equal) {
   {
     GeoFilter q1;
     q1.mutable_options()->type = GeoFilterType::CONTAINS;
-    q1.mutable_options()->shape.reset(&point, geo::ShapeContainer::Type::S2_POINT);
+    q1.mutable_options()->shape.reset(std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+                                      geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field";
     ASSERT_NE(q, q1);
   }
 
   {
-    S2Polygon p;
     GeoFilter q1;
     q1.mutable_options()->type = GeoFilterType::CONTAINS;
-    q1.mutable_options()->shape.reset(&p, geo::ShapeContainer::Type::S2_POLYGON);
+    q1.mutable_options()->shape.reset(std::make_unique<S2Polygon>(),
+                                      geo::ShapeContainer::Type::S2_POLYGON);
     *q1.mutable_field() = "field";
     ASSERT_NE(q, q1);
   }
 }
 
 TEST(GeoFilterTest, boost) {
-  S2PointRegion point{S2Point{1., 2., 3.}};
-
   // no boost
   {
     GeoFilter q;
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
-    q.mutable_options()->shape.reset(&point, geo::ShapeContainer::Type::S2_POINT);
+    q.mutable_options()->shape.reset(std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+                                     geo::ShapeContainer::Type::S2_POINT);
     *q.mutable_field() = "field";
 
     auto prepared = q.prepare(irs::sub_reader::empty());
@@ -133,7 +138,8 @@ TEST(GeoFilterTest, boost) {
     irs::boost_t boost = 1.5f;
     GeoFilter q;
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
-    q.mutable_options()->shape.reset(&point, geo::ShapeContainer::Type::S2_POINT);
+    q.mutable_options()->shape.reset(std::make_unique<S2PointRegion>(S2Point{1., 2., 3.}),
+                                     geo::ShapeContainer::Type::S2_POINT);
     *q.mutable_field() = "field";
     q.boost(boost);
 
