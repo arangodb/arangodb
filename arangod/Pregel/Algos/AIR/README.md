@@ -36,13 +36,13 @@ The computation will follow the order:
 * name (required): Name as a `string`.
   * The given name of the defined phase.
 * initProgram: Program as `array of operations` to be executed.
-  * The init program will run initially once per all vertices that are part of your graph. 
+  * The init program will run **initially once** per all vertices that are part of your graph. 
 * onPreStep: Program as `array of operations` to be executed.
-  * 
+  * The _onPreStep_ program will run **once before** each pregel execution round.
 * updateProgram: Program as `array of operations` to be executed.
- * The update program will be executed during every pregel execution round. 
+ * The _updateProgram_ will be executed **during every pregel execution round** and each **per vertex**. 
 * onPostStep Program as `array of operations` to be executed.
-  * 
+* The _onPostStep_ program will run **once after** each pregel execution round. 
 
 
 Example:
