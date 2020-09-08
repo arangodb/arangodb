@@ -23,9 +23,9 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 function cmpAccumulator(cmp) {
-    return function() {
+    return function () {
         return {
-          updateProgram: ["if",
+            updateProgram: ["if",
                 [
                     ["or",
                         ["not", ["attrib-get", "isSet", ["current-value"]]],
@@ -69,23 +69,23 @@ function cmpAccumulator(cmp) {
                 ],
                 [true, null]
             ],
-            aggregateStateProgram: [ "if",
-                                     [
-                                       [ "or",
-                                         ["not", ["attrib-get", "isSet", ["current-value"]]],
-                                         ["and",
-                                          ["attrib-get", "isSet", ["input-state"]],
-                                          [cmp,
-                                           ["attrib-get", "value", ["input-state"]],
-                                           ["attrib-get", "value", ["current-value"]]]]
-                                       ],
-                                       ["seq",
-                                        ["this-set!",
-                                         ["input-state"]],
-                                        "hot"]
-                                     ],
-                                     [true, "cold"]
-                                   ],
+            aggregateStateProgram: ["if",
+                [
+                    ["or",
+                        ["not", ["attrib-get", "isSet", ["current-value"]]],
+                        ["and",
+                            ["attrib-get", "isSet", ["input-state"]],
+                            [cmp,
+                                ["attrib-get", "value", ["input-state"]],
+                                ["attrib-get", "value", ["current-value"]]]]
+                    ],
+                    ["seq",
+                        ["this-set!",
+                            ["input-state"]],
+                        "hot"]
+                ],
+                [true, "cold"]
+            ],
         };
     };
 }
@@ -103,11 +103,10 @@ function sumAccumulator() {
         getProgram: ["current-value"],
         setProgram: ["this-set!", ["input-value"]],
         finalizeProgram: ["current-value"],
-      aggregateStateProgram: [ "seq",
-                               ["this-set!", ["+", ["current-value"], ["input-state"]]],
-                               "hot"
-                             ],
-
+        aggregateStateProgram: ["seq",
+            ["this-set!", ["+", ["current-value"], ["input-state"]]],
+            "hot"
+        ],
     };
 }
 
@@ -121,24 +120,61 @@ function storeAccumulator(clearValue = null) {
     };
 }
 
-function orAccumulator() {
-  return {
-    // TODO: hot or not
-    updateProgram: ["this-set!", ["or", ["current-value"], ["input-value"]]],
-    clearProgram: ["this-set!", false],
-    getProgram: ["current-value"],
-    setProgram: ["this-set!", ["input-value"]],
-    finalizeProgram: ["current-value"],
-    aggregateStateProgram: [ "seq",
-                             ["this-set!", ["or", ["current-value"], ["input-state"]]],
-                             "hot"
-                           ],
-  };
+function foldAccumulator(operator, initValue) {
+    return function () {
+        return {
+            updateProgram: ["let", [
+                ["new-value",
+                    [operator,
+                        ["current-value"],
+                        ["input-value"]
+                    ]]
+            ], ["if",
+                [
+                    ["ne?",
+                        ["current-value"],
+                        ["var-ref", "new-value"]
+                    ],
+                    ["seq", ["this-set!", ["var-ref", "new-value"]], "hot"]
+                ],
+                [true, "cold"]
+            ]
+            ],
+            clearProgram: ["this-set!", initValue],
+            getProgram: ["current-value"],
+            setProgram: ["this-set!", ["input-value"]],
+            finalizeProgram: ["current-value"],
+            aggregateStateProgram: ["seq",
+                ["this-set!", [operator, ["current-value"], ["input-state"]]],
+                "hot"
+            ],
+        };
+    }
 }
 
+function listAccumulator() {
+    return {
+        updateProgram: ["seq",
+            ["this-set!",
+                ["list-append",
+                    ["current-value"],
+                    ["input-value"]]],
+            "hot"],
+        clearProgram: ["this-set!", ["list"]],
+        getProgram: ["current-value"],
+        setProgram: ["this-set!", ["input-value"]],
+        finalizeProgram: ["current-value"],
+        aggregateStateProgram: ["seq",
+            ["this-set!", ["list-cat", ["current-value"], ["input-state"]]],
+            "hot"
+        ],
+    }
+}
 
 exports.minAccumulator = cmpAccumulator("lt?");
 exports.maxAccumulator = cmpAccumulator("gt?");
 exports.sumAccumulator = sumAccumulator;
 exports.storeAccumulator = storeAccumulator;
-exports.orAccumulator = orAccumulator;
+exports.orAccumulator = foldAccumulator("or", false);
+exports.andAccumulator = foldAccumulator("and", true);
+exports.listAccumulator = listAccumulator;

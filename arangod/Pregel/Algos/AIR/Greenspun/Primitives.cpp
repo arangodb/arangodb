@@ -835,6 +835,26 @@ EvalResult Prim_DictExtract(Machine& ctx, VPackSlice const paramsList, VPackBuil
   return {};
 }
 
+EvalResult Prim_ListAppend(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  VPackArrayBuilder ab(&result);
+
+  VPackArrayIterator iter(paramsList);
+  if (iter.valid()) {
+    VPackSlice list = *iter;
+    if (!list.isArray()) {
+      return EvalError("expected array as first parameter, found: " + list.toJson());
+    }
+
+    result.add(VPackArrayIterator(list));
+    for (iter.next(); iter.valid(); iter.next()) {
+      result.add(*iter);
+    }
+  }
+
+  return {};
+}
+
+
 void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_type&& f) {
   ctx.setFunction(name, std::move(f));
 }
@@ -876,6 +896,7 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("dict-directory", Prim_DictDirectory);
 
   ctx.setFunction("list", Prim_List);
+  ctx.setFunction("list-append", Prim_ListAppend);
 
   // Lambdas
   ctx.setFunction("lambda", Prim_Lambda);
@@ -907,7 +928,6 @@ void RegisterAllPrimitives(Machine& ctx) {
 
   ctx.setFunction("var-ref", Prim_VarRef);
 
-  // TODO: We can just register bind parameters as variables (or a variable)
   ctx.setFunction("bind-ref", Prim_VarRef);
 }
 
