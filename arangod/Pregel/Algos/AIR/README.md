@@ -96,22 +96,83 @@ Each vertex accumulator requires a name as `string`:
 * accumulatorType (required): The name of the used accumulator type as a `string`.
 * valueType (required): The name of the value type as a `string`.
   * Valid value types are:
-    * `slice`: VelocyPack Slice
-    * `ints`: Integer
-    * `doubles`: 
-    * `bools`: 
-    * `strings`: 
+    * `slice` (VelocyPack Slice)
+    * `ints` (Integer type)
+    * `doubles`: (Double type)
+    * `bools`: (Boolean type)
+    * `strings`: (String type)
 * customType (required): The name of the used accumulator type as a `string`.
-
 
 ## Global Accumulator
 
 ## Custom Accumulator
 
+## Language primitives
 
-## Execute a custom algorithm
+Language primitives are methods which can be used inside of a program definition.
 
-## Primitives
+#### Calculation operators
+* \+ (addition - works on a list)
+* \- (substraction - works on a list)
+* \* (multiplication - works on a list)
+* \/ (division - works on a list)
+
+#### Logical operators
+* not  -- unary logical negation
+* false? -- `["false?", val]` evaluates to `true` if `val` is considered `false`
+* true? -- `["true?", val]` evaluates to `true` if `val` is considered `true`
+
+#### Comparison operators
+* eq? -- `["eq?", left, right]` evaluates to `true` if `left` is equal to `right`
+* gt? -- `["gt?", left, right]` evaluates to `true` if `left` is greater than `right`
+* ge? -- `["ge?", left, right]` evaluates to `true` if `left` is greater than or equal to`right`
+* le? -- `["le?", left, right]` evaluates to `true` if `left` is less than or equal to `right`
+* lt? -- `["lt?", left, right]` evaluates to `true` if `left` is less than `right`
+* ne? -- `["ne?", left, right]` evaluates to `true` if `left` is not equal to `right`
+
+#### Misc
+* min -- todo
+* max -- todo
+* avg -- todo
+
+#### Debug operators
+* print -- `["print", expr ...]` print `expr` for each `expr`.
+* error -- todo
+* assert -- todo
+
+#### Constructors
+* dict -- todo
+* dict-merge -- `["merge", dict, dict]` returns the merge of two dicts 
+* dict-keys -- `["dict-keys", dict]` returns an array with all toplevel keys
+* dict-directory -- `["dict-directory", dict]` returns all available paths
+
+#### Lambdas
+* lambda -- todo
+
+#### Utilities
+* list-cat -- `["list-cat", list ...]` concatenates the lists `list ...` forming one list
+* string-cat -- `["string-cat", string ...]` concatenates the strings `string ...` forming one string
+* int-to-str -- `["int-to-str", val]` returns a string representation of the integer `val`
+ 
+#### Functional
+* id -- todo
+* apply -- todo
+* map -- todo
+* filter -- todo
+* foldl -- todo
+* foldl1 -- todo
+
+#### Access operators
+* attrib-ref -- `["attrib-ref", doc, key]`, `["attrib-ref", doc, [p ...]]`, in the first variant, extract attribute `key` from `doc`, in the second variant extract attribute with path `p/...` from doc
+* attrib-get -- todo
+* attrib-set -- `["attrib-set", dict, key, value]` - set dict at key to value 
+* attrib-set -- `["attrib-set", dict, [path...], value]` - set dict at path to value
+* array-ref -- `["array-ref", arr, index]` - get value at specified index
+* array-set -- `["array-set", arr, index, value]` - set value at specified index
+* var-ref -- `["var-ref", name]` refer to variable `name` in current context
+* bind-ref -- todo
+
+## How to execute
 
 ## Vertex Computation
 
@@ -195,40 +256,6 @@ arangosh> var pexec = pp.execute("WikiVoteGraph",
  * quasi-quote/unquote/unquote-splice -- like `quote` but can be unquoted using `unquote/unquote-splice`. For example 
  `["quasi-quote", ["foo"], ["unquote", ["list", 1, 2]], ["unquote-splice", ["list", 1, 2]]]` evaluates to `[["foo"],[1,2],1,2]`.
 
-### Language primitives
-
- * var-ref -- `["var-ref", name]` refer to variable `name` in current context
- * var-set!  -- `["var-set!", name, value]` set variable `name` in current context to `value`
-
- * attrib-ref -- `["attrib-ref", doc, key]`, `["attrib-ref", doc, [p ...]]`, in the first variant, extract attribute `key` from `doc`, in the second variant extract attribute with path `p/...` from doc
- * attrib-set -- `["attrib-set", dict, key, value]` - set dict at key to value 
- * attrib-set -- `["attrib-set", dict, [path...], value]` - set dict at path to value
- 
- * array-ref -- `["array-ref", arr, index]` - get value at specified index
- * array-set -- `["array-set", arr, index, value]` - set value at specified index
- 
- * dict-merge -- `["merge", dict, dict]` returns the merge of two dicts 
- * dict-keys -- `["dict-keys", dict]` returns an array with all toplevel keys
- * dict-directory -- `["dict-directory", dict]` returns all available paths
-
- * print -- `["print", expr ...]` print `expr` for each `expr`. 
-
- * +, -, \*, / -- arithmetic operators, all work on lists
- * not  -- unary logical negation
- * false? -- `["false?", val]` evaluates to `true` if `val` is considered `false`
- * true? -- `["true?", val]` evaluates to `true` if `val` is considered `true`
- * eq? -- `["eq?", left, right]` evaluates to `true` if `left` is equal to `right`
- * gt? -- `["gt?", left, right]` evaluates to `true` if `left` is greater than `right`
- * ge? -- `["ge?", left, right]` evaluates to `true` if `left` is greater than or equal to`right`
- * le? -- `["le?", left, right]` evaluates to `true` if `left` is less than or equal to `right`
- * lt? -- `["lt?", left, right]` evaluates to `true` if `left` is less than `right`
- * ne? -- `["ne?", left, right]` evaluates to `true` if `left` is not equal to `right`
-
- * list-cat -- `["list-cat", list ...]` concatenates the lists `list ...` forming one list
- * string-cat -- `["string-cat", string ...]` concatenates the strings `string ...` forming one string
- * int-to-str -- `["int-to-str", val]` returns a string representation of the integer `val`
-
- * min, max, avg -- 
 
 ### Foreign calls in Vertex Computation "context" [3]
 
