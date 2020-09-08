@@ -8,7 +8,7 @@ Programmable Pregel Algorithms do require SmartGraphs. SmartGraphs are only avai
 
 The format of a custom algorithm right now is based on a JSON object.
 
-## Definition skeleton
+## Algorithm skeleton
 
 ```json
 {
@@ -19,13 +19,14 @@ The format of a custom algorithm right now is based on a JSON object.
     "readVertex": "<array>",
     "readEdge": "<array>"
   },
-  "globalAccumulators": "<object>",
   "vertexAccumulators": "<object>",
+  "globalAccumulators": "<object>",
+  "customAccumulators": "<object>",
   "phases": "<array>"
 }
 ```
  
-#### Main algorithm parameters:
+#### Algorithm parameters:
  
 * resultField (optional): Document attribute as a `string`.
   * The vertex computation results will be in all vertices pointing to the given attribute.
@@ -39,12 +40,14 @@ The format of a custom algorithm right now is based on a JSON object.
   * readEdge: An `array` that consists of `strings` and/or additional `arrays` (that represents a path).
       * `string`: Represents a single path at the toplevel which is **not** nested. 
       * `array of strings`: Represents a nested path
-* vertexAccumulators (optional?):   
-* globalAccumulators (optional?): 
-* customAccumulators (optional?):
+* vertexAccumulators (optional): An `object` defining all used vertex accumulators. 
+  * Vertex Accumulators 
+* globalAccumulators (optional): An `object` defining all used global accumulators.
+  * Global Accumulators are able to access variables at shared global level.
+* customAccumulators (optional): An `object` defining all used custom accumulators.
 * phases (optional?): Array of a single or multiple phase definitions. More info below in the next chapter.
 
-#### Phases
+## Phases
 
 Phases will run sequentially during your Pregel computation. The definition of multiple phases is allowed. 
 Each phase requires instructions based on the operations you want to perform.
@@ -72,7 +75,39 @@ Computation:
 * onPostStep Program as `array of operations` to be executed.
 * The _onPostStep_ program will run **once after** each pregel execution round. 
 
-#### Program 
+## Program
+
+## Vertex Accumulator
+
+Each vertex accumulator requires a name as `string`:
+
+```json
+  {
+    "<name>": {
+      "accumulatorType": "<accumulator-name>",
+      "valueType": "<valueType>",
+      "customType": "<accumulator-type>" 
+    }
+  }
+```
+
+#### Vertex Accumulator Parameters:
+
+* accumulatorType (required): The name of the used accumulator type as a `string`.
+* valueType (required): The name of the value type as a `string`.
+  * Valid value types are:
+    * `slice`: VelocyPack Slice
+    * `ints`: Integer
+    * `doubles`: 
+    * `bools`: 
+    * `strings`: 
+* customType (required): The name of the used accumulator type as a `string`.
+
+
+## Global Accumulator
+
+## Custom Accumulator
+
 
 ## Execute a custom algorithm
 
