@@ -257,6 +257,11 @@ Result ClusterEngine::changeView(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
+Result ClusterEngine::compactAll(bool changeLevel, bool compactBottomMostLevel) {
+  auto& feature = server().getFeature<ClusterFeature>();
+  return compactOnAllDBServers(feature, changeLevel, compactBottomMostLevel);
+}
+
 /// @brief Add engine-specific optimizer rules
 void ClusterEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
   if (engineType() == ClusterEngineType::RocksDBEngine) {

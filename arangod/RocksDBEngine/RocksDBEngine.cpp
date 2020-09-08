@@ -437,6 +437,17 @@ void RocksDBEngine::start() {
   _options.enable_pipelined_write = opts._enablePipelinedWrite;
   _options.write_buffer_size = static_cast<size_t>(opts._writeBufferSize);
   _options.max_write_buffer_number = static_cast<int>(opts._maxWriteBufferNumber);
+  // The following setting deserves an explanation: We found that if we leave the
+  // default for max_write_buffer_number_to_maintain at 0, then setting
+  // max_write_buffer_size_to_maintain to 0 has not the desired effect, rather
+  // TransactionDB::PrepareWrap then sets the latter to -1 which in turn is
+  // later corrected to max_write_buffer_number * write_buffer_size.
+  // Therefore, we set the deprecated option max_write_buffer_number_to_maintain
+  // to 1, so that we can then configure max_write_buffer_size_to_maintain
+  // correctly. Set to -1, 0 or a concrete number as needed. The default of
+  // 0 should be good, since we do not use OptimisticTransactionDBs anyway.
+  _options.max_write_buffer_number_to_maintain = 1;
+  _options.max_write_buffer_size_to_maintain = opts._maxWriteBufferSizeToMaintain;
   _options.delayed_write_rate = opts._delayedWriteRate;
   _options.min_write_buffer_number_to_merge =
       static_cast<int>(opts._minWriteBufferNumberToMerge);
@@ -1550,6 +1561,10 @@ Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
   return rocksutils::convertStatus(res);
 }
 
+Result RocksDBEngine::compactAll(bool changeLevel, bool compactBottomMostLevel) {
+  return rocksutils::compactAll(_db->GetRootDB(), changeLevel, compactBottomMostLevel);
+}
+
 /// @brief Add engine-specific optimizer rules
 void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
   RocksDBOptimizerRules::registerResources(feature);
@@ -2311,6 +2326,22 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   if (_listener) {
     builder.add("rocksdbengine.throttle.bps", VPackValue(_listener->GetThrottle()));
   }  // if
+  
+  {
+    // total disk space in database directory
+    uint64_t totalSpace = 0;
+    // free disk space in database directory
+    uint64_t freeSpace = 0;
+    Result res = TRI_GetDiskSpace(_basePath, totalSpace, freeSpace);
+    if (res.ok()) {
+      builder.add("rocksdb.free-disk-space", VPackValue(freeSpace));
+      builder.add("rocksdb.total-disk-space", VPackValue(totalSpace));
+    } else {
+      builder.add("rocksdb.free-disk-space", VPackValue(VPackValueType::Null));
+      builder.add("rocksdb.total-disk-space", VPackValue(VPackValueType::Null));
+    }
+  }
+
 
   builder.close();
 }

@@ -18,32 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MAINTENANCE_DROP_COLLECTION_H
-#define ARANGODB_MAINTENANCE_DROP_COLLECTION_H
+#ifndef ARANGOD_REST_HANDLER_REST_COMPACT_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_COMPACT_HANDLER_H 1
 
-#include "ActionBase.h"
-#include "ActionDescription.h"
-
-#include <chrono>
+#include "Basics/Common.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-namespace maintenance {
 
-class DropCollection : public ActionBase {
+class RestCompactHandler : public arangodb::RestBaseHandler {
  public:
-  DropCollection(MaintenanceFeature&, ActionDescription const&);
+  RestCompactHandler(application_features::ApplicationServer&,
+                     GeneralRequest*, GeneralResponse*);
 
-  virtual ~DropCollection();
 
-  virtual bool first() override final;
-  void setState(ActionState state) override final;
+ public:
+  RestStatus execute() override;
+  char const* name() const override { return "RestCompactHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 };
-
-}  // namespace maintenance
 }  // namespace arangodb
 
 #endif
