@@ -7,24 +7,49 @@ Programmable Pregel Algorithms do require SmartGraphs. SmartGraphs are only avai
 ## Definition of a custom algorithm
 
 The format of a custom algorithm right now is based on a JSON object.
+
+## Definition skeleton
+
+```json
+{
+  "resultField": "<string>",
+  "maxGSS": "<number>",
+  "dataAccess": {
+    "writeVertex": "<program>",
+    "readVertex": "<array>",
+    "readEdge": "<array>"
+  },
+  "globalAccumulators": "<object>",
+  "vertexAccumulators": "<object>",
+  "phases": "<array>"
+}
+```
  
 #### Main algorithm parameters:
  
 * resultField (optional): Document attribute as a `string`.
   * The vertex computation results will be in all vertices pointing to the given attribute.
 * maxGSS (required): The max amount of global supersteps as a `number`. 
-  * After the amount of max defined supersteps is reached, the Pregel execution will stop.  
+  * After the amount of max defined supersteps is reached, the Pregel execution will stop.
+* dataAccess (optional): Allows to define `writeVertex`, `readVertex` and `readEdge`.
+  * writeVertex: A `<program>` that is used to write the results into vertices. If `writeVertex` is used, the `resultField` will be ignored.
+  * readVertex: An `array` that consists of `strings` and/or additional `arrays` (that represents a path).
+    * `string`: Represents a single path at the toplevel which is **not** nested. 
+    * `array of strings`: Represents a nested path   
+  * readEdge: An `array` that consists of `strings` and/or additional `arrays` (that represents a path).
+      * `string`: Represents a single path at the toplevel which is **not** nested. 
+      * `array of strings`: Represents a nested path
+* vertexAccumulators (optional?):   
 * globalAccumulators (optional?): 
-* vertexAccumulators (optional?):
 * customAccumulators (optional?):
-* phases (optional?): Array of a single or multiple phase definitions. More info below in the next chapter. 
+* phases (optional?): Array of a single or multiple phase definitions. More info below in the next chapter.
 
 #### Phases
 
-Phases will run sequentially during your Pregel computation. The definition of multiple phases are allowed. 
+Phases will run sequentially during your Pregel computation. The definition of multiple phases is allowed. 
 Each phase requires instructions based on the operations you want to perform.
   
-The computation will follow the order:
+The pregel program execution will follow the order:
 
 Initialization:
 1. `initProgram` (database server)  
@@ -34,7 +59,7 @@ Computation:
 2. `updateProgram` (database server)
 3. `onPostStep` (coordinator)
 
-#### Phase parameters:
+##### Phase parameters:
 
 * name (required): Name as a `string`.
   * The given name of the defined phase.
@@ -47,20 +72,15 @@ Computation:
 * onPostStep Program as `array of operations` to be executed.
 * The _onPostStep_ program will run **once after** each pregel execution round. 
 
-
-Example:
-
-```
-{
-  resultField: "
-}
-```
+#### Program 
 
 ## Execute a custom algorithm
 
 ## Primitives
 
 ## Vertex Computation
+
+## Examples
 
 ___
 
