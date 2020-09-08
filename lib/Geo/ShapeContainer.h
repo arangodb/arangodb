@@ -71,6 +71,8 @@ class ShapeContainer final {
   ShapeContainer(S2Region* ptr, Type tt) : _data(ptr), _type(tt) {}*/
   ~ShapeContainer();
 
+  ShapeContainer& operator=(ShapeContainer&&) noexcept;
+
  public:
   /// Parses a coordinate pair
   Result parseCoordinates(velocypack::Slice const& json, bool geoJson);

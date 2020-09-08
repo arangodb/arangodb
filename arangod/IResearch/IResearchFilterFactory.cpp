@@ -37,7 +37,6 @@
 #include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/column_existence_filter.hpp"
-#include "search/geo_filter.hpp"
 #include "search/filter_visitor.hpp"
 #include "search/granular_range_filter.hpp"
 #include "search/levenshtein_filter.hpp"
@@ -58,6 +57,7 @@
 #include "Geo/ShapeContainer.h"
 #include "Basics/StringUtils.h"
 #include "IResearch/AqlHelper.h"
+#include "IResearch/GeoFilter.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
@@ -167,7 +167,7 @@ arangodb::Result nondeterministicArg(char const* funcName, size_t i) {
   return {
     TRI_ERROR_BAD_PARAMETER,
     "'"s.append(funcName).append("' AQL function: argument at position '")
-        .append(std::to_string(i)).append("' is intended to be dterministic")
+        .append(std::to_string(i)).append("' is intended to be deterministic")
   };
 }
 
@@ -3448,19 +3448,31 @@ arangodb::Result fromFuncGeoContainsIntersect(
     return error::invalidArgsCount<error::ExactValue<2>>(funcName);
   }
 
-  // 1st argument defines a field
-  auto const* field =
-      arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
+  auto const* fieldNode = args.getMemberUnchecked(0);
+  auto const* shapeNode = args.getMemberUnchecked(1);
+  size_t fieldNodeIdx = 1;
+  size_t shapeNodeIdx = 2;
 
-  if (!field) {
-    return error::invalidAttribute(funcName, 1);
+  if (!arangodb::iresearch::checkAttributeAccess(fieldNode, *ctx.ref)) {
+    if (!arangodb::iresearch::checkAttributeAccess(shapeNode, *ctx.ref)) {
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+         "'"s.append(funcName)
+             .append("' AQL function: Unable to find argument denoting an attribute identifier")
+      };
+    }
+
+    std::swap(fieldNode, shapeNode);
+    fieldNodeIdx = 2;
+    shapeNodeIdx = 1;
   }
 
-  // 2nd argument defines a shape
-  auto const* shapeNode = args.getMemberUnchecked(1);
+  if (!fieldNode) {
+    return error::invalidAttribute(funcName, fieldNodeIdx);
+  }
 
   if (!shapeNode) {
-    return error::invalidAttribute(funcName, 2);
+    return error::invalidAttribute(funcName, shapeNodeIdx);
   }
 
   ScopedAqlValue shapeValue(*shapeNode);
@@ -3468,7 +3480,7 @@ arangodb::Result fromFuncGeoContainsIntersect(
 
   if (filter || shapeValue.isConstant()) {
     if (!shapeValue.execute(ctx)) {
-      return error::failedToEvaluate(funcName, 2);
+      return error::failedToEvaluate(funcName, shapeNodeIdx);
     }
 
     arangodb::Result res;
@@ -3483,7 +3495,7 @@ arangodb::Result fromFuncGeoContainsIntersect(
     } else {
       return {
           TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName).append("' AQL function: argument at position '").append(std::to_string(2))
+          "'"s.append(funcName).append("' AQL function: argument at position '").append(std::to_string(shapeNodeIdx))
          .append("' has invalid type '").append(ScopedAqlValue::typeString(shapeValue.type()).c_str())
          .append("' ('").append(ScopedAqlValue::typeString(arangodb::iresearch::SCOPED_VALUE_TYPE_OBJECT).c_str())
          .append("' or '").append(ScopedAqlValue::typeString(arangodb::iresearch::SCOPED_VALUE_TYPE_ARRAY).c_str())
@@ -3495,7 +3507,7 @@ arangodb::Result fromFuncGeoContainsIntersect(
       return {
           TRI_ERROR_BAD_PARAMETER,
           "'"s.append(funcName).append("' AQL function: failed to parse argument at position '")
-              .append(std::to_string(2)).append("' due to the following error '")
+              .append(std::to_string(shapeNodeIdx)).append("' due to the following error '")
               .append(res.errorMessage()).append("'")
       };
     }
@@ -3504,30 +3516,24 @@ arangodb::Result fromFuncGeoContainsIntersect(
   if (filter) {
     std::string name;
 
-    if (!nameFromAttributeAccess(name, *field, ctx)) {
-      return error::failedToGenerateName(funcName, 1);
+    if (!nameFromAttributeAccess(name, *fieldNode, ctx)) {
+      return error::failedToGenerateName(funcName, fieldNodeIdx);
     }
+
+    auto& geo_filter = filter->add<GeoFilter>();
+    geo_filter.boost(filterCtx.boost);
+
+    auto* options = geo_filter.mutable_options();
+    options->type = GEO_INTERSECT_FUNC == funcName
+      ? GeoFilterType::INTERSECTS
+      : (1 == shapeNodeIdx ? GeoFilterType::CONTAINS
+                           : GeoFilterType::IS_CONTAINED);
+    options->shape = std::move(shape);
+    options->storedField = name;
 
     TRI_ASSERT(filterCtx.analyzer);
     kludge::mangleField(name, filterCtx.analyzer);
-
-    auto& geo_filter = filter->add<irs::by_geo_terms>();
     *geo_filter.mutable_field() = std::move(name);
-    geo_filter.boost(filterCtx.boost);
-
-    auto const* region = shape.region();
-    TRI_ASSERT(region);
-
-    auto* opts = geo_filter.mutable_options();
-    if (arangodb::geo::ShapeContainer::Type::S2_POINT == shape.type()) {
-      opts->reset(static_cast<S2PointRegion const*>(region)->point());
-    } else {
-      auto const type = GEO_INTERSECT_FUNC == funcName
-        ? irs::GeoFilterType::INTERSECTS
-        : irs::GeoFilterType::CONTAINS;
-
-      opts->reset(type, *region);
-    }
   }
 
   return {};

@@ -79,6 +79,15 @@ ShapeContainer::ShapeContainer(ShapeContainer&& other) noexcept
 }
 ShapeContainer::~ShapeContainer() { delete _data; }
 
+ShapeContainer& ShapeContainer::operator=(ShapeContainer&& rhs) noexcept {
+  if (this != &rhs) {
+    this->reset(rhs._data, rhs._type);
+    rhs._data = nullptr;
+    rhs._type = Type::EMPTY;
+  }
+  return *this;
+}
+
 void ShapeContainer::reset(std::unique_ptr<S2Region> ptr, Type tt) noexcept {
   delete _data;
   _type = tt;

@@ -28,11 +28,9 @@
 #include "date/date.h"
 #endif
 
-#include "s2/s2point_region.h"
 #include "velocypack/velocypack-aliases.h"
 
 #include "analysis/analyzers.hpp"
-#include "analysis/geo_token_stream.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/text_token_stream.hpp"
 #include "analysis/delimited_token_stream.hpp"
@@ -58,9 +56,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
-#include "Geo/ShapeContainer.h"
-#include "Geo/GeoJson.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/GeoAnalyzer.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchLink.h"
@@ -86,7 +83,6 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
-#include "VPackDeserializer/deserializer.h"
 
 #include <Containers/HashSet.h>
 
@@ -102,6 +98,7 @@ static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
 static std::string const FEATURE_NAME("ArangoSearchAnalyzer");
 
 REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(GeoAnalyzer, GeoAnalyzer::make, GeoAnalyzer::normalize);
 
 bool normalize(std::string& out,
                irs::string_ref const& type,
@@ -117,180 +114,6 @@ bool normalize(std::string& out,
     irs::type<irs::text_format::vpack>::get(),
     arangodb::iresearch::ref<char>(properties),
     false);
-}
-
-namespace geo_vpack {
-
-using namespace arangodb::velocypack::deserializer;
-
-struct Options {
-  int32_t maxCells;
-  int32_t minLevel;
-  int32_t maxLevel;
-  int32_t levelMod;
-  bool pointsOnly;
-  bool optimizeForSpace;
-};
-
-S2RegionTermIndexer::Options toS2Options(Options const& opts) {
-  S2RegionTermIndexer::Options s2opts;
-  s2opts.set_max_cells(opts.maxCells);
-  s2opts.set_min_level(opts.minLevel);
-  s2opts.set_max_level(opts.maxLevel);
-  s2opts.set_level_mod(opts.levelMod);
-  s2opts.set_index_contains_points_only(opts.pointsOnly);
-  s2opts.set_optimize_for_space(opts.optimizeForSpace);
-
-  return s2opts;
-}
-
-geo::ShapeContainer fromVelocyPack(VPackSlice slice) {
-  geo::ShapeContainer shape;
-
-  Result res;
-  if (slice.isObject()) {
-    res = geo::geojson::parseRegion(slice, shape);
-  } else if (slice.isArray()) {
-    if (slice.isArray() && slice.length() >= 2) {
-      res = shape.parseCoordinates(slice, /*geoJson*/ true);
-    }
-  } else {
-    LOG_TOPIC("4449c", WARN, arangodb::iresearch::TOPIC)
-      << "Geo JSON or array of coordinates expected, got '"
-      << slice.typeName() << "'";
-
-    return {};
-  }
-
-  if (res.fail()) {
-    LOG_TOPIC("4549c", WARN, arangodb::iresearch::TOPIC)
-      << "Failed to parse value as GEO JSON or array of coordinates, error '"
-      << res.errorMessage() << "'";
-
-    return {};
-  }
-
-  return shape;
-}
-
-class GeoAnalyzer final : public irs::analysis::geo_analyzer {
- public:
-  GeoAnalyzer(Options const& opts)
-    : irs::analysis::geo_analyzer(toS2Options(opts), irs::string_ref::EMPTY) {
-  }
-
-  virtual bool reset(irs::string_ref const& value) override {
-    auto const slice = arangodb::iresearch::slice(value);
-    geo::ShapeContainer shape = fromVelocyPack(slice);
-
-    if (shape.empty()) {
-      return false;
-    }
-
-    auto const* region = shape.region();
-    TRI_ASSERT(region);
-
-    if (arangodb::geo::ShapeContainer::Type::S2_POINT == shape.type()) {
-      irs::analysis::geo_analyzer::reset_for_indexing(static_cast<S2PointRegion const*>(region)->point());
-    } else {
-      irs::analysis::geo_analyzer::reset_for_indexing(*region);
-    }
-
-    return true;
-  }
-
-  virtual bool reset_for_querying(irs::string_ref const& value) override {
-    auto const slice = arangodb::iresearch::slice(value);
-    geo::ShapeContainer shape = fromVelocyPack(slice);
-
-    if (shape.empty()) {
-      return false;
-    }
-
-    auto const* region = shape.region();
-    TRI_ASSERT(region);
-
-    if (arangodb::geo::ShapeContainer::Type::S2_POINT == shape.type()) {
-      irs::analysis::geo_analyzer::reset_for_querying(static_cast<S2PointRegion const*>(region)->point());
-    } else {
-      irs::analysis::geo_analyzer::reset_for_querying(*region);
-    }
-
-    return true;
-  }
-
- private:
-};
-
-constexpr const char MAX_CELLS_PARAM[] = "maxCells";
-constexpr const char MIN_LEVEL_PARAM[] = "minLevel";
-constexpr const char MAX_LEVEL_PARAM[] = "maxLevel";
-constexpr const char LEVEL_MOD_PARAM[] = "levelMod";
-constexpr const char POINTS_ONLY_PARAM[] = "pointsOnly";
-constexpr const char OPTIMIZE_FOR_SPACE_PARAM[] = "optimizeForSpace";
-
-using OptionsDeserializer = velocypack::deserializer::utilities::constructing_deserializer<Options, parameter_list<
-  factory_simple_parameter<MAX_CELLS_PARAM, int32_t, false, values::numeric_value<int32_t, S2RegionCoverer::Options::kDefaultMaxCells>>,
-  factory_simple_parameter<MIN_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, 0>>,
-  factory_simple_parameter<MAX_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, S2CellId::kMaxLevel>>,
-  factory_simple_parameter<LEVEL_MOD_PARAM, int32_t, false, values::numeric_value<int32_t, 1>>,
-  factory_simple_parameter<POINTS_ONLY_PARAM, bool, false, std::false_type>,
-  factory_simple_parameter<OPTIMIZE_FOR_SPACE_PARAM, bool, false, std::false_type>>
->;
-
-void toVelocyPack(VPackBuilder& builder, Options const& opts) {
-  VPackObjectBuilder root(&builder);
-  builder.add(MAX_CELLS_PARAM, VPackValue(opts.maxCells));
-  builder.add(MIN_LEVEL_PARAM, VPackValue(opts.minLevel));
-  builder.add(MAX_LEVEL_PARAM, VPackValue(opts.maxLevel));
-  builder.add(LEVEL_MOD_PARAM, VPackValue(opts.levelMod));
-  builder.add(POINTS_ONLY_PARAM, VPackValue(opts.pointsOnly));
-  builder.add(OPTIMIZE_FOR_SPACE_PARAM, VPackValue(opts.optimizeForSpace));
-}
-
-bool fromVelocyPack(irs::string_ref const& args, Options& out) {
-  auto const slice = arangodb::iresearch::slice(args);
-
-  auto const res = deserialize<OptionsDeserializer>(slice);
-
-  if (!res.ok()) {
-    LOG_TOPIC("4349c", WARN, arangodb::iresearch::TOPIC) <<
-      "Failed to deserialize options from JSON while constructing geo_analyzer, error: '" <<
-      res.error().message << "'";
-    return false;
-  }
-
-  out = res.get();
-  return true;
-}
-
-bool geo_vpack_normalizer(const irs::string_ref& args, std::string& out) {
-  Options opts;
-
-  if (!fromVelocyPack(args, opts)) {
-    return false;
-  }
-
-  VPackBuilder root;
-  toVelocyPack(root, opts);
-
-  out.resize(root.slice().byteSize());
-  std::memcpy(&out[0], root.slice().begin(), out.size());
-  return true;
-}
-
-irs::analysis::analyzer::ptr geo_vpack_builder(irs::string_ref const& args) {
-  Options opts;
-
-  if (!fromVelocyPack(args, opts)) {
-    return nullptr;
-  }
-
-  return std::make_shared<GeoAnalyzer>(opts);
-}
-
-REGISTER_ANALYZER_VPACK(GeoAnalyzer, geo_vpack_builder, geo_vpack_normalizer);
-
 }
 
 // Delimiter analyzer vpack routines ////////////////////////////
@@ -1242,7 +1065,7 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
 }
 
 arangodb::iresearch::AnalyzerScope getAnalyzerScope(irs::type_info::type_id type) noexcept {
-  if (type == irs::type<irs::analysis::geo_analyzer>::id()) {
+  if (type == irs::type<GeoAnalyzer>::id()) {
     return arangodb::iresearch::AnalyzerScope::COMPLEX_TYPE;
   }
 
