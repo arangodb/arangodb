@@ -57,256 +57,166 @@ const MetricNames = {
   CLIENT_CONNECTIONS: "arangodb_client_connection_statistics_client_connections"
 };
 
+
 class Watcher {
-  beforeCoordinator(metrics) {};
-  afterCoordinator(metrics) {};
-  beforeDBServer(metrics) {};
-  afterDBServer(metrics) {};
-  beforeAgent(metrics) {};
-  afterAgent(metrics) {};
-}
-
-class CoordinatorValueWatcher extends Watcher {
   constructor(metric) {
-    super();
     this._metric = metric;
     this._before = null;
+    this._after = null;
   }
 
-  beforeCoordinator(metrics) {
+  before(metrics) {
     this._before = metrics[this._metric];
   };
 
-  afterCoordinator(metrics) {
-    const after =  metrics[this._metric];
-    expect(after).to.be.greaterThan(this._before);
+  after(metrics) {
+    this._after =  metrics[this._metric];
+  };
+
+  check(){
+    expect(this._after).to.be.greaterThan(this._before);
   };
 }
 
+class BucketWatcher extends Watcher{  
 
-class CoordinatorBucketWatcher extends Watcher {
-  constructor(metric) {
-    super();
-    this._metric = metric;
-    this._before = null;
-  }
-
-  beforeCoordinator(metrics) {
-    this._before = metrics[this._metric];
-  };
-
-  afterCoordinator(metrics) {
-    const after =  metrics[this._metric];
-    expectOneBucketChanged(after, this._before);
+  check(){
+    expectOneBucketChanged(this._after, this._before);
   };
 }
 
-
-class DBServerValueWatcher extends Watcher {
-  constructor(metric) {
-    super();
-    this._metric = metric;
-    this._before = null;
-  }
-
-  beforeDBServer(metrics) {
-    this._before = metrics[this._metric];
-  };
-
-  afterDBServer(metrics) {
-    const after =  metrics[this._metric];
-    expect(after).to.be.greaterThan(this._before);
-  };
-}
-
-
-class DBServerBucketWatcher extends Watcher {
-  constructor(metric) {
-    super();
-    this._metric = metric;
-    this._before = null;
-  }
-
-  beforeDBServer(metrics) {
-    this._before = metrics[this._metric];
-  };
-
-  afterDBServer(metrics) {
-    const after =  metrics[this._metric];
-    expectOneBucketChanged(after, this._before);
-  };
-}
-
-
-class AgentValueWatcher extends Watcher {
-  constructor(metric) {
-    super();
-    this._metric = metric;
-    this._before = null;
-  }
-
-  beforeAgent(metrics) {
-    this._before = metrics[this._metric];
-  };
-
-  afterAgent(metrics) {
-    const after =  metrics[this._metric];
-    expect(after).to.be.greaterThan(this._before);
-  };
-}
-
-
-class AgentBucketWatcher extends Watcher {
-  constructor(metric) {
-    super();
-    this._metric = metric;
-    this._before = null;
-  }
-
-  beforeAgent(metrics) {
-    this._before = metrics[this._metric];
-  };
-
-  afterAgent(metrics) {
-    const after =  metrics[this._metric];
-    expectOneBucketChanged(after, this._before);
-  };
-}
-
-class QueryTimeWatcher extends CoordinatorValueWatcher {
+class QueryTimeWatcher extends Watcher {
   constructor(minChange) {
     super(MetricNames.QUERY_TIME);
     this._minChange = minChange;
-  }
+  };
 
-  afterCoordinator(metrics) {
-    const after =  metrics[this._metric];
-    expect(after).to.be.at.least(this._before + this._minChange);
+  check (){    
+    expect(this._after).to.be.at.least(this._before + this._minChange);
   };
 }
 
-class SlowQueryCountWatcher extends CoordinatorValueWatcher {
+
+class SlowQueryCountWatcher extends Watcher {
   constructor(minChange) {
     super(MetricNames.SLOW_QUERY_COUNT);
     this._minChange = minChange;
-  }
-
-  afterCoordinator(metrics) {
-    const after =  metrics[this._metric];
-    expect(after).to.be.equal(this._before + this._minChange);
+  };
+  
+  check (){
+    expect(this._after).to.be.equal(this._before + this._minChange);    
   };
 }
 
-class ConnecntionCountWatcher extends CoordinatorValueWatcher {
+
+class ConnecntionCountWatcher extends Watcher {
   constructor(minChange) {
     super(MetricNames.CLIENT_CONNECTIONS);
     this._minChange = minChange;
   }
 
-  afterCoordinator(metrics) {
-    const after =  metrics[this._metric];
-    expect(after).to.be.at.least(this._before + this._minChange);
+  check (){
+    expect(this._after).to.be.at.least(this._before + this._minChange);
   };
 }
 
-class ShardCountWatcher extends DBServerValueWatcher {
+
+class ShardCountWatcher extends Watcher {
   constructor(change) {
     super(MetricNames.SHARD_COUNT);
     this._change = change;
   }
 
-  afterDBServer(metrics) {
-    const after =  metrics[this._metric];
-    expect(after).to.be.equal(this._before + this._change);
+  check (){
+    expect(this._after).to.be.equal(this._before + this._change);
   };
 }
 
-class ShardLeaderCountWatcher extends DBServerValueWatcher {
+
+class ShardLeaderCountWatcher extends Watcher {
   constructor(change) {
     super(MetricNames.SHARD_LEADER_COUNT);
     this._change = change;
   }
 
-  afterDBServer(metrics) {
-    const after =  metrics[this._metric];
-    expect(after).to.be.equal(this._before + this._change);
-  };
+  check (){
+    expect(this._after).to.be.equal(this._before + this._change);
+  }
 }
 
-class MaintenanceWatcher extends Watcher {
+class MaintenanceWatcher {
   constructor() {
-    super();
-    this._p1ValueWatcher = new DBServerValueWatcher(MetricNames.PHASE_1_COUNT);
-    this._p2ValueWatcher = new DBServerValueWatcher(MetricNames.PHASE_2_COUNT);
-    this._p1BucketWatcher = new DBServerBucketWatcher(MetricNames.PHASE_1_BUCKET);
-    this._p2BucketWatcher = new DBServerBucketWatcher(MetricNames.PHASE_2_BUCKET);
+    this._p1ValueWatcher = new Watcher(MetricNames.PHASE_1_COUNT);
+    this._p2ValueWatcher = new Watcher(MetricNames.PHASE_2_COUNT);
+    this._p1BucketWatcher = new BucketWatcher(MetricNames.PHASE_1_BUCKET);
+    this._p2BucketWatcher = new BucketWatcher(MetricNames.PHASE_2_BUCKET);
   }
 
-  beforeDBServer(metrics) {
-    this._p1ValueWatcher.beforeDBServer(metrics);
-    this._p2ValueWatcher.beforeDBServer(metrics);
-    this._p1BucketWatcher.beforeDBServer(metrics);
-    this._p2BucketWatcher.beforeDBServer(metrics);
+  before(metrics) {
+    this._p1ValueWatcher.before(metrics);
+    this._p2ValueWatcher.before(metrics);
+    this._p1BucketWatcher.before(metrics);
+    this._p2BucketWatcher.before(metrics);
   };
 
-  afterDBServer(metrics) {
-    this._p1ValueWatcher.afterDBServer(metrics);
-    this._p2ValueWatcher.afterDBServer(metrics);
-    this._p1BucketWatcher.afterDBServer(metrics);
-    this._p2BucketWatcher.afterDBServer(metrics);
+  after(metrics) {
+    this._p1ValueWatcher.after(metrics);
+    this._p2ValueWatcher.after(metrics);
+    this._p1BucketWatcher.after(metrics);
+    this._p2BucketWatcher.after(metrics);
   };
+
+  check(){
+    this._p1ValueWatcher.check();
+    this._p2ValueWatcher.check();
+    this._p1BucketWatcher.check();
+    this._p2BucketWatcher.check();
+  }
 }
 
-class HeartBeatWatcher extends Watcher {
+class HeartBeatWatcher {
   constructor() {
-    super();
-    this._dbhbValueWatcher = new DBServerValueWatcher(MetricNames.HEARTBEAT_COUNT);
-    this._dbhbBucketWatcher = new DBServerBucketWatcher(MetricNames.HEARTBEAT_BUCKET);
-    this._coordhbValueWatcher = new CoordinatorValueWatcher(MetricNames.HEARTBEAT_COUNT);
-    this._coordhbBucketWatcher = new CoordinatorBucketWatcher(MetricNames.HEARTBEAT_BUCKET);
+    this._ValueWatcher = new Watcher(MetricNames.HEARTBEAT_COUNT);
+    this._BucketWatcher = new BucketWatcher(MetricNames.HEARTBEAT_BUCKET);
   }
 
-  beforeDBServer(metrics) {
-    this._dbhbValueWatcher.beforeDBServer(metrics);
-    this._dbhbBucketWatcher.beforeDBServer(metrics);
+  before(metrics) {
+    this._ValueWatcher.before(metrics);
+    this._BucketWatcher.before(metrics);
   };
 
-  afterDBServer(metrics) {
-    this._dbhbValueWatcher.afterDBServer(metrics);
-    this._dbhbBucketWatcher.afterDBServer(metrics);
+  after(metrics) {
+    this._ValueWatcher.after(metrics);
+    this._BucketWatcher.after(metrics);
   };
 
-  beforeCoordinator(metrics) {
-    this._coordhbValueWatcher.beforeCoordinator(metrics);
-    this._coordhbBucketWatcher.beforeCoordinator(metrics);
-  };
-
-  afterCoordinator(metrics) {
-    this._coordhbValueWatcher.afterCoordinator(metrics);
-    this._coordhbBucketWatcher.afterCoordinator(metrics);
-  };
+  check(){
+    this._ValueWatcher.check();
+    this._BucketWatcher.check();
+  }
 }
 
-class SupervisionWatcher extends Watcher {
+class SupervisionWatcher {
   constructor() {
-    super();
-    this._svValueWatcher = new AgentValueWatcher(MetricNames.SUPERVISION_COUNT);
-    this._svBucketWatcher = new AgentBucketWatcher(MetricNames.SUPERVISION_BUCKET);
+    this._svValueWatcher = new Watcher(MetricNames.SUPERVISION_COUNT);
+    this._svBucketWatcher = new BucketWatcher(MetricNames.SUPERVISION_BUCKET);
   }
 
-
-  beforeAgent(metrics) {
-    this._svValueWatcher.beforeAgent(metrics);
-    this._svBucketWatcher.beforeAgent(metrics);
+  before(metrics) {
+    this._svValueWatcher.before(metrics);
+    this._svBucketWatcher.before(metrics);
   };
 
-  afterAgent(metrics) {
-    this._svValueWatcher.afterAgent(metrics);
-    this._svBucketWatcher.afterAgent(metrics);
+  after(metrics) {
+    this._svValueWatcher.after(metrics);
+    this._svBucketWatcher.after(metrics);
+  };
+
+  check(){
+    this._svValueWatcher.check();
+    this._svBucketWatcher.check();
   };
 };
-
-
 
 
 describe('_admin/metrics', () => {
@@ -357,143 +267,139 @@ describe('_admin/metrics', () => {
     ];
   };
 
-    const prometheusToJson = (prometheus) => {
-      const lines = prometheus.split('\n').filter((s) => !s.startsWith('#') && s !== '');
-      const res = {};
-      for (const l of lines) {
-        const [keypart, count] = l.split(' ');
-        const [key, labels] = extractKeyAndLabel(keypart);
-        if (labels.has("le")) {
-          // Bucket case
-          // We only check for:
-          // identifier{le="range"}
-          // For all other bucket-types this code will fail
-          res[key] = res[key] || {};
-          res[key][labels.get("le")] = parseFloat(count);
-        } else {
-          // evertyhing else
-          // We ignore other labels for now.
-          res[key] = parseFloat(count);
+  const prometheusToJson = (prometheus) => {
+    const lines = prometheus.split('\n').filter((s) => !s.startsWith('#') && s !== '');
+    const res = {};
+    for (const l of lines) {
+      const [keypart, count] = l.split(' ');
+      const [key, labels] = extractKeyAndLabel(keypart);
+      if (labels.has("le")) {
+        // Bucket case
+        // We only check for:
+        // identifier{le="range"}
+        // For all other bucket-types this code will fail
+        res[key] = res[key] || {};
+        res[key][labels.get("le")] = parseFloat(count);
+      } else {
+        // evertyhing else
+        // We ignore other labels for now.
+        res[key] = parseFloat(count);
+      }
+
+    }
+    return res;
+  };
+
+  const loadMetrics = (role, idx) =>  {
+    const url = `${servers.get(role)[idx]}/_admin/metrics`;
+
+    const res = request({
+      json: true,
+      method: 'GET',
+      url
+    });
+    expect(res.statusCode).to.equal(200);
+    return prometheusToJson(res.body);
+  };
+
+  const joinMetrics = (lhs, rhs) => {
+    if (Object.entries(lhs).length === 0) {
+      return rhs;
+    }
+    for (const [key, value] of Object.entries(rhs)) {
+      if (value instanceof Object) {
+        for (const [bucket, content] of Object.entries(value)) {
+          lhs[key][bucket] += content;
         }
-
+      } else {
+        lhs[key] += rhs[key];
       }
-      return res;
+    }
+    return lhs;
+  };
+
+  const loadAllMetrics = (role) => {
+    return servers.get(role).map((_, i) => loadMetrics(role, i)).reduce(joinMetrics, {});
     };
 
-    const loadMetrics = (role, idx) =>  {
-      const url = `${servers.get(role)[idx]}/_admin/metrics`;
+  const runTest = (action, watchers, role) => {
+    const metricsBefore = loadAllMetrics(role);
+    watchers.forEach(w => {w.before(metricsBefore);});
 
-      const res = request({
-        json: true,
-        method: 'GET',
-        url
-      });
-      expect(res.statusCode).to.equal(200);
-      return prometheusToJson(res.body);
-    };
+    action();
+    const metricsAfter = loadAllMetrics(role);
+    watchers.forEach(w => {
+      w.after(metricsAfter);
+      w.check();
+    });      
+  };
 
-    const joinMetrics = (lhs, rhs) => {
-      if (Object.entries(lhs).length === 0) {
-        return rhs;
-      }
-      for (const [key, value] of Object.entries(rhs)) {
-        if (value instanceof Object) {
-          for (const [bucket, content] of Object.entries(value)) {
-            lhs[key][bucket] += content;
-          }
-        } else {
-          lhs[key] += rhs[key];
-        }
-      }
-      return lhs;
-    };
+  it('aql query time', () => {
+    runTest(() => {
+      const query = `return sleep(1)`;
+      db._query(query);
+    }, [new QueryTimeWatcher(1000)], 'coordinator');
+  });
 
-    const loadAllMetrics = (role) => {
-      return servers.get(role).map((_, i) => loadMetrics(role, i)).reduce(joinMetrics, {});
-     };
-
-    const runTest = (action, watchers) => {
-      const coordBefore = loadAllMetrics("coordinator");
-      watchers.forEach(w => {w.beforeCoordinator(coordBefore);});
-
-      const dbBefore = loadAllMetrics("dbserver");
-      watchers.forEach(w => {w.beforeDBServer(dbBefore);});
-
-      const agentsBefore = loadAllMetrics("agent");
-      watchers.forEach(w => {w.beforeAgent(agentsBefore);});
-
-      action();
-      const coordAfter = loadAllMetrics("coordinator");
-      watchers.forEach(w => {w.afterCoordinator(coordAfter);});
-
-      const dbAfter = loadAllMetrics("dbserver");
-      watchers.forEach(w => {w.afterDBServer(dbAfter);});
-
-      const agentsAfter = loadAllMetrics("agent");
-      watchers.forEach(w => {w.afterAgent(agentsAfter);});
-    };
-
-    it('aql query time', () => {
-      runTest(() => {
-        const query = `return sleep(1)`;
-        db._query(query);
-      }, [new QueryTimeWatcher(1000)]);
-    });
-
-    it('aql slow query count ', () => {
-      runTest(() => {
-        const queries = require("@arangodb/aql/queries");
-        const oldThreshold = queries.properties().slowQueryThreshold;
-        queries.properties({slowQueryThreshold: 1});
-        const query = `return sleep(1)`;
-        db._query(query);
-        queries.properties({slowQueryThreshold: oldThreshold});       
-      }, [new SlowQueryCountWatcher(1)]);
-    });
-
+  it('aql slow query count ', () => {
+    runTest(() => {
+      const queries = require("@arangodb/aql/queries");
+      const oldThreshold = queries.properties().slowQueryThreshold;
+      queries.properties({slowQueryThreshold: 1});
+      db._query(`return sleep(1)`);
+      queries.properties({slowQueryThreshold: oldThreshold});       
+    }, [new SlowQueryCountWatcher(1)], 'coordinator');
+  });
     
-    
-    it('client connections count ', () => {
+  // it('client connections count ', () => {
+  //   runTest(() => {
+  //     //conect
+  //     const url = `${servers.get("coordinator")[0]}/_admin/metrics`;
+
+  //     const res = request({
+  //       json: true,
+  //       method: 'GET',
+  //       url
+  //     });
+  //     expect(res.statusCode).to.equal(200);
+
+  //   }, [new ConnecntionCountWatcher(1)]);
+  // });
+
+  it('collection and index', () => {
+    try {
       runTest(() => {
-        //conect
-        const url = `${servers.get("coordinator")[0]}/_admin/metrics`;
-
-        const res = request({
-          json: true,
-          method: 'GET',
-          url
-        });
-        expect(res.statusCode).to.equal(200);
-
-      }, [new ConnecntionCountWatcher(1)]);
-    });
-
-
-
-
-    it('collection and index', () => {
-      try {
-        runTest(() => {
-          db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
-          require("internal").wait(10.0); // database servers update their shard count in phaseOne. So lets wait until all have done their next phaseOne.
-        },
-        [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9)]
-        );
-        runTest(() => {
-          db["UnitTestCollection"].ensureHashIndex("temp");
-        },
-        [new MaintenanceWatcher()]
-        );
-      } finally {
-        db._drop("UnitTestCollection");
-      }
-    });
-
-    it('at least 1 heartbeat and supervision per second', () => {
+        db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
+        require("internal").wait(10.0); // database servers update their shard count in phaseOne. So lets wait until all have done their next phaseOne.
+      },
+      [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9)],
+      "dbserver"
+      );
       runTest(() => {
-        require("internal").wait(1.0);
-      }, [new HeartBeatWatcher(), new SupervisionWatcher()]);
-    });
+        db["UnitTestCollection"].ensureHashIndex("temp");
+      },
+      [new MaintenanceWatcher()],
+      "dbserver"
+      );
+    } finally {
+      db._drop("UnitTestCollection");
+    }
+  });
+
+  it('at least 1 heartbeat and supervision per second', () => {
+    runTest(() => {
+      require("internal").wait(1.0);
+    }, [new HeartBeatWatcher()], "dbserver");
+
+    runTest(() => {
+      require("internal").wait(1.0);
+    }, [new HeartBeatWatcher()], "coordinator");
+
+    runTest(() => {
+      require("internal").wait(1.0);
+    }, [new SupervisionWatcher()], "agent");
+
+  });
 
     
 });
