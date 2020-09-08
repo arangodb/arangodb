@@ -45,7 +45,6 @@ using namespace arangodb::velocypack::deserializer;
 constexpr const char MAX_CELLS_PARAM[] = "maxCells";
 constexpr const char MIN_LEVEL_PARAM[] = "minLevel";
 constexpr const char MAX_LEVEL_PARAM[] = "maxLevel";
-constexpr const char LEVEL_MOD_PARAM[] = "levelMod";
 constexpr const char POINTS_ONLY_PARAM[] = "pointsOnly";
 constexpr const char OPTIMIZE_FOR_SPACE_PARAM[] = "optimizeForSpace";
 
@@ -53,7 +52,6 @@ using OptionsDeserializer = velocypack::deserializer::utilities::constructing_de
   factory_simple_parameter<MAX_CELLS_PARAM, int32_t, false, values::numeric_value<int32_t, S2RegionCoverer::Options::kDefaultMaxCells>>,
   factory_simple_parameter<MIN_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, 0>>,
   factory_simple_parameter<MAX_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, S2CellId::kMaxLevel>>,
-  factory_simple_parameter<LEVEL_MOD_PARAM, int32_t, false, values::numeric_value<int32_t, 1>>,
   factory_simple_parameter<POINTS_ONLY_PARAM, bool, false, std::false_type>,
   factory_simple_parameter<OPTIMIZE_FOR_SPACE_PARAM, bool, false, std::false_type>>
 >;
@@ -63,7 +61,6 @@ void toVelocyPack(VPackBuilder& builder, GeoAnalyzer::Options const& opts) {
   builder.add(MAX_CELLS_PARAM, VPackValue(opts.maxCells));
   builder.add(MIN_LEVEL_PARAM, VPackValue(opts.minLevel));
   builder.add(MAX_LEVEL_PARAM, VPackValue(opts.maxLevel));
-  builder.add(LEVEL_MOD_PARAM, VPackValue(opts.levelMod));
   builder.add(POINTS_ONLY_PARAM, VPackValue(opts.pointsOnly));
   builder.add(OPTIMIZE_FOR_SPACE_PARAM, VPackValue(opts.optimizeForSpace));
 }
@@ -90,7 +87,6 @@ S2RegionTermIndexer::Options S2Options(
   s2opts.set_max_cells(opts.maxCells);
   s2opts.set_min_level(opts.minLevel);
   s2opts.set_max_level(opts.maxLevel);
-  s2opts.set_level_mod(opts.levelMod);
   s2opts.set_index_contains_points_only(opts.pointsOnly);
   s2opts.set_optimize_for_space(opts.optimizeForSpace);
 

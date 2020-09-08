@@ -41,7 +41,6 @@ class GeoAnalyzer final
     int32_t maxCells;
     int32_t minLevel;
     int32_t maxLevel;
-    int32_t levelMod;
     bool pointsOnly;
     bool optimizeForSpace;
   };
