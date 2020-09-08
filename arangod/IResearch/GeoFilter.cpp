@@ -189,7 +189,7 @@ struct GeoState{
   //////////////////////////////////////////////////////////////////////////////
   /// @brief corresponding stored field
   //////////////////////////////////////////////////////////////////////////////
-  irs::field_id storedField;
+  const irs::columnstore_reader::column_reader* storedField;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief reader using for iterate over the terms
@@ -265,13 +265,8 @@ class GeoQuery final : public irs::filter::prepared {
       return irs::make_disjunction<Disjunction>(std::move(itrs));
     }
 
-    auto* reader = segment.column_reader(state->storedField);
-
-    if (!reader) {
-      return irs::doc_iterator::empty();
-    }
-
-    auto columnIt = reader->iterator();
+    auto* reader = state->storedField;
+    auto columnIt = reader ? reader->iterator() : nullptr;
 
     if (!columnIt) {
       return irs::doc_iterator::empty();
@@ -388,8 +383,7 @@ irs::filter::prepared::ptr GeoFilter::prepare(
     auto& state = states.insert(segment);
     state.reader = reader;
     state.states = std::move(termStates);
-    auto const* column = segment.column("\1" + std::string(storedField));
-    state.storedField = column ? column->id : irs::field_limits::invalid();
+    state.storedField = segment.column_reader("\1" + std::string(storedField)); // FIXME
   }
 
   irs::bstring stats(order.stats_size(), 0);
