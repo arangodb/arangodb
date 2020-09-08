@@ -273,9 +273,9 @@ TEST(EngineInfoContainerTest,
       .AlwaysReturn(&block);
 
   // Mock the Registry
-  /*fakeit::When(Method(mockRegistry, insert))
+  fakeit::When(Method(mockRegistry, insert))
     .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease,
-            arangodb::cluster::CallbackGuard guard) {
+            arangodb::cluster::CallbackGuard& guard) {
         ASSERT_NE(id, 0);
         ASSERT_NE(query, nullptr);
         ASSERT_TRUE(isPrepared);
@@ -283,7 +283,7 @@ TEST(EngineInfoContainerTest,
         ASSERT_EQ(timeout, 600.0);
         ASSERT_EQ(query, &queryClone);
         secondId = id;
-      });*/
+      });
 
   // ------------------------------
   // Section: Run the test
@@ -331,8 +331,8 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
 
   size_t remoteId = 1337;
   size_t secondRemoteId = 42;
-  //QueryId secondId = 0;
-  //QueryId thirdId = 0;
+  QueryId secondId = 0;
+  QueryId thirdId = 0;
   std::string dbname = "TestDB";
 
   auto setEngineCallback = [](ExecutionEngine* eng) -> void {
@@ -498,9 +498,9 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
   // NOTE: This expects an ordering of the engines first of the stack will be
   // handled first. With same fakeit magic we could make this ordering
   // independent which is is fine as well for the production code.
-  /*fakeit::When(Method(mockRegistry, insert))
+  fakeit::When(Method(mockRegistry, insert))
     .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease,
-          arangodb::cluster::CallbackGuard guard) {
+          arangodb::cluster::CallbackGuard& guard) {
         ASSERT_NE(id, 0);
         ASSERT_NE(query, nullptr);
         ASSERT_TRUE(isPrepared);
@@ -510,14 +510,14 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
         secondId = id;
       })
     .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease,
-          arangodb::cluster::CallbackGuard guard) {
+          arangodb::cluster::CallbackGuard& guard) {
         ASSERT_NE(id, 0);
         ASSERT_NE(query, nullptr);
         ASSERT_EQ(timeout, 600.0);
         ASSERT_FALSE(keepLease);
         ASSERT_EQ(query, &querySecondClone);
         thirdId = id;
-      });*/
+      });
 
   // ------------------------------
   // Section: Run the test
@@ -686,9 +686,9 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_throws_an_err
   testee.closeSnippet();
 
   // Mock the Registry
-  /*fakeit::When(Method(mockRegistry, insert))
+  fakeit::When(Method(mockRegistry, insert))
     .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease,
-          std::unique_ptr<arangodb::cluster::CallbackGuard>&) {
+          arangodb::cluster::CallbackGuard& guard) {
         ASSERT_NE(id, 0);
         ASSERT_NE(query, nullptr);
         ASSERT_EQ(timeout, 600.0);
@@ -696,7 +696,7 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_throws_an_err
         ASSERT_FALSE(keepLease);
         ASSERT_EQ(query, &queryClone);
         secondId = id;
-      });*/
+      });
 
   // Mock query clone
   fakeit::When(Method(mockQuery, clone))
@@ -851,9 +851,9 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_returns_a_nul
   testee.closeSnippet();
 
   // Mock the Registry
-  /*fakeit::When(Method(mockRegistry, insert))
+  fakeit::When(Method(mockRegistry, insert))
     .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease,
-          std::unique_ptr<arangodb::cluster::CallbackGuard>&) {
+          arangodb::cluster::CallbackGuard& guard) {
         ASSERT_NE(id, 0);
         ASSERT_NE(query, nullptr);
         ASSERT_EQ(timeout, 600.0);
@@ -861,7 +861,7 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_returns_a_nul
         ASSERT_FALSE(keepLease);
         ASSERT_EQ(query, &queryClone);
         secondId = id;
-      });*/
+      });
 
   // Mock query clone
   fakeit::When(Method(mockQuery, clone))

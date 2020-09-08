@@ -62,7 +62,7 @@ class QueryRegistry {
   /// the coordinator which created it restarts or fails.
   TEST_VIRTUAL void insert(
     QueryId id, Query* query, double ttl, bool isPrepare, bool keepLease,
-    arangodb::cluster::CallbackGuard guard);
+    arangodb::cluster::CallbackGuard&& guard);
 
   /// @brief open, find a query in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
