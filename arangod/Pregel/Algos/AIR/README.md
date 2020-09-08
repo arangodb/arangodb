@@ -26,10 +26,13 @@ Each phase requires instructions based on the operations you want to perform.
   
 The computation will follow the order:
 
-=> `initProgram` (database server)  
-=> `onPreStep` (coordinator)
-=> `updateProgram` (database server)
-=> `onPostStep` (coordinator)
+Initialization:
+1. `initProgram` (database server)  
+
+Computation: 
+1. `onPreStep` (coordinator)
+2. `updateProgram` (database server)
+3. `onPostStep` (coordinator)
 
 #### Phase parameters:
 
