@@ -22,6 +22,11 @@
 
 #include "gtest/gtest.h"
 
+#include "s2/s2point_region.h"
+#include "s2/s2polygon.h"
+
+#include "index/index_reader.hpp"
+
 #include "IResearch/GeoFilter.h"
 
 #if USE_ENTERPRISE
@@ -33,80 +38,90 @@ extern const char* ARGV0;  // defined in main.cpp
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
-TEST(by_geo_distance_test, options) {
-  GeoFilterOptions opts;
-  ASSERT_TRUE(opts.terms().empty());
-  ASSERT_EQ(irs::GeoFilterType::INTERSECTS, opts.type());
+TEST(GeoFilterTest, options) {
+  S2RegionTermIndexer::Options const s2opts;
+  GeoFilterOptions const opts;
+  ASSERT_TRUE(opts.prefix.empty());
+  ASSERT_TRUE(opts.storedField.empty());
+  ASSERT_TRUE(opts.shape.empty());
+  ASSERT_EQ(s2opts.level_mod(), opts.options.level_mod());
+  ASSERT_EQ(s2opts.min_level(), opts.options.min_level());
+  ASSERT_EQ(s2opts.max_level(), opts.options.max_level());
+  ASSERT_EQ(s2opts.max_cells(), opts.options.max_cells());
+  ASSERT_EQ(s2opts.marker(), opts.options.marker());
+  ASSERT_EQ(s2opts.index_contains_points_only(), opts.options.index_contains_points_only());
+  ASSERT_EQ(s2opts.optimize_for_space(), opts.options.optimize_for_space());
+  ASSERT_EQ(arangodb::iresearch::GeoFilterType::NEAR, opts.type);
 }
 
-TEST(GeoFilterTest, options) {
+TEST(GeoFilterTest, ctor) {
   GeoFilter q;
   ASSERT_EQ(irs::type<GeoFilter>::id(), q.type());
   ASSERT_EQ("", q.field());
   ASSERT_EQ(irs::no_boost(), q.boost());
-  ASSERT_EQ(irs::by_geo_terms_options{}, q.options());
+  ASSERT_EQ(GeoFilterOptions{}, q.options());
 }
 
 TEST(GeoFilterTest, equal) {
-  const S1ChordAngle radius5(S1Angle::Radians(S2Earth::MetersToRadians(5.)));
+  S2PointRegion point{S2Point{1., 2., 3.}};
 
-  irs::by_geo_terms q;
-  q.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Cap{S2Point{1., 2., 3.}, radius5});
+  GeoFilter q;
+  q.mutable_options()->type = GeoFilterType::INTERSECTS;
+  q.mutable_options()->shape.reset(&point, geo::ShapeContainer::Type::S2_POINT);
   *q.mutable_field() = "field";
 
   {
-    irs::by_geo_terms q1;
-    q1.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Cap{S2Point{1., 2., 3.}, radius5});
+    GeoFilter q1;
+    q1.mutable_options()->type = GeoFilterType::INTERSECTS;
+    q1.mutable_options()->shape.reset(&point, geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field";
     ASSERT_EQ(q, q1);
     ASSERT_EQ(q.hash(), q1.hash());
   }
 
   {
-    irs::by_geo_terms q1;
+    GeoFilter q1;
     q1.boost(1.5);
-    q1.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Cap{S2Point{1., 2., 3.}, radius5});
-    *q1.mutable_field() = "field";
+    q1.mutable_options()->type = GeoFilterType::INTERSECTS;
+    q1.mutable_options()->shape.reset(&point, geo::ShapeContainer::Type::S2_POINT);
     ASSERT_EQ(q, q1);
     ASSERT_EQ(q.hash(), q1.hash());
   }
 
   {
-    irs::by_geo_terms q1;
-    q1.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Cap{S2Point{1., 2., 3.}, radius5});
+    GeoFilter q1;
+    q1.mutable_options()->type = GeoFilterType::INTERSECTS;
+    q1.mutable_options()->shape.reset(&point, geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field1";
     ASSERT_NE(q, q1);
   }
 
   {
-    irs::by_geo_terms q1;
-    q1.mutable_options()->reset(irs::GeoFilterType::CONTAINS, S2Cap{S2Point{1., 2., 3.}, radius5});
+    GeoFilter q1;
+    q1.mutable_options()->type = GeoFilterType::CONTAINS;
+    q1.mutable_options()->shape.reset(&point, geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field";
     ASSERT_NE(q, q1);
   }
 
   {
-    irs::by_geo_terms q1;
-    q1.mutable_options()->reset(irs::GeoFilterType::CONTAINS, S2Cap{S2Point{1., 2., 3.}, radius5});
-    *q1.mutable_field() = "field";
-    ASSERT_NE(q, q1);
-  }
-
-  {
-    irs::by_geo_terms q1;
-    q1.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Cap{S2Point{2., 2., 3.}, radius5});
+    S2Polygon p;
+    GeoFilter q1;
+    q1.mutable_options()->type = GeoFilterType::CONTAINS;
+    q1.mutable_options()->shape.reset(&p, geo::ShapeContainer::Type::S2_POLYGON);
     *q1.mutable_field() = "field";
     ASSERT_NE(q, q1);
   }
 }
 
 TEST(GeoFilterTest, boost) {
-  const S1ChordAngle radius5(S1Angle::Radians(S2Earth::MetersToRadians(5.)));
+  S2PointRegion point{S2Point{1., 2., 3.}};
 
   // no boost
   {
-    irs::by_geo_terms q;
-    q.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Cap{S2Point{1., 2., 3.}, radius5});
+    GeoFilter q;
+    q.mutable_options()->type = GeoFilterType::INTERSECTS;
+    q.mutable_options()->shape.reset(&point, geo::ShapeContainer::Type::S2_POINT);
     *q.mutable_field() = "field";
 
     auto prepared = q.prepare(irs::sub_reader::empty());
@@ -116,8 +131,9 @@ TEST(GeoFilterTest, boost) {
   // with boost
   {
     irs::boost_t boost = 1.5f;
-    irs::by_geo_terms q;
-    q.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Cap{S2Point{1., 2., 3.}, radius5});
+    GeoFilter q;
+    q.mutable_options()->type = GeoFilterType::INTERSECTS;
+    q.mutable_options()->shape.reset(&point, geo::ShapeContainer::Type::S2_POINT);
     *q.mutable_field() = "field";
     q.boost(boost);
 
