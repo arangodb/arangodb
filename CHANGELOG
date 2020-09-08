@@ -1,4 +1,4 @@
-v3.6.6.1 (XXXX-XX-XX)
+v3.6.6.1 (2020-09-09)
 ---------------------
 
 * Add option `--rocksdb.max-write-buffer-number-to-maintain` with default of 1
