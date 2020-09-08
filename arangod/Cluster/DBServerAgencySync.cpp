@@ -87,7 +87,7 @@ Result DBServerAgencySync::getLocalCollections(
       continue;
     }
     auto unuse = scopeGuard([&vocbase] { vocbase.release(); });
-    
+
     auto [it,created] =
       databases.try_emplace(dbname, std::make_shared<VPackBuilder>());
     if (!created) {
@@ -114,11 +114,11 @@ Result DBServerAgencySync::getLocalCollections(
         // generate a collection definition identical to that which would be
         // persisted in the case of SingleServer
         collection->properties(collections, LogicalDataSource::Serialization::Persistence);
-        
+
         auto const& folls = collection->followers();
         std::string const theLeader = folls->getLeader();
         bool theLeaderTouched = folls->getLeaderTouched();
-        
+
         // Note that whenever theLeader was set explicitly since the collection
         // object was created, we believe it. Otherwise, we do not accept
         // that we are the leader. This is to circumvent the problem that

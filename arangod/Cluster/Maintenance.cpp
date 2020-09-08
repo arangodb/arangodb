@@ -1008,7 +1008,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     } else {
       pdb = pit->second->slice();
     }
-    
+
     auto cdbpath = std::vector<std::string>{
       AgencyCommHelper::path(), CURRENT, DATABASES, dbName, serverId};
 
@@ -1238,7 +1238,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         }
       }
     }
-  
+
     // Let's find database errors for databases which do not occur in Local
     // but in Plan:
     for (auto const& p : allErrors.databases) {
@@ -1274,7 +1274,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       TRI_ASSERT(pos2 != std::string::npos);
       std::string c = key.substr(pos + 1, pos2);
       std::string s = key.substr(pos2 + 1);  // shard name
-      
+
       // Now find out if the shard appears in the Plan but not in Local:
       VPackSlice inPlan = pdb.get(std::vector<std::string>({d, c, "shards", s}));
       VPackSlice inLoc = local.get(std::vector<std::string>({d, s}));
@@ -1302,7 +1302,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature,
   MaintenanceFeature::ShardActionMap const& shardActionMap) {
-  
+
   //auto pdbs = plan.get(COLLECTIONS);
   //auto cdbs = current.get(COLLECTIONS);
 
@@ -1322,7 +1322,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
     } else {
       continue;
     }
-      
+
     auto lit = local.find(dbname);
     VPackSlice localdb;
     if (lit != local.end()) {
@@ -1333,7 +1333,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
     } else {
       continue;
     }
-    
+
     auto cit = current.find(dbname);
     VPackSlice cdb;
     if (cit != current.end()) {
@@ -1348,7 +1348,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
     } else {
       continue;
     }
-    
+
 
     for (auto const& pcol : VPackObjectIterator(pdb)) {
       VPackStringRef const colname = pcol.key.stringRef();
@@ -1360,7 +1360,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
 
       for (auto const& pshrd : VPackObjectIterator(pcol.value.get(SHARDS))) {
         VPackStringRef const shname = pshrd.key.stringRef();
-        
+
         // First check if the shard is locked:
         auto it = shardActionMap.find(shname.toString());
         if (it != shardActionMap.end()) {
@@ -1387,20 +1387,20 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
 
         // Plan's servers
         VPackSlice const pservers = pshrd.value;
-        
+
         // we are not planned to be a follower
         if (indexOf(pservers, serverId) <= 0) {
           continue;
         }
-        
+
         // Current's servers
         VPackSlice const cservers = cshrd.get(SERVERS);
-        
+
         // if we are considered to be in sync there is nothing to do
         if (indexOf(cservers, serverId) > 0) {
           continue;
         }
-        
+
         auto const leader = pservers[0].copyString();
         std::shared_ptr<ActionDescription> description = std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{
@@ -1428,7 +1428,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
       }
     }
   }
-  
+
   return {};
 }
 

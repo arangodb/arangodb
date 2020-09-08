@@ -193,7 +193,7 @@ arangodb::Result reportInCurrent(
 arangodb::Result syncReplicatedShardsWithLeaders(
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
   std::unordered_set<std::string> const& dirty,
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>  const& current,
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& current,
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature,
   MaintenanceFeature::ShardActionMap const& shardActionMap);
