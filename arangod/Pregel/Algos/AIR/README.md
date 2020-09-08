@@ -1,8 +1,57 @@
-# Programmable Pregel Algorithms
+# Programmable Pregel Algorithms (experimental feature)
 
-(Placeholder introduction)
+(Placeholder: What is a programmable Pregel Algorithms )
 
-## Write a custom algorithm
+Programmable Pregel Algorithms do require SmartGraphs. SmartGraphs are only available in the Enterprise Edition
+
+## Definition of a custom algorithm
+
+The format of a custom algorithm right now is based on a JSON object.
+ 
+#### Main algorithm parameters:
+ 
+* resultField (optional): Document attribute as a `string`.
+  * The vertex computation results will be in all vertices pointing to the given attribute.
+* maxGSS (required): The max amount of global supersteps as a `number`. 
+  * After the amount of max defined supersteps is reached, the Pregel execution will stop.  
+* globalAccumulators (optional?): 
+* vertexAccumulators (optional?):
+* customAccumulators (optional?):
+* phases (optional?): Array of a single or multiple phase definitions. More info below in the next chapter. 
+
+#### Phases
+
+Phases will run sequentially during your Pregel computation. The definition of multiple phases are allowed. 
+Each phase requires instructions based on the operations you want to perform.
+  
+The computation will follow the order:
+
+=> `initProgram` (database server)  
+=> `onPreStep` (coordinator)
+=> `updateProgram` (database server)
+=> `onPostStep` (coordinator)
+
+#### Phase parameters:
+
+* name (required): Name as a `string`.
+  * The given name of the defined phase.
+* initProgram: Program as `array of operations` to be executed.
+  * The init program will run initially once per all vertices that are part of your graph. 
+* onPreStep: Program as `array of operations` to be executed.
+  * 
+* updateProgram: Program as `array of operations` to be executed.
+ * The update program will be executed during every pregel execution round. 
+* onPostStep Program as `array of operations` to be executed.
+  * 
+
+
+Example:
+
+```
+{
+  resultField: "
+}
+```
 
 ## Execute a custom algorithm
 
