@@ -26,7 +26,7 @@ const internal = require("internal");
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
-const accumulators = require("@arangodb/air/accumulators");
+const {listAccumulator, orAccumulator, storeAccumulator, minAccumulator} = require("@arangodb/air/accumulators");
 const _ = require("lodash");
 /*
 
@@ -53,28 +53,36 @@ function strongly_connected_components_program(resultField) {
     },
     vertexAccumulators: {
       forwardMin: {
-        accumulatorType: "min",
-        valueType: "ints",
+        accumulatorType: "custom",
+        valueType: "slice",
+        customType: "min"
       },
       backwardMin: {
-        accumulatorType: "min",
-        valueType: "ints",
+        accumulatorType: "custom",
+        valueType: "slice",
+        customType: "min"
       },
       isDisabled: {
-        accumulatorType: "store",
-        valueType: "bool",
+        accumulatorType: "custom",
+        valueType: "slice",
+        customType: "store"
       },
       mySCC: {
-        accumulatorType: "store",
-        valueType: "ints",
+        accumulatorType: "custom",
+        valueType: "slice",
+        customType: "store"
       },
       activeInbound: {
-        accumulatorType: "list",
+        accumulatorType: "custom",
         valueType: "slice",
+        customType: "list"
       },
     },
     customAccumulators: {
-      or: accumulators.orAccumulator(),
+      or: orAccumulator(),
+      list: listAccumulator(),
+      store: storeAccumulator(false),
+      min: minAccumulator(),
     },
     phases: [
       {
