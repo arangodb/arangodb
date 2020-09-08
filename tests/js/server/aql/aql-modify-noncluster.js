@@ -475,6 +475,49 @@ function ahuacatlModifySuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test update with search document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateSubKeepNullFalse : function () {
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      // Patch non-existing substructure:
+      var q = `FOR patchme IN ${cn1}
+  UPDATE patchme._key WITH { foo: {
+ bark: 'bart',
+ foxx: null,
+ a: null }}
+ IN ${cn1} OPTIONS { keepNull: false }
+ RETURN NEW`;
+      var actual = AQL_EXECUTE(q, {});
+      assertEqual(1, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertTrue(actual.json[0].hasOwnProperty("foo"));
+      assertFalse(actual.json[0].foo.hasOwnProperty("a"));
+      assertFalse(actual.json[0].foo.hasOwnProperty("foxx"));
+      assertTrue(actual.json[0].foo.hasOwnProperty("bark"));
+      assertEqual("bart", actual[0].json.bark);
+
+      var doc = c1.toArray()[0];
+      assertEqual("foo", doc._key);
+      assertTrue(doc.hasOwnProperty("foo"));
+      assertFalse(doc.foo.hasOwnProperty("a"));
+      assertFalse(doc.foo.hasOwnProperty("foxx"));
+      assertEqual("bart", doc.foo.bark);
+
+      var actual = AQL_EXECUTE(q, {});
+
+      assertEqual(1, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+
+      var doc = c1.toArray()[0];
+      assertEqual("foo", doc._key);
+      assertTrue(doc.hasOwnProperty("foo"));
+      assertFalse(doc.foo.hasOwnProperty("a"));
+      assertFalse(doc.foo.hasOwnProperty("foxx"));
+      assertEqual("bart", doc.foo.bark);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test upsert with no search document
 ////////////////////////////////////////////////////////////////////////////////
 
