@@ -172,7 +172,7 @@ Language primitives are methods which can be used inside of a program definition
 * var-ref -- `["var-ref", name]` refer to variable `name` in current context
 * bind-ref -- todo
 
-## How to execute
+## Execute a custom algorithm
 
 ## Vertex Computation
 
