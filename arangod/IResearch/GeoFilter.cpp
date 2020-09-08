@@ -222,8 +222,6 @@ class GeoQuery final : public irs::filter::prepared {
       const irs::sub_reader& segment,
       const irs::order::prepared& ord,
       const irs::attribute_provider* /*ctx*/) const override {
-    using doc_iterator_t = irs::score_iterator_adapter<irs::doc_iterator::ptr>;
-
     // get term state for the specified reader
     auto state = _states.find(segment);
 
@@ -239,7 +237,7 @@ class GeoQuery final : public irs::filter::prepared {
       return irs::doc_iterator::empty();
     }
 
-    std::vector<doc_iterator_t> itrs;
+    typename Disjunction::doc_iterators_t itrs;
     itrs.reserve(state->states.size());
 
     const auto& features = irs::flags::empty_instance();
