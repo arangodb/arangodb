@@ -195,7 +195,7 @@ void recursiveAddMMFiles(VPackSlice const& value, VPackBuilder& builder) {
   TRI_ASSERT(builder.isClosed());
 }
 
-void recursiveAddRocksDB(VPackSlice const& value, VPackBuilder& builder) {
+void recursiveAddRocksDB(bool detailed, VPackSlice const& value, VPackBuilder& builder) {
   TRI_ASSERT(value.isObject());
   TRI_ASSERT(builder.slice().isObject());
   TRI_ASSERT(builder.isClosed());
@@ -227,13 +227,64 @@ void recursiveAddRocksDB(VPackSlice const& value, VPackBuilder& builder) {
   updated.add("size", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                     {"indexes", "size"})));
   updated.close();
+
+  if (detailed && value.hasKey("rocksdb")) {
+    updated.add("rocksdb", VPackValue(VPackValueType::Object));
+    updated.add("documents", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                           {"rocksdb", "documents"})));
+    // merge indexes together
+    std::map<uint64_t, std::pair<VPackSlice, VPackSlice>> indexes;
+
+    updated.add("indexes", VPackValue(VPackValueType::Array));
+    VPackSlice rocksDBValues = value.get("rocksdb");
+
+    for (auto const& it : VPackArrayIterator(rocksDBValues.get("indexes"))) {
+      VPackSlice idSlice = it.get("id");
+      if (!idSlice.isNumber()) {
+        continue;
+      }
+      indexes.emplace(idSlice.getNumber<uint64_t>(), std::make_pair(it, VPackSlice::noneSlice()));
+    }
+  
+    rocksDBValues = builder.slice().get("rocksdb");
+    if (rocksDBValues.isObject()) {
+      for (auto const& it : VPackArrayIterator(rocksDBValues.get("indexes"))) {
+        VPackSlice idSlice = it.get("id");
+        if (!idSlice.isNumber()) {
+          continue;
+        }
+        auto idx = indexes.find(idSlice.getNumber<uint64_t>());
+        if (idx == indexes.end()) {
+          indexes.emplace(idSlice.getNumber<uint64_t>(), std::make_pair(it, VPackSlice::noneSlice()));
+        } else {
+          (*idx).second.second = it;
+        }
+      }
+    }
+
+    for (auto const& it : indexes) {
+      updated.openObject();
+      updated.add("type", it.second.first.get("type"));
+      updated.add("id", it.second.first.get("id"));
+      uint64_t count = it.second.first.get("count").getNumber<uint64_t>();
+      if (it.second.second.isObject()) {
+        count += it.second.second.get("count").getNumber<uint64_t>();
+      }
+      updated.add("count", VPackValue(count));
+      updated.close();
+    }
+
+    updated.close(); // "indexes" array
+    updated.close(); // "rocksdb" object
+  }
   
   updated.close();
 
   TRI_ASSERT(updated.slice().isObject());
   TRI_ASSERT(updated.isClosed());
-
+  
   builder = VPackCollection::merge(builder.slice(), updated.slice(), true, false);
+  
   TRI_ASSERT(builder.slice().isObject());
   TRI_ASSERT(builder.isClosed());
 }
@@ -1077,7 +1128,8 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
 
 futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
                                                       std::string const& dbname,
-                                                      std::string const& collname) {
+                                                      std::string const& collname,
+                                                      bool details) {
   // Set a few variables needed for our work:
   ClusterInfo& ci = feature.clusterInfo();
 
@@ -1106,20 +1158,20 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
     auto future =
         network::sendRequest(pool, "shard:" + p.first, fuerte::RestVerb::Get,
                              "/_api/collection/" +
-                                 StringUtils::urlEncode(p.first) + "/figures",
+                                 StringUtils::urlEncode(p.first) + "/figures?details=" + (details ? "true" : "false"),
                              VPackBuffer<uint8_t>(), reqOpts);
     futures.emplace_back(std::move(future));
   }
 
-  auto cb = [isRocksDB](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
-    auto handler = [isRocksDB](Result& result, VPackBuilder& builder, ShardID&,
+  auto cb = [isRocksDB, details](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
+    auto handler = [isRocksDB, details](Result& result, VPackBuilder& builder, ShardID&,
                       VPackSlice answer) mutable -> void {
       if (answer.isObject()) {
         VPackSlice figures = answer.get("figures");
         // add to the total
         if (figures.isObject()) {
           if (isRocksDB) {
-            recursiveAddRocksDB(figures, builder);
+            recursiveAddRocksDB(details, figures, builder);
           } else {
             recursiveAddMMFiles(figures, builder);
           }

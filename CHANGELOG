@@ -1,7 +1,17 @@
 v3.6.7 (XXXX-XX-XX)
 -------------------
 
-* Add option `--rocksdb.max-write-buffer-number-to-maintain` with default of 1
+* Added `details` option to figures command of a collection:
+  `collection.figures(details)`
+
+  Setting `details` to `true` will return extended storage engine-specific 
+  details to the figures. The details are intended for debugging ArangoDB
+  itself and their format is subject to change. Currently, the details are
+  returned for the RocksDB storage engine only.
+  By default, `details` is set to `false`, so no details are returned and the
+  behavior is identical to previous versions of ArangoDB.
+
+* Added option `--rocksdb.max-write-buffer-number-to-maintain` with default of 1
   for small RAM size and 0 for large RAM size.
   This configures how much memory RocksDB is allowed to use for immutable
   flushed memtables/write-buffers. The default of 1 will usually be good for

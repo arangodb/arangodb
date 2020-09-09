@@ -1046,7 +1046,7 @@ bool PhysicalCollectionMock::dropIndex(TRI_idx_iid_t iid) {
   return false;
 }
 
-void PhysicalCollectionMock::figuresSpecific(arangodb::velocypack::Builder&) {
+void PhysicalCollectionMock::figuresSpecific(bool /*details*/, arangodb::velocypack::Builder&) {
   before();
   TRI_ASSERT(false);
 }
