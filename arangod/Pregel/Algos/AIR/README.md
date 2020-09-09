@@ -1,6 +1,8 @@
 # Programmable Pregel Algorithms (experimental feature)
 
-(Placeholder: What is a programmable Pregel Algorithms )
+(Placeholder: What is a programmable Pregel Algorithms)
+
+
 
 Programmable Pregel Algorithms do require SmartGraphs. SmartGraphs are only available in the Enterprise Edition
 
@@ -173,6 +175,17 @@ Language primitives are methods which can be used inside of a program definition
 * bind-ref -- todo
 
 ## Execute a custom algorithm
+Writing vertex accumulator algorithms is currently done as follows; You need a
+properly sharded SmartGgraph (TODO add instructions on how to create it), in
+the following example this graph is called `WikiVoteGraph`. The algorithm in the
+example computes the shortest path from the single source vertex `sourceId`
+using the attribute `cost` on every outgoing edge.
+
+```
+arangosh> const pp = require("@arangodb/pregel-programs");
+arangosh> var pexec = pp.execute("WikiVoteGraph",
+ // TODO: test and copy program from pregel-programs.js
+```
 
 ## Vertex Computation
 
@@ -227,17 +240,6 @@ by (potential) clients and users of graph analytics.
 
 ## Writing Vertex Accumulator Algorithms using AIR
 
-Writing vertex accumulator algorithms is currently done as follows; You need a
-properly sharded (smart-)graph (TODO add instructions on how to create it), in
-the following example this graph is called `WikiVoteGraph`. The algorithm in the
-example computes the shortest path from the single source vertex `sourceId`
-using the attribute `cost` on every outgoing edge.
-
-```
-arangosh> const pp = require("@arangodb/pregel-programs");
-arangosh> var pexec = pp.execute("WikiVoteGraph",
- // TODO: test and copy program from pregel-programs.js
-```
 
 ## Current AIR spec
 
