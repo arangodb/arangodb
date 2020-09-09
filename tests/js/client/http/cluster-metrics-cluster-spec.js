@@ -46,6 +46,14 @@ class Watcher {
   check(){
     expect(this._after).to.be.greaterThan(this._before);
   };
+  
+  checkEq(increment){
+    expect(this._after).to.be.equal(this._before + increment);
+  };
+
+  checkAtLeast(minIncrement){
+    expect(this._after).to.be.at.least(this._before + minIncrement);
+  };
 }
 
 const expectOneBucketChanged = (actual, old) => {
@@ -95,103 +103,64 @@ const MetricNames = {
   AGENCY_LOG_SIZE: "arangodb_agency_log_size_bytes"
 };
 
-class HttpOtherCountWatcher extends Watcher {
-  constructor(minChange){
-    super(MetricNames.HTTP_OTHER_COUNT);
-    this._minChange = minChange;
+class HttpRequestsCountWatcher {
+  constructor(){
+    this.HttpDeleteCountWatcher = new Watcher (MetricNames.HTTP_DELETE_COUNT);
+    this.HttpGetCountWatcher = new Watcher (MetricNames.HTTP_GET_COUNT);
+    this.HttpHeadCountWatcher = new Watcher (MetricNames.HTTP_HEAD_COUNT);
+    this.HttpOptionsCountWatcher = new Watcher (MetricNames.HTTP_OPTIONS_COUNT);
+    this.HttpPatchCountWatcher = new Watcher (MetricNames.HTTP_PATCH_COUNT);
+    this.HttpPostCountWatcher = new Watcher (MetricNames.HTTP_POST_COUNT);
+    this.HttpPutCountWatcher = new Watcher (MetricNames.HTTP_PUT_COUNT);
+    this.HttpOtherCountWatcher = new Watcher (MetricNames.HTTP_OTHER_COUNT);
+    this.HttpTotalCountWatcher = new Watcher (MetricNames.HTTP_TOTAL_COUNT);       
   }
-  check(){
-    expect(this._after).to.be.equal(this._before+this._minChange); 
-  }
-}
 
-class HttpOptionsCountWatcher extends Watcher {
-  constructor(minChange){
-    super(MetricNames.HTTP_OPTIONS_COUNT);
-    this._minChange = minChange;
+  before(metrics){
+    this.HttpDeleteCountWatcher.before(metrics);
+    this.HttpGetCountWatcher.before(metrics);
+    this.HttpHeadCountWatcher.before(metrics);
+    this.HttpOptionsCountWatcher.before(metrics);
+    this.HttpPatchCountWatcher.before(metrics);
+    this.HttpPostCountWatcher.before(metrics);
+    this.HttpPutCountWatcher.before(metrics);
+    this.HttpOtherCountWatcher.before(metrics);
+    this.HttpTotalCountWatcher.before(metrics);
   }
-  check(){
-    expect(this._after).to.be.equal(this._before+this._minChange); 
+  
+  after(metrics){
+    this.HttpDeleteCountWatcher.after(metrics);
+    this.HttpGetCountWatcher.after(metrics);
+    this.HttpHeadCountWatcher.after(metrics);
+    this.HttpOptionsCountWatcher.after(metrics);
+    this.HttpPatchCountWatcher.after(metrics);
+    this.HttpPostCountWatcher.after(metrics);
+    this.HttpPutCountWatcher.after(metrics);
+    this.HttpOtherCountWatcher.after(metrics);
+    this.HttpTotalCountWatcher.after(metrics);
   }
-}
 
-class HttpHeadCountWatcher extends Watcher {
-  constructor(minChange){
-    super(MetricNames.HTTP_HEAD_COUNT);
-    this._minChange = minChange;
-  }
   check(){
-    expect(this._after).to.be.equal(this._before+this._minChange); 
+    this.HttpDeleteCountWatcher.checkEq(1);
+    this.HttpGetCountWatcher.checkEq(1);
+    this.HttpHeadCountWatcher.checkEq(1);
+    this.HttpOptionsCountWatcher.checkEq(1);
+    this.HttpPatchCountWatcher.checkEq(1);
+    this.HttpPostCountWatcher.checkEq(2);
+    this.HttpPutCountWatcher.checkAtLeast(1);
+    this.HttpOtherCountWatcher.checkEq(1);
+    this.HttpTotalCountWatcher.checkAtLeast(9);
   }
-}
 
-class HttpTotalCountWatcher extends Watcher {
-  constructor(minChange){
-    super(MetricNames.HTTP_TOTAL_COUNT);
-    this._minChange = minChange;
-  }
-  check(){
-    expect(this._after).to.be.at.least(this._before+this._minChange); 
-  }
-}
-
-class HttpPatchCountWatcher extends Watcher {
-  constructor(minChange){
-    super(MetricNames.HTTP_PATCH_COUNT);
-    this._minChange = minChange;
-  }
-  check(){
-    expect(this._after).to.be.equal(this._before+this._minChange); 
-  }
-}
-
-class HttpPutCountWatcher extends Watcher {
-  constructor(minChange){
-    super(MetricNames.HTTP_PUT_COUNT);
-    this._minChange = minChange;
-  }
-  check(){
-    expect(this._after).to.be.at.least(this._before+this._minChange); 
-  }
-}
-
-class HttpDeleteCountWatcher extends Watcher {
-  constructor(change){
-    super(MetricNames.HTTP_DELETE_COUNT);
-    this._change = change;
-  }
-  check(){
-    expect(this._after).to.be.equal(this._before+this._change); 
-  }
-}
-
-class HttpGetCountWatcher extends Watcher {
-  constructor(change){
-    super(MetricNames.HTTP_GET_COUNT);
-    this._change = change;
-  }
-  check(){
-    expect(this._after).to.be.equal(this._before+this._change); 
-  }
-}
-
-class HttpPostCountWatcher extends Watcher {
-  constructor(change){
-    super(MetricNames.HTTP_POST_COUNT);
-    this._change = change;
-  }
-  check(){
-    expect(this._after).to.be.equal(this._before+this._change); 
-  }
 }
 
 class AgencyLogSizeWatcher extends Watcher {
   constructor() {
     super(MetricNames.AGENCY_LOG_SIZE);
   }
-  check (){
-    expect(this._after).to.be.greaterThan(this._before);    
-  };
+  // check (){
+  //   expect(this._after).to.be.greaterThan(this._before);    
+  // };
 }
 
 class QueryTimeWatcher extends Watcher {
@@ -432,32 +401,7 @@ describe('_admin/metrics', () => {
   };
 
 
-
-
-
-
-
-  // it('http GET requests count',() => {
-  //   // try {
-  //   //   runTest(() => {
-  //   //     db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
-  //   //     require("internal").wait(3.0);
-  //   //   }, [new HttpGetCountWatcher(1), new HttpPostCountWatcher(1)], 'coordinator');
-      
-  //   // } finally {
-  //   //   db._drop("UnitTestCollection");
-  //   // }
-    
-  //   runTest(() => {
-  //      const request = require("@arangodb/request");      
-  //      const url = `${servers.get('coordinator')[0]}/_api/collection`;
-  //      let res = request({url, method: "GET"});      
-  //      expect(res.statusCode).to.equal(200);
-  //      require("internal").wait(5.0);
-  //   }, [new HttpGetCountWatcher(2)], 'coordinator');
-  // });
-
-  it('http PATCH requests count',() => {
+  it('http requests statistics',() => {
     
     runTest(() => {
       const request = require("@arangodb/request");      
@@ -479,6 +423,13 @@ describe('_admin/metrics', () => {
       });  
           
       expect(resCreateDoc.statusCode).to.equal(201);
+
+      let resProp = request({
+        url: `${url}/_api/collection/UnitTestCollection/properties`, 
+        method: "PUT"
+      });
+
+      expect(resProp.statusCode).to.equal(200);
 
       let resPatchDoc = request({
         url: `${url}/_api/document/UnitTestCollection?waitForSync=true`, 
@@ -513,61 +464,23 @@ describe('_admin/metrics', () => {
       });
 
       expect(resDelete.statusCode).to.equal(200);
-      require("internal").wait(10.0);
+      require("internal").wait(5.0);
 
-    }, [new HttpPatchCountWatcher(1), new HttpTotalCountWatcher(3), 
-        new HttpHeadCountWatcher(1), new HttpOptionsCountWatcher(1), new HttpOtherCountWatcher(1)], 'coordinator');
+    }, [new HttpRequestsCountWatcher()], 'coordinator');
   
   });
 
 
-
-  // it('http POST, POST and DELETE requests count',() => {
-  
-  //   runTest(() => {
-  //     const request = require("@arangodb/request");      
-  //     const url = `${servers.get('coordinator')[0]}`;
-      
-  //     let resCreate = request({
-  //       url: `${url}/_api/collection`, 
-  //       method: "POST",
-  //       body: '{"name": "UnitTestCollection"}'
-  //     });  
-          
-  //     expect(resCreate.statusCode).to.equal(200);
-  //     require("internal").wait(5.0);
-
-  //     let resProp = request({
-  //       url: `${url}/_api/collection/UnitTestCollection/properties`, 
-  //       method: "PUT"
-  //     });
-
-  //     expect(resProp.statusCode).to.equal(200);
-
-  //     let resDelete = request({
-  //       url: `${url}/_api/collection/UnitTestCollection`, 
-  //       method: "DELETE"
-  //     });
-
-  //     expect(resDelete.statusCode).to.equal(200);
-  //     require("internal").wait(5.0);
-
-  //  }, [new HttpPostCountWatcher(1), new HttpDeleteCountWatcher(1), new HttpPutCountWatcher(1)], 'coordinator');
-  
-  // });
-
-
-  // it('agency log size ', () => {
-  //   try{  
-  //     runTest(() => {
-  //       //What action will lead to log change?
-  //       db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
-  //         require("internal").wait(5.0);
-  //     }, [new AgencyLogSizeWatcher()], 'agent');
-  //   } finally {
-  //     db._drop("UnitTestCollection");
-  //   }  
-  // });
+  it('agency log size ', () => {
+    try{  
+      runTest(() => {
+        db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
+          require("internal").wait(5.0);
+      }, [new AgencyLogSizeWatcher()], 'agent');
+    } finally {
+      db._drop("UnitTestCollection");
+    }  
+  });
 
   // it('aql query time', () => {
   //   runTest(() => {
@@ -576,50 +489,50 @@ describe('_admin/metrics', () => {
   //   }, [new QueryTimeWatcher(1000)], 'coordinator');
   // });
 
-  // it('aql slow query count ', () => {
-  //   runTest(() => {
-  //     const queries = require("@arangodb/aql/queries");
-  //     const oldThreshold = queries.properties().slowQueryThreshold;
-  //     queries.properties({slowQueryThreshold: 1});
-  //     db._query(`return sleep(1)`);
-  //     queries.properties({slowQueryThreshold: oldThreshold});       
-  //   }, [new SlowQueryCountWatcher(1)], 'coordinator');
-  // });
+  it('aql query count and slow query count', () => {
+    runTest(() => {
+      const queries = require("@arangodb/aql/queries");
+      const oldThreshold = queries.properties().slowQueryThreshold;
+      queries.properties({slowQueryThreshold: 1});
+      db._query(`return sleep(1)`);
+      queries.properties({slowQueryThreshold: oldThreshold});       
+    }, [new SlowQueryCountWatcher(1), new QueryTimeWatcher(1000)], 'coordinator');
+  });
 
-  // it('collection and index', () => {
-  //   try {
-  //     runTest(() => {
-  //       db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
-  //       require("internal").wait(10.0); // database servers update their shard count in phaseOne. So lets wait until all have done their next phaseOne.
-  //     },
-  //     [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9)],
-  //     "dbserver"
-  //     );
-  //     runTest(() => {
-  //       db["UnitTestCollection"].ensureHashIndex("temp");
-  //     },
-  //     [new MaintenanceWatcher()],
-  //     "dbserver"
-  //     );
-  //   } finally {
-  //     db._drop("UnitTestCollection");
-  //   }
-  // });
+  it('collection and index', () => {
+    try {
+      runTest(() => {
+        db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
+        require("internal").wait(10.0); // database servers update their shard count in phaseOne. So lets wait until all have done their next phaseOne.
+      },
+      [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9)],
+      "dbserver"
+      );
+      runTest(() => {
+        db["UnitTestCollection"].ensureHashIndex("temp");
+      },
+      [new MaintenanceWatcher()],
+      "dbserver"
+      );
+    } finally {
+      db._drop("UnitTestCollection");
+    }
+  });
 
-  // it('at least 1 heartbeat and supervision per second', () => {
-  //   runTest(() => {
-  //     require("internal").wait(1.0);
-  //   }, [new HeartBeatWatcher()], "dbserver");
+  it('at least 1 heartbeat and supervision per second', () => {
+    runTest(() => {
+      require("internal").wait(1.0);
+    }, [new HeartBeatWatcher()], "dbserver");
 
-  //   runTest(() => {
-  //     require("internal").wait(1.0);
-  //   }, [new HeartBeatWatcher()], "coordinator");
+    runTest(() => {
+      require("internal").wait(1.0);
+    }, [new HeartBeatWatcher()], "coordinator");
 
-  //   runTest(() => {
-  //     require("internal").wait(1.0);
-  //   }, [new SupervisionWatcher()], "agent");
+    runTest(() => {
+      require("internal").wait(1.0);
+    }, [new SupervisionWatcher()], "agent");
 
-  // });
+  });
 
     
 });
