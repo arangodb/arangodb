@@ -8,7 +8,8 @@ the possibility to write and execute your own defined algorithms.
 
 To keeps things more readable, "Programmable Pregel Algorithms" will be called PPAs in the next chapters.
 
-**Important**: The naming might change in the future. 
+**Important**: The naming might change in the future. As this feature is experimental in development, execution
+times are not representative by now.
 
 ## Requirements
 
@@ -164,6 +165,8 @@ There are two ways of developing your PPA. You can either run and develop in the
 Foxx Service "Pregelator" (_Development name: This might change in the future as well_). The Pregelator can be installed
 seperately and provides a nice UI to write a PPA, execute it and get direct feedback in both "success" and "error"
 cases.
+
+#### Pregelator
 
 The Pregelator Service is available on GitHub:
 -  https://github.com/arangodb-foxx/pregelator (TODO: move to that direectory)
