@@ -558,10 +558,21 @@ that if there are multiple edges from us to the neighbour, the value is sent mul
 
 The following functions are only available when running in the Conductor context to coordinate
 phases and phase changes and to access and modify global accumulators.
- 
- * `["goto-phase", phase]` sets the current phase to `phase`
- * `["finish"]` finishes the pregel computation
- * `accum-ref`, `accum-set!`, `accum-clear!` as described above. For global accumulators only.
+
+#### Phase Management
+```
+["goto-phase", phase]
+["finish"]
+```
+`goto-phase` sets the current phase to `phase`. `finish` finishes the pregel computation.
+
+#### Global Accumulators
+```
+["global-accum-ref", name]
+["global-accum-set!", name, value]
+["global-accum-clear!", name]
+```
+`global-accum-ref`, `global-accum-set!`, `global-accum-clear!` like for accumulators but for global accumulators.
 
 ### Foreign calls in _Custom Accumulator_ context
 
@@ -598,6 +609,8 @@ Each vertex accumulator requires a name as `string`:
 #### Vertex Accumulator Parameters:
 
 * accumulatorType (required): The name of the used accumulator type as a `string`.
+  * Valid values are:
+    * `sum`
 * valueType (required): The name of the value type as a `string`.
   * Valid value types are:
     * `slice` (VelocyPack Slice)
@@ -605,7 +618,7 @@ Each vertex accumulator requires a name as `string`:
     * `doubles`: (Double type)
     * `bools`: (Boolean type)
     * `strings`: (String type)
-* customType (required): The name of the used accumulator type as a `string`.
+* customType (optional): The name of the used custom accumulator type as a `string`. 
 
 ## Global Accumulator
 
@@ -670,7 +683,8 @@ Example:
 ```
 
 Also we've added a few debugging primitives to help you increase your developing speed. For example, there is
-the possibility to add "prints" to your program.
+the possibility to add "prints" to your program. Furthermore have a look at the documentation of the `debug` field
+for the algorithm.
   
 For more, please take a look at the _Debug operators_ contained in the chapter: "Language primitives".
 
