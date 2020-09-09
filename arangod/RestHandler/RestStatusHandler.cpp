@@ -206,14 +206,20 @@ RestStatus RestStatusHandler::executeOverview() {
 
     if (role == ServerState::ROLE_COORDINATOR) {
       ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
-      auto plan = ci.getPlan();
+      uint64_t planIndex = 0;
+      auto plan = ci.getPlan(planIndex, std::unordered_set<std::string>{std::string()});
 
-      if (plan != nullptr) {
-        auto coordinators = plan->slice().get("Coordinators");
-        buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(coordinators).size()));
-        buffer.appendText("-");
-        auto dbservers = plan->slice().get("DBServers");
-        buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(dbservers).size()));
+      if (!plan.empty()) {
+        auto planSlice = plan.begin()->second->slice();
+        if (planSlice.hasKey("Coordinators")) {
+          auto coordinators =  planSlice.get("Coordinators");
+          buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(coordinators).size()));
+          buffer.appendText("-");
+        }
+        if (planSlice.hasKey("DBServers")) {
+          auto dbservers = planSlice.get("DBServers");
+          buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(dbservers).size()));
+        }
       } else {
         buffer.appendHex(static_cast<uint32_t>(0xFFFF));
         buffer.appendText("-");

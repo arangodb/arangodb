@@ -129,7 +129,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       generateError(res);
       return RestStatus::DONE;
     }
-    /* TODO 
+    /* TODO
     std::shared_ptr<VPackBuilder> planBuilder = clusterInfo.getPlan();
 
     VPackSlice plan = planBuilder->slice();
@@ -365,10 +365,12 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
 
     AgencyCommResult result = comm.sendTransactionWithFailover(wtrx);
 
-    // THIS_WARNING
+    // THIS_WARNING TODO
+    /*
     if (server().hasFeature<ClusterFeature>()) {
       server().getFeature<ClusterFeature>().clusterInfo().getPlan();
     }
+    */
     if (!result.successful()) {
       std::stringstream errMsg;
       errMsg << "Failed to send and execute operation. "
@@ -665,8 +667,9 @@ ResultT<bool> RestRepairHandler::checkReplicationFactor(DatabaseID const& databa
   }
   ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
 
-  // WARNING
-  clusterInfo.getPlan();
+  // WARNING TODO
+  //clusterInfo.getPlan();
+
   std::shared_ptr<LogicalCollection> const collection =
       clusterInfo.getCollection(databaseId, collectionId);
   std::shared_ptr<ShardMap> const shardMap = collection->shardIds();
