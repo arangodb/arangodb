@@ -584,11 +584,6 @@ Each vertex accumulator requires a name as `string`:
 
 ## Custom Accumulator
 
-### Language primitives
-
-Language primitives are methods which can be used inside of a program definition. They execute on local state
-and do not require network communication.
-
 ## Execute a Programmable Pregel Algorithm
 
 Except the precondition to have your custom defined algorithm, the execution of a PPA follows the basic Pregel
