@@ -560,37 +560,84 @@ toplevel keys. `dict-directory` returns a list of all available paths in preorde
 of `dict` but with `key` set to `value`. Both functions have a variant that accepts a path. A path is a list of strings.
 The function will recurse into the dict using that path. `attrib-set` returns the whole dict but with updated subdict.
 
-#### Constructors
-
 #### Lambdas
-* lambda -- todo
+```
+["lambda", captures, parameters, body]
+```
+`lambda` create a new function object. `captures` is a list of variables that are _copied into_ the lambda at creating 
+time. `parameters` is a list of names that the parameters are bound to. Both can be accessed using their name via 
+`var-ref`. `body` is evaluated when the lambda is called.
+
+```
+> [["lambda", ["quote"], ["quote", "x"], ["quote", "+", ["var-ref", "x"], 4]], 6]
+ = 10
+```
 
 #### Utilities
-* string-cat -- `["string-cat", string ...]` concatenates the strings `string ...` forming one string
-* int-to-str -- `["int-to-str", val]` returns a string representation of the integer `val`
+_random functions that fit no other category_
+```
+["string-cat", strings...]
+["int-to-str", int]
+["min", numbers...]
+["max", numbers...]
+["avg", numbers...]
+```
+`string-cat` concatenates the given strings. `int-to-string` converts a integer to its decimal representation.
+`min`/`max`/`avg` computes the minimum/maximum/average of its values.
+
+```
+> ["string-cat", "hello", " ", "world"]
+ = "hello world"
+> ["min", 1, 2, 3]
+ = 1
+> ["max", 1, 2, 3]
+ = 3
+> ["avg", 1, 2, 3]
+ = 2
+```
  
 #### Functional
-* id -- todo
-* apply -- todo
-* map -- todo
-* filter -- todo
-* foldl -- todo
-* foldl1 -- todo
+```
+["id", value]
+["apply", func, list]
+["map", func, list]
+["map", func, dict]
+```
+`id` returns its argument. `apply` invokes `func` using the values from `list` as arguments. `map` invokes `func` for
+every value/key-value-pair in the `list`/`dict`. `func` should accept one parameter `(value)`/two parameters `(key, value)`.
+
+```
+> ["id", 12]
+ = 12
+> ["apply", "min", ["quote", 1, 2, 3]]
+ = 1
+> ["map", "int-to-string", ["quote", 1, 2, 3, 4]]
+ = ["1", "2", "3", "4"]
+```
 
 #### Variables
-* var-ref -- `["var-ref", name]` refer to variable `name` in current context
-* bind-ref -- alias for `var-ref`
-
-#### Misc
-* min -- todo
-* max -- todo
-* avg -- todo
+```
+["var-ref", name]
+["bind-ref", name]
+```
+`var-ref` evalutes to the current value of the variable with name `name`. It is an error to reference a variable that
+is not defined in the current context. `bind-ref` is an alias of `var-ref`.
 
 #### Debug operators
-* print -- `["print", expr ...]` print `expr` for each `expr`.
-* error -- todo
-* assert -- todo
+```
+["print", values...]
+["error", msg...]
+["assert", cond, msg...]
+```
+`print` print in an context dependent way the string representation of its arguments joined by spaces. Strings represent
+themselves, numbers are converted to decimal representation, booleans are represented as `true` or `false`. Dicts and lists
+are converted to JSON.
+`error` creates an error an aborts execution immediately. Errors are reported in a context dependent way. The error
+message is constructed from the remaining parameter like `print`, except that it is not printed but 
+associated with the error. This like a panic or an uncaught exception.
 
+`assert` checks if cond is considered true if it an error with the remaining parameters as message is raised.
+It is equivalent to `["if", [cond, ["error", msg...]]]`.
 
 ### Foreign calls in Vertex Computation "context" [3]
 

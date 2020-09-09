@@ -472,6 +472,7 @@ EvalResult Prim_Not(Machine& ctx, VPackSlice const params, VPackBuilder& result)
 
 EvalResult Prim_PrintLn(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   ctx.print(paramsToString(params));
+  result.add(VPackSlice::noneSlice());
   return {};
 }
 
@@ -885,6 +886,7 @@ EvalResult Prim_Assert(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
     return EvalError(errorMessage);
   }
 
+  result.add(VPackSlice::noneSlice());
   return {};
 }
 
