@@ -620,21 +620,12 @@ They are "foreign calls" into the `VertexComputation` object.
 
 ## Possible future developments/ROADMAP
 
- * This project needs a much nicer surface syntax
+ * A much nicer surface syntax will be provided in the future.
 
  * It is possible (and maybe adviseable) to replace/plug in a reasonably small and controllable 
    common lisp (for instance embeddable common lisp) or a scheme (such as chicken, gambit or chez)
    instead of rolling our own. This has the advantage of having all the language features available
    it has the disatvantage of having a much less controlloable amount of code.
 
- * The pregel foundation in ArangoDB needs could be rewritten to be much simpler and smaller.
-   This would have the advantage of fewer bugs (beacuse of less code), and more controllable
-   behaviour.
-
-[1] We called the Pregel algorithm "VertexAccumulators", because we set out writing
-    an implementation of something that looks like TigerGraph's VertexAccumulators.
-    This name is subject to change to a more appropriate name in the future.
-
-[2] LISP had it 30 years ago!
-
-[3] I don't like the word context at the moment, but for the lack of a better one, just use it atm
+ * The pregel foundation in ArangoDB needs could be rewritten / optimized to be much simpler and smaller.
+   This would have the advantage of fewer bugs (beacuse of less code), and more controllable behaviour.
