@@ -160,6 +160,19 @@ const pregel = require("@arangodb/pregel");
 
 ## Developing a Programmable Pregel Algorithm
 
+There are two ways of developing your PPA. You can either run and develop in the ArangoShell or you can use the
+Foxx Service "Pregelator" (_Development name: This might change in the future as well_). The Pregelator can be installed
+seperately and provides a nice UI to write a PPA, execute it and get direct feedback in both "success" and "error"
+cases.
+
+The Pregelator Service is available on GitHub:
+-  https://github.com/arangodb-foxx/pregelator (TODO: move to that direectory)
+
+The bundled ZIP files are kept in the directory: `zippedBuilds` and can be installed via `foxx-cli`, the standard
+`web-ui` or via `arangosh`. 
+
+#### Error reporting
+
 Before the execution of a PPAs starts, it will be validated and checked for potential errors.
 This helps a lot during development. If a PPA fails, the status will be "fatal error". In that case
 there will be an additional field called `reports`. All debugging messages and errors will be listed
