@@ -4,12 +4,21 @@ Pregel is a system for large scale graph processing. It is already implemented i
 with **predefined** algorithms, e.g. _PageRank_, _Single-Source Shortest Path_ and _Connected components_. 
  
 Programmable Pregel algorithms are based on the already existing ArangoDB Pregel engine. The big change here is
-the possibility to write and execute your own defined algorithms. 
+the possibility to write and execute your own defined algorithms.
+
+To keeps things more readable, "Programmable Pregel Algorithms" will be called PPAs in the next chapters.
+
+**Important**: The naming might change in the future. 
 
 ## Requirements
 
-Programmable Pregel algorithms do require SmartGraphs.
-SmartGraphs are only available in the Enterprise Edition.
+PPAs can be run on a single-server instance but as it is designed to run in parallel
+in a distributed environment, you'll only be able to add computing power in a clustered environment. Also   
+PPAs do require proper graph sharding to be efficient. Using SmartGraphs is the recommend way to run Pregel
+algorithms. 
+
+As this is an extension of the native Pregel framework, more detailed information on prerequisites and
+requirements can be found here: "arangod/Pregel/Algos/AIR/README.md" (TODO: add Link)
 
 ## Basics
 
@@ -130,7 +139,8 @@ Each vertex accumulator requires a name as `string`:
 
 ## Language primitives
 
-Language primitives are methods which can be used inside of a program definition.
+Language primitives are methods which can be used inside of a program definition. They execute on local state
+and do not require network communication.
 
 #### Calculation operators
 * \+ (addition - works on a list)
@@ -193,18 +203,54 @@ Language primitives are methods which can be used inside of a program definition
 * var-ref -- `["var-ref", name]` refer to variable `name` in current context
 * bind-ref -- todo
 
-## Execute a custom algorithm
-Writing vertex accumulator algorithms is currently done as follows; You need a
-properly sharded SmartGgraph (TODO add instructions on how to create it), in
-the following example this graph is called `WikiVoteGraph`. The algorithm in the
-example computes the shortest path from the single source vertex `sourceId`
-using the attribute `cost` on every outgoing edge.
+## Execute a Programmable Pregel Algorithm
 
+Except the precondition to have your custom defined algorithm, the execution of a PPA follows the basic Pregel
+implementation. To start a PPA, you need to require the Pregel module in _arangosh_.  
+
+```js
+const pregel = require("@arangodb/pregel");
+  return pregel.start(
+    "air",
+    graphName,
+    "<custom-algorithm>"
+  );
 ```
-arangosh> const pp = require("@arangodb/pregel-programs");
-arangosh> var pexec = pp.execute("WikiVoteGraph",
- // TODO: test and copy program from pregel-programs.js
+
+## Status of a Programmable Pregel Algorithm
+
+## Developing a Programmable Pregel Algorithm
+
+Before the execution of a PPAs starts, it will be validated and checked for potential errors.
+This helps a lot during development. If a PPA fails, the status will be "fatal error". In that case
+there will be an additional field called `reports`. All debugging messages and errors will be listed
+there. Also you'll get detailed information when, where and why the error occured.
+
+Example:
+```js
+{
+  "reports": [{
+    "msg": "in phase `init` init-program failed: pregel program returned \"vote-halts\", expect one of `none`, `true`, `false`, `\"vote-halt\", or `\"vote-active\"`\n",
+    "level": "error",
+    "annotations": {
+      "vertex": "LineGraph10_V/0:4020479",
+      "pregel-id": {
+        "key": "0:4020479",
+        "shard": 1
+      },
+      "phase-step": 0,
+      "phase": "init",
+      "global-superstep": 0
+    }
+  }]
+}
 ```
+
+
+Also we've added a few debugging primitives to help you
+increase your developing speed. For example, there is the possibility to add "prints" to your program.
+  
+For more, please take a look at the _Debug operators_ contained in the chapter: "Language primitives".
 
 ## Vertex Computation
 
@@ -215,7 +261,7 @@ ___
 #OLD SECTION
 
 
-# AIR Pregel Algorithm architecture
+# AIR Pregel Algorithm architecture (TODO: move chapter)
 
 
 ## EdgeData
@@ -233,7 +279,7 @@ ___
 ## WorkerContext
 
 
-# AIR (Arango Intermediate Representation)
+# AIR (Arango Intermediate Representation) (TODO: move chapter)
 
 The code contained in this directory is part of a project to provide users with
 the means to develop their own Pregel algorithms without having to plug C++
