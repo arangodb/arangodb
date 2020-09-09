@@ -821,6 +821,10 @@ further state). But currently it is necessary, because our update program needs 
 inDegrees values that have been sent out in our `initProgram`. Therefore `maxGSS` is set to `2`.
 
 ### Storing the result
+
+To be able to store the result, we either need to define a `resultField` (which will just store all accumulators into 
+the given resultField attribute) or create a `<program>` which will take care of our store procedure. The next code
+snippet demonstrates how a store program could look like:  
 ```
 1. "dataAccess": {
 2.   "writeVertex": [
