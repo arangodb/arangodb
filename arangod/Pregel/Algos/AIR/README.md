@@ -2,9 +2,12 @@
 
 Pregel is a system for large scale graph processing. It is already implemented in ArangoDB and can be used
 with **predefined** algorithms, e.g. _PageRank_, _Single-Source Shortest Path_ and _Connected components_. 
- 
 Programmable Pregel algorithms are based on the already existing ArangoDB Pregel engine. The big change here is
 the possibility to write and execute your own defined algorithms.
+
+The best part: You can write, develop and execute your custom algorithms **without** having to plug C++ code into
+ArangoDB (and re-compile). Algorithms can be defined and executed in a running ArangoDB instance without the need
+of restarting your instance.
 
 To keeps things more readable, "Programmable Pregel Algorithms" will be called PPAs in the next chapters.
 
@@ -107,6 +110,32 @@ Computation:
 * The _onPostStep_ program will run **once after** each pregel execution round. 
 
 ## Program
+
+As the name already indicates, the _Program_ is the part where the actual algorithmic action takes place.
+Currently a program is represented with the Arango Intermediate Representation - currently called "AIR".
+
+#### AIR (Arango Intermediate Representation - note: naming might change in the future)
+
+The code contained in this directory is part of a project to provide users with
+the means to develop their own Pregel algorithms without having to plug C++
+code into ArangoDB.
+
+For this purpose we developed a LISPy intermediate represenatation to be able
+to transport programs into the existing Pregel implementation in ArangoDB. These
+programs are executed using the Greenspun interpreter inside the AIR Pregel algorithm.
+
+At the moment this interpreter is a prototype and hence not optimized and (probably)
+slow. It is very flexible in terms of what we can implement, provide and test:
+we can provide any function as a primitive in the language, and all basic
+operations are available as it is customary in the LISP tradition.
+
+NOTE that the intention is *not* that this language is presented to users as is,
+it is merely an intermediate representation which is very flexible for good
+prototyping. A surface syntax is subject to development and even flexible in
+terms of providing more than one.
+
+In particular this way we get a better feeling for which functionality is needed
+by (potential) clients and users of graph analytics.
 
 ## Vertex Accumulator
 
@@ -229,9 +258,7 @@ ___
 
 #OLD SECTION
 
-
-# AIR Pregel Algorithm architecture (TODO: move chapter)
-
+# AIR Pregel Algorithm architecture (TODO: move chapters to a dedicated document - out of documentation scope)
 
 ## EdgeData
 
@@ -248,29 +275,7 @@ ___
 ## WorkerContext
 
 
-# AIR (Arango Intermediate Representation) (TODO: move chapter)
 
-The code contained in this directory is part of a project to provide users with
-the means to develop their own Pregel algorithms without having to plug C++
-code into ArangoDB.
-
-For this purpose we developed a LISPy intermediate represenatation to be able
-to transport programs into the existing Pregel implementation in ArangoDB. These
-programs are executed using the Greenspun interpreter inside the AIR [1]
-Pregel algorithm.
-
-At the moment this interpreter is a prototype and hence not optimized and (probably)
-slow. It is very flexible in terms of what we can implement, provide and test:
-we can provide any function as a primitive in the language, and all basic
-operations are available as it is customary in the LISP tradition [2].
-
-NOTE that the intention is *not* that this language is presented to users as is,
-it is merely an intermediate representation which is very flexible for good
-prototyping. A surface syntax is subject to development and even flexible in
-terms of providing more than one.
-
-In particular this way we get a better feeling for which functionality is needed
-by (potential) clients and users of graph analytics.
 
 ## Writing Vertex Accumulator Algorithms using AIR
 
