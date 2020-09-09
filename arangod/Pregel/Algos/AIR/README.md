@@ -495,37 +495,77 @@ It is equivalent to `["if", [cond, ["error", msg...]]]`.
 
 ### Foreign calls in _Vertex Computation_ context
 
-The following functions are only available when running as a vertex computation (i.e. as a `initProgram`, `updateProgram`).
-`this` usually refers to the vertex we are attached to. They are "foreign calls" into the `VertexComputation` object.
+The following functions are only available when running as a vertex computation (i.e. as a `initProgram`, 
+`updateProgram`, ...). `this` usually refers to the vertex we are attached to.
 
- * `["accum-ref", name]` evaluates to the current value of the accumulator `name`
- * `["accum-set!", name, value]` sets the current value of the accumulator `name` to `value`
- * `["accum-clear!, name]` resets the current value of the accumulator `name` to a well-known one (currently numeric limits for `max` and `min` accumulators, 0 for sums, false for or, true for and, and empyt for lists and velocypack)
+#### Local Accumulators
+```
+["accum-ref", name]
+["accum-set!", name, value]
+["accum-clear!", name]
+```
+`accum-ref` evaluates to the current value of the accumulator `name`.
+`accum-set!` sets the current value of the accumulator `name` to `value`.
+`accum-clear!` resets the current value of the accumulator `name` to a well-known one. Currently numeric limits for 
+`max` and `min` accumulators, 0 for sums, false for or, true for and, and empyt for lists and velocypack.
+ 
+#### Global Accumulators
+```
+["global-accum-ref", name]
+["send-to-global-accum", name, value]
+```
+`global-accum-ref` evaluates the global accumulator `name`. `send-to-global-accum` send `value` to the global
+accumulator `name`. Consider reading the section about _Update Visibility_.
 
- * `["send-to-accum", name, to-vertex, value]` send the value `value` to the accumulator `name` at vertex `to-vertex`
- * `["send-to-all-neighbors", name,  value]` send the value `value` to the accumulator `name` in all neighbors (reachable by an edge; note that if there are multiple edges from us to the neighbour, the value is sent multiple times.
+#### Message Passing
+```
+["send-to-accum", name, to-pregel-id, value]
+["send-to-all-neighbors", name, value]
+```
+`send-to-accum` send the value `value` to the accumulator `name` at vertex with pregel-id `to-pregel-vertex`. 
+`send-to-all-neighbors` send the value `value` to the accumulator `name` in all neighbors reachable by an edge. Note 
+that if there are multiple edges from us to the neighbour, the value is sent multiple times.
 
- * `["vertex-count"]` the number of vertices in the graph under consideration.
+#### This Vertex
+```
+["this-doc"]
+["this-vertex-id"]
+["this-unique-id"]
+["this-pregel-id"]
+["this-outdegree"]
+["this-outbound-edges"]
+```
+`this-doc` returns the document slice stored in vertex data.
+`this-outdegree` returns the number of outgoing edges.
+`this-outbound-edges` returns a list of outbound edges of the form 
+```json
+ { 
+   "document": <edge-document>, 
+   "to-pregel-id": <to-vertex-pregel-id> 
+ }
+```
+`this-vertex-id` returns the vertex document id.
+`this-unique-id` returns a unique but opaque numeric value associated with this vertex.
+`this-pregel-id` returns a identifier used by Pregel to send messages.
+
+#### Misc
+ * `["vertex-count"]` returns the number of vertices in the graph under consideration.
  * `["global-superstep"]` the current superstep the algorithm is in.
-
- * `["this-doc"]` returns the document slice stored in vertexData
- * `["this-vertex-id"]`
- * `["this-unique-id"]`
- * `["this-pregel-id"]`
- * `["this-outbound-edges-count"]` (TODO: `["this-outdegree"]`?) the number of outgoing edges
- * `["this-outbound-edges"]` a list of outbound edges of the form `{ "doc": document, "pregel-id": { "shard": id, "key": key } }`. This is currently necessary to send messages to neighbouring vertices conveniently; at a later stage the edge type should become opaque.
+ * `["phase-superstep"]` the current superstep the current phase is in.
+ * `["current-phase"]` the current phase name.
 
 ### Foreign calls in _Conductor_ context
 
-The following functions are only available when running in the MasterContext on the Coordinator to coordinate
-phases and phase changes.
-They are "foreign calls" into the `VertexComputation` object.
+The following functions are only available when running in the Conductor context to coordinate
+phases and phase changes and to access and modify global accumulators.
  
- * `["goto-phase", phase]` -- sets the current phase to `phase`
- * `["finish"]` -- finishes the pregel computation
+ * `["goto-phase", phase]` sets the current phase to `phase`
+ * `["finish"]` finishes the pregel computation
  * `accum-ref`, `accum-set!`, `accum-clear!` as described above. For global accumulators only.
 
 ### Foreign calls in _Custom Accumulator_ context
+
+The following functions are only available when running inside a custom accumulators.
 
  * `["parameters"]`
     returns the object passed as parameter to the accumulator definition
