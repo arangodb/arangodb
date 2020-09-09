@@ -454,6 +454,14 @@ EvalResult Prim_TrueHuh(Machine& ctx, VPackSlice const params, VPackBuilder& res
   return {};
 }
 
+EvalResult Prim_NoneHuh(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (params.length() != 1) {
+    return EvalError("expected a single argument");
+  }
+  result.add(VPackValue(params.at(0).isNone()));
+  return {};
+}
+
 EvalResult Prim_Not(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.length() != 1) {
     return EvalError("expected a single argument");
@@ -463,9 +471,16 @@ EvalResult Prim_Not(Machine& ctx, VPackSlice const params, VPackBuilder& result)
 }
 
 EvalResult Prim_PrintLn(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  std::cerr << paramsToString(params) << std::endl;
-  result.add(VPackSlice::noneSlice());
+  ctx.print(paramsToString(params));
   return {};
+}
+
+void Machine::print(const std::string& msg) const {
+  if (printCallback) {
+    printCallback(msg);
+  } else {
+    std::cerr << msg << std::endl;
+  }
 }
 
 EvalResult Prim_Error(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
@@ -889,6 +904,7 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("not", Prim_Not);  // unary
   ctx.setFunction("false?", Prim_FalseHuh);
   ctx.setFunction("true?", Prim_TrueHuh);
+  ctx.setFunction("none?", Prim_NoneHuh);
 
   // Comparison operators
   ctx.setFunction("eq?", Prim_CmpHuh<std::equal_to<>>);

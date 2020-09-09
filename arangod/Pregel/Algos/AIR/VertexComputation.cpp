@@ -92,6 +92,19 @@ void VertexComputation::registerLocalFunctions() {
 
   _airMachine.setFunctionMember("global-superstep",  //,
                                 &VertexComputation::air_globalSuperstep, this);
+
+  _airMachine.setPrintCallback([this](std::string const& msg) {
+    auto phase_index = *getAggregatedValue<uint32_t>("phase");
+    auto phase = _algorithm.options().phases.at(phase_index);
+    this->getReportManager()
+            .report(ReportLevel::DEBUG)
+            .with("pregel-id", pregelId())
+            .with("vertex", vertexData()._documentId)
+            .with("phase", phase.name)
+            .with("global-superstep", globalSuperstep())
+            .with("phase-step", phaseGlobalSuperstep())
+        << msg;
+  });
 }
 
 /* Vertex accumulators */

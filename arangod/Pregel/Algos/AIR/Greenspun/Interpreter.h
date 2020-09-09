@@ -74,9 +74,19 @@ struct Machine {
     return setFunction(name, bind_member(f, ptr));
   }
 
+  using print_callback_type = std::function<void(std::string)>;
+  template<typename F>
+  void setPrintCallback(F&& f) {
+    printCallback = std::forward<F>(f);
+  }
+
+  void print(std::string const& msg) const;
+
  private:
   std::vector<StackFrame> variables;
   std::unordered_map<std::string, function_type> functions;
+
+  std::function<void(std::string)> printCallback;
 };
 
 template <bool isNewScope, bool noParentScope = false>
