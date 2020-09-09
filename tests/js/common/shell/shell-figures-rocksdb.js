@@ -33,7 +33,7 @@ function FiguresSuite () {
   'use strict';
 
   const cn = "UnitTestsFigures";
-  const isCluster = require('@arangodb/cluster').isCluster();
+  const isCluster = internal.isCluster();
   const isEnterprise = internal.isEnterprise();
 
   return {
