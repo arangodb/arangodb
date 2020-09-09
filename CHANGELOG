@@ -1,6 +1,19 @@
 v3.6.7 (XXXX-XX-XX)
 -------------------
 
+* Enfore a maximum result register usage limit in AQL queries. In an AQL
+  query, every user-defined or internal (unnamed) variable will need a 
+  register to store results in.
+
+  AQL queries that use more result registers than allowed (currently 1000) 
+  will now abort deterministically during the planning stage with error 32 
+  (`resource limit exceeded`) and the error message 
+  "too many registers (1000) needed for AQL query".
+
+  Before this fix, an AQL query that used more than 1000 result registers
+  crashed the server when assertions were turned on, and the behavior was 
+  undefined when assertions were turned off.
+
 * Add option `--rocksdb.max-write-buffer-number-to-maintain` with default of 1
   for small RAM size and 0 for large RAM size.
   This configures how much memory RocksDB is allowed to use for immutable
