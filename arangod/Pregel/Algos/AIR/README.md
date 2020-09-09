@@ -600,20 +600,20 @@ const pregel = require("@arangodb/pregel");
 
 ## Status of a Programmable Pregel Algorithm
 
-## Developing a Programmable Pregel Algorithm
+Executing a PPA using the `pregel.start` method will deliver unique ID to the status of the algorithm execution.
 
-There are two ways of developing your PPA. You can either run and develop in the ArangoShell or you can use the
-Foxx Service "Pregelator" (_Development name: This might change in the future as well_). The Pregelator can be installed
-seperately and provides a nice UI to write a PPA, execute it and get direct feedback in both "success" and "error"
-cases.
+```js
+  let pregelID = pregel.start("air", graphName, "<custom-algorithm>");
+  var status = pregel.status(pregelID);
+```
 
-#### Pregelator
+The result will tell you the current status of the algorithm execution. It will tell you the current state of the
+execution, the current global superstep, the runtime, the global aggregator values as well as the number of send and
+received messages.
 
-The Pregelator Service is available on GitHub:
--  https://github.com/arangodb-foxx/pregelator
-
-The bundled ZIP files are kept in the directory: `zippedBuilds` and can be installed via `foxx-cli`, the standard
-`web-ui` or via `arangosh`. 
+More detailed information about the status can be found [here](https://www.arangodb.com/docs/stable/graphs-pregel.html#status-of-an-algorithm-execution).
+Additionally, the status objects for custom algorithms is extended and contains more info as the general pregel one.
+More details in the next chapter. 
 
 #### Error reporting
 
@@ -646,6 +646,21 @@ Also we've added a few debugging primitives to help you increase your developing
 the possibility to add "prints" to your program.
   
 For more, please take a look at the _Debug operators_ contained in the chapter: "Language primitives".
+
+## Developing a Programmable Pregel Algorithm
+
+There are two ways of developing your PPA. You can either run and develop in the ArangoShell or you can use the
+Foxx Service "Pregelator" (_Development name: This might change in the future as well_). The Pregelator can be installed
+seperately and provides a nice UI to write a PPA, execute it and get direct feedback in both "success" and "error"
+cases.
+
+#### Pregelator
+
+The Pregelator Service is available on GitHub:
+-  https://github.com/arangodb-foxx/pregelator
+
+The bundled ZIP files are kept in the directory: `zippedBuilds` and can be installed via `foxx-cli`, the standard
+`web-ui` or via `arangosh`. 
 
 ## Examples
 
