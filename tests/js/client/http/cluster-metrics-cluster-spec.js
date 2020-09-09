@@ -99,9 +99,72 @@ const MetricNames = {
   HTTP_OTHER_COUNT: "arangodb_http_request_statistics_other_http_requests",
   HTTP_TOTAL_COUNT: "arangodb_http_request_statistics_total_requests",
 
+  CLIENT_CONNECTIONS_COUNT: "arangodb_client_connection_statistics_client_connections",
+
+  IO_TIME_BUCKET: "arangodb_client_connection_statistics_io_time_bucket",
+  REQUST_TIME_BUCKET: "arangodb_client_connection_statistics_request_time_bucket",
+  
+  BYTES_RECIVED_BUCKET: "arangodb_client_connection_statistics_bytes_received_bucket",
+  BYTES_SENT_BUCKET: "arangodb_client_connection_statistics_bytes_sent_bucket",
+  TOTAL_TIME_BUCKET: "arangodb_client_connection_statistics_total_time_bucket",
+
+
+  //METRIC: "arangodb_client_connection_statistics_bytes_received_sum",
+  // BMETRIC: "arangodb_client_connection_statistics_bytes_received_bucket",
 
   AGENCY_LOG_SIZE: "arangodb_agency_log_size_bytes"
 };
+
+class ConnectionStatWatcher {
+  constructor(){
+    // this.CountWatcher = new Watcher (MetricNames.METRIC);
+    // this.BucketWatcher = new BucketWatcher (MetricNames.BMETRIC);
+
+    this.IoTimeBucketWatcher = new BucketWatcher (MetricNames.IO_TIME_BUCKET);
+    this.RequestTimeBucketWatcher = new BucketWatcher (MetricNames.REQUST_TIME_BUCKET);
+    
+    this.BytesRecivedBucketWatcher = new BucketWatcher (MetricNames.BYTES_RECIVED_BUCKET); 
+    this.BytesSentBucketWatcher = new BucketWatcher (MetricNames.BYTES_SENT_BUCKET); 
+    this.TotalTimeBucketWatcher = new BucketWatcher (MetricNames.TOTAL_TIME_BUCKET); 
+  }
+
+  before(metrics){
+    //this.CountWatcher.before(metrics);
+    // this.BucketWatcher.before(metrics);
+    this.IoTimeBucketWatcher.before(metrics);
+    this.RequestTimeBucketWatcher.before(metrics);
+
+    this.BytesRecivedBucketWatcher.before(metrics);
+    this.BytesSentBucketWatcher.before(metrics);
+    this.TotalTimeBucketWatcher.before(metrics);
+        
+  }
+
+  after(metrics){
+    //this.CountWatcher.after(metrics);
+    // this.BucketWatcher.after(metrics);
+    this.IoTimeBucketWatcher.after(metrics);
+    this.RequestTimeBucketWatcher.after(metrics);
+
+    this.BytesRecivedBucketWatcher.after(metrics);
+    this.BytesSentBucketWatcher.after(metrics);
+    this.TotalTimeBucketWatcher.after(metrics);
+    
+  }
+
+  check(){
+    this.CountWatcher.check();
+    //this.BucketWatcher.check();
+    
+    this.IoTimeBucketWatcher.check();
+    this.RequestTimeBucketWatcher.check();
+
+    this.BytesRecivedBucketWatcher.check();
+    this.BytesSentBucketWatcher.check();
+    this.TotalTimeBucketWatcher.check();
+  }
+}
+
 
 class HttpRequestsCountWatcher {
   constructor(){
@@ -151,16 +214,13 @@ class HttpRequestsCountWatcher {
     this.HttpOtherCountWatcher.checkEq(1);
     this.HttpTotalCountWatcher.checkAtLeast(9);
   }
-
 }
+
 
 class AgencyLogSizeWatcher extends Watcher {
   constructor() {
     super(MetricNames.AGENCY_LOG_SIZE);
   }
-  // check (){
-  //   expect(this._after).to.be.greaterThan(this._before);    
-  // };
 }
 
 class QueryTimeWatcher extends Watcher {
@@ -466,73 +526,66 @@ describe('_admin/metrics', () => {
       expect(resDelete.statusCode).to.equal(200);
       require("internal").wait(5.0);
 
-    }, [new HttpRequestsCountWatcher()], 'coordinator');
+    }, [new ConnectionStatWatcher()], 'dbserver');
   
   });
 
 
-  it('agency log size ', () => {
-    try{  
-      runTest(() => {
-        db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
-          require("internal").wait(5.0);
-      }, [new AgencyLogSizeWatcher()], 'agent');
-    } finally {
-      db._drop("UnitTestCollection");
-    }  
-  });
-
-  // it('aql query time', () => {
-  //   runTest(() => {
-  //     const query = `return sleep(1)`;
-  //     db._query(query);
-  //   }, [new QueryTimeWatcher(1000)], 'coordinator');
+  // it('agency log size ', () => {
+  //   try{  
+  //     runTest(() => {
+  //       db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
+  //         require("internal").wait(5.0);
+  //     }, [new AgencyLogSizeWatcher()], 'agent');
+  //   } finally {
+  //     db._drop("UnitTestCollection");
+  //   }  
   // });
 
-  it('aql query count and slow query count', () => {
-    runTest(() => {
-      const queries = require("@arangodb/aql/queries");
-      const oldThreshold = queries.properties().slowQueryThreshold;
-      queries.properties({slowQueryThreshold: 1});
-      db._query(`return sleep(1)`);
-      queries.properties({slowQueryThreshold: oldThreshold});       
-    }, [new SlowQueryCountWatcher(1), new QueryTimeWatcher(1000)], 'coordinator');
-  });
+  // it('aql query count and slow query count', () => {
+  //   runTest(() => {
+  //     const queries = require("@arangodb/aql/queries");
+  //     const oldThreshold = queries.properties().slowQueryThreshold;
+  //     queries.properties({slowQueryThreshold: 1});
+  //     db._query(`return sleep(1)`);
+  //     queries.properties({slowQueryThreshold: oldThreshold});       
+  //   }, [new SlowQueryCountWatcher(1), new QueryTimeWatcher(1000)], 'coordinator');
+  // });
 
-  it('collection and index', () => {
-    try {
-      runTest(() => {
-        db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
-        require("internal").wait(10.0); // database servers update their shard count in phaseOne. So lets wait until all have done their next phaseOne.
-      },
-      [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9)],
-      "dbserver"
-      );
-      runTest(() => {
-        db["UnitTestCollection"].ensureHashIndex("temp");
-      },
-      [new MaintenanceWatcher()],
-      "dbserver"
-      );
-    } finally {
-      db._drop("UnitTestCollection");
-    }
-  });
+  // it('collection and index', () => {
+  //   try {
+  //     runTest(() => {
+  //       db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
+  //       require("internal").wait(10.0); // database servers update their shard count in phaseOne. So lets wait until all have done their next phaseOne.
+  //     },
+  //     [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9)],
+  //     "dbserver"
+  //     );
+  //     runTest(() => {
+  //       db["UnitTestCollection"].ensureHashIndex("temp");
+  //     },
+  //     [new MaintenanceWatcher()],
+  //     "dbserver"
+  //     );
+  //   } finally {
+  //     db._drop("UnitTestCollection");
+  //   }
+  // });
 
-  it('at least 1 heartbeat and supervision per second', () => {
-    runTest(() => {
-      require("internal").wait(1.0);
-    }, [new HeartBeatWatcher()], "dbserver");
+  // it('at least 1 heartbeat and supervision per second', () => {
+  //   runTest(() => {
+  //     require("internal").wait(1.0);
+  //   }, [new HeartBeatWatcher()], "dbserver");
 
-    runTest(() => {
-      require("internal").wait(1.0);
-    }, [new HeartBeatWatcher()], "coordinator");
+  //   runTest(() => {
+  //     require("internal").wait(1.0);
+  //   }, [new HeartBeatWatcher()], "coordinator");
 
-    runTest(() => {
-      require("internal").wait(1.0);
-    }, [new SupervisionWatcher()], "agent");
+  //   runTest(() => {
+  //     require("internal").wait(1.0);
+  //   }, [new SupervisionWatcher()], "agent");
 
-  });
+  // });
 
     
 });
