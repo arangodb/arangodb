@@ -1,7 +1,17 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
-* Add attributes `database` and `user` when tracking current and slow AQL
+* Added `details` option to figures command of a collection:
+  `collection.figures(details)`
+
+  Setting `details` to `true` will return extended storage engine-specific 
+  details to the figures. The details are intended for debugging ArangoDB
+  itself and their format is subject to change. There is not much use in using
+  the details from a client application.
+  By default, `details` is set to `false`, so no details are returned and the
+  behavior is identical to previous versions of ArangoDB.
+
+* Added attributes `database` and `user` when tracking current and slow AQL
   queries.
   `database` contains the name of the database the query is/was running in,
   `user` contains the name of the user that started the query.
