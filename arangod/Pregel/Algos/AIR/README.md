@@ -1,4 +1,11 @@
-# Programmable Pregel Algorithms (experimental feature)
+---
+layout: default
+description: Programmable Pregel Algorithms enables you to define and run customized analytical algorithms directly on graphs stored in ArangoDB.
+title: Programmable Pregel Algorithms (experimental feature)
+---
+
+Programmable Pregel Algorithms (experimental feature)
+===============================================
 
 Pregel is a system for large scale graph processing. It is already implemented in ArangoDB and can be used
 with **predefined** algorithms, e.g. _PageRank_, _Single-Source Shortest Path_ and _Connected components_. 
@@ -14,7 +21,8 @@ To keeps things more readable, "Programmable Pregel Algorithms" will be called P
 **Important**: The naming might change in the future. As this feature is experimental in development, execution
 times are not representative by now.
 
-# Requirements
+Requirements
+------
 
 PPAs can be run on a single-server instance but as it is designed to run in parallel
 in a distributed environment, you'll only be able to add computing power in a clustered environment. Also   
@@ -22,9 +30,10 @@ PPAs do require proper graph sharding to be efficient. Using SmartGraphs is the 
 algorithms. 
 
 As this is an extension of the native Pregel framework, more detailed information on prerequisites and
-requirements can be found here: "arangod/Pregel/Algos/AIR/README.md" (TODO: add Link)
+requirements can be found [here](graphs-pregel.html#prerequisites).
 
-# Basics
+Basics
+------
 
 A Pregel computation consists of a sequence of iterations, each one of them is called a superstep.
 During a superstep, the custom algorithm will be executed for each vertex. This is happening in parallel,
@@ -38,11 +47,12 @@ The basic methods are:
 
 More details on this in the next chapters.
 
-# Definition of a custom algorithm
+Definition of a custom algorithm
+------
 
 The format of a custom algorithm right now is based on a JSON object.
 
-# Algorithm skeleton
+### Algorithm skeleton
 
 ```json
 {
@@ -81,7 +91,8 @@ The format of a custom algorithm right now is based on a JSON object.
 * customAccumulators (optional): An `object` defining all used custom accumulators.
 * phases (optional?): Array of a single or multiple phase definitions. More info below in the next chapter.
 
-# Phases
+Phases
+------
 
 Phases will run sequentially during your Pregel computation. The definition of multiple phases is allowed. 
 Each phase requires instructions based on the operations you want to perform.
@@ -109,12 +120,13 @@ Computation:
 * onPostStep Program as `array of operations` to be executed.
 * The _onPostStep_ program will run **once after** each pregel execution round. 
 
-# Program
+Program
+------
 
 As the name already indicates, the _Program_ is the part where the actual algorithmic action takes place.
 Currently a program is represented with the Arango Intermediate Representation - currently called "AIR".
 
-### AIR (Arango Intermediate Representation - note: naming might change in the future)
+## AIR (Arango Intermediate Representation - note: naming might change in the future)
 
 We developed a LISPy intermediate represenatation to be able to transport programs into
 the existing Pregel implementation in ArangoDB. These programs are executed using the
@@ -624,7 +636,8 @@ Each vertex accumulator requires a name as `string`:
 
 ## Custom Accumulator
 
-## Execute a Programmable Pregel Algorithm
+Execute a Programmable Pregel Algorithm
+------
 
 Except the precondition to have your custom defined algorithm, the execution of a PPA follows the basic Pregel
 implementation. To start a PPA, you need to require the Pregel module in _arangosh_.  
@@ -638,7 +651,8 @@ const pregel = require("@arangodb/pregel");
   );
 ```
 
-## Status of a Programmable Pregel Algorithm
+Status of a Programmable Pregel Algorithm
+------
 
 Executing a PPA using the `pregel.start` method will deliver unique ID to the status of the algorithm execution.
 
@@ -655,7 +669,7 @@ More detailed information about the status can be found [here](https://www.arang
 Additionally, the status objects for custom algorithms is extended and contains more info as the general pregel one.
 More details in the next chapter. 
 
-#### Error reporting
+## Error reporting
 
 Before the execution of a PPAs starts, it will be validated and checked for potential errors.
 This helps a lot during development. If a PPA fails, the status will be "fatal error". In that case
@@ -688,14 +702,15 @@ for the algorithm.
   
 For more, please take a look at the _Debug operators_ contained in the chapter: "Language primitives".
 
-## Developing a Programmable Pregel Algorithm
+Developing a Programmable Pregel Algorithm
+------
 
 There are two ways of developing your PPA. You can either run and develop in the ArangoShell (as shown above) or you can
 use the Foxx Service "Pregelator" (_Development name: This might change in the future as well_). The Pregelator can be
 installed seperately and provides a nice UI to write a PPA, execute it and get direct feedback in both "success" and
 "error" cases.
 
-#### Pregelator
+## Pregelator
 
 The Pregelator Service is available on GitHub:
 -  https://github.com/arangodb-foxx/pregelator
@@ -703,7 +718,8 @@ The Pregelator Service is available on GitHub:
 The bundled ZIP files are kept in the directory: `zippedBuilds` and can be installed via `foxx-cli`, the standard
 `web-ui` or via `arangosh`. 
 
-## Examples
+Examples
+------
 
 As there are almost no limits regarding the definition of a PPA, here we will provide a basic example of the 
 "vertex-degree" algorithm and demonstrate how the implementation would look like.  
@@ -717,7 +733,7 @@ here:
 - [Single Source Shortest Path](https://github.com/arangodb/arangodb/blob/feature/pregel-vertex-accumulation-algorithm-2/js/client/modules/%40arangodb/air/single-source-shortest-paths.js)
 - [Strongly Connected Components](https://github.com/arangodb/arangodb/blob/feature/pregel-vertex-accumulation-algorithm-2/js/client/modules/%40arangodb/air/strongly-connected-components.js)
 
-#### Vertex Degree
+## Vertex Degree
 
 The algorithm calculates the vertex degree for incoming and outgoing edges. First, take a look at the complete
 vertex degree implementation. Afterwards we'll split things up and go into more details per each individual section.
@@ -809,7 +825,7 @@ initProgram: [
 ]
 ```
 
-#### updateProgram
+### updateProgram
 ```
 updateProgram: ["seq",
   false]
