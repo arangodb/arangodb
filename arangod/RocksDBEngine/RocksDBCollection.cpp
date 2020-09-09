@@ -1187,7 +1187,7 @@ void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Buil
   if (details) {
     rocksdb::DB* db = rocksutils::globalRocksDB()->GetRootDB();
 
-    builder.add("rocksdb", VPackValue(VPackValueType::Object));
+    builder.add("engine", VPackValue(VPackValueType::Object));
     
     builder.add("documents", VPackValue(rocksutils::countKeyRange(db, RocksDBKeyBounds::CollectionDocuments(_objectId), true)));
     builder.add("indexes", VPackValue(VPackValueType::Array));
@@ -1242,7 +1242,7 @@ void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Buil
       }
     }
     builder.close(); // "indexes" array
-    builder.close(); // "rocksdb" object
+    builder.close(); // "engine" object
   }
 }
 

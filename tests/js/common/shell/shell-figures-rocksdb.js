@@ -39,7 +39,7 @@ function FiguresSuite () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let figures = c.figures(false);
-        assertFalse(figures.hasOwnProperty("rocksdb"));
+        assertFalse(figures.hasOwnProperty("engine"));
       } finally {
         db._drop(cn);
       }
@@ -48,7 +48,7 @@ function FiguresSuite () {
     testDetailedEmpty: function () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
-        let figures = c.figures(true).rocksdb;
+        let figures = c.figures(true).engine;
         assertEqual(0, figures.documents);
 
         let indexes = figures.indexes;
@@ -67,7 +67,7 @@ function FiguresSuite () {
         c.insert({ value: i });
       }
       try {
-        let figures = c.figures(true).rocksdb;
+        let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
 
         let indexes = figures.indexes;
@@ -83,7 +83,7 @@ function FiguresSuite () {
     testDetailedEmptyEdge: function () {
       let c = db._createEdgeCollection(cn, { numberOfShards: 4 });
       try {
-        let figures = c.figures(true).rocksdb;
+        let figures = c.figures(true).engine;
         assertEqual(0, figures.documents);
 
         let indexes = figures.indexes;
@@ -108,7 +108,7 @@ function FiguresSuite () {
         for (let i = 0; i < 100; ++i) {
           c.insert({ _from: "test/a", _to: "test/b" });
         }
-        let figures = c.figures(true).rocksdb;
+        let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
 
         let indexes = figures.indexes;
@@ -135,7 +135,7 @@ function FiguresSuite () {
         for (let i = 0; i < 100; ++i) {
           c.insert({ value1: i, value2: "test" + i });
         }
-        let figures = c.figures(true).rocksdb;
+        let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
 
         let indexes = figures.indexes;
@@ -159,7 +159,7 @@ function FiguresSuite () {
         for (let i = 0; i < 100; ++i) {
           c.insert({ value1: i < 50 ? null : i, value2: "test" + i });
         }
-        let figures = c.figures(true).rocksdb;
+        let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
 
         let indexes = figures.indexes;
@@ -183,7 +183,7 @@ function FiguresSuite () {
         for (let i = 0; i < 100; ++i) {
           c.insert({ value1: i, value2: "test" + i });
         } 
-        let figures = c.figures(true).rocksdb;
+        let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
 
         let indexes = figures.indexes;
@@ -207,7 +207,7 @@ function FiguresSuite () {
         for (let i = 0; i < 100; ++i) {
           c.insert({ value1: i, value2: "test" + i });
         }
-        let figures = c.figures(true).rocksdb;
+        let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
 
         let indexes = figures.indexes;
@@ -231,7 +231,7 @@ function FiguresSuite () {
         for (let i = 0; i < 100; ++i) {
           c.insert({ value1: [1, 2, 3], value2: "test" + i });
         }
-        let figures = c.figures(true).rocksdb;
+        let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
 
         let indexes = figures.indexes;
@@ -255,7 +255,7 @@ function FiguresSuite () {
         for (let i = 0; i < 100; ++i) {
           c.insert({ value1: [1, 2, 1], value2: "test" + i });
         }
-        let figures = c.figures(true).rocksdb;
+        let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
 
         let indexes = figures.indexes;
@@ -279,7 +279,7 @@ function FiguresSuite () {
         for (let i = 0; i < 100; ++i) {
           c.insert({ value1: i, value2: "test" + i });
         }
-        let figures = c.figures(true).rocksdb;
+        let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
 
         let indexes = figures.indexes;
@@ -303,7 +303,7 @@ function FiguresSuite () {
         for (let i = 0; i < 100; ++i) {
           c.insert({ value1: i, value2: "test" + i });
         }
-        let figures = c.figures(true).rocksdb;
+        let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
 
         let indexes = figures.indexes;
@@ -327,7 +327,7 @@ function FiguresSuite () {
         for (let i = 0; i < 100; ++i) {
           c.insert({ value1: "piffpaff", value2: "test" + i });
         }
-        let figures = c.figures(true).rocksdb;
+        let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
 
         let indexes = figures.indexes;
@@ -352,7 +352,7 @@ function FiguresSuite () {
         for (let i = 0; i < 100; ++i) {
           c.insert({ value1: dt, value2: "test" + i });
         }
-        let figures = c.figures(true).rocksdb;
+        let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
 
         let indexes = figures.indexes;
@@ -376,7 +376,7 @@ function FiguresSuite () {
         for (let i = 0; i < 100; ++i) {
           c.insert({ lat: "piff", lon: "paff" });
         }
-        let figures = c.figures(true).rocksdb;
+        let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
 
         let indexes = figures.indexes;
@@ -400,7 +400,7 @@ function FiguresSuite () {
         for (let i = 0; i < 100; ++i) {
           c.insert({ lat: 50 - i, lon: 50 - i });
         }
-        let figures = c.figures(true).rocksdb;
+        let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
 
         let indexes = figures.indexes;

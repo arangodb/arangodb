@@ -228,15 +228,15 @@ void recursiveAddRocksDB(bool detailed, VPackSlice const& value, VPackBuilder& b
                                                     {"indexes", "size"})));
   updated.close();
 
-  if (detailed && value.hasKey("rocksdb")) {
-    updated.add("rocksdb", VPackValue(VPackValueType::Object));
+  if (detailed && value.hasKey("engine")) {
+    updated.add("engine", VPackValue(VPackValueType::Object));
     updated.add("documents", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                           {"rocksdb", "documents"})));
+                                                           {"engine", "documents"})));
     // merge indexes together
     std::map<uint64_t, std::pair<VPackSlice, VPackSlice>> indexes;
 
     updated.add("indexes", VPackValue(VPackValueType::Array));
-    VPackSlice rocksDBValues = value.get("rocksdb");
+    VPackSlice rocksDBValues = value.get("engine");
 
     for (auto const& it : VPackArrayIterator(rocksDBValues.get("indexes"))) {
       VPackSlice idSlice = it.get("id");
@@ -246,7 +246,7 @@ void recursiveAddRocksDB(bool detailed, VPackSlice const& value, VPackBuilder& b
       indexes.emplace(idSlice.getNumber<uint64_t>(), std::make_pair(it, VPackSlice::noneSlice()));
     }
   
-    rocksDBValues = builder.slice().get("rocksdb");
+    rocksDBValues = builder.slice().get("engine");
     if (rocksDBValues.isObject()) {
       for (auto const& it : VPackArrayIterator(rocksDBValues.get("indexes"))) {
         VPackSlice idSlice = it.get("id");
@@ -275,7 +275,7 @@ void recursiveAddRocksDB(bool detailed, VPackSlice const& value, VPackBuilder& b
     }
 
     updated.close(); // "indexes" array
-    updated.close(); // "rocksdb" object
+    updated.close(); // "engine" object
   }
   
   updated.close();
