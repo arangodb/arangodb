@@ -493,7 +493,7 @@ associated with the error. This like a panic or an uncaught exception.
 `assert` checks if cond is considered true if it an error with the remaining parameters as message is raised.
 It is equivalent to `["if", [cond, ["error", msg...]]]`.
 
-### Foreign calls in Vertex Computation "context" [3]
+### Foreign calls in _Vertex Computation_ context
 
 The following functions are only available when running as a vertex computation (i.e. as a `initProgram`, `updateProgram`).
 `this` usually refers to the vertex we are attached to. They are "foreign calls" into the `VertexComputation` object.
@@ -515,7 +515,7 @@ The following functions are only available when running as a vertex computation 
  * `["this-outbound-edges-count"]` (TODO: `["this-outdegree"]`?) the number of outgoing edges
  * `["this-outbound-edges"]` a list of outbound edges of the form `{ "doc": document, "pregel-id": { "shard": id, "key": key } }`. This is currently necessary to send messages to neighbouring vertices conveniently; at a later stage the edge type should become opaque.
 
-### Foreign calls in Master "context" [3] (TODO: this looks a bit like we could call it "coordinatorcontext" or somesuch
+### Foreign calls in _Conductor_ context
 
 The following functions are only available when running in the MasterContext on the Coordinator to coordinate
 phases and phase changes.
@@ -527,32 +527,19 @@ They are "foreign calls" into the `VertexComputation` object.
 
 ### Foreign calls in _Custom Accumulator_ context
 
- * `["parameters"]` -- returns the object passed as parameter to the accumulator definition
- * `["current-value"]` -- returns the current value of the accumulator
- * `["get-current-value"]` -- returns the current value but uses the getter
- * `["input-value"]` -- returns the value
- * `["input-sender"]` -- returns the _id_ of the sending vertex
- * `["this-set!", value]` -- set the new value of the accumulator
- * `["this-*-id]` -- id functions as described above
- * `???` -- to be continued
-
-```json
-{
-  "minAccumulator": {
-    "clearProgram": {"isSet": false, "value": 0},
-    "updateProgram": ["dict",["isSet",true],["value",
-                      ["if",
-                        [
-                          ["attrib-get",["current-value"],"isSet"],
-                            ["min",["attrib-get",["current-value"],"value"],["update-value"]]
-                        ],[
-                          true,
-                          ["update-value"]]
-                      ]
-                     ]]
-  }
-}
-```
+ * `["parameters"]`
+    returns the object passed as parameter to the accumulator definition
+ * `["current-value"]`
+    returns the current value of the accumulator
+ * `["get-current-value"]`
+    returns the current value but calls the `getProgram` to do so.
+ * `["input-value"]` 
+    returns the _input value_. This is the value received as update in `updateProgram`. Or the value the 
+    accumulator is set to in `setProgram`.
+ * `["input-sender"]`
+    returns the _vertex-id_ of the sending vertex. This is only available in `updateProgram`.
+ * `["this-set!", value]` 
+    set the new value of the accumulator to `value`.
 
 ## Vertex Accumulator
 
