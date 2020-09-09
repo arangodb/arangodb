@@ -1,10 +1,29 @@
 # Programmable Pregel Algorithms (experimental feature)
 
-(Placeholder: What is a programmable Pregel Algorithms)
+Pregel is a system for large scale graph processing. It is already implemented in ArangoDB and can be used
+with **predefined** algorithms, e.g. _PageRank_, _Single-Source Shortest Path_ and _Connected components_. 
+ 
+Programmable Pregel algorithms are based on the already existing ArangoDB Pregel engine. The big change here is
+the possibility to write and execute your own defined algorithms. 
 
+## Requirements
 
+Programmable Pregel algorithms do require SmartGraphs.
+SmartGraphs are only available in the Enterprise Edition.
 
-Programmable Pregel Algorithms do require SmartGraphs. SmartGraphs are only available in the Enterprise Edition
+## Basics
+
+A Pregel computation consists of a sequence of iterations, each one of them is called a superstep.
+During a superstep, the custom algorithm will be executed for each vertex. This is happening in parallel,
+as the vertices are communicating via messages and not with shared memory.
+
+The basic methods are:
+- Read messages which are sent to the vertex V in the previous superstep (S-1)
+- Send messages to other vertices that will be received in the next superstep (S+1)
+- Modify the state of the vertex V
+- Vote to Halt (mark a vertex V as "done". V will be inactive in S+1, but it is possible to re-activate)
+
+More details on this in the next chapters.
 
 ## Definition of a custom algorithm
 
