@@ -796,9 +796,75 @@ represents a single incoming edge, we need to add **"+1"** to our accumulator pe
  
 ### Program
 
-### Storing the result
+#### initProgram
+```
+initProgram: [
+  "seq",
+  
+  ["accum-set!", "outDegree", ["this-outbound-edges-count"]], // Sets our outDegree accumulator with ["this-outbound-edges-count"]
 
-## Vertex Computation
+  // Init in degree to 0
+  ["accum-set!", "inDegree", 0],             // Initializes our inDegree (sum) accumulator to 0
+  ["send-to-all-neighbours", "inDegree", 1]  // Sends value: "1" to all neighbors, so their inDegree can be raised next round!
+]
+```
+
+#### updateProgram
+```
+updateProgram: ["seq",
+  false]
+}]
+```
+
+As in our case, we do not need an update program. We're just inserting a dummy (void) method (Will be improved in
+further state). But currently it is necessary, because our update program needs to run once to accumulate the 
+inDegrees values that have been sent out in our `initProgram`. Therefore `maxGSS` is set to `2`.
+
+### Storing the result
+```
+1. "dataAccess": {
+2.   "writeVertex": [
+3.     "attrib-set",
+4.       ["attrib-set", ["dict"], "inDegree", ["accum-ref", "inDegree"]], // 1st parameter of outer attrib-set
+5.       "outDegree",                                                     // 2nd parameter of outer attrib-set
+6.       ["accum-ref", "outDegree"]                                       // 3rd parameter of outer attrib-set
+7.   ]
+8. }
+```
+
+We do want to store the value of inDegree and outDegree in our vertices in a specific attribute and want to represent
+them as a JSON Object. Therefore we're combining two `attrib-set` commands to achieve that. 
+
+The `attrib-set` syntax: `["attrib-set", dict, key, value]`
+  
+Let's take a look at row 4.: 
+```
+[
+  "attrib-set",
+  ["dict"],                  // creates a dict (which is an empty object type)
+  "inDegree",                // the key we want to store as a string
+  ["accum-ref", "inDegree"]  // the accumulator reference we're reading from, which will be inserted in our new dict 
+]
+```
+
+This will generate a dict: 
+```
+{
+  "inDegree": "<numeric-value-fetched-from-accumulator-inDegree>"
+}
+```
+
+The `attrib-set` command from line 3. takes the new created dict as the base, creates a new entry called `outDegree`
+and adds the referenced (numeric value) from `outDegree` there. 
+
+The expected result is:
+```
+{
+  "inDegree": "<numeric-value-fetched-from-accumulator-inDegree>",
+  "outDegree": "<numeric-value-fetched-from-accumulator-outDegree>"
+}
+```
+
 ___
 
 #OLD SECTION
