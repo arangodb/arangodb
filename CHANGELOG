@@ -1,7 +1,7 @@
 devel
 -----
 
-* Enfore a maximum result register usage limit in AQL queries. In an AQL
+* Enforce a maximum result register usage limit in AQL queries. In an AQL
   query, every user-defined or internal (unnamed) variable will need a 
   register to store results in.
 
