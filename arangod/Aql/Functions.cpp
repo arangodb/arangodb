@@ -90,6 +90,7 @@
 
 #include <date/date.h>
 #include <date/iso_week.h>
+#include <date/tz.h>
 #include <s2/s2loop.h>
 
 #include <unicode/schriter.h>
@@ -3501,8 +3502,7 @@ AqlValue Functions::DateDayOfWeek(ExpressionContext* expressionContext,
   }
   weekday wd{floor<days>(tp)};
 
-  // Library has unsigned operator implemented
-  return AqlValue(AqlValueHintUInt(static_cast<uint64_t>(unsigned(wd))));
+  return AqlValue(AqlValueHintUInt(wd.iso_encoding()));
 }
 
 /// @brief function DATE_YEAR
@@ -3757,6 +3757,37 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
   tp = tp_sys_clock_ms{sys_days(ymd) + ms};
 
   return ::timeAqlValue(expressionContext, AFN, tp);
+}
+
+/// @brief function DATE_ZONED
+AqlValue Functions::DateZoned(ExpressionContext* expressionContext,
+                              transaction::Methods* trx,
+                              VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_ZONED";
+  using namespace std::chrono;
+  using namespace date;
+
+  tp_sys_clock_ms tp;
+
+  if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue const& timeZoneParam = extractFunctionParameterValue(parameters, 1);
+
+  if (!timeZoneParam.isString()) {  // unit type must be string
+    registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  std::string target_tz = timeZoneParam.slice().copyString();
+
+  time_point<system_clock, seconds> a = floor<seconds>(tp);
+  auto zoned_time = make_zoned(target_tz, a);
+
+  tp_sys_clock_ms tp_zoned = zoned_time.get_sys_time();
+
+  return ::timeAqlValue(expressionContext, AFN, tp_zoned);
 }
 
 /// @brief function DATE_ADD

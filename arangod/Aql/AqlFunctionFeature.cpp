@@ -420,6 +420,7 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_COMPARE", ".,.,.|.", flags, &Functions::DateCompare});
   add({"DATE_FORMAT", ".,.", flags, &Functions::DateFormat});
   add({"DATE_TRUNC", ".,.", flags, &Functions::DateTrunc});
+  add({"DATE_ZONED", ".,.", flags, &Functions::DateZoned});
   add({"DATE_ROUND", ".,.,.", flags, &Functions::DateRound});
 
   // special flags:

@@ -209,6 +209,8 @@ struct Functions {
                                   transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue DateTrunc(arangodb::aql::ExpressionContext*,
                             transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue DateZoned(arangodb::aql::ExpressionContext*,
+                            transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue DateAdd(arangodb::aql::ExpressionContext*,
                           transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue DateSubtract(arangodb::aql::ExpressionContext*,
