@@ -75,6 +75,8 @@ void VertexComputation::registerLocalFunctions() {
 
   _airMachine.setFunctionMember("this-outbound-edges-count",  //,
                                 &VertexComputation::air_numberOutboundEdges, this);
+  _airMachine.setFunctionMember("this-outdegree",  //,
+                                &VertexComputation::air_numberOutboundEdges, this);
 
   _airMachine.setFunctionMember("this-doc", &VertexComputation::air_thisDoc, this);
 
