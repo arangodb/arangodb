@@ -14,7 +14,7 @@ To keeps things more readable, "Programmable Pregel Algorithms" will be called P
 **Important**: The naming might change in the future. As this feature is experimental in development, execution
 times are not representative by now.
 
-## Requirements
+# Requirements
 
 PPAs can be run on a single-server instance but as it is designed to run in parallel
 in a distributed environment, you'll only be able to add computing power in a clustered environment. Also   
@@ -24,7 +24,7 @@ algorithms.
 As this is an extension of the native Pregel framework, more detailed information on prerequisites and
 requirements can be found here: "arangod/Pregel/Algos/AIR/README.md" (TODO: add Link)
 
-## Basics
+# Basics
 
 A Pregel computation consists of a sequence of iterations, each one of them is called a superstep.
 During a superstep, the custom algorithm will be executed for each vertex. This is happening in parallel,
@@ -38,11 +38,11 @@ The basic methods are:
 
 More details on this in the next chapters.
 
-## Definition of a custom algorithm
+# Definition of a custom algorithm
 
 The format of a custom algorithm right now is based on a JSON object.
 
-## Algorithm skeleton
+# Algorithm skeleton
 
 ```json
 {
@@ -60,7 +60,7 @@ The format of a custom algorithm right now is based on a JSON object.
 }
 ```
  
-#### Algorithm parameters:
+### Algorithm parameters:
  
 * resultField (optional): Document attribute as a `string`.
   * The vertex computation results will be in all vertices pointing to the given attribute.
@@ -81,7 +81,7 @@ The format of a custom algorithm right now is based on a JSON object.
 * customAccumulators (optional): An `object` defining all used custom accumulators.
 * phases (optional?): Array of a single or multiple phase definitions. More info below in the next chapter.
 
-## Phases
+# Phases
 
 Phases will run sequentially during your Pregel computation. The definition of multiple phases is allowed. 
 Each phase requires instructions based on the operations you want to perform.
@@ -96,7 +96,7 @@ Computation:
 2. `updateProgram` (database server)
 3. `onPostStep` (coordinator)
 
-##### Phase parameters:
+#### Phase parameters:
 
 * name (required): Name as a `string`.
   * The given name of the defined phase.
@@ -109,178 +109,32 @@ Computation:
 * onPostStep Program as `array of operations` to be executed.
 * The _onPostStep_ program will run **once after** each pregel execution round. 
 
-## Program
+# Program
 
 As the name already indicates, the _Program_ is the part where the actual algorithmic action takes place.
 Currently a program is represented with the Arango Intermediate Representation - currently called "AIR".
 
-#### AIR (Arango Intermediate Representation - note: naming might change in the future)
+### AIR (Arango Intermediate Representation - note: naming might change in the future)
 
-The code contained in this directory is part of a project to provide users with
-the means to develop their own Pregel algorithms without having to plug C++
-code into ArangoDB.
-
-For this purpose we developed a LISPy intermediate represenatation to be able
-to transport programs into the existing Pregel implementation in ArangoDB. These
-programs are executed using the Greenspun interpreter inside the AIR Pregel algorithm.
+We developed a LISPy intermediate represenatation to be able to transport programs into
+the existing Pregel implementation in ArangoDB. These programs are executed using the
+Greenspun interpreter inside the AIR Pregel algorithm.
 
 At the moment this interpreter is a prototype and hence not optimized and (probably)
 slow. It is very flexible in terms of what we can implement, provide and test:
-we can provide any function as a primitive in the language, and all basic
+We can provide any function as a primitive in the language, and all basic
 operations are available as it is customary in the LISP tradition.
 
-NOTE that the intention is *not* that this language is presented to users as is,
-it is merely an intermediate representation which is very flexible for good
+**IMPORTANT NOTE**: The intention is *not* that this language is presented to users as is.
+This is only the representation we're using in our early stage of that experimental feature
+state. It is merely an intermediate representation which is very flexible for good
 prototyping. A surface syntax is subject to development and even flexible in
-terms of providing more than one.
+terms of providing more than one. In particular this way we get a better feeling for which
+functionality is needed by clients and users of graph analytics.
 
-In particular this way we get a better feeling for which functionality is needed
-by (potential) clients and users of graph analytics.
+A surface language / syntax will be available later. 
 
-## Vertex Accumulator
-
-Each vertex accumulator requires a name as `string`:
-
-```json
-  {
-    "<name>": {
-      "accumulatorType": "<accumulator-name>",
-      "valueType": "<valueType>",
-      "customType": "<accumulator-type>" 
-    }
-  }
-```
-
-#### Vertex Accumulator Parameters:
-
-* accumulatorType (required): The name of the used accumulator type as a `string`.
-* valueType (required): The name of the value type as a `string`.
-  * Valid value types are:
-    * `slice` (VelocyPack Slice)
-    * `ints` (Integer type)
-    * `doubles`: (Double type)
-    * `bools`: (Boolean type)
-    * `strings`: (String type)
-* customType (required): The name of the used accumulator type as a `string`.
-
-## Global Accumulator
-
-## Custom Accumulator
-
-### Language primitives
-
-Language primitives are methods which can be used inside of a program definition. They execute on local state
-and do not require network communication.
-
-## Execute a Programmable Pregel Algorithm
-
-Except the precondition to have your custom defined algorithm, the execution of a PPA follows the basic Pregel
-implementation. To start a PPA, you need to require the Pregel module in _arangosh_.  
-
-```js
-const pregel = require("@arangodb/pregel");
-  return pregel.start(
-    "air",
-    graphName,
-    "<custom-algorithm>"
-  );
-```
-
-## Status of a Programmable Pregel Algorithm
-
-## Developing a Programmable Pregel Algorithm
-
-There are two ways of developing your PPA. You can either run and develop in the ArangoShell or you can use the
-Foxx Service "Pregelator" (_Development name: This might change in the future as well_). The Pregelator can be installed
-seperately and provides a nice UI to write a PPA, execute it and get direct feedback in both "success" and "error"
-cases.
-
-#### Pregelator
-
-The Pregelator Service is available on GitHub:
--  https://github.com/arangodb-foxx/pregelator
-
-The bundled ZIP files are kept in the directory: `zippedBuilds` and can be installed via `foxx-cli`, the standard
-`web-ui` or via `arangosh`. 
-
-#### Error reporting
-
-Before the execution of a PPAs starts, it will be validated and checked for potential errors.
-This helps a lot during development. If a PPA fails, the status will be "fatal error". In that case
-there will be an additional field called `reports`. All debugging messages and errors will be listed
-there. Also you'll get detailed information when, where and why the error occured.
-
-Example:
-```js
-{
-  "reports": [{
-    "msg": "in phase `init` init-program failed: pregel program returned \"vote-halts\", expect one of `none`, `true`, `false`, `\"vote-halt\", or `\"vote-active\"`\n",
-    "level": "error",
-    "annotations": {
-      "vertex": "LineGraph10_V/0:4020479",
-      "pregel-id": {
-        "key": "0:4020479",
-        "shard": 1
-      },
-      "phase-step": 0,
-      "phase": "init",
-      "global-superstep": 0
-    }
-  }]
-}
-```
-
-Also we've added a few debugging primitives to help you increase your developing speed. For example, there is
-the possibility to add "prints" to your program.
-  
-For more, please take a look at the _Debug operators_ contained in the chapter: "Language primitives".
-
-## Examples
-
-As there are almost no limits regarding the definition of a PPA, here we will provide a basic example of the 
-"vertex-degree" algorithm and demonstrate how the implementation would look like.  
-
-Note: We've implemented also more complex algorithms in PPA to demonstrate advanced usage. As those are complex
-algorithms, they are not included as examples in the documentation. But for the curious ones, they can be found
-here:
-
-- [Propagation Demo](https://github.com/arangodb/arangodb/blob/feature/pregel-vertex-accumulation-algorithm-2/js/client/modules/%40arangodb/air/propagation-demo.js)
-- [PageRank](https://github.com/arangodb/arangodb/blob/feature/pregel-vertex-accumulation-algorithm-2/js/client/modules/%40arangodb/air/pagerank.js)
-- [Single Source Shortest Path](https://github.com/arangodb/arangodb/blob/feature/pregel-vertex-accumulation-algorithm-2/js/client/modules/%40arangodb/air/single-source-shortest-paths.js)
-- [Strongly Connected Components](https://github.com/arangodb/arangodb/blob/feature/pregel-vertex-accumulation-algorithm-2/js/client/modules/%40arangodb/air/strongly-connected-components.js)
-
-#### Vertex Degree
-
-
-
-## Vertex Computation
-___
-
-#OLD SECTION
-
-# AIR Pregel Algorithm architecture (TODO: move chapters to a dedicated document - out of documentation scope)
-
-## EdgeData
-
-## VertexData
-
-## MessageData
-
-## GraphFormat
-
-## VertexComputation
-
-## MasterContext 
-
-## WorkerContext
-
-
-
-
-## Writing Vertex Accumulator Algorithms using AIR
-
-
-## Current AIR spec
+## Current AIR specification
 
 The following list of functions and special forms is available in all contexts. 
 _AIR_ is based on lisp, but represented in JSON and supports its datatypes. 
@@ -699,6 +553,150 @@ They are "foreign calls" into the `VertexComputation` object.
   }
 }
 ```
+
+## Vertex Accumulator
+
+Each vertex accumulator requires a name as `string`:
+
+```json
+  {
+    "<name>": {
+      "accumulatorType": "<accumulator-name>",
+      "valueType": "<valueType>",
+      "customType": "<accumulator-type>" 
+    }
+  }
+```
+
+#### Vertex Accumulator Parameters:
+
+* accumulatorType (required): The name of the used accumulator type as a `string`.
+* valueType (required): The name of the value type as a `string`.
+  * Valid value types are:
+    * `slice` (VelocyPack Slice)
+    * `ints` (Integer type)
+    * `doubles`: (Double type)
+    * `bools`: (Boolean type)
+    * `strings`: (String type)
+* customType (required): The name of the used accumulator type as a `string`.
+
+## Global Accumulator
+
+## Custom Accumulator
+
+### Language primitives
+
+Language primitives are methods which can be used inside of a program definition. They execute on local state
+and do not require network communication.
+
+## Execute a Programmable Pregel Algorithm
+
+Except the precondition to have your custom defined algorithm, the execution of a PPA follows the basic Pregel
+implementation. To start a PPA, you need to require the Pregel module in _arangosh_.  
+
+```js
+const pregel = require("@arangodb/pregel");
+  return pregel.start(
+    "air",
+    graphName,
+    "<custom-algorithm>"
+  );
+```
+
+## Status of a Programmable Pregel Algorithm
+
+## Developing a Programmable Pregel Algorithm
+
+There are two ways of developing your PPA. You can either run and develop in the ArangoShell or you can use the
+Foxx Service "Pregelator" (_Development name: This might change in the future as well_). The Pregelator can be installed
+seperately and provides a nice UI to write a PPA, execute it and get direct feedback in both "success" and "error"
+cases.
+
+#### Pregelator
+
+The Pregelator Service is available on GitHub:
+-  https://github.com/arangodb-foxx/pregelator
+
+The bundled ZIP files are kept in the directory: `zippedBuilds` and can be installed via `foxx-cli`, the standard
+`web-ui` or via `arangosh`. 
+
+#### Error reporting
+
+Before the execution of a PPAs starts, it will be validated and checked for potential errors.
+This helps a lot during development. If a PPA fails, the status will be "fatal error". In that case
+there will be an additional field called `reports`. All debugging messages and errors will be listed
+there. Also you'll get detailed information when, where and why the error occured.
+
+Example:
+```js
+{
+  "reports": [{
+    "msg": "in phase `init` init-program failed: pregel program returned \"vote-halts\", expect one of `none`, `true`, `false`, `\"vote-halt\", or `\"vote-active\"`\n",
+    "level": "error",
+    "annotations": {
+      "vertex": "LineGraph10_V/0:4020479",
+      "pregel-id": {
+        "key": "0:4020479",
+        "shard": 1
+      },
+      "phase-step": 0,
+      "phase": "init",
+      "global-superstep": 0
+    }
+  }]
+}
+```
+
+Also we've added a few debugging primitives to help you increase your developing speed. For example, there is
+the possibility to add "prints" to your program.
+  
+For more, please take a look at the _Debug operators_ contained in the chapter: "Language primitives".
+
+## Examples
+
+As there are almost no limits regarding the definition of a PPA, here we will provide a basic example of the 
+"vertex-degree" algorithm and demonstrate how the implementation would look like.  
+
+Note: We've implemented also more complex algorithms in PPA to demonstrate advanced usage. As those are complex
+algorithms, they are not included as examples in the documentation. But for the curious ones, they can be found
+here:
+
+- [Propagation Demo](https://github.com/arangodb/arangodb/blob/feature/pregel-vertex-accumulation-algorithm-2/js/client/modules/%40arangodb/air/propagation-demo.js)
+- [PageRank](https://github.com/arangodb/arangodb/blob/feature/pregel-vertex-accumulation-algorithm-2/js/client/modules/%40arangodb/air/pagerank.js)
+- [Single Source Shortest Path](https://github.com/arangodb/arangodb/blob/feature/pregel-vertex-accumulation-algorithm-2/js/client/modules/%40arangodb/air/single-source-shortest-paths.js)
+- [Strongly Connected Components](https://github.com/arangodb/arangodb/blob/feature/pregel-vertex-accumulation-algorithm-2/js/client/modules/%40arangodb/air/strongly-connected-components.js)
+
+#### Vertex Degree
+
+
+
+## Vertex Computation
+___
+
+#OLD SECTION
+
+# AIR Pregel Algorithm architecture (TODO: move chapters to a dedicated document - out of documentation scope)
+
+## EdgeData
+
+## VertexData
+
+## MessageData
+
+## GraphFormat
+
+## VertexComputation
+
+## MasterContext 
+
+## WorkerContext
+
+
+
+
+## Writing Vertex Accumulator Algorithms using AIR
+
+
 
 ## Possible future developments/ROADMAP
 
