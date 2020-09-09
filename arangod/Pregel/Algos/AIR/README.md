@@ -636,10 +636,10 @@ For more, please take a look at the _Debug operators_ contained in the chapter: 
 
 ## Developing a Programmable Pregel Algorithm
 
-There are two ways of developing your PPA. You can either run and develop in the ArangoShell or you can use the
-Foxx Service "Pregelator" (_Development name: This might change in the future as well_). The Pregelator can be installed
-seperately and provides a nice UI to write a PPA, execute it and get direct feedback in both "success" and "error"
-cases.
+There are two ways of developing your PPA. You can either run and develop in the ArangoShell (as shown above) or you can
+use the Foxx Service "Pregelator" (_Development name: This might change in the future as well_). The Pregelator can be
+installed seperately and provides a nice UI to write a PPA, execute it and get direct feedback in both "success" and
+"error" cases.
 
 #### Pregelator
 
@@ -665,7 +665,84 @@ here:
 
 #### Vertex Degree
 
+The algorithm calculates the vertex degree for incoming and outgoing edges. First, take a look at the complete
+vertex degree implementation. Afterwards we'll split things up and go into more details per each individual section.
 
+```json
+{
+    "maxGSS": 1,
+    "vertexAccumulators": {
+      "outDegree": {
+        "accumulatorType": "store",
+        "valueType": "ints",
+        "storeSender": false
+      },
+      "inDegree": {
+        "accumulatorType": "store",
+        "valueType": "ints",
+        "storeSender": false
+      }
+    },
+    "phases": [{
+      "name": "main",
+      "initProgram": ["seq",
+        ["accum-set!", "outDegree", ["this-outbound-edges-count"]],
+        ["accum-set!", "inDegree", 0],
+        ["send-to-all-neighbours", "inDegree", 1]
+      ],
+      "updateProgram": ["seq",
+        false]
+    }],
+    "dataAccess": {
+      "writeVertex": [
+        "attrib-set", ["attrib-set", ["dict"], "inDegree", ["accum-ref", "inDegree"]],
+        "outDegree", ["accum-ref", "outDegree"]
+      ]
+    }
+  }
+```  
+
+### Used Accumulators
+
+In the example, we're using two vertex accumulators: `outDegree` and `inDegree`, as we want to calculate and store
+two values.
+
+#### outDegree
+```
+"outDegree": {
+  "accumulatorType": "store",
+  "valueType": "ints",
+  "storeSender": false
+}
+```
+
+A vertex knows exactly how many outgoing edges it has by definition. Therefore we only have to set the amount to an
+accumulator once and not multiple times. With that knowledge it makes sense to set the `accumulatorType` to store, as
+no further calculations need to take place. As the possible amount of outgoing edges is even, we're setting `valueType`
+to `ints`. Additionally, we do not need to store the sender as that value is out of interest in that example.
+
+#### inDegree
+
+What a vertex does **not know** is, how many incoming edges it has. Therefore we need to get them to know that value.
+
+```
+"inDegree": {
+  "accumulatorType": "sum",
+  "valueType": "ints",
+  "storeSender": false
+}
+``` 
+ 
+The choice for `valueType` and `storeSender` are equal compared to "outDegree" because of the same reason.
+But as you can see, the `accumulatorType` is now set to `sum`. As our vertices do not know how many incoming
+edges there are, each vertex needs to send a message to all outgoing. In our program, a message will be sent to
+every neighbor. That means a vertex with **n** neighbors, will send **n** messages. As in our case, a single message
+represents a single incoming edge, we need to add **"+1"** to our accumulator per each message, and therefor set the
+`accumulatorType` to `sum`.  
+ 
+### Program
+
+### Storing the result
 
 ## Vertex Computation
 ___
