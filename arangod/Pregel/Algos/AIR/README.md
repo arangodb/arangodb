@@ -137,71 +137,10 @@ Each vertex accumulator requires a name as `string`:
 
 ## Custom Accumulator
 
-## Language primitives
+### Language primitives
 
 Language primitives are methods which can be used inside of a program definition. They execute on local state
 and do not require network communication.
-
-#### Calculation operators
-* \+ (addition - works on a list)
-* \- (substraction - works on a list)
-* \* (multiplication - works on a list)
-* \/ (division - works on a list)
-
-#### Logical operators
-* not  -- unary logical negation
-* false? -- `["false?", val]` evaluates to `true` if `val` is considered `false`
-* true? -- `["true?", val]` evaluates to `true` if `val` is considered `true`
-
-#### Comparison operators
-* eq? -- `["eq?", left, right]` evaluates to `true` if `left` is equal to `right`
-* gt? -- `["gt?", left, right]` evaluates to `true` if `left` is greater than `right`
-* ge? -- `["ge?", left, right]` evaluates to `true` if `left` is greater than or equal to`right`
-* le? -- `["le?", left, right]` evaluates to `true` if `left` is less than or equal to `right`
-* lt? -- `["lt?", left, right]` evaluates to `true` if `left` is less than `right`
-* ne? -- `["ne?", left, right]` evaluates to `true` if `left` is not equal to `right`
-
-#### Misc
-* min -- todo
-* max -- todo
-* avg -- todo
-
-#### Debug operators
-* print -- `["print", expr ...]` print `expr` for each `expr`.
-* error -- todo
-* assert -- todo
-
-#### Constructors
-* dict -- todo
-* dict-merge -- `["merge", dict, dict]` returns the merge of two dicts 
-* dict-keys -- `["dict-keys", dict]` returns an array with all toplevel keys
-* dict-directory -- `["dict-directory", dict]` returns all available paths
-
-#### Lambdas
-* lambda -- todo
-
-#### Utilities
-* list-cat -- `["list-cat", list ...]` concatenates the lists `list ...` forming one list
-* string-cat -- `["string-cat", string ...]` concatenates the strings `string ...` forming one string
-* int-to-str -- `["int-to-str", val]` returns a string representation of the integer `val`
- 
-#### Functional
-* id -- todo
-* apply -- todo
-* map -- todo
-* filter -- todo
-* foldl -- todo
-* foldl1 -- todo
-
-#### Access operators
-* attrib-ref -- `["attrib-ref", doc, key]`, `["attrib-ref", doc, [p ...]]`, in the first variant, extract attribute `key` from `doc`, in the second variant extract attribute with path `p/...` from doc
-* attrib-get -- todo
-* attrib-set -- `["attrib-set", dict, key, value]` - set dict at key to value 
-* attrib-set -- `["attrib-set", dict, [path...], value]` - set dict at path to value
-* array-ref -- `["array-ref", arr, index]` - get value at specified index
-* array-set -- `["array-set", arr, index, value]` - set value at specified index
-* var-ref -- `["var-ref", name]` refer to variable `name` in current context
-* bind-ref -- todo
 
 ## Execute a Programmable Pregel Algorithm
 
@@ -393,10 +332,22 @@ First evaluates `proto`, then evaluates each `c` until `["eq?", val, c]` is cons
 is evaluated and its return value is returned. If no branch matches, `none` is returned. This is a c-like `switch` statement
 except that its `case`-values are not treated as constants.
 
+#### For-Each
+```
+["for-each", [[var, list]...] expr...]
+```
+Behaves similar to `let` but expects a list as `value` for each variable. It then produces the cartesian product of all
+lists and evaluates its expression for each n-tuple. The return value is always `none`. The order is guaranteed to be
+reversed lexicographic order.
 
-
- * for-each -- `["for-each" [(v list) ...] body ...]` binds `v` to elements of `list` in order and evaluates `body` with this binding.
-
+```
+> ["for-each", [["x", [1, 2]], ["y", [3, 4]]], ["print", ["var-ref", "x"], ["var-ref", "y"]]]
+1 3
+1 4
+2 3
+2 4
+(no value)
+```
 
 #### Quote and Quote-Splice
 _escape sequences for lisp_
@@ -444,6 +395,166 @@ _basic logical operations_
 Computes the logical `and`/`or` expression of the given expression. As they are special forms, those expression shortcut,
 i.e. `and`/`or` terminates the evaluation on the first value considered `false`/`true`. The empty list evaluates as `true`/`false`.
 The rules for truthiness are applied.
+
+_There is also a `not`, but its not a special form. See below._
+
+### Language Primitives
+
+Language primitives are methods which can be used in any context. As those are functions, all parameters are always
+evaluated before passed to the function.
+
+#### Basic Algebraic Operators
+_left-fold with algebraic operators and the first value as initial value_
+```
+["+", ...]
+["-", ...]
+["*", ...]
+["/", ...]
+```
+All operators accept multiple parameters. The commutative operators `+`/`*` calculate the sum/product of all values
+passed. The empty list evaluates to `0`/`1`. The operator `-` subtracts the remaining operands from the first, while `/`
+divides the first operand by the remaining. Again empty lists evaluate to `0`/`1`.
+```
+> ["+", 1, 2, 3]
+ = 6
+> ["-", 5, 3, 2]
+ = 0
+```
+
+#### Logical operators
+_convert values to booleans according to their truthiness_
+```
+["true?", expr]
+["false?", expr]
+["not", expr]
+```
+`true?` returns true if `expr` is considered true, returns false otherwise. 
+`false?` returns true if `expr` is considered false, returns true otherwise.
+`not` is an alias for `false?`.
+
+```
+> ["true?", 5]
+ = true
+> ["true?", 0]
+ = true
+> ["true?", false]
+ = false
+> ["true?", "Hello world!"]
+ = true
+> ["false?", 5]
+ = false
+```
+
+#### Comparison operators
+_compares on value to other values_
+```
+["eq?", proto, expr...]
+["gt?", proto, expr...]
+["ge?", proto, expr...]
+["le?", proto, expr...]
+["lt?", proto, expr...]
+["ne?", proto, expr...]
+```
+Compares `proto` to all other expressions according to the selected operator. Returns true if all comparisons are true.
+Returns true for the empty list. Relational operators are only available for numeric values. If proto is a boolean value
+the other values are first converted to booleans using `true?`, i.e. you compare their truthiness.
+
+The operator names translate as follows:
+* `eq?` -- `["eq?", left, right]` evaluates to `true` if `left` is equal to `right`
+* `gt?` -- `["gt?", left, right]` evaluates to `true` if `left` is greater than `right`
+* `ge?` -- `["ge?", left, right]` evaluates to `true` if `left` is greater than or equal to`right`
+* `le?` -- `["le?", left, right]` evaluates to `true` if `left` is less than or equal to `right`
+* `lt?` -- `["lt?", left, right]` evaluates to `true` if `left` is less than `right`
+* `ne?` -- `["ne?", left, right]` evaluates to `true` if `left` is not equal to `right`
+
+Given more than two parameters
+```
+[<op>, proto, expr_1, expr_2, ...]
+```
+is equivalent to
+```
+["and", [<op>, proto, expr_1], [<op>, proto, expr_2], ...]
+```
+except that `proto` is only evaluated once.
+
+```
+> ["eq?", "foo", "foo"]
+ = true
+> ["lt?", 1, 2, 3]
+ = true
+> ["lt?", 1, 3, 0]
+ = false
+> ["ne?", "foo", "bar"]
+ = false
+```
+
+#### Lists
+_sequential container of inhomogeneous values_
+```
+["list", expr...]
+["list-cat", lists...]
+["list-append", list, expr...]
+["list-ref", list, index]
+["list-set", arr, index, value]
+["list-empty?", value]
+["list-length", list]
+```
+`list` constructs a new list using the evaluated `expr`s. `list-cat` concatenates given lists. `list-append` returns a 
+new list, consisting of the old list and the evaluated `expr`s. `list-ref` returns the value at `index`. Accessing out
+of bound is an error. Offsets are zero based. `list-set` returns a copy of the old list, where the entry and index `index`
+is replaced by `value`. Writing a index that is out of bounds is an error. `list-empty?` returns true if and only if the
+given value is an empty list. `list-length` returns the length of the list.
+
+#### Dicts
+```
+["dict", [key, value]...]
+["dict-merge", dict...]
+["dict-keys", dict]
+["dict-directory", dict]
+
+["attrib-ref", dict, key]
+["attrib-ref", dict, path]
+["attrib-set", dict, key, value]
+["attrib-set", dict, path, value]
+```
+`dict` creates a new dict using the specified key-value pairs. It is undefined behavior to specified a key more than once.
+`dict-merge` merges two or more dicts, keeping the latest occurrence of a key. `dict-keys` returns a list of all
+toplevel keys. `dict-directory` returns a list of all available paths in preorder.
+
+`attrib-ref` returns the value of `key` in `dict`. If `key` is not present `none` is returned. `attrib-set` returns a copy
+of `dict` but with `key` set to `value`. Both functions have a variant that accepts a path. A path is a list of strings.
+The function will recurse into the dict using that path. `attrib-set` returns the whole dict but with updated subdict.
+
+#### Constructors
+
+#### Lambdas
+* lambda -- todo
+
+#### Utilities
+* string-cat -- `["string-cat", string ...]` concatenates the strings `string ...` forming one string
+* int-to-str -- `["int-to-str", val]` returns a string representation of the integer `val`
+ 
+#### Functional
+* id -- todo
+* apply -- todo
+* map -- todo
+* filter -- todo
+* foldl -- todo
+* foldl1 -- todo
+
+#### Variables
+* var-ref -- `["var-ref", name]` refer to variable `name` in current context
+* bind-ref -- alias for `var-ref`
+
+#### Misc
+* min -- todo
+* max -- todo
+* avg -- todo
+
+#### Debug operators
+* print -- `["print", expr ...]` print `expr` for each `expr`.
+* error -- todo
+* assert -- todo
 
 
 ### Foreign calls in Vertex Computation "context" [3]

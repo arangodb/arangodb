@@ -513,7 +513,7 @@ EvalResult checkArrayParams(VPackSlice const& arr, VPackSlice const& index) {
   return {};
 }
 
-EvalResult Prim_ArrayRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_ListRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (!params.isArray() && params.length() != 2) {
     return EvalError("expected exactly two parameters");
   }
@@ -531,7 +531,7 @@ EvalResult Prim_ArrayRef(Machine& ctx, VPackSlice const params, VPackBuilder& re
   return {};
 }
 
-EvalResult Prim_ArraySet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_ListSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (!params.isArray() && params.length() != 3) {
     return EvalError("expected exactly two parameters");
   }
@@ -788,7 +788,7 @@ EvalResult Prim_Foldl1(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
   return EvalError("Prim_Foldl1 not implemented");
 }
 
-EvalResult Prim_EmptyArrayHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_ListEmptyHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
   auto res = extract<VPackSlice>(paramsList);
   if (!res) {
     return std::move(res).asResult();
@@ -799,7 +799,7 @@ EvalResult Prim_EmptyArrayHuh(Machine& ctx, VPackSlice const paramsList, VPackBu
   return {};
 }
 
-EvalResult Prim_ArrayLength(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_ListLength(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
   auto res = extract<VPackSlice>(paramsList);
   if (!res) {
     return std::move(res).asResult();
@@ -914,6 +914,21 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("lt?", Prim_CmpHuh<std::less<>>);
   ctx.setFunction("ne?", Prim_CmpHuh<std::not_equal_to<>>);
 
+  // Lists
+  ctx.setFunction("list", Prim_List);
+  ctx.setFunction("list-cat", Prim_ListCat);
+  ctx.setFunction("list-append", Prim_ListAppend);
+  ctx.setFunction("list-ref", Prim_ListRef);
+  ctx.setFunction("list-set", Prim_ListSet);
+  ctx.setFunction("list-empty?", Prim_ListEmptyHuh);
+  ctx.setFunction("list-length", Prim_ListLength);
+  // deprecated list functions
+  ctx.setFunction("array-ref", Prim_ListRef);
+  ctx.setFunction("array-set", Prim_ListSet);
+  ctx.setFunction("array-empty?", Prim_ListEmptyHuh);
+  ctx.setFunction("array-length", Prim_ListLength);
+
+
   // Misc
   ctx.setFunction("min", Prim_Min);
   ctx.setFunction("max", Prim_Max);
@@ -930,14 +945,11 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("dict-keys", Prim_DictKeys);
   ctx.setFunction("dict-directory", Prim_DictDirectory);
 
-  ctx.setFunction("list", Prim_List);
-  ctx.setFunction("list-append", Prim_ListAppend);
 
   // Lambdas
   ctx.setFunction("lambda", Prim_Lambda);
 
   // Utilities
-  ctx.setFunction("list-cat", Prim_ListCat);
   ctx.setFunction("string-cat", Prim_StringCat);
   ctx.setFunction("int-to-str", Prim_IntToStr);
 
@@ -953,11 +965,7 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("attrib-ref", Prim_AttribRef);
   ctx.setFunction("attrib-get", Prim_AttribRef);
   ctx.setFunction("attrib-set", Prim_AttribSet);
-  ctx.setFunction("array-ref", Prim_ArrayRef);
-  ctx.setFunction("array-set", Prim_ArraySet);
 
-  ctx.setFunction("array-empty?", Prim_EmptyArrayHuh);
-  ctx.setFunction("array-length", Prim_ArrayLength);
   ctx.setFunction("dict-x-tract", Prim_DictExtract<false>);
   ctx.setFunction("dict-x-tract-x", Prim_DictExtract<true>);
 
