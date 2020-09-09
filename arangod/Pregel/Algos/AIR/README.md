@@ -243,20 +243,142 @@ by (potential) clients and users of graph analytics.
 
 ## Current AIR spec
 
+The following list of functions and special forms is available in all contexts. 
+_AIR_ is based on lisp, but represented in JSON and supports its datatypes. 
+
+Strings, numeric constants, booleans and objects (dicts) are self-evaluating, i.e. the result of the evaluation of those
+values is the value itself. Array are not self-evaluating. In general you should read an array like a function
+call:
+```
+["foo", 1, 2, "bar"] // read as foo(1, 2, "bar")
+```
+The first element of a list specifies the function. This can either be a string containing the function name, or
+a lambda object. See `lambda` function below.
+
+To prevent unwanted evaluation or to actually write down a list there are multiple options: 
+`quote`, `list`, `quasi-quote`. 
+```
+["list", 1, 2, ["foo", "bar"]] // evaluates to [1, 2, foo("bar")] -- evaluated parameters
+["quote", 1, 2, ["foo", "bar"]] // evaluates to [1, 2, ["foo", "bar"]] -- unevaluated parameters
+```
+For more see below.
+
+### Truthiness of values
+
+A value is considered _false_ if it is boolean `false` or `none`. All other values are considered true.
+
 ### Special forms
 
- * if -- takes pairs `[cond, body]` of conditions `cond` and expression `body` and evaluates 
-         the first `body` for which `cond` avaluates to `true`
- * quote --  `["quote", expr ...]` evaluates to `[expr ...]`
- * quote-splice -- `["foo", ["quote-splice", expr ...]]` evaluates to `["foo", expr ...]`
- * cons -- `["cons", val, [expr ...]]` evaluates to `[val, expr ...]`
- * and -- `["and", expr ...]` evaluates to false if one of `expr` evaluates to `false`. The arguments `expr` are evaluated in order, and evaluation is stopped once an `expr` evaluates to `false`.
- * or -- `["or", expr ...]` evaluates to true if one of `expr` evaluates to `true`. The arguments `expr` are evaluated in order, and evaluation is stopped once an `expr` evaluates to `true`.
- * seq -- `["seq", expr ... lastexpr ]` evaluates `expr` in order, the value of a `seq` expression is `lastexpr`
- * match -- `["match", expr, [c, body] ...]` evaluates `expr` to `val` and evaluates `body` for the first pair `[c, body]`, where `["eq?", val, c]` is `true`.
+A _special form_ is special in the sense that it does not necessarily evaluate its parameters.
+
+#### Let
+_binding values to variables_
+```
+["let", [[var, value]...], expr...]
+```
+Expects as first parameter a list of name-value-pairs. Both members of each pair are evaluated. `first` has to evaluate
+to a string. The following expression are then evaluated in a context where the named variables are assigned to their
+given values. When evaluating the expression `let` behaves like `seq`.
+
+```
+> ["let", [["x", 12], ["y", 5]], ["+", ["var-ref", "x"], ["var-ref", "y"]]]
+ = 17
+```
+
+#### Seq
+_sequence of commands_
+```
+["seq", expr ...]
+```
+`seq` evaluates `expr` in order. The result values it the result value of the last expression. An empty `seq` evaluates
+to `none`.
+
+```
+> ["seq", ["print, "Hello World!"], 2, 3]
+Hello World!
+ = 3
+```
+
+#### If
+_classical if-elseif-else-statement_
+```
+["if", [cond, body], ...]
+```
+Takes pairs `[cond, body]` of conditions `cond` and expression `body` and evaluates 
+the first `body` for which `cond` evaluates to a value that is considered true. It does not evaluate the other `cond`s.
+If no condition matches, it evaluates to `none`. To simulate a `else` statement, set the last condition to `true`.
+
+```
+> ["if", [
+        ["lt?", ["var-ref", "x"], 0],
+        ["-", ["var-ref", "x"]]
+    ], [
+        true, // else
+        ["var-ref", "x"]
+    ]]
+ = 5
+```
+
+#### Match
+_not-so-classical switch-statement_
+```
+["match", proto, [c, body]...]
+```
+First evaluates `proto`, then evaluates each `c` until `["eq?", val, c]` is considered true. Then the corresponding `body` 
+is evaluated and its return value is returned. If no branch matches, `none` is returned. This is a c-like `switch` statement
+except that its `case`-values are not treated as constants.
+
+
+
  * for-each -- `["for-each" [(v list) ...] body ...]` binds `v` to elements of `list` in order and evaluates `body` with this binding.
- * quasi-quote/unquote/unquote-splice -- like `quote` but can be unquoted using `unquote/unquote-splice`. For example 
- `["quasi-quote", ["foo"], ["unquote", ["list", 1, 2]], ["unquote-splice", ["list", 1, 2]]]` evaluates to `[["foo"],[1,2],1,2]`.
+
+
+#### Quote and Quote-Splice
+_escape sequences for lisp_
+```
+["quote", expr...]
+["quote-splice", expr...]
+```
+
+`quote`/`quote-splice` copies/splices its parameter verbatim into its output. `quote-splice` fails if it is called
+in a context where it can not splice into something, for example at top-level.
+```
+> ["quote", "foo", ["bar"]]
+ = ["foo", ["bar"]]
+> ["foo", ["quote-splice", ["bar"], "baz"]
+ = ["foo", ["bar"], "baz"]
+```
+
+#### Quasi-Quote, Unquote and Unquote-Splice
+_like `quote` but can be unquoted_
+
+ * quasi-quote/unquote/unquote-splice -- like `quote` but can be unquoted using `unquote/unquote-splice`.
+
+```
+> ["quasi-quote", ["foo"], ["unquote", ["list", 1, 2]], ["unquote-splice", ["list", 1, 2]]]
+ = [["foo"],[1,2],1,2]
+```
+
+#### Cons
+_constructor for lists_
+```
+["cons", value, list]
+```
+Classical lisp instruction that prepends `value` to the list `list`.
+```
+> ["cons", 1, [2, 3]]
+ = [1, 2, 3]
+```
+
+#### And and Or
+_basic logical operations_
+```
+["and", expr...]
+["or", expr...]
+```
+Computes the logical `and`/`or` expression of the given expression. As they are special forms, those expression shortcut,
+i.e. `and`/`or` terminates the evaluation on the first value considered `false`/`true`. The empty list evaluates as `true`/`false`.
+The rules for truthiness are applied.
 
 
 ### Foreign calls in Vertex Computation "context" [3]

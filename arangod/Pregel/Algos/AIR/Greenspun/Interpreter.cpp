@@ -155,6 +155,11 @@ EvalResult SpecialOr(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& re
 
 EvalResult SpecialSeq(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   VPackBuilder store;
+  if (!paramIterator.valid()) {
+    result.add(VPackSlice::noneSlice());
+    return {};
+  }
+
   for (; paramIterator.valid(); paramIterator++) {
     auto& usedBuilder = std::invoke([&]() -> VPackBuilder& {
       if (paramIterator.isLast()) {
