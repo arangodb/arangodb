@@ -28,36 +28,6 @@ const {expect} = require('chai');
 const request = require("@arangodb/request");
 const db = require("internal").db;
 
-
-const expectOneBucketChanged = (actual, old) => {
-  let foundOne = false;
-  for (const [key, value] of Object.entries(actual)) {
-    if (old[key] < value) {
-      foundOne = true;
-    }
-    expect(old[key]).to.be.most(value);
-
-  }
-  expect(foundOne).to.equal(true);
-};
-
-const MetricNames = {
-  QUERY_TIME: "arangodb_aql_total_query_time_msec",
-  PHASE_1_BUCKET: "arangodb_maintenance_phase1_runtime_msec_bucket",
-  PHASE_1_COUNT: "arangodb_maintenance_phase1_runtime_msec_count",
-  PHASE_2_BUCKET: "arangodb_maintenance_phase2_runtime_msec_bucket",
-  PHASE_2_COUNT: "arangodb_maintenance_phase2_runtime_msec_count",
-  SHARD_COUNT: "arangodb_shards_total_count",
-  SHARD_LEADER_COUNT: "arangodb_shards_leader_count",
-  HEARTBEAT_BUCKET: "arangodb_heartbeat_send_time_msec_bucket",
-  HEARTBEAT_COUNT: "arangodb_heartbeat_send_time_msec_count",
-  SUPERVISION_BUCKET: "arangodb_agency_supervision_runtime_msec_bucket",
-  SUPERVISION_COUNT: "arangodb_agency_supervision_runtime_msec_count",
-  SLOW_QUERY_COUNT: "arangodb_aql_slow_query",
-  CLIENT_CONNECTIONS: "arangodb_client_connection_statistics_client_connections"
-};
-
-
 class Watcher {
   constructor(metric) {
     this._metric = metric;
@@ -78,10 +48,109 @@ class Watcher {
   };
 }
 
+const expectOneBucketChanged = (actual, old) => {
+  let foundOne = false;
+  for (const [key, value] of Object.entries(actual)) {
+    if (old[key] < value) {
+      foundOne = true;
+    }
+    expect(old[key]).to.be.most(value);
+
+  }
+  expect(foundOne).to.equal(true);
+};
+
 class BucketWatcher extends Watcher{  
 
   check(){
     expectOneBucketChanged(this._after, this._before);
+  };
+}
+
+const MetricNames = {
+  QUERY_TIME: "arangodb_aql_total_query_time_msec",
+  PHASE_1_BUCKET: "arangodb_maintenance_phase1_runtime_msec_bucket",
+  PHASE_1_COUNT: "arangodb_maintenance_phase1_runtime_msec_count",
+  PHASE_2_BUCKET: "arangodb_maintenance_phase2_runtime_msec_bucket",
+  PHASE_2_COUNT: "arangodb_maintenance_phase2_runtime_msec_count",
+  SHARD_COUNT: "arangodb_shards_total_count",
+  SHARD_LEADER_COUNT: "arangodb_shards_leader_count",
+  HEARTBEAT_BUCKET: "arangodb_heartbeat_send_time_msec_bucket",
+  HEARTBEAT_COUNT: "arangodb_heartbeat_send_time_msec_count",
+  SUPERVISION_BUCKET: "arangodb_agency_supervision_runtime_msec_bucket",
+  SUPERVISION_COUNT: "arangodb_agency_supervision_runtime_msec_count",
+  SLOW_QUERY_COUNT: "arangodb_aql_slow_query",
+
+  HTTP_DELETE_COUNT: "arangodb_http_request_statistics_http_delete_requests",
+  HTTP_GET_COUNT: "arangodb_http_request_statistics_http_get_requests",
+  HTTP_HEAD_COUNT: "arangodb_http_request_statistics_http_head_requests",
+  HTTP_OPTIONS_COUNT: "arangodb_http_request_statistics_http_options_requests",
+  HTTP_PATCH_COUNT: "arangodb_http_request_statistics_http_patch_requests",
+  HTTP_POST_COUNT: "arangodb_http_request_statistics_http_post_requests",
+  HTTP_PUT_COUNT: "arangodb_http_request_statistics_http_put_requests",
+  HTTP_OTHER_COUNT: "arangodb_http_request_statistics_other_http_requests",
+  HTTP_TOTAL_COUNT: "arangodb_http_request_statistics_total_requests",
+
+
+  AGENCY_LOG_SIZE: "arangodb_agency_log_size_bytes"
+};
+
+class HttpPatchCountWatcher extends Watcher {
+  constructor(minChange){
+    super(MetricNames.HTTP_PUT_COUNT);
+    this._minChange = minChange;
+  }
+  check(){
+    expect(this._after).to.be.at.least(this._before+this._minChange); 
+  }
+}
+
+class HttpPutCountWatcher extends Watcher {
+  constructor(minChange){
+    super(MetricNames.HTTP_PUT_COUNT);
+    this._minChange = minChange;
+  }
+  check(){
+    expect(this._after).to.be.at.least(this._before+this._minChange); 
+  }
+}
+
+class HttpDeleteCountWatcher extends Watcher {
+  constructor(change){
+    super(MetricNames.HTTP_DELETE_COUNT);
+    this._change = change;
+  }
+  check(){
+    expect(this._after).to.be.equal(this._before+this._change); 
+  }
+}
+
+class HttpGetCountWatcher extends Watcher {
+  constructor(change){
+    super(MetricNames.HTTP_GET_COUNT);
+    this._change = change;
+  }
+  check(){
+    expect(this._after).to.be.equal(this._before+this._change); 
+  }
+}
+
+class HttpPostCountWatcher extends Watcher {
+  constructor(change){
+    super(MetricNames.HTTP_POST_COUNT);
+    this._change = change;
+  }
+  check(){
+    expect(this._after).to.be.equal(this._before+this._change); 
+  }
+}
+
+class AgencyLogSizeWatcher extends Watcher {
+  constructor() {
+    super(MetricNames.AGENCY_LOG_SIZE);
+  }
+  check (){
+    expect(this._after).to.be.greaterThan(this._before);    
   };
 }
 
@@ -96,7 +165,6 @@ class QueryTimeWatcher extends Watcher {
   };
 }
 
-
 class SlowQueryCountWatcher extends Watcher {
   constructor(minChange) {
     super(MetricNames.SLOW_QUERY_COUNT);
@@ -105,18 +173,6 @@ class SlowQueryCountWatcher extends Watcher {
   
   check (){
     expect(this._after).to.be.equal(this._before + this._minChange);    
-  };
-}
-
-
-class ConnecntionCountWatcher extends Watcher {
-  constructor(minChange) {
-    super(MetricNames.CLIENT_CONNECTIONS);
-    this._minChange = minChange;
-  }
-
-  check (){
-    expect(this._after).to.be.at.least(this._before + this._minChange);
   };
 }
 
@@ -327,12 +383,89 @@ describe('_admin/metrics', () => {
     watchers.forEach(w => {w.before(metricsBefore);});
 
     action();
+
     const metricsAfter = loadAllMetrics(role);
     watchers.forEach(w => {
       w.after(metricsAfter);
       w.check();
     });      
   };
+
+
+
+
+
+
+
+  it('http GET requests count',()=>{
+    // try {
+    //   runTest(() => {
+    //     db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
+    //     require("internal").wait(3.0);
+    //   }, [new HttpGetCountWatcher(1), new HttpPostCountWatcher(1)], 'coordinator');
+      
+    // } finally {
+    //   db._drop("UnitTestCollection");
+    // }
+    
+    runTest(()=>{
+       const request = require("@arangodb/request");      
+       const url = `${servers.get('coordinator')[0]}/_api/collection`;
+       let res = request({url, method: "GET"});      
+       expect(res.statusCode).to.equal(200);
+       require("internal").wait(5.0);
+    }, [new HttpGetCountWatcher(2)], 'coordinator');
+  });
+
+  it('http POST, POST and DELETE requests count',() => {
+  
+    runTest(() => {
+      const request = require("@arangodb/request");      
+      const url = `${servers.get('coordinator')[0]}`;
+      
+      let resCreate = request({
+        url: `${url}/_api/collection`, 
+        method: "POST",
+        body: '{"name": "UnitTestCollection", "waitForSync": true}'
+      });  
+          
+      expect(resCreate.statusCode).to.equal(200);
+      require("internal").wait(5.0);
+
+      let resProp = request({
+        url: `${url}/_api/collection/UnitTestCollection/properties`, 
+        method: "PUT",
+        bode: '{"waitForSync": true}'
+      });
+
+      expect(resProp.statusCode).to.equal(200);
+
+      let resDelete = request({
+        url: `${url}/_api/collection/UnitTestCollection`, 
+        method: "DELETE"
+      });
+
+      expect(resDelete.statusCode).to.equal(200);
+      require("internal").wait(5.0);
+
+   }, [new HttpPostCountWatcher(1), new HttpDeleteCountWatcher(1), new HttpPutCountWatcher(1)], 'coordinator');
+  
+  });
+
+
+
+
+  it('agency log size ', () => {
+    try{  
+      runTest(() => {
+        //What action will lead to log change?
+        db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
+          require("internal").wait(5.0);
+      }, [new AgencyLogSizeWatcher()], 'agent');
+    } finally {
+      db._drop("UnitTestCollection");
+    }  
+  });
 
   it('aql query time', () => {
     runTest(() => {
@@ -350,21 +483,11 @@ describe('_admin/metrics', () => {
       queries.properties({slowQueryThreshold: oldThreshold});       
     }, [new SlowQueryCountWatcher(1)], 'coordinator');
   });
+
+
     
-  // it('client connections count ', () => {
-  //   runTest(() => {
-  //     //conect
-  //     const url = `${servers.get("coordinator")[0]}/_admin/metrics`;
 
-  //     const res = request({
-  //       json: true,
-  //       method: 'GET',
-  //       url
-  //     });
-  //     expect(res.statusCode).to.equal(200);
 
-  //   }, [new ConnecntionCountWatcher(1)]);
-  // });
 
   it('collection and index', () => {
     try {
