@@ -95,13 +95,53 @@ const MetricNames = {
   AGENCY_LOG_SIZE: "arangodb_agency_log_size_bytes"
 };
 
-class HttpPatchCountWatcher extends Watcher {
+class HttpOtherCountWatcher extends Watcher {
   constructor(minChange){
-    super(MetricNames.HTTP_PUT_COUNT);
+    super(MetricNames.HTTP_OTHER_COUNT);
+    this._minChange = minChange;
+  }
+  check(){
+    expect(this._after).to.be.equal(this._before+this._minChange); 
+  }
+}
+
+class HttpOptionsCountWatcher extends Watcher {
+  constructor(minChange){
+    super(MetricNames.HTTP_OPTIONS_COUNT);
+    this._minChange = minChange;
+  }
+  check(){
+    expect(this._after).to.be.equal(this._before+this._minChange); 
+  }
+}
+
+class HttpHeadCountWatcher extends Watcher {
+  constructor(minChange){
+    super(MetricNames.HTTP_HEAD_COUNT);
+    this._minChange = minChange;
+  }
+  check(){
+    expect(this._after).to.be.equal(this._before+this._minChange); 
+  }
+}
+
+class HttpTotalCountWatcher extends Watcher {
+  constructor(minChange){
+    super(MetricNames.HTTP_TOTAL_COUNT);
     this._minChange = minChange;
   }
   check(){
     expect(this._after).to.be.at.least(this._before+this._minChange); 
+  }
+}
+
+class HttpPatchCountWatcher extends Watcher {
+  constructor(minChange){
+    super(MetricNames.HTTP_PATCH_COUNT);
+    this._minChange = minChange;
+  }
+  check(){
+    expect(this._after).to.be.equal(this._before+this._minChange); 
   }
 }
 
@@ -397,132 +437,189 @@ describe('_admin/metrics', () => {
 
 
 
-  it('http GET requests count',()=>{
-    // try {
-    //   runTest(() => {
-    //     db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
-    //     require("internal").wait(3.0);
-    //   }, [new HttpGetCountWatcher(1), new HttpPostCountWatcher(1)], 'coordinator');
+  // it('http GET requests count',() => {
+  //   // try {
+  //   //   runTest(() => {
+  //   //     db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
+  //   //     require("internal").wait(3.0);
+  //   //   }, [new HttpGetCountWatcher(1), new HttpPostCountWatcher(1)], 'coordinator');
       
-    // } finally {
-    //   db._drop("UnitTestCollection");
-    // }
+  //   // } finally {
+  //   //   db._drop("UnitTestCollection");
+  //   // }
     
-    runTest(()=>{
-       const request = require("@arangodb/request");      
-       const url = `${servers.get('coordinator')[0]}/_api/collection`;
-       let res = request({url, method: "GET"});      
-       expect(res.statusCode).to.equal(200);
-       require("internal").wait(5.0);
-    }, [new HttpGetCountWatcher(2)], 'coordinator');
-  });
+  //   runTest(() => {
+  //      const request = require("@arangodb/request");      
+  //      const url = `${servers.get('coordinator')[0]}/_api/collection`;
+  //      let res = request({url, method: "GET"});      
+  //      expect(res.statusCode).to.equal(200);
+  //      require("internal").wait(5.0);
+  //   }, [new HttpGetCountWatcher(2)], 'coordinator');
+  // });
 
-  it('http POST, POST and DELETE requests count',() => {
-  
+  it('http PATCH requests count',() => {
+    
     runTest(() => {
       const request = require("@arangodb/request");      
       const url = `${servers.get('coordinator')[0]}`;
       
-      let resCreate = request({
+      let resCreateDB = request({
         url: `${url}/_api/collection`, 
         method: "POST",
-        body: '{"name": "UnitTestCollection", "waitForSync": true}'
+        body: '{"name": "UnitTestCollection"}'        
       });  
           
-      expect(resCreate.statusCode).to.equal(200);
+      expect(resCreateDB.statusCode).to.equal(200);
       require("internal").wait(5.0);
 
-      let resProp = request({
-        url: `${url}/_api/collection/UnitTestCollection/properties`, 
-        method: "PUT",
-        bode: '{"waitForSync": true}'
-      });
+      let resCreateDoc = request({
+        url: `${url}/_api/document/UnitTestCollection?waitForSync=true`, 
+        method: "POST",
+        body: '{"_key": "testDoc", "test": "test"}'
+      });  
+          
+      expect(resCreateDoc.statusCode).to.equal(201);
 
-      expect(resProp.statusCode).to.equal(200);
+      let resPatchDoc = request({
+        url: `${url}/_api/document/UnitTestCollection?waitForSync=true`, 
+        method: "PATCH",
+        body: '[{"_key": "testDoc", "test": "test2"}]'
+      });  
+          
+      expect(resPatchDoc.statusCode).to.equal(201);
+
+      let resHeadDoc = request({
+        url: `${url}/_api/document/UnitTestCollection/testDoc`, 
+        method: "HEAD"
+      }); 
+      expect(resHeadDoc.statusCode).to.equal(200);
+
+      let resOtionsDoc = request({
+        url: `${url}/_api`, 
+        method: "OPTIONS"
+      }); 
+      expect(resOtionsDoc.statusCode).to.equal(200);
+
+      let resTraceDoc = request({
+        url: `${url}/_api`, 
+        method: "TRACE"
+      }); 
+      expect(resTraceDoc.statusCode).to.equal(500);
+
 
       let resDelete = request({
         url: `${url}/_api/collection/UnitTestCollection`, 
-        method: "DELETE"
+        method: "DELETE"        
       });
 
       expect(resDelete.statusCode).to.equal(200);
-      require("internal").wait(5.0);
+      require("internal").wait(10.0);
 
-   }, [new HttpPostCountWatcher(1), new HttpDeleteCountWatcher(1), new HttpPutCountWatcher(1)], 'coordinator');
+    }, [new HttpPatchCountWatcher(1), new HttpTotalCountWatcher(3), 
+        new HttpHeadCountWatcher(1), new HttpOptionsCountWatcher(1), new HttpOtherCountWatcher(1)], 'coordinator');
   
   });
 
 
 
+  // it('http POST, POST and DELETE requests count',() => {
+  
+  //   runTest(() => {
+  //     const request = require("@arangodb/request");      
+  //     const url = `${servers.get('coordinator')[0]}`;
+      
+  //     let resCreate = request({
+  //       url: `${url}/_api/collection`, 
+  //       method: "POST",
+  //       body: '{"name": "UnitTestCollection"}'
+  //     });  
+          
+  //     expect(resCreate.statusCode).to.equal(200);
+  //     require("internal").wait(5.0);
 
-  it('agency log size ', () => {
-    try{  
-      runTest(() => {
-        //What action will lead to log change?
-        db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
-          require("internal").wait(5.0);
-      }, [new AgencyLogSizeWatcher()], 'agent');
-    } finally {
-      db._drop("UnitTestCollection");
-    }  
-  });
+  //     let resProp = request({
+  //       url: `${url}/_api/collection/UnitTestCollection/properties`, 
+  //       method: "PUT"
+  //     });
 
-  it('aql query time', () => {
-    runTest(() => {
-      const query = `return sleep(1)`;
-      db._query(query);
-    }, [new QueryTimeWatcher(1000)], 'coordinator');
-  });
+  //     expect(resProp.statusCode).to.equal(200);
 
-  it('aql slow query count ', () => {
-    runTest(() => {
-      const queries = require("@arangodb/aql/queries");
-      const oldThreshold = queries.properties().slowQueryThreshold;
-      queries.properties({slowQueryThreshold: 1});
-      db._query(`return sleep(1)`);
-      queries.properties({slowQueryThreshold: oldThreshold});       
-    }, [new SlowQueryCountWatcher(1)], 'coordinator');
-  });
+  //     let resDelete = request({
+  //       url: `${url}/_api/collection/UnitTestCollection`, 
+  //       method: "DELETE"
+  //     });
+
+  //     expect(resDelete.statusCode).to.equal(200);
+  //     require("internal").wait(5.0);
+
+  //  }, [new HttpPostCountWatcher(1), new HttpDeleteCountWatcher(1), new HttpPutCountWatcher(1)], 'coordinator');
+  
+  // });
 
 
-    
+  // it('agency log size ', () => {
+  //   try{  
+  //     runTest(() => {
+  //       //What action will lead to log change?
+  //       db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
+  //         require("internal").wait(5.0);
+  //     }, [new AgencyLogSizeWatcher()], 'agent');
+  //   } finally {
+  //     db._drop("UnitTestCollection");
+  //   }  
+  // });
 
+  // it('aql query time', () => {
+  //   runTest(() => {
+  //     const query = `return sleep(1)`;
+  //     db._query(query);
+  //   }, [new QueryTimeWatcher(1000)], 'coordinator');
+  // });
 
+  // it('aql slow query count ', () => {
+  //   runTest(() => {
+  //     const queries = require("@arangodb/aql/queries");
+  //     const oldThreshold = queries.properties().slowQueryThreshold;
+  //     queries.properties({slowQueryThreshold: 1});
+  //     db._query(`return sleep(1)`);
+  //     queries.properties({slowQueryThreshold: oldThreshold});       
+  //   }, [new SlowQueryCountWatcher(1)], 'coordinator');
+  // });
 
-  it('collection and index', () => {
-    try {
-      runTest(() => {
-        db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
-        require("internal").wait(10.0); // database servers update their shard count in phaseOne. So lets wait until all have done their next phaseOne.
-      },
-      [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9)],
-      "dbserver"
-      );
-      runTest(() => {
-        db["UnitTestCollection"].ensureHashIndex("temp");
-      },
-      [new MaintenanceWatcher()],
-      "dbserver"
-      );
-    } finally {
-      db._drop("UnitTestCollection");
-    }
-  });
+  // it('collection and index', () => {
+  //   try {
+  //     runTest(() => {
+  //       db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
+  //       require("internal").wait(10.0); // database servers update their shard count in phaseOne. So lets wait until all have done their next phaseOne.
+  //     },
+  //     [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9)],
+  //     "dbserver"
+  //     );
+  //     runTest(() => {
+  //       db["UnitTestCollection"].ensureHashIndex("temp");
+  //     },
+  //     [new MaintenanceWatcher()],
+  //     "dbserver"
+  //     );
+  //   } finally {
+  //     db._drop("UnitTestCollection");
+  //   }
+  // });
 
-  it('at least 1 heartbeat and supervision per second', () => {
-    runTest(() => {
-      require("internal").wait(1.0);
-    }, [new HeartBeatWatcher()], "dbserver");
+  // it('at least 1 heartbeat and supervision per second', () => {
+  //   runTest(() => {
+  //     require("internal").wait(1.0);
+  //   }, [new HeartBeatWatcher()], "dbserver");
 
-    runTest(() => {
-      require("internal").wait(1.0);
-    }, [new HeartBeatWatcher()], "coordinator");
+  //   runTest(() => {
+  //     require("internal").wait(1.0);
+  //   }, [new HeartBeatWatcher()], "coordinator");
 
-    runTest(() => {
-      require("internal").wait(1.0);
-    }, [new SupervisionWatcher()], "agent");
+  //   runTest(() => {
+  //     require("internal").wait(1.0);
+  //   }, [new SupervisionWatcher()], "agent");
 
-  });
+  // });
 
     
 });
