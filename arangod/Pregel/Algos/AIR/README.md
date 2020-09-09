@@ -169,7 +169,7 @@ cases.
 #### Pregelator
 
 The Pregelator Service is available on GitHub:
--  https://github.com/arangodb-foxx/pregelator (TODO: move to that direectory)
+-  https://github.com/arangodb-foxx/pregelator
 
 The bundled ZIP files are kept in the directory: `zippedBuilds` and can be installed via `foxx-cli`, the standard
 `web-ui` or via `arangosh`. 
@@ -201,16 +201,30 @@ Example:
 }
 ```
 
-
-Also we've added a few debugging primitives to help you
-increase your developing speed. For example, there is the possibility to add "prints" to your program.
+Also we've added a few debugging primitives to help you increase your developing speed. For example, there is
+the possibility to add "prints" to your program.
   
 For more, please take a look at the _Debug operators_ contained in the chapter: "Language primitives".
 
-## Vertex Computation
-
 ## Examples
 
+As there are almost no limits regarding the definition of a PPA, here we will provide a basic example of the 
+"vertex-degree" algorithm and demonstrate how the implementation would look like.  
+
+Note: We've implemented also more complex algorithms in PPA to demonstrate advanced usage. As those are complex
+algorithms, they are not included as examples in the documentation. But for the curious ones, they can be found
+here:
+
+- [Propagation Demo](https://github.com/arangodb/arangodb/blob/feature/pregel-vertex-accumulation-algorithm-2/js/client/modules/%40arangodb/air/propagation-demo.js)
+- [PageRank](https://github.com/arangodb/arangodb/blob/feature/pregel-vertex-accumulation-algorithm-2/js/client/modules/%40arangodb/air/pagerank.js)
+- [Single Source Shortest Path](https://github.com/arangodb/arangodb/blob/feature/pregel-vertex-accumulation-algorithm-2/js/client/modules/%40arangodb/air/single-source-shortest-paths.js)
+- [Strongly Connected Components](https://github.com/arangodb/arangodb/blob/feature/pregel-vertex-accumulation-algorithm-2/js/client/modules/%40arangodb/air/strongly-connected-components.js)
+
+#### Vertex Degree
+
+
+
+## Vertex Computation
 ___
 
 #OLD SECTION
