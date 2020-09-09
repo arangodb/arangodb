@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2016-2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -39,37 +39,25 @@ namespace arangodb { namespace fuerte { inline namespace v1 { namespace vst {
 // Connection object that handles sending and receiving of
 //  Velocystream Messages.
 template <SocketType ST>
-class VstConnection final : public fuerte::GeneralConnection<ST, vst::RequestItem> {
- public:
+struct VstConnection final
+    : public fuerte::MultiConnection<ST, vst::RequestItem> {
   explicit VstConnection(EventLoopService& loop,
                          detail::ConnectionConfiguration const&);
 
   ~VstConnection();
 
- public:
-  // Return the number of unfinished requests.
-  std::size_t requestsLeft() const override;
-
  protected:
-  void finishConnect() override;
+  virtual void finishConnect() override;
 
   ///  Call on IO-Thread: writes out one queued request
-  void doWrite() override {
-    asyncWriteNextRequest();
-  }
+  virtual void doWrite() override { asyncWriteNextRequest(); }
 
   // called by the async_read handler (called from IO thread)
-  void asyncReadCallback(asio_ns::error_code const&) override;
+  virtual void asyncReadCallback(asio_ns::error_code const&) override;
 
-  /// abort ongoing / unfinished requests
-  void abortOngoingRequests(const fuerte::Error) override;
-  
-  void setIOTimeout() override;
-  
-  std::unique_ptr<vst::RequestItem> createRequest(std::unique_ptr<Request>&& req,
-                                    RequestCallback&& cb) override {
-    return std::make_unique<vst::RequestItem>(std::move(req), std::move(cb));
-  }
+  /// abort ongoing / unfinished requests expiring before given timpoint
+  virtual void abortRequests(
+      fuerte::Error, std::chrono::steady_clock::time_point now) override;
 
  private:
   ///  Call on IO-Thread: writes out one queued request
@@ -86,14 +74,8 @@ class VstConnection final : public fuerte::GeneralConnection<ST, vst::RequestIte
   // Create a response object for given RequestItem & received response buffer.
   std::unique_ptr<Response> createResponse(
       RequestItem& item, std::unique_ptr<velocypack::Buffer<uint8_t>>&);
-  
-  void abortExpiredRequests();
 
  private:
-  /// stores in-flight messages
-  std::map<MessageID, std::unique_ptr<vst::RequestItem>> _messages;
-  std::atomic<uint32_t> _numMessages;
-
   const VSTVersion _vstVersion;
 };
 
