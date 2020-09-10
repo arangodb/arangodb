@@ -27,6 +27,8 @@
 #include "Rest/GeneralRequest.h"
 #include "Utils/ExecContext.h"
 
+#include <atomic>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
