@@ -46,8 +46,8 @@ _Enterprise Edition only_
 ### date
 
 * Name: date
-* Version: 2.4.0
-* Date: 2017-12-29 20:21:36Z
+* Version: 3.0.0
+* Date: 2020-06-03 20:21:36Z
 * Project Home: https://github.com/HowardHinnant/date
 * License: https://raw.githubusercontent.com/HowardHinnant/date/master/LICENSE.txt
 * License Name: MIT License
@@ -1741,6 +1741,15 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: MIT License
 License Id: MIT
 
+#### IANA Time Zone Database
+
+Name: Time Zone Database
+Version: 2020a
+Project https://www.iana.org/time-zones
+License: ftp://ftp.iana.org/tz/tzdb-2020a/LICENSE
+License Name: Public Domain
+License Id: -
+
 #### iconv-lite
 
 Name: iconv-lite
@@ -2901,6 +2910,15 @@ Project Home: https://github.com/jashkenas/underscore
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/underscore/LICENSE
 License Name: MIT License
 License Id: MIT
+
+#### Unicode CLDR Project (windowsZones.xml)
+
+Name: Unicode CLDR Project
+Version: 37
+Project Home: https://github.com/unicode-org/cldr
+License: https://raw.githubusercontent.com/unicode-org/cldr/master/ICU-LICENSE
+License Name: ICU License
+License Id: ICU
 
 #### uri-js
 
