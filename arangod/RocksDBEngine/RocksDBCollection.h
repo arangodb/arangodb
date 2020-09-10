@@ -145,7 +145,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
  private:
   /// @brief return engine-specific figures
-  void figuresSpecific(velocypack::Builder&) override;
+  void figuresSpecific(bool details, velocypack::Builder&) override;
 
   // @brief return the primary index
   // WARNING: Make sure that this instance
