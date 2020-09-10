@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "Cluster/ClusterFeature.h"
 #include "Pregel/Graph.h"
+#include "Pregel/Algos/AIR/Greenspun/EvalResult.h"
 
 struct TRI_vocbase_t;
 namespace arangodb {
@@ -70,7 +71,16 @@ struct GraphFormat {
                               E& targetPtr) = 0;
 
   virtual bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                                   const V* targetPtr, size_t size) const = 0;
+                                   const V* targetPtr, size_t size) const {
+    TRI_ASSERT(false);
+  }
+
+  virtual greenspun::EvalResult buildVertexDocumentWithResult(arangodb::velocypack::Builder& b,
+                                   const V* targetPtr, size_t size) const {
+    buildVertexDocument(b, targetPtr, size);
+    return {};
+  }
+
   virtual bool buildEdgeDocument(arangodb::velocypack::Builder& b,
                                  const E* targetPtr, size_t size) const = 0;
 

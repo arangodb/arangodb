@@ -244,9 +244,9 @@ void MasterContext::preGlobalSuperstepMessage(VPackBuilder& msg) {
         msg.add(VPackValue(acc.first));
 
         if (auto result = acc.second->getStateIntoBuilder(msg); result.fail()) {
-          LOG_DEVEL
-              << "AIR MasterContext, error serializing global accumulator "
-              << acc.first << " " << result.error().toString();
+          getReportManager().report(ReportLevel::ERROR).with("accumulator", acc.first)
+              << "error serializing global accumulator " << acc.first << " "
+              << result.error().toString();
         }
       }
     }
@@ -285,8 +285,9 @@ bool MasterContext::postGlobalSuperstepMessage(VPackSlice workerMsgs) {
           iter != std::end(globalAccumulators())) {
         auto res = iter->second->aggregateStateBySlice(upd.value);
         if (!res) {
-          LOG_DEVEL << "AIR MasterContext could not aggregate state of global accumulator "
-                    << accumName << ", " << res.error().toString();
+          getReportManager().report(ReportLevel::ERROR).with("accumulator", accumName)
+              << "could not aggregate state of global accumulator " << accumName
+              << ", " << res.error().toString();
           return false;
         }
       } else {

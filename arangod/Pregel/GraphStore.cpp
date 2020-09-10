@@ -519,8 +519,16 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
     builder.add(StaticStrings::KeyString,
                 VPackValuePair(key.data(), key.size(), VPackValueType::String));
     /// bool store =
-    _graphFormat->buildVertexDocument(builder, &data, sizeof(V));
+    {
+      auto res = _graphFormat->buildVertexDocumentWithResult(builder, &data, sizeof(V));
+      if (res.fail()) {
+        _reports->report(ReportLevel::ERROR)
+            << "building vertex document failed: " << res.error().toString();
+      }
+    }
     builder.close();
+
+
 
     ++numDocs;
     if (_destroyed) {
