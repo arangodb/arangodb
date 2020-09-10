@@ -37,22 +37,22 @@ struct RequestItem {
   /// For responses contains contents of received chunks.
   /// Not necessarily in a sorted order!
   velocypack::Buffer<uint8_t> _buffer;
-  
+
   /// used to index chunks in _buffer
   struct ChunkInfo {
-    uint32_t index; /// chunk index
-    size_t offset;  /// offset into buffer
-    size_t size;  /// content length
+    uint32_t index;  /// chunk index
+    size_t offset;   /// offset into buffer
+    size_t size;     /// content length
   };
   /// @brief List of chunks that have been received.
   std::vector<ChunkInfo> _responseChunks;
-  
+
   /// Callback for when request is done (in error or succeeded)
   RequestCallback _callback;
-  
+
   /// The number of chunks we're expecting (0==not know yet).
   size_t _responseNumberOfChunks = 0;
-  
+
   /// ID of this message
   const MessageID _messageID;
   /// Reference to the request we're processing
@@ -60,15 +60,13 @@ struct RequestItem {
 
   /// point in time when the message expires
   std::chrono::steady_clock::time_point expires;
-  
+
  public:
-  
-  RequestItem(std::unique_ptr<Request>&& req,
-              RequestCallback&& cb)
-  : _callback(std::move(cb)),
-    _messageID(vstMessageId.fetch_add(1, std::memory_order_relaxed)),
-    request(std::move(req)) {}
-  
+  RequestItem(std::unique_ptr<Request>&& req, RequestCallback&& cb)
+      : _callback(std::move(cb)),
+        _messageID(vstMessageId.fetch_add(1, std::memory_order_relaxed)),
+        request(std::move(req)) {}
+
   inline void invokeOnError(Error e) {
     _callback(e, std::move(request), nullptr);
   }
@@ -76,7 +74,7 @@ struct RequestItem {
   /// prepareForNetwork prepares the internal structures for
   /// writing the request to the network.
   std::vector<asio_ns::const_buffer> prepareForNetwork(VSTVersion);
-  
+
   // add the given chunk to the list of response chunks.
   void addChunk(Chunk const& chunk);
   // try to assembly the received chunks into a response.
@@ -84,9 +82,7 @@ struct RequestItem {
   std::unique_ptr<velocypack::Buffer<uint8_t>> assemble();
 
   // Flush all memory needed for sending this request.
-  inline void resetSendData() {
-    _buffer.clear();
-  }
+  inline void resetSendData() { _buffer.clear(); }
 };
 
 }}}}  // namespace arangodb::fuerte::v1::vst

@@ -976,8 +976,8 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
 }
 
 /// @brief return the figures for a collection
-futures::Future<OperationResult> LogicalCollection::figures() const {
-  return getPhysical()->figures();
+futures::Future<OperationResult> LogicalCollection::figures(bool details) const {
+  return getPhysical()->figures(details);
 }
 
 /// SECTION Indexes

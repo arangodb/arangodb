@@ -78,7 +78,7 @@ class ClusterCollection final : public PhysicalCollection {
   void getPropertiesVPack(velocypack::Builder&) const override;
 
   /// @brief return the figures for a collection
-  futures::Future<OperationResult> figures() override;
+  futures::Future<OperationResult> figures(bool details) override;
 
   /// @brief closes an open collection
   int close() override;
@@ -147,7 +147,7 @@ class ClusterCollection final : public PhysicalCollection {
 
  protected:
   /// @brief Inject figures that are specific to StorageEngine
-  void figuresSpecific(arangodb::velocypack::Builder&) override;
+  void figuresSpecific(bool details, arangodb::velocypack::Builder&) override;
 
  private:
   void addIndex(std::shared_ptr<arangodb::Index> idx);

@@ -49,6 +49,10 @@ namespace graph {
 class ClusterTraverserCache;
 }
 
+namespace velocypack {
+class Builder;
+}
+
 namespace traverser {
 struct TraverserOptions;
 }
@@ -56,7 +60,6 @@ struct TraverserOptions;
 struct ClusterCommResult;
 class ClusterFeature;
 struct OperationOptions;
-class TransactionState;
 
 /// @brief convert ClusterComm error into arango error code
 int handleGeneralCommErrors(arangodb::ClusterCommResult const* res);
@@ -78,6 +81,13 @@ bool shardKeysChanged(LogicalCollection const& collection, VPackSlice const& old
 /// @brief check if the value of the smartJoinAttribute has changed
 bool smartJoinAttributeChanged(LogicalCollection const& collection, VPackSlice const& oldValue,
                                VPackSlice const& newValue, bool isPatch);
+
+/// @brief aggregate the results of multiple figures responses (e.g. from 
+/// multiple shards or for a smart edge collection)
+void aggregateClusterFigures(bool details, 
+                             bool isSmartEdgeCollectionPart,
+                             arangodb::velocypack::Slice value, 
+                             arangodb::velocypack::Builder& builder);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection
@@ -101,7 +111,8 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature&,
 
 futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature&,
                                                       std::string const& dbname,
-                                                      std::string const& collname);
+                                                      std::string const& collname,
+                                                      bool details);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts number of documents in a coordinator, by shard
