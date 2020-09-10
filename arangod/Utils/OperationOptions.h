@@ -52,7 +52,7 @@ struct OperationOptions {
   };
   
   OperationOptions();
-  OperationOptions(ExecContext const&);
+  explicit OperationOptions(ExecContext const&);
   
 // The following code does not work with VisualStudi 2019's `cl`
 // Lets keep it for debugging on linux.

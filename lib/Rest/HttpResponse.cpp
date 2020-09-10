@@ -365,7 +365,6 @@ void HttpResponse::addPayloadInternal(VPackSlice output, size_t inputLength,
         // convert object to string
         VPackStringBufferAdapter buffer(_body->stringBuffer());
 
-        // usual dumping -  but not to the response body
         VPackDumper dumper(&buffer, &tmpOpts);
         dumper.dump(output);
         

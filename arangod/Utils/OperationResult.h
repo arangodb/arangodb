@@ -41,11 +41,6 @@ namespace arangodb {
 struct OperationResult final {
   OperationResult() {}
 
-  // create from integer status code
-//  explicit OperationResult(int code) : result(code) {}
-  explicit OperationResult(int code, OperationOptions const& options)
-      : result(code), options(options) {}
-
   // create from Result
   explicit OperationResult(Result const& other) : result(other) {}
   explicit OperationResult(Result const& other, OperationOptions const& options)

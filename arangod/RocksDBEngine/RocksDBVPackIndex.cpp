@@ -825,10 +825,6 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
     return RocksDBIndex::update(trx, mthds, oldDocumentId, oldDoc,
                                 newDocumentId, newDoc, options);
   }
-// simon: isn't this the default with the new protocol
-//  if (oldDocumentId == newDocumentId) {
-//    return Result();
-//  }
 
   Result res;
   // more expensive method to

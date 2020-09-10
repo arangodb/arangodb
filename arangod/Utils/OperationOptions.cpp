@@ -44,19 +44,9 @@ OperationOptions::OperationOptions()
   _context(nullptr) {}
 
 OperationOptions::OperationOptions(ExecContext const& context)
-: indexOperationMode(IndexOperationMode::normal),
-  overwriteMode(OverwriteMode::Unknown),
-  waitForSync(false),
-  validate(true),
-  keepNull(true),
-  mergeObjects(true),
-  silent(false),
-  ignoreRevs(true),
-  returnOld(false),
-  returnNew(false),
-  isRestore(false),
-  ignoreUniqueConstraints(false),
-  _context(&context) {}
+: OperationOptions() {
+  _context = &context;
+}
 
 namespace {
 const char* indexOpModeString(IndexOperationMode mode) {
@@ -73,7 +63,7 @@ const char* indexOpModeString(IndexOperationMode mode) {
 }
 }
 
-// The following code does not work with VisualStudi 2019's `cl`
+// The following code does not work with VisualStudio 2019's `cl`
 // Lets keep it for debugging on linux.
 #ifndef _WIN32
 std::ostream& operator<<(std::ostream& os, OperationOptions const& ops) {
