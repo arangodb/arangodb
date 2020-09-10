@@ -1357,7 +1357,7 @@ void registerError(ExpressionContext* expressionContext, char const* functionNam
   std::string msg;
 
   if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
-    msg = arangodb::basics::Exception::FillExceptionString(code, functionName);
+    msg = arangodb::aql::QueryWarnings::buildFormattedString(code, functionName);
   } else {
     msg.append("in function '");
     msg.append(functionName);

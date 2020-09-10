@@ -1,6 +1,11 @@
 devel
 -----
 
+* Ensure that the argument to an AQL OPTIONS clause is always an object
+  which does not contain any dynamic (run-time) values. Previously, this
+  was only enforced for traversal options and options for data-modification
+  queries. This change extends the check to all occurrences of OPTIONS.
+
 * Enforce a maximum result register usage limit in AQL queries. In an AQL
   query, every user-defined or internal (unnamed) variable will need a 
   register to store results in.
