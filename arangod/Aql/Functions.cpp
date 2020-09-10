@@ -3767,25 +3767,25 @@ AqlValue Functions::DateZoned(ExpressionContext* expressionContext,
   using namespace std::chrono;
   using namespace date;
 
-  tp_sys_clock_ms tp;
+  tp_sys_clock_ms tp_utc;
 
-  if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
+  // TODO: Set correct path
+  set_install("C:\\Core\\Source\\arangodb\\etc\\arangodb3\\tzdata");
+
+  if (!::parameterToTimePoint(expressionContext, parameters, tp_utc, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
   AqlValue const& timeZoneParam = extractFunctionParameterValue(parameters, 1);
 
-  if (!timeZoneParam.isString()) {  // unit type must be string
+  if (!timeZoneParam.isString()) {  // timezone type must be string
     registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
-  std::string target_tz = timeZoneParam.slice().copyString();
-
-  time_point<system_clock, seconds> a = floor<seconds>(tp);
-  auto zoned_time = make_zoned(target_tz, a);
-
-  tp_sys_clock_ms tp_zoned = zoned_time.get_sys_time();
+  const std::string target_timezone = timeZoneParam.slice().copyString();
+  const auto time = make_zoned(target_timezone, floor<milliseconds>(tp_utc));
+  const auto tp_zoned = tp_sys_clock_ms{time.get_local_time().time_since_epoch()};
 
   return ::timeAqlValue(expressionContext, AFN, tp_zoned);
 }
