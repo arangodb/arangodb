@@ -57,7 +57,7 @@ void ReplaceDocument(std::string const& db, std::string const& collection,
                      VPackSlice const& document, OperationOptions const& options,
                      int) {}
 void ModifyDocument(std::string const& db, std::string const& collection,
-                    VPackSlice const& document, OperationOptions const& options) {}
+                    VPackSlice const& document, OperationOptions const& options, int code) {}
 void IllegalDocumentOperation(GeneralRequest const&, int result) {}
 void QueryDocument(std::string const& db, std::string const&, std::string const&, int code) {}
 void QueryDocument(std::string const& db, VPackSlice const&, int code) {}
