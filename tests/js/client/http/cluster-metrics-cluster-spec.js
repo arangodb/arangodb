@@ -26,7 +26,11 @@
 
 const {expect} = require('chai');
 const request = require("@arangodb/request");
-const db = require("internal").db;
+const internal = require("internal");
+
+const db = internal.db;
+const suspendExternal = internal.suspendExternal;
+const continueExternal = internal.continueExternal;
 
 class Watcher {
   constructor(metric) {
@@ -44,34 +48,34 @@ class Watcher {
   };
 
   check(){
-    expect(this._after).to.be.greaterThan(this._before);
+    expect(this._after).to.be.greaterThan(this._before, this._metric);
   };
   
   checkEq(increment){
-    expect(this._after).to.be.equal(this._before + increment);
+    expect(this._after).to.be.equal(this._before + increment, this._metric);
   };
 
   checkAtLeast(minIncrement){
-    expect(this._after).to.be.at.least(this._before + minIncrement);
+    expect(this._after).to.be.at.least(this._before + minIncrement, this._metric);
   };
 }
 
-const expectOneBucketChanged = (actual, old) => {
+const expectOneBucketChanged = (actual, old , message) => {
   let foundOne = false;
   for (const [key, value] of Object.entries(actual)) {
     if (old[key] < value) {
       foundOne = true;
     }
-    expect(old[key]).to.be.most(value);
+    expect(old[key]).to.be.most(value, message);
 
   }
-  expect(foundOne).to.equal(true);
+  expect(foundOne).to.equal(true, message);
 };
 
 class BucketWatcher extends Watcher{  
 
   check(){
-    expectOneBucketChanged(this._after, this._before);
+    expectOneBucketChanged(this._after, this._before, this._metric);
   };
 }
 
@@ -85,8 +89,8 @@ const MetricNames = {
   SHARD_LEADER_COUNT: "arangodb_shards_leader_count",
   HEARTBEAT_BUCKET: "arangodb_heartbeat_send_time_msec_bucket",
   HEARTBEAT_COUNT: "arangodb_heartbeat_send_time_msec_count",
-  SUPERVISION_BUCKET: "arangodb_agency_supervision_runtime_msec_bucket",
-  SUPERVISION_COUNT: "arangodb_agency_supervision_runtime_msec_count",
+  HEARTBEAT_FAILURES: "arangodb_heartbeat_failures",
+  
   SLOW_QUERY_COUNT: "arangodb_aql_slow_query",
 
   HTTP_DELETE_COUNT: "arangodb_http_request_statistics_http_delete_requests",
@@ -108,63 +112,103 @@ const MetricNames = {
   BYTES_SENT_BUCKET: "arangodb_client_connection_statistics_bytes_sent_bucket",
   TOTAL_TIME_BUCKET: "arangodb_client_connection_statistics_total_time_bucket",
 
+  SUPERVISION_RUNTIME_COUNT: "arangodb_agency_supervision_runtime_msec_count",
+  SUPERVISION_RUNTIME_BUCKET: "arangodb_agency_supervision_runtime_msec_bucket",  
+  SUPERVISION_RUNTIME_TOTAL: "arangodb_agency_supervision_accum_runtime_msec",
+  
+  FAILED_SERVER_COUNT: "arangodb_agency_supervision_failed_server_count",
+  SUPERVISION_WAIT_REPL_COUNT: "arangodb_agency_supervision_accum_runtime_wait_for_replication_msec",
+  AGENCY_LOG_SIZE: "arangodb_agency_log_size_bytes",
+};
 
-  //METRIC: "arangodb_client_connection_statistics_bytes_received_sum",
-  // BMETRIC: "arangodb_client_connection_statistics_bytes_received_bucket",
+class SupervisionWatcher {
+  constructor(){
+    this.FailedServerWatcher = new Watcher(MetricNames.FAILED_SERVER_COUNT);
+    this.WaitReplWatcher = new Watcher(MetricNames.SUPERVISION_WAIT_REPL_COUNT);  
+    this.LogSizeWatcher  = new Watcher(MetricNames.AGENCY_LOG_SIZE);
+    this.TotalRuntimeWatcher = new Watcher(MetricNames.SUPERVISION_RUNTIME_TOTAL);
+    this.HeartBeatFailure = new Watcher(MetricNames.HEARTBEAT_FAILURES);
+  }
+  before(metrics){
+    this.FailedServerWatcher.before(metrics);
+    this.WaitReplWatcher.before(metrics);
+    this.LogSizeWatcher.before(metrics);
+    this.TotalRuntimeWatcher.before(metrics);
+    this.HeartBeatFailure.before(metrics);
+  }
+  after(metrics){
+    this.FailedServerWatcher.after(metrics);
+    this.WaitReplWatcher.after(metrics);
+    this.LogSizeWatcher.after(metrics);
+    this.TotalRuntimeWatcher.after(metrics);
+    this.HeartBeatFailure.after(metrics);
+  }
+  check(){
+    this.FailedServerWatcher.checkEq(1);
+    this.WaitReplWatcher.check();
+    this.LogSizeWatcher.check();
+    this.TotalRuntimeWatcher.check();
+    this.HeartBeatFailure.check();
+  }
+}
 
-  AGENCY_LOG_SIZE: "arangodb_agency_log_size_bytes"
+class SupervisionHeartbeatWatcher {
+  constructor() {
+    this.CountWatcher = new Watcher(MetricNames.SUPERVISION_RUNTIME_COUNT);
+    this.BucketWatcher = new BucketWatcher(MetricNames.SUPERVISION_RUNTIME_BUCKET);    
+  }
+  before(metrics) {
+    this.CountWatcher.before(metrics);
+    this.BucketWatcher.before(metrics);
+  };
+  after(metrics) {
+    this.CountWatcher.after(metrics);
+    this.BucketWatcher.after(metrics);
+  };
+  check(){
+    this.CountWatcher.check();
+    this.BucketWatcher.check();    
+  };
 };
 
 class ConnectionStatWatcher {
   constructor(){
-    // this.CountWatcher = new Watcher (MetricNames.METRIC);
-    // this.BucketWatcher = new BucketWatcher (MetricNames.BMETRIC);
-
+    this.ConnectionsCountWatcher = new Watcher (MetricNames.CLIENT_CONNECTIONS_COUNT);    
     this.IoTimeBucketWatcher = new BucketWatcher (MetricNames.IO_TIME_BUCKET);
-    this.RequestTimeBucketWatcher = new BucketWatcher (MetricNames.REQUST_TIME_BUCKET);
-    
+    this.RequestTimeBucketWatcher = new BucketWatcher (MetricNames.REQUST_TIME_BUCKET);    
     this.BytesRecivedBucketWatcher = new BucketWatcher (MetricNames.BYTES_RECIVED_BUCKET); 
     this.BytesSentBucketWatcher = new BucketWatcher (MetricNames.BYTES_SENT_BUCKET); 
     this.TotalTimeBucketWatcher = new BucketWatcher (MetricNames.TOTAL_TIME_BUCKET); 
   }
 
   before(metrics){
-    //this.CountWatcher.before(metrics);
-    // this.BucketWatcher.before(metrics);
+    this.ConnectionsCountWatcher.before(metrics);    
     this.IoTimeBucketWatcher.before(metrics);
     this.RequestTimeBucketWatcher.before(metrics);
-
     this.BytesRecivedBucketWatcher.before(metrics);
     this.BytesSentBucketWatcher.before(metrics);
-    this.TotalTimeBucketWatcher.before(metrics);
-        
+    this.TotalTimeBucketWatcher.before(metrics);        
   }
 
   after(metrics){
-    //this.CountWatcher.after(metrics);
-    // this.BucketWatcher.after(metrics);
+    this.ConnectionsCountWatcher.after(metrics);
     this.IoTimeBucketWatcher.after(metrics);
     this.RequestTimeBucketWatcher.after(metrics);
-
     this.BytesRecivedBucketWatcher.after(metrics);
     this.BytesSentBucketWatcher.after(metrics);
-    this.TotalTimeBucketWatcher.after(metrics);
-    
+    this.TotalTimeBucketWatcher.after(metrics);    
   }
 
   check(){
-    this.CountWatcher.check();
-    //this.BucketWatcher.check();
-    
+   
+    this.ConnectionsCountWatcher.check();
     this.IoTimeBucketWatcher.check();
     this.RequestTimeBucketWatcher.check();
-
     this.BytesRecivedBucketWatcher.check();
     this.BytesSentBucketWatcher.check();
     this.TotalTimeBucketWatcher.check();
   }
 }
-
 
 class HttpRequestsCountWatcher {
   constructor(){
@@ -204,22 +248,15 @@ class HttpRequestsCountWatcher {
   }
 
   check(){
-    this.HttpDeleteCountWatcher.checkEq(1);
-    this.HttpGetCountWatcher.checkEq(1);
-    this.HttpHeadCountWatcher.checkEq(1);
-    this.HttpOptionsCountWatcher.checkEq(1);
-    this.HttpPatchCountWatcher.checkEq(1);
-    this.HttpPostCountWatcher.checkEq(2);
+    this.HttpDeleteCountWatcher.checkAtLeast(1);
+    this.HttpGetCountWatcher.checkAtLeast(1);
+    this.HttpHeadCountWatcher.checkAtLeast(1);
+    this.HttpOptionsCountWatcher.checkAtLeast(1);
+    this.HttpPatchCountWatcher.checkAtLeast(1);
+    this.HttpPostCountWatcher.checkAtLeast(2);    
+    this.HttpOtherCountWatcher.checkAtLeast(1);
     this.HttpPutCountWatcher.checkAtLeast(1);
-    this.HttpOtherCountWatcher.checkEq(1);
     this.HttpTotalCountWatcher.checkAtLeast(9);
-  }
-}
-
-
-class AgencyLogSizeWatcher extends Watcher {
-  constructor() {
-    super(MetricNames.AGENCY_LOG_SIZE);
   }
 }
 
@@ -321,29 +358,6 @@ class HeartBeatWatcher {
   }
 }
 
-class SupervisionWatcher {
-  constructor() {
-    this._svValueWatcher = new Watcher(MetricNames.SUPERVISION_COUNT);
-    this._svBucketWatcher = new BucketWatcher(MetricNames.SUPERVISION_BUCKET);
-  }
-
-  before(metrics) {
-    this._svValueWatcher.before(metrics);
-    this._svBucketWatcher.before(metrics);
-  };
-
-  after(metrics) {
-    this._svValueWatcher.after(metrics);
-    this._svBucketWatcher.after(metrics);
-  };
-
-  check(){
-    this._svValueWatcher.check();
-    this._svBucketWatcher.check();
-  };
-};
-
-
 describe('_admin/metrics', () => {
 
   const getServers = () => {
@@ -368,7 +382,7 @@ describe('_admin/metrics', () => {
     }
     return list;
   };
-
+  
   let servers;
 
   before(() => {
@@ -460,16 +474,23 @@ describe('_admin/metrics', () => {
     });      
   };
 
-
-  it('http requests statistics',() => {
+  it('http requests and client connection statistics',() => {
     
     runTest(() => {
       const request = require("@arangodb/request");      
       const url = `${servers.get('coordinator')[0]}`;
       
+      let resServerId = request({
+        url: `${url}/_admin/server/id`, 
+        method: "GET",
+        headers: {"Connection": "Close"},
+      });
+      expect(resServerId.statusCode).to.equal(200);
+
       let resCreateDB = request({
         url: `${url}/_api/collection`, 
         method: "POST",
+        headers: {"Connection": "Close"},
         body: '{"name": "UnitTestCollection"}'        
       });  
           
@@ -479,6 +500,7 @@ describe('_admin/metrics', () => {
       let resCreateDoc = request({
         url: `${url}/_api/document/UnitTestCollection?waitForSync=true`, 
         method: "POST",
+        headers: {"Connection": "Close"},
         body: '{"_key": "testDoc", "test": "test"}'
       });  
           
@@ -486,7 +508,8 @@ describe('_admin/metrics', () => {
 
       let resProp = request({
         url: `${url}/_api/collection/UnitTestCollection/properties`, 
-        method: "PUT"
+        method: "PUT",
+        headers: {"Connection": "Close"}
       });
 
       expect(resProp.statusCode).to.equal(200);
@@ -494,6 +517,7 @@ describe('_admin/metrics', () => {
       let resPatchDoc = request({
         url: `${url}/_api/document/UnitTestCollection?waitForSync=true`, 
         method: "PATCH",
+        headers: {"Connection": "Close"},
         body: '[{"_key": "testDoc", "test": "test2"}]'
       });  
           
@@ -501,91 +525,106 @@ describe('_admin/metrics', () => {
 
       let resHeadDoc = request({
         url: `${url}/_api/document/UnitTestCollection/testDoc`, 
-        method: "HEAD"
+        method: "HEAD", 
       }); 
       expect(resHeadDoc.statusCode).to.equal(200);
 
       let resOtionsDoc = request({
-        url: `${url}/_api`, 
-        method: "OPTIONS"
+        url: `${url}/_api`,
+        method: "OPTIONS",
+        headers: {"Connection": "Close"}        
       }); 
       expect(resOtionsDoc.statusCode).to.equal(200);
 
       let resTraceDoc = request({
-        url: `${url}/_api`, 
-        method: "TRACE"
+        url: `${url}/_api`,
+        method: "TRACE",
+        headers: {"Connection": "Close"}
       }); 
       expect(resTraceDoc.statusCode).to.equal(500);
 
 
       let resDelete = request({
-        url: `${url}/_api/collection/UnitTestCollection`, 
-        method: "DELETE"        
+        url: `${url}/_api/collection/UnitTestCollection`,
+        method: "DELETE",
+        headers: {"Connection": "Close"}        
       });
 
       expect(resDelete.statusCode).to.equal(200);
-      require("internal").wait(5.0);
+      require("internal").wait(15.0);
 
-    }, [new ConnectionStatWatcher()], 'dbserver');
-  
+    }, [new ConnectionStatWatcher(), new HttpRequestsCountWatcher()], 'coordinator');  
   });
 
+  it('aql query count and slow query count', () => {
+    runTest(() => {
+      const queries = require("@arangodb/aql/queries");
+      const oldThreshold = queries.properties().slowQueryThreshold;
+      queries.properties({slowQueryThreshold: 1});
+      db._query(`return sleep(1)`);
+      queries.properties({slowQueryThreshold: oldThreshold});       
+    }, [new SlowQueryCountWatcher(1), new QueryTimeWatcher(1000)], 'coordinator');
+  });
 
-  // it('agency log size ', () => {
-  //   try{  
-  //     runTest(() => {
-  //       db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
-  //         require("internal").wait(5.0);
-  //     }, [new AgencyLogSizeWatcher()], 'agent');
-  //   } finally {
-  //     db._drop("UnitTestCollection");
-  //   }  
-  // });
+  it('collection and index', () => {
+    try {
+      runTest(() => {
+        db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
+        require("internal").wait(10.0); // database servers update their shard count in phaseOne. So lets wait until all have done their next phaseOne.
+      },
+      [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9)],
+      "dbserver"
+      );
+      runTest(() => {
+        db["UnitTestCollection"].ensureHashIndex("temp");
+      },
+      [new MaintenanceWatcher()],
+      "dbserver"
+      );
+    } finally {
+      db._drop("UnitTestCollection");
+    }
+  });
 
-  // it('aql query count and slow query count', () => {
-  //   runTest(() => {
-  //     const queries = require("@arangodb/aql/queries");
-  //     const oldThreshold = queries.properties().slowQueryThreshold;
-  //     queries.properties({slowQueryThreshold: 1});
-  //     db._query(`return sleep(1)`);
-  //     queries.properties({slowQueryThreshold: oldThreshold});       
-  //   }, [new SlowQueryCountWatcher(1), new QueryTimeWatcher(1000)], 'coordinator');
-  // });
+  it('at least 1 heartbeat and supervision per second', () => {
+    runTest(() => {
+      require("internal").wait(1.0);
+    }, [new HeartBeatWatcher()], "dbserver");
 
-  // it('collection and index', () => {
-  //   try {
-  //     runTest(() => {
-  //       db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
-  //       require("internal").wait(10.0); // database servers update their shard count in phaseOne. So lets wait until all have done their next phaseOne.
-  //     },
-  //     [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9)],
-  //     "dbserver"
-  //     );
-  //     runTest(() => {
-  //       db["UnitTestCollection"].ensureHashIndex("temp");
-  //     },
-  //     [new MaintenanceWatcher()],
-  //     "dbserver"
-  //     );
-  //   } finally {
-  //     db._drop("UnitTestCollection");
-  //   }
-  // });
+    runTest(() => {
+      require("internal").wait(1.0);
+    }, [new HeartBeatWatcher()], "coordinator");
 
-  // it('at least 1 heartbeat and supervision per second', () => {
-  //   runTest(() => {
-  //     require("internal").wait(1.0);
-  //   }, [new HeartBeatWatcher()], "dbserver");
+    runTest(() => {
+      require("internal").wait(1.0);
+    }, [new SupervisionHeartbeatWatcher()], "agent");
 
-  //   runTest(() => {
-  //     require("internal").wait(1.0);
-  //   }, [new HeartBeatWatcher()], "coordinator");
+  });
 
-  //   runTest(() => {
-  //     require("internal").wait(1.0);
-  //   }, [new SupervisionWatcher()], "agent");
+  it('supervision metrics', () => {
+    try{  
+      runTest(() => {
 
-  // });
+        db._createDatabase("TestDB");
+        db._useDatabase("TestDB");
+        let c = db._create("UnitTestCollection", {numberOfShards: 6, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
+        require("internal").wait(5.0);
 
-    
+        let docs = [];        
+        for (let i = 0; i < 1000; ++i) {
+          docs.push({ value: i });
+          c.insert(docs);
+        }
+  
+        const dbservers = global.instanceInfo.arangods.filter(arangod => arangod.role === "dbserver");
+        suspendExternal(dbservers[0].pid);
+        require("internal").wait(15.0);
+        continueExternal(dbservers[0].pid);
+        require("internal").wait(15.0);
+
+      }, [new SupervisionWatcher()], 'agent');
+    } finally {
+      db._drop("UnitTestCollection");
+    }
+  });    
 });
