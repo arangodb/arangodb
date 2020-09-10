@@ -36,9 +36,9 @@ namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
 // ongoing Http2 stream
 struct Stream {
-  Stream(std::unique_ptr<Request>&& req,
-         RequestCallback&& cb) : callback(std::move(cb)), request(std::move(req)) {}
-  
+  Stream(std::unique_ptr<Request>&& req, RequestCallback&& cb)
+      : callback(std::move(cb)), request(std::move(req)) {}
+
   velocypack::Buffer<uint8_t> data;
 
   RequestCallback callback;
@@ -56,36 +56,26 @@ struct Stream {
 // Connection object that handles sending and receiving of
 //  Velocystream Messages.
 template <SocketType T>
-class H2Connection final : public fuerte::GeneralConnection<T, Stream> {
+class H2Connection final : public fuerte::MultiConnection<T, Stream> {
  public:
   explicit H2Connection(EventLoopService& loop,
                         detail::ConnectionConfiguration const&);
 
   ~H2Connection();
 
- public:
-  // Return the number of unfinished requests.
-  std::size_t requestsLeft() const override;
-
  protected:
-  void finishConnect() override;
-  
-  /// perform writes
-  void doWrite() override;
-  
-  // called by the async_read handler (called from IO thread)
-  void asyncReadCallback(asio_ns::error_code const&) override;
+  virtual void finishConnect() override;
 
-  /// abort ongoing / unfinished requests (locally)
-  void abortOngoingRequests(const fuerte::Error) override;
-  
-  void setIOTimeout() override;
-  
-  std::unique_ptr<Stream> createRequest(std::unique_ptr<Request>&& req,
-                                        RequestCallback&& cb) override {
-    return std::make_unique<Stream>(std::move(req), std::move(cb));
-  }
-  
+  /// perform writes
+  virtual void doWrite() override;
+
+  // called by the async_read handler (called from IO thread)
+  virtual void asyncReadCallback(asio_ns::error_code const&) override;
+
+  /// abort ongoing / unfinished requests expiring before given timpoint
+  virtual void abortRequests(
+      fuerte::Error, std::chrono::steady_clock::time_point now) override;
+
  private:
   static int on_begin_headers(nghttp2_session* session,
                               const nghttp2_frame* frame, void* user_data);
@@ -105,7 +95,6 @@ class H2Connection final : public fuerte::GeneralConnection<T, Stream> {
                                void* user_data);
 
  private:
-  
   void initNgHttp2Session();
 
   void sendHttp1UpgradeRequest();
@@ -115,29 +104,20 @@ class H2Connection final : public fuerte::GeneralConnection<T, Stream> {
   void queueHttp2Requests();
 
   Stream* findStream(int32_t sid) const;
-  
+
   std::unique_ptr<Stream> eraseStream(int32_t sid);
-  
+
   /// should close connection
   bool shouldStop() const;
-  
+
   // ping ensures server does not close the connection
   void startPing();
-  
-  void abortExpiredStreams();
 
  private:
   velocypack::Buffer<uint8_t> _outbuffer;
-
-  std::map<int32_t, std::unique_ptr<Stream>> _streams;
-  
-  asio_ns::steady_timer _ping; // keep connection open
-
+  asio_ns::steady_timer _ping;  // keep connection open
   const std::string _authHeader;
-
   nghttp2_session* _session = nullptr;
-
-  std::atomic<uint32_t> _streamCount{0};
 };
 
 }}}}  // namespace arangodb::fuerte::v1::http
