@@ -51,6 +51,7 @@
 #include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
 #include "Futures/Utilities.h"
+#include "GeneralServer/RestHandler.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Network/Methods.h"
