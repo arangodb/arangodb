@@ -1,6 +1,19 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Enforce a maximum result register usage limit in AQL queries. In an AQL query,
+  every user-defined or internal (unnamed) variable will need a register to
+  store results in.
+
+  AQL queries that use more result registers than allowed (currently 1000) will
+  now abort deterministically during the planning stage with error 32
+  (`resource limit exceeded`) and the error message
+  "too many registers (1000) needed for AQL query".
+
+  Before this fix, an AQL query that used more than 1000 result registers
+  crashed the server when assertions were turned on, and the behavior was
+  undefined when assertions were turned off.
+
 * Updated arangosync to 0.7.11.
 
 * Make followers in active failover run a compaction after they process a
