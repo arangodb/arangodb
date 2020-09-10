@@ -1396,7 +1396,7 @@ void Functions::Stringify(transaction::Methods* trx,
     return;
   }
 
-  VPackOptions* options = trx->transactionContextPtr()->getVPackOptionsForDump();
+  VPackOptions* options = trx->transactionContextPtr()->getVPackOptions();
   VPackOptions adjustedOptions = *options;
   adjustedOptions.escapeUnicode = false;
   adjustedOptions.escapeForwardSlashes = false;

@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
 

@@ -138,7 +138,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
     }
     // we want the conflicting other key returned in case of unique constraint
     // violation
-    options.indexOperationMode = arangodb::Index::OperationMode::internal;
+    options.indexOperationMode = arangodb::IndexOperationMode::internal;
 
     try {
       OperationResult opRes;
@@ -215,7 +215,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 
           // in case we get a unique constraint violation in a multi-document transaction,
           // we can remove the conflicting document and try again
-          options.indexOperationMode = arangodb::Index::OperationMode::normal;
+          options.indexOperationMode = arangodb::IndexOperationMode::normal;
 
           VPackBuilder tmp;
           tmp.add(VPackValue(opRes.errorMessage()));

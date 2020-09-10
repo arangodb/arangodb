@@ -322,7 +322,7 @@ void RestVocbaseBaseHandler::generate20x(arangodb::OperationResult const& result
                                          std::string const& collectionName, TRI_col_type_e type,
                                          VPackOptions const* options, bool isMultiple,
                                          rest::ResponseCode waitForSyncResponseCode) {
-  if (result._options.waitForSync) {
+  if (result.options.waitForSync) {
     resetResponse(waitForSyncResponseCode);
   } else {
     resetResponse(rest::ResponseCode::ACCEPTED);
@@ -414,7 +414,7 @@ void RestVocbaseBaseHandler::generateConflictError(OperationResult const& opres,
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
 
-  writeResult(builder.slice(), *(ctx->getVPackOptionsForDump()));
+  writeResult(builder.slice(), *(ctx->getVPackOptions()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -38,6 +38,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
 

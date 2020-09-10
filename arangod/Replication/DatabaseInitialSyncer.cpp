@@ -155,7 +155,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
   options.ignoreRevs = true;
   options.isRestore = true;
   options.validate = false; // no validation during replication
-  options.indexOperationMode = arangodb::Index::OperationMode::internal;
+  options.indexOperationMode = arangodb::IndexOperationMode::internal;
   options.ignoreUniqueConstraints = true;
   options.waitForSync = false; // no waitForSync during replication
   if (!state.leaderId.empty()) {
@@ -256,7 +256,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                           ": document revision is invalid");
       }
 
-      TRI_ASSERT(options.indexOperationMode == arangodb::Index::OperationMode::internal);
+      TRI_ASSERT(options.indexOperationMode == arangodb::IndexOperationMode::internal);
 
       Result res = physical->insert(&trx, leaderDoc, mdr, options);
       
@@ -274,10 +274,10 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
           if (inner.fail()) {
             return res;
           }
-          options.indexOperationMode = arangodb::Index::OperationMode::normal;
+          options.indexOperationMode = arangodb::IndexOperationMode::normal;
           res = physical->insert(&trx, leaderDoc, mdr, options);
           
-          options.indexOperationMode = arangodb::Index::OperationMode::internal;
+          options.indexOperationMode = arangodb::IndexOperationMode::internal;
           if (res.fail()) {
             return res;
           }

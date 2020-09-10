@@ -36,8 +36,8 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
+#include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
