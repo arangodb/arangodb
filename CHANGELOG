@@ -1,6 +1,11 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Ensure that the argument to an AQL OPTIONS clause is always an object
+  which does not contain any dynamic (run-time) values. Previously, this
+  was only enforced for traversal options and options for data-modification
+  queries. This change extends the check to all occurrences of OPTIONS.
+
 * Add attributes `database` and `user` when tracking current and slow AQL
   queries.
   `database` contains the name of the database the query is/was running in,
