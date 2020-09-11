@@ -459,12 +459,14 @@ void handleLocalShard(
 }
 
 /// @brief Get a map shardName -> servers
-VPackBuilder getShardMap(VPackSlice const& collection) {
+VPackBuilder getShardMap(VPackSlice const& collections) {
   VPackBuilder shardMap;
   {
     VPackObjectBuilder o(&shardMap);
-    for (auto shard : VPackObjectIterator(collection.get(SHARDS))) {
-      shardMap.add(shard.key.stringRef(), shard.value);
+    for (auto collection : VPackObjectIterator(collections)) {
+      for (auto shard : VPackObjectIterator(collection.value.get(SHARDS))) {
+        shardMap.add(shard.key.stringRef(), shard.value);
+      }
     }
   }
   return shardMap;
@@ -543,6 +545,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       auto pdb = pit->second->slice()[0];
       std::vector<std::string> ppath {
         AgencyCommHelper::path(), PLAN, COLLECTIONS, dbname};
+
       if (!pdb.hasKey(ppath)) {
         continue;
       }
@@ -596,14 +599,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
       if (ldbslice.isObject()) {
         for (auto const& lcol : VPackObjectIterator(ldbslice)) {
-          auto const& colname = lcol.key.stringRef();
-          Slice pcol = plan.get(colname); // TODO? is there?
-          auto const shardMap = getShardMap(pcol);             // plan shards -> servers
-          for (auto const& sh : VPackObjectIterator(lcol.value.get(SHARDS))) { // for each local shard
-            std::string shName = sh.key.copyString();
-            handleLocalShard(ldbname, shName, sh.value, shardMap.slice(),
+          auto const& colname = lcol.key.copyString();
+          auto const shardMap = getShardMap(plan);            // plan shards -> servers
+          handleLocalShard(ldbname, colname, lcol.value, shardMap.slice(),
                              commonShrds, indis, serverId, actions, feature, shardActionMap);
-          }
         }
       }
     }
@@ -820,10 +819,10 @@ arangodb::Result arangodb::maintenance::phaseOne(
 
   LOG_DEVEL << "PI: ";
   for (auto const& i : plan) {
-    LOG_DEVEL << "plan[" <<i.first << "]: " << i.second->toJson(); 
+    LOG_DEVEL << "plan[" <<i.first << "]: " << i.second->toJson();
   }
   for (auto const& i : local) {
-    LOG_DEVEL << "local[" <<i.first << "]: " << i.second->toJson(); 
+    LOG_DEVEL << "local[" <<i.first << "]: " << i.second->toJson();
   }
 
   auto start = std::chrono::steady_clock::now();
@@ -1482,13 +1481,13 @@ arangodb::Result arangodb::maintenance::phaseTwo(
 
   LOG_DEVEL << "PII: ";
   for (auto const& i : plan) {
-    LOG_DEVEL << "plan[" <<i.first << "]: " << i.second->toJson(); 
+    LOG_DEVEL << "plan[" <<i.first << "]: " << i.second->toJson();
   }
   for (auto const& i : local) {
-    LOG_DEVEL << "local[" <<i.first << "]: " << i.second->toJson(); 
+    LOG_DEVEL << "local[" <<i.first << "]: " << i.second->toJson();
   }
   for (auto const& i : cur) {
-    LOG_DEVEL << "current[" <<i.first << "]: " << i.second->toJson(); 
+    LOG_DEVEL << "current[" <<i.first << "]: " << i.second->toJson();
   }
 
   auto start = std::chrono::steady_clock::now();
