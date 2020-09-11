@@ -805,7 +805,7 @@ TEST_CASE("Test [list-cat] primitive", "[list-cat]") {
 
   SECTION("Test list cat basic, single param") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["list-cat", ["quote", 1, 2, 3]]
+      ["list-cat", ["quote", [1, 2, 3]]]
     )aql");
 
     Evaluate(m, program->slice(), result);
@@ -818,7 +818,7 @@ TEST_CASE("Test [list-cat] primitive", "[list-cat]") {
 
   SECTION("Test list cat basic, single param") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["list-cat", ["quote", 1, 2, 3], ["quote", 4, 5]]
+      ["list-cat", ["quote", [1, 2, 3]], ["quote", [4, 5]]]
     )aql");
 
     Evaluate(m, program->slice(), result);
@@ -913,7 +913,7 @@ TEST_CASE("Test [lambda] primitive", "[lambda]") {
 
   SECTION("constant lambda") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      [["lambda", ["quote"], ["quote"], 12]]
+      [["lambda", ["quote", []], ["quote", []], 12]]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -926,7 +926,7 @@ TEST_CASE("Test [lambda] primitive", "[lambda]") {
 
   SECTION("constant lambda with expression") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      [["lambda", ["quote"], ["quote"], ["+", 10, 2]]]
+      [["lambda", ["quote", []], ["quote", []], ["+", 10, 2]]]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -939,7 +939,7 @@ TEST_CASE("Test [lambda] primitive", "[lambda]") {
 
   SECTION("lambda single parameter") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      [["lambda", ["quote"], ["quote", "x"], ["quote", "var-ref", "x"]], 12]
+      [["lambda", ["quote", []], ["quote", ["x"]], ["quote", ["var-ref", "x"]]], 12]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -952,10 +952,10 @@ TEST_CASE("Test [lambda] primitive", "[lambda]") {
 
   SECTION("lambda multiple parameter") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      [["lambda", ["quote"], ["quote", "a", "b"],
-        ["quote", "+",
+      [["lambda", ["quote", []], ["quote", ["a", "b"]],
+        ["quote", [ "+",
           ["var-ref", "a"],
-          ["var-ref", "b"]]
+          ["var-ref", "b"]]]
       ], 10, 2]
     )aql");
 
@@ -973,7 +973,7 @@ TEST_CASE("Test [lambda] primitive", "[lambda]") {
 
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       [
-        ["lambda", ["quote", "a"], ["quote"], ["quote", "var-ref", "a"]]
+        ["lambda", ["quote", ["a"]], ["quote", []], ["quote", ["var-ref", "a"]]]
       ]
     )aql");
 
@@ -991,7 +991,7 @@ TEST_CASE("Test [lambda] primitive", "[lambda]") {
 
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       [
-        ["lambda", ["quote", "a"], ["quote", "b"], ["quote", "+", ["var-ref", "a"], ["var-ref", "b"]]],
+        ["lambda", ["quote", ["a"]], ["quote", ["b"]], ["quote", ["+", ["var-ref", "a"], ["var-ref", "b"]]]],
         4
       ]
     )aql");
@@ -1010,7 +1010,7 @@ TEST_CASE("Test [lambda] primitive", "[lambda]") {
 
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       [
-        ["lambda", ["quote"], ["quote"], ["quote", "var-ref", "a"]]
+        ["lambda", ["quote", []], ["quote", []], ["quote", ["var-ref", "a"]]]
       ]
     )aql");
 
@@ -1024,7 +1024,7 @@ TEST_CASE("Test [lambda] primitive", "[lambda]") {
 
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       [
-        ["lambda", ["quote"], ["quote", "x"], ["quote", "var-ref", "x"]],
+        ["lambda", ["quote", []], ["quote", ["x"]], ["quote", ["var-ref", "x"]]],
         ["+", 10, 2]
       ]
     )aql");
@@ -1169,7 +1169,7 @@ TEST_CASE("Test [dict] primitive", "[dict]") {
 
   SECTION("one content") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["dict", ["quote", "a", 5]]
+      ["dict", ["quote", ["a", 5]]]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1181,7 +1181,7 @@ TEST_CASE("Test [dict] primitive", "[dict]") {
 
   SECTION("two content") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["dict", ["quote", "a", 5], ["quote", "b", "abc"]]
+      ["dict", ["quote", ["a", 5]], ["quote", ["b", "abc"]]]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1231,10 +1231,6 @@ TEST_CASE("Test [dict-keys] primitive", "[dict-keys]") {
     auto res = Evaluate(m, program->slice(), result);
     REQUIRE(res.fail());
   }
-}
-
-TEST_CASE("Test [dict-keys] primitive", "[dict-keys]") {
-  // TODO: to be implemented!
 }
 
 TEST_CASE("Test [str] primitive", "[str]") {
@@ -1291,7 +1287,7 @@ TEST_CASE("Test [dict-merge] primitive", "[dict-merge]") {
 
   SECTION("Merge with empty (left) object") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["dict-merge", ["dict"], ["dict", ["quote", "hello", "world"]] ]
+      ["dict-merge", ["dict"], ["dict", ["quote", ["hello", "world"]]] ]
     )aql");
 
     Evaluate(m, program->slice(), result);
@@ -1302,7 +1298,7 @@ TEST_CASE("Test [dict-merge] primitive", "[dict-merge]") {
 
   SECTION("Merge with empty (right) object") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["dict-merge", ["dict", ["quote", "hello", "world"]], ["dict"]]
+      ["dict-merge", ["dict", ["quote", ["hello", "world"]]], ["dict"]]
     )aql");
 
     Evaluate(m, program->slice(), result);
@@ -1313,7 +1309,7 @@ TEST_CASE("Test [dict-merge] primitive", "[dict-merge]") {
 
   SECTION("Merge with overwrite") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["dict-merge", ["dict", ["quote", "hello", "world"]], ["dict", ["quote", "hello", "newWorld"]]]
+      ["dict-merge", ["dict", ["quote", ["hello", "world"]]], ["dict", ["quote", ["hello", "newWorld"]]]]
     )aql");
 
     Evaluate(m, program->slice(), result);
@@ -1324,7 +1320,7 @@ TEST_CASE("Test [dict-merge] primitive", "[dict-merge]") {
 
   SECTION("Merge with invalid type string") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["dict-merge", ["dict", ["quote", "hello", "world"]], "peter"]
+      ["dict-merge", ["dict", ["quote", ["hello", "world"]]], "peter"]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1333,7 +1329,7 @@ TEST_CASE("Test [dict-merge] primitive", "[dict-merge]") {
 
   SECTION("Merge with invalid type double") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["dict-merge", ["dict", ["quote", "hello", "world"]], "2.0"]
+      ["dict-merge", ["dict", ["quote", ["hello", "world"]]], "2.0"]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1342,7 +1338,7 @@ TEST_CASE("Test [dict-merge] primitive", "[dict-merge]") {
 
   SECTION("Merge with invalid type bool") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["dict-merge", ["dict", ["quote", "hello", "world"]], true]
+      ["dict-merge", ["dict", ["quote", ["hello", "world"]]], true]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1351,7 +1347,7 @@ TEST_CASE("Test [dict-merge] primitive", "[dict-merge]") {
 
   SECTION("Merge with invalid type array") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["dict-merge", ["dict", ["quote", "hello", "world"]], [1,2,3]]
+      ["dict-merge", ["dict", ["quote", ["hello", "world"]]], [1,2,3]]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1368,7 +1364,7 @@ TEST_CASE("Test [attrib-set] primitive", "[attrib-set]") {
     // ["attrib-set", dict, key, value]
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["attrib-set",
-        ["dict", ["quote", "hello", "world"]],
+        ["dict", ["quote", ["hello", "world"]]],
         "hello", "newWorld"
       ]
     )aql");
@@ -1387,7 +1383,7 @@ TEST_CASE("Test [attrib-set] primitive", "[attrib-set]") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["attrib-set",
         {"first": {"second": "oldWorld"}},
-        ["quote", "first", "second"], "newWorld"
+        ["quote", ["first", "second"]], "newWorld"
       ]
     )aql");
 
@@ -1406,7 +1402,7 @@ TEST_CASE("Test [attrib-set] primitive", "[attrib-set]") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["attrib-set",
         {"first": {"second": "oldWorld"}},
-        ["quote", "first", "second"], ["quote", "new", "world"]
+        ["quote", ["first", "second"]], ["quote", ["new", "world"]]
       ]
     )aql");
 
@@ -1507,7 +1503,7 @@ TEST_CASE("Test [array-ref] primitive", "[array-ref]") {
 
   SECTION("get with valid index") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["array-ref", ["quote", 1, 2, 3, 4], 0]
+      ["array-ref", ["quote", [1, 2, 3, 4]], 0]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1520,7 +1516,7 @@ TEST_CASE("Test [array-ref] primitive", "[array-ref]") {
 
   SECTION("get with invalid index") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["array-ref", ["quote", 1, 2, 3, 4], 6]
+      ["array-ref", ["quote", [1, 2, 3, 4]], 6]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1538,7 +1534,7 @@ TEST_CASE("Test [array-ref] primitive", "[array-ref]") {
 
   SECTION("index not a number") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["array-ref", ["quote", 1, 2, 3, 4], "notAValidIndex"]
+      ["array-ref", ["quote", [1, 2, 3, 4]], "notAValidIndex"]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1547,7 +1543,7 @@ TEST_CASE("Test [array-ref] primitive", "[array-ref]") {
 
   SECTION("index is a number but negative") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["array-ref", ["quote", 1, 2, 3, 4], -1]
+      ["array-ref", ["quote", [1, 2, 3, 4]], -1]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1562,7 +1558,7 @@ TEST_CASE("Test [array-set] primitive", "[array-set]") {
 
   SECTION("get with valid index") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["array-set", ["quote", 1, 2, 3, 4], 0, "newValue"]
+      ["array-set", ["quote", [1, 2, 3, 4]], 0, "newValue"]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1575,7 +1571,7 @@ TEST_CASE("Test [array-set] primitive", "[array-set]") {
 
   SECTION("get with invalid index") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["array-set", ["quote", 1, 2, 3, 4], 6, 10]
+      ["array-set", ["quote", [1, 2, 3, 4]], 6, 10]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1593,7 +1589,7 @@ TEST_CASE("Test [array-set] primitive", "[array-set]") {
 
   SECTION("index not a number") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["array-set", ["quote", 1, 2, 3, 4], "notAValidIndex", "hehe"]
+      ["array-set", ["quote", [1, 2, 3, 4]], "notAValidIndex", "hehe"]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1617,7 +1613,7 @@ TEST_CASE("Test [apply] primitive", "[apply]") {
   SECTION("Apply sum") {
     // ["attrib-set", dict, key, value]
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["apply", "+", ["quote", 1, 2, 3]]
+      ["apply", "+", ["quote", [1, 2, 3]]]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1630,7 +1626,7 @@ TEST_CASE("Test [apply] primitive", "[apply]") {
   SECTION("Apply sum, unknown function") {
     // ["attrib-set", dict, key, value]
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["apply", "function-not-found", ["quote", 1, 2, 3]]
+      ["apply", "function-not-found", ["quote", [1, 2, 3]]]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1640,7 +1636,7 @@ TEST_CASE("Test [apply] primitive", "[apply]") {
   SECTION("Apply sum, no function type") {
     // ["attrib-set", dict, key, value]
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["apply", 12, ["quote", 1, 2, 3]]
+      ["apply", 12, ["quote", [1, 2, 3]]]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1660,7 +1656,7 @@ TEST_CASE("Test [apply] primitive", "[apply]") {
   SECTION("Apply sum, lambda") {
     // ["attrib-set", dict, key, value]
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["apply", ["lambda", ["quote"], ["quote", "x"], ["quote", "var-ref", "x"]], ["quote", 2]]
+      ["apply", ["lambda", ["quote", []], ["quote", ["x"]], ["quote", ["var-ref", "x"]]], ["quote", [2]]]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1673,7 +1669,7 @@ TEST_CASE("Test [apply] primitive", "[apply]") {
   SECTION("Apply not reevaluate parameter") {
     // ["attrib-set", dict, key, value]
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["apply", ["lambda", ["quote"], ["quote", "x"], 2], ["quote", ["error"]]]
+      ["apply", ["lambda", ["quote", []], ["quote", ["x"]], 2], ["quote", [["error"]]]]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1691,7 +1687,7 @@ TEST_CASE("Test [quasi-quote] primitive", "[quasi-quote]") {
 
   SECTION("quasi-quote empty") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["array-empty?", ["quasi-quote"]]
+      ["array-empty?", ["quasi-quote", []]]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1703,7 +1699,7 @@ TEST_CASE("Test [quasi-quote] primitive", "[quasi-quote]") {
 
   SECTION("quasi-quote single") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["array-length", ["quasi-quote", 1]]
+      ["array-length", ["quasi-quote", [1]]]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1722,7 +1718,7 @@ TEST_CASE("Test [quasi-quote] primitive", "[quasi-quote]") {
     if (res.fail()) {
       FAIL(res.error().toString());
     }
-    REQUIRE(result.slice().at(0).getNumber<double>() == 3);
+    REQUIRE(result.slice().getNumber<double>() == 3);
   }
 
   SECTION("quasi-quote unquote multiple params") {
@@ -1758,10 +1754,10 @@ TEST_CASE("Test [quasi-quote] primitive", "[quasi-quote]") {
         ["unquote",
           ["array-length",
             ["quasi-quote",
-              ["unquote",
+              [["unquote",
                 ["+", 1, 2]
               ],
-              2
+              2]
             ]
           ]
         ]
@@ -1772,12 +1768,12 @@ TEST_CASE("Test [quasi-quote] primitive", "[quasi-quote]") {
     if (res.fail()) {
       FAIL(res.error().toString());
     }
-    REQUIRE(result.slice().at(0).getNumber<double>() == 2);
+    REQUIRE(result.slice().getNumber<double>() == 2);
   }
 
   SECTION("quasi-quote unquote quasi-quote") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["quasi-quote", ["foo"], ["unquote", ["list", 1, 2]], ["unquote-splice", ["list", 1, 2]]]
+      ["quasi-quote", [["foo"], ["unquote", ["list", 1, 2]], ["unquote-splice", ["list", 1, 2]]]]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);

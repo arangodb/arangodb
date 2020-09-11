@@ -86,8 +86,16 @@ EvalResult SpecialIf(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& re
 }
 
 EvalResult SpecialQuote(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
-  VPackArrayBuilder array(&result);
-  result.add(paramIterator);
+  if (!paramIterator.valid()) {
+    return EvalError("expected one parameter");
+  }
+
+  auto value = *paramIterator++;
+  if (paramIterator.valid()) {
+    return EvalError("Excess elements in quote call");
+  }
+
+  result.add(value);
   return {};
 }
 
@@ -95,7 +103,18 @@ EvalResult SpecialQuoteSplice(Machine& ctx, ArrayIterator paramIterator, VPackBu
   if (!result.isOpenArray()) {
     return EvalError("nothing to splice into");
   }
-  result.add(paramIterator);
+  if (!paramIterator.valid()) {
+    return EvalError("expected one parameter");
+  }
+  auto value = *paramIterator++;
+  if (paramIterator.valid()) {
+    return EvalError("Excess elements in quote call");
+  }
+  if (!value.isArray()) {
+    return EvalError("Can only splice lists, found: " + value.toJson());
+  }
+
+  result.add(VPackArrayIterator(value));
   return {};
 }
 
@@ -416,7 +435,7 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
 EvalResult Evaluate(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result);
 
 
-EvalResult SpecialQuasiQuote(Machine& ctx, ArrayIterator other, VPackBuilder& result) {
+EvalResult SpecialQuasiQuoteInternal(Machine& ctx, ArrayIterator other, VPackBuilder& result) {
 
   if (other.valid()) {
     Slice first = *other;
@@ -451,7 +470,7 @@ EvalResult SpecialQuasiQuote(Machine& ctx, ArrayIterator other, VPackBuilder& re
     for(; other.valid(); other++) {
       auto&& part = *other;
       if (part.isArray()) {
-        if (auto res = SpecialQuasiQuote(ctx, VPackArrayIterator(part), result); res.fail()) {
+        if (auto res = SpecialQuasiQuoteInternal(ctx, VPackArrayIterator(part), result); res.fail()) {
           return res;
         }
       } else {
@@ -460,6 +479,23 @@ EvalResult SpecialQuasiQuote(Machine& ctx, ArrayIterator other, VPackBuilder& re
     }
   }
 
+  return {};
+}
+
+EvalResult SpecialQuasiQuote(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+  if (!paramIterator.valid()) {
+    return EvalError("expected one parameter");
+  }
+
+  auto value = *paramIterator++;
+  if (paramIterator.valid()) {
+    return EvalError("Excess elements in quasi-quote call");
+  }
+  if (value.isArray()) {
+    return SpecialQuasiQuoteInternal(ctx, ArrayIterator(value), result);
+  }
+
+  result.add(value);
   return {};
 }
 

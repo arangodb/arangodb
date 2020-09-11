@@ -145,6 +145,7 @@ struct error {
                            was_terminated = true;
                          },
                          [&](hint const& h) {
+                           result += " ";
                            result += h.msg;
                          },
                          [](auto) {}},
