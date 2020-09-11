@@ -91,6 +91,11 @@ std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&, bool prefix_sam
 Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
                         bool prefixSameAsStart, bool useRangeDelete);
 
+/// @brief compacts the entire key range of the database.
+/// warning: may cause a full rewrite of the entire database, which will
+/// take long for large databases - use with care!
+Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLeve);
+
 // optional switch to std::function to reduce amount of includes and
 // to avoid template
 // this helper is not meant for transactional usage!

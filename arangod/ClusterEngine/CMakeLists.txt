@@ -9,6 +9,7 @@ set(CLUSTER_ENGINE_SOURCES
   ClusterEngine/ClusterIndex.cpp
   ClusterEngine/ClusterIndexFactory.cpp
   ClusterEngine/ClusterRestCollectionHandler.cpp
+  ClusterEngine/ClusterRestCompactHandler.cpp
   ClusterEngine/ClusterRestExportHandler.cpp
   ClusterEngine/ClusterRestHandlers.cpp
   ClusterEngine/ClusterRestReplicationHandler.cpp

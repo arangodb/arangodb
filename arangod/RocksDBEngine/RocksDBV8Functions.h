@@ -25,11 +25,12 @@
 #define ARANGOD_ROCKSDB_ROCKSDB_V8_FUNCTIONS_H 1
 
 #include "Basics/Common.h"
+#include <v8.h>
 
 namespace arangodb {
 
 struct RocksDBV8Functions {
-  static void registerResources();
+  static void registerResources(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>& ArangoNS);
 };
 
 }  // namespace arangodb

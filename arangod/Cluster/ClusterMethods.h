@@ -229,6 +229,9 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string co
 int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector,
                            double maxWaitTime = -1.0);
 
+/// @brief compact the database on all DB servers
+Result compactOnAllDBServers(bool changeLevel, bool compactBottomMostLevel);
+
 /// @brief get TTL statistics from all DBservers and aggregate them
 Result getTtlStatisticsFromAllDBServers(TtlStatistics& out);
 

@@ -25,6 +25,7 @@
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -156,6 +157,51 @@ static void JS_RecalculateCounts(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+  
+  ExecContext const* current = ExecContext::CURRENT;
+  if (ExecContext::isAuthEnabled() && current != nullptr && !current->isSuperuser()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+  }
+
+  bool changeLevel = false;
+  bool compactBottomMostLevel = false;
+  
+  if (args.Length() > 0) {
+    if (args[0]->IsObject()) {
+      v8::Handle<v8::Object> obj =
+          args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      if (TRI_HasProperty(context, isolate, obj, "changeLevel")) {
+        changeLevel = TRI_ObjectToBoolean(
+            isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "changeLevel")));
+      }
+      if (TRI_HasProperty(context, isolate, obj, "compactBottomMostLevel")) {
+        compactBottomMostLevel = TRI_ObjectToBoolean(
+            isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "compactBottomMostLevel")));
+      }
+    }
+  }
+
+  Result res;
+  if (ServerState::instance()->isCoordinator()) {
+    res = compactOnAllDBServers(changeLevel, compactBottomMostLevel);
+  } else {
+    rocksdb::DB* db = arangodb::rocksutils::globalRocksDB()->GetRootDB();
+    res = rocksutils::compactAll(db, changeLevel, compactBottomMostLevel);
+  }
+
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION_FULL(res.errorNumber(), res.errorMessage());
+  }
+
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_CompactCollection(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -202,11 +248,14 @@ static void JS_WaitForEstimatorSync(v8::FunctionCallbackInfo<v8::Value> const& a
   TRI_V8_TRY_CATCH_END
 }
 
-void RocksDBV8Functions::registerResources() {
-  ISOLATE;
+void RocksDBV8Functions::registerResources(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate>& ArangoNS) {
   v8::HandleScope scope(isolate);
 
   TRI_GET_GLOBALS();
+ 
+  // patch ArangoDatabase object
+  TRI_ASSERT(!ArangoNS.IsEmpty());
+  TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING(isolate, "_compact"), JS_Compact);
 
   // patch ArangoCollection object
   v8::Handle<v8::ObjectTemplate> rt =
@@ -220,7 +269,7 @@ void RocksDBV8Functions::registerResources() {
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "estimatedSize"),
                        JS_EstimateCollectionSize);
-
+  
   // add global WAL handling functions
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "WAL_FLUSH"),

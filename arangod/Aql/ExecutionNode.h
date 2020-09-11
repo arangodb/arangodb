@@ -65,6 +65,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -449,6 +450,11 @@ class ExecutionNode {
     VarInfo() = delete;
     VarInfo(int depth, RegisterId registerId)
         : depth(depth), registerId(registerId) {
+
+      if (registerId >= MaxRegisterId) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT, 
+                                       std::string("too many registers (") + std::to_string(MaxRegisterId) + ") needed for AQL query");
+      }
       TRI_ASSERT(registerId < MaxRegisterId);
     }
   };
