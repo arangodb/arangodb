@@ -72,7 +72,7 @@ QueryRegistry::~QueryRegistry() {
 /// @brief insert
 void QueryRegistry::insert(QueryId id, Query* query, double ttl,
                            bool isPrepared, bool keepLease,
-                           std::unique_ptr<CallbackGuard>&& rGuard) {
+                           CallbackGuard&& guard) {
   TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->trx() != nullptr);
   LOG_TOPIC("77778", DEBUG, arangodb::Logger::AQL)
@@ -85,7 +85,7 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl,
   }
 
   // create the query info object outside of the lock
-  auto p = std::make_unique<QueryInfo>(id, query, ttl, isPrepared, std::move(rGuard));
+  auto p = std::make_unique<QueryInfo>(id, query, ttl, isPrepared, std::move(guard));
   p->_isOpen = keepLease;
 
   // now insert into table of running queries
@@ -223,9 +223,7 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id, int errorCod
           TRI_ERROR_BAD_PARAMETER, "query with given vocbase and id not found");
     }
 
-    if (q->second->_rebootGuard != nullptr) {
-      q->second->_rebootGuard->callAndClear();
-    }
+    q->second->_rebootTrackerCallbackGuard.callAndClear();
 
     if (q->second->_isOpen && !ignoreOpened) {
       // query in use by another thread/request
@@ -367,7 +365,7 @@ void QueryRegistry::destroyAll() {
   for (auto& p : allQueries) {
     try {
       LOG_TOPIC("df275", DEBUG, arangodb::Logger::AQL)
-          << "Timeout for query with id " << p.second << " due to shutdown";
+          << "timeout or RebootChecker alert for query with id " << p.second;
       destroy(p.first, p.second, TRI_ERROR_SHUTTING_DOWN, false);
     } catch (...) {
       // ignore any errors here
@@ -395,7 +393,7 @@ void QueryRegistry::disallowInserts() {
 
 
 QueryRegistry::QueryInfo::QueryInfo(QueryId id, Query* query, double ttl, bool isPrepared,
-  std::unique_ptr<arangodb::cluster::CallbackGuard>&& rebootGuard)
+  arangodb::cluster::CallbackGuard guard)
   : _vocbase(&(query->vocbase())),
     _id(id),
     _query(query),
@@ -403,6 +401,7 @@ QueryRegistry::QueryInfo::QueryInfo(QueryId id, Query* query, double ttl, bool i
     _isPrepared(isPrepared),
     _timeToLive(ttl),
     _expires(TRI_microtime() + ttl),
-    _rebootGuard(std::move(rebootGuard)) {}
+    _rebootTrackerCallbackGuard(std::move(guard))
+{}
 
 QueryRegistry::QueryInfo::~QueryInfo() { delete _query; }

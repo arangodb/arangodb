@@ -68,6 +68,7 @@ struct ActionDescription {
   explicit ActionDescription(
       std::map<std::string, std::string> const& desc,
       int priority,
+      bool runEvenIfDuplicate,
       std::shared_ptr<VPackBuilder> const& properties = std::make_shared<VPackBuilder>());
 
   /**
@@ -164,6 +165,15 @@ struct ActionDescription {
     return _priority;
   }
 
+  /**
+   * @brief Get the fact if it is forced or not. If forced, the MaintenanceFeature
+   * will not sort out duplicates by hashing the description. Rather, the action
+   * will always be submitted.
+   */
+  bool isRunEvenIfDuplicate() const {
+    return _runEvenIfDuplicate;
+  }
+
  private:
   /** @brief discriminatory properties */
   std::map<std::string, std::string> const _description;
@@ -173,6 +183,9 @@ struct ActionDescription {
 
   /** @brief priority */
   int _priority;
+
+  /// @brief flag to not sort out duplicates by hashing
+  bool _runEvenIfDuplicate;
 };
 
 }  // namespace maintenance

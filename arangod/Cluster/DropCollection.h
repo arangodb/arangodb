@@ -40,6 +40,7 @@ class DropCollection : public ActionBase {
   virtual ~DropCollection();
 
   virtual bool first() override final;
+  void setState(ActionState state) override final;
 };
 
 }  // namespace maintenance

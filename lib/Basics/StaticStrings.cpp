@@ -275,3 +275,5 @@ std::string const StaticStrings::checksumFileJs("JS_SHA1SUM.txt");
 
 std::string const StaticStrings::IsBuilding("isBuilding");
 std::string const StaticStrings::RebootId("rebootId");
+std::string const StaticStrings::AttrCoordinatorRebootId("coordinatorRebootId");
+std::string const StaticStrings::AttrCoordinatorId("coordinatorId");

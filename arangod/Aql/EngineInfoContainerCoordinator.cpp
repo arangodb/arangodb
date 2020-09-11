@@ -31,6 +31,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Cluster/CallbackGuard.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
@@ -86,7 +87,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     double ttl = query->queryOptions().ttl;
     TRI_ASSERT(ttl > 0);
     try {
-      queryRegistry->insert(_id, query, ttl, true, false);
+      queryRegistry->insert(_id, query, ttl, true, false, cluster::CallbackGuard());
     } catch (basics::Exception const& e) {
       return {e.code(), e.message()};
     } catch (std::exception const& e) {
