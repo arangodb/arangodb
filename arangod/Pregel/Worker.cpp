@@ -297,6 +297,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
   if (_workerContext) {
     _workerContext->_vertexCount = data.get(Utils::vertexCountKey).getUInt();
     _workerContext->_edgeCount = data.get(Utils::edgeCountKey).getUInt();
+    _workerContext->_reports = &this->_reports;
     _workerContext->preGlobalSuperstep(gss);
     _workerContext->preGlobalSuperstepMasterMessage(data.get(Utils::masterToWorkerMessagesKey));
   }
@@ -599,6 +600,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
   if (store.isBool() && store.getBool() == true) {
     LOG_TOPIC("91264", DEBUG, Logger::PREGEL) << "Storing results";
     // tell graphstore to remove read locks
+    _graphStore->_reports = &this->_reports;
     _graphStore->storeResults(&_config, std::move(cleanup));
   } else {
     LOG_TOPIC("b3f35", WARN, Logger::PREGEL) << "Discarding results";
@@ -641,7 +643,9 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
 
     V const& data = vertexEntry->data();
     // bool store =
-    _graphStore->graphFormat()->buildVertexDocument(b, &data, sizeof(V));
+    if (auto res = _graphStore->graphFormat()->buildVertexDocumentWithResult(b, &data, sizeof(V)); res.fail()) {
+      LOG_TOPIC("37fde", ERR, Logger::PREGEL) << "failed to build vertex document: " << res.error().toString();
+    }
     b.close();
   }
   b.close();

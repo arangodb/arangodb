@@ -147,8 +147,8 @@ void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_ty
   }
 }
 
-bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
-                                      const vertex_type* ptr, size_t size) const {
+greenspun::EvalResult GraphFormat::buildVertexDocumentWithResult(
+    arangodb::velocypack::Builder& b, const vertex_type* ptr, size_t size) const {
   if (_dataAccess.writeVertex && _dataAccess.writeVertex->slice().isArray()) {
     greenspun::Machine m;
     InitMachine(m);
@@ -185,7 +185,7 @@ bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
         b.add(entry.value);
       }
     } else {
-      return false;  // will not write as tmpBuilder is not a valid (object) result
+      return {};  // will not write as tmpBuilder is not a valid (object) result
     }
   } else {
     VPackObjectBuilder guard(&b, _resultField);
@@ -193,13 +193,14 @@ bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
       // (copy all) this is the default if no writeVertex program is set
       b.add(VPackValue(acc.first));
       if (auto res = acc.second->finalizeIntoBuilder(b); res.fail()) {
-        LOG_DEVEL << "finalize program failed: " << res.error().toString();
-        THROW_ARANGO_EXCEPTION(res);
+        return res.mapError([&](greenspun::EvalError &err) {
+          err.wrapMessage("when finalizing accumulator " + acc.first);
+        });
       }
     }
   }
 
-  return true;
+  return {};
 }
 
 bool GraphFormat::buildEdgeDocument(arangodb::velocypack::Builder& b,

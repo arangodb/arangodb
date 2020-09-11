@@ -32,14 +32,14 @@ namespace arangodb::pregel::algos::accumulators {
 WorkerContext::WorkerContext(VertexAccumulators const* algorithm)
     : _algo(algorithm) {
   CustomAccumulatorDefinitions const& customDefinitions = _algo->options().customAccumulators;
-  AccumulatorsDeclaration const& globalAccumulatorsDeclarations = _algo->options().globalAccumulators;
+  AccumulatorsDeclaration const& globalAccumulatorsDeclarations =
+      _algo->options().globalAccumulators;
 
   for (auto&& acc : globalAccumulatorsDeclarations) {
     _globalAccumulators.emplace(acc.first, instantiateAccumulator(acc.second, customDefinitions));
     _globalAccumulatorsUpdates.emplace(acc.first, instantiateAccumulator(acc.second, customDefinitions));
   }
 }
-
 
 std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const& WorkerContext::globalAccumulators() {
   return _globalAccumulators;
@@ -49,22 +49,23 @@ std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const& Work
   return _globalAccumulatorsUpdates;
 }
 
-void WorkerContext::preGlobalSuperstep(uint64_t gss) {
-}
+void WorkerContext::preGlobalSuperstep(uint64_t gss) {}
 
-void WorkerContext::preGlobalSuperstepMasterMessage(VPackSlice msg){
+void WorkerContext::preGlobalSuperstepMasterMessage(VPackSlice msg) {
   for (auto&& acc : globalAccumulatorsUpdates()) {
     auto res = acc.second->clear();
     if (!res) {
-      // TODO: Report this error
-      LOG_DEVEL << "error while clearing global accumulator update " << acc.first << " " + res.error().toString();
+      getReportManager().report(ReportLevel::ERROR).with("accumulator", acc.first)
+          << "error while clearing global accumulator update " << acc.first
+          << " " + res.error().toString();
     }
   }
 
   auto globalAccumulatorValues = msg.get("globalAccumulatorValues");
 
-  if(globalAccumulatorValues.isNull() || !globalAccumulatorValues.isObject()) {
-    LOG_DEVEL << "worker did not receive valid global accumulator values, but " << globalAccumulatorValues.toJson();
+  if (globalAccumulatorValues.isNull() || !globalAccumulatorValues.isObject()) {
+    LOG_DEVEL << "worker did not receive valid global accumulator values, but "
+              << globalAccumulatorValues.toJson();
     return;
   }
 
@@ -76,17 +77,19 @@ void WorkerContext::preGlobalSuperstepMasterMessage(VPackSlice msg){
 
     auto accumName = upd.key.copyString();
 
-    if (auto iter = globalAccumulators().find(accumName); iter != std::end(globalAccumulators())) {
+    if (auto iter = globalAccumulators().find(accumName);
+        iter != std::end(globalAccumulators())) {
       auto res = iter->second->setStateBySlice(upd.value);
       if (!res) {
-        LOG_DEVEL << "worker could not set accumulator value for global accumulator " << accumName << " could not be set, " << res.error().toString();
+        getReportManager().report(ReportLevel::ERROR).with("accumulator", accumName)
+            << "worker could not set accumulator value for global accumulator "
+            << accumName << " could not be set, " << res.error().toString();
       }
     }
   }
 }
 
-void WorkerContext::postGlobalSuperstep(uint64_t gss) {
-}
+void WorkerContext::postGlobalSuperstep(uint64_t gss) {}
 
 // Send the updates for the global accumulators back to the conductor
 void WorkerContext::postGlobalSuperstepMasterMessage(VPackBuilder& msg) {
@@ -98,27 +101,30 @@ void WorkerContext::postGlobalSuperstepMasterMessage(VPackBuilder& msg) {
       for (auto&& acc : globalAccumulatorsUpdates()) {
         msg.add(VPackValue(acc.first));
         auto res = acc.second->getStateUpdateIntoBuilder(msg);
-
         if (!res) {
-          // TODO: Better error handling! (reporting)
-          LOG_DEVEL << "worker composing update for " + acc.first + " " +
-                           res.error().toString();
+          getReportManager().report(ReportLevel::ERROR).with("accumulator", acc.first)
+              << "worker composing update for `" << acc.first
+              << "` failed: " + res.error().toString();
         }
       }
     }
   }
 }
 
-greenspun::EvalResult WorkerContext::sendToGlobalAccumulator(std::string accumId, VPackSlice msg) const {
+greenspun::EvalResult WorkerContext::sendToGlobalAccumulator(std::string accumId,
+                                                             VPackSlice msg) const {
   LOG_DEVEL << "send to global accum " << accumId << " msg " << msg.toJson();
-  if (auto iter = _globalAccumulatorsUpdates.find(accumId); iter != std::end(_globalAccumulatorsUpdates)) {
+  if (auto iter = _globalAccumulatorsUpdates.find(accumId);
+      iter != std::end(_globalAccumulatorsUpdates)) {
     return iter->second->updateByMessageSlice(msg).asResult();
   }
   return greenspun::EvalError("global accumulator`" + accumId + "` not found");
 }
 
-greenspun::EvalResult WorkerContext::getGlobalAccumulator(std::string accumId, VPackBuilder result) const {
-  if (auto iter = _globalAccumulatorsUpdates.find(accumId); iter != std::end(_globalAccumulatorsUpdates)) {
+greenspun::EvalResult WorkerContext::getGlobalAccumulator(std::string accumId,
+                                                          VPackBuilder result) const {
+  if (auto iter = _globalAccumulatorsUpdates.find(accumId);
+      iter != std::end(_globalAccumulatorsUpdates)) {
     return iter->second->getIntoBuilder(result).asResult();
   }
   return greenspun::EvalError("global accumulator `" + accumId + "` not found");

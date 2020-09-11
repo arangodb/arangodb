@@ -202,8 +202,7 @@ auto CustomAccumulator<VPackSlice>::getStateUpdateIntoBuilder(VPackBuilder& msg)
 auto CustomAccumulator<VPackSlice>::finalizeIntoBuilder(VPackBuilder& result)
     -> arangodb::greenspun::EvalResult {
   if (_definition.finalizeProgram.isEmpty()) {
-    result.add(_value);
-    return {};
+    return getIntoBuilder(result);
   }
 
   return greenspun::Evaluate(_machine, this->_definition.finalizeProgram.slice(), result)

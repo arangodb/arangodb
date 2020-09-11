@@ -62,9 +62,9 @@ struct GraphFormat final : public graph_format {
   void copyEdgeData(arangodb::velocypack::Slice document,
                     VertexAccumulators::edge_type& targetPtr) override;
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           const VertexAccumulators::vertex_type* ptr,
-                           size_t size) const override;
+  greenspun::EvalResult buildVertexDocumentWithResult(arangodb::velocypack::Builder& b,
+                                                      const VertexAccumulators::vertex_type* ptr,
+                                                      size_t size) const override;
   bool buildEdgeDocument(arangodb::velocypack::Builder& b,
                          const VertexAccumulators::edge_type* ptr, size_t size) const override;
 
