@@ -1343,15 +1343,17 @@ void ClusterInfo::loadCurrent() {
 
     std::vector<std::string> dbPath{
       AgencyCommHelper::path(), "Current", "Databases", databaseName};
-    auto databaseSlice = database.second->slice();
+    auto databaseSlice = database.second->slice()[0];
     if (!databaseSlice.hasKey(dbPath)) {
       newDatabases.erase(databaseName);
     }
     databaseSlice = databaseSlice.get(dbPath);
 
     std::unordered_map<ServerID, velocypack::Slice> serverList;
-    for (auto const& serverSlicePair : VPackObjectIterator(databaseSlice)) {
-      serverList.try_emplace(databaseName, serverSlicePair.value);
+    if (databaseSlice.isObject()) {
+      for (auto const& serverSlicePair : VPackObjectIterator(databaseSlice)) {
+        serverList.try_emplace(databaseName, serverSlicePair.value);
+      }
     }
 
     newDatabases.try_emplace(std::move(databaseName), std::move(serverList));
@@ -1368,7 +1370,7 @@ void ClusterInfo::loadCurrent() {
 
     std::vector<std::string> dbPath{
       AgencyCommHelper::path(), "Current", "Collections", databaseName};
-    auto databaseSlice = database.second->slice();
+    auto databaseSlice = database.second->slice()[0];
     if (!databaseSlice.hasKey(dbPath)) { //TODO
       LOG_DEVEL << "TODO";
         //newDatabases.erase(database);

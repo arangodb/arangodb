@@ -1261,7 +1261,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     // UpdateCurrentForCollections
     std::vector<std::string> curcolpath{AgencyCommHelper::path(), CURRENT, COLLECTIONS, dbName};
     VPackSlice curcolls;
-    if (cur.hasKey(curcolpath)) {
+    if (cur.isObject() && cur.hasKey(curcolpath)) {
       curcolls = cur.get(curcolpath);
     }
 
