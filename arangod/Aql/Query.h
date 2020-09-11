@@ -110,9 +110,7 @@ class Query : public QueryContext {
   void kill();
 
   QueryString const& queryString() const { return _queryString; }
-  
-  QueryProfile* profile() const { return _profile.get(); }
-  
+    
   TEST_VIRTUAL QueryOptions& queryOptions() { return _queryOptions; }
 
   /// @brief return the start time of the query (steady clock value)
@@ -269,7 +267,7 @@ class Query : public QueryContext {
   aql::ServerQueryIdList _serverQueryIds;
   
   /// @brief query execution profile
-  std::unique_ptr<QueryProfile> _profile;
+  std::unique_ptr<QueryProfile> _queryProfile;
 
   /// @brief the ExecutionPlan object, if the query is prepared
   std::vector<std::unique_ptr<ExecutionPlan>> _plans;

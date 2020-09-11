@@ -86,10 +86,8 @@ class ExecContext : public RequestContext {
   /// @brief is allowed to manage users, create databases, ...
   bool isAdminUser() const { return _isAdminUser; }
 
-  /// @brief should immediately cance this operation
-  bool isCanceled() const { return _canceled; }
-
-  void cancel() { _canceled = true; }
+  /// @brief tells you if this execution was canceled
+  virtual bool isCanceled() const { return false; }
 
   /// @brief current user, may be empty for internal users
   std::string const& user() const { return _user; }
@@ -127,18 +125,22 @@ class ExecContext : public RequestContext {
                         auth::Level requested) const {
     return requested <= collectionAuthLevel(db, coll);
   }
+  
+#ifdef USE_ENTERPRISE
+  virtual std::string clientAddress() const { return ""; }
+  virtual std::string requestUrl() const { return ""; }
+  virtual std::string authMethod() const { return ""; }
+#endif
 
  protected:
   /// current user, may be empty for internal users
   std::string const _user;
-  /// current database to use
+  /// current database to use, superuser db is empty
   std::string const _database;
   
   Type _type;
   /// Flag if admin user access (not regarding cluster RO mode)
   bool _isAdminUser;
-  /// should be used to indicate a canceled request / thread
-  bool _canceled;
   /// level of system database
   auth::Level _systemDbAuthLevel;
   /// level of current database

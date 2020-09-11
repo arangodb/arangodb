@@ -25,6 +25,7 @@
 
 #include "Aql/OptimizerUtils.h"
 #include "Cluster/ClusterMethods.h"
+#include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"

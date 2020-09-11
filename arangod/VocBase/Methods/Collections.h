@@ -28,6 +28,7 @@
 #include "Futures/Future.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 

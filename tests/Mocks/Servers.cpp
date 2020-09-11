@@ -333,7 +333,7 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
   auto queryOptions = std::make_shared<VPackBuilder>();
   queryOptions->openObject();
   if (activateTracing) {
-    queryOptions->add("profile", VPackValue(aql::PROFILE_LEVEL_TRACE_2));
+    queryOptions->add("profile", VPackValue(int(aql::ProfileLevel::TraceTwo)));
   }
   queryOptions->close();
   if (queryString.empty()) {

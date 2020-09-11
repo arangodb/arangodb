@@ -900,16 +900,11 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
         }
         auto& res = it.get();
         if (res.response && res.response->statusCode() == fuerte::StatusOK) {
-          auto slices = res.response->slices();
-          if (!slices.empty()) {
-            VPackSlice slice = slices[0];
-            if (slice.isObject()) {
-              slice = slice.get("transactions");
-              if (slice.isArray()) {
-                for (VPackSlice it : VPackArrayIterator(slice)) {
-                  builder.add(it);
-                }
-              }
+          VPackSlice slice = res.slice();
+          if (slice.isObject()) {
+            slice = slice.get("transactions");
+            if (slice.isArray()) {
+              builder.add(VPackArrayIterator(slice));
             }
           }
         }

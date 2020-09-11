@@ -50,8 +50,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-thread_local RestHandler const* RestHandler::CURRENT_HANDLER = nullptr;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -328,12 +326,10 @@ void RestHandler::runHandlerStateMachine() {
 
       case HandlerState::FINALIZE:
         _statistics.SET_REQUEST_END();
-        RestHandler::CURRENT_HANDLER = this;
 
         // shutdownExecute is noexcept
         shutdownExecute(true); // may not be moved down
 
-        RestHandler::CURRENT_HANDLER = nullptr;
         _state = HandlerState::DONE;
         
         // compress response if required
@@ -409,8 +405,6 @@ void RestHandler::executeEngine(bool isContinue) {
   ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
   ExecContextScope scope(exec);
 
-  RestHandler::CURRENT_HANDLER = this;
-
   try {
     RestStatus result = RestStatus::DONE;
     if (isContinue) {
@@ -421,8 +415,6 @@ void RestHandler::executeEngine(bool isContinue) {
     } else {
       result = execute();
     }
-
-    RestHandler::CURRENT_HANDLER = nullptr;
 
     if (result == RestStatus::WAITING) {
       _state = HandlerState::PAUSED;  // wait for someone to continue the state
@@ -484,7 +476,6 @@ void RestHandler::executeEngine(bool isContinue) {
     handleError(err);
   }
 
-  RestHandler::CURRENT_HANDLER = nullptr;
   _state = HandlerState::FAILED;
 }
 
@@ -503,14 +494,10 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
       builder.add(StaticStrings::ErrorNum, VPackValue(errorNumber));
       builder.close();
 
-      VPackOptions options(VPackOptions::Defaults);
-      options.escapeUnicode = true;
-
-      TRI_ASSERT(options.escapeUnicode);
       if (_request != nullptr) {
         _response->setContentType(_request->contentTypeResponse());
       }
-      _response->setPayload(std::move(buffer), options,
+      _response->setPayload(std::move(buffer), VPackOptions::Defaults,
                             /*resolveExternals*/ false);
     } catch (...) {
       // exception while generating error

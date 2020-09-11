@@ -1,6 +1,37 @@
 devel
 -----
 
+* Slightly fixed wrong log level for authentication and also added login event
+  to the standard log.
+
+* Ensure that the argument to an AQL OPTIONS clause is always an object
+  which does not contain any dynamic (run-time) values. Previously, this
+  was only enforced for traversal options and options for data-modification
+  queries. This change extends the check to all occurrences of OPTIONS.
+
+* Added `details` option to figures command of a collection:
+  `collection.figures(details)`
+
+  Setting `details` to `true` will return extended storage engine-specific 
+  details to the figures. The details are intended for debugging ArangoDB
+  itself and their format is subject to change. There is not much use in using
+  the details from a client application.
+  By default, `details` is set to `false`, so no details are returned and the
+  behavior is identical to previous versions of ArangoDB.
+
+* Enforce a maximum result register usage limit in AQL queries. In an AQL
+  query, every user-defined or internal (unnamed) variable will need a 
+  register to store results in.
+
+  AQL queries that use more result registers than allowed (currently 1000) 
+  will now abort deterministically during the planning stage with error 32 
+  (`resource limit exceeded`) and the error message 
+  "too many registers (1000) needed for AQL query".
+
+  Before this fix, an AQL query that used more than 1000 result registers
+  crashed the server when assertions were turned on, and the behavior was 
+  undefined when assertions were turned off.
+
 * Implement RebootTracker usage for AQL queries in case of coordinator
   restarts or failures. This will clean up the rest of an AQL query
   on dbservers more quickly and in particular release locks faster.
@@ -340,7 +371,7 @@ as well as the identifiers:
 * Hard-code returned "planVersion" attribute of collections to a value of 1.
   Before 3.7, the most recent Plan version from the agency was returned inside
   "planVersion".
-  In 3.7, the attribute contained the Plan version that was in use when the 
+  In 3.7, the attribute contained the Plan version that was in use when the
   in-memory LogicalCollection object was last constructed. The object was
   always reconstructed in case the underlying Plan data for the collection
   changed or when a collection contained links to arangosearch views.
@@ -355,11 +386,11 @@ as well as the identifiers:
 
 * Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late materialzation
   after OneShard optimization
-  
+
 * Improve performance of many non-subquery AQL queries, by optimizing away
   some storage overhead for subquery context data.
 
-* Improve performance of internal cluster Plan and Current reload operations. 
+* Improve performance of internal cluster Plan and Current reload operations.
 
 * Fixed issue #12349: arangosh compact Arangoerror 404.
 
@@ -404,12 +435,12 @@ as well as the identifiers:
   RETURN 1
   ```
 
-* Revive faster out-of-range comparator for secondary index scans that do a full 
-  collection index scan for index types "hash", "skiplist", "persistent". 
+* Revive faster out-of-range comparator for secondary index scans that do a full
+  collection index scan for index types "hash", "skiplist", "persistent".
 
 * Fixed internal issue #733: Primary sort compression in views now used properly.
 
-* Errors with error code 1200 (Arango conflict) will now get the HTTP response 
+* Errors with error code 1200 (Arango conflict) will now get the HTTP response
   code 409 (Conflict) instead of 412 (Precondition failed), unless "if-match" header
   was used in `_api/document` or `_api/gharial`.
 
