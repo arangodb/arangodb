@@ -166,7 +166,7 @@ class GraphNode : public ExecutionNode {
   /// collection!
   Collection const* collection() const;
 
-  void injectVertexCollection(aql::Collection* other);
+  void injectVertexCollection(aql::Collection& other);
 
   std::vector<aql::Collection const*> collections() const;
   void setCollectionToShard(std::map<std::string, std::string> const& map) {

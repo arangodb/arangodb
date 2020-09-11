@@ -350,10 +350,10 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   // MSVC did throw an internal compiler error with auto instead of std::string
   // here at the time of this writing (some MSVC 2019 14.25.28610). Could
   // reproduce it only in our CI, my local MSVC (same version) ran fine...
-  auto getAqlCollectionFromName = [&](std::string const& name) -> aql::Collection* {
+  auto getAqlCollectionFromName = [&](std::string const& name) -> aql::Collection& {
     // if the collection was already existent in the query, addCollection will
     // just return it.
-    return query.collections().add(name, AccessMode::Type::READ, aql::Collection::Hint::Collection);
+    return *query.collections().add(name, AccessMode::Type::READ, aql::Collection::Hint::Collection);
   };
 
   auto vPackDirListIter = VPackArrayIterator(dirList);
@@ -367,8 +367,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     TRI_ASSERT(d == TRI_EDGE_IN || d == TRI_EDGE_OUT);
     std::string e =
         arangodb::basics::VelocyPackHelper::getStringValue(*edgeIt, "");
-    auto* aqlCollection = getAqlCollectionFromName(e);
-    addEdgeCollection(*aqlCollection, d);
+    auto& aqlCollection = getAqlCollectionFromName(e);
+    addEdgeCollection(aqlCollection, d);
   }
 
   VPackSlice vertexCollections = base.get("vertexCollections");
@@ -381,8 +381,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 
   for (VPackSlice it : VPackArrayIterator(vertexCollections)) {
     std::string v = arangodb::basics::VelocyPackHelper::getStringValue(it, "");
-    auto aqlCollection = getAqlCollectionFromName(v);
-    addVertexCollection(*aqlCollection);
+    auto& aqlCollection = getAqlCollectionFromName(v);
+    addVertexCollection(aqlCollection);
   }
 
   // translations for one-shard-databases
@@ -664,17 +664,17 @@ Collection const* GraphNode::collection() const {
   return _edgeColls.front();
 }
 
-void GraphNode::injectVertexCollection(aql::Collection* other) {
+void GraphNode::injectVertexCollection(aql::Collection& other) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // This is a workaround to inject all unknown aql collections into
   // this node, that should be list of unique values!
   for (auto const& v : _vertexColls) {
-    TRI_ASSERT(v->name() != other->name());
+    TRI_ASSERT(v->name() != other.name());
   }
 #endif
-  addVertexCollection(*other);
+  addVertexCollection(other);
 }
 
 #ifndef USE_ENTERPRISE

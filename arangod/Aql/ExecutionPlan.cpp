@@ -825,8 +825,8 @@ ModificationOptions ExecutionPlan::createModificationOptions(AstNode const* node
       // its unclear which collections the traversal will access
       isReadWrite = true;
     } else {
-      _ast->query().collections().visit([&isReadWrite](std::string const&, aql::Collection* collection) {
-        if (collection->isReadWrite()) {
+      _ast->query().collections().visit([&isReadWrite](std::string const&, aql::Collection& collection) {
+        if (collection.isReadWrite()) {
           // stop iterating
           isReadWrite = true;
           return false;
