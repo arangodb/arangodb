@@ -733,9 +733,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation) {
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(),
-        arangodb::Index::OperationMode::normal)
-        .ok()));
+    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice()).ok()));
     l->commit(true);
     EXPECT_EQ(1, reader.reopen().live_docs_count()); // should see this immediately
 
@@ -795,8 +793,7 @@ TEST_F(IResearchLinkTest, test_write) {
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(),
-                           arangodb::Index::OperationMode::normal)
+    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice())
                      .ok()));
     EXPECT_TRUE((l->commit().ok()));
     EXPECT_EQ(0, reader.reopen().live_docs_count());
@@ -814,8 +811,7 @@ TEST_F(IResearchLinkTest, test_write) {
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice(),
-                           arangodb::Index::OperationMode::normal)
+    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice())
                      .ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
@@ -830,8 +826,7 @@ TEST_F(IResearchLinkTest, test_write) {
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2), doc1->slice(),
-                           arangodb::Index::OperationMode::normal)
+    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2), doc1->slice())
                      .ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
@@ -901,8 +896,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(),
-      arangodb::Index::OperationMode::normal)
+    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice())
       .ok()));
     EXPECT_TRUE((l->commit().ok()));
     EXPECT_EQ(0, reader.reopen().live_docs_count());
@@ -920,8 +914,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice(),
-      arangodb::Index::OperationMode::normal)
+    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice())
       .ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
@@ -996,8 +989,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole_wit
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(),
-      arangodb::Index::OperationMode::normal)
+    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice())
       .ok()));
     EXPECT_TRUE((l->commit().ok()));
     EXPECT_EQ(0, reader.reopen().live_docs_count());
@@ -1015,8 +1007,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole_wit
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice(),
-      arangodb::Index::OperationMode::normal)
+    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice())
       .ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
@@ -1098,8 +1089,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(),
-      arangodb::Index::OperationMode::normal)
+    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice())
       .ok()));
     EXPECT_TRUE((l->commit().ok()));
     EXPECT_EQ(0, reader.reopen().live_docs_count());
@@ -1117,8 +1107,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice(),
-      arangodb::Index::OperationMode::normal)
+    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice())
       .ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
@@ -1198,8 +1187,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(),
-      arangodb::Index::OperationMode::normal)
+    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice())
       .ok()));
     EXPECT_TRUE((l->commit().ok()));
     EXPECT_EQ(0, reader.reopen().live_docs_count());
@@ -1217,8 +1205,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice(),
-      arangodb::Index::OperationMode::normal)
+    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice())
       .ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
@@ -1308,8 +1295,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(),
-      arangodb::Index::OperationMode::normal)
+    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice())
       .ok()));
     EXPECT_TRUE((l->commit().ok()));
     EXPECT_EQ(0, reader.reopen().live_docs_count());
@@ -1327,8 +1313,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice(),
-      arangodb::Index::OperationMode::normal)
+    EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice())
       .ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));

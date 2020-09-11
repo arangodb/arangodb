@@ -30,6 +30,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/StaticStrings.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>

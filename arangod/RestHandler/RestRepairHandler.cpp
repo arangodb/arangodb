@@ -706,9 +706,7 @@ void RestRepairHandler::generateResult(rest::ResponseCode code,
 
     tmp = VPackCollection::merge(tmp.slice(), payload.slice(), false);
 
-    VPackOptions options(VPackOptions::Defaults);
-    options.escapeUnicode = true;
-    writeResult(tmp.slice(), options);
+    writeResult(tmp.slice(), VPackOptions::Defaults);
   } catch (...) {
     // Building the error response failed
   }

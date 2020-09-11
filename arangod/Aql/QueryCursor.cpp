@@ -29,8 +29,8 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
@@ -99,11 +99,6 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
     // some reallocs
     // (not accurate, but the actual size is unknown anyway)
     builder.reserve(std::max<size_t>(1, std::min<size_t>(n, 10000)) * 32);
-
-    VPackOptions const* oldOptions = builder.options;
-    TRI_DEFER(builder.options = oldOptions);
-    builder.options = _result.context->getVPackOptionsForDump();
-
     builder.add("result", VPackValue(VPackValueType::Array));
     for (size_t i = 0; i < n; ++i) {
       if (!hasNext()) {
