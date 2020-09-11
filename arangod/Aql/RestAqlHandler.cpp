@@ -498,7 +498,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
 
   _qId = TRI_NewTickServer();
   try {
-    _queryRegistry->insert(_qId, query.get(), ttl, true, false);
+    _queryRegistry->insert(_qId, query.get(), ttl, true, false, cluster::CallbackGuard());
     query.release();
   } catch (...) {
     LOG_TOPIC("eafbe", ERR, arangodb::Logger::AQL) << "could not keep query in registry";
