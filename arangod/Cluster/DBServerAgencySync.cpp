@@ -249,7 +249,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     if (current.empty()) {
       // TODO increase log level, except during shutdown?
       LOG_TOPIC("ab562", DEBUG, Logger::MAINTENANCE)
-          << "DBServerAgencySync::execute no current;
+          << "DBServerAgencySync::execute no current";
       result.errorMessage = "DBServerAgencySync::execute no current";
       return result;
     }
