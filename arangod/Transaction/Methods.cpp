@@ -1693,7 +1693,7 @@ Future<OperationResult> transaction::Methods::truncateAsync(std::string const& c
 
   OperationOptions optionsCopy = options;
   auto cb = [this, collectionName](OperationResult res) {
-    events::TruncateCollection(vocbase().name(), collectionName, res.errorNumber());
+    events::TruncateCollection(vocbase().name(), collectionName, res);
     return res;
   };
 
@@ -1707,7 +1707,7 @@ Future<OperationResult> transaction::Methods::truncateAsync(std::string const& c
 #ifndef USE_ENTERPRISE
 Future<OperationResult> transaction::Methods::truncateCoordinator(std::string const& collectionName,
                                                                   OperationOptions& options) {
-  return arangodb::truncateCollectionOnCoordinator(*this, collectionName);
+  return arangodb::truncateCollectionOnCoordinator(*this, collectionName, options);
 }
 #endif
 
@@ -1730,7 +1730,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return futures::makeFuture(
-            OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION));
+            OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options));
       }
       if (!followerInfo->allowedToWrite()) {
         // We cannot fulfill minimum replication Factor.
@@ -1747,11 +1747,12 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
       if (options.isSynchronousReplicationFrom.empty()) {
-        return futures::makeFuture(OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED));
+        return futures::makeFuture(
+            OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
       }
       if (options.isSynchronousReplicationFrom != theLeader) {
         return futures::makeFuture(
-            OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION));
+            OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options));
       }
     }
   }  // isDBServer - early block
@@ -1761,7 +1762,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
   Result res = collection->truncate(*this, options);
 
   if (res.fail()) {
-    return futures::makeFuture(OperationResult(res));
+    return futures::makeFuture(OperationResult(res, options));
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -1828,12 +1829,13 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       // error (note that we use the follower version, since we have
       // lost leadership):
       if (findRefusal(responses)) {
-        return futures::makeFuture(OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED));
+        return futures::makeFuture(
+            OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
       }
     }
   }
 
-  return futures::makeFuture(OperationResult(res));
+  return futures::makeFuture(OperationResult(res, options));
 }
 
 /// @brief count the number of documents in a collection

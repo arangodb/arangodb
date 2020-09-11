@@ -474,7 +474,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     }
 
   } else if (sub == "truncate") {
-    OperationOptions opts;
+    OperationOptions opts(_context);
 
     opts.waitForSync = _request->parsedValue("waitForSync", false);
     opts.isSynchronousReplicationFrom =

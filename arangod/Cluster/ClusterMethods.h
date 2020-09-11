@@ -224,8 +224,8 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Methods& trx,
-                                                                 std::string const& collname);
+futures::Future<OperationResult> truncateCollectionOnCoordinator(
+    transaction::Methods& trx, std::string const& collname, OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush Wal on all DBservers

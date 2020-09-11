@@ -199,13 +199,14 @@ OperationResult handleResponsesFromAllShards(
     std::vector<futures::Try<arangodb::network::Response>>& responses,
     std::function<void(Result&, VPackBuilder&, ShardID&, VPackSlice)> handler,
     std::function<void(Result&, VPackBuilder&)> pre = [](Result&, VPackBuilder&) -> void {},
-    std::function<void(Result&, VPackBuilder&)> post = [](Result&, VPackBuilder&) -> void {}) {
+    std::function<void(Result&, VPackBuilder&)> post = [](Result&, VPackBuilder&) -> void {},
+    OperationOptions const options = OperationOptions()) {
   // If none of the shards responds we return a SERVER_ERROR;
   Result result;
   VPackBuilder builder;
   pre(result, builder);
   if (result.fail()) {
-    return OperationResult(result, builder.steal());
+    return OperationResult(result, builder.steal(), options);
   }
   for (Try<arangodb::network::Response> const& tryRes : responses) {
     network::Response const& res = tryRes.get();  // throws exceptions upwards
@@ -226,7 +227,7 @@ OperationResult handleResponsesFromAllShards(
     }
   }
   post(result, builder);
-  return OperationResult(result, builder.steal());
+  return OperationResult(result, builder.steal(), options);
 }
 
 // velocypack representation of object
@@ -1574,8 +1575,8 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Methods& trx,
-                                                                 std::string const& collname) {
+futures::Future<OperationResult> truncateCollectionOnCoordinator(
+    transaction::Methods& trx, std::string const& collname, OperationOptions const& options) {
   Result res;
   // Set a few variables needed for our work:
   ClusterInfo& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
@@ -1585,7 +1586,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
   collinfo = ci.getCollectionNT(trx.vocbase().name(), collname);
   if (collinfo == nullptr) {
     return futures::makeFuture(
-        OperationResult(res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)));
+        OperationResult(res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND), options));
   }
 
   // Some stuff to prepare cluster-intern requests:
@@ -1596,7 +1597,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     res = ::beginTransactionOnAllLeaders(trx, *shardIds).get();
     if (res.fail()) {
-      return futures::makeFuture(OperationResult(res));
+      return futures::makeFuture(OperationResult(res, options));
     }
   }
 
@@ -1625,13 +1626,16 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
     futures.emplace_back(std::move(future));
   }
 
-  auto cb = [](std::vector<Try<network::Response>>&& results) -> OperationResult {
+  auto cb = [options](std::vector<Try<network::Response>>&& results) -> OperationResult {
     return handleResponsesFromAllShards(
-        results, [](Result& result, VPackBuilder&, ShardID&, VPackSlice answer) -> void {
+        results,
+        [](Result& result, VPackBuilder&, ShardID&, VPackSlice answer) -> void {
           if (Helper::getBooleanValue(answer, StaticStrings::Error, false)) {
             result = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
           }
-        });
+        },
+        /* pre */ [](Result&, VPackBuilder&) -> void {},
+        /* post */ [](Result&, VPackBuilder&) -> void {}, options);
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
