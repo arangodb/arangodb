@@ -313,7 +313,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
           // Note however, that new index jobs are intentionally not discovered
           // when the shard is locked for maintenance.
           actions.emplace_back(ActionDescription(
-              std::map<std::string, std::string>({{NAME, "EnsureIndex"},
+              std::map<std::string, std::string>{{NAME, "EnsureIndex"},
                {DATABASE, dbname},
                {COLLECTION, colname},
                {SHARD, shname},
