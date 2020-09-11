@@ -441,6 +441,7 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
   for (const MessageData* msg : incomingMessages) {
     auto&& accumName = msg->_accumulatorName;
     auto&& accum = vertexData().accumulatorByName(accumName);
+    traceMessage(msg);
     auto res = accum->updateByMessage(*msg);
     if (res.fail()) {
       auto phase_index = *getAggregatedValue<uint32_t>("phase");
