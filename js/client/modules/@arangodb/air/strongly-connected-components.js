@@ -96,7 +96,7 @@ function strongly_connected_components_program(resultField) {
         // Active vertices broadcast their pregel id to all their neighbours
         name: "broadcast",
         initProgram: ["seq",
-          ["accum-set!", "activeInbound", ["quote"]],
+          ["accum-set!", "activeInbound", ["quote", []]],
           ["if",
             [
                 ["not", ["accum-ref", "isDisabled"]],

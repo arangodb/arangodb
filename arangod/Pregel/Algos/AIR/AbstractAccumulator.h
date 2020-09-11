@@ -125,44 +125,39 @@ class Accumulator : public AccumulatorBase {
     }
   }
 
+  auto updateBySlice(VPackSlice s) -> greenspun::EvalResultT<UpdateResult> {
+      if constexpr (std::is_same_v<T, bool>) {
+        return this->update(s.getBool());
+      } else if constexpr (std::is_arithmetic_v<T>) {
+        return this->update(s.getNumericValue<T>());
+      } else if constexpr (std::is_same_v<VPackSlice, T>) {
+        return this->update(s);
+      } else if constexpr (std::is_same_v<std::string, T>) {
+        return this->update(s.copyString());
+      } else {
+        static_assert(always_false_v<T>);
+      }
+  }
+
   auto updateByMessageSlice(VPackSlice msg) -> greenspun::EvalResultT<UpdateResult> override {
-    VPackSlice const& s = msg.get("value");
-    if constexpr (std::is_same_v<T, bool>) {
-      return this->update(s.getBool());
-    } else if constexpr (std::is_arithmetic_v<T>) {
-      return this->update(s.getNumericValue<T>());
-    } else {
-      return greenspun::EvalError("update by message slice not implemented");
-    }
+    return updateBySlice(msg.get("value"));
   }
 
   auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> override {
-    VPackSlice const& s = msg._value.slice();
-    if constexpr (std::is_same_v<T, bool>) {
-      return this->update(s.getBool());
-    } else if constexpr (std::is_arithmetic_v<T>) {
-      return this->update(s.getNumericValue<T>());
-    } else if constexpr (std::is_same_v<VPackSlice, T>) {
-      return this->update(s);
-    } else if constexpr (std::is_same_v<std::string, T>) {
-      return this->update(s.copyString());
-    } else {
-      static_assert(always_false_v<T>);
-      return greenspun::EvalError("update by message not implemented");
-    }
+    return updateBySlice(msg._value.slice());
   }
 
   auto setStateBySlice(VPackSlice s) -> greenspun::EvalResult override {
-    return greenspun::EvalError("set state by slice not implemented");
+    return setBySlice(s);
   }
   auto getStateIntoBuilder(VPackBuilder& msg) -> greenspun::EvalResult override {
-    return greenspun::EvalError("get state into builder not implemented");
+    return getIntoBuilder(msg);
   }
   auto getStateUpdateIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override {
-    return greenspun::EvalError("get state update into builder not implemented");
+    return getIntoBuilder(result);
   }
   auto aggregateStateBySlice(VPackSlice msg) -> greenspun::EvalResult override {
-    return greenspun::EvalError("aggregate state by slice not implemented");
+    return updateBySlice(msg).asResult();
   }
 
   auto getIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override {

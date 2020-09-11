@@ -87,7 +87,7 @@ EvalResult SpecialIf(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& re
 
 EvalResult SpecialQuote(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   if (!paramIterator.valid()) {
-    return EvalError("expected one parameter");
+    return EvalError("quote expects one parameter");
   }
 
   auto value = *paramIterator++;
@@ -101,10 +101,10 @@ EvalResult SpecialQuote(Machine& ctx, ArrayIterator paramIterator, VPackBuilder&
 
 EvalResult SpecialQuoteSplice(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   if (!result.isOpenArray()) {
-    return EvalError("nothing to splice into");
+    return EvalError("quote-splice nothing to splice into");
   }
   if (!paramIterator.valid()) {
-    return EvalError("expected one parameter");
+    return EvalError("quote expects one parameter");
   }
   auto value = *paramIterator++;
   if (paramIterator.valid()) {
@@ -484,7 +484,7 @@ EvalResult SpecialQuasiQuoteInternal(Machine& ctx, ArrayIterator other, VPackBui
 
 EvalResult SpecialQuasiQuote(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   if (!paramIterator.valid()) {
-    return EvalError("expected one parameter");
+    return EvalError("quasi-quote expects one parameter");
   }
 
   auto value = *paramIterator++;

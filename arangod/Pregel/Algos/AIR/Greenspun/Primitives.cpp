@@ -567,7 +567,7 @@ EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& r
     return EvalError("expected exactly two parameters");
   }
 
-  auto&& [key, slice] = unpackTuple<VPackSlice, VPackSlice>(params);
+  auto&& [slice, key] = unpackTuple<VPackSlice, VPackSlice>(params);
   if (!slice.isObject()) {
     return EvalError("expect second parameter to be an object");
   }

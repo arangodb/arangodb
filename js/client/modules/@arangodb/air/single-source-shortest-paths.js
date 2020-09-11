@@ -184,9 +184,9 @@ function exec_test_shortest_path() {
   results.push(exec_test_shortest_path_impl(examplegraphs.create_line_graph("LineGraph100", 100, 9)));
   results.push(exec_test_shortest_path_impl(examplegraphs.create_line_graph("LineGraph1000", 1000, 18)));
 
-  results.push(exec_test_shortest_path_impl(examplegraphs.create_circle_graph("Circle10", 10, 1)));
-  results.push(exec_test_shortest_path_impl(examplegraphs.create_circle_graph("Circle100", 100, 6)));
-  results.push(exec_test_shortest_path_impl(examplegraphs.create_circle_graph("Circle1000", 1000, 18)));
+  results.push(exec_test_shortest_path_impl(examplegraphs.create_circle_graph("Circle10", 2, 1)));
+  results.push(exec_test_shortest_path_impl(examplegraphs.create_circle_graph("Circle100", 4, 6)));
+  results.push(exec_test_shortest_path_impl(examplegraphs.create_circle_graph("Circle1000", 8, 18)));
 
   results.push(exec_test_shortest_path_impl(examplegraphs.create_complete_graph("Complete4", 10, 4)));
   results.push(exec_test_shortest_path_impl(examplegraphs.create_complete_graph("Complete10", 10, 10)));
