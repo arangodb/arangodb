@@ -538,17 +538,25 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
   // Create or modify if local collections are affected
   for (auto const& dbname : dirty) {  // each dirty database
     auto const lit = local.find(dbname);
-    if (lit != local.end()) {
+    auto const pit = plan.find(dbname);
+    if (pit != plan.end() && lit != local.end()) {
+      auto pdb = pit->second->slice()[0];
+      std::vector<std::string> ppath {
+        AgencyCommHelper::path(), PLAN, COLLECTIONS, dbname};
+      if (!pdb.hasKey(ppath)) {
+        continue;
+      }
+      pdb = pdb.get(ppath);
       try {
         auto const& ldb = lit->second->slice();
-        if (ldb.isObject()) {
-          for (auto const& pcol : VPackObjectIterator(ldb, true)) { // each plan collection
+        if (ldb.isObject() && pdb.isObject()) {
+          for (auto const& pcol : VPackObjectIterator(pdb, true)) { // each plan collection
             auto const& cprops = pcol.value;
             // for each shard
             for (auto const& shard : VPackObjectIterator(cprops.get(SHARDS))) { // each shard
 
               if (shard.value.isArray()) {
-                for (auto const& dbs : VPackArrayIterator(shard.value)) { // each db server with that shard
+                for (auto const& dbs : VPackArrayIterator(shard.value)) { //each dbserver with shard
                   // We only care for shards, where we find us as "serverId" or "_serverId"
                   if (dbs.isEqualString(serverId) || dbs.isEqualString(UNDERSCORE + serverId)) {
                     // at this point a shard is in plan, we have the db for it

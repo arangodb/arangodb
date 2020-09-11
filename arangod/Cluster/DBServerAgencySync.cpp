@@ -98,7 +98,7 @@ Result DBServerAgencySync::getLocalCollections(
       FATAL_ERROR_EXIT();
     }
 
-    auto collections = *it->second;
+    auto& collections = *it->second;
     VPackObjectBuilder db(&collections);
     auto cols = vocbase.collections(false);
 
