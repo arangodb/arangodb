@@ -222,7 +222,14 @@ VPackBuilder ActionBase::toVelocyPack() const {
 
 ActionState ActionBase::getState() const { return _state; }
 
-void ActionBase::setState(ActionState state) { _state = state; }
+void ActionBase::setState(ActionState state) {
+  // We want to make sure that we get another maintenance run
+  // when we shift from any state to complete or failed 
+  if ((COMPLETE == state || FAILED == state) && _state != state) {
+    _feature.addDirty(_description.get(DATABASE));
+  }
+  _state = state;
+}
 
 /**
  * progress() operation is an expected future feature.  Not supported in the

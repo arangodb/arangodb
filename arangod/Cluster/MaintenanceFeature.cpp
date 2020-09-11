@@ -84,7 +84,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
   startsAfter<MetricsFeature>();
 
   setOptional(true);
-  requiresElevatedPrivileges(false); 
+  requiresElevatedPrivileges(false);
 }
 
 void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -234,7 +234,7 @@ void MaintenanceFeature::start() {
         << " for single-server or agents.";
     return;
   }
-  
+
   if (serverState->isCoordinator()) {
     // no need for maintenance on a coordinator
     return;

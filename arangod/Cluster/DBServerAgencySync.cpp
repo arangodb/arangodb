@@ -181,7 +181,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     result.errorMessage = "DBServerAgencySync::execute no dirty collections";
   }
 
+  LOG_DEVEL << __FILE__ << ":" << __LINE__ << " " << dirty;
   auto plan = clusterInfo.getPlan(planIndex, dirty);
+  LOG_DEVEL << __FILE__ << ":" << __LINE__ << " " << planIndex;
 
   if (plan.empty()) {
     // TODO increase log level, except during shutdown?

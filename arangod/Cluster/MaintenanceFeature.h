@@ -326,8 +326,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   void addDirty(std::string const& database);
   void addDirty(std::string&& database);
   std::unordered_set<std::string> dirty();
-  
-  
+
+
  protected:
   void initializeMetrics();
 
@@ -355,7 +355,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
  protected:
   /// @brief option for forcing this feature to always be enable - used by the catch tests
   bool _forceActivation;
-  
+
   bool _resignLeadershipOnShutdown;
 
   /// @brief tunable option for thread pool size

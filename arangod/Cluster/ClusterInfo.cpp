@@ -697,7 +697,8 @@ void ClusterInfo::loadPlan() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto diff = clock::now() - start;
     if (diff > std::chrono::milliseconds(500)) {
-      LOG_TOPIC("66666", WARN, Logger::CLUSTER) << "Loading the new plan took: " << std::chrono::duration<double>(diff).count() << "s";
+      LOG_TOPIC("66666", WARN, Logger::CLUSTER)
+        << "Loading the new plan took: " << std::chrono::duration<double>(diff).count() << "s";
     }
 #else
     (void)start;
@@ -750,8 +751,10 @@ void ClusterInfo::loadPlan() {
   bool swapViews = false;
   bool swapAnalyzers = false;
 
+
   {
     READ_LOCKER(guard, _planProt.lock);
+    newPlan = _plan;
     newDatabases = _plannedDatabases;
     newCollections = _plannedCollections;
     newShards = _shards;
@@ -771,14 +774,19 @@ void ClusterInfo::loadPlan() {
     swapAnalyzers = true;
   }
 
+  LOG_DEVEL << __FILE__ << __LINE__;
+
   for (auto const& database : changeSet.dbs) {
+
+
 
     if (database.first.empty()) { // Rest of plan
       continue;
     }
 
     name = database.first;
-    auto dbSlice = database.second->slice();
+    auto dbSlice = database.second->slice()[0];
+    LOG_DEVEL << __FILE__ << __LINE__ << " " << dbSlice.toJson();
     std::vector<std::string> dbPath{AgencyCommHelper::path(), "Plan", "Databases", name};
     if (!dbSlice.hasKey(dbPath)) { // Dropped from Plan
       newDatabases.erase(name);
@@ -823,6 +831,7 @@ void ClusterInfo::loadPlan() {
     }
   }
 
+  LOG_DEVEL << __FILE__ << __LINE__;
   // Ensure views are being created BEFORE collections to allow
   // links find them
   // Immediate children of "Views" are database names, then ids
@@ -849,9 +858,9 @@ void ClusterInfo::loadPlan() {
     auto const& databaseName = database.first;
     std::vector<std::string> viewsPath {
       AgencyCommHelper::path(), "Plan", "Views", databaseName};
-    auto viewsSlice = database.second->slice();
-
-    viewsSlice = database.second->slice().get(viewsPath);
+    auto viewsSlice = database.second->slice()[0];
+    LOG_DEVEL << __FILE__ << __LINE__ << " " << viewsSlice.toJson();
+    viewsSlice = viewsSlice.get(viewsPath);
 
     auto* vocbase = databaseFeature.lookupDatabase(databaseName);
 
@@ -934,19 +943,22 @@ void ClusterInfo::loadPlan() {
   //  },...
   // }}
   // Now the same for analyzers:
+  LOG_DEVEL << __FILE__ << __LINE__;
   for (auto const& database : changeSet.dbs) {
 
     if (database.first.empty()) { // Rest of plan
       continue;
     }
     auto const& databaseName = database.first;
-    auto analyzerSlice = database.second->slice();
+    auto analyzerSlice = database.second->slice()[0];
+    LOG_DEVEL << __FILE__ << __LINE__ << " " << analyzerSlice.toJson();
+
     std::vector<std::string> analyzersPath {
       AgencyCommHelper::path(), "Plan", "Analyzers", databaseName};
     if(!analyzerSlice.hasKey(analyzersPath)) { // DB Gone
       newDbAnalyzersRevision.erase(databaseName);
     }
-    analyzerSlice = database.second->slice().get(analyzersPath);
+    analyzerSlice = analyzerSlice.get(analyzersPath);
 
     auto* vocbase = databaseFeature.lookupDatabase(databaseName);
 
@@ -980,6 +992,7 @@ void ClusterInfo::loadPlan() {
   TRI_IF_FAILURE("AlwaysSwapAnalyzersRevision") {
     swapAnalyzers = true;
   }
+  LOG_DEVEL << __FILE__ << __LINE__;
 
   // Immediate children of "Collections" are database names, then ids
   // of collections, then one JSON object with the description:
@@ -1037,7 +1050,9 @@ void ClusterInfo::loadPlan() {
 
     auto const& databaseName = database.first;
 
-    auto collectionsSlice = database.second->slice();
+    auto collectionsSlice = database.second->slice()[0];
+    LOG_DEVEL << __FILE__ << __LINE__ << " " << collectionsSlice.toJson();
+
     std::vector<std::string> collectionsPath{
       AgencyCommHelper::path(), "Plan", "Collections", databaseName};
     if (!collectionsSlice.hasKey(collectionsPath)) {
@@ -1172,6 +1187,7 @@ void ClusterInfo::loadPlan() {
     }
   }
 
+  LOG_DEVEL << __FILE__ << __LINE__;
   if (isCoordinator) {
     auto systemDB = _server.getFeature<arangodb::SystemDatabaseFeature>().use();
     if (systemDB && systemDB->shardingPrototype() == ShardingPrototype::Undefined) {
@@ -1196,6 +1212,7 @@ void ClusterInfo::loadPlan() {
     }
   }
 
+  LOG_DEVEL << __FILE__ << __LINE__;
   WRITE_LOCKER(writeLocker, _planProt.lock);
 
   _planVersion = changeSet.version;
@@ -4845,6 +4862,7 @@ ClusterInfo::getPlan(uint64_t& index, std::unordered_set<std::string> const& dir
       continue;
     }
     ret.try_emplace(it->first, it->second);
+    LOG_DEVEL << __FILE__ << ":" << __LINE__ << " " << it->second->toJson();
   }
   return ret;
 }
