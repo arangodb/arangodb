@@ -178,7 +178,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   auto& clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo();
-  uint64_t planIndex = 0;
+  uint64_t planIndex = 0, currentIndex = 0;
 
   auto dirty = mfeature.dirty(); // Get all dirty databases
 
@@ -245,11 +245,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    auto current = clusterInfo.getCurrent(planIndex, dirty);
+    auto current = clusterInfo.getCurrent(currentIndex, dirty);
     if (current.empty()) {
       // TODO increase log level, except during shutdown?
       LOG_TOPIC("ab562", DEBUG, Logger::MAINTENANCE)
-          << "DBServerAgencySync::execute no current";
+          << "DBServerAgencySync::execute no current;
       result.errorMessage = "DBServerAgencySync::execute no current";
       return result;
     }
