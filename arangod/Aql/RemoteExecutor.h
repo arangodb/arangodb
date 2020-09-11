@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -52,22 +53,18 @@ class RemoteExecutor final {};
 template <>
 class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
  public:
-  using Api = ::arangodb::aql::RemoteNode::Api;
-
   // TODO Even if it's not strictly necessary here, for consistency's sake the
   // non-standard arguments (server, ownName and queryId) should probably be
   // moved into some RemoteExecutorInfos class.
   ExecutionBlockImpl(ExecutionEngine* engine, RemoteNode const* node,
                      RegisterInfos&& infos, std::string const& server,
-                     std::string const& distributeId, std::string const& queryId, Api);
+                     std::string const& distributeId, std::string const& queryId);
 
   ~ExecutionBlockImpl() override = default;
 
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
-
-  [[nodiscard]] auto api() const noexcept -> Api;
 
   std::string const& distributeId() const { return _distributeId; }
 
@@ -87,9 +84,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
 
   auto executeWithoutTrace(AqlCallStack stack)
-      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
-
-  auto executeViaOldApi(AqlCallStack stack)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
   auto executeViaNewApi(AqlCallStack stack)
@@ -150,10 +144,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   unsigned _lastTicket;  /// used to check for canceled requests
 
   bool _requestInFlight;
-
-  /// @brief Whether to use the pre-3.7 getSome/skipSome API, instead of the
-  ///        execute API. Used for rolling upgrades, so can be removed in 3.8.
-  Api _apiToUse = Api::EXECUTE;
 };
 
 }  // namespace arangodb::aql

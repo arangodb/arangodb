@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -40,14 +41,14 @@ AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state, std::size_t 
                                                arangodb::aql::SharedAqlItemBlockPtr const& block,
                                                std::size_t index)
     : _block{block}, _rowIndex{index}, _finalState{state}, _skipped{skipped} {
-  TRI_ASSERT(index <= _block->size());
+  TRI_ASSERT(index <= _block->numRows());
 }
 
 AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state, std::size_t skipped,
                                                arangodb::aql::SharedAqlItemBlockPtr&& block,
                                                std::size_t index) noexcept
     : _block{std::move(block)}, _rowIndex{index}, _finalState{state}, _skipped{skipped} {
-  TRI_ASSERT(index <= _block->size());
+  TRI_ASSERT(index <= _block->numRows());
 }
 
 SharedAqlItemBlockPtr AqlItemBlockInputRange::getBlock() const noexcept {
@@ -115,7 +116,7 @@ bool AqlItemBlockInputRange::hasShadowRow() const noexcept {
 }
 
 bool AqlItemBlockInputRange::isIndexValid(std::size_t index) const noexcept {
-  return _block != nullptr && index < _block->size();
+  return _block != nullptr && index < _block->numRows();
 }
 
 bool AqlItemBlockInputRange::isShadowRowAtIndex(std::size_t index) const noexcept {
@@ -197,7 +198,7 @@ auto AqlItemBlockInputRange::countDataRows() const noexcept -> std::size_t {
     return 0;
   }
   auto const& block = getBlock();
-  auto total = block->size();
+  auto total = block->numRows();
   if (_rowIndex >= total) {
     return 0;
   }

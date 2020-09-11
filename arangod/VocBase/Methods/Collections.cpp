@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -301,18 +302,63 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                  arangodb::velocypack::Value(minRev.toString()));
     }
 
-    if (ServerState::instance()->isCoordinator()) {
+    // If the PlanId is not set, we either are on a single server, or this is
+    // a local collection in a cluster; which means, it is neither a user-facing
+    // collection (as seen on a Coordinator), nor a shard (on a DBServer).
+    bool const isLocalCollection =
+        (!ServerState::instance()->isCoordinator() &&
+         Helper::stringUInt64(info.properties.get(StaticStrings::DataSourcePlanId)) == 0);
+
+    bool const isSystemName = TRI_vocbase_t::IsSystemName(info.name);
+
+    // All collections on a single server should be local collections.
+    // A Coordinator should never have local collections.
+    // On an Agent, all collections should be local collections.
+    // On a DBServer, the only local collections should be system collections
+    // (like _statisticsRaw). Non-local (system or not) collections are shards,
+    // so don't have system-names, even if they are system collections!
+    switch (ServerState::instance()->getRole()) {
+      case ServerState::ROLE_SINGLE:
+        TRI_ASSERT(isLocalCollection);
+        break;
+      case ServerState::ROLE_DBSERVER:
+        TRI_ASSERT(isLocalCollection == isSystemName);
+        break;
+      case ServerState::ROLE_COORDINATOR:
+        TRI_ASSERT(!isLocalCollection);
+        break;
+      case ServerState::ROLE_AGENT:
+        TRI_ASSERT(isLocalCollection);
+        break;
+      case ServerState::ROLE_UNDEFINED:
+        TRI_ASSERT(false);
+    }
+    
+    if (!isLocalCollection) {
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
       if (replicationFactorSlice.isNone()) {
         auto factor = vocbase.replicationFactor();
-        if (factor > 0 && isSystem) {
+        if (factor > 0 && isSystemName) {
           auto& cl = vocbase.server().getFeature<ClusterFeature>();
           factor = std::max(vocbase.replicationFactor(), cl.systemReplicationFactor());
         }
         helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
+      } else {
+        // the combination if "isSmart" and replicationFactor "satellite" does not make any sense.
+        // note: replicationFactor "satellite" can also be expressed as replicationFactor 0.
+        VPackSlice s = info.properties.get(StaticStrings::IsSmart);
+        if (s.isBoolean() && s.getBoolean() && 
+            ((replicationFactorSlice.isNumber() && 
+              replicationFactorSlice.getNumber<int>() == 0) || 
+             (replicationFactorSlice.isString() && 
+              replicationFactorSlice.stringRef() == StaticStrings::Satellite))) {
+          // check for the combination of "satellite" replication factor and "isSmart"
+          events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_BAD_PARAMETER);
+          return {TRI_ERROR_BAD_PARAMETER, "invalid combination of 'isSmart' and 'satellite' replicationFactor"};
+        }
       }
 
-      if (!isSystem) {
+      if (!isSystemName) {
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
@@ -598,7 +644,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
       "allowUserKeys", "cid",    "count",  "deleted", "id",   "indexes", "name",
       "path",          "planId", "shards", "status",  "type", "version"};
 
-  if (!ServerState::instance()->isCoordinator()) {
+  if (!ServerState::instance()->isRunningInCluster()) {
     // These are only relevant for cluster
     ignoreKeys.insert({StaticStrings::DistributeShardsLike, StaticStrings::IsSmart,
                        StaticStrings::NumberOfShards, StaticStrings::ReplicationFactor,

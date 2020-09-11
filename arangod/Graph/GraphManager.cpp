@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -1026,6 +1027,18 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
   try {
     TRI_ASSERT(input.isObject());
     if (ServerState::instance()->isCoordinator()) {
+      VPackSlice s = input.get(StaticStrings::IsSmart);
+      if (s.isBoolean() && s.getBoolean()) {
+        s = input.get("options");
+        if (s.isObject()) {
+          s = s.get(StaticStrings::ReplicationFactor);
+          if ((s.isNumber() && s.getNumber<int>() == 0) ||
+              (s.isString() && s.stringRef() == "satellite")) {
+            return Result{TRI_ERROR_BAD_PARAMETER, "invalid combination of 'isSmart' and 'satellite' replicationFactor"};
+          }
+        }
+      }
+
       // validate numberOfShards and replicationFactor
       Result res =
           ShardingInfo::validateShardsAndReplicationFactor(input.get("options"),

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -165,7 +165,7 @@ RestStatus RestDocumentHandler::insertDocument() {
   }
 
 
-  arangodb::OperationOptions opOptions;
+  arangodb::OperationOptions opOptions(_context);
   opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
   opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
@@ -203,6 +203,9 @@ RestStatus RestDocumentHandler::insertDocument() {
   if (!isMultiple && !opOptions.isOverwriteModeUpdateReplace()) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
+  if (!opOptions.isSynchronousReplicationFrom.empty()) {
+    _activeTrx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+  }
 
   Result res = _activeTrx->begin();
   if (!res.ok()) {
@@ -229,7 +232,7 @@ RestStatus RestDocumentHandler::insertDocument() {
 
             generateSaved(opres, cname,
                           TRI_col_type_e(_activeTrx->getCollectionType(cname)),
-                          _activeTrx->transactionContextPtr()->getVPackOptionsForDump(),
+                          _activeTrx->transactionContextPtr()->getVPackOptions(),
                           isMultiple);
           }));
 }
@@ -277,7 +280,7 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
     ifNoneRid = RevisionId::max();  // an impossible rev, so precondition failed will happen
   }
 
-  OperationOptions options;
+  OperationOptions options(_context);
   options.ignoreRevs = true;
 
   RevisionId ifRid = extractRevision("if-match", isValidRevision);
@@ -338,7 +341,7 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
 
         // use default options
         generateDocument(opRes.slice(), generateBody,
-                         _activeTrx->transactionContextPtr()->getVPackOptionsForDump());
+                         _activeTrx->transactionContextPtr()->getVPackOptions());
       }));
 }
 
@@ -434,7 +437,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     return RestStatus::DONE;
   }
 
-  OperationOptions opOptions;
+  OperationOptions opOptions(_context);
   opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
@@ -486,6 +489,9 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   if (!isArrayCase) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
+  if (!opOptions.isSynchronousReplicationFrom.empty()) {
+    _activeTrx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+  }
 
   // ...........................................................................
   // inside write transaction
@@ -526,7 +532,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     }
 
     generateSaved(opRes, cname, TRI_col_type_e(_activeTrx->getCollectionType(cname)),
-                  _activeTrx->transactionContextPtr()->getVPackOptionsForDump(), isArrayCase);
+                  _activeTrx->transactionContextPtr()->getVPackOptions(), isArrayCase);
   }));
 }
 
@@ -561,7 +567,7 @@ RestStatus RestDocumentHandler::removeDocument() {
     }
   }
 
-  OperationOptions opOptions;
+  OperationOptions opOptions(_context);
   opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
   opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
@@ -605,6 +611,9 @@ RestStatus RestDocumentHandler::removeDocument() {
   if (suffixes.size() == 2 || !search.isArray()) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
+  if (!opOptions.isSynchronousReplicationFrom.empty()) {
+    _activeTrx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+  }
 
   Result res = _activeTrx->begin();
 
@@ -635,7 +644,7 @@ RestStatus RestDocumentHandler::removeDocument() {
 
     generateDeleted(opRes, cname,
                     TRI_col_type_e(_activeTrx->getCollectionType(cname)),
-                    _activeTrx->transactionContextPtr()->getVPackOptionsForDump(), isMultiple);
+                    _activeTrx->transactionContextPtr()->getVPackOptions(), isMultiple);
   }));
 }
 
@@ -655,7 +664,7 @@ RestStatus RestDocumentHandler::readManyDocuments() {
   // split the document reference
   std::string const& cname = suffixes[0];
 
-  OperationOptions opOptions;
+  OperationOptions opOptions(_context);
   opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
 
   _activeTrx = createTransaction(cname, AccessMode::Type::READ);
@@ -692,6 +701,6 @@ RestStatus RestDocumentHandler::readManyDocuments() {
     }
 
     generateDocument(opRes.slice(), true,
-                     _activeTrx->transactionContextPtr()->getVPackOptionsForDump());
+                     _activeTrx->transactionContextPtr()->getVPackOptions());
   }));
 }

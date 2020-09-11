@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,8 +49,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-thread_local RestHandler const* RestHandler::CURRENT_HANDLER = nullptr;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -126,7 +124,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     return futures::makeFuture(Result());
   }
 
-  NetworkFeature const& nf = server().getFeature<NetworkFeature>();
+  NetworkFeature& nf = server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
     // nullptr happens only during controlled shutdown
@@ -191,6 +189,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   VPackStringRef resPayload = _request->rawPayload();
   VPackBuffer<uint8_t> payload(resPayload.size());
   payload.append(resPayload.data(), resPayload.size());
+  
+  nf.trackForwardedRequest();
  
   auto future = network::sendRequest(pool, "server:" + serverId, requestType,
                                      _request->requestPath(),
@@ -326,12 +326,10 @@ void RestHandler::runHandlerStateMachine() {
 
       case HandlerState::FINALIZE:
         _statistics.SET_REQUEST_END();
-        RestHandler::CURRENT_HANDLER = this;
 
         // shutdownExecute is noexcept
         shutdownExecute(true); // may not be moved down
 
-        RestHandler::CURRENT_HANDLER = nullptr;
         _state = HandlerState::DONE;
         
         // compress response if required
@@ -407,8 +405,6 @@ void RestHandler::executeEngine(bool isContinue) {
   ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
   ExecContextScope scope(exec);
 
-  RestHandler::CURRENT_HANDLER = this;
-
   try {
     RestStatus result = RestStatus::DONE;
     if (isContinue) {
@@ -419,8 +415,6 @@ void RestHandler::executeEngine(bool isContinue) {
     } else {
       result = execute();
     }
-
-    RestHandler::CURRENT_HANDLER = nullptr;
 
     if (result == RestStatus::WAITING) {
       _state = HandlerState::PAUSED;  // wait for someone to continue the state
@@ -482,7 +476,6 @@ void RestHandler::executeEngine(bool isContinue) {
     handleError(err);
   }
 
-  RestHandler::CURRENT_HANDLER = nullptr;
   _state = HandlerState::FAILED;
 }
 
@@ -501,14 +494,10 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
       builder.add(StaticStrings::ErrorNum, VPackValue(errorNumber));
       builder.close();
 
-      VPackOptions options(VPackOptions::Defaults);
-      options.escapeUnicode = true;
-
-      TRI_ASSERT(options.escapeUnicode);
       if (_request != nullptr) {
         _response->setContentType(_request->contentTypeResponse());
       }
-      _response->setPayload(std::move(buffer), options,
+      _response->setPayload(std::move(buffer), VPackOptions::Defaults,
                             /*resolveExternals*/ false);
     } catch (...) {
       // exception while generating error

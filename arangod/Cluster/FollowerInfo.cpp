@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -371,7 +371,8 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
         }
       } else {
         if (!planEntry.isArray() || planEntry.length() == 0 || !planEntry[0].isString() ||
-            !planEntry[0].isEqualString(ServerState::instance()->getId())) {
+            !(planEntry[0].isEqualString(ServerState::instance()->getId()) ||
+              planEntry[0].isEqualString("_" + ServerState::instance()->getId()))) {
           LOG_TOPIC("42231", INFO, Logger::CLUSTER)
               << reportName(isRemove)
               << ", did not find myself in Plan: " << _docColl->vocbase().name()

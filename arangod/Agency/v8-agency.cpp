@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -92,11 +92,7 @@ static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   query_t query = std::make_shared<Builder>();
-  int res = TRI_V8ToVPack(isolate, *query, args[0], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  TRI_V8ToVPack(isolate, *query, args[0], false);
 
   read_ret_t ret = agent->read(query);
 
@@ -125,11 +121,7 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   query_t query = std::make_shared<Builder>();
-  int res = TRI_V8ToVPack(isolate, *query, args[0], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  TRI_V8ToVPack(isolate, *query, args[0], false);
 
   write_ret_t ret = agent->write(query);
 

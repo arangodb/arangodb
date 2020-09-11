@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -349,9 +349,25 @@ void HttpResponse::addPayloadInternal(VPackSlice output, size_t inputLength,
     }
     default: {
       setContentType(rest::ContentType::JSON);
+      
+      /// dump options contain have the escapeUnicode attribute set to true
+      /// this allows dumping of string values as plain 7-bit ASCII values.
+      /// for example, the string "möter" will be dumped as "m\u00F6ter".
+      /// this allows faster JSON parsing in some client implementations,
+      /// which speculate on ASCII strings first and only fall back to slower
+      /// multibyte strings on first actual occurrence of a multibyte character.
+      
+      VPackOptions tmpOpts = *options;
+      tmpOpts.escapeUnicode = true;
+      
       if (_generateBody) {
-        arangodb::basics::VelocyPackDumper dumper(_body.get(), options);
-        dumper.dumpValue(output);
+        
+        // convert object to string
+        VPackStringBufferAdapter buffer(_body->stringBuffer());
+
+        VPackDumper dumper(&buffer, &tmpOpts);
+        dumper.dump(output);
+        
       } else {
         // TODO can we optimize this?
         // Just dump some where else to find real length
@@ -361,7 +377,7 @@ void HttpResponse::addPayloadInternal(VPackSlice output, size_t inputLength,
         VPackStringBufferAdapter buffer(tmp.stringBuffer());
 
         // usual dumping -  but not to the response body
-        VPackDumper dumper(&buffer, options);
+        VPackDumper dumper(&buffer, &tmpOpts);
         dumper.dump(output);
 
         headResponse(tmp.length());

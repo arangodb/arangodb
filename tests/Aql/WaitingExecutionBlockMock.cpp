@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -48,7 +49,7 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> Re
   for (auto const& b : blocks) {
     if (b != nullptr) {
       // Find the first non-nullptr block
-      regs = b->getNrRegs();
+      regs = b->numRegisters();
 
       break;
     }
@@ -142,7 +143,7 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBl
     if (result != nullptr && !result->hasShadowRows()) {
       // Count produced rows
       auto& modCall = stack.modifyTopCall();
-      modCall.didProduce(result->size());
+      modCall.didProduce(result->numRows());
     }
 
     if (!skipped.nothingSkipped()) {

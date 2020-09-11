@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -236,16 +237,15 @@ TEST_F(V8ViewsTest, test_auth) {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
       auto result = v8::Function::Cast(*fn_createView)
                         ->CallAsFunction(context, fn_createView,
                                          static_cast<int>(args.size()), args.data());
       EXPECT_TRUE(result.IsEmpty());
       EXPECT_TRUE(tryCatch.HasCaught());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       tryCatch.Exception(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                    slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -264,16 +264,15 @@ TEST_F(V8ViewsTest, test_auth) {
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
       auto result = v8::Function::Cast(*fn_createView)
                         ->CallAsFunction(context, fn_createView,
                                          static_cast<int>(args.size()), args.data());
       EXPECT_TRUE(result.IsEmpty());
       EXPECT_TRUE(tryCatch.HasCaught());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       tryCatch.Exception(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                    slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -358,16 +357,15 @@ TEST_F(V8ViewsTest, test_auth) {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
       auto result = v8::Function::Cast(*fn_dropView)
                         ->CallAsFunction(context, fn_dropView,
                                          static_cast<int>(args.size()), args.data());
       EXPECT_TRUE(result.IsEmpty());
       EXPECT_TRUE(tryCatch.HasCaught());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       tryCatch.Exception(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                    slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -387,16 +385,15 @@ TEST_F(V8ViewsTest, test_auth) {
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
       auto result = v8::Function::Cast(*fn_dropView)
                         ->CallAsFunction(context, fn_dropView,
                                          static_cast<int>(args.size()), args.data());
       EXPECT_TRUE(result.IsEmpty());
       EXPECT_TRUE(tryCatch.HasCaught());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       tryCatch.Exception(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                    slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -479,7 +476,7 @@ TEST_F(V8ViewsTest, test_auth) {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
       auto result =
           v8::Function::Cast(*fn_drop)->CallAsFunction(context, arangoView,
@@ -487,9 +484,8 @@ TEST_F(V8ViewsTest, test_auth) {
                                                        args.data());
       EXPECT_TRUE(result.IsEmpty());
       EXPECT_TRUE(tryCatch.HasCaught());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       tryCatch.Exception(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                    slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -509,7 +505,7 @@ TEST_F(V8ViewsTest, test_auth) {
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
       auto result =
           v8::Function::Cast(*fn_drop)->CallAsFunction(context, arangoView,
@@ -517,9 +513,8 @@ TEST_F(V8ViewsTest, test_auth) {
                                                        args.data());
       EXPECT_TRUE(result.IsEmpty());
       EXPECT_TRUE(tryCatch.HasCaught());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       tryCatch.Exception(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                    slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -604,16 +599,15 @@ TEST_F(V8ViewsTest, test_auth) {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
       auto result = v8::Function::Cast(*fn_rename)
                         ->CallAsFunction(context, arangoView,
                                          static_cast<int>(args.size()), args.data());
       EXPECT_TRUE(result.IsEmpty());
       EXPECT_TRUE(tryCatch.HasCaught());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       tryCatch.Exception(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                    slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -635,16 +629,15 @@ TEST_F(V8ViewsTest, test_auth) {
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
       auto result = v8::Function::Cast(*fn_rename)
                         ->CallAsFunction(context, arangoView,
                                          static_cast<int>(args.size()), args.data());
       EXPECT_TRUE(result.IsEmpty());
       EXPECT_TRUE(tryCatch.HasCaught());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       tryCatch.Exception(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                    slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -673,16 +666,15 @@ TEST_F(V8ViewsTest, test_auth) {
             p->_appendVelocyPackResult = arangodb::Result();
           });
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
       auto result = v8::Function::Cast(*fn_rename)
                         ->CallAsFunction(context, arangoView,
                                          static_cast<int>(args.size()), args.data());
       EXPECT_TRUE(result.IsEmpty());
       EXPECT_TRUE(tryCatch.HasCaught());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       tryCatch.Exception(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                    slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -777,16 +769,15 @@ TEST_F(V8ViewsTest, test_auth) {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
       auto result = v8::Function::Cast(*fn_properties)
                         ->CallAsFunction(context, arangoView,
                                          static_cast<int>(args.size()), args.data());
       EXPECT_TRUE(result.IsEmpty());
       EXPECT_TRUE(tryCatch.HasCaught());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       tryCatch.Exception(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                    slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -806,16 +797,15 @@ TEST_F(V8ViewsTest, test_auth) {
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
       auto result = v8::Function::Cast(*fn_properties)
                         ->CallAsFunction(context, arangoView,
                                          static_cast<int>(args.size()), args.data());
       EXPECT_TRUE(result.IsEmpty());
       EXPECT_TRUE(tryCatch.HasCaught());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       tryCatch.Exception(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                    slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -842,16 +832,15 @@ TEST_F(V8ViewsTest, test_auth) {
             p->_appendVelocyPackResult = arangodb::Result();
           });
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
       auto result = v8::Function::Cast(*fn_properties)
                         ->CallAsFunction(context, arangoView,
                                          static_cast<int>(args.size()), args.data());
       EXPECT_TRUE(result.IsEmpty());
       EXPECT_TRUE(tryCatch.HasCaught());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       tryCatch.Exception(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                    slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -874,15 +863,14 @@ TEST_F(V8ViewsTest, test_auth) {
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       auto result = v8::Function::Cast(*fn_properties)
                         ->CallAsFunction(context, arangoView,
                                          static_cast<int>(args.size()), args.data());
       EXPECT_FALSE(result.IsEmpty());
       EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       result.ToLocalChecked(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, result.ToLocalChecked(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::DataSourceName) &&
                    slice.get(arangodb::StaticStrings::DataSourceName).isString() &&
@@ -951,7 +939,7 @@ TEST_F(V8ViewsTest, test_auth) {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
       auto result =
           v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view,
@@ -959,9 +947,8 @@ TEST_F(V8ViewsTest, test_auth) {
                                                        args.data());
       EXPECT_TRUE(result.IsEmpty());
       EXPECT_TRUE(tryCatch.HasCaught());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       tryCatch.Exception(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                    slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -988,7 +975,7 @@ TEST_F(V8ViewsTest, test_auth) {
             p->_appendVelocyPackResult = arangodb::Result();
           });
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
       auto result =
           v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view,
@@ -996,9 +983,8 @@ TEST_F(V8ViewsTest, test_auth) {
                                                        args.data());
       EXPECT_TRUE(result.IsEmpty());
       EXPECT_TRUE(tryCatch.HasCaught());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       tryCatch.Exception(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                    slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -1093,16 +1079,15 @@ TEST_F(V8ViewsTest, test_auth) {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
       auto result = v8::Function::Cast(*fn_properties)
                         ->CallAsFunction(context, arangoView,
                                          static_cast<int>(args.size()), args.data());
       EXPECT_TRUE(result.IsEmpty());
       EXPECT_TRUE(tryCatch.HasCaught());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       tryCatch.Exception(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                    slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -1129,16 +1114,15 @@ TEST_F(V8ViewsTest, test_auth) {
             p->_appendVelocyPackResult = arangodb::Result();
           });
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
       auto result = v8::Function::Cast(*fn_properties)
                         ->CallAsFunction(context, arangoView,
                                          static_cast<int>(args.size()), args.data());
       EXPECT_TRUE(result.IsEmpty());
       EXPECT_TRUE(tryCatch.HasCaught());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       tryCatch.Exception(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                    slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -1159,15 +1143,14 @@ TEST_F(V8ViewsTest, test_auth) {
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       auto result = v8::Function::Cast(*fn_properties)
                         ->CallAsFunction(context, arangoView,
                                          static_cast<int>(args.size()), args.data());
       EXPECT_FALSE(result.IsEmpty());
       EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       result.ToLocalChecked(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, result.ToLocalChecked(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::DataSourceName) &&
                    slice.get(arangodb::StaticStrings::DataSourceName).isString() &&
@@ -1230,7 +1213,7 @@ TEST_F(V8ViewsTest, test_auth) {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
       userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-      arangodb::velocypack::Builder responce;
+      arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
       auto result =
           v8::Function::Cast(*fn_views)->CallAsFunction(context, fn_views,
@@ -1238,9 +1221,8 @@ TEST_F(V8ViewsTest, test_auth) {
                                                         args.data());
       EXPECT_TRUE(result.IsEmpty());
       EXPECT_TRUE(tryCatch.HasCaught());
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                       tryCatch.Exception(), false)));
-      auto slice = responce.slice();
+      TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+      auto slice = response.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                    slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&

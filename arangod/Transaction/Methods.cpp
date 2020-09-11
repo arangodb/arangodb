@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,6 +51,7 @@
 #include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
 #include "Futures/Utilities.h"
+#include "GeneralServer/RestHandler.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Network/Methods.h"
@@ -353,7 +354,8 @@ transaction::Methods::~Methods() {
     // store result in context
     _transactionContext->storeTransactionResult(_state->id(),
                                                 _state->wasRegistered(),
-                                                _state->isReadOnlyTransaction());
+                                                _state->isReadOnlyTransaction(),
+                                                _state->isFollowerTransaction());
 
     _state = nullptr;
   }
@@ -772,16 +774,11 @@ Result transaction::Methods::documentFastPathLocal(std::string const& collection
 
 namespace {
 template<typename F>
-Future<OperationResult> addTracking(Future<OperationResult> f,
-                                    VPackSlice value,
-                                    F&& func) {
+Future<OperationResult> addTracking(Future<OperationResult>&& f, F&& func) {
 #ifdef USE_ENTERPRISE
-  return std::move(f).thenValue([func = std::forward<F>(func), value](OperationResult opRes) {
-    func(opRes, value);
-    return opRes;
-  });
+  return std::move(f).thenValue(func);
 #else
-  return f;
+  return std::move(f);
 #endif
 }
 }
@@ -800,9 +797,10 @@ Future<OperationResult> transaction::Methods::documentAsync(std::string const& c
   }
 
   if (_state->isCoordinator()) {
-    return addTracking(documentCoordinator(cname, value, options), value,
-                       [=](OperationResult const& opRes, VPackSlice data) {
-      events::ReadDocument(vocbase().name(), cname, data, opRes._options, opRes.errorNumber());
+    return addTracking(documentCoordinator(cname, value, options),
+                       [=](OperationResult&& opRes) {
+      events::ReadDocument(vocbase().name(), cname, value, opRes.options, opRes.errorNumber());
+      return std::move(opRes);
     });
   } else {
     return documentLocal(cname, value, options);
@@ -895,7 +893,8 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
     res.reset(); // With babies the reporting is handled somewhere else.
   }
 
-  events::ReadDocument(vocbase().name(), collectionName, value, options, res.errorNumber());
+  events::ReadDocument(vocbase().name(), collectionName, value, options,
+                       res.errorNumber());
 
   return futures::makeFuture(OperationResult(std::move(res), resultBuilder.steal(),
                                              options, countErrorCodes));
@@ -928,12 +927,12 @@ Future<OperationResult> transaction::Methods::insertAsync(std::string const& cna
     f = insertLocal(cname, value, optionsCopy);
   }
 
-  return addTracking(std::move(f), value,
-                     [=](OperationResult const& opRes, VPackSlice data) {
-                       events::CreateDocument(vocbase().name(), cname,
-                                              (opRes.ok() && opRes._options.returnNew) ? opRes.slice() : data,
-                                              opRes._options, opRes.errorNumber());
-                     });
+  return addTracking(std::move(f), [=](OperationResult&& opRes) {
+    events::CreateDocument(vocbase().name(), cname,
+                           (opRes.ok() && opRes.options.returnNew) ? opRes.slice() : value,
+                           opRes.options, opRes.errorNumber());
+    return std::move(opRes);
+  });
 }
 
 /// @brief create one or multiple documents in a collection, coordinator
@@ -996,11 +995,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       if (!followerInfo->allowedToWrite()) {
         // We cannot fulfill minimum replication Factor.
         // Reject write.
-        LOG_TOPIC("d7306", ERR, Logger::REPLICATION)
-            << "Less than writeConcern ("
-            << basics::StringUtils::itoa(collection->writeConcern())
-            << ") followers in sync. Shard  " << collection->name()
-            << " is temporarily in read-only mode.";
         return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
       }
 
@@ -1099,8 +1093,8 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
           prevDocResult.revisionId().isSet()) {
         TRI_ASSERT(didReplace);
 
-        arangodb::velocypack::StringRef key = value.get(StaticStrings::KeyString).stringRef();
-        buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
+        buildDocumentIdentity(collection.get(), resultBuilder, cid,
+                              value.get(StaticStrings::KeyString).stringRef(),
                               prevDocResult.revisionId(), RevisionId::none(),
                               nullptr, nullptr);
       }
@@ -1202,10 +1196,10 @@ Future<OperationResult> transaction::Methods::updateAsync(std::string const& cna
     OperationOptions optionsCopy = options;
     f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
   }
-  return addTracking(std::move(f), newValue, [=](OperationResult const& opRes,
-                                                 VPackSlice data) {
-    events::ModifyDocument(vocbase().name(), cname, data,
-                           opRes._options, opRes.errorNumber());
+  return addTracking(std::move(f), [=](OperationResult&& opRes) {
+    events::ModifyDocument(vocbase().name(), cname, newValue, opRes.options,
+                           opRes.errorNumber());
+    return std::move(opRes);
   });
 }
 
@@ -1260,10 +1254,10 @@ Future<OperationResult> transaction::Methods::replaceAsync(std::string const& cn
     OperationOptions optionsCopy = options;
     f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
   }
-  return addTracking(std::move(f), newValue, [=](OperationResult const& opRes,
-                                                 VPackSlice data) {
-    events::ReplaceDocument(vocbase().name(), cname, data,
-                           opRes._options, opRes.errorNumber());
+  return addTracking(std::move(f), [=](OperationResult&& opRes) {
+    events::ReplaceDocument(vocbase().name(), cname, newValue, opRes.options,
+                            opRes.errorNumber());
+    return std::move(opRes);
   });
 }
 
@@ -1299,11 +1293,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       if (!followerInfo->allowedToWrite()) {
         // We cannot fulfill minimum replication Factor.
         // Reject write.
-        LOG_TOPIC("2e35a", ERR, Logger::REPLICATION)
-            << "Less than writeConcern ("
-            << basics::StringUtils::itoa(collection->writeConcern())
-            << ") followers in sync. Shard  " << collection->name()
-            << " is temporarily in read-only mode.";
         return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
       }
 
@@ -1455,7 +1444,7 @@ Future<OperationResult> transaction::Methods::removeAsync(std::string const& cna
                                                           VPackSlice const value,
                                                           OperationOptions const& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
+  
   if (!value.isObject() && !value.isArray() && !value.isString()) {
     // must provide a document object or an array of documents
     events::DeleteDocument(vocbase().name(), cname, value, options,
@@ -1474,10 +1463,10 @@ Future<OperationResult> transaction::Methods::removeAsync(std::string const& cna
     OperationOptions optionsCopy = options;
     f = removeLocal(cname, value, optionsCopy);
   }
-  return addTracking(std::move(f), value, [=](OperationResult const& opRes,
-                                              VPackSlice data) {
-    events::DeleteDocument(vocbase().name(), cname, data,
-                            opRes._options, opRes.errorNumber());
+  return addTracking(std::move(f), [=](OperationResult&& opRes) {
+    events::DeleteDocument(vocbase().name(), cname, value, opRes.options,
+                           opRes.errorNumber());
+    return std::move(opRes);
   });
 }
 
@@ -1524,11 +1513,6 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       if (!followerInfo->allowedToWrite()) {
         // We cannot fulfill minimum replication Factor.
         // Reject write.
-        LOG_TOPIC("f1f8e", ERR, Logger::REPLICATION)
-            << "Less than writeConcern ("
-            << basics::StringUtils::itoa(collection->writeConcern())
-            << ") followers in sync. Shard  " << collection->name()
-            << " is temporarily in read-only mode.";
         return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
       }
 
@@ -1751,11 +1735,6 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       if (!followerInfo->allowedToWrite()) {
         // We cannot fulfill minimum replication Factor.
         // Reject write.
-        LOG_TOPIC("7c1d4", ERR, Logger::REPLICATION)
-            << "Less than writeConcern ("
-            << basics::StringUtils::itoa(collection->writeConcern())
-            << ") followers in sync. Shard  " << collection->name()
-            << " is temporarily in read-only mode.";
         return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options));
       }
 

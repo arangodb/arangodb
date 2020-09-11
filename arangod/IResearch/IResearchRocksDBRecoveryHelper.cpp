@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -276,7 +276,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(
     IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*link);
 #endif
 
-    impl.insert(trx, docId, doc, arangodb::Index::OperationMode::internal);
+    impl.insert(trx, docId, doc);
   }
 
   res = trx.commit();
@@ -331,8 +331,7 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
 #endif
 
     impl.remove(trx, docId,
-                arangodb::velocypack::Slice::emptyObjectSlice(),
-                arangodb::Index::OperationMode::internal);
+                arangodb::velocypack::Slice::emptyObjectSlice());
   }
 
   res = trx.commit();
@@ -344,7 +343,7 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
 
 void IResearchRocksDBRecoveryHelper::LogData(
     const rocksdb::Slice& blob,
-    rocksdb::SequenceNumber /*tick*/) {
+    rocksdb::SequenceNumber tick) {
   RocksDBLogType const type = RocksDBLogValue::type(blob);
 
   switch (type) {
@@ -365,7 +364,7 @@ void IResearchRocksDBRecoveryHelper::LogData(
       if (coll != nullptr) {
         auto const links = lookupLinks(*coll);
         for (auto link : links) {
-          link->afterTruncate(/*tick*/ 0);  // tick isn't used for links
+          link->afterTruncate(tick, nullptr);
         }
       }
 

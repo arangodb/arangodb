@@ -103,13 +103,11 @@ class Context {
   /// @brief get velocypack options with a custom type handler
   TEST_VIRTUAL arangodb::velocypack::Options* getVPackOptions();
 
-  /// @brief get velocypack options for dumping
-  arangodb::velocypack::Options* getVPackOptionsForDump();
-
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
   void storeTransactionResult(TransactionId id, bool wasRegistered,
-                              bool isReadOnlyTransaction) noexcept;
+                              bool isReadOnlyTransaction,
+                              bool isFollowerTranaction) noexcept;
 
  public:
   /// @brief get a custom type handler
@@ -159,12 +157,12 @@ class Context {
   ::arangodb::containers::SmallVector<std::string*, 32> _strings;
 
   arangodb::velocypack::Options _options;
-  arangodb::velocypack::Options _dumpOptions;
   
  private:
   struct {
     TransactionId id;
     bool isReadOnlyTransaction;
+    bool isFollowerTransaction;
   } _transaction;
 
   bool _ownsResolver;

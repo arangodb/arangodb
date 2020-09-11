@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -195,6 +196,7 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
   std::map<std::string, std::string> desc;
   auto prop = std::make_shared<VPackBuilder>();
   int priority = 1;
+  bool forced = false;
 
   VPackObjectIterator it(parameters, true);
   for (; it.valid() && good; ++it) {
@@ -211,12 +213,14 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
       prop.reset(new VPackBuilder(value));
     } else if (key.isString() && (key.copyString() == "priority") && value.isInteger()) {
       priority = static_cast<int>(value.getInt());
+    } else if (key.isString() && (key.stringRef() == "forced") && value.isBool()) {
+      forced = value.isTrue();
     } else {
       good = false;
     }  // else
   }    // for
 
-  _actionDesc = std::make_shared<maintenance::ActionDescription>(std::move(desc), priority, std::move(prop));
+  _actionDesc = std::make_shared<maintenance::ActionDescription>(std::move(desc), priority, forced, std::move(prop));
 
   return good;
 

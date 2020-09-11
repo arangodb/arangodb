@@ -26,10 +26,10 @@
 #include "store/data_output.hpp"
 #include "store/data_input.hpp"
 
-#include "noncopyable.hpp"
+#include "utils/noncopyable.hpp"
 
-#include "fst_decl.hpp"
-#include "fst_string_weight.h"
+#include "fstext/fst_decl.hpp"
+#include "fstext/fst_string_weight.h"
 
 NS_ROOT
 

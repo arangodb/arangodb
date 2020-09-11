@@ -38,7 +38,7 @@
 
 #include "utils/bit_utils.hpp"
 #include "utils/automaton_utils.hpp"
-#include "utils/fst_table_matcher.hpp"
+#include "utils/fstext/fst_table_matcher.hpp"
 
 #include "store/data_output.hpp"
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,8 +34,10 @@ using namespace arangodb::maintenance;
 /// @brief ctor
 ActionDescription::ActionDescription(std::map<std::string, std::string> d,
                                      int priority,
+                                     bool runEvenIfDuplicate,
                                      std::shared_ptr<VPackBuilder> p)
-    : _description(std::move(d)), _properties(std::move(p)), _priority(priority) {
+    : _description(std::move(d)), _properties(std::move(p)), _priority(priority),
+      _runEvenIfDuplicate(runEvenIfDuplicate) {
   TRI_ASSERT(_description.find(NAME) != _description.end());
   TRI_ASSERT(_properties == nullptr || _properties->isEmpty() || _properties->slice().isObject());
 }

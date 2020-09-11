@@ -28,9 +28,6 @@
 /// @author Copyright 2019, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-let jsunity = require("jsunity");
-let db = require("@arangodb").db;
-
 (function() {
   var db = require("@arangodb").db;
   const analyzers = require("@arangodb/analyzers");
@@ -292,7 +289,7 @@ let db = require("@arangodb").db;
             // the other sort node should be limited but not have a materializer
             // d.value node on single and TFIDF on cluster as for cluster
             // only first sort will be on DBServers
-            assertEqual(nodeDependency.limit, isCluster ? 10 : 4);
+            assertEqual(nodeDependency.limit, isCluster ? 0 : 4);
           }
           nodeDependency = node; // as we walk the plan this will be next node dependency
         });
@@ -380,7 +377,7 @@ let db = require("@arangodb").db;
         plan.nodes.forEach(function(node) {
           if (node.type === "MaterializeNode") {
             assertFalse(materializeNodeFound); // no double materialization
-            assertEqual(nodeDependency.limit, isCluster ? 6 : 3);
+            assertEqual(nodeDependency.limit, isCluster ? 0 : 3);
             materializeNodeFound = true;
           }
           nodeDependency = node;
@@ -405,7 +402,7 @@ let db = require("@arangodb").db;
         plan.nodes.forEach(function(node) {
           if (node.type === "MaterializeNode") {
             assertFalse(materializeNodeFound);
-            assertEqual(nodeDependency.limit, isCluster ? 6 : 3);
+            assertEqual(nodeDependency.limit, isCluster ? 0 : 3);
             materializeNodeFound = true;
           }
           nodeDependency = node;

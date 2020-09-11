@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,11 +54,7 @@ static void JS_TtlProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
   } else {
     // set properties
     VPackBuilder properties;
-    
-    int res = TRI_V8ToVPack(isolate, properties, args[0], false);
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
+    TRI_V8ToVPack(isolate, properties, args[0], false);
 
     result = methods::Ttl::setProperties(v8g->_server.getFeature<TtlFeature>(),
                                          properties.slice(), builder);

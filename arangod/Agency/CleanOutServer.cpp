@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -402,7 +402,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           if (isLeader) {
 
             std::string toServer = Job::findNonblockedCommonHealthyInSyncFollower(
-              _snapshot, database.first, collptr.first, shard.first);
+              _snapshot, database.first, collptr.first, shard.first, _server);
 
             MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                     _jobId, database.first, collptr.first, shard.first, _server,

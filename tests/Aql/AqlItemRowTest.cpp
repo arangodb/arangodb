@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -52,12 +53,12 @@ class AqlItemRowsTest : public ::testing::Test {
   void AssertResultMatrix(AqlItemBlock* in, VPackSlice result,
                           RegIdFlatSet const& regsToKeep, bool assertNotInline = false) {
     ASSERT_TRUE(result.isArray());
-    ASSERT_EQ(in->size(), result.length());
-    for (size_t rowIdx = 0; rowIdx < in->size(); ++rowIdx) {
+    ASSERT_EQ(in->numRows(), result.length());
+    for (size_t rowIdx = 0; rowIdx < in->numRows(); ++rowIdx) {
       VPackSlice row = result.at(rowIdx);
       ASSERT_TRUE(row.isArray());
-      ASSERT_EQ(in->getNrRegs(), row.length());
-      for (RegisterId regId = 0; regId < in->getNrRegs(); ++regId) {
+      ASSERT_EQ(in->numRegisters(), row.length());
+      for (RegisterId regId = 0; regId < in->numRegisters(); ++regId) {
         AqlValue v = in->getValueReference(rowIdx, regId);
         if (regsToKeep.find(regId) == regsToKeep.end()) {
           // If this should not be kept it has to be set to NONE!

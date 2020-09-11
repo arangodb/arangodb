@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,6 +25,7 @@
 
 #include "QueryRegistryFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
@@ -36,6 +38,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/MetricsFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -64,7 +67,24 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _slowQueryThreshold(10.0),
       _slowStreamingQueryThreshold(10.0),
       _queryRegistryTTL(0.0),
-      _queryCacheMode("off") {
+      _queryCacheMode("off"),
+      _queryTimes(
+        server.getFeature<arangodb::MetricsFeature>().histogram(
+          "arangodb_aql_query_time", log_scale_t(2., 0.0, 50.0, 20),
+          "Execution time histogram for all AQL queries [s]")),
+      _slowQueryTimes(
+        server.getFeature<arangodb::MetricsFeature>().histogram(
+          "arangodb_aql_slow_query_time", log_scale_t(2., 1.0, 2000.0, 10),
+          "Execution time histogram for slow AQL queries [s]")),
+      _totalQueryExecutionTime(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_aql_total_query_time_msec", 0, "Total execution time of all AQL queries [ms]")),
+      _queriesCounter(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_aql_all_query", 0, "Total number of AQL queries")),
+      _slowQueriesCounter(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_aql_slow_query", 0, "Total number of slow AQL queries")) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
@@ -232,6 +252,19 @@ void QueryRegistryFeature::stop() {
 void QueryRegistryFeature::unprepare() {
   // clear the query registery
   QUERY_REGISTRY.store(nullptr, std::memory_order_release);
+}
+
+void QueryRegistryFeature::trackQuery(double time) { 
+  ++_queriesCounter; 
+  _queryTimes.count(time);
+  _totalQueryExecutionTime += static_cast<uint64_t>(1000 * time);
+}
+
+void QueryRegistryFeature::trackSlowQuery(double time) { 
+  // query is already counted here as normal query, so don't count it
+  // again in _queryTimes or _totalQueryExecutionTime
+  ++_slowQueriesCounter; 
+  _slowQueryTimes.count(time);
 }
 
 }  // namespace arangodb

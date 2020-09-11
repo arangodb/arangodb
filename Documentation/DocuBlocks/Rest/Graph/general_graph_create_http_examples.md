@@ -28,6 +28,10 @@ Documents within these collections do not have edges within this graph.
 @RESTBODYPARAM{isSmart,boolean,optional,}
 Define if the created graph should be smart (Enterprise Edition only).
 
+@RESTBODYPARAM{isDisjoint,boolean,optional,}
+Whether to create a Disjoint SmartGraph instead of a regular SmartGraph
+(Enterprise Edition only).
+
 @RESTBODYPARAM{options,object,optional,post_api_gharial_create_opts}
 a JSON object to define options for creating collections within this graph.
 It can contain the following attributes:

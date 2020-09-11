@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -101,7 +102,7 @@ void RocksDBBuilderIndex::toVelocyPack(VPackBuilder& builder,
 /// insert index elements into the specified write batch.
 Result RocksDBBuilderIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
-                                   arangodb::velocypack::Slice const& slice,
+                                   arangodb::velocypack::Slice const slice,
                                    OperationOptions& options) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* ctx = dynamic_cast<::BuilderCookie*>(trx.state()->cookie(this));
@@ -126,8 +127,7 @@ Result RocksDBBuilderIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
 /// remove index elements and put it in the specified write batch.
 Result RocksDBBuilderIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
-                                   arangodb::velocypack::Slice const& slice,
-                                   OperationMode mode) {
+                                   arangodb::velocypack::Slice const slice) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* ctx = dynamic_cast<::BuilderCookie*>(trx.state()->cookie(this));
 #else
@@ -341,8 +341,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
       case RocksDBLogType::TrackedDocumentRemove:
         if (_lastObjectID == _objectId) {
           auto pair = RocksDBLogValue::trackedDocument(blob);
-          tmpRes = _index.remove(_trx, _methods, pair.first, pair.second,
-                                 Index::OperationMode::normal);
+          tmpRes = _index.remove(_trx, _methods, pair.first, pair.second);
           numRemoved++;
         }
         break;
@@ -391,7 +390,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
     if (column_family_id == _index.columnFamily()->GetID() &&
         RocksDBKey::objectId(begin_key) == _objectId &&
         RocksDBKey::objectId(end_key) == _objectId) {
-      _index.afterTruncate(_currentSequence);
+      _index.afterTruncate(_currentSequence, &_trx);
     }
     return rocksdb::Status();  // make WAL iterator happy
   }

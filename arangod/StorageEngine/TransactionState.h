@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -183,6 +183,11 @@ class TransactionState {
   /// @brief whether or not a transaction is read-only
   bool isReadOnlyTransaction() const {
     return (_type == AccessMode::Type::READ);
+  }
+
+  /// @brief whether or not a transaction is a follower transaction
+  bool isFollowerTransaction() const {
+    return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
   }
 
   /// @brief whether or not a transaction only has exculsive or read accesses

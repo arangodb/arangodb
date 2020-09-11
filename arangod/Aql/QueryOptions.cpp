@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,7 +47,7 @@ QueryOptions::QueryOptions()
       maxRuntime(0),
       satelliteSyncWait(60.0),
       ttl(QueryOptions::defaultTtl), // get global default ttl
-      profile(PROFILE_LEVEL_NONE),
+      profile(ProfileLevel::None),
       allPlans(false),
       verbosePlans(false),
       stream(false),
@@ -125,7 +125,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const slice) {
   // boolean options
   value = slice.get("profile");
   if (value.isBool()) {
-    profile = value.getBool() ? PROFILE_LEVEL_BASIC : PROFILE_LEVEL_NONE;
+    profile = value.getBool() ? ProfileLevel::Basic : ProfileLevel::None;
   } else if (value.isNumber()) {
     profile = static_cast<ProfileLevel>(value.getNumber<uint16_t>());
   }

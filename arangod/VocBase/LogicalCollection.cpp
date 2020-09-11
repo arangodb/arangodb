@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -115,11 +115,6 @@ std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
   return arangodb::StaticStrings::Empty;
 }
 
-std::string readStringValue(arangodb::velocypack::Slice info,
-                            std::string const& name, std::string const& def) {
-  return info.isObject() ? Helper::getStringValue(info, name, def) : def;
-}
-
 arangodb::LogicalDataSource::Type const& readType(arangodb::velocypack::Slice info,
                                                   std::string const& key,
                                                   TRI_col_type_e def) {
@@ -152,9 +147,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
           ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN), vocbase,
           DataSourceId{Helper::extractIdValue(info)}, ::readGloballyUniqueId(info),
           DataSourceId{Helper::stringUInt64(info.get(StaticStrings::DataSourcePlanId))},
-          ::readStringValue(info, StaticStrings::DataSourceName, ""),
+          Helper::getStringValue(info, StaticStrings::DataSourceName, ""),
           TRI_vocbase_t::IsSystemName(
-              ::readStringValue(info, StaticStrings::DataSourceName, "")) &&
+              Helper::getStringValue(info, StaticStrings::DataSourceName, "")) &&
               Helper::getBooleanValue(info, StaticStrings::DataSourceSystem, false),
           Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted, false)),
       _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(
@@ -180,7 +175,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
                        : RevisionId::fromSlice(info.get(StaticStrings::MinRevision))),
 #ifdef USE_ENTERPRISE
       _smartJoinAttribute(
-          ::readStringValue(info, StaticStrings::SmartJoinAttribute, "")),
+          Helper::getStringValue(info, StaticStrings::SmartJoinAttribute, "")),
 #endif
       _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)) {
 
@@ -199,7 +194,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
   }
 
-  auto res = updateValidators(info.get(StaticStrings::Schema));
+  auto res = updateSchema(info.get(StaticStrings::Schema));
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -288,33 +283,32 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   return category;
 }
 
-Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
+Result LogicalCollection::updateSchema(VPackSlice schema) {
   using namespace std::literals::string_literals;
-  if (validatorSlice.isNone()) {
+  if (schema.isNone()) {
     return { TRI_ERROR_NO_ERROR };
   } 
-  if (validatorSlice.isNull()) {
-    validatorSlice = VPackSlice::emptyObjectSlice();
+  if (schema.isNull()) {
+    schema = VPackSlice::emptyObjectSlice();
   }
-  if (!validatorSlice.isObject()) {
+  if (!schema.isObject()) {
     return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Schema description is not an object."};
   }
 
-  TRI_ASSERT(validatorSlice.isObject());
+  TRI_ASSERT(schema.isObject());
 
-  auto newVec = std::make_shared<ValidatorVec>();
+  std::shared_ptr<arangodb::ValidatorBase> newSchema;
 
   // delete validators if empty object is given
-  if (!validatorSlice.isEmptyObject()) {
+  if (!schema.isEmptyObject()) {
     try {
-      auto validator = std::make_unique<ValidatorJsonSchema>(validatorSlice);
-      newVec->push_back(std::move(validator));
+      newSchema = std::make_shared<ValidatorJsonSchema>(schema);
     } catch (std::exception const& ex) {
       return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building schema: "s + ex.what() };
     }
   }
 
-  std::atomic_store_explicit(&_validators, newVec, std::memory_order_relaxed);
+  std::atomic_store_explicit(&_schema, newSchema, std::memory_order_relaxed);
 
   return { TRI_ERROR_NO_ERROR };
 }
@@ -758,10 +752,10 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   };
   getIndexesVPack(result, filter);
 
-  // Validators
+  // Schema
   {
     result.add(VPackValue(StaticStrings::Schema));
-    validatorsToVelocyPack(result);
+    schemaToVelocyPack(result);
   }
 
   // Cluster Specific
@@ -846,7 +840,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
 
   MUTEX_LOCKER(guard, _infoLock);  // prevent simultaneous updates
 
-  auto res = updateValidators(slice.get(StaticStrings::Schema));
+  auto res = updateSchema(slice.get(StaticStrings::Schema));
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -982,8 +976,8 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
 }
 
 /// @brief return the figures for a collection
-futures::Future<OperationResult> LogicalCollection::figures() const {
-  return getPhysical()->figures();
+futures::Future<OperationResult> LogicalCollection::figures(bool details) const {
+  return getPhysical()->figures(details);
 }
 
 /// SECTION Indexes
@@ -1168,35 +1162,27 @@ VPackSlice LogicalCollection::keyOptions() const {
   return VPackSlice(_keyOptions->data());
 }
 
-void LogicalCollection::validatorsToVelocyPack(VPackBuilder& b) const {
-  auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
-  if (vals == nullptr || vals->empty()) {
+void LogicalCollection::schemaToVelocyPack(VPackBuilder& b) const {
+  auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
+  if (schema != nullptr) {
+    schema->toVelocyPack(b);
+  } else {
     b.add(VPackSlice::nullSlice());
-    return;
   }
-  vals->front()->toVelocyPack(b);
 }
 
 Result LogicalCollection::validate(VPackSlice s, VPackOptions const* options) const {
-  auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
-  if (vals == nullptr) { return {}; }
-  for(auto const& validator : *vals) {
-    auto rv = validator->validate(s, VPackSlice::noneSlice(), true, options);
-    if (rv.fail()) {
-      return rv;
-    }
+  auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
+  if (schema != nullptr) { 
+    return schema->validate(s, VPackSlice::noneSlice(), true, options);
   }
   return {};
 }
 
 Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const* options) const {
-  auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
-  if (vals == nullptr) { return {}; }
-  for(auto const& validator : *vals) {
-    auto rv = validator->validate(modifiedDoc, oldDoc, false, options);
-    if (rv.fail()) {
-      return rv;
-    }
+  auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
+  if (schema != nullptr) { 
+    return schema->validate(modifiedDoc, oldDoc, false, options);
   }
   return {};
 }

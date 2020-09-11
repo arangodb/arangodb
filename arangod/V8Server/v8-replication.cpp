@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -185,11 +185,7 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
   // treat the argument as an object from now on
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
   VPackBuilder builder;
-  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  TRI_V8ToVPack(isolate, builder, args[0], false);
 
   auto& vocbase = GetContextVocBase(isolate);
   std::string databaseName;
@@ -320,11 +316,7 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
 
   VPackBuilder builder;
-  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  TRI_V8ToVPack(isolate, builder, args[0], false);
 
   std::string database;
   if (TRI_HasProperty(context, isolate, object, "database")) {
@@ -472,11 +464,7 @@ static void ConfigureApplierReplication(v8::FunctionCallbackInfo<v8::Value> cons
     }
 
     VPackBuilder builder;
-    int res = TRI_V8ToVPack(isolate, builder, args[0], false);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
+    TRI_V8ToVPack(isolate, builder, args[0], false);
 
     std::string databaseName;
     if (applierType == APPLIER_DATABASE) {

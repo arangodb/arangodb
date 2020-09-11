@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -57,15 +58,15 @@ void DropIndex(std::string const& db, std::string const& col,
 void CreateView(std::string const& db, std::string const& name, int result);
 void DropView(std::string const& db, std::string const& name, int result);
 void CreateDocument(std::string const& db, std::string const& collection,
-                    VPackSlice const& document, OperationOptions const& options, int);
+                    VPackSlice const& document, OperationOptions const& options, int code);
 void DeleteDocument(std::string const& db, std::string const& collection,
-                    VPackSlice const& document, OperationOptions const& options, int);
+                    VPackSlice const& document, OperationOptions const& options, int code);
 void ReadDocument(std::string const& db, std::string const& collection,
-                  VPackSlice const& document, OperationOptions const& options, int);
+                  VPackSlice const& document, OperationOptions const& options, int code);
 void ReplaceDocument(std::string const& db, std::string const& collection,
-                     VPackSlice const& document, OperationOptions const& options, int);
+                     VPackSlice const& document, OperationOptions const& options, int code);
 void ModifyDocument(std::string const& db, std::string const& collection,
-                    VPackSlice const& document, OperationOptions const& options, int);
+                    VPackSlice const& document, OperationOptions const& options, int code);
 void IllegalDocumentOperation(GeneralRequest const&, int result);
 void QueryDocument(std::string const& db, std::string const&, std::string const&, int code);
 void QueryDocument(std::string const& db, VPackSlice const&, int code);

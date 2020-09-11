@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -1128,7 +1129,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     {
       READ_LOCKER(idxGuard, _indexesLock);
       for (std::shared_ptr<Index> const& idx : _indexes) {
-        idx->afterTruncate(seq);  // clears caches / clears links (if applicable)
+        idx->afterTruncate(seq, &trx);  // clears caches / clears links (if applicable)
       }
     }
     bufferTruncate(seq);
@@ -1832,7 +1833,7 @@ Result RocksDBCollection::cleanupAfterUpgrade() {
 }
 
 /// @brief return engine-specific figures
-void RocksDBCollection::figuresSpecific(arangodb::velocypack::Builder& builder) {
+void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Builder& builder) {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId());
   rocksdb::Range r(bounds.start(), bounds.end());
@@ -1859,6 +1860,68 @@ void RocksDBCollection::figuresSpecific(arangodb::velocypack::Builder& builder) 
   } else {
     builder.add("cacheSize", VPackValue(0));
     builder.add("cacheUsage", VPackValue(0));
+  }
+
+  if (details) {
+    // engine-specific stuff here
+    rocksdb::DB* db = rocksutils::globalRocksDB()->GetRootDB();
+
+    builder.add("engine", VPackValue(VPackValueType::Object));
+    
+    builder.add("documents", VPackValue(rocksutils::countKeyRange(db, RocksDBKeyBounds::CollectionDocuments(objectId()), true)));
+    builder.add("indexes", VPackValue(VPackValueType::Array));
+    {
+      READ_LOCKER(guard, _indexesLock);
+      for (auto it : _indexes) {
+        auto type = it->type();
+        if (type == Index::TRI_IDX_TYPE_UNKNOWN ||
+            type == Index::TRI_IDX_TYPE_IRESEARCH_LINK ||
+            type == Index::TRI_IDX_TYPE_NO_ACCESS_INDEX) {
+          continue;
+        }
+        
+        builder.openObject();
+        builder.add("type", VPackValue(it->typeName()));
+        builder.add("id", VPackValue(it->id().id()));
+        
+        RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
+        size_t count = 0;
+        switch (type) {
+          case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+            count = rocksutils::countKeyRange(db, RocksDBKeyBounds::PrimaryIndex(rix->objectId()), true);
+            break;
+          case Index::TRI_IDX_TYPE_GEO_INDEX:
+          case Index::TRI_IDX_TYPE_GEO1_INDEX:
+          case Index::TRI_IDX_TYPE_GEO2_INDEX: 
+            count = rocksutils::countKeyRange(db, RocksDBKeyBounds::GeoIndex(rix->objectId()), true);
+            break;
+          case Index::TRI_IDX_TYPE_HASH_INDEX:
+          case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
+          case Index::TRI_IDX_TYPE_TTL_INDEX:
+          case Index::TRI_IDX_TYPE_PERSISTENT_INDEX: 
+            if (it->unique()) {
+              count = rocksutils::countKeyRange(db, RocksDBKeyBounds::UniqueVPackIndex(rix->objectId(), false), true);
+            } else {
+              count = rocksutils::countKeyRange(db, RocksDBKeyBounds::VPackIndex(rix->objectId(), false), true);
+            }
+            break;
+          case Index::TRI_IDX_TYPE_EDGE_INDEX: 
+            count = rocksutils::countKeyRange(db, RocksDBKeyBounds::EdgeIndex(rix->objectId()), false);
+            break;
+          case Index::TRI_IDX_TYPE_FULLTEXT_INDEX: 
+            count = rocksutils::countKeyRange(db, RocksDBKeyBounds::FulltextIndex(rix->objectId()), true);
+            break;
+          default: 
+            // we should not get here
+            TRI_ASSERT(false);
+        }
+
+        builder.add("count", VPackValue(count));
+        builder.close();
+      }
+    }
+    builder.close(); // "indexes" array
+    builder.close(); // "engine" object
   }
 }
 
@@ -1903,7 +1966,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     if (res.fail()) {
       if (needReversal && !state->isSingleOperation()) {
         ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
-          return rid->remove(*trx, mthds, documentId, doc, Index::OperationMode::rollback);
+          return rid->remove(*trx, mthds, documentId, doc);
         });
       }
       break;
@@ -1952,13 +2015,13 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   bool needReversal = false;
   for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
-    res = rIdx->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
+    res = rIdx->remove(*trx, mthds, documentId, doc);
     needReversal = needReversal || rIdx->needsReversal();
     if (res.fail()) {
       if (needReversal && !trx->isSingleOperationTransaction()) {
         ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
           OperationOptions options;
-          options.indexOperationMode = Index::OperationMode::rollback;
+          options.indexOperationMode = IndexOperationMode::rollback;
           return rid->insert(*trx, mthds, documentId, doc, options);
         });
       }
@@ -2019,16 +2082,13 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   bool needReversal = false;
   for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
     auto rIdx = static_cast<RocksDBIndex*>(it->get());
-    res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId,
-                       newDoc, options.indexOperationMode);
+    res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId, newDoc, options);
     needReversal = needReversal || rIdx->needsReversal();
     if (!res.ok()) {
       if (needReversal && !trx->isSingleOperationTransaction()) {
         ::reverseIdxOps(_indexes, it,
-                        [mthds, trx, &newDocumentId, &newDoc, &oldDocumentId,
-                         &oldDoc](RocksDBIndex* rid) {
-                          return rid->update(*trx, mthds, newDocumentId, newDoc, oldDocumentId,
-                                             oldDoc, Index::OperationMode::rollback);
+                        [&](RocksDBIndex* rid) {
+                          return rid->update(*trx, mthds, newDocumentId, newDoc, oldDocumentId, oldDoc, options);
                         });
       }
       break;

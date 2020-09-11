@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/QueryRegistry.h"
+#include "RestServer/Metrics.h"
 
 namespace arangodb {
 
@@ -43,6 +45,11 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
+
+  // tracks a query, using execution time
+  void trackQuery(double time);
+  // tracks a slow query, using execution time
+  void trackSlowQuery(double time);
 
   bool trackSlowQueries() const { return _trackSlowQueries; }
   bool trackBindVars() const { return _trackBindVars; }
@@ -84,6 +91,12 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   static std::atomic<aql::QueryRegistry*> QUERY_REGISTRY;
 
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
+
+  Histogram<log_scale_t<double>>& _queryTimes;
+  Histogram<log_scale_t<double>>& _slowQueryTimes;
+  Counter& _totalQueryExecutionTime;
+  Counter& _queriesCounter;
+  Counter& _slowQueriesCounter;
 };
 
 }  // namespace arangodb
