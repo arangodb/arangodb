@@ -205,6 +205,8 @@ class HashedCollectExecutor {
   std::vector<Aggregator::Factory> _aggregatorFactories;
 
   GroupKeyType _nextGroupValues;
+
+  size_t _returnedGroups = 0;
 };
 
 }  // namespace aql
