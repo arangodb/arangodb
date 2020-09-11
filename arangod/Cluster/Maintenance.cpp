@@ -1397,7 +1397,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
       if (!cdb.hasKey(cpath)) {
         continue;
       } else {
-        cdb = current.get(cpath);
+        cdb = cdb.get(cpath);
       }
     } else {
       continue;
