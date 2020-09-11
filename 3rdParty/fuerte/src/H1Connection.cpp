@@ -460,6 +460,8 @@ template <SocketType ST>
 void H1Connection<ST>::setIOTimeout() {
   const bool isIdle = _item == nullptr;
   if (isIdle && !this->_config._useIdleTimeout) {
+    asio_ns::error_code ec;
+    this->_proto.timer.cancel(ec);
     return;
   }
 
