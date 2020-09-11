@@ -21,6 +21,9 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
+
+#include "IndexNodeOptimizerRules.h"
+
 #include "Aql/Ast.h"
 #include "Aql/CalculationNodeVarFinder.h"
 #include "Aql/Collection.h"
@@ -30,9 +33,9 @@
 #include "Aql/IndexNode.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/Optimizer.h"
-#include "IndexNodeOptimizerRules.h"
 #include "Basics/AttributeNameParser.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/Index.h"
 
 using namespace arangodb::aql;
 

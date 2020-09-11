@@ -157,8 +157,8 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
   }
   TRI_ASSERT(_trx != nullptr);
   
-  if (_profile) {
-    _profile->registerInQueryList();
+  if (_queryProfile) {  // simon: just a hack for AQL_EXECUTEJSON
+    _queryProfile->registerInQueryList();
   }
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }

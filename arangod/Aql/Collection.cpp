@@ -33,8 +33,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/Index.h"
 #include "Transaction/Methods.h"
-#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 

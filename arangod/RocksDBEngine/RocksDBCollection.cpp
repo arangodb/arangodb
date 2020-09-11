@@ -1966,7 +1966,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     if (res.fail()) {
       if (needReversal && !state->isSingleOperation()) {
         ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
-          return rid->remove(*trx, mthds, documentId, doc, Index::OperationMode::rollback);
+          return rid->remove(*trx, mthds, documentId, doc);
         });
       }
       break;
@@ -2015,13 +2015,13 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   bool needReversal = false;
   for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
-    res = rIdx->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
+    res = rIdx->remove(*trx, mthds, documentId, doc);
     needReversal = needReversal || rIdx->needsReversal();
     if (res.fail()) {
       if (needReversal && !trx->isSingleOperationTransaction()) {
         ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
           OperationOptions options;
-          options.indexOperationMode = Index::OperationMode::rollback;
+          options.indexOperationMode = IndexOperationMode::rollback;
           return rid->insert(*trx, mthds, documentId, doc, options);
         });
       }
@@ -2082,16 +2082,13 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   bool needReversal = false;
   for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
     auto rIdx = static_cast<RocksDBIndex*>(it->get());
-    res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId,
-                       newDoc, options.indexOperationMode);
+    res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId, newDoc, options);
     needReversal = needReversal || rIdx->needsReversal();
     if (!res.ok()) {
       if (needReversal && !trx->isSingleOperationTransaction()) {
         ::reverseIdxOps(_indexes, it,
-                        [mthds, trx, &newDocumentId, &newDoc, &oldDocumentId,
-                         &oldDoc](RocksDBIndex* rid) {
-                          return rid->update(*trx, mthds, newDocumentId, newDoc, oldDocumentId,
-                                             oldDoc, Index::OperationMode::rollback);
+                        [&](RocksDBIndex* rid) {
+                          return rid->update(*trx, mthds, newDocumentId, newDoc, oldDocumentId, oldDoc, options);
                         });
       }
       break;

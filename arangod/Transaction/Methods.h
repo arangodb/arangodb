@@ -67,23 +67,15 @@ class SortCondition;
 struct Variable;
 }  // namespace aql
 
-namespace rest {
-enum class ResponseCode;
-}
-
-namespace traverser {
-class BaseEngine;
-}
-
 namespace transaction {
 class Context;
 struct Options;
 }  // namespace transaction
 
 /// @brief forward declarations
-class ClusterFeature;
 class CollectionNameResolver;
 class Index;
+class IndexIterator;
 class LocalDocumentId;
 class ManagedDocumentResult;
 struct IndexIteratorOptions;

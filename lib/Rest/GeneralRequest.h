@@ -134,7 +134,8 @@ class GeneralRequest {
   void setRequestType(RequestType type) { _type = type; }
 
   std::string const& fullUrl() const { return _fullUrl; }
-
+  std::string const& requestUrl() const { return _fullUrl; }
+  
   // consists of the URL without the host and without any parameters.
   std::string const& requestPath() const { return _requestPath; }
 

@@ -25,6 +25,7 @@
 #define ARANGOD_UTILS_OPERATION_RESULT_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 #include "Basics/Result.h"
 #include "Utils/OperationOptions.h"
 
@@ -33,23 +34,20 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <unordered_map>
+
 namespace arangodb {
 
-struct OperationResult {
+struct OperationResult final {
   OperationResult() {}
-
-  // create from integer status code
-  explicit OperationResult(int code) : result(code) {}
-  explicit OperationResult(int code, OperationOptions const& options)
-      : result(code), _options(options) {}
 
   // create from Result
   explicit OperationResult(Result const& other) : result(other) {}
   explicit OperationResult(Result const& other, OperationOptions const& options)
-      : result(other), _options(options) {}
+      : result(other), options(options) {}
   explicit OperationResult(Result&& other) : result(std::move(other)) {}
   explicit OperationResult(Result&& other, OperationOptions const& options)
-      : result(std::move(other)), _options(options) {}
+      : result(std::move(other)), options(options) {}
 
   // copy
   OperationResult(OperationResult const& other) = delete;
@@ -61,7 +59,7 @@ struct OperationResult {
     if (this != &other) {
       result = std::move(other.result);
       buffer = std::move(other.buffer);
-      _options = other._options;
+      options = std::move(other.options);
       countErrorCodes = std::move(other.countErrorCodes);
     }
     return *this;
@@ -73,7 +71,7 @@ struct OperationResult {
                   std::unordered_map<int, size_t> countErrorCodes = std::unordered_map<int, size_t>())
       : result(std::move(result)),
         buffer(std::move(buffer)),
-        _options(std::move(options)),
+        options(std::move(options)),
         countErrorCodes(std::move(countErrorCodes)) {
     if (this->result.ok()) {
       TRI_ASSERT(this->buffer != nullptr);
@@ -102,13 +100,13 @@ struct OperationResult {
   void reset() {
     result.reset();
     buffer.reset();
-    _options = OperationOptions();
+    options = OperationOptions();
     countErrorCodes.clear();
   }
 
   Result result;
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
-  OperationOptions _options;
+  OperationOptions options;
 
   // Executive summary for baby operations: reports all errors that did occur
   // during these operations. Details are stored in the respective positions of

@@ -105,9 +105,6 @@ class Index {
     TRI_IDX_TYPE_IRESEARCH_LINK,
     TRI_IDX_TYPE_NO_ACCESS_INDEX
   };
-
-  /// @brief: mode to signal how operation should behave
-  enum OperationMode { normal, internal, rollback };
   
   /// @brief: helper struct returned by index methods that determine the costs
   /// of index usage for filtering

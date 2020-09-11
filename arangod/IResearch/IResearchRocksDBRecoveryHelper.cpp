@@ -276,7 +276,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(
     IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*link);
 #endif
 
-    impl.insert(trx, docId, doc, arangodb::Index::OperationMode::internal);
+    impl.insert(trx, docId, doc);
   }
 
   res = trx.commit();
@@ -331,8 +331,7 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
 #endif
 
     impl.remove(trx, docId,
-                arangodb::velocypack::Slice::emptyObjectSlice(),
-                arangodb::Index::OperationMode::internal);
+                arangodb::velocypack::Slice::emptyObjectSlice());
   }
 
   res = trx.commit();

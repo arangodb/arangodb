@@ -26,6 +26,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ModificationExecutorInfos.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationResult.h"
 

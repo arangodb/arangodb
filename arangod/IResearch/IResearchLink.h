@@ -30,12 +30,13 @@
 #include "store/directory.hpp"
 #include "utils/utf8_path.hpp"
 
+#include "Indexes/Index.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchViewMeta.h"
-#include "Indexes/Index.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Transaction/Status.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
@@ -145,8 +146,7 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   Result insert(transaction::Methods& trx,
                 LocalDocumentId const& documentId,
-                velocypack::Slice const& doc,
-                Index::OperationMode mode);
+                velocypack::Slice const doc);
 
   bool isHidden() const;  // arangodb::Index override
   bool isSorted() const; // arangodb::Index override
@@ -188,8 +188,7 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   Result remove(transaction::Methods& trx,
                 LocalDocumentId const& documentId,
-                velocypack::Slice const& doc,
-                Index::OperationMode mode);
+                velocypack::Slice const doc);
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief 'this' for the lifetime of the link data-store
