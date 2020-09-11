@@ -171,7 +171,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   // It is crucial that the following happens before we do `getLocalCollections`!
-  MaintenanceFeature::ShardActionMap currentShardLocks = mfeature.getShardLocks();
+  MaintenanceFeature::ShardActionMap currentShardLocks = mfeature->getShardLocks();
 
   VPackBuilder local;
   Result glc = getLocalCollections(local);
@@ -218,7 +218,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
 
     // It is crucial that the following happens before we do `getLocalCollections`!
-    currentShardLocks = mfeature.getShardLocks();
+    currentShardLocks = mfeature->getShardLocks();
 
     mfeature->increaseCurrentCounter();
 
