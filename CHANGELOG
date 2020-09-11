@@ -1,6 +1,10 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed some cases where subqueries in PRUNE did not result in a parse error,
+  but either in an incomprehensible error (in 3.7), or undefined behaviour
+  during execution (pre 3.7).
+
 * Enforce a maximum result register usage limit in AQL queries. In an AQL query,
   every user-defined or internal (unnamed) variable will need a register to
   store results in.
