@@ -89,7 +89,7 @@ class VertexComputation : public vertex_computation {
 
   greenspun::EvalResult air_sendToAccum(greenspun::Machine& ctx,
                                         VPackSlice const params, VPackBuilder& result);
-  greenspun::EvalResult air_sendToAllNeighbours(greenspun::Machine& ctx,
+  greenspun::EvalResult air_sendToAllNeighbors(greenspun::Machine& ctx,
                                                 VPackSlice const params,
                                                 VPackBuilder& result);
 

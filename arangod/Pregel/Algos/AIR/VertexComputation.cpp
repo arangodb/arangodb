@@ -59,7 +59,9 @@ void VertexComputation::registerLocalFunctions() {
                                 &VertexComputation::air_sendToAccum, this);
 
   _airMachine.setFunctionMember("send-to-all-neighbours",  // " name:id -> value:any -> void ",
-                                &VertexComputation::air_sendToAllNeighbours, this);
+                                &VertexComputation::air_sendToAllNeighbors, this);
+  _airMachine.setFunctionMember("send-to-all-neighbors",  // " name:id -> value:any -> void ",
+                                &VertexComputation::air_sendToAllNeighbors, this);
 
   // Global Accumulators
   _airMachine.setFunctionMember("global-accum-ref",  // " name:id -> value:any ",
@@ -203,7 +205,7 @@ greenspun::EvalResult VertexComputation::air_sendToAccum(greenspun::Machine& ctx
                               "` not found");
 }
 
-greenspun::EvalResult VertexComputation::air_sendToAllNeighbours(
+greenspun::EvalResult VertexComputation::air_sendToAllNeighbors(
     greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto res = greenspun::extract<std::string, VPackSlice>(params);
   if (res.fail()) {
