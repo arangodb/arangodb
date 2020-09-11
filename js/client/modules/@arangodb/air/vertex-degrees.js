@@ -42,14 +42,12 @@ function vertex_degrees_program() {
     maxGSS: 2,
     vertexAccumulators: {
       outDegree: {
-        accumulatorType: "sum",
-        valueType: "ints",
-        storeSender: false
+        accumulatorType: "store",
+        valueType: "ints"
       },
       inDegree: {
         accumulatorType: "sum",
-        valueType: "ints",
-        storeSender: false
+        valueType: "ints"
       }
     },
     phases: [{
