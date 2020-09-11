@@ -383,9 +383,8 @@ bool RestAqlHandler::registerSnippets(VPackSlice const snippetsSlice,
         LOG_TOPIC("42512", TRACE, Logger::AQL)
             << "Setting RebootTracker on coordinator " << coordinatorId
             << " for query with id " << qId;
-        auto& clusterFeature = _server.getFeature<ClusterFeature>();
-        auto& clusterInfo = clusterFeature.clusterInfo();
-        rGuard = clusterInfo.rebootTracker().callMeOnChange(
+        auto clusterInfo = ClusterInfo::instance();
+        rGuard = clusterInfo->rebootTracker().callMeOnChange(
             cluster::RebootTracker::PeerState(coordinatorId, rebootId),
             [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(),
              queryId = qId]() {
