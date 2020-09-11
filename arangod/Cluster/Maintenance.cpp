@@ -1038,6 +1038,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       cur = cit->second->slice()[0];
     }
 
+    VPackBuilder shardMap;
     auto pit = plan.find(dbName);
     VPackSlice pdb;
     if (pit == plan.end()) {
@@ -1045,166 +1046,177 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     } else {
       // TODO assertions
       pdb = pit->second->slice()[0];
+      std::vector<std::string> ppath{
+        AgencyCommHelper::path(), PLAN, COLLECTIONS, dbName};
+      if (pdb.hasKey(ppath)) {   // Plan of this database's collections
+        pdb = pdb.get(ppath);
+        shardMap = getShardMap(pdb);
+      } else {                   // Else set noneSlice
+        pdb = Slice();
+      }
     }
 
     auto cdbpath = std::vector<std::string>{
       AgencyCommHelper::path(), CURRENT, DATABASES, dbName, serverId};
 
-    if (!cur.hasKey(cdbpath)) {
-      auto const localDatabaseInfo = assembleLocalDatabaseInfo(dbName, allErrors);
-      TRI_ASSERT(!localDatabaseInfo.slice().isNone());
-      if (!localDatabaseInfo.slice().isEmptyObject() &&
-          !localDatabaseInfo.slice().isNone()) {
-        report.add(VPackValue(CURRENT_DATABASES + dbName + "/" + serverId));
-        {
-          VPackObjectBuilder o(&report);
-          report.add(OP, VP_SET);
-          report.add("payload", localDatabaseInfo.slice());
-        }
-      }
-    }
-
-    pdb = pdb.get(std::vector<std::string>{AgencyCommHelper::path(), PLAN, COLLECTIONS});
-    auto shardMap = getShardMap(pdb);
-
-    for (auto const& shard : VPackObjectIterator(lit->second->slice(), true)) {
-      auto const shName = shard.key.copyString();
-      auto const shSlice = shard.value;
-      auto const colName = shSlice.get(StaticStrings::DataSourcePlanId).copyString();
-      shardStats.numShards += 1;
-
-      VPackBuilder error;
-      if (shSlice.get(THE_LEADER).copyString().empty()) {  // Leader
-
-        // Check that we are the leader of this shard in the Plan, together
-        // with the precondition below that the Plan is unchanged, this ensures
-        // that we only ever modify Current if we are the leader in the Plan:
-        auto const planPath = std::vector<std::string>{dbName, colName, "shards", shName};
-        if (!pdb.hasKey(planPath)) {
-          LOG_TOPIC("43242", DEBUG, Logger::MAINTENANCE)
-            << "Ooops, we have a shard for which we believe to be the "
-               "leader, but the Plan does not have it any more, we do not "
-               "report in Current about this, database: "
-            << dbName << ", shard: " << shName;
-          continue;
-        }
-
-        VPackSlice thePlanList = pdb.get(planPath);
-        if (!thePlanList.isArray() || thePlanList.length() == 0 ||
-            !thePlanList[0].isString() || !thePlanList[0].isEqualStringUnchecked(serverId)) {
-          LOG_TOPIC("87776", DEBUG, Logger::MAINTENANCE)
-              << "Ooops, we have a shard for which we believe to be the "
-                 "leader,"
-                 " but the Plan says otherwise, we do not report in Current "
-                 "about this, database: "
-              << dbName << ", shard: " << shName;
-          continue;
-        }
-
-        auto const [localCollectionInfo, shardInSync, shardReplicated] =
-            assembleLocalCollectionInfo(shSlice, shardMap.slice().get(shName),
-                                        dbName, shName, serverId, allErrors);
-        // Collection no longer exists
-        TRI_ASSERT(!localCollectionInfo.slice().isNone());
-        if (localCollectionInfo.slice().isEmptyObject() ||
-            localCollectionInfo.slice().isNone()) {
-          continue;
-        }
-
-        shardStats.numLeaderShards += 1;
-        if (!shardInSync) {
-          shardStats.numOutOfSyncShards += 1;
-        }
-        if (!shardReplicated) {
-          shardStats.numNotReplicated += 1;
-        }
-
-        auto cp = std::vector<std::string>{
-          AgencyCommHelper::path(), CURRENT, COLLECTIONS, dbName, colName, shName};
-        auto inCurrent = cur.hasKey(cp);
-
-        if (!inCurrent || !equivalent(localCollectionInfo.slice(), cur.get(cp))) {
-          report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName + "/" + shName));
-
+    if (ldb.isObject()) {
+      
+      if (cur.isObject() && !cur.hasKey(cdbpath)) {
+        auto const localDatabaseInfo = assembleLocalDatabaseInfo(dbName, allErrors);
+        TRI_ASSERT(!localDatabaseInfo.slice().isNone());
+        if (!localDatabaseInfo.slice().isEmptyObject() &&
+            !localDatabaseInfo.slice().isNone()) {
+          report.add(VPackValue(CURRENT_DATABASES + dbName + "/" + serverId));
           {
             VPackObjectBuilder o(&report);
             report.add(OP, VP_SET);
-            // Report new current entry ...
-            report.add("payload", localCollectionInfo.slice());
-            // ... if and only if plan for this shard has changed in the
-            // meantime Add a precondition:
-            report.add(VPackValue("precondition"));
-            {
-              VPackObjectBuilder p(&report);
-              report.add(PLAN_COLLECTIONS + dbName + "/" + colName + "/shards/" + shName,
-                         thePlanList);
-            }
+            report.add("payload", localDatabaseInfo.slice());
           }
         }
-      } else {  // Follower
+      }
+    
+      
 
-        auto servers =
-            std::vector<std::string>{
-          AgencyCommHelper::path(), CURRENT, COLLECTIONS, dbName, colName, shName, SERVERS};
-        auto s = cur.get(servers);
-        if (s.isArray() && cur.get(servers)[0].copyString() == serverId) {
-          // We are in the situation after a restart, that we do not know
-          // who the leader is because FollowerInfo is not updated yet.
-          // Hence, in the case we are the Leader in Plan but do not
-          // know it yet, do nothing here.
-          if (shSlice.get("theLeaderTouched").isTrue()) {
-            // we were previously leader and we are done resigning.
-            // update current and let supervision handle the rest, however
-            // check that we are in the Plan a leader which is supposed to
-            // resign and add a precondition that this is still the case:
+      for (auto const& shard : VPackObjectIterator(lit->second->slice(), true)) {
+        auto const shName = shard.key.copyString();
+        auto const shSlice = shard.value;
+        auto const colName = shSlice.get(StaticStrings::DataSourcePlanId).copyString();
+        shardStats.numShards += 1;
 
-            auto const planPath =
-              std::vector<std::string>{dbName, colName, "shards", shName};
-            if (!pdb.hasKey(planPath)) {
-              LOG_TOPIC("65432", DEBUG, Logger::MAINTENANCE)
-                  << "Ooops, we have a shard for which we believe that we "
-                     "just resigned, but the Plan does not have it any "
-                     "more,"
-                     " we do not report in Current about this, database: "
-                  << dbName << ", shard: " << shName;
-              continue;
-            }
+        VPackBuilder error;
+        if (shSlice.get(THE_LEADER).copyString().empty()) {  // Leader
 
-            VPackSlice thePlanList = pdb.get(planPath);
-            if (!thePlanList.isArray() || thePlanList.length() == 0 ||
-                !thePlanList[0].isString() ||
-                !thePlanList[0].isEqualStringUnchecked(UNDERSCORE + serverId)) {
-              LOG_TOPIC("99987", DEBUG, Logger::MAINTENANCE)
-                  << "Ooops, we have a shard for which we believe that we "
-                     "have just resigned, but the Plan says otherwise, we "
-                     "do not report in Current about this, database: "
-                  << dbName << ", shard: " << shName;
-              continue;
-            }
-            VPackBuilder ns;
-            {
-              VPackArrayBuilder a(&ns);
-              if (s.isArray()) {
-                bool front = true;
-                for (auto const& i : VPackArrayIterator(s)) {
-                  ns.add(VPackValue((!front) ? i.copyString()
-                                             : UNDERSCORE + i.copyString()));
-                  front = false;
-                }
-              }
-            }
-            report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" +
-                                  colName + "/" + shName + "/" + SERVERS));
+          // Check that we are the leader of this shard in the Plan, together
+          // with the precondition below that the Plan is unchanged, this ensures
+          // that we only ever modify Current if we are the leader in the Plan:
+
+          auto const planPath = std::vector<std::string>{colName, "shards", shName};
+          if (!pdb.hasKey(planPath)) {
+            LOG_TOPIC("43242", DEBUG, Logger::MAINTENANCE)
+              << "Ooops, we have a shard for which we believe to be the "
+              "leader, but the Plan does not have it any more, we do not "
+              "report in Current about this, database: "
+              << dbName << ", shard: " << shName;
+            continue;
+          }
+
+          VPackSlice thePlanList = pdb.get(planPath);
+          if (!thePlanList.isArray() || thePlanList.length() == 0 ||
+              !thePlanList[0].isString() || !thePlanList[0].isEqualStringUnchecked(serverId)) {
+            LOG_TOPIC("87776", DEBUG, Logger::MAINTENANCE)
+              << "Ooops, we have a shard for which we believe to be the "
+              "leader,"
+              " but the Plan says otherwise, we do not report in Current "
+              "about this, database: "
+              << dbName << ", shard: " << shName;
+            continue;
+          }
+
+          auto const [localCollectionInfo, shardInSync, shardReplicated] =
+            assembleLocalCollectionInfo(shSlice, shardMap.slice().get(shName),
+                                        dbName, shName, serverId, allErrors);
+          // Collection no longer exists
+          TRI_ASSERT(!localCollectionInfo.slice().isNone());
+          if (localCollectionInfo.slice().isEmptyObject() ||
+              localCollectionInfo.slice().isNone()) {
+            continue;
+          }
+
+          shardStats.numLeaderShards += 1;
+          if (!shardInSync) {
+            shardStats.numOutOfSyncShards += 1;
+          }
+          if (!shardReplicated) {
+            shardStats.numNotReplicated += 1;
+          }
+
+          auto cp = std::vector<std::string>{
+            AgencyCommHelper::path(), CURRENT, COLLECTIONS, dbName, colName, shName};
+          auto inCurrent = cur.isObject() && cur.hasKey(cp);
+
+          if (!inCurrent || !equivalent(localCollectionInfo.slice(), cur.get(cp))) {
+            report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName + "/" + shName));
 
             {
               VPackObjectBuilder o(&report);
               report.add(OP, VP_SET);
-              report.add("payload", ns.slice());
+              // Report new current entry ...
+              report.add("payload", localCollectionInfo.slice());
+              // ... if and only if plan for this shard has changed in the
+              // meantime Add a precondition:
+              report.add(VPackValue("precondition"));
               {
-                VPackObjectBuilder p(&report, "precondition");
-                report.add(PLAN_COLLECTIONS + dbName + "/" + colName +
-                               "/shards/" + shName,
+                VPackObjectBuilder p(&report);
+                report.add(PLAN_COLLECTIONS + dbName + "/" + colName + "/shards/" + shName,
                            thePlanList);
+              }
+            }
+          }
+        } else {  // Follower
+
+          auto servers =
+            std::vector<std::string>{
+            AgencyCommHelper::path(), CURRENT, COLLECTIONS, dbName, colName, shName, SERVERS};
+          auto s = cur.get(servers);
+          if (s.isArray() && cur.get(servers)[0].copyString() == serverId) {
+            // We are in the situation after a restart, that we do not know
+            // who the leader is because FollowerInfo is not updated yet.
+            // Hence, in the case we are the Leader in Plan but do not
+            // know it yet, do nothing here.
+            if (shSlice.get("theLeaderTouched").isTrue()) {
+              // we were previously leader and we are done resigning.
+              // update current and let supervision handle the rest, however
+              // check that we are in the Plan a leader which is supposed to
+              // resign and add a precondition that this is still the case:
+
+              auto const planPath =
+                std::vector<std::string>{colName, "shards", shName};
+              if (!pdb.hasKey(planPath)) {
+                LOG_TOPIC("65432", DEBUG, Logger::MAINTENANCE)
+                  << "Ooops, we have a shard for which we believe that we "
+                  "just resigned, but the Plan does not have it any "
+                  "more,"
+                  " we do not report in Current about this, database: "
+                  << dbName << ", shard: " << shName;
+                continue;
+              }
+
+              VPackSlice thePlanList = pdb.get(planPath);
+              if (!thePlanList.isArray() || thePlanList.length() == 0 ||
+                  !thePlanList[0].isString() ||
+                  !thePlanList[0].isEqualStringUnchecked(UNDERSCORE + serverId)) {
+                LOG_TOPIC("99987", DEBUG, Logger::MAINTENANCE)
+                  << "Ooops, we have a shard for which we believe that we "
+                  "have just resigned, but the Plan says otherwise, we "
+                  "do not report in Current about this, database: "
+                  << dbName << ", shard: " << shName;
+                continue;
+              }
+              VPackBuilder ns;
+              {
+                VPackArrayBuilder a(&ns);
+                if (s.isArray()) {
+                  bool front = true;
+                  for (auto const& i : VPackArrayIterator(s)) {
+                    ns.add(VPackValue((!front) ? i.copyString()
+                                      : UNDERSCORE + i.copyString()));
+                    front = false;
+                  }
+                }
+              }
+              report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" +
+                                    colName + "/" + shName + "/" + SERVERS));
+
+              {
+                VPackObjectBuilder o(&report);
+                report.add(OP, VP_SET);
+                report.add("payload", ns.slice());
+                {
+                  VPackObjectBuilder p(&report, "precondition");
+                  report.add(PLAN_COLLECTIONS + dbName + "/" + colName +
+                             "/shards/" + shName,
+                             thePlanList);
+                }
               }
             }
           }
@@ -1212,39 +1224,40 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       }
     }
 
-
     // UpdateCurrentForDatabases
-    auto cdb = cur.get(
-      std::vector<std::string>{AgencyCommHelper::path(), CURRENT, DATABASES, dbName});
-
-    if (!cdb.isObject()) {
-      continue;
+    VPackSlice cdb;
+    cdbpath = std::vector<std::string>{AgencyCommHelper::path(), CURRENT, DATABASES, dbName};
+    if (cur.isObject() && cur.hasKey(cdbpath)) {
+      cdb = cur.get(cdbpath);
     }
 
-    VPackSlice myEntry = cdb.get(serverId);
-    if (!myEntry.isNone()) {
-      // Database no longer in Plan and local
+    if (cdb.isObject()) {
 
-      if (lit == local.end() && pit == plan.end()) {
-        // This covers the case that the database is neither in Local nor in
-        // Plan. It remains to make sure an error is reported to Current if
-        // there is a database in the Plan but not in Local
-        report.add(VPackValue(CURRENT_DATABASES + dbName + "/" + serverId));
-        {
-          VPackObjectBuilder o(&report);
-          report.add(OP, VP_DELETE);
-        }
-        // We delete all under /Current/Collections/<dbName>, it does not
-        // hurt if every DBserver does this, since it is an idempotent
-        // operation.
-        report.add(VPackValue(CURRENT_COLLECTIONS + dbName));
-        {
-          VPackObjectBuilder o(&report);
-          report.add(OP, VP_DELETE);
+      VPackSlice myEntry = cdb.get(serverId);
+      if (!myEntry.isNone()) {
+        // Database no longer in Plan and local
+
+        if (lit == local.end() && pit == plan.end()) {
+          // This covers the case that the database is neither in Local nor in
+          // Plan. It remains to make sure an error is reported to Current if
+          // there is a database in the Plan but not in Local
+          report.add(VPackValue(CURRENT_DATABASES + dbName + "/" + serverId));
+          {
+            VPackObjectBuilder o(&report);
+            report.add(OP, VP_DELETE);
+          }
+          // We delete all under /Current/Collections/<dbName>, it does not
+          // hurt if every DBserver does this, since it is an idempotent
+          // operation.
+          report.add(VPackValue(CURRENT_COLLECTIONS + dbName));
+          {
+            VPackObjectBuilder o(&report);
+            report.add(OP, VP_DELETE);
+          }
         }
       }
     }
-
+    
     // UpdateCurrentForCollections
     std::vector<std::string> curcolpath{AgencyCommHelper::path(), CURRENT, COLLECTIONS, dbName};
     VPackSlice curcolls;
@@ -1253,7 +1266,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     }
 
     // UpdateCurrentForCollections (Current/Collections/Collection)
-    if (!curcolls.isNone()) {
+    if (curcolls.isObject()) {
       for (auto const& collection : VPackObjectIterator(curcolls)) {
         auto const colName = collection.key.copyString();
 
@@ -1263,6 +1276,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           // Shard in current and has servers
           auto servers = shard.value.get(SERVERS);
 
+          if (!pdb.isObject()) { //This database is no longer in plan,
+            continue;            // thus no shardMap exists for it
+          }
           if (servers.isArray() && servers.length() > 0  // servers in current
               && servers[0].copyString() == serverId     // we are leading
               && !ldb.hasKey(std::vector<std::string>{shName})  // no local collection
@@ -1349,7 +1365,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
     auto pit = plan.find(dbname);
     VPackSlice pdb;
     if (pit != plan.end()) {
-      pdb = pit->second->slice();
+      pdb = pit->second->slice()[0];
       auto const ppath =
         std::vector<std::string>{AgencyCommHelper::path(), PLAN, COLLECTIONS, dbname};
       if (!pdb.hasKey(ppath)) {
@@ -1375,13 +1391,13 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
     auto cit = current.find(dbname);
     VPackSlice cdb;
     if (cit != current.end()) {
-      cdb = cit->second->slice();
+      cdb = cit->second->slice()[0];
       auto const cpath =
         std::vector<std::string>{AgencyCommHelper::path(), CURRENT, COLLECTIONS, dbname};
       if (!cdb.hasKey(cpath)) {
         continue;
       } else {
-        cdb = localdb.get(cpath);
+        cdb = current.get(cpath);
       }
     } else {
       continue;

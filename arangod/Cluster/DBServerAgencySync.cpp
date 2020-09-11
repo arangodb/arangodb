@@ -246,13 +246,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     }
 
     auto current = clusterInfo.getCurrent(currentIndex, dirty);
-    if (current.empty()) {
-      // TODO increase log level, except during shutdown?
-      LOG_TOPIC("ab562", DEBUG, Logger::MAINTENANCE)
-          << "DBServerAgencySync::execute no current";
-      result.errorMessage = "DBServerAgencySync::execute no current";
-      return result;
-    }
+    
     LOG_TOPIC("675fd", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current;
 
