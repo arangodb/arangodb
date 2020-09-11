@@ -475,85 +475,89 @@ describe('_admin/metrics', () => {
   };
 
   it('http requests and client connection statistics',() => {
-    
-    runTest(() => {
-      const request = require("@arangodb/request");      
-      const url = `${servers.get('coordinator')[0]}`;
-      
-      let resServerId = request({
-        url: `${url}/_admin/server/id`, 
-        method: "GET",
-        headers: {"Connection": "Close"},
-      });
-      expect(resServerId.statusCode).to.equal(200);
+    try {
+      runTest(() => {
+        const request = require("@arangodb/request");      
+        const url = `${servers.get('coordinator')[0]}`;
+        
+        let resServerId = request({
+          url: `${url}/_admin/server/id`, 
+          method: "GET",
+          headers: {"Connection": "Close"},
+        });
+        expect(resServerId.statusCode).to.equal(200);
 
-      let resCreateDB = request({
-        url: `${url}/_api/collection`, 
-        method: "POST",
-        headers: {"Connection": "Close"},
-        body: '{"name": "UnitTestCollection"}'        
-      });  
-          
-      expect(resCreateDB.statusCode).to.equal(200);
-      require("internal").wait(5.0);
+        let resCreateDB = request({
+          url: `${url}/_api/collection`, 
+          method: "POST",
+          headers: {"Connection": "Close"},
+          body: '{"name": "UnitTestCollection"}'        
+        });  
+            
+        expect(resCreateDB.statusCode).to.equal(200);
+        require("internal").wait(5.0);
 
-      let resCreateDoc = request({
-        url: `${url}/_api/document/UnitTestCollection?waitForSync=true`, 
-        method: "POST",
-        headers: {"Connection": "Close"},
-        body: '{"_key": "testDoc", "test": "test"}'
-      });  
-          
-      expect(resCreateDoc.statusCode).to.equal(201);
+        let resCreateDoc = request({
+          url: `${url}/_api/document/UnitTestCollection?waitForSync=true`, 
+          method: "POST",
+          headers: {"Connection": "Close"},
+          body: '{"_key": "testDoc", "test": "test"}'
+        });  
+            
+        expect(resCreateDoc.statusCode).to.equal(201);
 
-      let resProp = request({
-        url: `${url}/_api/collection/UnitTestCollection/properties`, 
-        method: "PUT",
-        headers: {"Connection": "Close"}
-      });
+        let resProp = request({
+          url: `${url}/_api/collection/UnitTestCollection/properties`, 
+          method: "PUT",
+          headers: {"Connection": "Close"}
+        });
 
-      expect(resProp.statusCode).to.equal(200);
+        expect(resProp.statusCode).to.equal(200);
 
-      let resPatchDoc = request({
-        url: `${url}/_api/document/UnitTestCollection?waitForSync=true`, 
-        method: "PATCH",
-        headers: {"Connection": "Close"},
-        body: '[{"_key": "testDoc", "test": "test2"}]'
-      });  
-          
-      expect(resPatchDoc.statusCode).to.equal(201);
+        let resPatchDoc = request({
+          url: `${url}/_api/document/UnitTestCollection?waitForSync=true`, 
+          method: "PATCH",
+          headers: {"Connection": "Close"},
+          body: '[{"_key": "testDoc", "test": "test2"}]'
+        });  
+            
+        expect(resPatchDoc.statusCode).to.equal(201);
 
-      let resHeadDoc = request({
-        url: `${url}/_api/document/UnitTestCollection/testDoc`, 
-        method: "HEAD", 
-      }); 
-      expect(resHeadDoc.statusCode).to.equal(200);
+        let resHeadDoc = request({
+          url: `${url}/_api/document/UnitTestCollection/testDoc`, 
+          method: "HEAD", 
+        }); 
+        expect(resHeadDoc.statusCode).to.equal(200);
 
-      let resOtionsDoc = request({
-        url: `${url}/_api`,
-        method: "OPTIONS",
-        headers: {"Connection": "Close"}        
-      }); 
-      expect(resOtionsDoc.statusCode).to.equal(200);
+        let resOtionsDoc = request({
+          url: `${url}/_api`,
+          method: "OPTIONS",
+          headers: {"Connection": "Close"}        
+        }); 
+        expect(resOtionsDoc.statusCode).to.equal(200);
 
-      let resTraceDoc = request({
-        url: `${url}/_api`,
-        method: "TRACE",
-        headers: {"Connection": "Close"}
-      }); 
-      expect(resTraceDoc.statusCode).to.equal(500);
+        let resTraceDoc = request({
+          url: `${url}/_api`,
+          method: "TRACE",
+          headers: {"Connection": "Close"}
+        }); 
+        expect(resTraceDoc.statusCode).to.equal(500);
 
 
-      let resDelete = request({
-        url: `${url}/_api/collection/UnitTestCollection`,
-        method: "DELETE",
-        headers: {"Connection": "Close"}        
-      });
+        let resDelete = request({
+          url: `${url}/_api/collection/UnitTestCollection`,
+          method: "DELETE",
+          headers: {"Connection": "Close"}        
+        });
 
-      expect(resDelete.statusCode).to.equal(200);
-      require("internal").wait(15.0);
+        expect(resDelete.statusCode).to.equal(200);
+        require("internal").wait(15.0);
 
-    }, [new ConnectionStatWatcher(), new HttpRequestsCountWatcher()], 'coordinator');  
+      }, [new ConnectionStatWatcher(), new HttpRequestsCountWatcher()], 'coordinator');
+    } 
+    finally {
+      db._drop("UnitTestCollection");
+    }
   });
 
   it('aql query count and slow query count', () => {
