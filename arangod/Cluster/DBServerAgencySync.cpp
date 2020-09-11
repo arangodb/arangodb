@@ -80,10 +80,12 @@ Result DBServerAgencySync::getLocalCollections(
   for (auto const& dbname : dirty) {
     TRI_vocbase_t* tmp = dbfeature.lookupDatabase(dbname);
     if (tmp == nullptr) {
+      LOG_DEVEL << __FILE__ << __LINE__;
       continue;
     }
     TRI_vocbase_t& vocbase = *tmp;
     if (!vocbase.use()) {
+      LOG_DEVEL << __FILE__ << __LINE__;
       continue;
     }
     auto unuse = scopeGuard([&vocbase] { vocbase.release(); });
@@ -137,6 +139,11 @@ Result DBServerAgencySync::getLocalCollections(
   }
 
   return Result();
+}
+
+std::ostream& operator<<(std::ostream& o, std::shared_ptr<VPackBuilder> const& v) {
+  o << v->toJson();
+  return o;
 }
 
 DBServerAgencySyncResult DBServerAgencySync::execute() {
@@ -221,7 +228,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne";
 
-    LOG_DEVEL << "phaseOne with " << plan << " and local info " << local;
     tmp = arangodb::maintenance::phaseOne(
       plan, planIndex, dirty, local, serverId, mfeature, rb, currentShardLocks);
 

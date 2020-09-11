@@ -810,6 +810,14 @@ arangodb::Result arangodb::maintenance::phaseOne(
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
   MaintenanceFeature::ShardActionMap const& shardActionMap) {
 
+  LOG_DEVEL << "PI: ";
+  for (auto const& i : plan) {
+    LOG_DEVEL << "plan[" <<i.first << "]: " << i.second->toJson(); 
+  }
+  for (auto const& i : local) {
+    LOG_DEVEL << "local[" <<i.first << "]: " << i.second->toJson(); 
+  }
+
   auto start = std::chrono::steady_clock::now();
 
   arangodb::Result result;
@@ -1463,6 +1471,17 @@ arangodb::Result arangodb::maintenance::phaseTwo(
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
   MaintenanceFeature::ShardActionMap const& shardActionMap) {
+
+  LOG_DEVEL << "PII: ";
+  for (auto const& i : plan) {
+    LOG_DEVEL << "plan[" <<i.first << "]: " << i.second->toJson(); 
+  }
+  for (auto const& i : local) {
+    LOG_DEVEL << "local[" <<i.first << "]: " << i.second->toJson(); 
+  }
+  for (auto const& i : cur) {
+    LOG_DEVEL << "current[" <<i.first << "]: " << i.second->toJson(); 
+  }
 
   auto start = std::chrono::steady_clock::now();
 

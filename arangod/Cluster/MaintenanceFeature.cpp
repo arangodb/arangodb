@@ -967,6 +967,7 @@ std::unordered_set<std::string> MaintenanceFeature::dirty() {
   MUTEX_LOCKER(guard, _dirtyLock);
   std::unordered_set<std::string > ret;
   ret.swap(_dirty);
+  ret.emplace("_system");
   return ret;
 }
 
