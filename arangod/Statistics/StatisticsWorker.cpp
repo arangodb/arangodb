@@ -846,7 +846,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
     "Bytes received for a request"}},
   {"userTime",
    {"arangodb_process_statistics_user_time", "gauge",
-    "On Windows, this figure contains the total amount of memory that the memory manager has committed for the arangod process. On other systems, this figure contains The size of the virtual memory the process is using\n"}},
+    "Amount of time that this process has been scheduled in user mode, measured in seconds\n"}},
   {"systemTime",
    {"arangodb_process_statistics_system_time", "gauge",
     "Amount of time that this process has been scheduled in kernel mode, measured in seconds\n"}},
