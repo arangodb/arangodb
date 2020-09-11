@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed inifinite reload of the login window after logout of an LDAP user.
+
 * Slightly fixed wrong log level for authentication and also added login event
   to the standard log.
 
