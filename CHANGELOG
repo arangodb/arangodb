@@ -1,6 +1,8 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Updated rclone to 1.53.0.
+
 * Fixed some cases where subqueries in PRUNE did not result in a parse error,
   but either in an incomprehensible error (in 3.7), or undefined behaviour
   during execution (pre 3.7).
