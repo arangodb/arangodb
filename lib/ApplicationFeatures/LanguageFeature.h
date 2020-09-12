@@ -48,6 +48,9 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   void start() override final;
   static void* prepareIcu(std::string const& binaryPath, std::string const& binaryExecutionPath,
                           std::string& path, std::string const& binaryName);
+  static void prepareTimeZoneData(std::string const& binaryPath,
+                                  std::string const& binaryExecutionPath,
+                                  std::string const& binaryName);
   static LanguageFeature* instance();
   icu::Locale& getLocale() { return _locale; }
   std::string const& getDefaultLanguage() const { return _language; }

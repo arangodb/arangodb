@@ -42,6 +42,7 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "date/tz.h"
 
 namespace {
 void setCollator(std::string const& language, void* icuDataPtr) {
@@ -176,12 +177,45 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
   return icuDataPtr;
 }
 
+void LanguageFeature::prepareTimeZoneData(std::string const& binaryPath,
+                                          std::string const& binaryExecutionPath,
+                                          std::string const& binaryName) {
+
+  std::string tz_path;
+  std::string test_exe = FileUtils::buildFilename(binaryExecutionPath, "tzdata");
+
+  if (FileUtils::isDirectory(test_exe)) {
+    tz_path = test_exe;
+  } else {
+    std::string argv0 = FileUtils::buildFilename(binaryExecutionPath, binaryName);
+    std::string path = TRI_LocateInstallDirectory(argv0.c_str(), binaryPath.c_str());
+    path = FileUtils::buildFilename(path, ICU_DESTINATION_DIRECTORY, "tzdata");
+    FileUtils::makePathAbsolute(path);
+    FileUtils::normalizePath(path);
+
+     tz_path = path;
+
+    LOG_TOPIC("fffff", INFO, arangodb::Logger::STARTUP)
+        << "using timezone data from " << tz_path;   
+  }
+  if (FileUtils::isDirectory(tz_path)) {
+    LOG_TOPIC("fffff", INFO, arangodb::Logger::STARTUP) << "using timezone data from " << tz_path;
+    date::set_install(tz_path);
+  } else {
+    LOG_TOPIC("fffff", FATAL, arangodb::Logger::FIXME)
+        << "failed to locate timezone data " << tz_path;
+    //FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
+  }
+}
+
 void LanguageFeature::prepare() {
   std::string p;
   auto context = ArangoGlobalContext::CONTEXT;
   std::string binaryExecutionPath = context->getBinaryPath();
   std::string binaryName = context->binaryName();
   _icuDataPtr = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p, binaryName);
+
+  LanguageFeature::prepareTimeZoneData(_binaryPath, binaryExecutionPath, binaryName);
 
   ::setCollator(_language, _icuDataPtr);
 }

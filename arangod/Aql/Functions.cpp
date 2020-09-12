@@ -3502,7 +3502,7 @@ AqlValue Functions::DateDayOfWeek(ExpressionContext* expressionContext,
   }
   weekday wd{floor<days>(tp)};
 
-  return AqlValue(AqlValueHintUInt(wd.iso_encoding()));
+  return AqlValue(AqlValueHintUInt(wd.c_encoding()));
 }
 
 /// @brief function DATE_YEAR
