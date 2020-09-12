@@ -192,11 +192,7 @@ void LanguageFeature::prepareTimeZoneData(std::string const& binaryPath,
     path = FileUtils::buildFilename(path, ICU_DESTINATION_DIRECTORY, "tzdata");
     FileUtils::makePathAbsolute(path);
     FileUtils::normalizePath(path);
-
-     tz_path = path;
-
-    LOG_TOPIC("fffff", INFO, arangodb::Logger::STARTUP)
-        << "using timezone data from " << tz_path;   
+    tz_path = path;
   }
   if (FileUtils::isDirectory(tz_path)) {
     LOG_TOPIC("fffff", INFO, arangodb::Logger::STARTUP) << "using timezone data from " << tz_path;

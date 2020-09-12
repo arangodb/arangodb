@@ -3769,9 +3769,6 @@ AqlValue Functions::DateZoned(ExpressionContext* expressionContext,
 
   tp_sys_clock_ms tp_utc;
 
-  // TODO: Set correct path
-  set_install("C:\\Core\\Source\\arangodb\\etc\\arangodb3\\tzdata");
-
   if (!::parameterToTimePoint(expressionContext, parameters, tp_utc, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
