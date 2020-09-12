@@ -200,6 +200,7 @@ void LanguageFeature::prepareTimeZoneData(std::string const& binaryPath,
   if (FileUtils::isDirectory(tz_path)) {
     LOG_TOPIC("fffff", INFO, arangodb::Logger::STARTUP) << "using timezone data from " << tz_path;
     date::set_install(tz_path);
+    date::reload_tzdb();
   } else {
     LOG_TOPIC("fffff", FATAL, arangodb::Logger::FIXME)
         << "failed to locate timezone data " << tz_path;
