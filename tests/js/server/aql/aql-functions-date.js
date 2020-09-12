@@ -2454,8 +2454,8 @@ function ahuacatlDateFunctionsTestSuite () {
 		assertEqual([ value[2] ], getQueryResults("RETURN DATE_LOCALTOUTC(@value,@tz)", { value: value[0], tz: value[1] }));
       });
 	  	  
-	  assertEqual([ "2020-02-29T23:00:00.000Z" ], getQueryResults("RETURN DATE_LOCALTOUTC(@value,@tz)", 
-		"RETURN DATE_LOCALTOUTC(DATE_ADD(DATE_UTCTOLOCAL('2020-01-31T23:00:00.000Z', 'Europe/Berlin'), 1, 'months'), 'Europe/Berlin')"));	  
+	  assertEqual([ "2020-02-29T23:00:00.000Z" ], 
+		getQueryResults("RETURN DATE_LOCALTOUTC(DATE_ADD(DATE_UTCTOLOCAL('2020-01-31T23:00:00.000Z', 'Europe/Berlin'), 1, 'months'), 'Europe/Berlin')"));	  
     },
 
     // //////////////////////////////////////////////////////////////////////////////
