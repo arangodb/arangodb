@@ -47,7 +47,7 @@ _Enterprise Edition only_
 
 * Name: date
 * Version: 3.0.0
-* Date: 2020-06-03 20:21:36Z
+* Date: 2020-06-03 00:00:00Z
 * Project Home: https://github.com/HowardHinnant/date
 * License: https://raw.githubusercontent.com/HowardHinnant/date/master/LICENSE.txt
 * License Name: MIT License

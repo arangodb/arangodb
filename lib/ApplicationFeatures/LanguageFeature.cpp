@@ -185,6 +185,8 @@ void LanguageFeature::prepareTimeZoneData(std::string const& binaryPath,
   std::string test_exe = FileUtils::buildFilename(binaryExecutionPath, "tzdata");
 
   if (FileUtils::isDirectory(test_exe)) {
+    FileUtils::makePathAbsolute(test_exe);
+    FileUtils::normalizePath(test_exe);
     tz_path = test_exe;
   } else {
     std::string argv0 = FileUtils::buildFilename(binaryExecutionPath, binaryName);
@@ -194,13 +196,14 @@ void LanguageFeature::prepareTimeZoneData(std::string const& binaryPath,
     FileUtils::normalizePath(path);
     tz_path = path;
   }
+
   if (FileUtils::isDirectory(tz_path)) {
     LOG_TOPIC("fffff", INFO, arangodb::Logger::STARTUP) << "using timezone data from " << tz_path;
     date::set_install(tz_path);
   } else {
     LOG_TOPIC("fffff", FATAL, arangodb::Logger::FIXME)
         << "failed to locate timezone data " << tz_path;
-    //FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
   }
 }
 
