@@ -209,7 +209,9 @@ struct Functions {
                                   transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue DateTrunc(arangodb::aql::ExpressionContext*,
                             transaction::Methods*, VPackFunctionParameters const&);
-  static AqlValue DateZoned(arangodb::aql::ExpressionContext*,
+  static AqlValue DateUtcToLocal(arangodb::aql::ExpressionContext*,
+                            transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue DateLocalToUtc(arangodb::aql::ExpressionContext*,
                             transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue DateAdd(arangodb::aql::ExpressionContext*,
                           transaction::Methods*, VPackFunctionParameters const&);

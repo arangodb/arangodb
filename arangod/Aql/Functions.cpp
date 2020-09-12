@@ -3759,11 +3759,11 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
   return ::timeAqlValue(expressionContext, AFN, tp);
 }
 
-/// @brief function DATE_ZONED
-AqlValue Functions::DateZoned(ExpressionContext* expressionContext,
-                              transaction::Methods* trx,
-                              VPackFunctionParameters const& parameters) {
-  static char const* AFN = "DATE_ZONED";
+/// @brief function DATE_UTCTOLOCAL
+AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext,
+                                   transaction::Methods* trx,
+                                   VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_UTCTOLOCAL";
   using namespace std::chrono;
   using namespace date;
 
@@ -3780,11 +3780,43 @@ AqlValue Functions::DateZoned(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  const std::string target_timezone = timeZoneParam.slice().copyString();
-  const auto time = make_zoned(target_timezone, floor<milliseconds>(tp_utc));
-  const auto tp_zoned = tp_sys_clock_ms{time.get_local_time().time_since_epoch()};
+  const std::string tz = timeZoneParam.slice().copyString();
+  const auto utc = floor<milliseconds>(tp_utc);
+  const auto zoned = make_zoned(tz, utc);
+  const auto tp_local = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
 
-  return ::timeAqlValue(expressionContext, AFN, tp_zoned);
+  return ::timeAqlValue(expressionContext, AFN, tp_local);
+}
+
+
+/// @brief function DATE_LOCALTOUTC
+AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext,
+                                   transaction::Methods* trx,
+                                   VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_LOCALTOUTC";
+  using namespace std::chrono;
+  using namespace date;
+
+  tp_sys_clock_ms tp_local;
+
+  if (!::parameterToTimePoint(expressionContext, parameters, tp_local, AFN, 0)) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue const& timeZoneParam = extractFunctionParameterValue(parameters, 1);
+
+  if (!timeZoneParam.isString()) {  // timezone type must be string
+    registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  const std::string tz = timeZoneParam.slice().copyString();
+
+  const auto local = local_time<milliseconds>{floor<milliseconds>(tp_local).time_since_epoch()};
+  const auto zoned = make_zoned(tz, local);
+  const auto tp_utc = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
+
+  return ::timeAqlValue(expressionContext, AFN, tp_utc);
 }
 
 /// @brief function DATE_ADD
