@@ -1,6 +1,8 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Updated rclone to 1.53.0.
+
 * Add attributes `database` and `user` when tracking current and slow AQL
   queries.
   `database` contains the name of the database the query is/was running in,
