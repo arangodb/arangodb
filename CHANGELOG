@@ -1,6 +1,8 @@
 v3.6.7 (XXXX-XX-XX)
 -------------------
 
+* Updated rclone to 1.53.0.
+
 * Added metrics for V8 contexts usage:
   * `arangodb_v8_context_alive`: number of V8 contexts currently alive.
   * `arangodb_v8_context_busy`: number of V8 contexts currently busy.
