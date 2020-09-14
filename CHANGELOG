@@ -4,19 +4,13 @@ v3.6.7 (XXXX-XX-XX)
 * Added `details` option to figures command of a collection:
   `collection.figures(details)`
 
-  Setting `details` to `true` will return extended storage engine-specific 
-  details to the figures. The details are intended for debugging ArangoDB
-  itself and their format is subject to change. There is not much use in using
-  the details from a client application.
+  Setting `details` to `true` will return extended storage engine-specific
+  details to the figures. The details are intended for debugging ArangoDB itself
+  and their format is subject to change. There is not much use in using the
+  details from a client application.
   By default, `details` is set to `false`, so no details are returned and the
   behavior is identical to previous versions of ArangoDB.
   Currently, the details are returned for the RocksDB storage engine only.
-
-* Added option `--rocksdb.max-write-buffer-number-to-maintain` with default of 1
-  for small RAM size and 0 for large RAM size.
-  This configures how much memory RocksDB is allowed to use for immutable
-  flushed memtables/write-buffers. The default of 1 will usually be good for
-  small machines and 0 for all other cases.
 
 * Added metrics for V8 contexts usage:
   * `arangodb_v8_context_alive`: number of V8 contexts currently alive.
