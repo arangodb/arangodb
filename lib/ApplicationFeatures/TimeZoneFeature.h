@@ -18,13 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Andreas Dominik Jung
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_LANGUAGE_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_LANGUAGE_FEATURE_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_TIMEZONE_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_TIMEZONE_FEATURE_H 1
 
-#include <unicode/locid.h>
 #include <memory>
 #include <string>
 
@@ -38,27 +37,21 @@ namespace options {
 class ProgramOptions;
 }
 
-class LanguageFeature final : public application_features::ApplicationFeature {
+class TimeZoneFeature final : public application_features::ApplicationFeature {
  public:
-  explicit LanguageFeature(application_features::ApplicationServer& server);
-  ~LanguageFeature();
+  explicit TimeZoneFeature(application_features::ApplicationServer& server);
+  ~TimeZoneFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
-  static void* prepareIcu(std::string const& binaryPath, std::string const& binaryExecutionPath,
-                          std::string& path, std::string const& binaryName);
-  static LanguageFeature* instance();
-  icu::Locale& getLocale() { return _locale; }
-  std::string const& getDefaultLanguage() const { return _language; }
-  std::string getCollatorLanguage() const;
-  void resetDefaultLanguage(std::string const& language);
 
+  static void prepareTimeZoneData(std::string const& binaryPath,
+                                  std::string const& binaryExecutionPath,
+                                  std::string const& binaryName);
+  static TimeZoneFeature* instance();
  private:
-  icu::Locale _locale;
-  std::string _language;
   char const* _binaryPath;
-  void* _icuDataPtr;
 };
 
 }  // namespace arangodb

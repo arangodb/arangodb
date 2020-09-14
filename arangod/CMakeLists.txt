@@ -218,7 +218,6 @@ set(LIB_ARANGO_PREGEL_SOURCES
 )
 
 set(LIB_ARANGO_AQL_SOURCES
-  ../3rdParty/date/src/tz.cpp
   Aql/Aggregator.cpp
   Aql/AllRowsFetcher.cpp
   Aql/AqlCall.cpp
