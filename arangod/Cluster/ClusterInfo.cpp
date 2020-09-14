@@ -955,6 +955,7 @@ void ClusterInfo::loadPlan() {
       AgencyCommHelper::path(), "Plan", "Analyzers", databaseName};
     if(!analyzerSlice.hasKey(analyzersPath)) { // DB Gone
       newDbAnalyzersRevision.erase(databaseName);
+      continue;
     }
     analyzerSlice = analyzerSlice.get(analyzersPath);
 
