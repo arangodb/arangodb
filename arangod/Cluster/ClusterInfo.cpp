@@ -1274,8 +1274,6 @@ void ClusterInfo::loadCurrent() {
   using namespace std::chrono;
   using clock = std::chrono::high_resolution_clock;
 
-  uint64_t newCurrentVersion = 0;
-
   auto start = clock::now();
 
   // We need to update ServersKnown to notice rebootId changes for all servers.
@@ -1383,7 +1381,7 @@ void ClusterInfo::loadCurrent() {
       std::string collectionName = collectionSlice.key.copyString();
 
       auto collectionDataCurrent =
-        std::make_shared<CollectionInfoCurrent>(newCurrentVersion);
+        std::make_shared<CollectionInfoCurrent>(changeSet.version);
 
       for (auto const& shardSlice : velocypack::ObjectIterator(collectionSlice.value)) {
         std::string shardID = shardSlice.key.copyString();
@@ -1414,10 +1412,10 @@ void ClusterInfo::loadCurrent() {
   // Now set the new value:
   WRITE_LOCKER(writeLocker, _currentProt.lock);
 
-  _currentVersion = newCurrentVersion;
+  _currentVersion = changeSet.version;
   _currentIndex = changeSet.ind;
   LOG_TOPIC("feddd", DEBUG, Logger::CLUSTER)
-      << "Updating current in ClusterInfo: version=" << newCurrentVersion
+      << "Updating current in ClusterInfo: version=" << changeSet.version
       << " index=" << _currentIndex;
 
   if (swapDatabases) {
