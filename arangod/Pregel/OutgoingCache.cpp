@@ -71,7 +71,7 @@ void ArrayOutCache<M>::appendMessage(PregelShard shard,
       this->_sendCount++;
     }
   } else {
-    _shardMap[shard][key].push_back(data);
+    _shardMap[shard][key.toString()].push_back(data);
     if (++(this->_containedMessages) >= this->_batchSize) {
       flushMessages();
     }
@@ -105,7 +105,7 @@ void ArrayOutCache<M>::flushMessages() {
   std::vector<futures::Future<network::Response>> responses;
   for (auto const& it : _shardMap) {
     PregelShard shard = it.first;
-    std::unordered_map<VPackStringRef, std::vector<M>> const& vertexMessageMap = it.second;
+    std::unordered_map<std::string, std::vector<M>> const& vertexMessageMap = it.second;
     if (vertexMessageMap.size() == 0) {
       continue;
     }
@@ -119,11 +119,10 @@ void ArrayOutCache<M>::flushMessages() {
     data.add(Utils::shardIdKey, VPackValue(shard));
     data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
     for (auto const& vertexMessagePair : vertexMessageMap) {
-      data.add(VPackValuePair(vertexMessagePair.first.data(),
-                              vertexMessagePair.first.size(),
-                              VPackValueType::String));   // key
+      data.add(VPackValue(vertexMessagePair.first));   // key
       data.add(VPackValue(VPackValueType::Array, true));  // message array
       for (M const& val : vertexMessagePair.second) {
+
         this->_format->addValue(data, val);
         if (this->_sendToNextGSS) {
           this->_sendCountNextGSS++;

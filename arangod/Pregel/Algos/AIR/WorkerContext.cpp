@@ -41,11 +41,11 @@ WorkerContext::WorkerContext(VertexAccumulators const* algorithm)
   }
 }
 
-std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const& WorkerContext::globalAccumulators() {
+std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>> const& WorkerContext::globalAccumulators() {
   return _globalAccumulators;
 }
 
-std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const& WorkerContext::globalAccumulatorsUpdates() {
+auto WorkerContext::globalAccumulatorsUpdates() -> std::unordered_map<std::string, MutexAccumPair> const&  {
   return _globalAccumulatorsUpdates;
 }
 
@@ -53,7 +53,7 @@ void WorkerContext::preGlobalSuperstep(uint64_t gss) {}
 
 void WorkerContext::preGlobalSuperstepMasterMessage(VPackSlice msg) {
   for (auto&& acc : globalAccumulatorsUpdates()) {
-    auto res = acc.second->clear();
+    auto res = acc.second.accum->clear();
     if (!res) {
       getReportManager().report(ReportLevel::ERROR).with("accumulator", acc.first)
           << "error while clearing global accumulator update " << acc.first
@@ -100,7 +100,7 @@ void WorkerContext::postGlobalSuperstepMasterMessage(VPackBuilder& msg) {
 
       for (auto&& acc : globalAccumulatorsUpdates()) {
         msg.add(VPackValue(acc.first));
-        auto res = acc.second->getStateUpdateIntoBuilder(msg);
+        auto res = acc.second.accum->getStateUpdateIntoBuilder(msg);
         if (!res) {
           getReportManager().report(ReportLevel::ERROR).with("accumulator", acc.first)
               << "worker composing update for `" << acc.first
@@ -113,10 +113,10 @@ void WorkerContext::postGlobalSuperstepMasterMessage(VPackBuilder& msg) {
 
 greenspun::EvalResult WorkerContext::sendToGlobalAccumulator(std::string accumId,
                                                              VPackSlice msg) const {
-  LOG_DEVEL << "send to global accum " << accumId << " msg " << msg.toJson();
   if (auto iter = _globalAccumulatorsUpdates.find(accumId);
       iter != std::end(_globalAccumulatorsUpdates)) {
-    return iter->second->updateByMessageSlice(msg).asResult();
+    std::unique_lock guard(iter->second.mutex);
+    return iter->second.accum->updateByMessageSlice(msg).asResult();
   }
   return greenspun::EvalError("global accumulator`" + accumId + "` not found");
 }
@@ -125,7 +125,8 @@ greenspun::EvalResult WorkerContext::getGlobalAccumulator(std::string accumId,
                                                           VPackBuilder result) const {
   if (auto iter = _globalAccumulatorsUpdates.find(accumId);
       iter != std::end(_globalAccumulatorsUpdates)) {
-    return iter->second->getIntoBuilder(result).asResult();
+    std::unique_lock guard(iter->second.mutex);
+    return iter->second.accum->getIntoBuilder(result).asResult();
   }
   return greenspun::EvalError("global accumulator `" + accumId + "` not found");
 }

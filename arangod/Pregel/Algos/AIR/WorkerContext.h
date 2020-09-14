@@ -49,19 +49,26 @@ struct WorkerContext : public ::arangodb::pregel::WorkerContext {
   greenspun::EvalResult getGlobalAccumulator(std::string accumId, VPackBuilder result) const;
 private:
 
-  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const& globalAccumulatorsUpdates();
-  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const& globalAccumulators();
+  struct MutexAccumPair {
+    std::unique_ptr<AccumulatorBase> accum;
+    mutable std::mutex mutex;
+
+    MutexAccumPair(std::unique_ptr<AccumulatorBase> accum) : accum(std::move(accum)) {}
+  };
+
+  std::unordered_map<std::string, MutexAccumPair> const& globalAccumulatorsUpdates();
+  std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>> const& globalAccumulators();
 
   VertexAccumulators const* _algo;
 
   // This only holds the *deltas* for the global accumulators, i.e.
   // these accumulators are reset before every GSS, and their contents
   // are sent back to the conductor at the end of every GSS
-  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _globalAccumulators;
+  std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>> _globalAccumulators;
 
   // This map contains the values of the global accumulators
   // from the last GSS
-  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _globalAccumulatorsUpdates;
+  std::unordered_map<std::string, MutexAccumPair> _globalAccumulatorsUpdates;
 };
 
 }  // namespace accumulators

@@ -28,8 +28,8 @@ function cmpAccumulator(cmp) {
             updateProgram: ["if",
                 [
                     ["or",
-                        ["not", ["attrib-get", "isSet", ["current-value"]]],
-                        [cmp, ["input-value"], ["attrib-get", "value", ["current-value"]]]
+                        ["not", ["attrib-get", ["current-value"], "isSet"]],
+                        [cmp, ["input-value"], ["attrib-get", ["current-value"], "value"]]
                     ],
                     ["seq",
                         ["this-set!",
@@ -47,8 +47,8 @@ function cmpAccumulator(cmp) {
             clearProgram: ["this-set!", {"isSet": false, "value": 0, sender: null}],
             getProgram: ["if",
                 [
-                    ["attrib-get", "isSet", ["current-value"]],
-                    ["attrib-get", "value", ["current-value"]]
+                    ["attrib-get", ["current-value"], "isSet"],
+                    ["attrib-get", ["current-value"], "value"]
                 ],
                 [
                     true,
@@ -64,7 +64,7 @@ function cmpAccumulator(cmp) {
             ],
             finalizeProgram: ["if",
                 [
-                    ["attrib-get", "isSet", ["current-value"]],
+                    ["attrib-get", ["current-value"], "isSet"],
                     ["dict-x-tract", ["current-value"], "value", "sender"]
                 ],
                 [true, null]
@@ -72,12 +72,12 @@ function cmpAccumulator(cmp) {
             aggregateStateProgram: ["if",
                 [
                     ["or",
-                        ["not", ["attrib-get", "isSet", ["current-value"]]],
+                        ["not", ["attrib-get", ["current-value"], "isSet"]],
                         ["and",
-                            ["attrib-get", "isSet", ["input-state"]],
+                            ["attrib-get", ["input-state"], "isSet"],
                             [cmp,
-                                ["attrib-get", "value", ["input-state"]],
-                                ["attrib-get", "value", ["current-value"]]]]
+                                ["attrib-get", ["input-state"], "value"],
+                                ["attrib-get", ["current-value"], "value"]]]
                     ],
                     ["seq",
                         ["this-set!",

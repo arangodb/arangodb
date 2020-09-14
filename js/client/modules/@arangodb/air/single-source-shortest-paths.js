@@ -85,7 +85,7 @@ function single_source_shortest_paths_program(
             ["seq",
               [
                 "send-to-accum",
-                ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
+                ["attrib-ref", ["var-ref", "edge"], "to-pregel-id"],
                 "distance",
                 [
                   "+",

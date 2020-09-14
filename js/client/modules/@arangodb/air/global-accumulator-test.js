@@ -162,7 +162,7 @@ function global_accumulators_test_program(resultField) {
          ["for-each", ["edge", ["this-outbound-edges"]],
           ["seq",
            ["send-to-accum",
-            ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
+            ["attrib-ref", ["var-ref", "edge"], "to-pregel-id"],
             "forward", ["accum-ref", "forward"]]]],
          "vote-halt",
         ],
