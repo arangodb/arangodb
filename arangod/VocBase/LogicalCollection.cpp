@@ -865,8 +865,8 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
 }
 
 /// @brief return the figures for a collection
-futures::Future<OperationResult> LogicalCollection::figures() const {
-  return getPhysical()->figures();
+futures::Future<OperationResult> LogicalCollection::figures(bool details) const {
+  return getPhysical()->figures(details);
 }
 
 /// @brief opens an existing collection
