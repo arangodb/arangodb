@@ -12,6 +12,15 @@ v3.6.7 (XXXX-XX-XX)
   behavior is identical to previous versions of ArangoDB.
   Currently, the details are returned for the RocksDB storage engine only.
 
+* Fixed an issue with audit logging misreporting some document requests as 
+  internal instead of logging the proper request information.
+
+* Fixed some cases where subqueries in PRUNE did not result in a parse error,
+  but either in an incomprehensible error (in 3.7), or undefined behaviour
+  during execution (pre 3.7).
+
+* Updated rclone to 1.53.0.
+
 * Added metrics for V8 contexts usage:
   * `arangodb_v8_context_alive`: number of V8 contexts currently alive.
   * `arangodb_v8_context_busy`: number of V8 contexts currently busy.
@@ -94,6 +103,16 @@ v3.6.7 (XXXX-XX-XX)
 
 * Fixed internal issue #744: LIMIT with only offset and constrained heap
   optimization will use estimation value for ArangoSearch views.
+
+
+v3.6.6.1 (2020-09-09)
+---------------------
+
+* Add option `--rocksdb.max-write-buffer-number-to-maintain` with default of 1
+  for small RAM size and 0 for large RAM size.
+  This configures how much memory RocksDB is allowed to use for immutable
+  flushed memtables/write-buffers. The default of 1 will usually be good for
+  small machines and 0 for all other cases.
 
 
 v3.6.6 (2020-08-21)

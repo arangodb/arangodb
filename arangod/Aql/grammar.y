@@ -1849,7 +1849,7 @@ reference:
       auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), variableName.size(), node, false);
       parser->ast()->addOperation(subQuery);
 
-      $$ = parser->ast()->createNodeReference(variableName);
+      $$ = parser->ast()->createNodeSubqueryReference(variableName);
     }
   | reference '.' T_STRING %prec REFERENCE {
       // named variable access, e.g. variable.reference
