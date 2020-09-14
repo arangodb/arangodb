@@ -100,11 +100,11 @@ void Collections::toVelocyPack(velocypack::Builder& builder) const {
   }
   builder.close();
 }
-  
+
 void Collections::visit(std::function<bool(std::string const&, Collection&)> const& visitor) const {
   for (auto const& it : _collections) {
     // stop iterating when visitor returns false
-    if (!visitor(it.first, it.second.get())) {
+    if (!visitor(it.first, *it.second.get())) {
       return;
     }
   }
