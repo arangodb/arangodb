@@ -798,7 +798,7 @@ Choose the `Npcap Loopback Adapter` number - 1:
       --sniff true \
       --cleanup false \
       --sniffDevice 1 \
-      --sniffProgram c:/Programm Files/wireshark/tshark.exe \
+      --sniffProgram 'c:/Programm Files/wireshark/tshark.exe' \
       --forceJson true
 
 You can later on use Wireshark to inspect the capture files.
