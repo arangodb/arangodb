@@ -1346,11 +1346,11 @@ void ClusterInfo::loadCurrent() {
     std::unordered_map<ServerID, velocypack::Slice> serverList;
     if (databaseSlice.isObject()) {
       for (auto const& serverSlicePair : VPackObjectIterator(databaseSlice)) {
-        serverList.try_emplace(databaseName, serverSlicePair.value);
+        serverList.try_emplace(serverSlicePair.key.copyString(), serverSlicePair.value);
       }
     }
 
-    newDatabases.try_emplace(std::move(databaseName), std::move(serverList));
+    newDatabases.insert_or_assign(std::move(databaseName), std::move(serverList));
     swapDatabases = true;
   }
 
