@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -55,11 +56,9 @@ class Metric {
 };
 
 struct Metrics {
-
   using counter_type = gcl::counter::simplex<uint64_t, gcl::counter::atomicity::full>;
   using hist_type = gcl::counter::simplex_array<uint64_t, gcl::counter::atomicity::full>;
-  using buffer_type = gcl::counter::buffer<uint64_t>;
-
+  using buffer_type = gcl::counter::buffer<uint64_t, gcl::counter::atomicity::full, gcl::counter::atomicity::full>;
 };
 
 

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,6 +27,7 @@
 #include "Basics/system-functions.h"
 #include "Indexes/IndexIterator.h"
 #include "Replication/DatabaseInitialSyncer.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/utilities.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBIterators.h"
@@ -52,7 +54,7 @@ namespace arangodb {
 // remove all keys that are below first remote key or beyond last remote key
 Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
                               OperationOptions& options,
-                              InitialSyncerIncrementalSyncStats& stats) {
+                              ReplicationMetricsFeature::InitialSyncStats& stats) {
   size_t const numChunks = chunkSlice.length();
 
   if (numChunks == 0) {
@@ -163,7 +165,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
 }
 
 Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
-                        InitialSyncerIncrementalSyncStats& stats,
+                        ReplicationMetricsFeature::InitialSyncStats& stats,
                         std::string const& keysId, uint64_t chunkId,
                         std::string const& lowString, std::string const& highString,
                         std::vector<std::string> const& markers) {
@@ -177,7 +179,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
-  options.indexOperationMode = Index::OperationMode::internal;
+  options.indexOperationMode = IndexOperationMode::internal;
   options.waitForSync = false;
   options.validate = false;
 
@@ -224,22 +226,22 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
   if (r.fail()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from master at ") +
-                      syncer._state.master.endpoint + ": " + r.errorMessage());
+                  std::string("got invalid response from leader at ") +
+                      syncer._state.leader.endpoint + ": " + r.errorMessage());
   }
 
   VPackSlice const responseBody = builder.slice();
   if (!responseBody.isArray()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from master at ") +
-                      syncer._state.master.endpoint + ": response is no array");
+                  std::string("got invalid response from leader at ") +
+                      syncer._state.leader.endpoint + ": response is no array");
   }
 
   size_t const numKeys = static_cast<size_t>(responseBody.length());
   if (numKeys == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from master at ") +
-                      syncer._state.master.endpoint +
+                  std::string("got invalid response from leader at ") +
+                      syncer._state.leader.endpoint +
                       ": response contains an empty chunk. Collection: " + collectionName +
                       " Chunk: " + std::to_string(chunkId));
   }
@@ -256,8 +258,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   for (VPackSlice pair : VPackArrayIterator(responseBody)) {
     if (!pair.isArray() || pair.length() != 2) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from master at ") +
-                        syncer._state.master.endpoint +
+                    std::string("got invalid response from leader at ") +
+                        syncer._state.leader.endpoint +
                         ": response key pair is no valid array");
     }
 
@@ -265,8 +267,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     VPackSlice const keySlice = pair.at(0);
     if (!keySlice.isString()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from master at ") +
-                        syncer._state.master.endpoint +
+                    std::string("got invalid response from leader at ") +
+                        syncer._state.leader.endpoint +
                         ": response key is no string");
     }
 
@@ -414,16 +416,16 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
     if (r.fail()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from master at ") +
-                        syncer._state.master.endpoint +
+                    std::string("got invalid response from leader at ") +
+                        syncer._state.leader.endpoint +
                         ": " + r.errorMessage());
     }
 
     VPackSlice const slice = docsBuilder->slice();
     if (!slice.isArray()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from master at ") +
-                        syncer._state.master.endpoint +
+                    std::string("got invalid response from leader at ") +
+                        syncer._state.leader.endpoint +
                         ": response is no array");
     }
 
@@ -437,8 +439,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
       if (!it.isObject()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                      std::string("got invalid response from master at ") +
-                          syncer._state.master.endpoint +
+                      std::string("got invalid response from leader at ") +
+                          syncer._state.leader.endpoint +
                           ": document is no object");
       }
 
@@ -446,8 +448,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
       if (!keySlice.isString()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                      std::string("got invalid response from master at ") +
-                          syncer._state.master.endpoint +
+                      std::string("got invalid response from leader at ") +
+                          syncer._state.leader.endpoint +
                           ": document key is invalid");
       }
 
@@ -455,8 +457,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
       if (!revSlice.isString()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                      std::string("got invalid response from master at ") +
-                          syncer._state.master.endpoint +
+                      std::string("got invalid response from leader at ") +
+                          syncer._state.leader.endpoint +
                           ": document revision is invalid");
       }
 
@@ -477,7 +479,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       if (physical->lookupKey(trx, keySlice.stringRef(), lookupResult).is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // key does not yet exist
         // INSERT
-        TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
+        TRI_ASSERT(options.indexOperationMode == IndexOperationMode::internal);
 
         Result res = physical->insert(trx, it, mdr, options);
         
@@ -491,10 +493,10 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
               return res;
             }
 
-            options.indexOperationMode = Index::OperationMode::normal;
+            options.indexOperationMode = IndexOperationMode::normal;
             res = physical->insert(trx, it, mdr, options);
             
-            options.indexOperationMode = Index::OperationMode::internal;
+            options.indexOperationMode = IndexOperationMode::internal;
             if (res.fail()) {
               return res;
             }
@@ -509,7 +511,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         ++stats.numDocsInserted;
       } else {
         // REPLACE
-        TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
+        TRI_ASSERT(options.indexOperationMode == IndexOperationMode::internal);
 
         Result res = physical->replace(trx, it, mdr, options, previous);
         
@@ -522,10 +524,10 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
             if (inner.fail()) {
               return res;
             }
-            options.indexOperationMode = Index::OperationMode::normal;
+            options.indexOperationMode = IndexOperationMode::normal;
             res = physical->replace(trx, it, mdr, options, previous);
             
-            options.indexOperationMode = Index::OperationMode::internal;
+            options.indexOperationMode = IndexOperationMode::internal;
             if (res.fail()) {
               return res;
             }
@@ -569,7 +571,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   TRI_voc_tick_t const chunkSize = 5000;
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
 
-  InitialSyncerIncrementalSyncStats stats;
+  ReplicationMetricsFeature::InitialSyncStats stats(syncer.vocbase().server().getFeature<ReplicationMetricsFeature>(), true);
 
   std::unique_ptr<httpclient::SimpleHttpResult> response;
 
@@ -603,16 +605,16 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
   if (r.fail()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from master at ") +
-                      syncer._state.master.endpoint + ": " + r.errorMessage());
+                  std::string("got invalid response from leader at ") +
+                      syncer._state.leader.endpoint + ": " + r.errorMessage());
   }
 
   VPackSlice const chunkSlice = builder.slice();
 
   if (!chunkSlice.isArray()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from master at ") +
-                      syncer._state.master.endpoint + ": response is no array");
+                  std::string("got invalid response from leader at ") +
+                      syncer._state.leader.endpoint + ": response is no array");
   }
 
   OperationOptions options;
@@ -688,8 +690,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       if (!chunk.isObject()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-            std::string("got invalid response from master at ") +
-                syncer._state.master.endpoint + ": chunk is no object");
+            std::string("got invalid response from leader at ") +
+                syncer._state.leader.endpoint + ": chunk is no object");
       }
 
       VPackSlice const lowSlice = chunk.get("low");
@@ -698,8 +700,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       if (!lowSlice.isString() || !highSlice.isString() || !hashSlice.isString()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-            std::string("got invalid response from master at ") +
-                syncer._state.master.endpoint +
+            std::string("got invalid response from leader at ") +
+                syncer._state.leader.endpoint +
                 ": chunks in response have an invalid format");
       }
 
@@ -872,7 +874,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       return res;
     }
   }
-
+  
   syncer.setProgress(
       std::string("incremental sync statistics for collection '") + col->name() +
       "': " + "keys requests: " + std::to_string(stats.numKeysRequests) + ", " +
@@ -889,4 +891,5 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
   return Result();
 }
+
 }  // namespace arangodb

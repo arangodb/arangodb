@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -261,6 +261,11 @@ class ExecutionPlan {
 
   /// @brief get ast
   inline Ast* getAst() const { return _ast; }
+
+  /// @brief resolves a variable alias, e.g. fn(tmp) -> "a.b" for the following:
+  ///  LET tmp = a.b
+  ///  LET x = tmp
+  AstNode const* resolveVariableAlias(AstNode const* node) const;
 
   /// @brief creates an anonymous calculation node for an arbitrary expression
   ExecutionNode* createTemporaryCalculation(AstNode const*, ExecutionNode*);

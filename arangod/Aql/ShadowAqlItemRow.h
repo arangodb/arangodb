@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -66,7 +67,7 @@ class ShadowAqlItemRow {
   /// @brief get the number of data registers in the underlying block.
   ///        Not all of these registers are necessarily filled by this
   ///        ShadowRow. There might be empty registers on deeper levels.
-  [[nodiscard]] RegisterCount getNrRegisters() const noexcept;
+  [[nodiscard]] RegisterCount getNumRegisters() const noexcept;
 
   /// @brief a ShadowRow is relevant iff it indicates an end of subquery block on the subquery context
   ///        we are in right now. This will only be of importance on nested subqueries.

@@ -100,6 +100,9 @@ class Query : public QueryContext {
 
   constexpr static uint64_t DontCache = 0;
 
+  /// @brief return the user that started the query
+  std::string const& user() const override;
+
   /// @brief whether or not the query is killed
   bool killed() const override;
 
@@ -107,9 +110,7 @@ class Query : public QueryContext {
   void kill();
 
   QueryString const& queryString() const { return _queryString; }
-  
-  QueryProfile* profile() const { return _profile.get(); }
-  
+    
   TEST_VIRTUAL QueryOptions& queryOptions() { return _queryOptions; }
 
   /// @brief return the start time of the query (steady clock value)
@@ -266,7 +267,7 @@ class Query : public QueryContext {
   aql::ServerQueryIdList _serverQueryIds;
   
   /// @brief query execution profile
-  std::unique_ptr<QueryProfile> _profile;
+  std::unique_ptr<QueryProfile> _queryProfile;
 
   /// @brief the ExecutionPlan object, if the query is prepared
   std::vector<std::unique_ptr<ExecutionPlan>> _plans;
@@ -290,16 +291,16 @@ class Query : public QueryContext {
   /// @brief hash for this query. will be calculated only once when needed
   mutable uint64_t _queryHash = DontCache;
   
-  /// Track in which phase of execution we are, in order to implement
-  /// repeatability.
-  ExecutionPhase _executionPhase;
-  
   enum class ShutdownState : uint8_t {
     None = 0, InProgress = 2, Done = 4
   };
   
   // atomic used because kill() might be called concurrently
   std::atomic<ShutdownState> _shutdownState;
+  
+  /// Track in which phase of execution we are, in order to implement
+  /// repeatability.
+  ExecutionPhase _executionPhase;
   
   /// @brief whether or not someone else has acquired a V8 context for us
   bool const _contextOwnedByExterior;
@@ -309,6 +310,9 @@ class Query : public QueryContext {
   
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;
+  
+  /// @brief user that started the query
+  std::string _user;
 };
 
 }  // namespace aql

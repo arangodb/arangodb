@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -582,7 +582,7 @@ void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
 }
 
 /// @brief return the figures for a collection
-futures::Future<OperationResult> PhysicalCollection::figures() {
+futures::Future<OperationResult> PhysicalCollection::figures(bool details) {
   auto buffer = std::make_shared<VPackBufferUInt8>();
   VPackBuilder builder(buffer);
   
@@ -613,7 +613,7 @@ futures::Future<OperationResult> PhysicalCollection::figures() {
   builder.close();  // indexes
 
   // add engine-specific figures
-  figuresSpecific(builder);
+  figuresSpecific(details, builder);
   builder.close();
   return OperationResult(Result(), std::move(buffer));
 }

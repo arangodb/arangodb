@@ -10,6 +10,8 @@ install(
     ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
   FILES_MATCHING
     PATTERN "*.js"
+  REGEX "^.*/js/client/modules/@arangodb/testsuites" EXCLUDE
+  REGEX "^.*/js/client/modules/@arangodb/testutils" EXCLUDE
 )
 
 install(

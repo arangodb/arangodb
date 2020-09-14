@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -174,9 +175,9 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
   if (newBlock != nullptr) {
     // Assert that the block has enough registers. This must be guaranteed by
     // the register planning.
-    TRI_ASSERT(newBlock->getNrRegs() == _registerInfos.numberOfOutputRegisters());
+    TRI_ASSERT(newBlock->numRegisters() == _registerInfos.numberOfOutputRegisters());
     // Check that all output registers are empty.
-    size_t const n = newBlock->size();
+    size_t const n = newBlock->numRows();
     auto const& regs = _registerInfos.getOutputRegisters();
     if (!regs.empty()) {
       bool const hasShadowRows = newBlock->hasShadowRows();
@@ -292,6 +293,9 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
 template <class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
+  if (getQuery().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
   traceExecuteBegin(stack);
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {

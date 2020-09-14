@@ -292,7 +292,7 @@ template<class F> class DeterminizerStar {
     size_t hash = 0, factor = 1;
     for (const auto& elem : *subset) {
       hash *= factor;
-      hash += elem.state + 103333 * elem.string;
+      hash += elem.state + size_t(103333) * elem.string;
       factor *= 23531;  // these numbers are primes.
     }
     return hash;

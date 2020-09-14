@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,12 +51,10 @@ VPackCustomTypeHandler* transaction::V8Context::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
     _customTypeHandler = transaction::Context::createCustomTypeHandler(_vocbase, resolver());
     _options.customTypeHandler = _customTypeHandler.get();
-    _dumpOptions.customTypeHandler = _customTypeHandler.get();
   }
 
   TRI_ASSERT(_customTypeHandler != nullptr);
   TRI_ASSERT(_options.customTypeHandler != nullptr);
-  TRI_ASSERT(_dumpOptions.customTypeHandler != nullptr);
 
   return _customTypeHandler.get();
 }

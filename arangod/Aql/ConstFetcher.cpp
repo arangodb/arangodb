@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -54,7 +55,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
   arangodb::containers::SmallVector<std::pair<size_t, size_t>>::allocator_type::arena_type arena;
   arangodb::containers::SmallVector<std::pair<size_t, size_t>> sliceIndexes{arena};
 
-  sliceIndexes.emplace_back(_rowIndex, _blockForPassThrough->size());
+  sliceIndexes.emplace_back(_rowIndex, _blockForPassThrough->numRows());
 
   // Modifiable first slice indexes.
   // from is the first data row to be returned
@@ -134,7 +135,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
       _rowIndex = sliceIndexes.back().second;
     } else {
       // We do not have shadowRows in use, need to to go the end.
-      _rowIndex = _blockForPassThrough->size();
+      _rowIndex = _blockForPassThrough->numRows();
     }
   } else {
     // No hardLimit, but softLimit.
@@ -165,7 +166,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
 
   SharedAqlItemBlockPtr resultBlock = _blockForPassThrough;
 
-  if (_rowIndex >= resultBlock->size()) {
+  if (_rowIndex >= resultBlock->numRows()) {
     // used the full block by now.
     _blockForPassThrough.reset(nullptr);
   }
@@ -207,14 +208,14 @@ void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block, SkipResult skipped) 
 }
 
 auto ConstFetcher::indexIsValid() const noexcept -> bool {
-  return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->size();
+  return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->numRows();
 }
 
 auto ConstFetcher::numRowsLeft() const noexcept -> size_t {
   if (!indexIsValid()) {
     return 0;
   }
-  return _currentBlock->size() - _rowIndex;
+  return _currentBlock->numRows() - _rowIndex;
 }
 
 auto ConstFetcher::canUseFullBlock(arangodb::containers::SmallVector<std::pair<size_t, size_t>> const& ranges) const
@@ -224,7 +225,7 @@ auto ConstFetcher::canUseFullBlock(arangodb::containers::SmallVector<std::pair<s
     // We do not start at the first index.
     return false;
   }
-  if (ranges.back().second != _currentBlock->size()) {
+  if (ranges.back().second != _currentBlock->numRows()) {
     // We de not stop at the last index
     return false;
   }

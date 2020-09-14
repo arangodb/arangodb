@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -152,7 +153,7 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
         if (_infos.returnsData()) {
           TRI_ASSERT(_subqueryResults != nullptr);
           INTERNAL_LOG_SQ << uint64_t(this)
-                       << " store subquery result for writing " << block->size();
+                       << " store subquery result for writing " << block->numRows();
           _subqueryResults->emplace_back(std::move(block));
         }
       }

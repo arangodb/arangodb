@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -65,7 +66,7 @@ constexpr std::chrono::seconds kDefaultTimeOutSecs(3600);
 ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
     ExecutionEngine* engine, RemoteNode const* node, RegisterInfos&& registerInfos,
     std::string const& server, std::string const& distributeId,
-    std::string const& queryId, Api const api)
+    std::string const& queryId)
     : ExecutionBlock(engine, node),
       _registerInfos(std::move(registerInfos)),
       _query(engine->getQuery()),
@@ -75,8 +76,7 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
       _isResponsibleForInitializeCursor(node->isResponsibleForInitializeCursor()),
       _lastError(TRI_ERROR_NO_ERROR),
       _lastTicket(0),
-      _requestInFlight(false),
-      _apiToUse(api) {
+      _requestInFlight(false) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() && distributeId.empty()) ||
              (!arangodb::ServerState::instance()->isCoordinator() && !distributeId.empty()));
@@ -289,10 +289,9 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   VPackBuilder builder(buffer, &options);
   builder.openObject(/*unindexed*/ true);
 
-  // Required for 3.5.* and earlier, dropped in 3.6.0
-  builder.add("exhausted", VPackValue(false));
-  // Used in 3.4.0 onwards
+  // Used from 3.4.0 onwards:
   builder.add("done", VPackValue(false));
+
   builder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
   builder.add(StaticStrings::Error, VPackValue(false));
   // NOTE API change. Before all items have been send.
@@ -316,52 +315,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
 }
 
-auto ExecutionBlockImpl<RemoteExecutor>::executeViaOldApi(AqlCallStack stack)
-    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
-  // Use the old getSome/SkipSome API.
-  auto myCallList = stack.popCall();
-  auto myCall = myCallList.popNextCall();
-
-  TRI_ASSERT(AqlCall::IsSkipSomeCall(myCall) || AqlCall::IsGetSomeCall(myCall) ||
-             AqlCall::IsFullCountCall(myCall) || AqlCall::IsFastForwardCall(myCall));
-
-  if (AqlCall::IsSkipSomeCall(myCall)) {
-    auto const [state, skipped] = skipSomeWithoutTrace(myCall.getOffset());
-    if (state != ExecutionState::WAITING) {
-      myCall.didSkip(skipped);
-    }
-    SkipResult skipRes{};
-    skipRes.didSkip(skipped);
-    return {state, skipRes, nullptr};
-  } else if (AqlCall::IsGetSomeCall(myCall)) {
-    auto const [state, block] = getSomeWithoutTrace(myCall.getLimit());
-    // We do not need to count as softLimit will be overwritten, and hard cannot be set.
-    if (stack.empty() && myCall.hasHardLimit() && !myCall.needsFullCount() && block != nullptr) {
-      // However we can do a short-cut here to report DONE on hardLimit if we are on the top-level query.
-      myCall.didProduce(block->size());
-      if (myCall.getLimit() == 0) {
-        return {ExecutionState::DONE, SkipResult{}, std::move(block)};
-      }
-    }
-
-    return {state, SkipResult{}, std::move(block)};
-  } else if (AqlCall::IsFullCountCall(myCall)) {
-    auto const [state, skipped] = skipSomeWithoutTrace(ExecutionBlock::SkipAllSize());
-    if (state != ExecutionState::WAITING) {
-      myCall.didSkip(skipped);
-    }
-    SkipResult skipRes{};
-    skipRes.didSkip(skipped);
-    return {state, skipRes, nullptr};
-  } else if (AqlCall::IsFastForwardCall(myCall)) {
-    // No idea if DONE is correct here...
-    return {ExecutionState::DONE, SkipResult{}, nullptr};
-  }
-
-  // Should never get here!
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
-}
-
 auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   traceExecuteBegin(stack);
@@ -378,10 +331,6 @@ auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack stack)
 
 auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
-  if (ADB_UNLIKELY(api() == Api::GET_SOME)) {
-    return executeViaOldApi(stack);
-  }
-  TRI_ASSERT(api() == Api::EXECUTE);
   return executeViaNewApi(stack);
 }
 
@@ -484,10 +433,6 @@ auto ExecutionBlockImpl<RemoteExecutor>::serializeExecuteCallBody(AqlCallStack c
     builder.close();
   }
   return buffer;
-}
-
-auto ExecutionBlockImpl<RemoteExecutor>::api() const noexcept -> Api {
-  return _apiToUse;
 }
 
 namespace {
@@ -620,16 +565,15 @@ void ExecutionBlockImpl<RemoteExecutor>::traceInitializeCursorRequest(VPackSlice
 void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* const rpc,
                                                       VPackSlice const slice,
                                                       std::string const& args) {
-  if (_profile >= PROFILE_LEVEL_TRACE_1) {
+  if (_profileLevel == ProfileLevel::TraceOne ||
+      _profileLevel == ProfileLevel::TraceTwo) {
     auto const queryId = this->_engine->getQuery().id();
     auto const remoteQueryId = _queryId;
     LOG_TOPIC("92c71", INFO, Logger::QUERIES)
         << "[query#" << queryId << "] remote request sent: " << rpc
         << (args.empty() ? "" : " ") << args << " registryId=" << remoteQueryId;
-    if (_profile >= PROFILE_LEVEL_TRACE_2) {
-      LOG_TOPIC("e0ae6", INFO, Logger::QUERIES)
-          << "[query#" << queryId << "] data: " << slice.toJson();
-    }
+    LOG_TOPIC_IF("e0ae6", INFO, Logger::QUERIES, _profileLevel == ProfileLevel::TraceTwo)
+        << "[query#" << queryId << "] data: " << slice.toJson();
   }
 }
 

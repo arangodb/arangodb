@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -345,7 +345,7 @@ void auth::UserManager::createRootUser() {
     return;
   }
   TRI_ASSERT(_userCache.empty());
-  LOG_TOPIC("857d7", INFO, Logger::AUTHENTICATION) << "Creating user \"root\"";
+  LOG_TOPIC("857d7", DEBUG, Logger::AUTHENTICATION) << "Creating user \"root\"";
 
   try {
     // Attention:

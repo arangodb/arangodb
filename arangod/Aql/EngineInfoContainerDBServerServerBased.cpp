@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -313,6 +313,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     
     infoBuilder.add("isModificationQuery", VPackValue(_query.isModificationQuery()));
     infoBuilder.add("isAsyncQuery", VPackValue(_query.isAsyncQuery()));
+
+    infoBuilder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(ServerState::instance()->getRebootId().value()));
+    infoBuilder.add(StaticStrings::AttrCoordinatorId, VPackValue(ServerState::instance()->getId()));
 
     addSnippetPart(nodesById, infoBuilder, _shardLocking, nodeAliases, server);
     TRI_ASSERT(infoBuilder.isOpenObject());

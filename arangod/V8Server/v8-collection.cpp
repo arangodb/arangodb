@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -955,6 +955,11 @@ static void JS_FiguresVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
+  bool details = false;
+  if (args.Length() != 0) {
+    details = TRI_ObjectToBoolean(isolate, args[0]);
+  }
+
   SingleCollectionTransaction trx(transaction::V8Context::Create(collection->vocbase(), true),
                                   *collection, AccessMode::Type::READ);
   Result res = trx.begin();
@@ -963,7 +968,7 @@ static void JS_FiguresVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  auto opRes = collection->figures().get();
+  auto opRes = collection->figures(details).get();
 
   trx.finish(TRI_ERROR_NO_ERROR);
 

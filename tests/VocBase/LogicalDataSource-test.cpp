@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,6 +28,7 @@
 #include "../Mocks/StorageEngineMock.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -72,6 +74,7 @@ class LogicalDataSourceTest : public ::testing::Test {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // setup required application features
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);  
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::ShardingFeature>(), false);
 

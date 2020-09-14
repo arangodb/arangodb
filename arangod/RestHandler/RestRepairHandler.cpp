@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -701,9 +702,7 @@ void RestRepairHandler::generateResult(rest::ResponseCode code,
 
     tmp = VPackCollection::merge(tmp.slice(), payload.slice(), false);
 
-    VPackOptions options(VPackOptions::Defaults);
-    options.escapeUnicode = true;
-    writeResult(tmp.slice(), options);
+    writeResult(tmp.slice(), VPackOptions::Defaults);
   } catch (...) {
     // Building the error response failed
   }

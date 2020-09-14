@@ -71,13 +71,13 @@ enum class Error : uint16_t {
   CouldNotConnect = 1000,
   CloseRequested = 1001,
   ConnectionClosed = 1002,
-  Timeout = 1003,
+  RequestTimeout = 1003,
   QueueCapacityExceeded = 1004,
 
   ReadError = 1102,
   WriteError = 1103,
 
-  Canceled = 1104,
+  ConnectionCanceled = 1104,
 
   VstUnauthorized = 2000,
 
@@ -144,14 +144,29 @@ std::string to_string(SocketType type);
 // --SECTION--                                                     ProtocolType
 // -----------------------------------------------------------------------------
 
-enum class ProtocolType : uint8_t { Undefined = 0, Http = 1, Http2 = 2, Vst = 3 };
+enum class ProtocolType : uint8_t {
+  Undefined = 0,
+  Http = 1,
+  Http2 = 2,
+  Vst = 3
+};
 std::string to_string(ProtocolType type);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       ContentType
 // -----------------------------------------------------------------------------
 
-enum class ContentType : uint8_t { Unset = 0, Custom, VPack, Dump, Json, Html, Text, BatchPart, FormData };
+enum class ContentType : uint8_t {
+  Unset = 0,
+  Custom,
+  VPack,
+  Dump,
+  Json,
+  Html,
+  Text,
+  BatchPart,
+  FormData
+};
 ContentType to_ContentType(std::string const& val);
 std::string to_string(ContentType type);
 
@@ -189,6 +204,7 @@ struct ConnectionConfiguration {
         _idleTimeout(300000),
         _connectRetryPause(1000),
         _maxConnectRetries(3),
+        _useIdleTimeout(true),
         _authenticationType(AuthenticationType::None),
         _user(""),
         _password(""),
@@ -208,6 +224,7 @@ struct ConnectionConfiguration {
   std::chrono::milliseconds _idleTimeout;
   std::chrono::milliseconds _connectRetryPause;
   unsigned _maxConnectRetries;
+  bool _useIdleTimeout;
 
   AuthenticationType _authenticationType;
   std::string _user;

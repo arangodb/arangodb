@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -95,13 +96,13 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
  protected:
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice const& doc,
+                LocalDocumentId const& documentId, velocypack::Slice const doc,
                 OperationOptions& options) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, Index::OperationMode mode) override;
+                velocypack::Slice const doc) override;
 
  private:
   std::set<std::string> wordlist(arangodb::velocypack::Slice const&);

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -222,8 +223,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_1) {
   SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
   // Check exposed attributes
-  EXPECT_EQ(testee->size(), block->size());
-  EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+  EXPECT_EQ(testee->numRows(), block->numRows());
+  EXPECT_EQ(testee->numRegisters(), block->numRegisters());
   EXPECT_EQ(testee->numEntries(), block->numEntries());
   EXPECT_EQ(testee->capacity(), block->capacity());
   // check data
@@ -251,8 +252,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_2) {
     SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
-    EXPECT_EQ(testee->size(), block->size());
-    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    EXPECT_EQ(testee->numRows(), block->numRows());
+    EXPECT_EQ(testee->numRegisters(), block->numRegisters());
     EXPECT_EQ(testee->numEntries(), block->numEntries());
     EXPECT_EQ(testee->capacity(), block->capacity());
     // check data
@@ -287,8 +288,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_3) {
     SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
-    EXPECT_EQ(testee->size(), block->size());
-    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    EXPECT_EQ(testee->numRows(), block->numRows());
+    EXPECT_EQ(testee->numRegisters(), block->numRegisters());
     EXPECT_EQ(testee->numEntries(), block->numEntries());
     EXPECT_EQ(testee->capacity(), block->capacity());
     // check data
@@ -331,8 +332,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_shadowrows) {
   SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
   // Check exposed attributes
-  EXPECT_EQ(testee->size(), block->size());
-  EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+  EXPECT_EQ(testee->numRows(), block->numRows());
+  EXPECT_EQ(testee->numRegisters(), block->numRegisters());
   EXPECT_EQ(testee->numEntries(), block->numEntries());
   EXPECT_EQ(testee->capacity(), block->capacity());
   // check data
@@ -372,8 +373,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_slices) {
     SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
-    EXPECT_EQ(testee->size(), 1);
-    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    EXPECT_EQ(testee->numRows(), 1);
+    EXPECT_EQ(testee->numRegisters(), block->numRegisters());
     // check data
     compareWithDummy(testee, 0, 0, 4);
     compareWithDummy(testee, 0, 1, 5);
@@ -390,8 +391,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_slices) {
     SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
-    EXPECT_EQ(testee->size(), 1);
-    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    EXPECT_EQ(testee->numRows(), 1);
+    EXPECT_EQ(testee->numRegisters(), block->numRegisters());
     // check data
     compareWithDummy(testee, 0, 0, 0);
     compareWithDummy(testee, 0, 1, 1);
@@ -419,8 +420,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_with_ranges) {
     SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
-    EXPECT_EQ(testee->size(), 1);
-    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    EXPECT_EQ(testee->numRows(), 1);
+    EXPECT_EQ(testee->numRegisters(), block->numRegisters());
     // check data
     compareWithDummy(testee, 0, 0, 4);
     compareWithDummy(testee, 0, 1, 5);
@@ -439,8 +440,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_with_ranges) {
     SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
-    EXPECT_EQ(testee->size(), 1);
-    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    EXPECT_EQ(testee->numRows(), 1);
+    EXPECT_EQ(testee->numRegisters(), block->numRegisters());
     // check data
     compareWithDummy(testee, 0, 0, 0);
     compareWithDummy(testee, 0, 1, 1);
@@ -459,8 +460,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_with_ranges) {
     SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
-    EXPECT_EQ(testee->size(), 2);
-    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    EXPECT_EQ(testee->numRows(), 2);
+    EXPECT_EQ(testee->numRegisters(), block->numRegisters());
     // check data
     compareWithDummy(testee, 0, 0, 4);
     compareWithDummy(testee, 0, 1, 5);
@@ -488,8 +489,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_input_row) {
     SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
-    EXPECT_EQ(testee->size(), 1);
-    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    EXPECT_EQ(testee->numRows(), 1);
+    EXPECT_EQ(testee->numRegisters(), block->numRegisters());
     // check data
     compareWithDummy(testee, 0, 0, 4);
     compareWithDummy(testee, 0, 1, 5);
@@ -506,8 +507,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_input_row) {
     SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
-    EXPECT_EQ(testee->size(), 1);
-    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    EXPECT_EQ(testee->numRows(), 1);
+    EXPECT_EQ(testee->numRegisters(), block->numRegisters());
     // check data
     compareWithDummy(testee, 0, 0, 0);
     compareWithDummy(testee, 0, 1, 1);
@@ -567,8 +568,8 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_1) {
   SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
   // Check exposed attributes
-  EXPECT_EQ(testee->size(), block->size());
-  EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+  EXPECT_EQ(testee->numRows(), block->numRows());
+  EXPECT_EQ(testee->numRegisters(), block->numRegisters());
   EXPECT_EQ(testee->numEntries(), block->numEntries());
   EXPECT_EQ(testee->capacity(), block->capacity());
   // check data
@@ -595,8 +596,8 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_2) {
     SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
-    EXPECT_EQ(testee->size(), block->size());
-    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    EXPECT_EQ(testee->numRows(), block->numRows());
+    EXPECT_EQ(testee->numRegisters(), block->numRegisters());
     EXPECT_EQ(testee->numEntries(), block->numEntries());
     EXPECT_EQ(testee->capacity(), block->capacity());
     // check data
@@ -630,8 +631,8 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_3) {
     SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
-    EXPECT_EQ(testee->size(), block->size());
-    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    EXPECT_EQ(testee->numRows(), block->numRows());
+    EXPECT_EQ(testee->numRegisters(), block->numRegisters());
     EXPECT_EQ(testee->numEntries(), block->numEntries());
     EXPECT_EQ(testee->capacity(), block->capacity());
     // check data
@@ -672,8 +673,8 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_shadowrows) {
   SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
   // Check exposed attributes
-  EXPECT_EQ(testee->size(), block->size());
-  EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+  EXPECT_EQ(testee->numRows(), block->numRows());
+  EXPECT_EQ(testee->numRegisters(), block->numRegisters());
   EXPECT_EQ(testee->numEntries(), block->numEntries());
   EXPECT_EQ(testee->capacity(), block->capacity());
   // check data
@@ -711,8 +712,8 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_slices) {
     SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
-    EXPECT_EQ(testee->size(), 1);
-    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    EXPECT_EQ(testee->numRows(), 1);
+    EXPECT_EQ(testee->numRegisters(), block->numRegisters());
     // check data
     compareWithDummy(testee, 0, 0, 4);
     compareWithDummy(testee, 0, 1, 5);
@@ -729,8 +730,8 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_slices) {
     SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
-    EXPECT_EQ(testee->size(), 1);
-    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    EXPECT_EQ(testee->numRows(), 1);
+    EXPECT_EQ(testee->numRegisters(), block->numRegisters());
     // check data
     compareWithDummy(testee, 0, 0, 0);
     compareWithDummy(testee, 0, 1, 1);
@@ -754,8 +755,8 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_input_row) {
     SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
-    EXPECT_EQ(testee->size(), 1);
-    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    EXPECT_EQ(testee->numRows(), 1);
+    EXPECT_EQ(testee->numRegisters(), block->numRegisters());
     // check data
     compareWithDummy(testee, 0, 0, 4);
     compareWithDummy(testee, 0, 1, 5);
@@ -772,8 +773,8 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_input_row) {
     SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
-    EXPECT_EQ(testee->size(), 1);
-    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    EXPECT_EQ(testee->numRows(), 1);
+    EXPECT_EQ(testee->numRegisters(), block->numRegisters());
     // check data
     compareWithDummy(testee, 0, 0, 0);
     compareWithDummy(testee, 0, 1, 1);

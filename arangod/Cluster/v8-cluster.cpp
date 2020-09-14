@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1479,7 +1479,7 @@ static void Return_PrepareClusterCommResultForJS(v8::FunctionCallbackInfo<v8::Va
             v8::Local<v8::Object>::New(isolate, buffer->_handle);
         r->Set(context, TRI_V8_ASCII_STRING(isolate, "rawBody"), bufferObject).FromMaybe(false);
       }
-    } else if (response.error == fuerte::Error::Timeout) {
+    } else if (response.error == fuerte::Error::RequestTimeout) {
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(context, StatusKey, TRI_V8_ASCII_STRING(isolate, "TIMEOUT")).FromMaybe(false);
       TRI_GET_GLOBAL_STRING(TimeoutKey);

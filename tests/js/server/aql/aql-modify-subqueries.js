@@ -1864,9 +1864,6 @@ function ahuacatlGeneratedSuite() {
       `;
       const resNoSplice = db._query(q, {}, deactivateSplice);
       const resSplice = db._query(q, {}, activateSplice);
-      require("internal").print(
-        `Splice: ${resSplice.getExtra().stats.writesExecuted} vs. NoSplice: ${resNoSplice.getExtra().stats.writesExecuted}`
-      );
       
       assertEqual(resSplice.getExtra().stats.writesExecuted, resNoSplice.getExtra().stats.writesExecuted);
       assertEqual(resSplice.toArray().length, resNoSplice.toArray().length);

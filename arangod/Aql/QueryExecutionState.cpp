@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,7 +61,7 @@ size_t QueryExecutionState::toNumber(QueryExecutionState::ValueType value) {
 }
 
 /// @brief get a description of the query's current state
-std::string QueryExecutionState::toString(QueryExecutionState::ValueType state) {
+std::string const& QueryExecutionState::toString(QueryExecutionState::ValueType state) {
   return StateNames[static_cast<int>(state)];
 }
 

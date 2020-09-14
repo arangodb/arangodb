@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,10 +46,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rocksutils;
-
-namespace {
-static std::string const emptyString;
-}
 
 /// an incomplete convert function, basically only use for DDL ops
 TRI_replication_operation_e rocksutils::convertLogType(RocksDBLogType t) {
