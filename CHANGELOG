@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed inifinite reload of the login window after logout of an LDAP user.
+
 * Added startup option `--query.max-runtime` to limit the maximum runtime of
   all AQL queries to a specified threshold value (in seconds). By default,
   the threshold is 0, meaning that the runtime of AQL queries is not limited.
