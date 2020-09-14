@@ -1,6 +1,19 @@
 v3.6.7 (XXXX-XX-XX)
 -------------------
 
+* Added startup option `--query.max-runtime` to limit the maximum runtime of all
+  AQL queries to a specified threshold value (in seconds). By default, the
+  threshold is 0, meaning that the runtime of AQL queries is not limited.
+  Setting it to any positive value will restrict the runtime of all AQL queries
+  unless it is overwritten in the per-query "maxRuntime" query option.
+  Please note that setting this option will affect *all* queries in all
+  databases, and also queries issues for administration and database-internal
+  purposes.
+  If a query exceeds the configured runtime, it will be killed on the next
+  occasion when the query checks its own status. Killing is best effort, so it
+  is not guaranteed that a query will no longer than exactly the configured
+  amount of time.
+
 * Enforce a maximum result register usage limit in AQL queries. In an AQL query,
   every user-defined or internal (unnamed) variable will need a  register to
   store results in.
