@@ -1148,13 +1148,13 @@ void ClusterInfo::loadPlan() {
         for (auto const& p : *shardIDs) {
           TRI_ASSERT(p.first.size() >= 2);
           shards->push_back(p.first);
-          newShardServers.try_emplace(p.first, p.second);
-          newShardToName.try_emplace(p.first, newCollection->name());
+          newShardServers.insert_or_assign(p.first, p.second);
+          newShardToName.insert_or_assign(p.first, newCollection->name());
         }
 
         // Sort by the number in the shard ID ("s0000001" for example):
         ShardingInfo::sortShardNamesNumerically(*shards);
-        newShards.try_emplace(collectionId, std::move(shards));
+        newShards.insert_or_assign(collectionId, std::move(shards));
       } catch (std::exception const& ex) {
         // The plan contains invalid collection information.
         // This should not happen in healthy situations.
@@ -1399,13 +1399,13 @@ void ClusterInfo::loadCurrent() {
           collectionDataCurrent->servers(shardID)  // args
           );
 
-        newShardIds.try_emplace(std::move(shardID), std::move(servers));
+        newShardIds.insert_or_assign(std::move(shardID), std::move(servers));
       }
 
       databaseCollections.try_emplace(std::move(collectionName), std::move(collectionDataCurrent));
     }
 
-    newCollections.try_emplace(std::move(databaseName), std::move(databaseCollections));
+    newCollections.insert_or_assign(std::move(databaseName), std::move(databaseCollections));
   }
 
   // Now set the new value:
