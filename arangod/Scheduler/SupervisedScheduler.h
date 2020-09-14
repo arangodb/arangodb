@@ -31,6 +31,7 @@
 #include <mutex>
 #include <queue>
 
+#include "RestServer/MetricsFeature.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
@@ -161,6 +162,9 @@ class SupervisedScheduler final : public Scheduler {
   uint64_t const _maxFifoSize;
   uint64_t const _fifo1Size;
   uint64_t const _fifo2Size;
+
+  Gauge<uint64_t>& _metricsQueueLength;
+  Counter& _metricsQueueFull;
 
   std::unique_ptr<WorkItem> getWork(std::shared_ptr<WorkerState>& state);
 

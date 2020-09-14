@@ -56,6 +56,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -220,7 +221,7 @@ class TemplateSpecializer {
 
 static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false, false);
-  // We do not need any features from this phase
+  server.addFeature<arangodb::MetricsFeature>(false); 
 }
 
 static void SetupBasicFeaturePhase(MockServer& server) {
@@ -465,9 +466,8 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery() const {
 }
 
 MockRestServer::MockRestServer(bool start) : MockServer() {
-  addFeature<arangodb::QueryRegistryFeature>(false);
-
   SetupV8Phase(*this);
+  addFeature<arangodb::QueryRegistryFeature>(false);
   if (start) {
     startFeatures();
   }

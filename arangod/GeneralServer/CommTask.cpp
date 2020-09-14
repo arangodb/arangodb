@@ -206,6 +206,7 @@ CommTask::Flow CommTask::prepareExecution(GeneralRequest& req) {
     case ServerState::Mode::TRYAGAIN: {
       if (!::startsWith(path, "/_admin/shutdown") &&
           !::startsWith(path, "/_admin/cluster/health") &&
+          !(path == "/_admin/compact") &&
           !::startsWith(path, "/_admin/log") &&
           !::startsWith(path, "/_admin/server/role") &&
           !::startsWith(path, "/_admin/server/availability") &&
@@ -213,6 +214,7 @@ CommTask::Flow CommTask::prepareExecution(GeneralRequest& req) {
           !::startsWith(path, "/_admin/statistics") &&
           !::startsWith(path, "/_api/agency/agency-callbacks") &&
           !::startsWith(path, "/_api/cluster/") &&
+          !::startsWith(path, "/_api/engine/stats") &&
           !::startsWith(path, "/_api/replication") &&
           !::startsWith(path, "/_api/ttl/statistics") &&
           (mode == ServerState::Mode::TRYAGAIN ||

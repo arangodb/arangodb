@@ -501,6 +501,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     }
     
   } else if (sub == "truncate") {
+    uint64_t count = 0;
     OperationOptions opts;
 
     opts.waitForSync = _request->parsedValue("waitForSync", false);
@@ -516,9 +517,14 @@ RestStatus RestCollectionHandler::handleCommandPut() {
       _activeTrx.reset();
       return RestStatus::DONE;
     }
+              
+    OperationResult result = _activeTrx->count(coll->name(), transaction::CountType::Normal);
+    if (result.ok() && result.slice().isNumber()) {
+      count = result.slice().getNumber<uint64_t>();
+    }
     
     return waitForFuture(
-        _activeTrx->truncateAsync(coll->name(), opts).thenValue([this, coll](OperationResult&& opres) {
+        _activeTrx->truncateAsync(coll->name(), opts).thenValue([this, coll, count](OperationResult&& opres) {
           // Will commit if no error occured.
           // or abort if an error occured.
           // result stays valid!
@@ -534,6 +540,16 @@ RestStatus RestCollectionHandler::handleCommandPut() {
           }
 
           _activeTrx.reset();
+          
+          // wait for the transaction to finish first. only after that compact the
+          // data range(s) for the collection
+          // we shouldn't run compact() as part of the transaction, because the compact
+          // will be useless inside due to the snapshot the transaction has taken
+          if (count >= 4 * 1024) {
+            // only compact if the collection contained a substantial amount of documents
+            // before truncation
+            coll->compact();
+          }
 
           // note that previously we ran a compaction of the collection's key range
           // and the collection's indexes key ranges directly after the truncate.

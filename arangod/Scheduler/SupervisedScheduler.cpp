@@ -57,7 +57,7 @@ time_point lastQueueFullWarning[3];
 int64_t fullQueueEvents[3] = {0, 0, 0};
 std::mutex fullQueueWarningMutex[3];
 
-void logQueueWarningEveryNowAndThen(int64_t events, uint64_t maxQueueSize) {
+void logQueueWarningEveryNowAndThen(int64_t events, uint64_t maxQueueSize, uint64_t approxQueueLength) {
   auto const now = std::chrono::steady_clock::now();
   uint64_t totalEvents;
   bool printLog = false;
@@ -77,7 +77,8 @@ void logQueueWarningEveryNowAndThen(int64_t events, uint64_t maxQueueSize) {
   if (printLog) {
     LOG_TOPIC("dead2", WARN, Logger::THREADS)
         << "Scheduler queue with max capacity " << maxQueueSize
-        << " is filled more than 50% in last " << sinceLast.count()
+        << " has approximately " << approxQueueLength 
+        << " tasks and is filled more than 50% in last " << sinceLast.count()
         << "s (happened " << totalEvents << " times since last message)";
   }
 }
@@ -160,7 +161,11 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _nrAwake(0),
       _maxFifoSize(maxQueueSize),
       _fifo1Size(fifo1Size),
-      _fifo2Size(fifo2Size) {
+      _fifo2Size(fifo2Size),
+      _metricsQueueLength(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
+          "arangodb_scheduler_queue_length", 0, "Servers internal queue length (approximate)")),
+      _metricsQueueFull(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_scheduler_queue_full_failures", 0, "Tasks dropped and not added to internal queue")) {
   _queues[0].reserve(maxQueueSize);
   _queues[1].reserve(fifo1Size);
   _queues[2].reserve(fifo2Size);
@@ -200,6 +205,7 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
     }
     LOG_TOPIC("98d94", DEBUG, Logger::THREADS) << "unable to push job to scheduler queue: queue is full";
     logQueueFullEveryNowAndThen(queueNo, maxSize);
+    ++_metricsQueueFull;
     return false;
   }
 
@@ -210,10 +216,10 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
     if ((::queueWarningTick++ & 0xFF) == 0) {
       auto const& now = std::chrono::steady_clock::now();
       if (::conditionQueueFullSince == time_point{}) {
-        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize);
+        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize, approxQueueLength);
         ::conditionQueueFullSince = now;
       } else if (now - ::conditionQueueFullSince > std::chrono::seconds(5)) {
-        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize);
+        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize, approxQueueLength);
         ::queueWarningTick = 0;
         ::conditionQueueFullSince = now;
       }
@@ -404,6 +410,8 @@ void SupervisedScheduler::runSupervisor() {
 
   uint64_t lastJobsDone = 0, lastJobsSubmitted = 0;
   uint64_t jobsStallingTick = 0, lastQueueLength = 0;
+  
+  uint64_t roundCount = 0;
 
   while (!_stopping) {
     uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
@@ -434,6 +442,12 @@ void SupervisedScheduler::runSupervisor() {
     lastJobsDone = jobsDone;
     lastQueueLength = queueLength;
     lastJobsSubmitted = jobsSubmitted;
+    
+    if (roundCount++ >= 5) {
+      // approx every 0.5s update the metrics
+      _metricsQueueLength.operator=(queueLength);
+      roundCount = 0;
+    }
 
     try {
       if (doStartOneThread && _numWorkers < _maxNumWorker) {

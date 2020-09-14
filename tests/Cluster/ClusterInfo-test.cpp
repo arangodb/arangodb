@@ -40,6 +40,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -166,6 +167,7 @@ class ClusterInfoTest : public ::testing::Test,
                           false);
     features.emplace_back(server.addFeature<arangodb::ClusterFeature>(),
                           false);  // required for ClusterInfo::instance()
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>());  
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(server.addFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), false);  // required for LogicalView::instantiate(...)

@@ -1334,6 +1334,8 @@ void Query::init() {
     return;
   }
 
+  _user = ExecContext::current().user();
+
   TRI_ASSERT(_profile == nullptr);
   // adds query to QueryList which is needed for /_api/query/current
   _profile = std::make_unique<QueryProfile>(this);
