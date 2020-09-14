@@ -1182,9 +1182,8 @@ void ClusterInfo::loadPlan() {
         TRI_ASSERT(false);
         continue;
       }
-
-      newCollections.try_emplace(std::move(databaseName), std::move(databaseCollections));
     }
+    newCollections.insert_or_assign(std::move(databaseName), std::move(databaseCollections));
   }
 
   LOG_DEVEL << __FILE__ << __LINE__;
