@@ -1053,7 +1053,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
     if (ldb.isObject()) {
       
-      if (cur.isObject() && !cur.hasKey(cdbpath)) {
+      if (cur.isNone() || (cur.isObject() && !cur.hasKey(cdbpath))) {
         auto const localDatabaseInfo = assembleLocalDatabaseInfo(dbName, allErrors);
         TRI_ASSERT(!localDatabaseInfo.slice().isNone());
         if (!localDatabaseInfo.slice().isEmptyObject() &&
