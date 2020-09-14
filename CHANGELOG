@@ -1,6 +1,8 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed inifinite reload of the login window after logout of an LDAP user.
+
 * Updated rclone to 1.53.0.
 
 * Add attributes `database` and `user` when tracking current and slow AQL
