@@ -210,7 +210,7 @@ class EdgeIndexMock final : public arangodb::Index {
 
   arangodb::Result insert(arangodb::transaction::Methods& trx,
                           arangodb::LocalDocumentId const& documentId,
-                          arangodb::velocypack::Slice const& doc, OperationMode) {
+                          arangodb::velocypack::Slice const doc) {
     if (!doc.isObject()) {
       return {TRI_ERROR_INTERNAL};
     }
@@ -235,7 +235,8 @@ class EdgeIndexMock final : public arangodb::Index {
 
   arangodb::Result remove(arangodb::transaction::Methods& trx,
                           arangodb::LocalDocumentId const&,
-                          arangodb::velocypack::Slice const& doc, OperationMode) {
+                          arangodb::velocypack::Slice const& doc,
+                          arangodb::IndexOperationMode) {
     if (!doc.isObject()) {
       return {TRI_ERROR_INTERNAL};
     }
@@ -753,7 +754,7 @@ class HashIndexMock final : public arangodb::Index {
 
   arangodb::Result insert(arangodb::transaction::Methods&,
                           arangodb::LocalDocumentId const& documentId,
-                          arangodb::velocypack::Slice const& doc, OperationMode) {
+                          arangodb::velocypack::Slice const doc) {
     if (!doc.isObject()) {
       return {TRI_ERROR_INTERNAL};
     }
@@ -765,7 +766,7 @@ class HashIndexMock final : public arangodb::Index {
 
   arangodb::Result remove(arangodb::transaction::Methods&,
                           arangodb::LocalDocumentId const& documentId,
-                          arangodb::velocypack::Slice const& doc, OperationMode) {
+                          arangodb::velocypack::Slice const doc) {
     if (!doc.isObject()) {
       return {TRI_ERROR_INTERNAL};
     }
@@ -1006,13 +1007,13 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
     auto* l = dynamic_cast<EdgeIndexMock*>(index.get());
     TRI_ASSERT(l != nullptr);
     for (auto const& pair : docs) {
-      l->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+      l->insert(trx, pair.first, pair.second);
     }
   } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
     auto* l = dynamic_cast<HashIndexMock*>(index.get());
     TRI_ASSERT(l != nullptr);
     for (auto const& pair : docs) {
-      l->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+      l->insert(trx, pair.first, pair.second);
     }
   } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
@@ -1057,7 +1058,7 @@ bool PhysicalCollectionMock::dropIndex(arangodb::IndexId iid) {
   return false;
 }
 
-void PhysicalCollectionMock::figuresSpecific(arangodb::velocypack::Builder&) {
+void PhysicalCollectionMock::figuresSpecific(bool /*details*/, arangodb::velocypack::Builder&) {
   before();
   TRI_ASSERT(false);
 }
@@ -1121,8 +1122,7 @@ arangodb::Result PhysicalCollectionMock::insert(
     if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
       auto* l = static_cast<EdgeIndexMock*>(index.get());
       if (!l->insert(*trx, ref->second.docId(),
-                     arangodb::velocypack::Slice(result.vpack()),
-                     arangodb::Index::OperationMode::normal)
+                     arangodb::velocypack::Slice(result.vpack()))
                .ok()) {
         return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
       }
@@ -1130,8 +1130,7 @@ arangodb::Result PhysicalCollectionMock::insert(
     } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
       auto* l = static_cast<HashIndexMock*>(index.get());
       if (!l->insert(*trx, ref->second.docId(),
-                     arangodb::velocypack::Slice(result.vpack()),
-                     arangodb::Index::OperationMode::normal)
+                     arangodb::velocypack::Slice(result.vpack()))
                .ok()) {
         return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
       }
@@ -1141,16 +1140,14 @@ arangodb::Result PhysicalCollectionMock::insert(
         auto* l =
             static_cast<arangodb::iresearch::IResearchLinkCoordinator*>(index.get());
         if (!l->insert(*trx, ref->second.docId(),
-                       arangodb::velocypack::Slice(result.vpack()),
-                       arangodb::Index::OperationMode::normal)
+                       arangodb::velocypack::Slice(result.vpack()))
                  .ok()) {
           return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
         }
       } else {
         auto* l = static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get());
         if (!l->insert(*trx, ref->second.docId(),
-                       arangodb::velocypack::Slice(result.vpack()),
-                       arangodb::Index::OperationMode::normal)
+                       arangodb::velocypack::Slice(result.vpack()))
                  .ok()) {
           return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
         }

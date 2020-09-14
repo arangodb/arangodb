@@ -179,7 +179,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
-  options.indexOperationMode = Index::OperationMode::internal;
+  options.indexOperationMode = IndexOperationMode::internal;
   options.waitForSync = false;
   options.validate = false;
 
@@ -479,7 +479,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       if (physical->lookupKey(trx, keySlice.stringRef(), lookupResult).is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // key does not yet exist
         // INSERT
-        TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
+        TRI_ASSERT(options.indexOperationMode == IndexOperationMode::internal);
 
         Result res = physical->insert(trx, it, mdr, options);
         
@@ -493,10 +493,10 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
               return res;
             }
 
-            options.indexOperationMode = Index::OperationMode::normal;
+            options.indexOperationMode = IndexOperationMode::normal;
             res = physical->insert(trx, it, mdr, options);
             
-            options.indexOperationMode = Index::OperationMode::internal;
+            options.indexOperationMode = IndexOperationMode::internal;
             if (res.fail()) {
               return res;
             }
@@ -511,7 +511,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         ++stats.numDocsInserted;
       } else {
         // REPLACE
-        TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
+        TRI_ASSERT(options.indexOperationMode == IndexOperationMode::internal);
 
         Result res = physical->replace(trx, it, mdr, options, previous);
         
@@ -524,10 +524,10 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
             if (inner.fail()) {
               return res;
             }
-            options.indexOperationMode = Index::OperationMode::normal;
+            options.indexOperationMode = IndexOperationMode::normal;
             res = physical->replace(trx, it, mdr, options, previous);
             
-            options.indexOperationMode = Index::OperationMode::internal;
+            options.indexOperationMode = IndexOperationMode::internal;
             if (res.fail()) {
               return res;
             }

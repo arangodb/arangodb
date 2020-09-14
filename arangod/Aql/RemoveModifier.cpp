@@ -30,6 +30,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryContext.h"
 #include "Basics/Common.h"
+#include "Basics/StaticStrings.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
