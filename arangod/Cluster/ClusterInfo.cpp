@@ -1351,6 +1351,7 @@ void ClusterInfo::loadCurrent() {
     }
 
     newDatabases.try_emplace(std::move(databaseName), std::move(serverList));
+    swapDatabases = true;
   }
 
   // Current/Collections
@@ -1368,6 +1369,7 @@ void ClusterInfo::loadCurrent() {
     if (!databaseSlice.hasKey(dbPath)) { //TODO
       LOG_DEVEL << "TODO";
         //newDatabases.erase(database);
+        // swapDatabases = true?
     }
     databaseSlice = databaseSlice.get(dbPath);
 
