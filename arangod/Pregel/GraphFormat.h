@@ -73,6 +73,7 @@ struct GraphFormat {
   virtual bool buildVertexDocument(arangodb::velocypack::Builder& b,
                                    const V* targetPtr, size_t size) const {
     TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   virtual greenspun::EvalResult buildVertexDocumentWithResult(arangodb::velocypack::Builder& b,
