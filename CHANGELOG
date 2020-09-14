@@ -1,18 +1,12 @@
 v3.6.7 (XXXX-XX-XX)
 -------------------
 
-* Implement RebootTracker usage for AQL queries in case of coordinator
-  restarts or failures. This will clean up the rest of an AQL query
-  on dbservers more quickly and in particular release locks faster.
+* Implement RebootTracker usage for AQL queries in case of coordinator restarts
+  or failures. This will clean up the rest of an AQL query on dbservers more
+  quickly and in particular release locks faster.
 
 * Serialize maintenance actions for each shard. This addresses lost document
   problems found in chaos testing.
-
-* Add option `--rocksdb.max-write-buffer-number-to-maintain` with default of 1
-  for small RAM size and 0 for large RAM size.
-  This configures how much memory RocksDB is allowed to use for immutable
-  flushed memtables/write-buffers. The default of 1 will usually be good for
-  small machines and 0 for all other cases.
 
 * Added metrics for V8 contexts usage:
   * `arangodb_v8_context_alive`: number of V8 contexts currently alive.
