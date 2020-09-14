@@ -549,7 +549,7 @@ void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
 }
 
 /// @brief return the figures for a collection
-futures::Future<OperationResult> PhysicalCollection::figures() {
+futures::Future<OperationResult> PhysicalCollection::figures(bool details) {
   auto buffer = std::make_shared<VPackBufferUInt8>();
   VPackBuilder builder(buffer);
   
@@ -580,7 +580,7 @@ futures::Future<OperationResult> PhysicalCollection::figures() {
   builder.close();  // indexes
 
   // add engine-specific figures
-  figuresSpecific(builder);
+  figuresSpecific(details, builder);
   builder.close();
   return OperationResult(Result(), std::move(buffer));
 }

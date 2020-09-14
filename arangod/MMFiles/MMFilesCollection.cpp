@@ -1320,7 +1320,7 @@ void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
 }
 
-void MMFilesCollection::figuresSpecific(arangodb::velocypack::Builder& builder) {
+void MMFilesCollection::figuresSpecific(bool /*details*/, arangodb::velocypack::Builder& builder) {
   // fills in compaction status
   char const* lastCompactionStatus = "-";
   char lastCompactionStampString[21];
