@@ -774,11 +774,7 @@ void ClusterInfo::loadPlan() {
     swapAnalyzers = true;
   }
 
-  LOG_DEVEL << __FILE__ << __LINE__;
-
   for (auto const& database : changeSet.dbs) {
-
-
 
     if (database.first.empty()) { // Rest of plan
       continue;
@@ -786,7 +782,6 @@ void ClusterInfo::loadPlan() {
 
     name = database.first;
     auto dbSlice = database.second->slice()[0];
-    LOG_DEVEL << __FILE__ << __LINE__ << " " << dbSlice.toJson();
     std::vector<std::string> dbPath{AgencyCommHelper::path(), "Plan", "Databases", name};
     if (!dbSlice.hasKey(dbPath)) { // Dropped from Plan
       newDatabases.erase(name);
@@ -831,7 +826,6 @@ void ClusterInfo::loadPlan() {
     }
   }
 
-  LOG_DEVEL << __FILE__ << __LINE__;
   // Ensure views are being created BEFORE collections to allow
   // links find them
   // Immediate children of "Views" are database names, then ids
@@ -859,7 +853,6 @@ void ClusterInfo::loadPlan() {
     std::vector<std::string> viewsPath {
       AgencyCommHelper::path(), "Plan", "Views", databaseName};
     auto viewsSlice = database.second->slice()[0];
-    LOG_DEVEL << __FILE__ << __LINE__ << " " << viewsSlice.toJson();
     viewsSlice = viewsSlice.get(viewsPath);
 
     auto* vocbase = databaseFeature.lookupDatabase(databaseName);
@@ -943,7 +936,6 @@ void ClusterInfo::loadPlan() {
   //  },...
   // }}
   // Now the same for analyzers:
-  LOG_DEVEL << __FILE__ << __LINE__;
   for (auto const& database : changeSet.dbs) {
 
     if (database.first.empty()) { // Rest of plan
@@ -951,7 +943,6 @@ void ClusterInfo::loadPlan() {
     }
     auto const& databaseName = database.first;
     auto analyzerSlice = database.second->slice()[0];
-    LOG_DEVEL << __FILE__ << __LINE__ << " " << analyzerSlice.toJson();
 
     std::vector<std::string> analyzersPath {
       AgencyCommHelper::path(), "Plan", "Analyzers", databaseName};
@@ -992,7 +983,6 @@ void ClusterInfo::loadPlan() {
   TRI_IF_FAILURE("AlwaysSwapAnalyzersRevision") {
     swapAnalyzers = true;
   }
-  LOG_DEVEL << __FILE__ << __LINE__;
 
   // Immediate children of "Collections" are database names, then ids
   // of collections, then one JSON object with the description:
@@ -1051,7 +1041,6 @@ void ClusterInfo::loadPlan() {
     auto const& databaseName = database.first;
 
     auto collectionsSlice = database.second->slice()[0];
-    LOG_DEVEL << __FILE__ << __LINE__ << " " << collectionsSlice.toJson();
 
     std::vector<std::string> collectionsPath{
       AgencyCommHelper::path(), "Plan", "Collections", databaseName};
@@ -1186,7 +1175,6 @@ void ClusterInfo::loadPlan() {
     newCollections.insert_or_assign(std::move(databaseName), std::move(databaseCollections));
   }
 
-  LOG_DEVEL << __FILE__ << __LINE__;
   if (isCoordinator) {
     auto systemDB = _server.getFeature<arangodb::SystemDatabaseFeature>().use();
     if (systemDB && systemDB->shardingPrototype() == ShardingPrototype::Undefined) {
@@ -1211,7 +1199,6 @@ void ClusterInfo::loadPlan() {
     }
   }
 
-  LOG_DEVEL << __FILE__ << __LINE__;
   WRITE_LOCKER(writeLocker, _planProt.lock);
 
   _planVersion = changeSet.version;
@@ -4861,7 +4848,6 @@ ClusterInfo::getPlan(uint64_t& index, std::unordered_set<std::string> const& dir
       continue;
     }
     ret.try_emplace(it->first, it->second);
-    LOG_DEVEL << __FILE__ << ":" << __LINE__ << " " << it->second->toJson();
   }
   return ret;
 }
@@ -5587,10 +5573,32 @@ futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(network::Timeout
 VPackBuilder ClusterInfo::toVelocyPack() {
   VPackBuilder dump;
   {
-    VPackObjectBuilder d(&dump);
-    READ_LOCKER(readLocker, _planProt.lock);
-    for (auto const& i : _plan) {
-      dump.add(i.first, i.second->slice());
+    { VPackObjectBuilder c(&dump);
+      dump.add(VPackValue("Plan"));
+      { VPackObjectBuilder d(&dump);
+        READ_LOCKER(readLocker, _planProt.lock);
+        for (auto const& i : _plan) {
+          dump.add(i.first, i.second->slice());
+        }
+      }
+      dump.add(VPackValue("PlannedCollections"));
+      { VPackObjectBuilder d(&dump);
+        READ_LOCKER(readLocker, _planProt.lock);
+        for (auto const& db : _plannedCollections) {
+          dump.add(VPackValue(db.first));
+          VPackArrayBuilder cs(&dump);
+          for (auto const& col : db.second) {
+            dump.add(VPackValue(col.first));
+          }
+        }
+      }
+      dump.add(VPackValue("Current"));
+      { VPackObjectBuilder d(&dump);
+        READ_LOCKER(readLocker, _currentProt.lock);
+        for (auto const& i : _current) {
+          dump.add(i.first, i.second->slice());
+        }
+      }
     }
   }
   return dump;

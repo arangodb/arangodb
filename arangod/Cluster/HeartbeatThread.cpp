@@ -369,7 +369,6 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
                 << "Found greater Current/Version in agency.";
           }
         }
-        notify();
       }
     }
   }
@@ -497,8 +496,6 @@ void HeartbeatThread::runDBServer() {
       if (isStopping()) {
         break;
       }
-
-      notify();
 
       CONDITION_LOCKER(locker, _condition);
       auto remain = _interval - (std::chrono::steady_clock::now() - start);

@@ -80,12 +80,10 @@ Result DBServerAgencySync::getLocalCollections(
   for (auto const& dbname : dirty) {
     TRI_vocbase_t* tmp = dbfeature.lookupDatabase(dbname);
     if (tmp == nullptr) {
-      LOG_DEVEL << __FILE__ << __LINE__;
       continue;
     }
     TRI_vocbase_t& vocbase = *tmp;
     if (!vocbase.use()) {
-      LOG_DEVEL << __FILE__ << __LINE__;
       continue;
     }
     auto unuse = scopeGuard([&vocbase] { vocbase.release(); });
@@ -188,10 +186,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     result.errorMessage = "DBServerAgencySync::execute no dirty collections";
   }
 
-  LOG_DEVEL << __FILE__ << ":" << __LINE__ << " " << dirty;
   auto plan = clusterInfo.getPlan(planIndex, dirty);
-  LOG_DEVEL << __FILE__ << ":" << __LINE__ << " " << planIndex;
-
   if (plan.empty()) {
     // TODO increase log level, except during shutdown?
     LOG_TOPIC("0a6f2", DEBUG, Logger::MAINTENANCE)
