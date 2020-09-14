@@ -240,7 +240,7 @@ class LogicalCollection : public LogicalDataSource {
   virtual arangodb::Result properties(velocypack::Slice const& slice, bool partialUpdate) override;
 
   /// @brief return the figures for a collection
-  virtual futures::Future<OperationResult> figures() const;
+  virtual futures::Future<OperationResult> figures(bool details) const;
 
   /// @brief opens an existing collection
   void open(bool ignoreErrors);
