@@ -5,6 +5,8 @@ v3.7.3 (XXXX-XX-XX)
 
 * added LDAP_OFF if referrals and restart are false
 
+* if LDAP search fails, also retry (update to given number of retries)
+
 * Updated rclone to 1.53.0.
 
 * Add attributes `database` and `user` when tracking current and slow AQL
