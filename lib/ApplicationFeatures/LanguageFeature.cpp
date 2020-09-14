@@ -202,7 +202,7 @@ void LanguageFeature::prepareTimeZoneData(std::string const& binaryPath,
     date::set_install(tz_path);
     date::reload_tzdb();
   } else {
-    LOG_TOPIC("fffff", FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("67bdc", FATAL, arangodb::Logger::STARTUP)
         << "failed to locate timezone data " << tz_path;
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
   }
