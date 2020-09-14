@@ -801,7 +801,7 @@ Choose the `Npcap Loopback Adapter` number - 1:
       --sniffProgram c:/Programm Files/wireshark/tshark.exe
       --forceJson true
 
-You can later on use Wireshark to inpsect the capture files.
+You can later on use Wireshark to inspect the capture files.
 (please note that `--forceJson` will downgrade the communication VPACK->JSON for better readability)
 
 ### Evaluating json test reports from previous testruns
