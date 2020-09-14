@@ -93,7 +93,8 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature&,
 
 futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature&,
                                                       std::string const& dbname,
-                                                      std::string const& collname);
+                                                      std::string const& collname,
+                                                      bool details);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts number of documents in a coordinator, by shard

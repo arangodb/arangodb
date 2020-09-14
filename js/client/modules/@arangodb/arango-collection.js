@@ -425,8 +425,8 @@ ArangoCollection.prototype.recalculateCount = function () {
 // / @brief gets the figures of a collection
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.figures = function () {
-  var requestResult = this._database._connection.GET(this._baseurl('figures'));
+ArangoCollection.prototype.figures = function (details) {
+  var requestResult = this._database._connection.GET(this._baseurl('figures') + '?details=' + (details ? 'true' : 'false'));
 
   arangosh.checkRequestResult(requestResult);
 

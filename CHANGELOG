@@ -1,6 +1,17 @@
 v3.6.7 (XXXX-XX-XX)
 -------------------
 
+* Added `details` option to figures command of a collection:
+  `collection.figures(details)`
+
+  Setting `details` to `true` will return extended storage engine-specific
+  details to the figures. The details are intended for debugging ArangoDB itself
+  and their format is subject to change. There is not much use in using the
+  details from a client application.
+  By default, `details` is set to `false`, so no details are returned and the
+  behavior is identical to previous versions of ArangoDB.
+  Currently, the details are returned for the RocksDB storage engine only.
+
 * Fixed an issue with audit logging misreporting some document requests as 
   internal instead of logging the proper request information.
 
