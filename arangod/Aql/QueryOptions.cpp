@@ -37,6 +37,7 @@ using namespace arangodb::aql;
 
 size_t QueryOptions::defaultMemoryLimit = 0;
 size_t QueryOptions::defaultMaxNumberOfPlans = 128;
+double QueryOptions::defaultMaxRuntime= 0.0;
 double QueryOptions::defaultTtl;
 bool QueryOptions::defaultFailOnWarning;
 
@@ -44,7 +45,7 @@ QueryOptions::QueryOptions()
     : memoryLimit(0),
       maxNumberOfPlans(QueryOptions::defaultMaxNumberOfPlans),
       maxWarningCount(10),
-      maxRuntime(0),
+      maxRuntime(0.0),
       satelliteSyncWait(60.0),
       ttl(QueryOptions::defaultTtl), // get global default ttl
       profile(ProfileLevel::None),
@@ -58,13 +59,22 @@ QueryOptions::QueryOptions()
       count(false),
       verboseErrors(false),
       inspectSimplePlans(true),
-      explainRegisters(ExplainRegisterPlan::No)
-{
+      explainRegisters(ExplainRegisterPlan::No) {
   // now set some default values from server configuration options
-  // use global memory limit value
-  uint64_t globalLimit = QueryOptions::defaultMemoryLimit;
-  if (globalLimit > 0) {
-    memoryLimit = globalLimit;
+  {
+    // use global memory limit value
+    uint64_t globalLimit = QueryOptions::defaultMemoryLimit;
+    if (globalLimit > 0) {
+      memoryLimit = globalLimit;
+    }
+  }
+
+  {
+    // use global max runtime value
+    double globalLimit = QueryOptions::defaultMaxRuntime;
+    if (globalLimit > 0.0) {
+      maxRuntime = globalLimit;
+    }
   }
   
   // "cache" only defaults to true if query cache is turned on
