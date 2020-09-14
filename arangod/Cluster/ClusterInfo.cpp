@@ -774,6 +774,7 @@ void ClusterInfo::loadPlan() {
     swapAnalyzers = true;
   }
 
+  LOG_DEVEL << __LINE__;
   for (auto const& database : changeSet.dbs) {
 
     if (database.first.empty()) { // Rest of plan
@@ -787,7 +788,7 @@ void ClusterInfo::loadPlan() {
       newDatabases.erase(name);
       continue;
     }
-
+    
     dbSlice = dbSlice.get(dbPath);
     bool const isBuilding = dbSlice.hasKey(StaticStrings::AttrIsBuilding);
 
@@ -843,6 +844,8 @@ void ClusterInfo::loadPlan() {
   //  },...
   //  }}
 
+    LOG_DEVEL << __LINE__;
+
   // Now the same for views: // TODO change
   for (auto const& database : changeSet.dbs) {
 
@@ -853,6 +856,9 @@ void ClusterInfo::loadPlan() {
     std::vector<std::string> viewsPath {
       AgencyCommHelper::path(), "Plan", "Views", databaseName};
     auto viewsSlice = database.second->slice()[0];
+    if (!viewsSlice.hasKey(viewsPath)) {
+      continue;
+    }
     viewsSlice = viewsSlice.get(viewsPath);
 
     auto* vocbase = databaseFeature.lookupDatabase(databaseName);
@@ -936,6 +942,7 @@ void ClusterInfo::loadPlan() {
   //  },...
   // }}
   // Now the same for analyzers:
+  LOG_DEVEL << __LINE__;
   for (auto const& database : changeSet.dbs) {
 
     if (database.first.empty()) { // Rest of plan
@@ -1032,6 +1039,7 @@ void ClusterInfo::loadPlan() {
   //    },...
   //  },...
   // }}
+  LOG_DEVEL << __LINE__;
   for (auto const& database : changeSet.dbs) {
 
     if (database.first.empty()) { // Rest of plan
@@ -1199,6 +1207,7 @@ void ClusterInfo::loadPlan() {
     }
   }
 
+  LOG_DEVEL << __LINE__;
   WRITE_LOCKER(writeLocker, _planProt.lock);
 
   _planVersion = changeSet.version;

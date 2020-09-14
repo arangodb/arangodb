@@ -1146,68 +1146,70 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           }
         } else {  // Follower
 
-          auto servers =
-            std::vector<std::string>{
-            AgencyCommHelper::path(), CURRENT, COLLECTIONS, dbName, colName, shName, SERVERS};
-          auto s = cur.get(servers);
-          if (s.isArray() && cur.get(servers)[0].copyString() == serverId) {
-            // We are in the situation after a restart, that we do not know
-            // who the leader is because FollowerInfo is not updated yet.
-            // Hence, in the case we are the Leader in Plan but do not
-            // know it yet, do nothing here.
-            if (shSlice.get("theLeaderTouched").isTrue()) {
-              // we were previously leader and we are done resigning.
-              // update current and let supervision handle the rest, however
-              // check that we are in the Plan a leader which is supposed to
-              // resign and add a precondition that this is still the case:
+          if (cur.isObject()) {
+            auto servers =
+              std::vector<std::string>{
+              AgencyCommHelper::path(), CURRENT, COLLECTIONS, dbName, colName, shName, SERVERS};
+            auto s = cur.get(servers);
+            if (s.isArray() && cur.get(servers)[0].copyString() == serverId) {
+              // We are in the situation after a restart, that we do not know
+              // who the leader is because FollowerInfo is not updated yet.
+              // Hence, in the case we are the Leader in Plan but do not
+              // know it yet, do nothing here.
+              if (shSlice.get("theLeaderTouched").isTrue()) {
+                // we were previously leader and we are done resigning.
+                // update current and let supervision handle the rest, however
+                // check that we are in the Plan a leader which is supposed to
+                // resign and add a precondition that this is still the case:
 
-              auto const planPath =
-                std::vector<std::string>{colName, "shards", shName};
-              if (!pdb.hasKey(planPath)) {
-                LOG_TOPIC("65432", DEBUG, Logger::MAINTENANCE)
-                  << "Ooops, we have a shard for which we believe that we "
-                  "just resigned, but the Plan does not have it any "
-                  "more,"
-                  " we do not report in Current about this, database: "
-                  << dbName << ", shard: " << shName;
-                continue;
-              }
+                auto const planPath =
+                  std::vector<std::string>{colName, "shards", shName};
+                if (!pdb.hasKey(planPath)) {
+                  LOG_TOPIC("65432", DEBUG, Logger::MAINTENANCE)
+                    << "Ooops, we have a shard for which we believe that we "
+                    "just resigned, but the Plan does not have it any "
+                    "more,"
+                    " we do not report in Current about this, database: "
+                    << dbName << ", shard: " << shName;
+                  continue;
+                }
 
-              VPackSlice thePlanList = pdb.get(planPath);
-              if (!thePlanList.isArray() || thePlanList.length() == 0 ||
-                  !thePlanList[0].isString() ||
-                  !thePlanList[0].isEqualStringUnchecked(UNDERSCORE + serverId)) {
-                LOG_TOPIC("99987", DEBUG, Logger::MAINTENANCE)
-                  << "Ooops, we have a shard for which we believe that we "
-                  "have just resigned, but the Plan says otherwise, we "
-                  "do not report in Current about this, database: "
-                  << dbName << ", shard: " << shName;
-                continue;
-              }
-              VPackBuilder ns;
-              {
-                VPackArrayBuilder a(&ns);
-                if (s.isArray()) {
-                  bool front = true;
-                  for (auto const& i : VPackArrayIterator(s)) {
-                    ns.add(VPackValue((!front) ? i.copyString()
-                                      : UNDERSCORE + i.copyString()));
-                    front = false;
+                VPackSlice thePlanList = pdb.get(planPath);
+                if (!thePlanList.isArray() || thePlanList.length() == 0 ||
+                    !thePlanList[0].isString() ||
+                    !thePlanList[0].isEqualStringUnchecked(UNDERSCORE + serverId)) {
+                  LOG_TOPIC("99987", DEBUG, Logger::MAINTENANCE)
+                    << "Ooops, we have a shard for which we believe that we "
+                    "have just resigned, but the Plan says otherwise, we "
+                    "do not report in Current about this, database: "
+                    << dbName << ", shard: " << shName;
+                  continue;
+                }
+                VPackBuilder ns;
+                {
+                  VPackArrayBuilder a(&ns);
+                  if (s.isArray()) {
+                    bool front = true;
+                    for (auto const& i : VPackArrayIterator(s)) {
+                      ns.add(VPackValue((!front) ? i.copyString()
+                                        : UNDERSCORE + i.copyString()));
+                      front = false;
+                    }
                   }
                 }
-              }
-              report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" +
-                                    colName + "/" + shName + "/" + SERVERS));
+                report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" +
+                                      colName + "/" + shName + "/" + SERVERS));
 
-              {
-                VPackObjectBuilder o(&report);
-                report.add(OP, VP_SET);
-                report.add("payload", ns.slice());
                 {
-                  VPackObjectBuilder p(&report, "precondition");
-                  report.add(PLAN_COLLECTIONS + dbName + "/" + colName +
-                             "/shards/" + shName,
-                             thePlanList);
+                  VPackObjectBuilder o(&report);
+                  report.add(OP, VP_SET);
+                  report.add("payload", ns.slice());
+                  {
+                    VPackObjectBuilder p(&report, "precondition");
+                    report.add(PLAN_COLLECTIONS + dbName + "/" + colName +
+                               "/shards/" + shName,
+                               thePlanList);
+                  }
                 }
               }
             }
