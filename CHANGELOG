@@ -1,7 +1,22 @@
 devel
 -----
 
-* Slightly fixed wrong log level for authentication and also added login event
+* Added startup option `--query.max-runtime` to limit the maximum runtime of
+  all AQL queries to a specified threshold value (in seconds). By default,
+  the threshold is 0, meaning that the runtime of AQL queries is not limited.
+  Setting it to any positive value will restrict the runtime of all AQL
+  queries unless it is overwritten in the per-query "maxRuntime" query option.
+  Please note that setting this option will affect *all* queries in all
+  databases, and also queries issues for administration and database-internal
+  purposes.
+  If a query exceeds the configured runtime, it will be killed on the next
+  occasion when the query checks its own status. Killing is best effort, 
+  so it is not guaranteed that a query will no longer than exactly the 
+  configured amount of time.
+
+* Updated rclone to 1.53.0.
+
+* Fixed slightly wrong log level for authentication and also added login event
   to the standard log.
 
 * Ensure that the argument to an AQL OPTIONS clause is always an object
