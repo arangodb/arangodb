@@ -274,7 +274,7 @@ AqlValue numberValue(double value, bool nullify) {
 /// @brief optimized version of datetime stringification
 /// string format is hard-coded to YYYY-MM-DDTHH:MM:SS.XXXZ
 AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
-                      tp_sys_clock_ms const& tp) {
+                      tp_sys_clock_ms const& tp, bool utc = true) {
   char formatted[24];
 
   year_month_day ymd{floor<days>(tp)};
@@ -321,7 +321,7 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
   formatted[22] = '0' + (millis % 10);
   formatted[23] = 'Z';
 
-  return AqlValue(&formatted[0], sizeof(formatted));
+  return AqlValue(&formatted[0], utc ? sizeof(formatted) : sizeof(formatted) - 1);
 }
 
 DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
@@ -3785,7 +3785,9 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext,
   const auto zoned = make_zoned(tz, utc);
   const auto tp_local = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
 
-  return ::timeAqlValue(expressionContext, AFN, tp_local);
+  auto info = zoned.get_info();
+
+  return ::timeAqlValue(expressionContext, AFN, tp_local,info.offset.count() == 0 && info.save.count() == 0);
 }
 
 
