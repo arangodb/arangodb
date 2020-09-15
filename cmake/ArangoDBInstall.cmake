@@ -256,7 +256,9 @@ install(FILES "${CMAKE_SOURCE_DIR}/Installation/arangodb-helper"
 install(FILES "${CMAKE_SOURCE_DIR}/Installation/arangodb-helper"
   DESTINATION "${INSTALL_ICU_DT_DEST}"
   RENAME arangodb-update-db)
-
+  
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/3rdParty/tzdata"
+  DESTINATION "${INSTALL_ICU_DT_DEST}")
 
 if (MSVC AND NOT(SKIP_PACKAGING))
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/InstallMacros.cmake)
