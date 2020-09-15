@@ -82,7 +82,7 @@ void TimeZoneFeature::prepareTimeZoneData(std::string const& binaryPath,
   } else {
     std::string argv0 = FileUtils::buildFilename(binaryExecutionPath, binaryName);
     std::string path = TRI_LocateInstallDirectory(argv0.c_str(), binaryPath.c_str());
-    path = FileUtils::buildFilename(path, TZDATA_DESTINATION_DIRECTORY, "tzdata");
+    path = FileUtils::buildFilename(path, ICU_DESTINATION_DIRECTORY, "tzdata");
     FileUtils::makePathAbsolute(path);
     FileUtils::normalizePath(path);
     tz_path = path;
