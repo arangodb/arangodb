@@ -106,6 +106,13 @@ void TimeZoneFeature::prepare() {
   TimeZoneFeature::prepareTimeZoneData(_binaryPath, binaryExecutionPath, binaryName);
 }
 
-void TimeZoneFeature::start() { date::reload_tzdb(); }
+void TimeZoneFeature::start() {
+  try {
+    date::reload_tzdb();
+  } catch (const std::runtime_error& ex) {
+    LOG_TOPIC("67bdd", FATAL, arangodb::Logger::STARTUP) << ex.what();
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_TZDATA_INITIALIZATION_FAILED);
+  }
+}
 
 }  // namespace arangodb
