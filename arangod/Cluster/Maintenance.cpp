@@ -592,26 +592,28 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
   // TODO: getShardMaps still needed?
 
-  for (auto const& ldb : local) {  // for each local database
-    auto const& ldbname = ldb.first;
+  for (auto const& dbname : dirty) {  // each dirty database
+    auto lit = local.find(dbname);
+    if (lit == local.end()) {
+      continue;
+    }
+    auto const& ldbname = lit->first;
+    auto const  ldbslice = lit->second->slice(); // local collection
+
     auto const pit = plan.find(ldbname);
     if (pit != plan.end()) {     // have in plan
-
-      auto const ldbslice = ldb.second->slice(); // local collections
       auto plan = pit->second->slice()[0].get(       // plan collections
         std::vector<std::string>{AgencyCommHelper::path(), PLAN, COLLECTIONS, ldbname});
-
       if (ldbslice.isObject()) {
         for (auto const& lcol : VPackObjectIterator(ldbslice)) {
           auto const& colname = lcol.key.copyString();
           auto const shardMap = getShardMap(plan);            // plan shards -> servers
           handleLocalShard(ldbname, colname, lcol.value, shardMap.slice(),
-                             commonShrds, indis, serverId, actions, feature, shardActionMap);
+                           commonShrds, indis, serverId, actions, feature, shardActionMap);
         }
       }
     }
   }
-
 
   // See if shard errors can be thrown out:
   // Check all shard errors in feature, if database or collection gone -> reset error
