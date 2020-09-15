@@ -142,6 +142,14 @@ TEST_F(IResearchPrimaryKeyReuse, test) {
 
       EXPECT_TRUE(trx.commit().ok());
     }
+
+    EXPECT_TRUE(
+      (TRI_ERROR_NO_ERROR ==
+        arangodb::tests::executeQuery(vocbase,
+                                      "FOR d IN testView SEARCH d.value == true "
+                                      "OPTIONS { waitForSync: true } RETURN d")
+            .result.errorNumber()));  // commit
+
     // reinsert with _rev and isRestore == true
     {
       arangodb::OperationOptions options;
@@ -161,5 +169,12 @@ TEST_F(IResearchPrimaryKeyReuse, test) {
 
       EXPECT_TRUE(trx.commit().ok());
     }
+
+    EXPECT_TRUE(
+      (TRI_ERROR_NO_ERROR ==
+        arangodb::tests::executeQuery(vocbase,
+                                      "FOR d IN testView SEARCH d.value == true "
+                                      "OPTIONS { waitForSync: true } RETURN d")
+            .result.errorNumber()));  // commit
   }
 }
