@@ -39,6 +39,7 @@ set(LIB_ARANGO_LINENOISE
 set(LIB_ARANGO_DATE
   ${PROJECT_SOURCE_DIR}/3rdParty/date/src/tz.cpp
 )
+add_definitions("-DHAS_REMOTE_API=0")
 
 set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/AttributeTranslator.cpp
