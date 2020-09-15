@@ -202,8 +202,8 @@ int on_invalid_frame_recv(nghttp2_session *session, const nghttp2_frame *frame,
 
 constexpr uint32_t window_size = 512 * 1024 * 1024;
 void populateSettings(std::array<nghttp2_settings_entry, 4>& iv) {
-  // 64 streams matches the queue capacity
-  iv[0] = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 64};
+  // 32 streams matches the queue capacity
+  iv[0] = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 32};
   // typically client is just a *sink* and just process data as
   // much as possible.  Use large window size by default.
   iv[1] = {NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, window_size};
