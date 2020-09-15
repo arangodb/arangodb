@@ -140,28 +140,17 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
 
     options.waitForSync = _agent->config().waitForSync();
     options.silent = true;
-
-    OperationResult result;
-
-    if (tmp != t) {
-      try {
-        result = trx.insert("election", body.slice(), options);
-      } catch (std::exception const& e) {
-        LOG_TOPIC("334ae", FATAL, Logger::AGENCY)
-            << "Failed to insert RAFT election ballot: " << e.what() << ". Bailing out.";
-        FATAL_ERROR_EXIT();
-      }
-    } else {
-      try {
-        result = trx.replace("election", body.slice(), options);
-      } catch (std::exception const& e) {
-        LOG_TOPIC("ac75f", FATAL, Logger::AGENCY)
-            << "Failed to replace  RAFT election ballot: " << e.what() << ". Bailing out.";
-        FATAL_ERROR_EXIT();
-      }
+    try {
+      OperationResult result = (tmp != t)
+                                   ? trx.insert("election", body.slice(), options)
+                                   : trx.replace("election", body.slice(), options);
+      res = trx.finish(result.errorNumber());
+    } catch (std::exception const& e) {
+      LOG_TOPIC("334ae", FATAL, Logger::AGENCY)
+          << "Failed to " << ((tmp != t) ? "insert" : "replace")
+          << " RAFT election ballot: " << e.what() << ". Bailing out.";
+      FATAL_ERROR_EXIT();
     }
-
-    res = trx.finish(result.errorNumber());
   }
 }
 

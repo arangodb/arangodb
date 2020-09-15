@@ -196,11 +196,11 @@ void addTransactionHeaderForShard(transaction::Methods const& trx, ShardMap cons
 /// handler callback, reduce-style. Finally, it will be passed to the post
 /// callback and then returned via the OperationResult.
 OperationResult handleResponsesFromAllShards(
+    OperationOptions const& options,
     std::vector<futures::Try<arangodb::network::Response>>& responses,
     std::function<void(Result&, VPackBuilder&, ShardID&, VPackSlice)> handler,
     std::function<void(Result&, VPackBuilder&)> pre = [](Result&, VPackBuilder&) -> void {},
-    std::function<void(Result&, VPackBuilder&)> post = [](Result&, VPackBuilder&) -> void {},
-    OperationOptions const options = OperationOptions()) {
+    std::function<void(Result&, VPackBuilder&)> post = [](Result&, VPackBuilder&) -> void {}) {
   // If none of the shards responds we return a SERVER_ERROR;
   Result result;
   VPackBuilder builder;
@@ -398,10 +398,10 @@ OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen, Opera
     }
 
     if (nrok == 0) {  // This can only happen, if a commError was encountered!
-      return OperationResult(commError);
+      return OperationResult(commError, options);
     }
     if (nrok > 1) {
-      return OperationResult(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
+      return OperationResult(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS, options);
     }
 
     return std::forward<F>(func)(code, std::move(buffer), std::move(options), {});
@@ -416,7 +416,7 @@ OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen, Opera
   for (Try<network::Response> const& tryRes : responses) {
     network::Response const& res = tryRes.get();
     if (res.error != fuerte::Error::NoError) {
-      return OperationResult(network::fuerteToArangoErrorCode(res));
+      return OperationResult(network::fuerteToArangoErrorCode(res), options);
     }
 
     allResults.push_back(res.response->slice());
@@ -932,7 +932,8 @@ void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
 
 futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature& feature,
                                                        std::string const& dbname,
-                                                       std::string const& collname) {
+                                                       std::string const& collname,
+                                                       OperationOptions const& options) {
   // Set a few variables needed for our work:
   ClusterInfo& ci = feature.clusterInfo();
 
@@ -940,7 +941,7 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature& feature,
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
-    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
+    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
   network::RequestOptions reqOpts;
@@ -962,9 +963,10 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature& feature,
     futures.emplace_back(std::move(future));
   }
 
-  auto cb = [](std::vector<Try<network::Response>>&& results) -> OperationResult {
+  auto cb = [options](std::vector<Try<network::Response>>&& results) -> OperationResult {
     return handleResponsesFromAllShards(
-        results, [](Result& result, VPackBuilder& builder, ShardID&, VPackSlice answer) -> void {
+        options, results,
+        [](Result& result, VPackBuilder& builder, ShardID&, VPackSlice answer) -> void {
           if (answer.isObject()) {
             VPackSlice r = answer.get("revision");
             if (r.isString()) {
@@ -989,7 +991,8 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature& feature,
 
 futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
                                             std::string const& dbname,
-                                            std::string const& cid) {
+                                            std::string const& cid,
+                                            OperationOptions const& options) {
   // Set a few variables needed for our work:
   ClusterInfo& ci = feature.clusterInfo();
 
@@ -1025,8 +1028,8 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
     futures.emplace_back(std::move(future));
   }
 
-  auto cb = [](std::vector<Try<network::Response>>&& results) -> OperationResult {
-    return handleResponsesFromAllShards(results,
+  auto cb = [options](std::vector<Try<network::Response>>&& results) -> OperationResult {
+    return handleResponsesFromAllShards(options, results,
                                         [](Result&, VPackBuilder&, ShardID&, VPackSlice) -> void {
                                           // we don't care about response bodies, just that the requests succeeded
                                         });
@@ -1042,8 +1045,8 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
 
 futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
                                                       std::string const& dbname,
-                                                      std::string const& collname, 
-                                                      bool details) {
+                                                      std::string const& collname, bool details,
+                                                      OperationOptions const& options) {
   // Set a few variables needed for our work:
   ClusterInfo& ci = feature.clusterInfo();
 
@@ -1051,7 +1054,7 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
-    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
+    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
   network::RequestOptions reqOpts;
@@ -1075,7 +1078,7 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
     futures.emplace_back(std::move(future));
   }
 
-  auto cb = [details](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
+  auto cb = [details, options](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
     auto handler = [details](Result& result, VPackBuilder& builder, ShardID&,
                              VPackSlice answer) mutable -> void {
       if (answer.isObject()) {
@@ -1093,7 +1096,7 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
       // initialize to empty object
       builder.add(VPackSlice::emptyObjectSlice());
     };
-    return handleResponsesFromAllShards(results, handler, pre);
+    return handleResponsesFromAllShards(options, results, handler, pre);
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
@@ -1103,7 +1106,8 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
-                                                    std::string const& cname) {
+                                                    std::string const& cname,
+                                                    OperationOptions const& options) {
   std::vector<std::pair<std::string, uint64_t>> result;
 
   // Set a few variables needed for our work:
@@ -1115,7 +1119,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci.getCollectionNT(dbname, cname);
   if (collinfo == nullptr) {
-    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
+    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
   std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
@@ -1123,7 +1127,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   if (isManaged) {
     Result res = ::beginTransactionOnAllLeaders(trx, *shardIds).get();
     if (res.fail()) {
-      return futures::makeFuture(OperationResult(res));
+      return futures::makeFuture(OperationResult(res, options));
     }
   }
 
@@ -1144,7 +1148,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
                                                    VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
   }
 
-  auto cb = [](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
+  auto cb = [options](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
     auto handler = [](Result& result, VPackBuilder& builder, ShardID& shardId,
                       VPackSlice answer) mutable -> void {
       if (answer.isObject()) {
@@ -1169,7 +1173,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
         builder.clear();
       }
     };
-    return handleResponsesFromAllShards(results, handler, pre, post);
+    return handleResponsesFromAllShards(options, results, handler, pre, post);
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
@@ -1309,13 +1313,13 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
     for (VPackSlice value : VPackArrayIterator(slice)) {
       int res = distributeBabyOnShards(opCtx, coll, value, options.isRestore);
       if (res != TRI_ERROR_NO_ERROR) {
-        return makeFuture(OperationResult(res));
+        return makeFuture(OperationResult(res, options));
       }
     }
   } else {
     int res = distributeBabyOnShards(opCtx, coll, slice, options.isRestore);
     if (res != TRI_ERROR_NO_ERROR) {
-      return makeFuture(OperationResult(res));
+      return makeFuture(OperationResult(res, options));
     }
   }
 
@@ -1328,7 +1332,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
   return std::move(f).thenValue([=, &trx, &coll, opCtx(std::move(opCtx))]
                                 (Result&& r) mutable -> Future<OperationResult> {
     if (r.fail()) {
-      return OperationResult(std::move(r));
+      return OperationResult(std::move(r), options);
     }
 
     std::string const baseUrl = "/_api/document/";
@@ -1399,7 +1403,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
 
       auto cb = [options](network::Response&& res) -> OperationResult {
         if (res.error != fuerte::Error::NoError) {
-          return OperationResult(network::fuerteToArangoErrorCode(res));
+          return OperationResult(network::fuerteToArangoErrorCode(res), options);
         }
 
         return network::clusterResultInsert(res.response->statusCode(),
@@ -1471,7 +1475,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
     return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))]
                                   (Result&& r) mutable -> Future<OperationResult> {
       if (r.fail()) {
-        return OperationResult(std::move(r));
+        return OperationResult(std::move(r), options);
       }
 
       // Now prepare the requests:
@@ -1506,7 +1510,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
         TRI_ASSERT(futures.size() == 1);
         auto cb = [options](network::Response&& res) -> OperationResult {
           if (res.error != fuerte::Error::NoError) {
-            return OperationResult(network::fuerteToArangoErrorCode(res));
+            return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
           return network::clusterResultDelete(res.response->statusCode(),
                                               res.response->stealPayload(), options, {});
@@ -1533,7 +1537,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
 
   return std::move(f).thenValue([=, &trx](Result&& r) mutable -> Future<OperationResult> {
     if (r.fail()) {
-      return OperationResult(r);
+      return OperationResult(r, options);
     }
 
     // We simply send the body to all shards and await their results.
@@ -1628,14 +1632,12 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
 
   auto cb = [options](std::vector<Try<network::Response>>&& results) -> OperationResult {
     return handleResponsesFromAllShards(
-        results,
+        options, results,
         [](Result& result, VPackBuilder&, ShardID&, VPackSlice answer) -> void {
           if (Helper::getBooleanValue(answer, StaticStrings::Error, false)) {
             result = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
           }
-        },
-        /* pre */ [](Result&, VPackBuilder&) -> void {},
-        /* post */ [](Result&, VPackBuilder&) -> void {}, options);
+        });
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
@@ -1711,7 +1713,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
     return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))]
                                   (Result&& r) mutable -> Future<OperationResult> {
       if (r.fail()) {
-        return OperationResult(std::move(r));
+        return OperationResult(std::move(r), options);
       }
 
       // Now prepare the requests:
@@ -1761,7 +1763,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
         TRI_ASSERT(futures.size() == 1);
         return std::move(futures[0]).thenValue([options](network::Response res) -> OperationResult {
           if (res.error != fuerte::Error::NoError) {
-            return OperationResult(network::fuerteToArangoErrorCode(res));
+            return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
           return network::clusterResultDocument(res.response->statusCode(),
                                                 res.response->stealPayload(), options, {});
@@ -1782,7 +1784,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   if (isManaged) {  // lazily begin the transaction
     Result res = ::beginTransactionOnAllLeaders(trx, *shardIds).get();
     if (res.fail()) {
-      return makeFuture(OperationResult(res));
+      return makeFuture(OperationResult(res, options));
     }
   }
 
@@ -2170,7 +2172,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
       int res = distributeBabyOnShards(opCtx, coll, value);
       if (res != TRI_ERROR_NO_ERROR) {
         if (!isPatch) { // shard keys cannot be changed, error out early
-          return makeFuture(OperationResult(res));
+          return makeFuture(OperationResult(res, options));
         }
         canUseFastPath = false;
         break;
@@ -2180,7 +2182,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
     int res = distributeBabyOnShards(opCtx, coll, slice);
     if (res != TRI_ERROR_NO_ERROR) {
       if (!isPatch) { // shard keys cannot be changed, error out early
-        return makeFuture(OperationResult(res));
+        return makeFuture(OperationResult(res, options));
       }
       canUseFastPath = false;
     }
@@ -2227,7 +2229,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 
     return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))](Result&& r) mutable -> Future<OperationResult> {
       if (r.fail()) { // bail out
-        return OperationResult(r);
+        return OperationResult(r, opCtx.options);
       }
 
       // Now prepare the requests:
@@ -2274,7 +2276,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
         TRI_ASSERT(futures.size() == 1);
         auto cb = [options](network::Response&& res) -> OperationResult {
           if (res.error != fuerte::Error::NoError) {
-            return OperationResult(network::fuerteToArangoErrorCode(res));
+            return OperationResult(network::fuerteToArangoErrorCode(res), options);
           }
           return network::clusterResultModify(res.response->statusCode(),
                                               res.response->stealPayload(), options, {});

@@ -210,8 +210,9 @@ RestStatus RestCollectionHandler::handleCommandGet() {
     // /_api/collection/<identifier>/revision
 
     _ctxt = std::make_unique<methods::Collections::Context>(coll);
-    return waitForFuture(methods::Collections::revisionId(*_ctxt).thenValue(
-        [this, coll](OperationResult&& res) {
+    OperationOptions options(_context);
+    return waitForFuture(
+        methods::Collections::revisionId(*_ctxt, options).thenValue([this, coll](OperationResult&& res) {
           if (res.fail()) {
             generateTransactionError(coll->name(), res);
             return;
@@ -502,7 +503,8 @@ RestStatus RestCollectionHandler::handleCommandPut() {
           }
 
           if (res.fail()) {
-            generateTransactionError(coll->name(), res, "");
+            generateTransactionError(coll->name(),
+                                     OperationResult(res, opres.options), "");
             return;
           }
 
@@ -572,11 +574,12 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     return RestStatus::DONE;
 
   } else if (sub == "loadIndexesIntoMemory") {
-
+    OperationOptions options(_context);
     return waitForFuture(
-        methods::Collections::warmup(_vocbase, *coll).thenValue([this, coll](Result&& res) {
+        methods::Collections::warmup(_vocbase, *coll).thenValue([this, coll, options](Result&& res) {
           if (res.fail()) {
-            generateTransactionError(coll->name(), res, "");
+            generateTransactionError(coll->name(),
+                                     OperationResult(res, options), "");
             return;
           }
 
@@ -589,10 +592,12 @@ RestStatus RestCollectionHandler::handleCommandPut() {
         }));
 
   } else if (sub == "upgrade") {
+    OperationOptions options(_context);
     return waitForFuture(
-        methods::Collections::upgrade(_vocbase, *coll).thenValue([this, coll](Result&& res) {
+        methods::Collections::upgrade(_vocbase, *coll).thenValue([this, coll, options](Result&& res) {
           if (res.fail()) {
-            generateTransactionError(coll->name(), res, "");
+            generateTransactionError(coll->name(),
+                                     OperationResult(res, options), "");
             return;
           }
 
@@ -730,9 +735,11 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
     }
   }
 
-  futures::Future<OperationResult> figures = futures::makeFuture(OperationResult());
+  OperationOptions options(_context);
+  futures::Future<OperationResult> figures =
+      futures::makeFuture(OperationResult(Result(), options));
   if (showFigures != FiguresType::None) {
-    figures = coll->figures(showFigures == FiguresType::Detailed);
+    figures = coll->figures(showFigures == FiguresType::Detailed, options);
   }
 
   return std::move(figures)
@@ -745,10 +752,12 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
           auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
           TRI_ASSERT(trx != nullptr);
           return trx->countAsync(coll->name(),
-                                 showCount == CountType::Detailed ? transaction::CountType::Detailed
-                                                                  : transaction::CountType::Normal);
+                                 showCount == CountType::Detailed
+                                     ? transaction::CountType::Detailed
+                                     : transaction::CountType::Normal,
+                                 options);
         }
-        return futures::makeFuture(OperationResult());
+        return futures::makeFuture(OperationResult(Result(), options));
       })
       .thenValue([=, &ctxt](OperationResult&& opRes) -> void {
         if (opRes.fail()) {

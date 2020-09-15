@@ -209,7 +209,7 @@ RestStatus RestDocumentHandler::insertDocument() {
 
   Result res = _activeTrx->begin();
   if (!res.ok()) {
-    generateTransactionError(cname, res, "");
+    generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
 
@@ -226,7 +226,8 @@ RestStatus RestDocumentHandler::insertDocument() {
             }
 
             if (res.fail()) {
-              generateTransactionError(cname, res, "");
+              generateTransactionError(cname, OperationResult(res, opOptions),
+                                       "");
               return;
             }
 
@@ -313,7 +314,7 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   Result res = _activeTrx->begin();
 
   if (!res.ok()) {
-    generateTransactionError(collection, res, "");
+    generateTransactionError(collection, OperationResult(res, options), "");
     return RestStatus::DONE;
   }
 
@@ -327,7 +328,7 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
         }
 
         if (!res.ok()) {
-          generateTransactionError(collection, res, key, ifRid);
+          generateTransactionError(collection, OperationResult(res, options), key, ifRid);
           return;
         }
 
@@ -430,14 +431,13 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     return RestStatus::DONE;
   }
 
+  OperationOptions opOptions(_context);
   if ((!isArrayCase && !body.isObject()) || (isArrayCase && !body.isArray())) {
-    generateTransactionError(cname,
-                             OperationResult(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID),
+    generateTransactionError(cname, OperationResult(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID, opOptions),
                              "");
     return RestStatus::DONE;
   }
 
-  OperationOptions opOptions(_context);
   opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
@@ -499,7 +499,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
 
   Result res = _activeTrx->begin();
   if (!res.ok()) {
-    generateTransactionError(cname, res, "");
+    generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
 
@@ -527,7 +527,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     }
 
     if (!res.ok()) {
-      generateTransactionError(cname, res, key, headerRev);
+      generateTransactionError(cname, OperationResult(res, opOptions), key, headerRev);
       return;
     }
 
@@ -618,7 +618,7 @@ RestStatus RestDocumentHandler::removeDocument() {
   Result res = _activeTrx->begin();
 
   if (!res.ok()) {
-    generateTransactionError(cname, res, "");
+    generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
 
@@ -638,7 +638,7 @@ RestStatus RestDocumentHandler::removeDocument() {
     }
 
     if (!res.ok()) {
-      generateTransactionError(cname, res, key);
+      generateTransactionError(cname, OperationResult(res, opOptions), key);
       return;
     }
 
@@ -676,7 +676,7 @@ RestStatus RestDocumentHandler::readManyDocuments() {
   Result res = _activeTrx->begin();
 
   if (!res.ok()) {
-    generateTransactionError(cname, res, "");
+    generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
 
@@ -696,7 +696,7 @@ RestStatus RestDocumentHandler::readManyDocuments() {
     }
 
     if (!res.ok()) {
-      generateTransactionError(cname, res, "");
+      generateTransactionError(cname, OperationResult(res, opOptions), "");
       return;
     }
 

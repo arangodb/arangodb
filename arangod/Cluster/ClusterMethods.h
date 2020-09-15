@@ -95,15 +95,16 @@ void aggregateClusterFigures(bool details,
 
 futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature&,
                                                        std::string const& dbname,
-                                                       std::string const& collname);
+                                                       std::string const& collname,
+                                                       OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Warmup index caches on Shards
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<Result> warmupOnCoordinator(ClusterFeature&,
-                                            std::string const& dbname,
-                                            std::string const& cid);
+futures::Future<Result> warmupOnCoordinator(ClusterFeature&, std::string const& dbname,
+                                            std::string const& cid,
+                                            OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns figures for a sharded collection
@@ -111,15 +112,16 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature&,
 
 futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature&,
                                                       std::string const& dbname,
-                                                      std::string const& collname,
-                                                      bool details);
+                                                      std::string const& collname, bool details,
+                                                      OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
-                                                    std::string const& collname);
+                                                    std::string const& collname,
+                                                    OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the selectivity estimates from DBservers

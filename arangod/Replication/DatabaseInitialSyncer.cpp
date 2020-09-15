@@ -1548,7 +1548,8 @@ int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection const& col) {
     return -1;
   }
 
-  auto result = trx.count(col.name(), transaction::CountType::Normal);
+  OperationOptions options(ExecContext::current());
+  auto result = trx.count(col.name(), transaction::CountType::Normal, options);
 
   if (result.result.fail()) {
     return -1;

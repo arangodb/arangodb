@@ -104,6 +104,7 @@ class SimpleModifier {
   explicit SimpleModifier(ModificationExecutorInfos& infos)
       : _infos(infos),
         _completion(infos),
+        _results(Result(), infos._options),
         _resultsIterator(VPackArrayIterator::Empty{}),
         _batchSize(ExecutionBlock::DefaultBatchSize) {}
   ~SimpleModifier() = default;

@@ -842,12 +842,12 @@ Result TailingSyncer::truncateCollection(arangodb::velocypack::Slice const& slic
       return res;
     }
 
-    OperationResult opRes = trx.count(col->name(), transaction::CountType::Normal);
+    OperationOptions opts(ExecContext::current());
+    OperationResult opRes = trx.count(col->name(), transaction::CountType::Normal, opts);
     if (opRes.ok() && opRes.slice().isNumber()) {
       count = opRes.slice().getNumber<uint64_t>();
     }
 
-    OperationOptions opts;
     opts.isRestore = true;
     opRes = trx.truncate(col->name(), opts);
 
