@@ -14,6 +14,17 @@ v3.7.3 (XXXX-XX-XX)
   crashed the server when assertions were turned on, and the behavior was
   undefined when assertions were turned off.
 
+* Fixed some cases where subqueries in PRUNE did not result in a parse error,
+  but either in an incomprehensible error (in 3.7), or undefined behaviour
+  during execution (pre 3.7).
+
+* Fixed an issue with audit logging misreporting some document requests as
+  internal instead of logging the proper request information.
+
+* Fixed inifinite reload of the login window after logout of an LDAP user.
+
+* Updated rclone to 1.53.0.
+
 * Add attributes `database` and `user` when tracking current and slow AQL
   queries.
   `database` contains the name of the database the query is/was running in,
