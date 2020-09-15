@@ -727,6 +727,15 @@ bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
   return evaluateExpression(expression, edge);
 }
 
+auto TraverserOptions::explicitDepthLookupAt() const -> std::unordered_set<std::size_t> {
+  std::unordered_set<std::size_t> result;
+
+  for (auto&& pair : _depthLookupInfo) {
+    result.insert(pair.first);
+  }
+  return result;
+}
+
 bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vertex,
                                                 uint64_t depth) {
   arangodb::aql::Expression* expression = nullptr;

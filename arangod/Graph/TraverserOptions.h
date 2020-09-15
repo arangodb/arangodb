@@ -182,6 +182,8 @@ struct TraverserOptions : public graph::BaseOptions {
   auto setProducePaths(bool value) -> void { _producePaths = value; }
 
   auto producePaths() -> bool { return _producePaths; }
+
+  auto explicitDepthLookupAt() const -> std::unordered_set<std::size_t>;
 };
 }  // namespace traverser
 }  // namespace arangodb
