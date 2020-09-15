@@ -225,7 +225,7 @@ ActionState ActionBase::getState() const { return _state; }
 void ActionBase::setState(ActionState state) {
   // We want to make sure that we get another maintenance run
   // when we shift from any state to complete or failed 
-  if ((COMPLETE == state || FAILED == state) && _state != state) {
+  if ((COMPLETE == state || FAILED == state) && _state != state && _description.has(DATABASE)) {
     _feature.addDirty(_description.get(DATABASE));
   }
   _state = state;
