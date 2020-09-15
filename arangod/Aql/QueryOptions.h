@@ -102,6 +102,7 @@ struct QueryOptions {
   
   static size_t defaultMemoryLimit;
   static size_t defaultMaxNumberOfPlans;
+  static double defaultMaxRuntime;
   static double defaultTtl;
   static bool defaultFailOnWarning;
 };
