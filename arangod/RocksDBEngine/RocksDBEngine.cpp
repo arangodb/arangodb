@@ -2164,8 +2164,8 @@ void RocksDBEngine::getStatistics(std::string& result) const {
       if (name.front() != 'r') {
         name = EngineName + "_" + name; 
       }
-      result += "#TYPE " + name +
-        " counter\n" + "#HELP " + name + " " + name + "\n" +
+      result += "\n#TYPE " + name +
+        " counter\n#HELP " + name + " " + name + "\n" +
         name + " " + std::to_string(a.value.getNumber<uint64_t>()) + "\n";
     }
   }
