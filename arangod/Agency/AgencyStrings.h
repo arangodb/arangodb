@@ -29,8 +29,12 @@
 namespace arangodb {
 namespace consensus {
 
-constexpr char const* DATABASES = "Databases";
+
+
+constexpr char const* ANALYZERS = "Analyzers";
 constexpr char const* COLLECTIONS = "Collections";
+constexpr char const* DATABASES = "Databases";
+constexpr char const* VIEWS = "Views";
 constexpr char const* RECONFIGURE = ".agency";
 constexpr char const* VERSION = "Version";
 
