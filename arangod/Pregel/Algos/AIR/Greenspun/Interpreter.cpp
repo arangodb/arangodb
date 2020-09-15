@@ -27,6 +27,7 @@
 #include "Primitives.h"
 #include "lib/DateTime.h"
 #include "lib/Math.h"
+#include "lib/Strings.h"
 
 #include <iostream>
 #include <sstream>
@@ -47,6 +48,7 @@ void InitMachine(Machine& m) {
   // want right now.
   // RegisterAllDateTimeFunctions(m);
   RegisterAllMathFunctions(m);
+  RegisterAllStringFunctions(m);
 }
 
 EvalResult Apply(Machine& ctx, std::string const& function,

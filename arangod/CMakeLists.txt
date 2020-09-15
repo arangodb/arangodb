@@ -236,7 +236,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Reports.h
   Pregel/Algos/AIR/Accumulators.cpp
   Pregel/Algos/AIR/Greenspun/lib/Math.cpp
-)
+        Pregel/Algos/AIR/Greenspun/lib/Strings.cpp Pregel/Algos/AIR/Greenspun/lib/Strings.h)
 
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp

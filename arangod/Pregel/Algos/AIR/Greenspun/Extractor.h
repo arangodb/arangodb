@@ -47,6 +47,16 @@ struct extractor<std::string> {
   }
 };
 
+template<>
+struct extractor<std::string_view> {
+  EvalResultT<std::string_view> operator()(VPackSlice slice) {
+    if (slice.isString()) {
+      return {slice.stringView()};
+    }
+    return EvalError("expected string, found: " + slice.toJson());
+  }
+};
+
 template<typename T>
 struct extractor<T, std::enable_if_t<std::is_arithmetic_v<T> && !std::is_same_v<bool, T>>> {
   EvalResultT<T> operator()(VPackSlice slice) {
@@ -61,6 +71,16 @@ template<>
 struct extractor<bool> {
   EvalResultT<bool> operator()(VPackSlice slice) {
     return {ValueConsideredTrue(slice)};
+  }
+};
+
+template<>
+struct extractor<VPackArrayIterator> {
+  EvalResultT<VPackArrayIterator> operator()(VPackSlice slice) {
+    if (slice.isArray()) {
+      return {VPackArrayIterator(slice)};
+    }
+    return EvalError("expected list, found: " + slice.toJson());
   }
 };
 

@@ -180,12 +180,10 @@ using algorithm_phase_deserializer = utilities::constructing_deserializer<Algori
 
 using identifier_list_deserializer = array_deserializer<values::value_deserializer<std::string>, my_unordered_set>;
 
-constexpr const char byReceiver[] = "byReceiver";
 constexpr const char bySender[] = "bySender";
 constexpr const char byAccumulator[] = "byAccumulator";
 
 using trace_messages_filter_options_deserializer_plan = parameter_list<
-    factory_deserialized_parameter<byReceiver, identifier_list_deserializer, false>,
     factory_deserialized_parameter<bySender, identifier_list_deserializer, false>,
     factory_deserialized_parameter<byAccumulator, identifier_list_deserializer, false>
 >;

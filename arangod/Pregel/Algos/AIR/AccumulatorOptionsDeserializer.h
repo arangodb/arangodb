@@ -115,7 +115,6 @@ using PhaseDeclarations = std::vector<AlgorithmPhase>;
 using IdentifierList = std::unordered_set<std::string>;
 
 struct TraceMessagesFilterOptions {
-  IdentifierList byReceiver;  // obsolete, plz remove
   IdentifierList bySender;
   IdentifierList byAccumulator;
 };
