@@ -497,7 +497,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     auto const& pdb = pb.get(
       std::vector<std::string>{AgencyCommHelper::path(), PLAN, DATABASES, dbname});
 
-    if (local.find(dbname) == local.end()) {
+    if (pdb.isObject() && local.find(dbname) == local.end()) {
       if (errors.databases.find(dbname) == errors.databases.end()) {
         feature.addDirty(dbname);
         actions.emplace_back(
@@ -518,7 +518,20 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
   // Drop databases, which are no longer in plan ONLY DIRTY
   for (auto const& dbname : dirty) {
     if (local.find(dbname) != local.end()) {
-      if (plan.find(dbname) == plan.end()) {
+      bool needDrop = false;
+      auto it = plan.find(dbname);
+      if (it == plan.end()) {
+        needDrop = true;
+      } else {
+        VPackSlice pb = it->second->slice()[0];
+        VPackSlice pdb = pb.get(
+            std::vector<std::string>{AgencyCommHelper::path(), PLAN, DATABASES, dbname});
+        if (pdb.isNone() || pdb.isEmptyObject()) {
+          LOG_DEVEL << "Dropping databases: pdb is " << pdb.toJson();
+          needDrop = true;
+        }
+      }
+      if (needDrop) {
         feature.addDirty(dbname);
         actions.emplace_back(
           std::make_shared<ActionDescription>(
@@ -1237,7 +1250,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       if (!myEntry.isNone()) {
         // Database no longer in Plan and local
 
-        if (lit == local.end() && pit == plan.end()) {
+        if (lit == local.end() && (pit == plan.end() || pdb.isNone())) {
           // This covers the case that the database is neither in Local nor in
           // Plan. It remains to make sure an error is reported to Current if
           // there is a database in the Plan but not in Local
@@ -1257,7 +1270,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         }
       }
     }
-    
+
     // UpdateCurrentForCollections
     std::vector<std::string> curcolpath{AgencyCommHelper::path(), CURRENT, COLLECTIONS, dbName};
     VPackSlice curcolls;
