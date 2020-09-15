@@ -5,6 +5,9 @@ v3.7.3 (XXXX-XX-XX)
   but either in an incomprehensible error (in 3.7), or undefined behaviour
   during execution (pre 3.7).
 
+* Fixed an issue with audit logging misreporting some document requests as
+  internal instead of logging the proper request information.
+
 * Fixed inifinite reload of the login window after logout of an LDAP user.
 
 * Updated rclone to 1.53.0.
