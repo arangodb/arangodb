@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryRegistry.h"
+#include <Cluster/CallbackGuard.h>
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
@@ -46,7 +47,7 @@ QueryRegistry::~QueryRegistry() {
 }
 
 /// @brief insert
-void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl) {
+void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard) {
   TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->state() != QueryExecutionState::ValueType::INITIALIZATION);
   LOG_TOPIC("77778", DEBUG, arangodb::Logger::AQL)
@@ -60,7 +61,7 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl)
 
   QueryId qId = query->id();
   // create the query info object outside of the lock
-  auto p = std::make_unique<QueryInfo>(std::move(query), ttl);
+  auto p = std::make_unique<QueryInfo>(std::move(query), ttl, std::move(guard));
   TRI_ASSERT(p->_expires != 0);
 
   // now insert into table of running queries
@@ -364,7 +365,7 @@ void QueryRegistry::expireQueries() {
   for (auto& p : toDelete) {
     try {  // just in case
       LOG_TOPIC("e95dc", DEBUG, arangodb::Logger::AQL)
-          << "timeout for query with id " << p.second;
+          << "timeout or RebootChecker alert for query with id " << p.second;
       destroyQuery(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED);
     } catch (...) {
     }
@@ -461,12 +462,14 @@ void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
   }
 }
 
-QueryRegistry::QueryInfo::QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl)
+QueryRegistry::QueryInfo::QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard)
     : _vocbase(&(query->vocbase())),
       _query(std::move(query)),
       _timeToLive(ttl),
       _expires(TRI_microtime() + ttl),
       _numEngines(0),
-      _numOpen(0) {}
+      _numOpen(0),
+      _rebootTrackerCallbackGuard(std::move(guard))
+{}
 
 QueryRegistry::QueryInfo::~QueryInfo() = default;
