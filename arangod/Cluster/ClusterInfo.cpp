@@ -1060,8 +1060,8 @@ void ClusterInfo::loadPlan() {
           auto collectionId = collection.first;
           newShards.erase(collectionId); // delete from maps with shardID as key
           newShardToName.erase(collectionId);
-          it = newCollections.erase(it);
         }
+        it = newCollections.erase(it);
       }
       continue;
     }
