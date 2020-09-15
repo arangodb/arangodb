@@ -169,7 +169,7 @@ DEFINE_FACTORY_DEFAULT(by_range)
   std::vector<bstring> stats;
   collector.score(index, ord, stats);
 
-  return memory::make_shared<multiterm_query>(
+  return memory::make_managed<multiterm_query>(
     std::move(states), std::move(stats),
     boost, sort::MergeType::AGGREGATE);
 }

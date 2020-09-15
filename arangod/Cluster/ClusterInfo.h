@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,7 +71,7 @@ class CollectionWatcher {
     : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
 
     std::string databaseName = collection.vocbase().name();
-    std::string collectionID = std::to_string(collection.id());
+    std::string collectionID = std::to_string(collection.id().id());
     std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
 
     _agencyCallback = std::make_shared<AgencyCallback>(
@@ -348,7 +348,11 @@ class ClusterInfo final {
 #endif
 
  private:
-  typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>> DatabaseCollections;
+  struct CollectionWithHash {
+    uint64_t hash;
+    std::shared_ptr<LogicalCollection> collection;
+  };
+  typedef std::unordered_map<CollectionID, CollectionWithHash> DatabaseCollections;
   typedef std::unordered_map<DatabaseID, DatabaseCollections> AllCollections;
   typedef std::unordered_map<CollectionID, std::shared_ptr<CollectionInfoCurrent>> DatabaseCollectionsCurrent;
   typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent> AllCollectionsCurrent;
@@ -439,6 +443,11 @@ public:
    * @brief begin shutting down plan and current syncers
    */
   void startSyncers();
+
+  /**
+   * @brief wait for syncers' full stop
+   */
+  void waitForSyncersToStop();
 
   /// @brief produces an agency dump and logs it
   void logAgencyDump() const;
@@ -585,6 +594,15 @@ public:
   //////////////////////////////////////////////////////////////////////////////
   AnalyzersRevision::Ptr getAnalyzersRevision(DatabaseID const& databaseID,
                                                           bool forceLoadPlan = false);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Reads analyzers revisions needed for querying specified database.
+  ///        Could trigger plan load if database is not found in plan.
+  /// @param databaseID database to query
+  /// @return extracted revisions
+  //////////////////////////////////////////////////////////////////////////////
+  QueryAnalyzerRevisions getQueryAnalyzersRevision(
+      DatabaseID const& databaseID);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about
@@ -850,7 +868,7 @@ public:
   /// @brief lookup a full coordinator ID by short ID
   //////////////////////////////////////////////////////////////////////////////
 
-  ServerID getCoordinatorByShortID(ServerShortID);
+  ServerID getCoordinatorByShortID(ServerShortID const& shortId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate planned
@@ -961,6 +979,19 @@ public:
 
   application_features::ApplicationServer& server() const;
 
+ private:
+
+  /// @brief helper function to build a new LogicalCollection object from the velocypack
+  /// input
+  static std::shared_ptr<LogicalCollection> createCollectionObject(
+      arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase);
+
+  /// @brief create a new collecion object from the data, using the cache if possible
+  CollectionWithHash buildCollection(
+    bool isBuilding, AllCollections::const_iterator existingCollections,
+    std::string const& collectionId, arangodb::velocypack::Slice data,
+    TRI_vocbase_t& vocbase, uint64_t planVersion) const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
   /// Usually one does not have to call this directly.
@@ -975,8 +1006,6 @@ public:
 
   void loadCurrent();
 
-
- private:
   void buildIsBuildingSlice(CreateDatabaseInfo const& database,
                               VPackBuilder& builder);
 
@@ -1196,8 +1225,17 @@ public:
   mutable std::mutex _waitCurrentVersionLock;
   std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrentVersion;
 
+  /// @brief histogram for loadPlan runtime
   Histogram<log_scale_t<float>>& _lpTimer;
+  
+  /// @brief total time for loadPlan runtime
+  Counter& _lpTotal;
+  
+  /// @brief histogram for loadCurrent runtime
   Histogram<log_scale_t<float>>& _lcTimer;
+  
+  /// @brief total time for loadCurrent runtime
+  Counter& _lcTotal;
     
 };
 

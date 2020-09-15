@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -81,7 +82,6 @@ class Conductor {
   uint64_t _maxSuperstep = 500;
   /// determines whether we support async execution
   bool _asyncMode = false;
-  bool _lazyLoading = false;
   bool _useMemoryMaps = false;
   bool _storeResults = false;
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,8 +32,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -46,7 +44,8 @@ namespace aql {
 class Query;
 
 struct QueryEntryCopy {
-  QueryEntryCopy(TRI_voc_tick_t id, std::string&& queryString,
+  QueryEntryCopy(TRI_voc_tick_t id, std::string const& database,
+                 std::string const& user, std::string&& queryString,
                  std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
                  double started, double runTime,
                  QueryExecutionState::ValueType state, bool stream);
@@ -54,6 +53,8 @@ struct QueryEntryCopy {
   void toVelocyPack(arangodb::velocypack::Builder& out) const;
 
   TRI_voc_tick_t const id;
+  std::string const database;
+  std::string const user;
   std::string const queryString;
   std::shared_ptr<arangodb::velocypack::Builder> const bindParameters;
   double const started;
@@ -66,7 +67,7 @@ struct QueryEntryCopy {
 class QueryList {
  public:
   /// @brief create a query list
-  explicit QueryList(QueryRegistryFeature&, TRI_vocbase_t*);
+  explicit QueryList(QueryRegistryFeature&);
 
   /// @brief destroy a query list
   ~QueryList() = default;
@@ -120,7 +121,7 @@ class QueryList {
   /// modifications of this variable are possible but are considered unharmful
   inline void slowQueryThreshold(double value) {
     if (value < 0.0 || value == HUGE_VAL || value != value) {
-      // sanity checks
+      // only let useful values pass
       value = 0.0;
     }
     _slowQueryThreshold.store(value);
@@ -138,7 +139,7 @@ class QueryList {
   /// modifications of this variable are possible but are considered unharmful
   inline void slowStreamingQueryThreshold(double value) {
     if (value < 0.0 || value == HUGE_VAL || value != value) {
-      // sanity checks
+      // basic checks
       value = 0.0;
     }
     _slowStreamingQueryThreshold.store(value);
@@ -156,7 +157,7 @@ class QueryList {
   /// modifications of this variable are possible but are considered unharmful
   inline void maxSlowQueries(size_t value) {
     if (value > 16384) {
-      // sanity checks
+      // basic checks
       value = 16384;
     }
     _maxSlowQueries.store(value);
@@ -173,7 +174,7 @@ class QueryList {
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
   inline void maxQueryStringLength(size_t value) {
-    // sanity checks
+    // basic checks
     if (value < 64) {
       value = 64;
     } else if (value >= 8 * 1024 * 1024) {
@@ -217,13 +218,16 @@ class QueryList {
   static constexpr size_t defaultMaxQueryStringLength = 4096;
 
  private:
+  /// @brief query registry, for keeping track of slow queries counter
+  QueryRegistryFeature& _queryRegistryFeature;
+
   /// @brief r/w lock for the list
   arangodb::basics::ReadWriteLock _lock;
 
-  /// @brief list of current queries
+  /// @brief list of current queries, protected by _lock
   std::unordered_map<TRI_voc_tick_t, Query*> _current;
 
-  /// @brief list of slow queries
+  /// @brief list of slow queries, protected by _lock
   std::list<QueryEntryCopy> _slow;
 
   /// @brief whether or not queries are tracked

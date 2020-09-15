@@ -25,7 +25,13 @@
 
 NS_LOCAL
 
-const irs::score EMPTY_SCORE;
+using namespace irs;
+
+const score EMPTY_SCORE;
+
+const byte_type* default_score(score_ctx* ctx) noexcept {
+  return reinterpret_cast<byte_type*>(ctx);
+}
 
 NS_END
 
@@ -39,45 +45,53 @@ NS_ROOT
   return EMPTY_SCORE;
 }
 
-bool score::prepare(const order::prepared& ord,
-                    order::prepared::scorers&& scorers) {
-  if (ord.empty()) {
-    value_.resize(0);
-    func_ = [](const score_ctx*, byte_type*){};
+score::score() noexcept
+  : func_(reinterpret_cast<score_ctx*>(data()), &::default_score) {
+}
 
-    return false;
-  }
+score::score(const order::prepared& ord)
+  : buf_(ord.score_size(), 0),
+    func_(reinterpret_cast<score_ctx*>(data()), &::default_score) {
+}
 
-  value_.resize(ord.score_size());
-  ord.prepare_score(leak());
+bool score::is_default() const noexcept {
+  return reinterpret_cast<score_ctx*>(data()) == func_.ctx()
+    && func_.func() == &::default_score;
+}
 
+void score::reset() noexcept {
+  func_.reset(reinterpret_cast<score_ctx*>(data()),
+              &::default_score);
+}
+
+void reset(irs::score& score, order::prepared::scorers&& scorers) {
   switch (scorers.size()) {
     case 0: {
-      ctx_ = nullptr;
-      func_ = [](const score_ctx*, byte_type*){};
+      score.reset();
     } break;
     case 1: {
-      auto& scorer = scorers[0];
-
-      if (scorer.offset) {
+      auto& scorer = scorers.front();
+      if (!scorer.bucket->score_offset) {
+        score.reset(std::move(scorer.func));
+      } else {
         struct ctx : score_ctx {
-          ctx(score_f func, score_ctx_ptr&& context, size_t offset) noexcept
-            : func(func), context(std::move(context)), offset(offset) {
+          explicit ctx(order::prepared::scorers::scorer&& scorer,
+                       const byte_type* score_buf) noexcept
+            : scorer(std::move(scorer)),
+              score_buf(score_buf) {
           }
 
-          score_f func;
-          score_ctx_ptr context;
-          size_t offset;
+          order::prepared::scorers::scorer scorer;
+          const byte_type* score_buf;
         };
 
-        ctx_ = memory::make_managed<const score_ctx>(new ctx(scorer.func, std::move(scorer.ctx), scorer.offset));
-        func_ = [](const score_ctx* ctx, byte_type* score) {
-          auto& scorer = *static_cast<const struct ctx*>(ctx);
-          (*scorer.func)(scorer.context.get(), score + scorer.offset);
-        };
-      } else {
-        ctx_ = memory::make_managed<const score_ctx>(std::move(scorer.ctx));
-        func_ = scorer.func;
+        score.reset(
+          memory::make_unique<ctx>(std::move(scorer), scorers.score_buf()),
+          [](score_ctx* ctx) {
+            auto& state = *static_cast<struct ctx*>(ctx);
+            state.scorer.func();
+            return state.score_buf;
+        });
       }
     } break;
     case 2: {
@@ -89,22 +103,14 @@ bool score::prepare(const order::prepared& ord,
         order::prepared::scorers scorers;
       };
 
-      const bool has_offset = bool(scorers[0].offset);
-      ctx_ = memory::make_managed<const score_ctx>(new ctx(std::move(scorers)));
-
-      if (has_offset) {
-        func_ = [](const score_ctx* ctx, byte_type* score) {
-          auto& scorers = static_cast<const struct ctx*>(ctx)->scorers;
-          (*scorers[0].func)(scorers[0].ctx.get(), score + scorers[0].offset);
-          (*scorers[1].func)(scorers[1].ctx.get(), score + scorers[1].offset);
-        };
-      } else {
-         func_ = [](const score_ctx* ctx, byte_type* score) {
-          auto& scorers = static_cast<const struct ctx*>(ctx)->scorers;
-          (*scorers[0].func)(scorers[0].ctx.get(), score);
-          (*scorers[1].func)(scorers[1].ctx.get(), score + scorers[1].offset);
-        };
-      }
+      score.reset(
+        memory::make_unique<ctx>(std::move(scorers)),
+        [](score_ctx* ctx) {
+          auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
+          scorers.front().func();
+          scorers.back().func();
+          return scorers.score_buf();
+      });
     } break;
     default: {
       struct ctx : score_ctx {
@@ -115,15 +121,14 @@ bool score::prepare(const order::prepared& ord,
         order::prepared::scorers scorers;
       };
 
-      ctx_ = memory::make_managed<const score_ctx>(new ctx(std::move(scorers)));
-      func_ = [](const score_ctx* ctx, byte_type* score) {
-        auto& scorers = static_cast<const struct ctx*>(ctx)->scorers;
-        scorers.score(score);
-      };
+      score.reset(
+        memory::make_unique<ctx>(std::move(scorers)),
+        [](score_ctx* ctx) {
+          auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
+          return scorers.evaluate();
+      });
     } break;
   }
-
-  return true;
 }
 
 NS_END // ROOT

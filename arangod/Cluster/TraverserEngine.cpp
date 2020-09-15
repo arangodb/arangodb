@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -85,7 +85,8 @@ static const std::string VERTICES = "vertices";
 BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
                        aql::QueryContext& query,
                        VPackSlice info)
-    : _query(query), _trx(nullptr) {
+    : _engineId(TRI_NewTickServer()),
+      _query(query), _trx(nullptr) {
   VPackSlice shardsSlice = info.get(SHARDS);
 
   if (shardsSlice.isNone() || !shardsSlice.isObject()) {

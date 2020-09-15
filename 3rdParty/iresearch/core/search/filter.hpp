@@ -46,18 +46,8 @@ class states_cache : private util::noncopyable {
     states_.reserve(size);
   }
 
-  states_cache(states_cache&& rhs)
-      noexcept(std::is_nothrow_move_constructible_v<states_map>)
-    : states_(std::move(rhs.states_)) {
-  }
-
-  states_cache& operator=(states_cache&& rhs)
-      noexcept(std::is_nothrow_move_assignable_v<states_map>) {
-    if (this != &rhs) {
-      states_ = std::move(rhs.states_);
-    }
-    return *this;
-  }
+  states_cache(states_cache&&) = default;
+  states_cache& operator=(states_cache&&) = default;
 
   State& insert(const sub_reader& rdr) {
     return states_[&rdr];
@@ -89,8 +79,7 @@ class IRESEARCH_API filter {
   //////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API prepared {
    public:
-    DECLARE_SHARED_PTR(const prepared);
-    DEFINE_FACTORY_INLINE(prepared)
+    using ptr = memory::managed_ptr<const prepared>;
 
     static prepared::ptr empty();
 
@@ -124,8 +113,7 @@ class IRESEARCH_API filter {
     boost_t boost_;
   }; // prepared
 
-  DECLARE_UNIQUE_PTR(filter);
-  DEFINE_FACTORY_INLINE(filter)
+  using ptr = std::unique_ptr<filter>;
 
   explicit filter(const type_info& type) noexcept;
   virtual ~filter() = default;

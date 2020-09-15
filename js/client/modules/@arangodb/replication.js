@@ -303,9 +303,9 @@ var syncCollection = function (collection, config) {
 var setup = function (global, config) {
   var url;
   if (global) {
-    url = '/_db/_system/_api/replication/make-slave?global=true';
+    url = '/_db/_system/_api/replication/make-follower?global=true';
   } else {
-    url = '/_api/replication/make-slave';
+    url = '/_api/replication/make-follower';
   }
 
   config = config || { };

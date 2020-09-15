@@ -88,9 +88,13 @@ char StringRef::at(std::size_t index) const {
   return operator[](index);
 }
   
-std::size_t StringRef::find(char c) const {
+std::size_t StringRef::find(char c, std::size_t offset) const noexcept {
+  if (offset > _length) {
+    offset = _length;
+  }
+
   char const* p =
-      static_cast<char const*>(memchr(static_cast<void const*>(_data), c, _length));
+      static_cast<char const*>(memchr(static_cast<void const*>(_data + offset), c, _length - offset));
 
   if (p == nullptr) {
     return std::string::npos;
@@ -99,9 +103,16 @@ std::size_t StringRef::find(char c) const {
   return (p - _data);
 }
   
-std::size_t StringRef::rfind(char c) const {
+std::size_t StringRef::rfind(char c, std::size_t offset) const noexcept {
+  std::size_t length;
+  if (offset >= _length + 1) {
+    length = _length; 
+  } else {
+    length = offset + 1;
+  }
+
   char const* p =
-      static_cast<char const*>(::memrchrSwitch(static_cast<void const*>(_data), c, _length));
+      static_cast<char const*>(::memrchrSwitch(static_cast<void const*>(_data), c, length));
 
   if (p == nullptr) {
     return std::string::npos;
@@ -112,9 +123,11 @@ std::size_t StringRef::rfind(char c) const {
   
 int StringRef::compare(StringRef const& other) const noexcept {
   int res = memcmp(_data, other._data, (std::min)(_length, other._length));
+
   if (res != 0) {
     return res;
   }
+
   return static_cast<int>(_length) - static_cast<int>(other._length);
 }
 

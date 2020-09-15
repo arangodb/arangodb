@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,6 +45,8 @@ V8Context::V8Context(size_t id, v8::Isolate* isolate)
       _isolate(isolate),
       _locker(nullptr),
       _creationStamp(TRI_microtime()),
+      _acquired(0.0),
+      _description("(none)"),
       _lastGcStamp(0.0),
       _invocations(0),
       _invocationsSinceLastGc(0),

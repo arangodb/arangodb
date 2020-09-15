@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,14 +28,16 @@
 #include <deque>
 #include <list>
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
+#include <type_traits>
 #include <unordered_map>
+#include <utility>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-#include <type_traits>
-#include <utility>
 
 #include "Agency/PathComponent.h"
 #include "Basics/Mutex.h"
@@ -215,7 +217,7 @@ class AgencyPrecondition {
         builder(std::make_shared<VPackBuilder>()) {
     builder->add(VPackValue(v));
     value = builder->slice();
-  };
+  }
 
   AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path, Type, bool e);
   AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
@@ -226,7 +228,7 @@ class AgencyPrecondition {
       : key(path->str()), type(t), empty(false), builder(std::make_shared<VPackBuilder>()) {
     builder->add(VPackValue(v));
     value = builder->slice();
-  };
+  }
 
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
@@ -274,7 +276,6 @@ class AgencyOperation {
 
  public:
   uint64_t _ttl = 0;
-  velocypack::Slice _oldValue;
 
  private:
   std::string const _key;
@@ -290,9 +291,8 @@ class AgencyOperation {
 
 class AgencyCommResult {
  public:
-  AgencyCommResult();
-  AgencyCommResult(int code, std::string const& message,
-                   std::string const& transactionId = std::string());
+  AgencyCommResult() = default;
+  AgencyCommResult(int code, std::string message);
 
   ~AgencyCommResult() = default;
 
@@ -303,54 +303,50 @@ class AgencyCommResult {
   AgencyCommResult& operator=(AgencyCommResult&& other) noexcept;
 
  public:
-  void set(int code, std::string const& message);
+  void set(int code, std::string message);
 
-  bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
+  [[nodiscard]] bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
 
-  bool connected() const;
+  [[nodiscard]] bool connected() const;
 
-  int httpCode() const;
+  [[nodiscard]] int httpCode() const;
 
-  int errorCode() const;
+  [[nodiscard]] int errorCode() const;
 
-  std::string errorMessage() const;
+  [[nodiscard]] std::string errorMessage() const;
 
-  std::string errorDetails() const;
+  [[nodiscard]] std::string errorDetails() const;
 
-  std::string const location() const { return _location; }
+  [[nodiscard]] std::string const& location() const { return _location; }
 
-  std::string const body() const { return _body; }
-  std::string const& bodyRef() const { return _body; }
+  [[nodiscard]] std::string body() const;
 
-  bool sent() const;
+  [[nodiscard]] bool sent() const;
 
   void clear();
 
-  velocypack::Slice slice() const;
+  [[nodiscard]] velocypack::Slice slice() const;
+
   void setVPack(std::shared_ptr<velocypack::Builder> const& vpack) {
     _vpack = vpack;
   }
 
-  Result asResult() {
-    if (successful()) {
-      return Result{};
-    }
-    return Result{errorCode(), errorMessage()};
-  }
+  [[nodiscard]] Result asResult() const;
 
   void toVelocyPack(VPackBuilder& builder) const;
 
-  VPackBuilder toVelocyPack() const;
+  [[nodiscard]] VPackBuilder toVelocyPack() const;
+
+  [[nodiscard]] std::pair<std::optional<int>, std::optional<std::string_view>> parseBodyError() const;
 
  public:
-  std::string _location;
-  std::string _message;
-  std::string _body;
+  std::string _location = "";
+  std::string _message = "";
 
-  std::unordered_map<std::string, AgencyCommResultEntry> _values;
-  int _statusCode;
-  bool _connected;
-  bool _sent;
+  std::unordered_map<std::string, AgencyCommResultEntry> _values = {};
+  int _statusCode = 0;
+  bool _connected = false;
+  bool _sent = false;
 
  private:
   std::shared_ptr<velocypack::Builder> _vpack;
@@ -473,15 +469,15 @@ struct AgencyWriteTransaction : public AgencyTransaction {
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
 
-  inline virtual std::string const& path() const override final {
+  inline std::string const& path() const override final {
     return AgencyTransaction::TypeUrl[1];
   }
 
-  inline virtual std::string getClientId() const override final {
+  inline std::string getClientId() const override final {
     return clientId;
   }
 
-  virtual bool validate(AgencyCommResult const& result) const override final;
+  bool validate(AgencyCommResult const& result) const override final;
   char const* typeName() const override { return "AgencyWriteTransaction"; }
 
   std::vector<AgencyPrecondition> preconditions;
@@ -528,11 +524,11 @@ struct AgencyTransientTransaction : public AgencyTransaction {
     return AgencyTransaction::TypeUrl[3];
   }
 
-  inline virtual std::string getClientId() const override final {
+  inline std::string getClientId() const override final {
     return std::string();
   }
 
-  virtual bool validate(AgencyCommResult const& result) const override final;
+  bool validate(AgencyCommResult const& result) const override final;
   char const* typeName() const override { return "AgencyTransientTransaction"; }
 
   std::vector<AgencyPrecondition> preconditions;
@@ -555,15 +551,15 @@ struct AgencyReadTransaction : public AgencyTransaction {
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
 
-  inline virtual std::string const& path() const override final {
+  inline std::string const& path() const override final {
     return AgencyTransaction::TypeUrl[0];
   }
 
-  inline virtual std::string getClientId() const override final {
+  inline std::string getClientId() const override final {
     return std::string();
   }
 
-  virtual bool validate(AgencyCommResult const& result) const override final;
+  bool validate(AgencyCommResult const& result) const override final;
   char const* typeName() const override { return "AgencyReadTransaction"; }
 
   std::vector<std::string> keys;
@@ -576,8 +572,8 @@ struct AgencyReadTransaction : public AgencyTransaction {
 class AgencyComm {
  private:
   static std::string const AGENCY_URL_PREFIX;
-  static uint64_t const INITIAL_SLEEP_TIME = 5000;
-  static uint64_t const MAX_SLEEP_TIME = 50000;
+  static uint64_t const INITIAL_SLEEP_TIME = 5000; // microseconds
+  static uint64_t const MAX_SLEEP_TIME = 50000; // microseconds
 
 #ifdef DEBUG_SYNC_REPLICATION
  public:

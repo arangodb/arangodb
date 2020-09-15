@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cache::TransactionalBucket
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -54,13 +51,13 @@ TEST(CacheTransactionalBucketTest, test_locking_behavior) {
   bucket->unlock();
   ASSERT_FALSE(bucket->isLocked());
 
-  // check that blacklist term is updated appropriately
-  ASSERT_EQ(0ULL, bucket->_blacklistTerm);
+  // check that bnished term is updated appropriately
+  ASSERT_EQ(0ULL, bucket->_banishTerm);
   bucket->lock(-1LL);
-  bucket->updateBlacklistTerm(1ULL);
-  ASSERT_EQ(1ULL, bucket->_blacklistTerm);
+  bucket->updateBanishTerm(1ULL);
+  ASSERT_EQ(1ULL, bucket->_banishTerm);
   bucket->unlock();
-  ASSERT_EQ(1ULL, bucket->_blacklistTerm);
+  ASSERT_EQ(1ULL, bucket->_banishTerm);
 }
 
 TEST(CacheTransactionalBucketTest, verify_that_insertion_works_as_expected) {
@@ -218,7 +215,7 @@ TEST(CacheTransactionalBucketTest, verify_that_eviction_works_as_expected) {
   }
 }
 
-TEST(CacheTransactionalBucketTest, verify_that_blacklisting_works_as_expected) {
+TEST(CacheTransactionalBucketTest, verify_that_banishing_works_as_expected) {
   auto bucket = std::make_unique<TransactionalBucket>();
   bool success;
   CachedValue* res;
@@ -235,7 +232,7 @@ TEST(CacheTransactionalBucketTest, verify_that_blacklisting_works_as_expected) {
   }
 
   success = bucket->lock(-1LL);
-  bucket->updateBlacklistTerm(1ULL);
+  bucket->updateBanishTerm(1ULL);
   ASSERT_TRUE(success);
 
   // insert eight to fill
@@ -253,42 +250,42 @@ TEST(CacheTransactionalBucketTest, verify_that_blacklisting_works_as_expected) {
     ASSERT_EQ(res, ptrs[i]);
   }
 
-  // blacklist 1-5 to fill blacklist
+  // banish 1-5 to fill banish list
   for (std::size_t i = 1; i < 6; i++) {
-    bucket->blacklist(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
+    bucket->banish(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
   }
   for (std::size_t i = 1; i < 6; i++) {
-    ASSERT_TRUE(bucket->isBlacklisted(hashes[i]));
+    ASSERT_TRUE(bucket->isBanished(hashes[i]));
     res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(nullptr, res);
   }
-  // verify actually not fully blacklisted
-  ASSERT_FALSE(bucket->isFullyBlacklisted());
-  ASSERT_FALSE(bucket->isBlacklisted(hashes[6]));
+  // verify actually not fully banished
+  ASSERT_FALSE(bucket->isFullyBanished());
+  ASSERT_FALSE(bucket->isBanished(hashes[6]));
   // verify it didn't remove matching hash with non-matching key
   res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
   ASSERT_EQ(res, ptrs[0]);
 
-  // proceed to fully blacklist
-  bucket->blacklist(hashes[6], ptrs[6]->key(), ptrs[6]->keySize());
-  ASSERT_TRUE(bucket->isBlacklisted(hashes[6]));
+  // proceed to fully banish
+  bucket->banish(hashes[6], ptrs[6]->key(), ptrs[6]->keySize());
+  ASSERT_TRUE(bucket->isBanished(hashes[6]));
   res = bucket->find(hashes[6], ptrs[6]->key(), ptrs[6]->keySize());
   ASSERT_EQ(nullptr, res);
   // make sure it still didn't remove non-matching key
   res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
   ASSERT_EQ(ptrs[0], res);
-  // make sure it's fully blacklisted
-  ASSERT_TRUE(bucket->isFullyBlacklisted());
-  ASSERT_TRUE(bucket->isBlacklisted(hashes[7]));
+  // make sure it's fully banished
+  ASSERT_TRUE(bucket->isFullyBanished());
+  ASSERT_TRUE(bucket->isBanished(hashes[7]));
 
   bucket->unlock();
 
-  // check that updating blacklist term clears blacklist
+  // check that updating banish list term clears banished list
   bucket->lock(-1LL);
-  bucket->updateBlacklistTerm(2ULL);
-  ASSERT_FALSE(bucket->isFullyBlacklisted());
+  bucket->updateBanishTerm(2ULL);
+  ASSERT_FALSE(bucket->isFullyBanished());
   for (std::size_t i = 0; i < 7; i++) {
-    ASSERT_FALSE(bucket->isBlacklisted(hashes[i]));
+    ASSERT_FALSE(bucket->isBanished(hashes[i]));
   }
   bucket->unlock();
 

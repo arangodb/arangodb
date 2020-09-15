@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
@@ -39,7 +40,6 @@
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -1478,8 +1478,10 @@ static int clusterSendToAllServers(v8::Isolate* isolate, std::string const& dbna
   fuerte::RestVerb verb = network::arangoRestVerbToFuerte(method);
 
   network::RequestOptions reqOpts;
+
   reqOpts.database = dbname;
   reqOpts.timeout = network::Timeout(3600);
+  reqOpts.contentType = StaticStrings::MimeTypeJsonNoEncoding;
 
   std::vector<futures::Future<network::Response>> futures;
   futures.reserve(DBServers.size());

@@ -168,7 +168,7 @@ function iResearchFeatureAqlServerSideTestSuite () {
         docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
       }
       docsCollection.save(docs);
-      // sanity check. Should be in sync
+      // integrity check. Should be in sync and report correct result
       assertEqual(docs.length, db._query("FOR u IN " + docsCollectionName + 
                                          " COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
       assertEqual(docs.length, db._query("FOR u IN " + docsViewName + 
@@ -230,7 +230,7 @@ function iResearchFeatureAqlServerSideTestSuite () {
         docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
       }
       docsCollection.save(docs);
-      // sanity check. Should be in sync
+      // integrity check. Should be in sync and report correct result
       assertEqual(docs.length, db._query("FOR u IN " + docsCollectionName + 
                                          " COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
       assertEqual(docs.length, db._query("FOR u IN " + docsViewName + 

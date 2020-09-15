@@ -173,6 +173,8 @@ class fs_lock : public index_lock {
 //////////////////////////////////////////////////////////////////////////////
 class fs_index_output : public buffered_index_output {
  public:
+  DEFINE_FACTORY_INLINE(index_output)
+
   static index_output::ptr open(const file_path_t name) noexcept {
     assert(name);
 
@@ -234,8 +236,6 @@ class fs_index_output : public buffered_index_output {
   }
 
  private:
-  DEFINE_FACTORY_INLINE(index_output)
-
   fs_index_output(file_utils::handle_t&& handle, size_t buf_size) noexcept
     : buffered_index_output(buf_size),
       handle(std::move(handle)) {
@@ -270,12 +270,11 @@ class fs_index_input : public buffered_index_input {
   }
 
   virtual ptr dup() const override {
-    return index_input::make<fs_index_input>(*this);
+    return ptr(new fs_index_input(*this));
   }
 
   static index_input::ptr open(
-    const file_path_t name, size_t pool_size, IOAdvice advice
-  ) noexcept {
+      const file_path_t name, size_t pool_size, IOAdvice advice) noexcept {
     assert(name);
 
     auto handle = file_handle::make();
@@ -323,10 +322,10 @@ class fs_index_input : public buffered_index_input {
     const auto buf_size = ::buffer_size(handle->handle.get());
 
     try {
-      return fs_index_input::make<fs_index_input>(
+      return ptr(new fs_index_input(
         std::move(handle),
         buf_size,
-        pool_size);
+        pool_size));
     } catch(...) {
       IR_LOG_EXCEPTION();
     }
@@ -393,8 +392,8 @@ class fs_index_input : public buffered_index_input {
   * call "ftell" every time we need to know current 
   * position */
   struct file_handle {
-    DECLARE_SHARED_PTR(file_handle);
-    DECLARE_FACTORY();
+    using ptr = std::shared_ptr<file_handle>;
+    static ptr make();
 
     operator void*() const { return handle.get(); }
 
@@ -403,8 +402,6 @@ class fs_index_input : public buffered_index_input {
     size_t pos{}; /* current file position*/
     int posix_open_advice{ IR_FADVICE_NORMAL };
   }; // file_handle
-
-  DEFINE_FACTORY_INLINE(index_input)
 
   fs_index_input(
       file_handle::ptr&& handle,
@@ -417,7 +414,6 @@ class fs_index_input : public buffered_index_input {
     assert(handle_);
   }
 
-  fs_index_input(const fs_index_input&) = default;
   fs_index_input& operator=(const fs_index_input&) = delete;
 
   file_handle::ptr handle_; // shared file handle
@@ -429,12 +425,10 @@ DEFINE_FACTORY_DEFAULT(fs_index_input::file_handle)
 
 class pooled_fs_index_input final : public fs_index_input {
  public:
-  DECLARE_UNIQUE_PTR(pooled_fs_index_input); // allow private construction
-
   explicit pooled_fs_index_input(const fs_index_input& in);
   virtual ~pooled_fs_index_input() noexcept;
   virtual index_input::ptr dup() const override {
-    return index_input::make<pooled_fs_index_input>(*this);
+    return ptr(new pooled_fs_index_input(*this));
   }
   virtual index_input::ptr reopen() const override;
 
@@ -447,7 +441,7 @@ class pooled_fs_index_input final : public fs_index_input {
 }; // pooled_fs_index_input
 
 index_input::ptr fs_index_input::reopen() const {
-  return index_input::make<pooled_fs_index_input>(*this);
+  return memory::make_unique<pooled_fs_index_input>(*this);
 }
 
 pooled_fs_index_input::pooled_fs_index_input(const fs_index_input& in)

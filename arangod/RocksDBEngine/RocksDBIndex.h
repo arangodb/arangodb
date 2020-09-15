@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -75,7 +75,8 @@ class RocksDBIndex : public Index {
 
   Result drop() override;
 
-  virtual void afterTruncate(TRI_voc_tick_t tick) override;
+  virtual void afterTruncate(TRI_voc_tick_t tick,
+                             transaction::Methods* trx) override;
 
   void load() override;
   void unload() override;
@@ -93,20 +94,20 @@ class RocksDBIndex : public Index {
   /// insert index elements into the specified write batch.
   virtual Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const& doc,
+                        arangodb::velocypack::Slice const doc,
                         OperationOptions& options) = 0;
 
   /// remove index elements and put it in the specified write batch.
   virtual Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const& doc,
-                        Index::OperationMode mode) = 0;
+                        arangodb::velocypack::Slice const doc) = 0;
 
   virtual Result update(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId const& oldDocumentId,
-                        arangodb::velocypack::Slice const& oldDoc,
+                        arangodb::velocypack::Slice const oldDoc,
                         LocalDocumentId const& newDocumentId,
-                        velocypack::Slice const& newDoc, Index::OperationMode mode);
+                        velocypack::Slice const newDoc,
+                        OperationOptions& options);
 
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
 
@@ -140,10 +141,10 @@ class RocksDBIndex : public Index {
                rocksdb::ColumnFamilyHandle* cf, bool useCache);
 
   inline bool useCache() const { return (_cacheEnabled && _cache); }
-  void blackListKey(char const* data, std::size_t len);
-  void blackListKey(arangodb::velocypack::StringRef& ref) {
-    blackListKey(ref.data(), ref.size());
-  };
+  void invalidateCacheEntry(char const* data, std::size_t len);
+  void invalidateCacheEntry(arangodb::velocypack::StringRef& ref) {
+    invalidateCacheEntry(ref.data(), ref.size());
+  }
 
  protected:
   rocksdb::ColumnFamilyHandle* _cf;

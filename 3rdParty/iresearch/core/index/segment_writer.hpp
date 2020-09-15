@@ -154,11 +154,11 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   }; // document
 
   DECLARE_UNIQUE_PTR(segment_writer);
-  DECLARE_FACTORY(
+
+  static ptr make(
     directory& dir,
     const column_info_provider_t& column_info,
-    const comparer* comparator
-  );
+    const comparer* comparator);
 
   struct update_context {
     size_t generation;

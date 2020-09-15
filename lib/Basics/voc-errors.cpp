@@ -117,9 +117,9 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_IO_ERROR, "storage engine I/O error");
   REG_ERROR(ERROR_REPLICATION_NO_RESPONSE, "no response");
   REG_ERROR(ERROR_REPLICATION_INVALID_RESPONSE, "invalid response");
-  REG_ERROR(ERROR_REPLICATION_MASTER_ERROR, "master error");
-  REG_ERROR(ERROR_REPLICATION_MASTER_INCOMPATIBLE, "master incompatible");
-  REG_ERROR(ERROR_REPLICATION_MASTER_CHANGE, "master change");
+  REG_ERROR(ERROR_REPLICATION_LEADER_ERROR, "leader error");
+  REG_ERROR(ERROR_REPLICATION_LEADER_INCOMPATIBLE, "leader incompatible");
+  REG_ERROR(ERROR_REPLICATION_LEADER_CHANGE, "leader change");
   REG_ERROR(ERROR_REPLICATION_LOOP, "loop detected");
   REG_ERROR(ERROR_REPLICATION_UNEXPECTED_MARKER, "unexpected marker");
   REG_ERROR(ERROR_REPLICATION_INVALID_APPLIER_STATE, "invalid applier state");
@@ -219,8 +219,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_USER_WARN, "%s");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_CURSOR_BUSY, "cursor is busy");
-  REG_ERROR(ERROR_VALIDATION_FAILED, "validation failed");
-  REG_ERROR(ERROR_VALIDATION_BAD_PARAMETER, "invalid validation parameter");
+  REG_ERROR(ERROR_VALIDATION_FAILED, "schema validation failed");
+  REG_ERROR(ERROR_VALIDATION_BAD_PARAMETER, "invalid schema validation parameter");
   REG_ERROR(ERROR_TRANSACTION_INTERNAL, "internal transaction error");
   REG_ERROR(ERROR_TRANSACTION_NESTED, "nested transactions detected");
   REG_ERROR(ERROR_TRANSACTION_UNREGISTERED_COLLECTION, "unregistered collection used in transaction");

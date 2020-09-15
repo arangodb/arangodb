@@ -34,15 +34,17 @@
 NS_LOCAL
 
 struct unique_base {
-  DECLARE_UNIQUE_PTR(unique_base);
-  DEFINE_FACTORY_INLINE(unique_base)
+  using ptr = std::unique_ptr<unique_base>;
+
+  static ptr make() { return irs::memory::make_unique<unique_base>(); }
 };
 
 struct unique : unique_base { };
 
 struct shared_base {
-  DECLARE_SHARED_PTR(shared_base);
-  DEFINE_FACTORY_INLINE(shared_base)
+  using ptr = std::shared_ptr<shared_base>;
+
+  static ptr make() { return irs::memory::make_shared<shared_base>(); }
 };
 
 struct shared : shared_base { };
@@ -62,28 +64,6 @@ class memory_pool_allocator_test: public test_base {
 };
 
 NS_END // LOCAL
-
-TEST(memory_test, make) {
-  // unique pointer
-  {
-    auto base_ptr = unique_base::make<unique_base>();
-    ASSERT_TRUE(bool(std::is_same<decltype(base_ptr), std::unique_ptr<unique_base>>::value));
-
-    auto ptr = unique_base::make<unique>();
-    ASSERT_TRUE(bool(std::is_same<decltype(ptr), std::unique_ptr<unique_base>>::value));
-    ASSERT_NE(nullptr, dynamic_cast<unique_base*>(ptr.get()));
-  }
-
-  // shared pointer
-  {
-    auto base_ptr = shared_base::make<shared_base>();
-    ASSERT_TRUE(bool(std::is_same<decltype(base_ptr), std::shared_ptr<shared_base>>::value));
-
-    auto ptr = shared_base::make<shared>();
-    ASSERT_TRUE(bool(std::is_same<decltype(ptr), std::shared_ptr<shared_base>>::value));
-    ASSERT_NE(nullptr, dynamic_cast<shared_base*>(ptr.get()));
-  }
-}
 
 TEST(memory_test, allocate_unique_array_no_construct) {
   std::allocator<char> alloc;

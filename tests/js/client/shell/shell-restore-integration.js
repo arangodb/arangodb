@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertFalse, assertEqual, arango */
+/* global fail, assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoTransaction sTests
@@ -57,8 +57,8 @@ function restoreIntegrationSuite () {
     addConnectionArgs(args);
 
     let actualRc = internal.executeExternalAndWait(arangorestore, args);
-    assertTrue(actualRc.hasOwnProperty("exit"));
-    assertEqual(rc, actualRc.exit);
+    assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
+    assertEqual(rc, actualRc.exit, actualRc);
   };
 
   return {
@@ -69,6 +69,34 @@ function restoreIntegrationSuite () {
 
     tearDown: function () {
       db._drop(cn);
+    },
+    
+    testRestoreNumericGloballyUniqueId: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            globallyUniqueId: "123456789012",
+            name: cn,
+            numberOfShards: 3,
+            type: 2
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        assertNotEqual("123456789012", c.properties().globallyUniqueId);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
     },
     
     testRestoreIndexesOldFormat: function () {
@@ -186,6 +214,42 @@ function restoreIntegrationSuite () {
         assertEqual("geo", indexes[1].type);
         assertEqual(["a", "b"], indexes[1].fields);
         assertFalse(indexes[1].geoJson);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+
+    testRestoreIndexesFulltextLengthZero: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            indexes: [
+              { id: "95", fields: ["text"], type: "fulltext", minLength: 0 },
+            ],
+            name: cn,
+            numberOfShards: 3,
+            type: 2
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        let indexes = c.indexes();
+        assertEqual(2, indexes.length);
+        assertEqual("primary", indexes[0].type);
+        assertEqual(["_key"], indexes[0].fields);
+        assertEqual("fulltext", indexes[1].type);
+        assertEqual(["text"], indexes[1].fields);
+        assertEqual(indexes[1].minLength, 1);
       } finally {
         try {
           fs.removeDirectory(path);

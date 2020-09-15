@@ -62,8 +62,8 @@ class all_iterator final
  private:
   document doc_;
   score score_;
-  cost cost_;
   doc_id_t max_doc_; // largest valid doc_id
+  cost cost_;
 }; // all_iterator
 
 NS_END // ROOT

@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cluster::ShardDistributionReporter
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -44,6 +41,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Futures/Utilities.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -188,6 +186,7 @@ class ShardDistributionReporterTest
 
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
                           false);  // required for TRI_vocbase_t::dropCollection(...)
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
                           false);  // required for TRI_vocbase_t instantiation
 
@@ -905,7 +904,7 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else if (destination == "server:" + dbserver2) {
     } else if (destination == "server:" + dbserver3) {
     } else {
@@ -960,7 +959,7 @@ TEST_F(ShardDistributionReporterTest,
     } else if (destination == "server:" + dbserver2) {
       response.response = generateCountResponse(largerFollowerCount);
     } else if (destination == "server:" + dbserver3) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else {
       EXPECT_TRUE(false);
     }
@@ -1010,9 +1009,9 @@ TEST_F(ShardDistributionReporterTest,
     if (destination == "server:" + dbserver1) {
       response.response = generateCountResponse(leaderCount);
     } else if (destination == "server:" + dbserver2) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else if (destination == "server:" + dbserver3) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else {
       EXPECT_TRUE(false);
     }
@@ -1058,7 +1057,7 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else if (destination == "server:" + dbserver2) {
     } else if (destination == "server:" + dbserver3) {
     } else {
@@ -1113,7 +1112,7 @@ TEST_F(ShardDistributionReporterTest,
     } else if (destination == "server:" + dbserver2) {
       response.response = generateCountResponse(largerFollowerCount);
     } else if (destination == "server:" + dbserver3) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else {
       EXPECT_TRUE(false);
     }
@@ -1163,9 +1162,9 @@ TEST_F(ShardDistributionReporterTest,
     if (destination == "server:" + dbserver1) {
       response.response = generateCountResponse(leaderCount);
     } else if (destination == "server:" + dbserver2) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else if (destination == "server:" + dbserver3) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else {
       EXPECT_TRUE(false);
     }

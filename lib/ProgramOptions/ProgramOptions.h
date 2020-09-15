@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -120,9 +121,7 @@ class ProgramOptions {
   void setContext(std::string const& value) { _context = value; }
 
   // sets a single old option and its replacement name
-  void addOldOption(std::string const& old, std::string const& replacement) {
-    _oldOptions[Option::stripPrefix(old)] = replacement;
-  }
+  void addOldOption(std::string const& old, std::string const& replacement);
 
   // adds a section to the options
   auto addSection(Section const& section) {
@@ -202,7 +201,7 @@ class ProgramOptions {
   void endPass();
 
   // check whether or not an option requires a value
-  bool requiresValue(std::string const& name) const;
+  bool requiresValue(std::string const& name);
 
   // returns the option by name. will throw if the option cannot be found
   Option& getOption(std::string const& name);
@@ -243,9 +242,15 @@ class ProgramOptions {
   // add a positional argument (callback from parser)
   void addPositional(std::string const& value);
 
+  // return all auto-modernized options
+  std::unordered_map<std::string, std::string> modernizedOptions() const;
+
  private:
   // adds an option to the list of options
   void addOption(Option const& option);
+  
+  // modernize an option name
+  std::string const& modernize(std::string const& name);
 
   // determine maximum width of all options labels
   size_t optionsWidth() const;
@@ -267,6 +272,8 @@ class ProgramOptions {
   std::string _context;
   // already seen to flush program options
   std::unordered_set<std::string> _alreadyFlushed;
+  // already warned-about old, but modernized options
+  std::unordered_set<std::string> _alreadyModernized;
   // all sections
   std::map<std::string, Section> _sections;
   // shorthands for options, translating from short options to long option names

@@ -11,7 +11,6 @@
       desc: false
     },
 
-    // url: frontendConfig.basePath + "/_api/gharial",
     url: arangoHelper.databaseUrl('/_api/gharial'),
 
     dropAndDeleteGraph: function (name, callback) {
@@ -23,8 +22,12 @@
         success: function () {
           callback(true);
         },
-        error: function () {
-          callback(false);
+        error: function (data) {
+          if (data.responseJSON) {
+            callback(false, data.responseJSON);
+          } else {
+            callback(false);
+          }
         }
       });
     },

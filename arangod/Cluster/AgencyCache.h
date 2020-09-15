@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -61,15 +62,16 @@ public:
   void beginShutdown() override;
 
   /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
-  consensus::query_t const dump() const;
+  consensus::query_t dump() const;
 
   /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
-  std::tuple <consensus::query_t, consensus::index_t> const get(
-    std::string const& path = std::string("/")) const;
+  consensus::index_t get(arangodb::velocypack::Builder& result, std::string const& path = "/") const;
+
+  /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
+  std::tuple<consensus::query_t, consensus::index_t> get(std::string const& path = "/") const;
 
   /// @brief Get velocypack from node downward
-  std::tuple <consensus::query_t, consensus::index_t> const read(
-    std::vector<std::string> const& paths) const;
+  std::tuple<consensus::query_t, consensus::index_t> read(std::vector<std::string> const& paths) const;
 
   /// @brief Get current commit index
   consensus::index_t index() const;
@@ -89,8 +91,10 @@ public:
   /// @brief Cache has these path? Paths are absolute
   std::vector<bool> has(std::vector<std::string> const& paths) const;
 
-  /// @brief Used exclusively in unit tests
-  consensus::check_ret_t set(VPackSlice const trx);
+  /// @brief Used exclusively in unit tests!
+  ///        Do not use for production code under any circumstances
+  std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> applyTestTransaction (
+    consensus::query_t const& trx);
 
   /// @brief Used exclusively in unit tests
   consensus::Store& store();

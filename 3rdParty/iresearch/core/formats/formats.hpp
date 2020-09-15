@@ -75,8 +75,7 @@ struct IRESEARCH_API term_meta : attribute {
 /// @struct postings_writer
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API postings_writer : attribute_provider {
-  DECLARE_UNIQUE_PTR(postings_writer);
-  DEFINE_FACTORY_INLINE(postings_writer)
+  using ptr = std::unique_ptr<postings_writer>;
 
   class releaser {
    public:
@@ -120,8 +119,7 @@ void postings_writer::releaser::operator()(term_meta* meta) const noexcept {
 /// @struct field_writer
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API field_writer {
-  DECLARE_UNIQUE_PTR(field_writer);
-  DEFINE_FACTORY_INLINE(field_writer)
+  using ptr = std::unique_ptr<field_writer>;
 
   virtual ~field_writer() = default;
   virtual void prepare(const flush_state& state) = 0;
@@ -133,8 +131,7 @@ struct IRESEARCH_API field_writer {
 /// @struct postings_reader
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API postings_reader {
-  DECLARE_UNIQUE_PTR(postings_reader);
-  DEFINE_FACTORY_INLINE(postings_reader)
+  using ptr = std::unique_ptr<postings_reader>;
 
   virtual ~postings_reader() = default;
   
@@ -181,8 +178,7 @@ struct IRESEARCH_API basic_term_reader : public attribute_provider {
 /// @struct term_reader
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API term_reader: public attribute_provider {
-  DECLARE_UNIQUE_PTR(term_reader);
-  DEFINE_FACTORY_INLINE(term_reader)
+  using ptr = std::unique_ptr<term_reader>;
 
   virtual ~term_reader() = default;
 
@@ -212,8 +208,7 @@ struct IRESEARCH_API term_reader: public attribute_provider {
 /// @struct field_reader
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API field_reader {
-  DECLARE_UNIQUE_PTR(field_reader);
-  DEFINE_FACTORY_INLINE(field_reader)
+  using ptr = std::unique_ptr<field_reader>;
 
   virtual ~field_reader() = default;
 
@@ -232,7 +227,7 @@ struct IRESEARCH_API field_reader {
 /// @struct columnstore_writer
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API columnstore_writer {
-  DECLARE_SHARED_PTR(columnstore_writer);
+  using ptr = std::unique_ptr<columnstore_writer>;
 
   struct column_output : data_output {
     // resets stream to previous persisted state 
@@ -262,7 +257,8 @@ NS_ROOT
 /// @struct column_meta_writer
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API column_meta_writer {
-  DECLARE_SHARED_PTR(column_meta_writer);
+  using ptr = std::unique_ptr<column_meta_writer>;
+
   virtual ~column_meta_writer() = default;
   virtual void prepare(directory& dir, const segment_meta& meta) = 0;
   virtual void write(const std::string& name, field_id id) = 0;
@@ -273,7 +269,8 @@ struct IRESEARCH_API column_meta_writer {
 /// @struct column_meta_reader
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API column_meta_reader {
-  DECLARE_SHARED_PTR(column_meta_reader);
+  using ptr = std::unique_ptr<column_meta_reader>;
+
   virtual ~column_meta_reader() = default;
   /// @returns true if column_meta is present in a segment.
   ///          false - otherwise
@@ -292,7 +289,7 @@ struct IRESEARCH_API column_meta_reader {
 /// @struct columnstore_reader
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API columnstore_reader {
-  DECLARE_UNIQUE_PTR(columnstore_reader);
+  using ptr = std::unique_ptr<columnstore_reader>;
 
   typedef std::function<bool(doc_id_t, bytes_ref&)> values_reader_f;
   typedef std::function<bool(doc_id_t, const bytes_ref&)> values_visitor_f;  
@@ -340,8 +337,7 @@ NS_ROOT
 /// @struct document_mask_writer
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API document_mask_writer {
-  DECLARE_MANAGED_PTR(document_mask_writer);
-  DEFINE_FACTORY_INLINE(document_mask_writer)
+  using ptr = memory::managed_ptr<document_mask_writer>;
 
   virtual ~document_mask_writer() = default;
 
@@ -360,8 +356,7 @@ struct IRESEARCH_API document_mask_writer {
 /// @struct document_mask_reader
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API document_mask_reader {
-  DECLARE_MANAGED_PTR(document_mask_reader);
-  DEFINE_FACTORY_INLINE(document_mask_reader)
+  using ptr = memory::managed_ptr<document_mask_reader>;
 
   virtual ~document_mask_reader() = default;
 
@@ -380,7 +375,7 @@ struct IRESEARCH_API document_mask_reader {
 /// @struct segment_meta_writer
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API segment_meta_writer {
-  DECLARE_MANAGED_PTR(segment_meta_writer);
+  using ptr = memory::managed_ptr<segment_meta_writer>;
 
   virtual ~segment_meta_writer() = default;
 
@@ -395,7 +390,7 @@ struct IRESEARCH_API segment_meta_writer {
 /// @struct segment_meta_reader
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API segment_meta_reader {
-  DECLARE_MANAGED_PTR(segment_meta_reader);
+  using ptr = memory::managed_ptr<segment_meta_reader>;
 
   virtual ~segment_meta_reader() = default;
 
@@ -410,8 +405,7 @@ struct IRESEARCH_API segment_meta_reader {
 /// @struct index_meta_writer
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_meta_writer {
-  DECLARE_UNIQUE_PTR(index_meta_writer);
-  DEFINE_FACTORY_INLINE(index_meta_writer)
+  using ptr = std::unique_ptr<index_meta_writer>;
 
   virtual ~index_meta_writer() = default;
   virtual std::string filename(const index_meta& meta) const = 0;
@@ -427,7 +421,7 @@ struct IRESEARCH_API index_meta_writer {
 /// @struct index_meta_reader
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_meta_reader {
-  DECLARE_MANAGED_PTR(index_meta_reader);
+  using ptr = memory::managed_ptr<index_meta_reader>;
 
   virtual ~index_meta_reader() = default;
 

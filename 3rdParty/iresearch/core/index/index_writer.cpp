@@ -613,14 +613,6 @@ index_writer::active_segment_context::active_segment_context(
   }
 }
 
-index_writer::active_segment_context::active_segment_context(
-    active_segment_context&& other) noexcept
-  : ctx_(std::move(other.ctx_)),
-    flush_ctx_(std::move(other.flush_ctx_)),
-    pending_segment_context_offset_(std::move(other.pending_segment_context_offset_)),
-    segments_active_(std::move(other.segments_active_)) {
-}
-
 index_writer::active_segment_context::~active_segment_context() {
   if (ctx_) {
     --*segments_active_; // track here since garanteed to have 1 ref per active segment
@@ -1214,9 +1206,11 @@ index_writer::index_writer(
     const segment_options& segment_limits,
     const comparer* comparator,
     const column_info_provider_t& column_info,
+    const payload_provider_t& meta_payload_provider,
     index_meta&& meta,
     committed_state_t&& committed_state)
   : column_info_(column_info),
+    meta_payload_provider_(meta_payload_provider),
     comparator_(comparator),
     cached_readers_(dir),
     codec_(codec),
@@ -1245,7 +1239,7 @@ index_writer::index_writer(
   flush_context_pool_[flush_context_pool_.size() - 1].next_context_ = &flush_context_pool_[0];
 }
 
-void index_writer::clear() {
+void index_writer::clear(uint64_t tick) {
   SCOPED_LOCK(commit_lock_);
 
   if (!pending_state_
@@ -1269,6 +1263,10 @@ void index_writer::clear() {
 
   // setup new meta
   pending_meta.update_generation(meta_); // clone index metadata generation
+  pending_meta.payload_buf_.clear();
+  if (meta_payload_provider_ && meta_payload_provider_(tick, pending_meta.payload_buf_)) {
+    pending_meta.payload_ = pending_meta.payload_buf_;
+  }
   pending_meta.seg_counter_.store(meta_.counter()); // ensure counter() >= max(seg#)
 
   // rollback already opened transaction if any
@@ -1369,6 +1367,7 @@ index_writer::ptr index_writer::make(
     segment_options(opts),
     opts.comparator,
     opts.column_info ? opts.column_info : DEFAULT_COLUMN_INFO,
+    opts.meta_payload_provider,
     std::move(meta),
     std::move(comitted_state)
   );
@@ -1405,7 +1404,6 @@ bool index_writer::consolidate(
     format::ptr codec /*= nullptr*/,
     const merge_writer::flush_progress_t& progress /*= {}*/) {
   REGISTER_TIMER_DETAILED();
-
   if (!codec) {
     // use default codec if not specified
     codec = codec_;
@@ -1449,27 +1447,36 @@ bool index_writer::consolidate(
 
     // check that candidates are not involved in ongoing merges
     for (const auto* candidate : candidates) {
+      // segment has been already chosen for consolidation (or at least was choosen), give up
       if (consolidating_segments_.end() != consolidating_segments_.find(candidate)) {
-        // segment has been already chosen for consolidation, give up
         return false;
       }
     }
-
-    // register for consolidation
-    consolidating_segments_.insert(candidates.begin(), candidates.end());
+    try {
+      // register for consolidation
+      consolidating_segments_.insert(candidates.begin(), candidates.end());
+    } catch(...) {
+      // rollback in case of insertion fails (finalizer below won`t handle partial insert
+      // as concurrent consolidation is free to select same candidate before finalizer
+      // reacquires the consolidation_lock)
+      for (const auto* candidate : candidates) {
+        consolidating_segments_.erase(candidate);
+      }
+      throw;
+    }
   }
 
   // unregisterer for all registered candidates
-  auto unregister_segments = irs::make_finally([&candidates, this]() noexcept {
+  auto unregister_segments = irs::make_finally([&candidates, this]() {
     if (candidates.empty()) {
       return;
     }
-
     SCOPED_LOCK(consolidation_lock_);
     for (const auto* candidate : candidates) {
       consolidating_segments_.erase(candidate);
     }
   });
+
 
   // validate candidates
   {
@@ -1534,7 +1541,52 @@ bool index_writer::consolidate(
     const auto current_committed_meta = committed_state_->first;
     assert(current_committed_meta);
 
+    auto cleanup_cached_readers = [&current_committed_meta, &candidates, this]() {
+        if (!candidates.empty()) {
+          decltype(flush_context::segment_mask_) cached_mask;
+          // pointers are different so check by name
+          for (const auto& candidate : candidates) {
+            if (current_committed_meta->end() ==
+              std::find_if(current_committed_meta->begin(),
+                current_committed_meta->end(),
+                [&candidate](const index_meta::index_segment_t& s) {
+                  return candidate->name == s.meta.name; })) {
+              // found missing segment. Mask it!
+              cached_mask.insert(*candidate);
+            }
+          }
+          if (!cached_mask.empty()) {
+            cached_readers_.purge(cached_mask);
+          }
+        }
+      };
+
     if (pending_state_) {
+      // we could possibly need cleanup
+      auto unregister_missing_cached_readers = irs::make_finally(std::move(cleanup_cached_readers));
+
+      // check we didn`t added to reader cache already absent readers
+      // only if we have different index meta
+      if (committed_meta != current_committed_meta) {
+        // pointers are different so check by name
+        for (const auto& candidate : candidates) {
+          if (current_committed_meta->end() ==
+              std::find_if(current_committed_meta->begin(),
+                           current_committed_meta->end(),
+                           [&candidate](const index_meta::index_segment_t& s) {
+                             return candidate->name == s.meta.name;} )) {
+            // not all candidates are valid
+            IR_FRMT_DEBUG(
+              "Failed to start consolidation for index generation '" IR_UINT64_T_SPECIFIER
+              "', not found segment %s in committed state",
+              committed_meta->generation(),
+              candidate->name.c_str()
+            );
+            return false;
+          }
+        }
+      }
+
       // transaction has been started, we're somewhere in the middle
       auto ctx = get_flush_context(); // can modify ctx->segment_mask_ without lock since have commit_lock_
 
@@ -1547,7 +1599,6 @@ bool index_writer::consolidate(
         std::move(committed_meta), // consolidation context meta
         std::move(merger) // merge context
       );
-
       IR_FRMT_TRACE(
         "Consolidation id='" IR_SIZE_T_SPECIFIER "' successfully finished: pending",
         run_id
@@ -1595,6 +1646,9 @@ bool index_writer::consolidate(
     } else {
       // before new transaction was started:
       // there was a commit(s) since consolidation was started,
+
+      // we could possibly need cleanup
+      auto unregister_missing_cached_readers = irs::make_finally(std::move(cleanup_cached_readers));
 
       auto ctx = get_flush_context();
       SCOPED_LOCK(ctx->mutex_); // lock due to context modification
@@ -1841,7 +1895,7 @@ index_writer::active_segment_context index_writer::get_segment_context(
   return active_segment_context(segment_ctx, segments_active_);
 }
 
-index_writer::pending_context_t index_writer::flush_all(const before_commit_f& before_commit) {
+index_writer::pending_context_t index_writer::flush_all() {
   REGISTER_TIMER_DETAILED();
   bool modified = !type_limits<type_t::index_gen_t>::valid(meta_.last_gen_);
   sync_context to_sync;
@@ -1855,6 +1909,22 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
   std::vector<std::unique_lock<decltype(segment_context::flush_mutex_)>> segment_flush_locks;
   SCOPED_LOCK_NAMED(ctx->mutex_, lock); // ensure there are no active struct update operations
 
+  // register consolidating segments cleanup.
+  // we need raw ptr as ctx may be moved
+  auto unregister_segments = irs::make_finally([ctx_raw = ctx.get(), this]()
+    {
+      assert(ctx_raw);
+      if (ctx_raw->pending_segments_.empty()) {
+        return;
+      }
+      SCOPED_LOCK(consolidation_lock_);
+      for (auto& pending_segment : ctx_raw->pending_segments_) {
+        auto& candidates = pending_segment.consolidation_ctx.candidates;
+        for (const auto* candidate : candidates) {
+          consolidating_segments_.erase(candidate);
+        }
+      }
+    });
   //////////////////////////////////////////////////////////////////////////////
   /// Stage 0
   /// wait for any outstanding segments to settle to ensure that any rollbacks
@@ -1863,7 +1933,7 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
 
   uint64_t max_tick = 0;
 
-  for (auto& entry: ctx->pending_segment_contexts_) {
+  for (auto& entry : ctx->pending_segment_contexts_) {
     // mark the 'segment_context' as dirty so that it will not be reused if this
     // 'flush_context' once again becomes the active context while the
     // 'segment_context' handle is still held by documents()
@@ -1892,7 +1962,6 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
       entry.segment_->uncomitted_modification_queries_,
       entry.modification_offset_end_
     ); // update so that can use valid value below
-
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -1902,9 +1971,9 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
 
   auto& segment_mask = ctx->segment_mask_;
 
-  for (auto& existing_segment: meta_) {
+  for (auto& existing_segment : meta_) {
     // skip already masked segments
-    if (segment_mask .end() != segment_mask.find(existing_segment.meta)) {
+    if (segment_mask.end() != segment_mask.find(existing_segment.meta)) {
       continue;
     }
 
@@ -1918,7 +1987,7 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
     index_utils::read_document_mask(docs_mask, dir, segment.meta);
 
     // mask documents matching filters from segment_contexts (i.e. from new operations)
-    for (auto& modifications: ctx->pending_segment_contexts_) {
+    for (auto& modifications : ctx->pending_segment_contexts_) {
       // modification_queries_ range [flush_segment_context::modification_offset_begin_, segment_context::uncomitted_modification_queries_)
       auto modifications_begin = modifications.modification_offset_begin_;
       auto modifications_end = modifications.modification_offset_end_;
@@ -1959,31 +2028,14 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
   /// Stage 2
   /// add pending complete segments registered by import or consolidation
   /////////////////////////////////////////////////////////////////////////////
-
   // number of candidates that have been registered for
   // pending consolidation
   size_t pending_candidates_count = 0;
-
   for (auto& pending_segment : ctx->pending_segments_) {
     // pending consolidation
     auto& candidates = pending_segment.consolidation_ctx.candidates;
-
-    // unregisterer for all registered candidates
-    auto unregister_segments = irs::make_finally([&candidates, this]() noexcept {
-      if (candidates.empty()) {
-        return;
-      }
-
-      SCOPED_LOCK(consolidation_lock_);
-      for (const auto* candidate : candidates) {
-        consolidating_segments_.erase(candidate);
-      }
-    });
-
     docs_mask.clear();
-
     bool pending_consolidation = pending_segment.consolidation_ctx.merger;
-
     if (pending_consolidation) {
       // pending consolidation request
       candidates_mapping_t mappings;
@@ -2087,8 +2139,8 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
 
     // write non-empty document mask
     if (!docs_mask.empty()) {
-      if (!pending_consolidation) { 
-        // if this is pending consolidation, 
+      if (!pending_consolidation) {
+        // if this is pending consolidation,
         // this segment is already in the mask (see assert below)
         // new version will be created. Remove old version from cache!
         ctx->segment_mask_.emplace(pending_segment.segment.meta);
@@ -2245,6 +2297,7 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
           }
         }
 
+        bool segment_modified{ false };
         // mask documents matching filters from all flushed segment_contexts (i.e. from new operations)
         for (auto& modifications: ctx->pending_segment_contexts_) {
           auto modifications_begin = modifications.modification_offset_begin_;
@@ -2257,9 +2310,11 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
             modifications_end - modifications_begin
           );
 
-          add_document_mask_modified_records(
-            modification_queries, flush_segment_ctx, cached_readers_
-          );
+          segment_modified |= add_document_mask_modified_records(
+            modification_queries, flush_segment_ctx, cached_readers_);
+        }
+        if (segment_modified) {
+          ctx->segment_mask_.emplace(flush_segment_ctx.segment_.meta);
         }
       }
     }
@@ -2269,12 +2324,12 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
       // if have a writer with potential update-replacement records then check if they were seen
       add_document_mask_unused_updates(segment_ctx);
 
-      // mask empty segments
+      // after mismatched replaces here could be also empty segment
+      // so masking is needed
       if (!segment_ctx.segment_.meta.live_docs_count) {
         ctx->segment_mask_.emplace(segment_ctx.segment_.meta);
         continue;
       }
-
       // write non-empty document mask
       if (!segment_ctx.docs_mask_.empty()) {
         write_document_mask(
@@ -2295,11 +2350,15 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
 
   // only flush a new index version upon a new index or a metadata change
   if (!modified) {
+    // even if nothing to commit, we may have populated readers cache! Need to cleanup.
+    if (!ctx->segment_mask_.empty()) {
+      cached_readers_.purge(ctx->segment_mask_);
+    }
     return pending_context_t();
   }
 
   pending_meta->payload_buf_.clear();
-  if (before_commit && before_commit(max_tick, pending_meta->payload_buf_)) {
+  if (meta_payload_provider_ && meta_payload_provider_(max_tick, pending_meta->payload_buf_)) {
     pending_meta->payload_ = pending_meta->payload_buf_;
   }
 
@@ -2313,7 +2372,7 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
   return pending_context;
 }
 
-bool index_writer::start(const before_commit_f& before_commit) {
+bool index_writer::start() {
   assert(!commit_lock_.try_lock()); // already locked
 
   REGISTER_TIMER_DETAILED();
@@ -2324,7 +2383,7 @@ bool index_writer::start(const before_commit_f& before_commit) {
     return false;
   }
 
-  auto to_commit = flush_all(before_commit);
+  auto to_commit = flush_all();
 
   if (!to_commit) {
     // nothing to commit, no transaction started
@@ -2412,6 +2471,14 @@ void index_writer::finish() {
     if (!writer_->commit()) {
       throw illegal_state();
     }
+#ifndef __APPLE__
+    // atomic_store may throw
+    static_assert(!noexcept
+      (committed_state_helper::atomic_store(&committed_state_,
+        std::move(pending_state_.commit))));
+#endif
+    committed_state_helper::atomic_store(&committed_state_,
+      std::move(pending_state_.commit));
   } catch (...) {
     abort(); // rollback transaction
 
@@ -2421,10 +2488,6 @@ void index_writer::finish() {
   // ...........................................................................
   // after here transaction successfull (only noexcept operations below)
   // ...........................................................................
-
-  committed_state_helper::atomic_store(
-    &committed_state_, std::move(pending_state_.commit)
-  );
   meta_.last_gen_ = committed_state_->first->gen_; // update 'last_gen_' to last commited/valid generation
 }
 

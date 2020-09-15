@@ -56,7 +56,8 @@ irs::doc_iterator::ptr make_disjunction(
     QueryIterator begin,
     QueryIterator end,
     Args&&... args) {
-  typedef irs::disjunction<irs::doc_iterator::ptr> disjunction_t;
+  using scored_disjunction_t = irs::scored_disjunction_iterator<irs::doc_iterator::ptr>;
+  using disjunction_t = irs::disjunction_iterator<irs::doc_iterator::ptr>;
 
   assert(std::distance(begin, end) >= 0);
   const size_t size = size_t(std::distance(begin, end));
@@ -67,7 +68,7 @@ irs::doc_iterator::ptr make_disjunction(
     return irs::doc_iterator::empty();
   }
 
-  disjunction_t::doc_iterators_t itrs;
+  scored_disjunction_t::doc_iterators_t itrs;
   itrs.reserve(size);
 
   for (;begin != end; ++begin) {
@@ -80,9 +81,13 @@ irs::doc_iterator::ptr make_disjunction(
     }
   }
 
-  return irs::make_disjunction<disjunction_t>(
-    std::move(itrs), ord, std::forward<Args>(args)...
-  );
+  if (ord.empty()) {
+    return irs::make_disjunction<disjunction_t>(
+      std::move(itrs), ord, std::forward<Args>(args)...);
+  }
+
+  return irs::make_disjunction<scored_disjunction_t>(
+    std::move(itrs), ord, std::forward<Args>(args)...);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -141,9 +146,6 @@ class boolean_query : public filter::prepared {
   typedef std::vector<filter::prepared::ptr> queries_t;
   typedef ptr_iterator<queries_t::const_iterator> iterator;
 
-  DECLARE_SHARED_PTR(boolean_query);
-  DEFINE_FACTORY_INLINE(boolean_query)
-
   boolean_query() noexcept : excl_(0) { }
 
   virtual doc_iterator::ptr execute(
@@ -167,8 +169,7 @@ class boolean_query : public filter::prepared {
       return incl;
     }
 
-    return doc_iterator::make<exclusion>(
-      std::move(incl), std::move(excl));
+    return memory::make_managed<exclusion>(std::move(incl), std::move(excl));
   }
 
   virtual void prepare(
@@ -262,6 +263,10 @@ class or_query final : public boolean_query {
 /// minimum number of clauses that should satisfy criteria
 //////////////////////////////////////////////////////////////////////////////
 class min_match_query final : public boolean_query {
+ private:
+  using scored_disjunction_t = scored_min_match_iterator<doc_iterator::ptr>;
+  using disjunction_t = min_match_iterator<doc_iterator::ptr>; // FIXME use FAST version
+
  public:
   explicit min_match_query(size_t min_match_count)
     : min_match_count_(min_match_count) {
@@ -292,7 +297,7 @@ class min_match_query final : public boolean_query {
     // min_match_count <= size
     min_match_count = std::min(size, min_match_count);
 
-    min_match_disjunction<doc_iterator::ptr>::doc_iterators_t itrs;
+    disjunction_t::doc_iterators_t itrs;
     itrs.reserve(size);
 
     for (;begin != end; ++begin) {
@@ -311,7 +316,7 @@ class min_match_query final : public boolean_query {
 
  private:
   static doc_iterator::ptr make_min_match_disjunction(
-      min_match_disjunction<doc_iterator::ptr>::doc_iterators_t&& itrs,
+      disjunction_t::doc_iterators_t&& itrs,
       const order::prepared& ord,
       size_t min_match_count) {
     const auto size = min_match_count > itrs.size() ? 0 : itrs.size();
@@ -329,17 +334,20 @@ class min_match_query final : public boolean_query {
       typedef conjunction<doc_iterator::ptr> conjunction_t;
 
       // pure conjunction
-      return memory::make_shared<conjunction_t>(
+      return memory::make_managed<conjunction_t>(
         conjunction_t::doc_iterators_t(
           std::make_move_iterator(itrs.begin()),
-          std::make_move_iterator(itrs.end())
-        ), ord);
+          std::make_move_iterator(itrs.end())), ord);
     }
 
     // min match disjunction
     assert(min_match_count < size);
-    return memory::make_shared<min_match_disjunction<doc_iterator::ptr>>(
-      std::move(itrs), min_match_count, ord);
+
+    if (ord.empty()) {
+      return memory::make_managed<disjunction_t>(std::move(itrs), min_match_count);
+    }
+
+    return memory::make_managed<scored_disjunction_t>(std::move(itrs), min_match_count, ord);
   }
 
   size_t min_match_count_;
@@ -513,7 +521,7 @@ filter::prepared::ptr And::prepare(
     // single node case
     return incl.front()->prepare(rdr, ord, boost, ctx);
   }
-  auto q = and_query::make<and_query>();
+  auto q = memory::make_managed<and_query>();
   q->prepare(rdr, ord, boost, ctx, incl, excl);
   return q;
 }
@@ -608,13 +616,13 @@ filter::prepared::ptr Or::prepare(
 
   assert(adjusted_min_match_count > 0 && adjusted_min_match_count <= incl.size());
 
-  boolean_query::ptr q;
+  memory::managed_ptr<boolean_query> q;
   if (adjusted_min_match_count == incl.size()) {
-    q = boolean_query::make<and_query>();
+    q = memory::make_managed<and_query>();
   } else if (1 == adjusted_min_match_count) {
-    q = boolean_query::make<or_query>();
+    q = memory::make_managed<or_query>();
   } else { // min_match_count > 1 && min_match_count < incl.size()
-    q = boolean_query::make<min_match_query>(adjusted_min_match_count);
+    q = memory::make_managed<min_match_query>(adjusted_min_match_count);
   }
 
   q->prepare(rdr, ord, boost, ctx, incl, excl);
@@ -649,7 +657,7 @@ filter::prepared::ptr Not::prepare(
     const std::vector<const irs::filter*> incl { &all_docs };
     const std::vector<const irs::filter*> excl { res.first };
 
-    auto q = and_query::make<and_query>();
+    auto q = memory::make_managed<and_query>();
     q->prepare(rdr, ord, boost, ctx, incl, excl);
     return q;
   }

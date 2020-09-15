@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -91,13 +92,12 @@ template <typename FetcherType, typename ModifierType>
 ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher, Infos& infos)
     : _trx(infos._query.newTrxContext()), _lastState(ExecutionState::HASMORE), _infos(infos), _modifier(infos) {}
 
-// Fetches as many rows as possible from upstream using the fetcher's fetchRow
-// method and accumulates results through the modifier
+// Fetches as many rows as possible from upstream and accumulates results
+// through the modifier
 template <typename FetcherType, typename ModifierType>
 auto ModificationExecutor<FetcherType, ModifierType>::doCollect(AqlItemBlockInputRange& input,
                                                                 size_t maxOutputs)
     -> void {
-  // for fetchRow
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ExecutionState state = ExecutionState::HASMORE;
 

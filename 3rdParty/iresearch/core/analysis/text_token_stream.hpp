@@ -67,10 +67,11 @@ class text_token_stream final
   static char const* STOPWORD_PATH_ENV_VARIABLE;
 
   static constexpr string_ref type_name() noexcept { return "text"; }
+  static void init(); // for triggering registration in a static build
   static ptr make(const irs::string_ref& locale);
+  static void clear_cache();
 
   text_token_stream(const options_t& options, const stopwords_t& stopwords);
-  static void init(); // for triggering registration in a static build
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 

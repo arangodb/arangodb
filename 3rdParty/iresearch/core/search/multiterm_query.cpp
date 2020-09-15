@@ -32,7 +32,8 @@ doc_iterator::ptr multiterm_query::execute(
     const sub_reader& segment,
     const order::prepared& ord,
     const attribute_provider* /*ctx*/) const {
-  typedef disjunction<doc_iterator::ptr> disjunction_t;
+  using scored_disjunction_t = scored_disjunction_iterator<doc_iterator::ptr>;
+  using disjunction_t = disjunction_iterator<doc_iterator::ptr>;
 
   // get term state for the specified reader
   auto state = states_.find(segment);
@@ -59,9 +60,11 @@ doc_iterator::ptr multiterm_query::execute(
 
   // add an iterator for the unscored docs
   if (has_bit_set) {
-    itrs.emplace_back(doc_iterator::make<bitset_doc_iterator>(
-      state->unscored_docs
-    ));
+    // ensure first bit isn't set,
+    // since we don't want to emit doc_limits::invalid()
+    assert(state->unscored_docs.any() && !state->unscored_docs.test(0));
+
+    itrs.emplace_back(memory::make_managed<bitset_doc_iterator>(state->unscored_docs));
   }
 
   auto& stats = this->stats();
@@ -83,10 +86,11 @@ doc_iterator::ptr multiterm_query::execute(
         assert(entry.stat_offset < stats.size());
         auto* stat = stats[entry.stat_offset].c_str();
 
-        score->prepare(
-          ord,
-          ord.prepare_scorers(segment, *state->reader,
-                              stat, *docs, entry.boost*boost()));
+        order::prepared::scorers scorers(
+          ord, segment, *state->reader, stat,
+          score->realloc(ord), *docs, entry.boost*boost());
+
+        irs::reset(*score, std::move(scorers));
       }
     }
 
@@ -98,9 +102,13 @@ doc_iterator::ptr multiterm_query::execute(
     }
   }
 
-  return make_disjunction<disjunction_t>(
-    std::move(itrs), ord,
-    merge_type_, state->estimation());
+  if (ord.empty()) {
+    return make_disjunction<disjunction_t>(
+      std::move(itrs), ord, merge_type_, state->estimation());
+  }
+
+  return make_disjunction<scored_disjunction_t>(
+    std::move(itrs), ord, merge_type_, state->estimation());
 }
 
 NS_END // ROOT

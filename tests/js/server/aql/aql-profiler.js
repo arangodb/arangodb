@@ -342,39 +342,19 @@ function ahuacatlProfilerTestSuite () {
 
     testFilterBlock2 : function () {
       const query = 'FOR i IN 1..@rows FILTER i % 13 != 0 RETURN i';
-      const genNodeList = (rows) => {
+      const genNodeList = (rows, batches) => {
         // This is an array 1..rows where true means it passes the filter
         const list = Array.from(Array(rows)).map((_, index ) => {
           return ((index + 1) % 13 !== 0);
         });
-
-        const recursiveFilterCallEstimator = (rowsToFetch) => {
-          if (rowsToFetch === 0 || list.length === 0) {
-            return 0;
-          }
-          if (rowsToFetch < 0) {
-            // We would have counted an overfetch!
-            assertTrue(false);
-          }
-          // We count one required call.
-          // We remove rowsToFetch elements from the beginning of the array.
-          // We count how many of those are true.
-          // We simulate an above call with rowsToFetch - the number of true counts.
-          // Redo until we have no more rows to fetch.
-          return 1 + recursiveFilterCallEstimator(rowsToFetch - list.splice(0, rowsToFetch).filter(e => e).length);
-        };
-        let batchesAboveFilter = 0;
-        while (list.length > 0) {
-          batchesAboveFilter += recursiveFilterCallEstimator(defaultBatchSize);
-        }
         const rowsAfterFilter = rows - Math.floor(rows / 13);
         const batchesAfterFilter = Math.ceil(rowsAfterFilter / defaultBatchSize);
 
         return [
           { type : SingletonBlock, calls : 1, items : 1 },
           { type : CalculationBlock, calls : 1, items : 1 },
-          { type : EnumerateListBlock, calls : batchesAboveFilter, items : rows },
-          { type : CalculationBlock, calls : batchesAboveFilter, items : rows },
+          { type : EnumerateListBlock, calls : batches, items : rows },
+          { type : CalculationBlock, calls : batches, items : rows },
           { type : FilterBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
           { type : ReturnBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
         ];
@@ -388,38 +368,19 @@ function ahuacatlProfilerTestSuite () {
 
     testFilterBlock3 : function () {
       const query = 'FOR i IN 1..@rows FILTER i % 13 == 0 RETURN i';
-      const genNodeList = (rows) => {
+      const genNodeList = (rows, batches) => {
         // This is an array 1..rows where true means it passes the filter
         const list = Array.from(Array(rows)).map((_, index ) => {
           return ((index + 1) % 13 === 0);
         });
-        const recursiveFilterCallEstimator = (rowsToFetch) => {
-          if (rowsToFetch === 0 || list.length === 0) {
-            return 0;
-          }
-          if (rowsToFetch < 0) {
-            // We would have counted an overfetch!
-            assertTrue(false);
-          }
-          // We count one required call.
-          // We remove rowsToFetch elements from the beginning of the array.
-          // We count how many of those are true.
-          // We simulate an above call with rowsToFetch - the number of true counts.
-          // Redo until we have no more rows to fetch.
-          return 1 + recursiveFilterCallEstimator(rowsToFetch - list.splice(0, rowsToFetch).filter(e => e).length);
-        };
-        let batchesAboveFilter = 0;
-        while (list.length > 0) {
-          batchesAboveFilter += recursiveFilterCallEstimator(defaultBatchSize);
-        }
         const rowsAfterFilter = Math.floor(rows / 13);
         const batchesAfterFilter = Math.max(1, Math.ceil(rowsAfterFilter / defaultBatchSize));
 
         return [
           { type : SingletonBlock, calls : 1, items : 1 },
           { type : CalculationBlock, calls : 1, items : 1 },
-          { type : EnumerateListBlock, calls : batchesAboveFilter, items : rows },
-          { type : CalculationBlock, calls : batchesAboveFilter, items : rows },
+          { type : EnumerateListBlock, calls : batches, items : rows },
+          { type : CalculationBlock, calls : batches, items : rows },
           { type : FilterBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
           { type : ReturnBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
         ];

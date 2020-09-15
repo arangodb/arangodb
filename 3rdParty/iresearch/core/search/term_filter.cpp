@@ -142,10 +142,9 @@ DEFINE_FACTORY_DEFAULT(by_term)
   bstring stats(ord.stats_size(), 0);
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
-  ord.prepare_stats(stats_buf);
   term_stats.finish(stats_buf, 0, field_stats, index);
 
-  return memory::make_shared<term_query>(
+  return memory::make_managed<term_query>(
     std::move(states), std::move(stats), boost);
 }
 

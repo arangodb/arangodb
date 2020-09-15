@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTypeOf, assertNotEqual, assertTrue, assertFalse, assertUndefined, fail */
+/*global assertEqual, assertTypeOf, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertNotUndefined, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -37,7 +37,7 @@ const ERRORS = arangodb.errors;
 // helper
 const isCluster = internal.isCluster();
 let sleepInCluster = () => {
-  if(isCluster){
+  if (isCluster){
     internal.sleep(2);
   }
 };
@@ -81,7 +81,7 @@ function ValidationBasicsSuite () {
         },
         message : "Json-Schema validation failed",
       };
-      testCollection = db._create(testCollectionName, { "schema" :  validatorJson });
+      testCollection = db._create(testCollectionName, { schema :  validatorJson, numberOfShards: 3 });
     },
 
     tearDown : () => {
@@ -94,12 +94,12 @@ function ValidationBasicsSuite () {
     testProperties : () => {
       const v = validatorJson;
       var props = testCollection.properties();
-      assertTrue(props !== undefined);
-      assertTrue(props.schema !== undefined);
+      assertNotUndefined(props);
+      assertNotUndefined(props.schema);
       assertEqual(props.schema.rule, v.rule);
       assertEqual(props.schema.message, v.message);
       assertEqual(props.schema.level, v.level);
-  },
+    },
 
     testPropertiesUpdate : () => {
       let v =  validatorJson;
@@ -111,7 +111,7 @@ function ValidationBasicsSuite () {
       assertEqual(props.schema.rule, v.rule);
       assertEqual(props.schema.message, v.message);
       assertEqual(props.schema.level, v.level);
-      assertTrue(props !== undefined);
+      assertNotUndefined(props);
     },
 
     testPropertiesUpdateNoObject : () => {
@@ -394,13 +394,34 @@ function ValidationBasicsSuite () {
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
-
     },
 
     testRemoveValidation: () => {
+      try {
+        testCollection.insert(badDoc);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
       testCollection.properties({"schema" : { } });
       sleepInCluster();
       assertEqual(testCollection.properties().schema, null);
+      testCollection.insert(badDoc);
+      assertEqual(1, testCollection.count());
+    },
+    
+    testRemoveValidationWithNull: () => {
+      try {
+        testCollection.insert(badDoc);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+      testCollection.properties({"schema" : null });
+      sleepInCluster();
+      assertEqual(testCollection.properties().schema, null);
+      testCollection.insert(badDoc);
+      assertEqual(1, testCollection.count());
     },
 
     // json  ////////////////////////////////////////////////////////////////////////////////////////////
@@ -495,6 +516,54 @@ function ValidationBasicsSuite () {
       sleepInCluster();
 
       let res;
+      // doc is not an object
+      res = db._query(`
+        RETURN SCHEMA_VALIDATE(
+          null,
+          {
+            "rule" : {
+              "properties" : {
+                "foo" : { "type" : "string" }
+              }
+            },
+            "message" : "validation - failed"
+          }
+        )
+      `).toArray();
+      assertEqual([ null ], res);
+
+      // doc is not an object
+      res = db._query(`
+        RETURN SCHEMA_VALIDATE(
+          "foo",
+          {
+            "rule" : {
+              "properties" : {
+                "foo" : { "type" : "string" }
+              }
+            },
+            "message" : "validation - failed"
+          }
+        )
+      `).toArray();
+      assertEqual([ null ], res);
+      
+      // doc is not an object
+      res = db._query(`
+        RETURN SCHEMA_VALIDATE(
+          [],
+          {
+            "rule" : {
+              "properties" : {
+                "foo" : { "type" : "string" }
+              }
+            },
+            "message" : "validation - failed"
+          }
+        )
+      `).toArray();
+      assertEqual([ null ], res);
+
       // doc does not match schema
       res = db._query(`
         RETURN SCHEMA_VALIDATE(
@@ -531,6 +600,14 @@ function ValidationBasicsSuite () {
         `RETURN SCHEMA_VALIDATE(
           { "foo" : "bar" },
           null
+      )`).toArray();
+      assertEqual(res[0].valid, true);
+      
+      // empty schema object
+      res = db._query(
+        `RETURN SCHEMA_VALIDATE(
+          { "foo" : "bar" },
+          {}
       )`).toArray();
       assertEqual(res[0].valid, true);
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -648,9 +648,10 @@ bool TraverserOptions::shouldExcludeEdgeCollection(std::string const& name) cons
 void TraverserOptions::addDepthLookupInfo(aql::ExecutionPlan* plan,
                                           std::string const& collectionName,
                                           std::string const& attributeName,
-                                          aql::AstNode* condition, uint64_t depth) {
+                                          aql::AstNode* condition, uint64_t depth,
+                                          bool onlyEdgeIndexes) {
   auto& list = _depthLookupInfo[depth];
-  injectLookupInfoInList(list, plan, collectionName, attributeName, condition);
+  injectLookupInfoInList(list, plan, collectionName, attributeName, condition, onlyEdgeIndexes);
 }
 
 bool TraverserOptions::vertexHasFilter(uint64_t depth) const {

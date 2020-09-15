@@ -15,17 +15,17 @@ if (getOptions === true) {
     'server.authentication': 'true',
     'server.jwt-secret': 'abc123',
     'javascript.harden' : 'true',
-    'javascript.files-whitelist': [
+    'javascript.files-allowlist': [
       '^' + fs.escapePath(testPath), // we need to call isDirectory (internal.pathForTesting) in
-                        // the server which is for bidden in not whitelisted paths
+                        // the server which is forbidden in not-allowed paths
     ],
     // tests/js/common/test-data/apps/server-security/index.js
     'javascript.app-path': fs.join(testPath, 'common', 'test-data', 'apps'),
-    'javascript.endpoints-whitelist' : [
+    'javascript.endpoints-allowlist' : [
       'ssl://arangodb.com:443'
     ],
-    'javascript.environment-variables-blacklist': 'PATH',
-    'javascript.startup-options-blacklist': 'point|log',
+    'javascript.environment-variables-denylist': 'PATH',
+    'javascript.startup-options-denylist': 'point|log',
   };
 }
 

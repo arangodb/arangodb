@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,7 +70,7 @@ namespace {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 /// @brief validate the counters of the plan
-struct NodeCounter final : public WalkerWorker<ExecutionNode> {
+struct NodeCounter final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> counts;
   std::unordered_set<ExecutionNode const*> seen;
 
@@ -97,7 +97,7 @@ struct NodeCounter final : public WalkerWorker<ExecutionNode> {
     if (!arangodb::ServerState::instance()->isDBServer() ||
         (en->getType() != ExecutionNode::REMOTE && en->getType() != ExecutionNode::SCATTER &&
          en->getType() != ExecutionNode::DISTRIBUTE)) {
-      return WalkerWorker<ExecutionNode>::done(en);
+      return WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique>::done(en);
     }
     return false;
   }
@@ -383,7 +383,6 @@ std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromAst(Ast* ast) {
   return plan;
 }
 
-/// @brief whether or not the plan contains at least one node of this type
 bool ExecutionPlan::contains(ExecutionNode::NodeType type) const {
   TRI_ASSERT(_varUsageComputed);
   return _typeCounts[type] > 0;
@@ -2153,47 +2152,41 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   return en;
 }
 
-/// @brief find nodes of a certain type
+template <WalkerUniqueness U>
+/// @brief find nodes of certain types
 void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
-                                    ExecutionNode::NodeType type, bool enterSubqueries) {
-  // consult our nodes-of-type counters array
-  if (contains(type)) {
-    // node type present in plan
-    NodeFinder<ExecutionNode::NodeType> finder(type, result, enterSubqueries);
+                                    std::initializer_list<ExecutionNode::NodeType> const& types,
+                                    bool enterSubqueries) {
+  // check if any of the node types is actually present in the plan
+  bool haveNodes = std::any_of(types.begin(), types.end(),
+                               [this](ExecutionNode::NodeType type) -> bool {
+                                 return contains(type);
+                               });
+  if (haveNodes) {
+    // found a node type that is in the plan
+    NodeFinder<std::initializer_list<ExecutionNode::NodeType>, U> finder(types, result, enterSubqueries);
     root()->walk(finder);
   }
 }
 
-/// @brief find nodes of certain types
+/// @brief find nodes of a certain type
 void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
-                                    std::vector<ExecutionNode::NodeType> const& types,
-                                    bool enterSubqueries) {
-  // check if any of the node types is actually present in the plan
-  for (auto const& type : types) {
-    if (contains(type)) {
-      // found a node type that is in the plan
-      NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result, enterSubqueries);
-      root()->walk(finder);
-      // abort, because we were looking for all nodes at the same time
-      return;
-    }
-  }
+                                    ExecutionNode::NodeType type, bool enterSubqueries) {
+  findNodesOfType<WalkerUniqueness::NonUnique>(result, {type}, enterSubqueries);
 }
 
 /// @brief find nodes of certain types
-void ExecutionPlan::findUniqueNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
-                                          std::vector<ExecutionNode::NodeType> const& types,
-                                          bool enterSubqueries) {
-  // check if any of the node types is actually present in the plan
-  for (auto const& type : types) {
-    if (contains(type)) {
-      // found a node type that is in the plan
-      UniqueNodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result, enterSubqueries);
-      root()->walk(finder);
-      // abort, because we were looking for all nodes at the same time
-      return;
-    }
-  }
+void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+                                    std::initializer_list<ExecutionNode::NodeType> const& types,
+                                    bool enterSubqueries) {
+  findNodesOfType<WalkerUniqueness::NonUnique>(result, types, enterSubqueries);
+}
+
+/// @brief find nodes of certain types
+void ExecutionPlan::findUniqueNodesOfType(
+    ::arangodb::containers::SmallVector<ExecutionNode*>& result,
+    std::initializer_list<ExecutionNode::NodeType> const& types, bool enterSubqueries) {
+  findNodesOfType<WalkerUniqueness::Unique>(result, types, enterSubqueries);
 }
 
 /// @brief find all end nodes in a plan
@@ -2515,11 +2508,22 @@ void ExecutionPlan::prepareTraversalOptions() {
   }
 }
 
+AstNode const* ExecutionPlan::resolveVariableAlias(AstNode const* node) const {
+  if (node->type == NODE_TYPE_REFERENCE) {
+    auto setter = getVarSetBy(static_cast<Variable const*>(node->getData())->id);
+    if (setter != nullptr && setter->getType() == ExecutionNode::CALCULATION) {
+      auto cn = ExecutionNode::castTo<CalculationNode const*>(setter);
+      node = cn->expression()->node();
+    }
+  }
+  return node;
+}
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
 
 /// @brief show an overview over the plan
-struct Shower final : public WalkerWorker<ExecutionNode> {
+struct Shower final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   int indent;
 
   Shower() : indent(0) {}
@@ -2553,7 +2557,7 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
     }
   }
 
-  static LoggerStream& logNode(LoggerStream& log, ExecutionNode const& node) {
+  static LoggerStreamBase& logNode(LoggerStreamBase& log, ExecutionNode const& node) {
     return log << "[" << node.id() << "]" << detailedNodeType(node);
   }
 

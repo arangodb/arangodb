@@ -45,6 +45,18 @@ class IRESEARCH_API cost final : public attribute {
 
   static constexpr cost_t MAX = integer_traits<cost_t>::const_max;
 
+  cost() = default;
+
+  explicit cost(cost_t value) noexcept
+    : value_(value),
+      init_(true) {
+  }
+
+  explicit cost(cost_f&& func) noexcept(std::is_nothrow_move_constructible_v<cost_f>)
+    : func_(std::move(func)),
+      init_(false) {
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @returns a value of the "cost" attribute in the specified "src"
   /// collection, or "def" value if there is no "cost" attribute in "src"

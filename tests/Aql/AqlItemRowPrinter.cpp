@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -60,10 +61,10 @@ std::ostream& arangodb::aql::operator<<(std::ostream& stream, RowType const& row
   printHead(stream, row);
 
   stream << "{";
-  if (row.getNrRegisters() > 0) {
+  if (row.getNumRegisters() > 0) {
     stream << row.getValue(0).slice().toJson();
   }
-  for (RegisterId i = 1; i < row.getNrRegisters(); ++i) {
+  for (RegisterId i = 1; i < row.getNumRegisters(); ++i) {
     stream << ", ";
     stream << row.getValue(i).slice().toJson();
   }

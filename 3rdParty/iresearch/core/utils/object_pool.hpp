@@ -38,8 +38,6 @@
 
 NS_ROOT
 
-// GCC prior the 5.0 does not support std::atomic_exchange(std::shared_ptr<T>*, std::shared_ptr<T>)
-#if !defined(__GNUC__) || (__GNUC__ >= 5)
 template<typename T>
 class atomic_shared_ptr_helper {
   #if defined(IRESEARCH_VALGRIND) // suppress valgrind false-positives related to std::atomic_*
@@ -49,17 +47,17 @@ class atomic_shared_ptr_helper {
     atomic_shared_ptr_helper(atomic_shared_ptr_helper&&) noexcept { }
     atomic_shared_ptr_helper& operator=(atomic_shared_ptr_helper&&) noexcept { return *this; }
 
-    std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const noexcept {
+    std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const {
       SCOPED_LOCK(mutex_);
       return std::atomic_exchange(p, r);
     }
 
-    void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) const noexcept {
+    void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) const {
       SCOPED_LOCK(mutex_);
       std::atomic_store(p, r);
     }
 
-    std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) const noexcept {
+    std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) const {
       SCOPED_LOCK(mutex_);
       return std::atomic_load(p);
     }
@@ -68,48 +66,19 @@ class atomic_shared_ptr_helper {
     mutable std::mutex mutex_;
   #else
    public:
-    static std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) noexcept {
+    static std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
       return std::atomic_exchange(p, r);
     }
 
-    static void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) noexcept {
+    static void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
       std::atomic_store(p, r);
     }
 
-    static std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) noexcept {
+    static std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) {
       return std::atomic_load(p);
     }
   #endif // defined(IRESEARCH_VALGRIND)
 }; // atomic_shared_ptr_helper
-#else
-template<typename T>
-class atomic_shared_ptr_helper {
- public:
-  // for compatibility 'std::mutex' is not moveable
-  atomic_shared_ptr_helper() = default;
-  atomic_shared_ptr_helper(atomic_shared_ptr_helper&&) noexcept { }
-  atomic_shared_ptr_helper& operator=(atomic_shared_ptr_helper&&) noexcept { return *this; }
-
-  std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const noexcept {
-    SCOPED_LOCK(mutex_);
-    p->swap(r);
-    return r;
-  }
-
-  void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) const noexcept {
-    SCOPED_LOCK(mutex_);
-    *p = r;
-  }
-
-  std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) const noexcept {
-    SCOPED_LOCK(mutex_);
-    return *p;
-  }
-
- private:
-  mutable std::mutex mutex_;
-}; // atomic_shared_ptr_helper
-#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class concurrent_stack

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +38,11 @@ VocbaseContext::VocbaseContext(GeneralRequest& req, TRI_vocbase_t& vocbase,
                                ExecContext::Type type, auth::Level systemLevel,
                                auth::Level dbLevel, bool isAdminUser)
     : ExecContext(type, req.user(), req.databaseName(), systemLevel, dbLevel, isAdminUser),
-      _vocbase(vocbase) {
+#ifdef USE_ENTERPRISE
+      _request(req),
+#endif
+      _vocbase(vocbase),
+      _canceled(false) {
   // _vocbase has already been refcounted for us
   TRI_ASSERT(!_vocbase.isDangling());
 }
@@ -131,5 +135,22 @@ void VocbaseContext::forceReadOnly() {
   _systemDbAuthLevel = auth::Level::RO;
   _databaseAuthLevel = auth::Level::RO;
 }
+
+#ifdef USE_ENTERPRISE
+std::string VocbaseContext::authMethod() const {
+  switch (_request.authenticationMethod()) {
+    case rest::AuthenticationMethod::BASIC:
+      return "http basic";
+      break;
+    case rest::AuthenticationMethod::JWT:
+      return "http jwt";
+      break;
+    case rest::AuthenticationMethod::NONE:
+      return "n/a";
+      break;
+  }
+  return "n/a";
+}
+#endif
 
 }  // namespace arangodb

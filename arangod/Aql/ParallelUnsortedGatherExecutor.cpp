@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -140,10 +141,16 @@ auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& 
       }
     }
   }
+  // We need to retain the skip,
+  // but are not allowed to hand it over to
+  // the callset.
+  // so copy it out and reset
+  size_t skipped = call.getSkipCount();
+  call.resetSkipCount();
   if (input.isDone()) {
     // We cannot have one that we are waiting on, if we are done.
     TRI_ASSERT(waitingDep == input.numberDependencies());
-    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCallSet{}};
+    return {ExecutorState::DONE, NoStats{}, skipped, AqlCallSet{}};
   }
   auto callSet = AqlCallSet{};
   if (call.needSkipMore()) {
@@ -152,5 +159,5 @@ auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& 
     callSet.calls.emplace_back(
         AqlCallSet::DepCallPair{waitingDep, AqlCallList{upstreamCallSkip(call)}});
   }
-  return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), callSet};
+  return {ExecutorState::HASMORE, NoStats{}, skipped, callSet};
 }

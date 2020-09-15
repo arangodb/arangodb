@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -185,11 +185,13 @@ class ExecutionPlan {
 
   /// @brief find nodes of certain types
   void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
-                       std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
-  
+                       std::initializer_list<ExecutionNode::NodeType> const&,
+                       bool enterSubqueries);
+
   /// @brief find unique nodes of certain types
   void findUniqueNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
-                             std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
+                             std::initializer_list<ExecutionNode::NodeType> const&,
+                             bool enterSubqueries);
 
   /// @brief find all end nodes in a plan
   void findEndNodes(::arangodb::containers::SmallVector<ExecutionNode*>& result,
@@ -260,6 +262,11 @@ class ExecutionPlan {
   /// @brief get ast
   inline Ast* getAst() const { return _ast; }
 
+  /// @brief resolves a variable alias, e.g. fn(tmp) -> "a.b" for the following:
+  ///  LET tmp = a.b
+  ///  LET x = tmp
+  AstNode const* resolveVariableAlias(AstNode const* node) const;
+
   /// @brief creates an anonymous calculation node for an arbitrary expression
   ExecutionNode* createTemporaryCalculation(AstNode const*, ExecutionNode*);
 
@@ -270,7 +277,7 @@ class ExecutionPlan {
   ExecutionNode* fromSlice(velocypack::Slice const& slice);
 
   /// @brief whether or not the plan contains at least one node of this type
-  bool contains(ExecutionNode::NodeType type) const;
+  bool contains(ExecutionNode::NodeType) const;
 
   /// @brief increase the node counter for the type
   void increaseCounter(ExecutionNode::NodeType type) noexcept;
@@ -278,6 +285,12 @@ class ExecutionPlan {
   bool fullCount() const noexcept;
 
  private:
+  template <WalkerUniqueness U>
+  /// @brief find nodes of certain types
+  void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+                       std::initializer_list<ExecutionNode::NodeType> const&,
+                       bool enterSubqueries);
+
   /// @brief creates a calculation node
   ExecutionNode* createCalculation(Variable*, AstNode const*, ExecutionNode*);
 

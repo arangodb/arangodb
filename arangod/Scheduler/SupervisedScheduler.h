@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -175,6 +175,7 @@ class SupervisedScheduler final : public Scheduler {
   Gauge<uint64_t>& _metricsQueueLength;
   Gauge<uint64_t>& _metricsAwakeThreads;
   Gauge<uint64_t>& _metricsNumWorkerThreads;
+  Counter& _metricsQueueFull;
 };
 
 }  // namespace arangodb

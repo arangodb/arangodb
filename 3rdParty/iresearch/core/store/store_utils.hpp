@@ -312,17 +312,6 @@ StringType vread_string(const byte_type*& in) {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                     skip helpers
-// ----------------------------------------------------------------------------
-
-const uint64_t SKIP_BUFFER_SIZE = 1024U;
-
-IRESEARCH_API void skip(
-  data_input& in, size_t to_skip,
-  byte_type* skip_buf, size_t skip_buf_size
-);
-
-// ----------------------------------------------------------------------------
 // --SECTION--                                              bit packing helpers
 // ----------------------------------------------------------------------------
 
@@ -410,6 +399,17 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     return *pos_++;
   }
 
+  virtual const byte_type* read_buffer(size_t size, BufferHint /*hint*/) noexcept final {
+    const auto* pos = pos_ + size;
+
+    if (pos > data_.end()) {
+      return nullptr;
+    }
+
+    std::swap(pos, pos_);
+    return pos;
+  }
+
   virtual size_t read_bytes(byte_type* b, size_t size) override final;
 
   // append to buf
@@ -425,7 +425,7 @@ class IRESEARCH_API bytes_ref_input : public index_input {
   }
 
   virtual ptr dup() const override {
-    return index_input::make<bytes_ref_input>(*this);
+    return memory::make_unique<bytes_ref_input>(*this);
   }
 
   virtual ptr reopen() const override {
@@ -454,74 +454,6 @@ class IRESEARCH_API bytes_ref_input : public index_input {
   bytes_ref data_;
   const byte_type* pos_{ data_.begin() };
 }; // bytes_ref_input
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class bytes_input
-//////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API bytes_input final: public data_input, public bytes_ref {
- public:
-  bytes_input() = default;
-  explicit bytes_input(const bytes_ref& data);
-  bytes_input(bytes_input&& rhs) noexcept;
-  bytes_input& operator=(bytes_input&& rhs) noexcept;
-  bytes_input& operator=(const bytes_ref& data);
-
-  void read_from(data_input& in, size_t size);
-
-  void skip(size_t size) {
-    assert(pos_ + size <= this->end());
-    pos_ += size;
-  }
-
-  void seek(size_t pos) {
-    assert(this->begin() + pos <= this->end());
-    pos_ = this->begin() + pos;
-  }
-
-  virtual size_t file_pointer() const override { 
-    return std::distance(this->begin(), pos_);
-  }
-
-  virtual size_t length() const override { 
-    return this->size(); 
-  }
-
-  virtual bool eof() const override {
-    return pos_ >= this->end();
-  }
-
-  virtual byte_type read_byte() override final {
-    assert(pos_ < this->end());
-    return *pos_++;
-  }
-
-  virtual size_t read_bytes(byte_type* b, size_t size) override final;
-
-  // append to buf
-  void read_bytes(bstring& buf, size_t size);
-
-  virtual int32_t read_int() override final {
-    return irs::read<uint32_t>(pos_);
-  }
-
-  virtual int64_t read_long() override final {
-    return irs::read<uint64_t>(pos_);
-  }
-
-  virtual uint32_t read_vint() override final {
-    return irs::vread<uint32_t>(pos_);
-  }
-
-  virtual uint64_t read_vlong() override final {
-    return irs::vread<uint64_t>(pos_);
-  }
-
- private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  bstring buf_;
-  const byte_type* pos_{ buf_.c_str() };
-  IRESEARCH_API_PRIVATE_VARIABLES_END
-}; // bytes_input
 
 NS_BEGIN(encode)
 
@@ -567,8 +499,15 @@ IRESEARCH_API void read_block(
   data_input& in,
   uint32_t size,
   uint32_t* RESTRICT encoded,
-  uint32_t* RESTRICT decoded
-);
+  uint32_t* RESTRICT decoded);
+
+// reads block of 128 integers from the stream
+// that was previously encoded with the corresponding
+// 'write_block' funcion
+IRESEARCH_API void read_block(
+  data_input& in,
+  uint32_t* RESTRICT encoded,
+  uint32_t* RESTRICT decoded);
 
 // reads block of the specified size from the stream
 // that was previously encoded with the corresponding
@@ -577,8 +516,24 @@ IRESEARCH_API void read_block(
   data_input& in,
   uint32_t size,
   uint64_t* RESTRICT encoded,
-  uint64_t* RESTRICT decoded
-);
+  uint64_t* RESTRICT decoded);
+
+// reads block of 128 integers from the stream
+// that was previously encoded with the corresponding
+// 'write_block' funcion
+IRESEARCH_API void read_block(
+  data_input& in,
+  uint64_t* RESTRICT encoded,
+  uint64_t* RESTRICT decoded);
+
+// writes block of 128 integers to a stream
+//   all values are equal -> RL encoding,
+//   otherwise            -> bit packing
+// returns number of bits used to encoded the block (0 == RL)
+IRESEARCH_API uint32_t write_block(
+  data_output& out,
+  const uint32_t* RESTRICT decoded,
+  uint32_t* RESTRICT encoded);
 
 // writes block of the specified size to stream
 //   all values are equal -> RL encoding,
@@ -588,8 +543,7 @@ IRESEARCH_API uint32_t write_block(
   data_output& out,
   const uint32_t* RESTRICT decoded,
   uint32_t size,
-  uint32_t* RESTRICT encoded
-);
+  uint32_t* RESTRICT encoded);
 
 // writes block of the specified size to stream
 //   all values are equal -> RL encoding,
@@ -599,9 +553,16 @@ IRESEARCH_API uint32_t write_block(
   data_output& out,
   const uint64_t* RESTRICT decoded,
   uint64_t size, // same type as 'decoded'/'encoded'
-  uint64_t* RESTRICT encoded
-);
+  uint64_t* RESTRICT encoded);
 
+// writes block of 128 integers to a stream
+//   all values are equal -> RL encoding,
+//   otherwise            -> bit packing
+// returns number of bits used to encoded the block (0 == RL)
+IRESEARCH_API uint32_t write_block(
+  data_output& out,
+  const uint64_t* RESTRICT decoded,
+  uint64_t* RESTRICT encoded);
 
 NS_END
 

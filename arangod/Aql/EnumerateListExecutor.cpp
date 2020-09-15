@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -66,7 +67,7 @@ EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher, EnumerateListExec
 
 void EnumerateListExecutor::initializeNewRow(AqlItemBlockInputRange& inputRange) {
   if (_currentRow) {
-    std::ignore = inputRange.nextDataRow();
+    inputRange.advanceDataRow();
   }
   std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
   if (!_currentRow) {
@@ -78,14 +79,10 @@ void EnumerateListExecutor::initializeNewRow(AqlItemBlockInputRange& inputRange)
 
   // store the length into a local variable
   // so we don't need to calculate length every time
-  if (inputList.isDocvec()) {
-    _inputArrayLength = inputList.docvecSize();
-  } else {
-    if (!inputList.isArray()) {
-      throwArrayExpectedException(inputList);
-    }
-    _inputArrayLength = inputList.length();
+  if (!inputList.isArray()) {
+    throwArrayExpectedException(inputList);
   }
+  _inputArrayLength = inputList.length();
 
   _inputArrayPosition = 0;
 }
@@ -103,7 +100,7 @@ void EnumerateListExecutor::processArrayElement(OutputAqlItemRow& output) {
   output.moveValueInto(_infos.getOutputRegister(), _currentRow, guard);
   output.advanceRow();
 
-  // set position to +1 for next iteration after new fetchRow
+  // set position to +1 for next iteration
   _inputArrayPosition++;
 }
 

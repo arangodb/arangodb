@@ -111,7 +111,7 @@ parser::semantic_type parser_context::sequence(
   parser::location_type const& location
 ) {
   if (location.end.column < location.begin.column ||
-      m_sData.size() < location.end.column) {
+      m_sData.size() < static_cast<size_t>(location.end.column)) {
     return *const_cast<parser::semantic_type*>(&UNKNOWN); // index out of bounds
   }
 

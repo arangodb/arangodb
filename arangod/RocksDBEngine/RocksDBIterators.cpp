@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -45,7 +46,8 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
     : IndexIterator(col, trx),
       _bounds(static_cast<RocksDBMetaCollection*>(col->getPhysical())->bounds()),
       _upperBound(_bounds.end()),
-      _cmp(_bounds.columnFamily()->GetComparator()) {
+      _cmp(_bounds.columnFamily()->GetComparator()),
+      _mustSeek(true) {
   // acquire rocksdb transaction
   auto* mthds = RocksDBTransactionState::toMethods(trx);
 
@@ -65,7 +67,13 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
   _bounds.columnFamily()->GetDescriptor(&desc);
   TRI_ASSERT(desc.options.prefix_extractor);
 #endif
-  _iterator->Seek(_bounds.start());
+}
+
+void RocksDBAllIndexIterator::seekIfRequired() {
+  if (_mustSeek) {
+    _iterator->Seek(_bounds.start());
+    _mustSeek = false;
+  }
 }
 
 bool RocksDBAllIndexIterator::outOfRange() const {
@@ -75,6 +83,7 @@ bool RocksDBAllIndexIterator::outOfRange() const {
 
 bool RocksDBAllIndexIterator::nextImpl(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
+  seekIfRequired();
 
   if (limit == 0 || ADB_UNLIKELY(!_iterator->Valid()) || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
@@ -87,7 +96,7 @@ bool RocksDBAllIndexIterator::nextImpl(LocalDocumentIdCallback const& cb, size_t
 
   TRI_ASSERT(limit > 0);
 
-  do {
+  while (limit > 0) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_bounds.objectId() == RocksDBKey::objectId(_iterator->key()));
 #endif
@@ -103,7 +112,7 @@ bool RocksDBAllIndexIterator::nextImpl(LocalDocumentIdCallback const& cb, size_t
     } else if (outOfRange()) {
       return false;
     }
-  } while (limit > 0);
+  }
 
   return true;
 }
@@ -111,6 +120,7 @@ bool RocksDBAllIndexIterator::nextImpl(LocalDocumentIdCallback const& cb, size_t
 bool RocksDBAllIndexIterator::nextDocumentImpl(IndexIterator::DocumentCallback const& cb,
                                                size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
+  seekIfRequired();
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
@@ -126,9 +136,11 @@ bool RocksDBAllIndexIterator::nextDocumentImpl(IndexIterator::DocumentCallback c
     --limit;
     _iterator->Next();
 
-    if (!_iterator->Valid() || outOfRange()) {
+    if (ADB_UNLIKELY(!_iterator->Valid())) {
       // validate that Iterator is in a good shape and hasn't failed
       arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+      return false;
+    } else if (outOfRange()) {
       return false;
     }
   }
@@ -138,11 +150,11 @@ bool RocksDBAllIndexIterator::nextDocumentImpl(IndexIterator::DocumentCallback c
 
 void RocksDBAllIndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
   TRI_ASSERT(_trx->state()->isRunning());
+  seekIfRequired();
 
   while (count > 0 && _iterator->Valid()) {
     --count;
     ++skipped;
-
     _iterator->Next();
   }
     
@@ -152,7 +164,7 @@ void RocksDBAllIndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
 
 void RocksDBAllIndexIterator::resetImpl() {
   TRI_ASSERT(_trx->state()->isRunning());
-  _iterator->Seek(_bounds.start());
+  _mustSeek = true;
 }
 
 // ================ Any Iterator ================

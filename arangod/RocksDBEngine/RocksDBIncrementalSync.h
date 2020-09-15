@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,13 +26,14 @@
 
 #include "Basics/Common.h"
 #include "Replication/DatabaseInitialSyncer.h"
+#include "Replication/ReplicationMetricsFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
 class LogicalCollection;
 
 Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
-                        InitialSyncerIncrementalSyncStats& stats,
+                        ReplicationMetricsFeature::InitialSyncStats& stats,
                         std::string const& keysId, uint64_t chunkId,
                         std::string const& lowString, std::string const& highString,
                         std::vector<std::string> const& markers);

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,7 +29,7 @@
 #include "Basics/voc-errors.h"
 #include "Containers/Enumerate.h"
 
-#include "Logger/LogMacros.h"
+#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -60,7 +61,7 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
       // Default case, 0 -> end
       size_t startRow = 0;
       // We know block size is <= DefaultBatchSize (1000) so it should easily fit into 32bit...
-      size_t endRow = block->size();
+      size_t endRow = block->numRows();
 
       if (index == 0) {
         startRow = _startIndexInFirstBlock;
@@ -86,7 +87,7 @@ void AqlItemMatrix::clear() {
   _stopIndexInLastBlock = InvalidRowIndex;
 }
 
-RegisterCount AqlItemMatrix::getNrRegisters() const noexcept { return _nrRegs; }
+RegisterCount AqlItemMatrix::getNumRegisters() const noexcept { return _nrRegs; }
 
 uint64_t AqlItemMatrix::size() const noexcept { return _size; }
 
@@ -96,7 +97,7 @@ void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
   // The schadowRow logic is only based on the last node.
   TRI_ASSERT(!stoppedOnShadowRow());
 
-  TRI_ASSERT(blockPtr->getNrRegs() == getNrRegisters());
+  TRI_ASSERT(blockPtr->numRegisters() == getNumRegisters());
   // Test if we have more than uint32_t many blocks
   if (ADB_UNLIKELY(_blocks.size() == std::numeric_limits<uint32_t>::max())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -105,7 +106,7 @@ void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
         "limit after sorting.");
   }
   // Test if we have more than uint32_t many rows within a block
-  if (ADB_UNLIKELY(blockPtr->size() > std::numeric_limits<uint32_t>::max())) {
+  if (ADB_UNLIKELY(blockPtr->numRows() > std::numeric_limits<uint32_t>::max())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_RESOURCE_LIMIT,
         "Reaching the limit of AqlItems to SORT, please consider lowering "
@@ -114,12 +115,13 @@ void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
 
   // ShadowRow handling
   if (blockPtr->hasShadowRows()) {
-    TRI_ASSERT(!blockPtr->getShadowRowIndexes().empty());
+    auto [shadowRowsBegin, shadowRowsEnd] = blockPtr->getShadowRowIndexesFrom(0);
+    TRI_ASSERT(shadowRowsBegin != shadowRowsEnd);
     // Let us stop on the first
-    _stopIndexInLastBlock = *blockPtr->getShadowRowIndexes().begin();
+    _stopIndexInLastBlock = *shadowRowsBegin;
     _size += _stopIndexInLastBlock;
   } else {
-    _size += blockPtr->size();
+    _size += blockPtr->numRows();
   }
 
   // Move block into _blocks
@@ -137,14 +139,13 @@ ShadowAqlItemRow AqlItemMatrix::popShadowRow() {
   ShadowAqlItemRow shadowRow{_blocks.back(), _stopIndexInLastBlock};
 
   // We need to move forward the next shadow row.
-  auto const& shadowIndexes = blockPtr->getShadowRowIndexes();
-  auto next = shadowIndexes.find(_stopIndexInLastBlock);
+  auto [shadowRowsBegin, shadowRowsEnd] = blockPtr->getShadowRowIndexesFrom(_stopIndexInLastBlock);
   _startIndexInFirstBlock = _stopIndexInLastBlock + 1;
 
-  next++;
+  shadowRowsBegin++;
 
-  if (next != shadowIndexes.end()) {
-    _stopIndexInLastBlock = *next;
+  if (shadowRowsBegin != shadowRowsEnd) {
+    _stopIndexInLastBlock = *shadowRowsBegin;
     TRI_ASSERT(stoppedOnShadowRow());
     // We move always forward
     TRI_ASSERT(_stopIndexInLastBlock >= _startIndexInFirstBlock);
@@ -153,10 +154,10 @@ ShadowAqlItemRow AqlItemMatrix::popShadowRow() {
     _stopIndexInLastBlock = InvalidRowIndex;
     TRI_ASSERT(!stoppedOnShadowRow());
     // _stopIndexInLastBlock a 0 based index. size is a counter.
-    TRI_ASSERT(blockPtr->size() >= _startIndexInFirstBlock);
-    _size = blockPtr->size() - _startIndexInFirstBlock;
+    TRI_ASSERT(blockPtr->numRows() >= _startIndexInFirstBlock);
+    _size = blockPtr->numRows() - _startIndexInFirstBlock;
   }
-  if (_startIndexInFirstBlock >= _blocks.back()->size()) {
+  if (_startIndexInFirstBlock >= _blocks.back()->numRows()) {
     // The last block is also fully used
     _blocks.clear();
     _startIndexInFirstBlock = 0;
@@ -181,7 +182,7 @@ AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
   for (auto const& block : _blocks) {
     // We only have valid blocks
     TRI_ASSERT(block != nullptr);
-    num += block->size();
+    num += block->numRows();
   }
   // Guard against underflow
   TRI_ASSERT(_startIndexInFirstBlock + countShadowRows() <= num);
@@ -197,8 +198,8 @@ AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
     return 0;
   }
   auto const& block = _blocks.back();
-  auto const& rows = block->getShadowRowIndexes();
-  return std::count_if(rows.begin(), rows.end(),
+  auto [shadowRowsBegin, shadowRowsEnd] = block->getShadowRowIndexesFrom(_stopIndexInLastBlock);
+  return std::count_if(shadowRowsBegin, shadowRowsEnd,
                        [&](auto r) -> bool { return r >= _stopIndexInLastBlock; });
 }
 
@@ -206,5 +207,5 @@ AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
   if (_blocks.empty()) {
     return false;
   }
-  return _stopIndexInLastBlock + 1 < _blocks.back()->size();
+  return _stopIndexInLastBlock + 1 < _blocks.back()->numRows();
 }

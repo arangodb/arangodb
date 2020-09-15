@@ -28,17 +28,17 @@
 
 NS_ROOT
 
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @class score
 /// @brief represents a score related for the particular document
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API score : public attribute {
  public:
   static constexpr string_ref type_name() noexcept {
     return "iresearch::score";
   }
 
-  static const irs::score& no_score() noexcept;
+  static const score& no_score() noexcept;
 
   template<typename Provider>
   static const score& get(const Provider& attrs) {
@@ -46,54 +46,71 @@ class IRESEARCH_API score : public attribute {
     return score ? *score : no_score();
   }
 
-  const byte_type* c_str() const noexcept {
-    return value_.c_str();
-  }
+  score() noexcept;
+  explicit score(const order::prepared& ord);
 
-  const bstring& value() const noexcept {
-    return value_;
-  }
+  bool is_default() const noexcept;
 
-  bool empty() const noexcept {
-    return value_.empty();
-  }
-
-  void evaluate() const {
+  [[nodiscard]] const byte_type* evaluate() const {
     assert(func_);
-    (*func_)(ctx_.get(), leak());
+    return func_();
   }
 
-  bool prepare(const order::prepared& ord,
-               const score_ctx* ctx,
-               const score_f func) {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief reset score to default value
+  //////////////////////////////////////////////////////////////////////////////
+  void reset() noexcept;
+
+  void reset(const score& score) noexcept {
+    assert(score.func_);
+    func_.reset(const_cast<score_ctx*>(score.func_.ctx()),
+                score.func_.func());
+  }
+
+  void reset(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept {
     assert(func);
-
-    if (ord.empty()) {
-      return false;
-    }
-
-    value_.resize(ord.score_size());
-    ord.prepare_score(leak());
-
-    ctx_ = memory::managed_ptr<const score_ctx>(ctx, nullptr);
-    func_ = func;
-    return true;
+    func_.reset(std::move(ctx), func);
   }
 
-  bool prepare(const order::prepared& ord,
-               order::prepared::scorers&& scorers);
+  void reset(score_ctx* ctx, const score_f func) noexcept {
+    assert(func);
+    func_.reset(ctx, func);
+  }
+
+  void reset(score_function&& func) noexcept {
+    assert(func);
+    func_ = std::move(func);
+  }
+
+  byte_type* realloc(const order::prepared& order) {
+    buf_.resize(order.score_size());
+    return const_cast<byte_type*>(buf_.data());
+  }
+
+  byte_type* data() const noexcept {
+    return const_cast<byte_type*>(buf_.c_str());
+  }
+
+  size_t size() const noexcept {
+    return buf_.size();
+  }
+
+  void clear() noexcept {
+    assert(!buf_.empty());
+    std::memset(const_cast<byte_type*>(buf_.data()), 0, buf_.size());
+  }
 
  private:
-  byte_type* leak() const noexcept {
-    return const_cast<byte_type*>(&(value_[0]));
-  }
-
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  bstring value_;     // score buffer
-  memory::managed_ptr<const score_ctx> ctx_{}; // arbitrary scoring context
-  score_f func_{[](const score_ctx*, byte_type*){}};    // scoring function
+  bstring buf_;
+  score_function func_;
+//  memory::managed_ptr<score_ctx> ctx_; // arbitrary scoring context
+//  score_f func_; // scoring function
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // score
+
+IRESEARCH_API void reset(
+  irs::score& score, order::prepared::scorers&& scorers);
 
 NS_END // ROOT
 

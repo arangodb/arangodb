@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -85,7 +85,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   virtual Finding find(void const* key, std::uint32_t keySize) = 0;
   virtual Result insert(CachedValue* value) = 0;
   virtual Result remove(void const* key, std::uint32_t keySize) = 0;
-  virtual Result blacklist(void const* key, std::uint32_t keySize) = 0;
+  virtual Result banish(void const* key, std::uint32_t keySize) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the ID for this cache.

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -825,7 +826,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
   }
 }
 
-// test indexing selected fields will ommit non-indexed fields during query
+// test indexing selected fields will omit non-indexed fields during query
 TEST_F(IResearchIndexTest, test_fields) {
   auto createCollection0 = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testCollection0\" }");

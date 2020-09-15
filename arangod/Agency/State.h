@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,10 +39,6 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 class ApplicationServer;
-
-namespace aql {
-class QueryRegistry;
-}
 
 namespace velocypack {
 class Builder;
@@ -144,7 +140,7 @@ class State {
   bool configure(Agent* agent);
 
   /// @brief Load persisted data from above or start with empty log
-  bool loadCollections(TRI_vocbase_t*, aql::QueryRegistry*, bool);
+  bool loadCollections(TRI_vocbase_t*, bool waitForSync);
 
   /// @brief Pipe to ostream
   friend std::ostream& operator<<(std::ostream& os, State const& s) {
@@ -224,7 +220,7 @@ class State {
                std::string const&) const;
 
   /// @brief Save currentTerm, votedFor, log entries for reconfiguration
-  bool persistconf(index_t, term_t, uint64_t, arangodb::velocypack::Slice const&,
+  bool persistConf(index_t, term_t, uint64_t, arangodb::velocypack::Slice const&,
                    std::string const&) const;
 
   bool saveCompacted();
@@ -238,7 +234,7 @@ class State {
   /// @brief Check collections
   bool checkCollections();
 
-  /// @brief Check collection sanity
+  /// @brief Check collection existence
   bool checkCollection(std::string const& name);
 
   /// @brief Create collections
@@ -280,9 +276,6 @@ class State {
   /// @brief compaction indexes
   std::atomic<index_t> _nextCompactionAfter;
   std::atomic<index_t> _lastCompactionAt;
-
-  /// @brief Our query registry
-  aql::QueryRegistry* _queryRegistry;
 
   /// @brief Current log offset, this is the index that is stored at position
   /// 0 in the deque _log.

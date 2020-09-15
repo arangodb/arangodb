@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -39,7 +40,7 @@ using namespace arangodb::aql;
 namespace {
 
 void eraseRow(SharedAqlItemBlockPtr& block, size_t row) {
-  auto const nrRegs = block->getNrRegs();
+  auto const nrRegs = block->numRegisters();
   for (arangodb::aql::RegisterId i = 0; i < nrRegs; i++) {
     block->destroyValue(row, i);
   }

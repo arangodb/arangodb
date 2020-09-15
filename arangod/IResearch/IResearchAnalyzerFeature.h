@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -273,15 +274,40 @@ class IResearchAnalyzerFeature final
                  irs::flags const& features = irs::flags::empty_instance());
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Emplaces batch of analyzers within single analyzers revision. Intended for use
+  ///        with restore/replication. Tries to load as many as possible analyzers
+  ///        skipping unparsable ones.
+  /// @param vocbase target vocbase
+  /// @param dumpedAnalyzers VPack array of dumped data
+  /// @return OK or first failure
+  /// @note should not be used while inRecovery()
+  //////////////////////////////////////////////////////////////////////////////
+  Result bulkEmplace(TRI_vocbase_t& vocbase,
+                     VPackSlice const dumpedAnalyzers);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief removes all analyzers from database in single revision
+  /// @param vocbase target vocbase
+  /// @return operation result
+  /// @note should not be used while inRecovery()
+  //////////////////////////////////////////////////////////////////////////////
+  Result removeAllAnalyzers(TRI_vocbase_t& vocbase);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief find analyzer
   /// @param name analyzer name (already normalized)
   /// @param onlyCached check only locally cached analyzers
   /// @return analyzer with the specified name or nullptr
   //////////////////////////////////////////////////////////////////////////////
   AnalyzerPool::ptr get(irs::string_ref const& name,
-                        AnalyzersRevision::Revision const revision,
+                        arangodb::QueryAnalyzerRevisions const& revision,
                         bool onlyCached = false) const noexcept {
-    return get(name, splitAnalyzerName(name), revision, onlyCached);
+    auto splittedName = splitAnalyzerName(name);
+    TRI_ASSERT(splittedName.first.null() || !splittedName.first.empty());
+    return get(name, splittedName,
+               splittedName.first.null() ? AnalyzersRevision::MIN // built-in analyzers always has MIN revision
+                 : revision.getVocbaseRevision(splittedName.first),
+               onlyCached);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -295,7 +321,7 @@ class IResearchAnalyzerFeature final
   AnalyzerPool::ptr get(irs::string_ref const& name,
                         TRI_vocbase_t const& activeVocbase,
                         TRI_vocbase_t const& systemVocbase,
-                        AnalyzersRevision::Revision const revision,
+                        arangodb::QueryAnalyzerRevisions const& revision,
                         bool onlyCached = false) const;
 
   //////////////////////////////////////////////////////////////////////////////

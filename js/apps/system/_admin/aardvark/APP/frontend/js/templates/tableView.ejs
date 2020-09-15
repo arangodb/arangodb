@@ -35,16 +35,19 @@ var cutByResolution = function (str) {
   <%
   }
   var odd = true;
-  docs.forEach(function(d) {
+  _.each(docs.models, function(doc) {
     var tempObj = {};
-    $.each(d.attributes.content, function(k, v) {
-      if (! (k === '_id' || k === '_rev' || k === '_key')) {
-        tempObj[k] = v;
+    var jsonModel = doc.toJSON();
+
+    Object.keys(jsonModel.content).forEach(function (k) {
+      if ((k !== '_id' || k !== '_rev' || k !== '_key')) {
+        tempObj[k] = jsonModel.content[k];
       }
     });
-    var tmpObj = JSON.stringify(tempObj); %>
+    tmpObj = JSON.stringify(tempObj);
+  %>
 
-  <div class="pure-table-row <%=odd?'odd':'even'%>" id="row_<%=d.attributes.key %>">
+  <div class="pure-table-row <%=odd?'odd':'even'%>" id="row_<%=doc.get('key')%>">
 
     <div class="pure-u-19-24">
       <div class="padding-right">
@@ -52,7 +55,7 @@ var cutByResolution = function (str) {
       </div>
     </div>
     <div class="pure-u-3-24">
-      <div class="key"><%= d.attributes.key %></div>
+      <div class="key"><%= doc.get('key') %></div>
     </div>
     <div class="pure-u-2-24">
       <div class="actions">
@@ -62,7 +65,6 @@ var cutByResolution = function (str) {
     </div>
 
   </div>
-
 
   <% 
     odd = !odd;

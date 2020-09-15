@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,8 +82,6 @@ class ActionBase {
   bool fastTrack() const;
 
   void notify();
-
-  virtual arangodb::Result kill(Signal const& signal);
 
   virtual arangodb::Result progress(double& progress);
 

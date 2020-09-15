@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -342,12 +342,12 @@ void Cache::shutdown() {
       std::shared_ptr<Table> extra = table->setAuxiliary(std::shared_ptr<Table>(nullptr));
       if (extra) {
         extra->clear();
-        _manager->reclaimTable(extra);
+        _manager->reclaimTable(extra, false);
       }
       table->clear();
     }
 
-    _manager->reclaimTable(std::atomic_load(&_tableShrdPtr));
+    _manager->reclaimTable(std::atomic_load(&_tableShrdPtr), false);
     {
       SpinLocker metaGuard(SpinLocker::Mode::Write, _metadata.lock());
       _metadata.changeTable(0);
@@ -435,7 +435,7 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
 
   // clear out old table and release it
   oldTable->clear();
-  _manager->reclaimTable(oldTable);
+  _manager->reclaimTable(oldTable, false);
 
   // unmarking migrating flag
   {

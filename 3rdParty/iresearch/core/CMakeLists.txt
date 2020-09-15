@@ -228,10 +228,12 @@ set(IResearch_core_headers
   ./utils/compression.hpp
   ./utils/lz4compression.hpp
   ./utils/file_utils.hpp
-  ./utils/fst.hpp
-  ./utils/fst_decl.hpp
   ./utils/fst_utils.hpp
-  ./utils/mmap_utils.hpp 
+  ./utils/fstext/fst_builder.hpp
+  ./utils/fstext/fst_decl.hpp
+  ./utils/fstext/fst_table_matcher.hpp
+  ./utils/fstext/fst_string_weight.h
+  ./utils/mmap_utils.hpp
   ./utils/integer.hpp
   ./utils/io_utils.hpp
   ./utils/iterator.hpp
@@ -690,7 +692,7 @@ if (MSVC)
 
   set_target_properties(${IResearch_TARGET_NAME}-static-scrt-allinone
     PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static-srct,INTERFACE_INCLUDE_DIRECTORIES>"
+    INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static-scrt,INTERFACE_INCLUDE_DIRECTORIES>"
     IMPORTED_LOCATION "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
   )
 

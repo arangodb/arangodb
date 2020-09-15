@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,6 +27,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/exitcodes.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -138,7 +140,7 @@ void EngineSelectorFeature::prepare() {
       LOG_TOPIC("3e975", FATAL, Logger::STARTUP)
           << "unable to determine storage engine '" << _engine << "'";
     }
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_UNSUPPORTED_STORAGE_ENGINE);
   }
 
   if (selected->second.deprecated) {

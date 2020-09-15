@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// disclaimer
+/// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,8 +95,10 @@ class HeartbeatBackgroundJobThread : public Thread {
   /// @brief asks the thread to stop, but does not wait.
   //////////////////////////////////////////////////////////////////////////////
   void stop() {
-    std::unique_lock<std::mutex> guard(_mutex);
-    _stop = true;
+    {
+      std::unique_lock<std::mutex> guard(_mutex);
+      _stop = true;
+    }
     _condition.notify_one();
   }
 
@@ -108,6 +110,7 @@ class HeartbeatBackgroundJobThread : public Thread {
     std::unique_lock<std::mutex> guard(_mutex);
     _anotherRun.store(true, std::memory_order_release);
     if (_sleeping.load(std::memory_order_acquire)) {
+      guard.unlock();
       _condition.notify_one();
     }
   }
@@ -586,9 +589,9 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
 
       AgencyComm agency(_server);
 
-      auto updateMaster = agency.casValue("/Current/Foxxmaster", foxxmasterSlice,
+      auto updateLeader = agency.casValue("/Current/Foxxmaster", foxxmasterSlice,
                                           myIdBuilder.slice(), 0, 10.0);
-      if (updateMaster.successful()) {
+      if (updateLeader.successful()) {
         // We won the race we are the master
         ServerState::instance()->setFoxxmaster(state->getId());
       }
@@ -980,8 +983,8 @@ void HeartbeatThread::runSingleServer() {
             LOG_TOPIC("94dbc", WARN, Logger::HEARTBEAT)
                 << "user stopped applier, please restart";
             continue;
-          } else if (error.isNot(TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE) &&
-                     error.isNot(TRI_ERROR_REPLICATION_MASTER_CHANGE) &&
+          } else if (error.isNot(TRI_ERROR_REPLICATION_LEADER_INCOMPATIBLE) &&
+                     error.isNot(TRI_ERROR_REPLICATION_LEADER_CHANGE) &&
                      error.isNot(TRI_ERROR_REPLICATION_LOOP) &&
                      error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) &&
                      error.isNot(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
@@ -999,7 +1002,7 @@ void HeartbeatThread::runSingleServer() {
             applier->reconfigure(config);
 
             // reads ticks from configuration, check again next time
-            applier->startTailing(0, false, 0);
+            applier->startTailing(/*initialTick*/0, /*useTick*/false);
             continue;
           }
         }

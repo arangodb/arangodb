@@ -71,7 +71,7 @@ struct options {
 /// @class compressor
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API compressor {
-  DECLARE_SHARED_PTR(compressor);
+  using ptr = std::shared_ptr<compressor>;
 
   virtual ~compressor() = default;
 
@@ -86,13 +86,12 @@ struct IRESEARCH_API compressor {
 /// @class compressor
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API decompressor {
-  DECLARE_SHARED_PTR(decompressor);
+  using ptr = std::shared_ptr<decompressor>;
 
   virtual ~decompressor() = default;
 
-  /// @note caller is allowed to modify data pointed by 'src' up to 'src_size'
   /// @note caller is allowed to modify data pointed by 'dst' up to 'dst_size'
-  virtual bytes_ref decompress(byte_type* src, size_t src_size,
+  virtual bytes_ref decompress(const byte_type* src, size_t src_size,
                                byte_type* dst, size_t dst_size) = 0;
 
   virtual bool prepare(data_input& /*in*/) {

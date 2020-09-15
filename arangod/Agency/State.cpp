@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +12,7 @@
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
@@ -35,7 +35,6 @@
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Aql/QueryRegistry.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -43,7 +42,6 @@
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -69,7 +67,6 @@ State::State(application_features::ApplicationServer& server)
     _collectionsLoaded(false),
     _nextCompactionAfter(0),
     _lastCompactionAt(0),
-    _queryRegistry(nullptr),
     _cur(0),
     _log_size(
       _server.getFeature<MetricsFeature>().gauge(
@@ -146,7 +143,7 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
   return res.ok();
 }
 
-bool State::persistconf(index_t index, term_t term, uint64_t millis,
+bool State::persistConf(index_t index, term_t term, uint64_t millis,
                         arangodb::velocypack::Slice const& entry,
                         std::string const& clientId) const {
   LOG_TOPIC("7d1c0", TRACE, Logger::AGENCY)
@@ -302,7 +299,7 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
   auto buf = std::make_shared<Buffer<uint8_t>>();
   buf->append((char const*)slice.begin(), byteSize);
 
-  bool success = reconfiguration ? persistconf(idx, term, millis, slice, clientId)
+  bool success = reconfiguration ? persistConf(idx, term, millis, slice, clientId)
     : persist(idx, term, millis, slice, clientId);
 
   if (!success) {  // log to disk or die
@@ -796,16 +793,13 @@ bool State::createCollection(std::string const& name) {
 bool State::ready() const { return _ready; }
 
 /// Load collections
-bool State::loadCollections(TRI_vocbase_t* vocbase,
-                            QueryRegistry* queryRegistry, bool waitForSync) {
+bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
 
   using namespace std::chrono;
   auto const epoch_millis =
     duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
   _vocbase = vocbase;
-  _queryRegistry = queryRegistry;
-
   TRI_ASSERT(_vocbase != nullptr);
 
   _options.waitForSync = waitForSync;

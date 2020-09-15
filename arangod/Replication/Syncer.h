@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -132,9 +132,6 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     /// @brief configuration
     ReplicationApplierConfiguration applier;
 
-    /// @brief information about the replication barrier
-    replutils::BarrierInfo barrier{};
-
     /// @brief object holding the HTTP client and all connection machinery
     replutils::Connection connection;
 
@@ -157,8 +154,8 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     /// @brief local server id
     std::string localServerIdString{};
 
-    /// @brief information about the master state
-    replutils::MasterInfo master;
+    /// @brief information about the leader state
+    replutils::LeaderInfo leader;
 
     /// @brief lazy loaded list of vocbases
     std::unordered_map<std::string, DatabaseGuard> vocbases{};
@@ -175,9 +172,6 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 
   /// @brief request location rewriter (injects database name)
   static std::string rewriteLocation(void*, std::string const&);
-
-  /// @brief steal the barrier id from the syncer
-  TRI_voc_tick_t stealBarrier();
 
   void setLeaderId(std::string const& leaderId) { _state.leaderId = leaderId; }
 

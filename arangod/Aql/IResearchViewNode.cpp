@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -158,7 +159,7 @@ void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const
   } else {
     VPackArrayBuilder arrayScope(&builder, "collections");
     for (auto const cid : options.sources) {
-      builder.add(VPackValue(cid));
+      builder.add(VPackValue(cid.id()));
     }
   }
 
@@ -224,7 +225,8 @@ bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& 
           return false;
         }
 
-        auto const cid = idSlice.getNumber<TRI_voc_cid_t>();
+        arangodb::DataSourceId const cid{
+            idSlice.getNumber<arangodb::DataSourceId::BaseType>()};
 
         if (!cid) {
           return false;
@@ -276,7 +278,7 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
          }
 
          auto& resolver = query.resolver();
-         ::arangodb::containers::HashSet<TRI_voc_cid_t> sources;
+         ::arangodb::containers::HashSet<DataSourceId> sources;
 
          // get list of CIDs for restricted collections
          for (size_t i = 0, n = value.numMembers(); i < n; ++i) {
@@ -285,7 +287,8 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
 
            switch (sub->value.type) {
              case aql::VALUE_TYPE_INT: {
-               sources.insert(TRI_voc_cid_t(sub->getIntValue(true)));
+               sources.insert(DataSourceId{
+                   static_cast<DataSourceId::BaseType>(sub->getIntValue(true))});
                break;
              }
 
@@ -295,10 +298,9 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
                auto collection = resolver.getCollection(name);
 
                if (!collection) {
-                 // check if TRI_voc_cid_t is passed as string
-                 auto const cid =
-                     NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(),
-                                                           name.data() + name.size());
+                 // check if DataSourceId is passed as string
+                 DataSourceId const cid{NumberUtils::atoi_zero<DataSourceId::BaseType>(
+                     name.data(), name.data() + name.size())};
 
                  collection = resolver.getCollection(cid);
 
@@ -324,7 +326,7 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
 
          // check if CIDs are valid
          size_t sourcesFound = 0;
-         auto checkCids = [&sources, &sourcesFound](TRI_voc_cid_t cid) {
+         auto checkCids = [&sources, &sourcesFound](DataSourceId cid) {
            sourcesFound += size_t(sources.contains(cid));
            return true;
          };
@@ -449,7 +451,6 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     other helpers
 // -----------------------------------------------------------------------------
-
 // in loop or non-deterministic
 bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
                      aql::Variable const& ref, aql::VarSet& vars) {
@@ -464,16 +465,11 @@ bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
       // unable to find setter
       continue;
     }
-
-    if (!setter->isDeterministic()) {
-      // found nondeterministic setter
-      return true;
-    }
-
     switch (setter->getType()) {
       case aql::ExecutionNode::ENUMERATE_COLLECTION:
       case aql::ExecutionNode::ENUMERATE_LIST:
       case aql::ExecutionNode::SUBQUERY:
+      case aql::ExecutionNode::SUBQUERY_END:
       case aql::ExecutionNode::COLLECT:
       case aql::ExecutionNode::TRAVERSAL:
       case aql::ExecutionNode::INDEX:
@@ -484,6 +480,9 @@ bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
         return true;
       default:
         break;
+    }
+    if (!setter->isDeterministic() || setter->getLoop() != nullptr) {
+      return true;
     }
   }
 
@@ -556,7 +555,7 @@ int evaluateVolatility(IResearchViewNode const& node) {
   return mask;
 }
 
-std::function<bool(TRI_voc_cid_t)> const viewIsEmpty = [](TRI_voc_cid_t) {
+std::function<bool(DataSourceId)> const viewIsEmpty = [](DataSourceId) {
   return false;
 };
 
@@ -568,7 +567,7 @@ std::function<bool(TRI_voc_cid_t)> const viewIsEmpty = [](TRI_voc_cid_t) {
 ////////////////////////////////////////////////////////////////////////////////
 class Snapshot : public IResearchView::Snapshot, private irs::util::noncopyable {
  public:
-  typedef std::vector<std::pair<TRI_voc_cid_t, irs::sub_reader const*>> readers_t;
+  typedef std::vector<std::pair<DataSourceId, irs::sub_reader const*>> readers_t;
 
   Snapshot(readers_t&& readers, uint64_t docs_count, uint64_t live_docs_count) noexcept
       : _readers(std::move(readers)),
@@ -578,7 +577,7 @@ class Snapshot : public IResearchView::Snapshot, private irs::util::noncopyable 
   /// @brief constructs snapshot from a given snapshot
   ///        according to specified set of collections
   Snapshot(const IResearchView::Snapshot& rhs,
-           ::arangodb::containers::HashSet<TRI_voc_cid_t> const& collections);
+           ::arangodb::containers::HashSet<DataSourceId> const& collections);
 
   /// @returns corresponding sub-reader
   virtual const irs::sub_reader& operator[](size_t i) const noexcept override {
@@ -586,7 +585,7 @@ class Snapshot : public IResearchView::Snapshot, private irs::util::noncopyable 
     return *(_readers[i].second);
   }
 
-  virtual TRI_voc_cid_t cid(size_t i) const noexcept override {
+  virtual DataSourceId cid(size_t i) const noexcept override {
     assert(i < readers_.size());
     return _readers[i].first;
   }
@@ -609,7 +608,7 @@ class Snapshot : public IResearchView::Snapshot, private irs::util::noncopyable 
 };  // Snapshot
 
 Snapshot::Snapshot(const IResearchView::Snapshot& rhs,
-                   ::arangodb::containers::HashSet<TRI_voc_cid_t> const& collections)
+                   ::arangodb::containers::HashSet<DataSourceId> const& collections)
     : _docs_count(0), _live_docs_count(0) {
   for (size_t i = 0, size = rhs.size(); i < size; ++i) {
     auto const cid = rhs.cid(i);
@@ -663,7 +662,7 @@ SnapshotPtr snapshotDBServer(IResearchViewNode const& node, transaction::Methods
   auto* resolver = trx.resolver();
   TRI_ASSERT(resolver);
 
-  ::arangodb::containers::HashSet<TRI_voc_cid_t> collections;
+  ::arangodb::containers::HashSet<DataSourceId> collections;
   for (auto& shard : node.shards()) {
     auto collection = resolver->getCollection(shard);
 
@@ -918,7 +917,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
   auto const viewId = viewIdSlice.copyString();
 
   if (ServerState::instance()->isSingleServer()) {
-    _view = _vocbase.lookupView(basics::StringUtils::uint64(viewId));
+    _view = _vocbase.lookupView(DataSourceId{basics::StringUtils::uint64(viewId)});
   } else {
     // need cluster wide view
     TRI_ASSERT(_vocbase.server().hasFeature<ClusterFeature>());
@@ -1117,7 +1116,7 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   nodes.add(NODE_DATABASE_PARAM, VPackValue(_vocbase.name()));
   // need 'view' field to correctly print view name in JS explanation
   nodes.add(NODE_VIEW_NAME_PARAM, VPackValue(_view->name()));
-  nodes.add(NODE_VIEW_ID_PARAM, VPackValue(basics::StringUtils::itoa(_view->id())));
+  nodes.add(NODE_VIEW_ID_PARAM, VPackValue(basics::StringUtils::itoa(_view->id().id())));
 
   // our variable
   nodes.add(VPackValue(NODE_OUT_VARIABLE_PARAM));
@@ -1219,8 +1218,8 @@ std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::co
 
   std::vector<std::reference_wrapper<aql::Collection const>> viewCollections;
 
-  auto visitor = [&viewCollections, &collections](TRI_voc_cid_t cid) -> bool {
-    auto const id = basics::StringUtils::itoa(cid);
+  auto visitor = [&viewCollections, &collections](DataSourceId cid) -> bool {
+    auto const id = basics::StringUtils::itoa(cid.id());
     auto const* collection = collections.get(id);
 
     if (collection) {
@@ -1300,8 +1299,41 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
   if (_dependencies.empty()) {
     return aql::CostEstimate::empty();
   }
-  // TODO: get a better guess from view
-  aql::CostEstimate estimate = _dependencies[0]->getCost();
+
+  TRI_ASSERT(_plan && _plan->getAst());
+  transaction::Methods& trx = _plan->getAst()->query().trxForOptimization();
+  if (trx.status() != transaction::Status::RUNNING) {
+    return aql::CostEstimate::empty();
+  }
+
+  auto const& collections = _plan->getAst()->query().collections();
+
+  size_t estimatedNrItems = 0;
+  auto visitor = [&trx, &estimatedNrItems, &collections](DataSourceId cid) -> bool {
+    auto const id = basics::StringUtils::itoa(cid.id());
+    auto const* collection = collections.get(id);
+
+    if (collection) {
+      // FIXME better to gather count for multiple collections at once
+      estimatedNrItems += collection->count(&trx, transaction::CountType::TryCache);
+    } else {
+      LOG_TOPIC("ee276", WARN, arangodb::iresearch::TOPIC)
+          << "collection with id '" << id << "' is not registered with the query";
+    }
+
+    return true;
+  };
+
+  if (_options.restrictSources) {
+    for (auto const cid : _options.sources) {
+      visitor(cid);
+    }
+  } else {
+    _view->visitCollections(visitor);
+  }
+
+  aql::CostEstimate estimate = _dependencies.at(0)->getCost();
+  estimate.estimatedNrItems *= estimatedNrItems;
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }

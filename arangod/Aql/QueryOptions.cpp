@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,48 +35,60 @@
 
 using namespace arangodb::aql;
 
-QueryOptions::QueryOptions(arangodb::QueryRegistryFeature& feature)
+size_t QueryOptions::defaultMemoryLimit = 0;
+size_t QueryOptions::defaultMaxNumberOfPlans = 128;
+double QueryOptions::defaultMaxRuntime= 0.0;
+double QueryOptions::defaultTtl;
+bool QueryOptions::defaultFailOnWarning;
+
+QueryOptions::QueryOptions()
     : memoryLimit(0),
-      maxNumberOfPlans(0),
+      maxNumberOfPlans(QueryOptions::defaultMaxNumberOfPlans),
       maxWarningCount(10),
-      maxRuntime(0),
+      maxRuntime(0.0),
       satelliteSyncWait(60.0),
-      ttl(0),
-      profile(PROFILE_LEVEL_NONE),
+      ttl(QueryOptions::defaultTtl), // get global default ttl
+      profile(ProfileLevel::None),
       allPlans(false),
       verbosePlans(false),
       stream(false),
       silent(false),
-      failOnWarning(false),
+      failOnWarning(QueryOptions::defaultFailOnWarning), // use global "failOnWarning" value
       cache(false),
       fullCount(false),
       count(false),
       verboseErrors(false),
       inspectSimplePlans(true),
-      explainRegisters(ExplainRegisterPlan::No)
-{
+      explainRegisters(ExplainRegisterPlan::No) {
   // now set some default values from server configuration options
-  // use global memory limit value
-  uint64_t globalLimit = feature.queryMemoryLimit();
-  if (globalLimit > 0) {
-    memoryLimit = globalLimit;
+  {
+    // use global memory limit value
+    uint64_t globalLimit = QueryOptions::defaultMemoryLimit;
+    if (globalLimit > 0) {
+      memoryLimit = globalLimit;
+    }
   }
 
-  // get global default ttl
-  ttl = feature.registry()->defaultTTL();
-
-  // use global "failOnWarning" value
-  failOnWarning = feature.failOnWarning();
-
+  {
+    // use global max runtime value
+    double globalLimit = QueryOptions::defaultMaxRuntime;
+    if (globalLimit > 0.0) {
+      maxRuntime = globalLimit;
+    }
+  }
+  
   // "cache" only defaults to true if query cache is turned on
   auto queryCacheMode = QueryCache::instance()->mode();
   cache = (queryCacheMode == CACHE_ALWAYS_ON);
 
-  maxNumberOfPlans = feature.maxQueryPlans();
   TRI_ASSERT(maxNumberOfPlans > 0);
 }
 
-void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
+QueryOptions::QueryOptions(arangodb::velocypack::Slice const slice) : QueryOptions() {
+  this->fromVelocyPack(slice);
+}
+
+void QueryOptions::fromVelocyPack(VPackSlice const slice) {
   if (!slice.isObject()) {
     return;
   }
@@ -123,9 +135,9 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   // boolean options
   value = slice.get("profile");
   if (value.isBool()) {
-    profile = value.getBool() ? PROFILE_LEVEL_BASIC : PROFILE_LEVEL_NONE;
+    profile = value.getBool() ? ProfileLevel::Basic : ProfileLevel::None;
   } else if (value.isNumber()) {
-    profile = static_cast<ProfileLevel>(value.getNumber<uint32_t>());
+    profile = static_cast<ProfileLevel>(value.getNumber<uint16_t>());
   }
 
   value = slice.get("stream");
@@ -194,7 +206,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   if (value.isArray()) {
     VPackArrayIterator it(value);
     while (it.valid()) {
-      VPackSlice value = it.value();
+      value = it.value();
       if (value.isString()) {
         restrictToShards.emplace(value.copyString());
       }
@@ -207,7 +219,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   if (value.isArray()) {
     VPackArrayIterator it(value);
     while (it.valid()) {
-      VPackSlice value = it.value();
+      value = it.value();
       if (value.isString()) {
         inaccessibleCollections.emplace(value.copyString());
       }

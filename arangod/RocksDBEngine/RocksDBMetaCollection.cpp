@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -75,7 +76,7 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
     _revisionTreeCreationSeq = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
     _revisionTreeSerializedSeq = _revisionTreeCreationSeq;
     _revisionTree =
-        std::make_unique<containers::RevisionTree>(6, collection.minRevision());
+        std::make_unique<containers::RevisionTree>(6, collection.minRevision().id());
   }
 }
 
@@ -98,7 +99,7 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
     _revisionTreeCreationSeq = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
     _revisionTreeSerializedSeq = _revisionTreeCreationSeq;
     _revisionTree =
-        std::make_unique<containers::RevisionTree>(6, collection.minRevision());
+        std::make_unique<containers::RevisionTree>(6, collection.minRevision().id());
   }
 }
 
@@ -112,7 +113,7 @@ void RocksDBMetaCollection::deferDropCollection(std::function<bool(LogicalCollec
   _revisionTree.reset();
 }
 
-TRI_voc_rid_t RocksDBMetaCollection::revision(transaction::Methods* trx) const {
+RevisionId RocksDBMetaCollection::revision(transaction::Methods* trx) const {
   auto* state = RocksDBTransactionState::toState(trx);
   auto trxCollection = static_cast<RocksDBTransactionCollection*>(
                                                                   state->findCollection(_logicalCollection.id()));
@@ -223,7 +224,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     LOG_TOPIC("ad6d3", WARN, Logger::REPLICATION)
     << "inconsistent collection count detected, "
     << "an offet of " << adjustment << " will be applied";
-    _meta.adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
+    _meta.adjustNumberDocuments(seq, RevisionId::none(), adjustment);
   }
   
   return _meta.numberDocuments();
@@ -477,8 +478,8 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
 
 Result RocksDBMetaCollection::rebuildRevisionTree() {
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
-  _revisionTree =
-      std::make_unique<containers::RevisionTree>(6, _logicalCollection.minRevision());
+  _revisionTree = std::make_unique<containers::RevisionTree>(
+      6, _logicalCollection.minRevision().id());
 
   Result res = basics::catchToResult([this]() -> Result {
     auto ctxt = transaction::StandaloneContext::Create(_logicalCollection.vocbase());
@@ -488,24 +489,24 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
       LOG_TOPIC("d1e53", WARN, arangodb::Logger::ENGINES)
           << "failed to begin transaction to rebuild revision tree "
              "for collection '"
-          << _logicalCollection.id() << "'";
+          << _logicalCollection.id().id() << "'";
       return res;
     }
     auto* state = RocksDBTransactionState::toState(&trx);
 
-    std::vector<std::size_t> revisions;
+    std::vector<std::uint64_t> revisions;
     auto iter = getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
     if (!iter) {
       LOG_TOPIC("d1e54", WARN, arangodb::Logger::ENGINES)
           << "failed to retrieve replication iterator to rebuild revision tree "
              "for collection '"
-          << _logicalCollection.id() << "'";
+          << _logicalCollection.id().id() << "'";
       return Result(TRI_ERROR_INTERNAL);
     }
     RevisionReplicationIterator& it =
         *static_cast<RevisionReplicationIterator*>(iter.get());
     while (it.hasMore()) {
-      revisions.emplace_back(it.revision());
+      revisions.emplace_back(it.revision().id());
       if (revisions.size() >= 5000) {  // arbitrary batch size
         _revisionTree->insert(revisions);
         revisions.clear();
@@ -535,9 +536,9 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     ro.iterate_upper_bound = &end;
     ro.fill_cache = false;
 
-    std::vector<std::size_t> revisions;
+    std::vector<std::uint64_t> revisions;
     auto* db = rocksutils::globalRocksDB();
-    auto iter = db->NewIterator(ro, documentBounds.columnFamily());
+    std::unique_ptr<rocksdb::Iterator> iter(db->NewIterator(ro, documentBounds.columnFamily()));
     for (iter->Seek(documentBounds.start());
          iter->Valid() && cmp->Compare(iter->key(), end) < 0; iter->Next()) {
       LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
@@ -572,19 +573,19 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder) {
   }
 }
 
-void RocksDBMetaCollection::placeRevisionTreeBlocker(TRI_voc_tid_t transactionId) {
+void RocksDBMetaCollection::placeRevisionTreeBlocker(TransactionId transactionId) {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
   _meta.placeBlocker(transactionId, preSeq);
 }
 
-void RocksDBMetaCollection::removeRevisionTreeBlocker(TRI_voc_tid_t transactionId) {
+void RocksDBMetaCollection::removeRevisionTreeBlocker(TransactionId transactionId) {
   _meta.removeBlocker(transactionId);
 }
 
 void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
-                                          std::vector<std::size_t>&& inserts,
-                                          std::vector<std::size_t>&& removals) {
+                                          std::vector<std::uint64_t>&& inserts,
+                                          std::vector<std::uint64_t>&& removals) {
   if (!_logicalCollection.useSyncByRevision()) {
     return;
   }
@@ -660,8 +661,8 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
   TRI_ASSERT(_revisionTree);
 
   Result res = basics::catchVoidToResult([&]() -> void {
-    std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>>::const_iterator insertIt;
-    std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>>::const_iterator removeIt;
+    decltype(_revisionInsertBuffers)::const_iterator insertIt;
+    decltype(_revisionRemovalBuffers)::const_iterator removeIt;
     {
       std::unique_lock<std::mutex> guard(_revisionBufferLock);
       insertIt = _revisionInsertBuffers.begin();
@@ -693,8 +694,8 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
     }
 
     while (true) {
-      std::vector<std::size_t> inserts;
-      std::vector<std::size_t> removals;
+      std::vector<std::uint64_t> inserts;
+      std::vector<std::uint64_t> removals;
       // find out if we have buffers to apply
       {
         bool haveInserts = insertIt != _revisionInsertBuffers.end() &&
@@ -751,8 +752,8 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
   }
 
   Result res = basics::catchVoidToResult([&]() -> void {
-    std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>>::const_iterator insertIt;
-    std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>>::const_iterator removeIt;
+    decltype(_revisionInsertBuffers)::const_iterator insertIt;
+    decltype(_revisionRemovalBuffers)::const_iterator removeIt;
     {
       std::unique_lock<std::mutex> guard(_revisionBufferLock);
       insertIt = _revisionInsertBuffers.begin();
@@ -784,8 +785,8 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
     }
 
     while (true) {
-      std::vector<std::size_t> const* inserts = nullptr;
-      std::vector<std::size_t> const* removals = nullptr;
+      std::vector<std::uint64_t> const* inserts = nullptr;
+      std::vector<std::uint64_t> const* removals = nullptr;
       // find out if we have buffers to apply
       {
         bool haveInserts = insertIt != _revisionInsertBuffers.end() &&

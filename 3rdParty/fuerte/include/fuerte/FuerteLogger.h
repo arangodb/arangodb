@@ -20,6 +20,27 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
+
+// Please leave the following debug code in for the next time we have to
+// debug fuerte.
+#if 0
+#include <iostream>
+#include <sstream>
+
+extern void LogHackWriter(char const* p);
+
+class LogHack {
+  std::stringstream _s;
+ public:
+  LogHack() {};
+  ~LogHack() { LogHackWriter(_s.str().c_str()); };
+  template<typename T> LogHack& operator<<(T const& o) { _s << o; return *this; }
+  typedef std::basic_ostream<char, std::char_traits<char> > CoutType;
+  typedef CoutType& (*StandardEndLine)(CoutType&);
+  LogHack& operator<<(StandardEndLine manip) { return *this; }
+};
+#endif
+
 #ifndef ARANGO_CXX_DRIVER_FUERTE_LOGGER
 #define ARANGO_CXX_DRIVER_FUERTE_LOGGER 1
 

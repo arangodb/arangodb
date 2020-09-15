@@ -98,7 +98,7 @@ memory_index_input::memory_index_input(const memory_file& file) noexcept
 }
 
 index_input::ptr memory_index_input::dup() const {
-  return index_input::make<memory_index_input>(*this);
+  return ptr(new memory_index_input(*this));
 }
 
 int64_t memory_index_input::checksum(size_t offset) const {
@@ -181,6 +181,20 @@ void memory_index_input::seek(size_t pos) {
   }
 
   switch_buffer(pos);
+}
+
+
+const byte_type* memory_index_input::read_buffer(
+    size_t size,
+    BufferHint /*hint*/) noexcept {
+  const auto* begin = begin_ + size;
+
+  if (begin > end_) {
+    return nullptr;
+  }
+
+  std::swap(begin, begin_);
+  return begin;
 }
 
 byte_type memory_index_input::read_byte() {
@@ -453,8 +467,7 @@ bool memory_directory::length(
 }
 
 index_lock::ptr memory_directory::make_lock(
-    const std::string& name
-) noexcept {
+    const std::string& name) noexcept {
   try {
     return index_lock::make<single_instance_lock>(name, this);
   } catch (...) {
@@ -485,8 +498,7 @@ bool memory_directory::mtime(
 
 index_input::ptr memory_directory::open(
     const std::string& name,
-    IOAdvice /*advice*/
-) const noexcept {
+    IOAdvice /*advice*/) const noexcept {
   try {
     async_utils::read_write_mutex::read_mutex mutex(flock_);
     SCOPED_LOCK(mutex);
@@ -494,7 +506,7 @@ index_input::ptr memory_directory::open(
     const auto it = files_.find(name);
 
     if (it != files_.end()) {
-      return index_input::make<memory_index_input>(*it->second);
+      return memory::make_unique<memory_index_input>(*it->second);
     }
 
     IR_FRMT_ERROR("Failed to open input file, error: File not found, path: %s", name.c_str());

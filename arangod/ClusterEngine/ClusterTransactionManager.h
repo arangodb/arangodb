@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,13 +37,13 @@ class ClusterTransactionManager final : public TransactionManager {
   ~ClusterTransactionManager() = default;
 
   // register a transaction
-  void registerTransaction(TRI_voc_tid_t /*transactionId*/,
+  void registerTransaction(TransactionId /*transactionId*/,
                            bool /*isReadOnlyTransaction*/) override {
     ++_nrRunning;
   }
 
   // unregister a transaction
-  void unregisterTransaction(TRI_voc_tid_t transactionId, bool /*isReadOnlyTransaction*/) override {
+  void unregisterTransaction(TransactionId transactionId, bool /*isReadOnlyTransaction*/) override {
     --_nrRunning;
   }
 

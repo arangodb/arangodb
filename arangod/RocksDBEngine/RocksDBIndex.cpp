@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,7 @@
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
+#include "Transaction/Context.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -232,7 +233,7 @@ Result RocksDBIndex::drop() {
   return r;
 }
 
-void RocksDBIndex::afterTruncate(TRI_voc_tick_t) {
+void RocksDBIndex::afterTruncate(TRI_voc_tick_t, arangodb::transaction::Methods*) {
   // simply drop the cache and re-create it
   if (_cacheEnabled) {
     destroyCache();
@@ -243,9 +244,10 @@ void RocksDBIndex::afterTruncate(TRI_voc_tick_t) {
 
 Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
                             LocalDocumentId const& oldDocumentId,
-                            velocypack::Slice const& oldDoc,
+                            velocypack::Slice const oldDoc,
                             LocalDocumentId const& newDocumentId,
-                            velocypack::Slice const& newDoc, Index::OperationMode mode) {
+                            velocypack::Slice const newDoc,
+                            OperationOptions& options) {
   // It is illegal to call this method on the primary index
   // RocksDBPrimaryIndex must override this method accordingly
   TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
@@ -255,12 +257,10 @@ Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
   
   TRI_ASSERT((hasExpansion() && unique()) ? !mthd->isIndexingDisabled() : true);
   
-  Result res = remove(trx, mthd, oldDocumentId, oldDoc, mode);
+  Result res = remove(trx, mthd, oldDocumentId, oldDoc);
   if (!res.ok()) {
     return res;
   }
-  OperationOptions options;
-  options.indexOperationMode = mode;
   return insert(trx, mthd, newDocumentId, newDoc, options);
 }
 
@@ -290,15 +290,15 @@ void RocksDBIndex::compact() {
   }
 }
 
-// blacklist given key from transactional cache
-void RocksDBIndex::blackListKey(char const* data, std::size_t len) {
+// banish given key from transactional cache
+void RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
   if (useCache()) {
     TRI_ASSERT(_cache != nullptr);
-    bool blacklisted = false;
-    while (!blacklisted) {
-      auto status = _cache->blacklist(data, static_cast<uint32_t>(len));
+    bool banished = false;
+    while (!banished) {
+      auto status = _cache->banish(data, static_cast<uint32_t>(len));
       if (status.ok()) {
-        blacklisted = true;
+        banished = true;
       } else if (status.errorNumber() == TRI_ERROR_SHUTTING_DOWN) {
         destroyCache();
         break;
@@ -318,9 +318,9 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type, uint64_t objectI
     case RocksDBIndex::TRI_IDX_TYPE_TTL_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX:
       if (unique) {
-        return RocksDBKeyBounds::UniqueVPackIndex(objectId);
+        return RocksDBKeyBounds::UniqueVPackIndex(objectId, false);
       }
-      return RocksDBKeyBounds::VPackIndex(objectId);
+      return RocksDBKeyBounds::VPackIndex(objectId, false);
     case RocksDBIndex::TRI_IDX_TYPE_FULLTEXT_INDEX:
       return RocksDBKeyBounds::FulltextIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_GEO1_INDEX:

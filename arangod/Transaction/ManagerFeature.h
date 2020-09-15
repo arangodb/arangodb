@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -38,14 +39,16 @@ class ManagerFeature final : public application_features::ApplicationFeature {
  public:
   explicit ManagerFeature(application_features::ApplicationServer& server);
 
+  void collectOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) override;
   void prepare() override;
   void start() override;
   void stop() override;
   void beginShutdown() override;
   void unprepare() override;
 
+  double streamingLockTimeout() const { return _streamingLockTimeout; }
+
   static transaction::Manager* manager() {
-    TRI_ASSERT(MANAGER != nullptr);
     return MANAGER.get();
   }
 
@@ -55,8 +58,11 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
 
-  /// @brief where rhythm is life, and life is rhythm :)
+  // where rhythm is life, and life is rhythm :)
   std::function<void(bool)> _gcfunc;
+
+  // lock time in seconds
+  double _streamingLockTimeout;
 };
 
 }  // namespace transaction

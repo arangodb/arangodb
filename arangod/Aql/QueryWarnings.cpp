@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,7 +37,7 @@ QueryWarnings::QueryWarnings()
   : _maxWarningCount(std::numeric_limits<size_t>::max()),
     _failOnWarning(false) {}
 
-/// @brief register an error, with an optional parameter inserted into printf
+/// @brief register an error
 /// this also makes the query abort
 void QueryWarnings::registerError(int code, char const* details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
@@ -45,7 +46,7 @@ void QueryWarnings::registerError(int code, char const* details) {
     THROW_ARANGO_EXCEPTION(code);
   }
 
-  THROW_ARANGO_EXCEPTION_PARAMS(code, details);
+  THROW_ARANGO_EXCEPTION_MESSAGE(code, details);
 }
 
 void QueryWarnings::registerWarning(int code, std::string const& details) {
@@ -103,8 +104,11 @@ void QueryWarnings::updateOptions(QueryOptions const& opts) {
   _failOnWarning = opts.failOnWarning;
 }
 
-
 std::vector<std::pair<int, std::string>> QueryWarnings::all() const {
   std::lock_guard<std::mutex> guard(_mutex);
   return _list;
+}
+
+std::string QueryWarnings::buildFormattedString(int code, char const* details) {
+  return arangodb::basics::Exception::FillExceptionString(code, details);
 }

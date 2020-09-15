@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -101,12 +101,11 @@ class Optimizer {
     int64_t rulesSkipped = 0;
     int64_t plansCreated = 1;  // 1 for the initial plan
 
-    void toVelocyPack(velocypack::Builder& b) const {
-      velocypack::ObjectBuilder guard(&b, true);
-      b.add("rulesExecuted", velocypack::Value(rulesExecuted));
-      b.add("rulesSkipped", velocypack::Value(rulesSkipped));
-      b.add("plansCreated", velocypack::Value(plansCreated));
-    }
+    /// @brief map with execution times per rule, only populated in
+    /// case tracing is enabled, a nullptr otherwise!
+    std::unique_ptr<std::unordered_map<int, double>> executionTimes;
+
+    void toVelocyPack(velocypack::Builder& b) const;
   };
 
   /// @brief constructor, this will initialize the rules database

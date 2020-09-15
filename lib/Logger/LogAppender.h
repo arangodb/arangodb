@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,14 +25,18 @@
 #define ARANGODB_LOGGER_LOG_APPENDER_H 1
 
 #include <stddef.h>
+#include <array>
 #include <functional>
 #include <map>
 #include <memory>
 #include <string>
+#include <typeindex>
 #include <utility>
 #include <vector>
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
+#include "Logger/LogGroup.h"
 #include "Logger/LogLevel.h"
 
 namespace arangodb {
@@ -42,23 +46,23 @@ class Mutex;
 
 class LogAppender {
  public:
-  static void addAppender(std::string const& definition,
-                          std::string const& contentFilter = "");
-  
-  static void addGlobalAppender(std::shared_ptr<LogAppender>);
-  
-  static std::pair<std::shared_ptr<LogAppender>, LogTopic*> buildAppender(
-      std::string const& definition, std::string const& contentFilter);
+  static void addAppender(LogGroup const&, std::string const& definition);
 
-  static void logGlobal(LogMessage const&);
-  static void log(LogMessage const&);
+  static void addGlobalAppender(LogGroup const&, std::shared_ptr<LogAppender>);
+
+  static std::shared_ptr<LogAppender> buildAppender(LogGroup const&,
+                                                    std::string const& output);
+
+  static void logGlobal(LogGroup const&, LogMessage const&);
+  static void log(LogGroup const&, LogMessage const&);
 
   static void reopen();
   static void shutdown();
 
+  static bool haveAppenders(LogGroup const&, size_t topicId);
+
  public:
   LogAppender() = default;
-  explicit LogAppender(std::string const& filter) : _filter(filter) {}
   virtual ~LogAppender() = default;
 
   LogAppender(LogAppender const&) = delete;
@@ -69,21 +73,19 @@ class LogAppender {
 
   virtual std::string details() const = 0;
 
-  bool checkContent(std::string const& message) const {
-    return _filter.empty() || (message.find(_filter) != std::string::npos);
-  }
-
   static bool allowStdLogging() { return _allowStdLogging; }
   static void allowStdLogging(bool value) { _allowStdLogging = value; }
 
- protected:
-  std::string const _filter;  // an optional content filter for log messages
-
+  static Result parseDefinition(std::string const& definition, 
+                                std::string& topicName,
+                                std::string& output,
+                                LogTopic*& topic);
+ 
  private:
   static Mutex _appendersLock;
-  static std::vector<std::shared_ptr<LogAppender>> _globalAppenders;
-  static std::map<size_t, std::vector<std::shared_ptr<LogAppender>>> _topics2appenders;
-  static std::map<std::pair<std::string, std::string>, std::shared_ptr<LogAppender>> _definition2appenders;
+  static std::array<std::vector<std::shared_ptr<LogAppender>>, LogGroup::Count> _globalAppenders;
+  static std::array<std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>, LogGroup::Count> _topics2appenders;
+  static std::array<std::map<std::string, std::shared_ptr<LogAppender>>, LogGroup::Count> _definition2appenders;
   static bool _allowStdLogging;
 };
 }  // namespace arangodb

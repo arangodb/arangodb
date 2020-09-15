@@ -88,7 +88,7 @@ int dump(
              << std::endl;
 
       auto term = field.iterator();
-      auto& term_meta = term->attributes().get<irs::term_meta>();
+      auto const& term_meta = irs::get<irs::term_meta>(*term);
       stream << "Values" << std::endl;
       for (; term->next(); ) {
         term->read();

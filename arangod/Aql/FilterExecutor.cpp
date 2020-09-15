@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -67,14 +68,8 @@ auto FilterExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& 
     }
   }
 
+  // Just fetch everything from above, allow overfetching
   AqlCall upstreamCall{};
-  if (call.needSkipMore() && call.getLimit() == 0) {
-    // FullCount case, we need to skip more, but limit is reached.
-    upstreamCall.softLimit = ExecutionBlock::SkipAllSize();
-  } else {
-    upstreamCall.softLimit = call.getOffset();
-  }
-
   return {inputRange.upstreamState(), stats, call.getSkipCount(), upstreamCall};
 }
 
@@ -96,12 +91,8 @@ auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
     }
   }
 
+  // Just fetch everything from above, allow overfetching
   AqlCall upstreamCall{};
-  auto const& clientCall = output.getClientCall();
-  // This is a optimistic fetch. We do not do any overfetching here, only if we
-  // pass through all rows this fetch is correct, otherwise we have too few rows.
-  upstreamCall.softLimit = clientCall.getOffset() +
-                           (std::min)(clientCall.softLimit, clientCall.hardLimit);
   return {inputRange.upstreamState(), stats, upstreamCall};
 }
 

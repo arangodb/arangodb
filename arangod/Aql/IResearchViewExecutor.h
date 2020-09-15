@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -441,7 +442,7 @@ class IResearchViewExecutor
 
   // case ordered only:
   irs::score const* _scr;
-  irs::bytes_ref _scrVal;
+  size_t _numScores;
 };  // IResearchViewExecutor
 
 template <bool ordered, iresearch::MaterializeType materializeType>
@@ -472,10 +473,13 @@ class IResearchViewMergeExecutor
 
   struct Segment {
     Segment(irs::doc_iterator::ptr&& docs, irs::document const& doc,
-            irs::score const& score, LogicalCollection const& collection,
+            irs::score const& score, size_t numScores,
+            LogicalCollection const& collection,
             irs::doc_iterator::ptr&& pkReader,
-            ColumnIterator&& sortReader,
-            size_t storedValuesIndex) noexcept;
+            size_t storedValuesIndex,
+            irs::doc_iterator* sortReaderRef,
+            irs::payload const* sortReaderValue,
+            irs::doc_iterator::ptr&& sortReader) noexcept;
     Segment(Segment const&) = delete;
     Segment(Segment&&) = default;
     Segment& operator=(Segment const&) = delete;
@@ -484,10 +488,13 @@ class IResearchViewMergeExecutor
     irs::doc_iterator::ptr docs;
     irs::document const* doc{};
     irs::score const* score{};
+    size_t numScores{};
     arangodb::LogicalCollection const* collection{};  // collecton associated with a segment
     ColumnIterator pkReader;    // primary key reader
-    ColumnIterator sortReader;  // sort column reader
     size_t storedValuesIndex;  // first stored values index
+    irs::doc_iterator* sortReaderRef; // pointer to sort column reader
+    irs::payload const* sortValue;    // sort column value
+    irs::doc_iterator::ptr sortReader; // sort column reader
   };
 
   class MinHeapContext {
@@ -508,7 +515,7 @@ class IResearchViewMergeExecutor
   // reads local document id from a specified segment
   LocalDocumentId readPK(Segment const& segment);
 
-  void evaluateScores(ReadContext const& ctx, irs::score const& score);
+  void evaluateScores(ReadContext const& ctx, irs::score const& score, size_t numScores);
 
   void fillBuffer(ReadContext& ctx);
 

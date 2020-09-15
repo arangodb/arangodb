@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +33,6 @@
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Aql/QueryRegistry.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
@@ -74,7 +73,6 @@ void Constituent::configure(Agent* agent) {
 Constituent::Constituent(application_features::ApplicationServer& server)
     : Thread(server, "Constituent"),
       _vocbase(nullptr),
-      _queryRegistry(nullptr),
       _term(0),
       _gterm(_server.getFeature<arangodb::MetricsFeature>().gauge(
                "arangodb_agency_term", _term, "Agency's term")),
@@ -578,10 +576,9 @@ void Constituent::beginShutdown() {
 }
 
 /// Start operation
-bool Constituent::start(TRI_vocbase_t* vocbase, aql::QueryRegistry* queryRegistry) {
+bool Constituent::start(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase != nullptr);
   _vocbase = vocbase;
-  _queryRegistry = queryRegistry;
 
   return Thread::start();
 }

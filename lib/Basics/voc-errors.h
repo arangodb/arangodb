@@ -569,32 +569,32 @@ constexpr int TRI_ERROR_ARANGO_IO_ERROR                                         
 /// 1400: ERROR_REPLICATION_NO_RESPONSE
 /// "no response"
 /// Will be raised when the replication applier does not receive any or an
-/// incomplete response from the master.
+/// incomplete response from the leader.
 constexpr int TRI_ERROR_REPLICATION_NO_RESPONSE                                 = 1400;
 
 /// 1401: ERROR_REPLICATION_INVALID_RESPONSE
 /// "invalid response"
 /// Will be raised when the replication applier receives an invalid response
-/// from the master.
+/// from the leader.
 constexpr int TRI_ERROR_REPLICATION_INVALID_RESPONSE                            = 1401;
 
-/// 1402: ERROR_REPLICATION_MASTER_ERROR
-/// "master error"
+/// 1402: ERROR_REPLICATION_LEADER_ERROR
+/// "leader error"
 /// Will be raised when the replication applier receives a server error from
-/// the master.
-constexpr int TRI_ERROR_REPLICATION_MASTER_ERROR                                = 1402;
+/// the leader.
+constexpr int TRI_ERROR_REPLICATION_LEADER_ERROR                                = 1402;
 
-/// 1403: ERROR_REPLICATION_MASTER_INCOMPATIBLE
-/// "master incompatible"
-/// Will be raised when the replication applier connects to a master that has
+/// 1403: ERROR_REPLICATION_LEADER_INCOMPATIBLE
+/// "leader incompatible"
+/// Will be raised when the replication applier connects to a leader that has
 /// an incompatible version.
-constexpr int TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE                         = 1403;
+constexpr int TRI_ERROR_REPLICATION_LEADER_INCOMPATIBLE                         = 1403;
 
-/// 1404: ERROR_REPLICATION_MASTER_CHANGE
-/// "master change"
-/// Will be raised when the replication applier connects to a different master
+/// 1404: ERROR_REPLICATION_LEADER_CHANGE
+/// "leader change"
+/// Will be raised when the replication applier connects to a different leader
 /// than before.
-constexpr int TRI_ERROR_REPLICATION_MASTER_CHANGE                               = 1404;
+constexpr int TRI_ERROR_REPLICATION_LEADER_CHANGE                               = 1404;
 
 /// 1405: ERROR_REPLICATION_LOOP
 /// "loop detected"
@@ -1165,13 +1165,13 @@ constexpr int TRI_ERROR_CURSOR_NOT_FOUND                                        
 constexpr int TRI_ERROR_CURSOR_BUSY                                             = 1601;
 
 /// 1620: ERROR_VALIDATION_FAILED
-/// "validation failed"
-/// Will be raised when a document does not pass validation.
+/// "schema validation failed"
+/// Will be raised when a document does not pass schema validation.
 constexpr int TRI_ERROR_VALIDATION_FAILED                                       = 1620;
 
 /// 1621: ERROR_VALIDATION_BAD_PARAMETER
-/// "invalid validation parameter"
-/// Will be raised when the validator description is invalid.
+/// "invalid schema validation parameter"
+/// Will be raised when the schema description is invalid.
 constexpr int TRI_ERROR_VALIDATION_BAD_PARAMETER                                = 1621;
 
 /// 1650: ERROR_TRANSACTION_INTERNAL

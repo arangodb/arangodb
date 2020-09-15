@@ -54,10 +54,7 @@ filter::filter(const type_info& type) noexcept
 }
 
 filter::prepared::ptr filter::prepared::empty() {
-  // aliasing ctor
-  return filter::prepared::ptr(
-    filter::prepared::ptr(), &empty_query::instance()
-  );
+  return memory::to_managed<filter::prepared, false>(&empty_query::instance());
 }
 
 // -----------------------------------------------------------------------------
@@ -73,10 +70,7 @@ filter::prepared::ptr empty::prepare(
     const order::prepared&,
     boost_t,
     const attribute_provider*) const {
-  // aliasing ctor
-  return filter::prepared::ptr(
-    filter::prepared::ptr(), &empty_query::instance()
-  );
+  return memory::to_managed<filter::prepared, false>(&empty_query::instance());
 }
 
 NS_END // ROOT

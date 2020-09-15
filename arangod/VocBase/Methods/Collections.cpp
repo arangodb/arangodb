@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -40,8 +41,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -297,22 +296,69 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                  arangodb::velocypack::Value(useRevs));
       bool isSmartChild =
           Helper::getBooleanValue(info.properties, StaticStrings::IsSmartChild, false);
-      TRI_voc_rid_t minRev = (isSystem || isSmartChild) ? 0 : TRI_HybridLogicalClock();
-      helper.add(arangodb::StaticStrings::MinRevision, arangodb::velocypack::Value(minRev));
+      RevisionId minRev =
+          (isSystem || isSmartChild) ? RevisionId::none() : RevisionId::create();
+      helper.add(arangodb::StaticStrings::MinRevision,
+                 arangodb::velocypack::Value(minRev.toString()));
     }
 
-    if (ServerState::instance()->isCoordinator()) {
+    // If the PlanId is not set, we either are on a single server, or this is
+    // a local collection in a cluster; which means, it is neither a user-facing
+    // collection (as seen on a Coordinator), nor a shard (on a DBServer).
+    bool const isLocalCollection =
+        (!ServerState::instance()->isCoordinator() &&
+         Helper::stringUInt64(info.properties.get(StaticStrings::DataSourcePlanId)) == 0);
+
+    bool const isSystemName = TRI_vocbase_t::IsSystemName(info.name);
+
+    // All collections on a single server should be local collections.
+    // A Coordinator should never have local collections.
+    // On an Agent, all collections should be local collections.
+    // On a DBServer, the only local collections should be system collections
+    // (like _statisticsRaw). Non-local (system or not) collections are shards,
+    // so don't have system-names, even if they are system collections!
+    switch (ServerState::instance()->getRole()) {
+      case ServerState::ROLE_SINGLE:
+        TRI_ASSERT(isLocalCollection);
+        break;
+      case ServerState::ROLE_DBSERVER:
+        TRI_ASSERT(isLocalCollection == isSystemName);
+        break;
+      case ServerState::ROLE_COORDINATOR:
+        TRI_ASSERT(!isLocalCollection);
+        break;
+      case ServerState::ROLE_AGENT:
+        TRI_ASSERT(isLocalCollection);
+        break;
+      case ServerState::ROLE_UNDEFINED:
+        TRI_ASSERT(false);
+    }
+    
+    if (!isLocalCollection) {
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
       if (replicationFactorSlice.isNone()) {
         auto factor = vocbase.replicationFactor();
-        if (factor > 0 && isSystem) {
+        if (factor > 0 && isSystemName) {
           auto& cl = vocbase.server().getFeature<ClusterFeature>();
           factor = std::max(vocbase.replicationFactor(), cl.systemReplicationFactor());
         }
         helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
+      } else {
+        // the combination if "isSmart" and replicationFactor "satellite" does not make any sense.
+        // note: replicationFactor "satellite" can also be expressed as replicationFactor 0.
+        VPackSlice s = info.properties.get(StaticStrings::IsSmart);
+        if (s.isBoolean() && s.getBoolean() && 
+            ((replicationFactorSlice.isNumber() && 
+              replicationFactorSlice.getNumber<int>() == 0) || 
+             (replicationFactorSlice.isString() && 
+              replicationFactorSlice.stringRef() == StaticStrings::Satellite))) {
+          // check for the combination of "satellite" replication factor and "isSmart"
+          events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_BAD_PARAMETER);
+          return {TRI_ERROR_BAD_PARAMETER, "invalid combination of 'isSmart' and 'satellite' replicationFactor"};
+        }
       }
 
-      if (!isSystem) {
+      if (!isSystemName) {
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
@@ -546,11 +592,12 @@ Result Collections::load(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
 #ifdef USE_ENTERPRISE
     auto& feature = vocbase.server().getFeature<ClusterFeature>();
     return ULColCoordinatorEnterprise(feature, coll->vocbase().name(),
-                                      std::to_string(coll->id()), TRI_VOC_COL_STATUS_LOADED);
+                                      std::to_string(coll->id().id()),
+                                      TRI_VOC_COL_STATUS_LOADED);
 #else
     auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
     return ci.setCollectionStatusCoordinator(coll->vocbase().name(),
-                                             std::to_string(coll->id()),
+                                             std::to_string(coll->id().id()),
                                              TRI_VOC_COL_STATUS_LOADED);
 #endif
   }
@@ -571,11 +618,12 @@ Result Collections::unload(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
 #ifdef USE_ENTERPRISE
     auto& feature = vocbase->server().getFeature<ClusterFeature>();
     return ULColCoordinatorEnterprise(feature, vocbase->name(),
-                                      std::to_string(coll->id()),
+                                      std::to_string(coll->id().id()),
                                       TRI_VOC_COL_STATUS_UNLOADED);
 #else
     auto& ci = vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-    return ci.setCollectionStatusCoordinator(vocbase->name(), std::to_string(coll->id()),
+    return ci.setCollectionStatusCoordinator(vocbase->name(),
+                                             std::to_string(coll->id().id()),
                                              TRI_VOC_COL_STATUS_UNLOADED);
 #endif
   }
@@ -596,7 +644,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
       "allowUserKeys", "cid",    "count",  "deleted", "id",   "indexes", "name",
       "path",          "planId", "shards", "status",  "type", "version"};
 
-  if (!ServerState::instance()->isCoordinator()) {
+  if (!ServerState::instance()->isRunningInCluster()) {
     // These are only relevant for cluster
     ignoreKeys.insert({StaticStrings::DistributeShardsLike, StaticStrings::IsSmart,
                        StaticStrings::NumberOfShards, StaticStrings::ReplicationFactor,
@@ -632,7 +680,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
     ClusterInfo& ci =
         collection.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     auto info = ci.getCollection(collection.vocbase().name(),
-                                 std::to_string(collection.id()));
+                                 std::to_string(collection.id().id()));
 
     // replication checks
     int64_t replFactor = Helper::getNumericValue<int64_t>(props, StaticStrings::ReplicationFactor, 0);
@@ -766,7 +814,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   }
 
   auto& databaseName = collection->vocbase().name();
-  auto cid = std::to_string(collection->id());
+  auto cid = std::to_string(collection->id().id());
   ClusterInfo& ci =
       collection->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
   auto res = ci.dropCollectionCoordinator(databaseName, cid, 300.0);
@@ -784,7 +832,8 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 /*static*/ arangodb::Result Collections::drop(  // drop collection
     arangodb::LogicalCollection& coll,          // collection to drop
     bool allowDropSystem,  // allow dropping system collection
-    double timeout         // single-server drop timeout
+    double timeout,         // single-server drop timeout
+    bool keepUserRights
 ) {
 
   ExecContext const& exec = ExecContext::current();
@@ -802,7 +851,8 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   Result res;
 
   // If we are a coordinator in a cluster, we have to behave differently:
-  if (ServerState::instance()->isCoordinator()) {
+  auto const role = ServerState::instance()->getRole();
+  if (ServerState::isCoordinator(role)) {
 #ifdef USE_ENTERPRISE
     res = DropColCoordinatorEnterprise(&coll, allowDropSystem);
 #else
@@ -816,16 +866,17 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
     << "error while dropping collection: '" << collName
     << "' error: '" << res.errorMessage() << "'";
 
-  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (ADB_LIKELY(!keepUserRights)) {
+    auth::UserManager* um = AuthenticationFeature::instance()->userManager();
 
-  if (res.ok() && um != nullptr) {
-    res = um->enumerateUsers(
-        [&](auth::User& entry) -> bool {
-          return entry.removeCollection(dbname, collName);
-        },
-        /*retryOnConflict*/ true);
+    if (res.ok() && um != nullptr) {
+      res = um->enumerateUsers(
+          [&](auth::User& entry) -> bool {
+            return entry.removeCollection(dbname, collName);
+          },
+          /*retryOnConflict*/ true);
+    }
   }
-
   events::DropCollection(coll.vocbase().name(), coll.name(), res.errorNumber());
 
   return res;
@@ -839,7 +890,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    auto cid = std::to_string(coll.id());
+    auto cid = std::to_string(coll.id().id());
     auto& feature = vocbase.server().getFeature<ClusterFeature>();
     return warmupOnCoordinator(feature, vocbase.name(), cid);
   }
@@ -901,15 +952,15 @@ futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
 futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = ctxt.coll()->vocbase().name();
-    auto cid = std::to_string(ctxt.coll()->id());
+    auto cid = std::to_string(ctxt.coll()->id().id());
     auto& feature = ctxt.coll()->vocbase().server().getFeature<ClusterFeature>();
     return revisionOnCoordinator(feature, databaseName, cid);
   }
 
-  TRI_voc_rid_t rid = ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true, true));
+  RevisionId rid = ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true, true));
 
   VPackBuilder builder;
-  builder.add(VPackValue(rid));
+  builder.add(VPackValue(rid.toString()));
 
   return futures::makeFuture(OperationResult(Result(), builder.steal()));
 }
@@ -960,7 +1011,7 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
 
 arangodb::Result Collections::checksum(LogicalCollection& collection,
                                        bool withRevisions, bool withData,
-                                       uint64_t& checksum, TRI_voc_rid_t& revId) {
+                                       uint64_t& checksum, RevisionId& revId) {
   if (ServerState::instance()->isCoordinator()) {
     return Result(TRI_ERROR_NOT_IMPLEMENTED);
   }

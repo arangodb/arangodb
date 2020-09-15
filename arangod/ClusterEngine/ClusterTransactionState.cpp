@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -42,14 +43,16 @@
 using namespace arangodb;
 
 /// @brief transaction type
-ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase,
-                                                 TRI_voc_tid_t tid,
+ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                                  transaction::Options const& options)
     : TransactionState(vocbase, tid, options) {
   TRI_ASSERT(isCoordinator());
-  acceptAnalyzersRevision(_vocbase.server()
-    .getFeature< arangodb::iresearch::IResearchAnalyzerFeature>()
-    .getAnalyzersRevision(_vocbase, false)->getRevision());
+  // we have to read revisions here as validateAndOptimize is executed before
+  // transaction is started and during validateAndOptimize some simple
+  // function calls could be executed and calls requires valid analyzers revisions.
+  acceptAnalyzersRevision(
+      _vocbase.server().getFeature<arangodb::ClusterFeature>()
+        .clusterInfo().getQueryAnalyzersRevision(vocbase.name()));
 }
 
 /// @brief start a transaction
@@ -78,7 +81,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   updateStatus(transaction::Status::RUNNING);
   _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted++;
 
-  transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction());
+  transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
   setRegistered();
 
   cleanup.cancel();

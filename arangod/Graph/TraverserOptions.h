@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -134,8 +134,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   /// @brief Add a lookup info for specific depth
   void addDepthLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
-                          std::string const& attributeName,
-                          aql::AstNode* condition, uint64_t depth);
+                          std::string const& attributeName, aql::AstNode* condition,
+                          uint64_t depth, bool onlyEdgeIndexes = false);
 
   bool hasDepthLookupInfo() const { return !_depthLookupInfo.empty(); }
 

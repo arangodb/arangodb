@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -510,7 +510,6 @@ VPackBuilder VelocyPackHelper::velocyPackFromFile(std::string const& path) {
 
 static bool PrintVelocyPack(int fd, VPackSlice const& slice, bool appendNewline) {
   if (slice.isNone()) {
-    // sanity check
     return false;
   }
 
@@ -849,20 +848,8 @@ void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
   // get pointer to the start of the value
   uint8_t* p = const_cast<uint8_t*>(slice.begin());
   // skip one byte for the header and overwrite
-#ifndef TRI_UNALIGNED_ACCESS
-  // some architectures do not support unaligned writes, then copy bytewise
-  uint64_t dv;
-  memcpy(&dv, &value, sizeof(double));
-  VPackValueLength vSize = sizeof(double);
-  for (uint64_t x = dv; vSize > 0; vSize--) {
-    *(++p) = x & 0xff;
-    x >>= 8;
-  }
-#else
-  // other platforms support unaligned writes
-  // cppcheck-suppress *
-  *reinterpret_cast<double*>(p + 1) = value;
-#endif
+  // some architectures do not support unaligned writes, so copy bytewise
+  memcpy(p + 1, &value, sizeof(double));
 }
 
 bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals, bool checkCustom) {

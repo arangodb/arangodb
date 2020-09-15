@@ -48,10 +48,6 @@ operations with the rocksdb storage engine.
 @RESTQUERYPARAM{clientInfo,string,optional}
 Short description of the client, used for informative purposes only.
 
-@RESTQUERYPARAM{barrierId,number,optional}
-Id of barrier used to keep WAL entries around. **Note** this is only required for the
-MMFiles storage engine
-
 @RESTDESCRIPTION
 Returns data from the server's write-ahead log (also named replication log). This method can be called
 by replication clients after an initial synchronization of data. The method

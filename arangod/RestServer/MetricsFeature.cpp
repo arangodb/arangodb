@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -101,13 +102,13 @@ void MetricsFeature::toPrometheus(std::string& result) const {
   }
 }
 
-Counter& MetricsFeature::counter (
+Counter& MetricsFeature::counter(
   std::initializer_list<std::string> const& key, uint64_t const& val,
   std::string const& help) {
   return counter(metrics_key(key), val, help);
 }
 
-Counter& MetricsFeature::counter (
+Counter& MetricsFeature::counter(
   metrics_key const& mk, uint64_t const& val,
   std::string const& help) {
 
@@ -128,12 +129,12 @@ Counter& MetricsFeature::counter (
   }
   if (!success) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL, std::string("counter ") + mk.name + " alredy exists");
+      TRI_ERROR_INTERNAL, std::string("counter ") + mk.name + " already exists");
   }
   return *metric;
 }
 
-Counter& MetricsFeature::counter (
+Counter& MetricsFeature::counter(
   std::string const& name, uint64_t const& val, std::string const& help) {
   return counter(metrics_key(name), val, help);
 }
@@ -142,7 +143,7 @@ ServerStatistics& MetricsFeature::serverStatistics() {
   return *_serverStatistics;
 }
 
-Counter& MetricsFeature::counter (std::initializer_list<std::string> const& key) {
+Counter& MetricsFeature::counter(std::initializer_list<std::string> const& key) {
   metrics_key mk(key);
   std::shared_ptr<Counter> metric = nullptr;
   std::string error;
@@ -174,7 +175,7 @@ Counter& MetricsFeature::counter (std::initializer_list<std::string> const& key)
   return *metric;
 }
 
-Counter& MetricsFeature::counter (std::string const& name) {
+Counter& MetricsFeature::counter(std::string const& name) {
   return counter({name});
 }
 

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,6 +27,7 @@
 #include <iosfwd>
 #include <memory>
 #include <string>
+#include <string_view>
 
 namespace arangodb {
 class Result final {
@@ -45,6 +47,10 @@ class Result final {
    * @param  errorMessage  Said error message
    */
   Result(int errorNumber, std::string&& errorMessage) noexcept;
+
+  Result(int errorNumber, std::string_view const& errorMessage);
+
+  Result(int errorNumber, const char* errorMessage);
 
   /**
    * @brief Construct as copy

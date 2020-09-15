@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -503,7 +504,7 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Sync", "ServerStates"}, root()->arango()->sync()->serverStates()},
       {{"arango", "Sync", "Problems"}, root()->arango()->sync()->problems()},
       {{"arango", "Sync", "HeartbeatIntervalMs"}, root()->arango()->sync()->heartbeatIntervalMs()},
-      {{"arango", "Sync", "LatestID"}, root()->arango()->sync()->latestID()},
+      {{"arango", "Sync", "LatestID"}, root()->arango()->sync()->latestId()},
       {{"arango", "Bootstrap"}, root()->arango()->bootstrap()},
       {{"arango", "Cluster"}, root()->arango()->cluster()},
       {{"arango", "Agency"}, root()->arango()->agency()},

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -135,6 +136,14 @@ class AqlCallStack {
   auto modifyCallListAtDepth(size_t depth) -> AqlCallList&;
 
   /**
+   * @brief Get a const reference to the call at the given shadowRowDepth
+   *
+   * @param depth ShadowRow depth we need to work on
+   * @return AqlCall& reference to the call, can be modified.
+   */
+  auto getCallAtDepth(size_t depth) const -> AqlCall const&;
+
+  /**
    * @brief Get a reference to the top most call.
    *        This is modifiable, but caller will not take
    *        responsibility.
@@ -170,11 +179,15 @@ class AqlCallStack {
  private:
   explicit AqlCallStack(std::vector<AqlCallList>&& operations);
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto validateNoCallHasSkippedRows() -> void;
+#endif
+
  private:
-  // The list of operations, stacked by depth (e.g. bottom element is from main
-  // query) NOTE: This is only mutable on 3.6 compatibility mode. We need to
-  // inject an additional call in any const operation here just to pretend we
-  // are not empty. Can be removed after 3.7.
+  // The list of operations, stacked by depth (e.g. bottom element is from
+  // main query) NOTE: This is only mutable on 3.6 compatibility mode. We
+  // need to inject an additional call in any const operation here just to
+  // pretend we are not empty. Can be removed after 3.7.
   mutable std::vector<AqlCallList> _operations;
 
   // This flag will be set if and only if

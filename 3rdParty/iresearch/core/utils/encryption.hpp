@@ -45,7 +45,7 @@ struct IRESEARCH_API encryption : public stored_attribute {
   /// @struct stream
   ////////////////////////////////////////////////////////////////////////////
   struct stream {
-    DECLARE_UNIQUE_PTR(stream);
+    using ptr = std::unique_ptr<stream>;
 
     virtual ~stream() = default;
 

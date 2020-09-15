@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -97,8 +98,12 @@ void RestClusterHandler::handleAgencyDump() {
 
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  ci.agencyDump(body);
-  generateResult(rest::ResponseCode::OK, body->slice());
+  Result res = ci.agencyDump(body);
+  if (res.ok()) {
+    generateResult(rest::ResponseCode::OK, body->slice());
+  } else {
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, res.errorNumber(), res.errorMessage());
+  }
 }
 
 void RestClusterHandler::handleAgencyCache() {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,10 +23,10 @@
 
 #include "AttributeAccessor.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AttributeNamePath.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Utils/CollectionNameResolver.h"
 
 using namespace arangodb;
@@ -80,32 +80,32 @@ class AttributeAccessorTo final : public AttributeAccessor {
 
 class AttributeAccessorSingle final : public AttributeAccessor {
  public:
-  explicit AttributeAccessorSingle(Variable const* variable, std::string&& path)
-      : AttributeAccessor(variable), _path(std::move(path)) {}
+  explicit AttributeAccessorSingle(Variable const* variable, std::string const& attributeName)
+      : AttributeAccessor(variable), _attributeName(attributeName) {}
 
   AqlValue get(CollectionNameResolver const& resolver, ExpressionContext const* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
     // use optimized version for single attribute (e.g. variable.attr)
-    return value.get(resolver, _path, mustDestroy, true);
+    return value.get(resolver, _attributeName, mustDestroy, true);
   }
 
  private:
-  std::string const _path;
+  std::string const _attributeName;
 };
 
 class AttributeAccessorMulti final : public AttributeAccessor {
  public:
-  explicit AttributeAccessorMulti(Variable const* variable, std::vector<std::string>&& path)
+  explicit AttributeAccessorMulti(Variable const* variable, arangodb::aql::AttributeNamePath&& path)
       : AttributeAccessor(variable), _path(std::move(path)) {}
 
   AqlValue get(CollectionNameResolver const& resolver, ExpressionContext const* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
     // use general version for multiple attributes (e.g. variable.attr.subattr)
-    return value.get(resolver, _path, mustDestroy, true);
+    return value.get(resolver, _path.get(), mustDestroy, true);
   }
 
  private:
-  std::vector<std::string> const _path;
+  arangodb::aql::AttributeNamePath const _path;
 };
 
 }  // namespace
@@ -124,7 +124,7 @@ void AttributeAccessor::replaceVariable(std::unordered_map<VariableId, Variable 
   }
 }
 
-AttributeAccessor* AttributeAccessor::create(std::vector<std::string>&& path,
+AttributeAccessor* AttributeAccessor::create(arangodb::aql::AttributeNamePath&& path,
                                              Variable const* variable,
                                              bool dataIsFromCollection) {
   TRI_ASSERT(variable != nullptr);
@@ -135,19 +135,26 @@ AttributeAccessor* AttributeAccessor::create(std::vector<std::string>&& path,
   // attributes when the input data are collection documents. it is not safe to
   // use them for non-collection data, as the optimized functions may easily
   // create out-of-bounds accesses in that case
-  if (path.size() == 1) {
-    if (dataIsFromCollection && path[0] == StaticStrings::KeyString) {
-      return new AttributeAccessorKey(variable);
-    } else if (dataIsFromCollection && path[0] == StaticStrings::IdString) {
-      return new AttributeAccessorId(variable);
-    } else if (dataIsFromCollection && path[0] == StaticStrings::FromString) {
-      return new AttributeAccessorFrom(variable);
-    } else if (dataIsFromCollection && path[0] == StaticStrings::ToString) {
-      return new AttributeAccessorTo(variable);
-    } else {
-      return new AttributeAccessorSingle(variable, std::move(path[0]));
-    }
+  AttributeNamePath::Type type = path.type();
+  if (!dataIsFromCollection &&
+      path.size() == 1) {
+    type = AttributeNamePath::Type::SingleAttribute;
   }
 
-  return new AttributeAccessorMulti(variable, std::move(path));
+  switch (type) {
+    case AttributeNamePath::Type::IdAttribute:
+      return new AttributeAccessorId(variable);
+    case AttributeNamePath::Type::KeyAttribute:
+      return new AttributeAccessorKey(variable);
+    case AttributeNamePath::Type::FromAttribute:
+      return new AttributeAccessorFrom(variable);
+    case AttributeNamePath::Type::ToAttribute:
+      return new AttributeAccessorTo(variable);
+    case AttributeNamePath::Type::SingleAttribute:
+      return new AttributeAccessorSingle(variable, path[0]);
+    case AttributeNamePath::Type::MultiAttribute:
+      return new AttributeAccessorMulti(variable, std::move(path));
+  }
+
+  ADB_UNREACHABLE;
 }

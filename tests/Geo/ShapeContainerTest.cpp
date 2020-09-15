@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -62,9 +63,9 @@ namespace {
 bool pointsEqual(S2Point const& a, S2Point const& b) {
   bool equal = (a.Angle(b) * arangodb::geo::kEarthRadiusInMeters) <= AcceptableDistanceError;
   if (!equal) {
-    std::cout << "EXPECTING EQUAL POINTS, GOT " << S2LatLng(a).ToStringInDegrees()
-              << " AND " << S2LatLng(b).ToStringInDegrees() << " AT DISTANCE "
-              << (a.Angle(b) * arangodb::geo::kEarthRadiusInMeters);
+    // std::cout << "EXPECTING EQUAL POINTS, GOT " << S2LatLng(a).ToStringInDegrees()
+    //           << " AND " << S2LatLng(b).ToStringInDegrees() << " AT DISTANCE "
+    //           << (a.Angle(b) * arangodb::geo::kEarthRadiusInMeters);
   }
   return equal;
 }

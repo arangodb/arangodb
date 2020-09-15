@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -190,7 +191,7 @@ bool GraphManager::renameGraphCollection(std::string const& oldName,
       }
     } catch (...) {
     }
-  };
+  }
 
   res = trx.finish(checkDoc.result);
   if (res.fail()) {
@@ -226,12 +227,13 @@ Result GraphManager::checkForEdgeDefinitionConflicts(std::map<std::string, EdgeD
 }
 
 OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
-    std::map<std::string, EdgeDefinition> const& edgeDefinitions,
+    Graph const& graph, std::map<std::string, EdgeDefinition> const& edgeDefinitions,
     bool waitForSync, VPackSlice options) {
   for (auto const& it : edgeDefinitions) {
     EdgeDefinition const& edgeDefinition = it.second;
     OperationResult res =
-        findOrCreateCollectionsByEdgeDefinition(edgeDefinition, waitForSync, options);
+        findOrCreateCollectionsByEdgeDefinition(graph, edgeDefinition,
+                                                waitForSync, options);
 
     if (res.fail()) {
       return res;
@@ -242,7 +244,8 @@ OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
 }
 
 OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinition(
-    EdgeDefinition const& edgeDefinition, bool waitForSync, VPackSlice const options) {
+    Graph const& graph, EdgeDefinition const& edgeDefinition, bool waitForSync,
+    VPackSlice const options) {
   std::string const& edgeCollection = edgeDefinition.getName();
   std::shared_ptr<LogicalCollection> def =
       getCollectionByName(ctx()->vocbase(), edgeCollection);
@@ -269,6 +272,11 @@ OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinition(
       OperationResult res = createVertexCollection(colName, waitForSync, options);
       if (res.fail()) {
         return res;
+      }
+    } else {
+      auto res = graph.validateCollection(*def.get());
+      if (res.fail()) {
+        return OperationResult{std::move(res)};
       }
     }
   }
@@ -1019,6 +1027,18 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
   try {
     TRI_ASSERT(input.isObject());
     if (ServerState::instance()->isCoordinator()) {
+      VPackSlice s = input.get(StaticStrings::IsSmart);
+      if (s.isBoolean() && s.getBoolean()) {
+        s = input.get("options");
+        if (s.isObject()) {
+          s = s.get(StaticStrings::ReplicationFactor);
+          if ((s.isNumber() && s.getNumber<int>() == 0) ||
+              (s.isString() && s.stringRef() == "satellite")) {
+            return Result{TRI_ERROR_BAD_PARAMETER, "invalid combination of 'isSmart' and 'satellite' replicationFactor"};
+          }
+        }
+      }
+
       // validate numberOfShards and replicationFactor
       Result res =
           ShardingInfo::validateShardsAndReplicationFactor(input.get("options"),

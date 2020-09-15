@@ -1,5 +1,48 @@
 include_directories(.)
 
+
+# ----------------------------------------
+# Fuerte tests
+# ----------------------------------------
+
+set(FUERTE_TESTS_SOURCES
+  Fuerte/test_vst.cpp
+  Fuerte/test_connection_basic.cpp
+  Fuerte/test_connection_concurrent.cpp
+  Fuerte/test_connection_failures.cpp
+  Fuerte/test_connection_timeouts.cpp
+#    test_10000_writes.cpp
+)
+
+add_executable(fuertetest
+  ${FUERTE_TESTS_SOURCES}
+  Fuerte/main.cpp
+)
+
+target_link_libraries(fuertetest
+    fuerte
+    gtest
+    boost_boost
+    arango
+    arango_v8server
+    ${MSVC_LIBS}
+    ${OPENSSL_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
+)
+
+target_include_directories(fuertetest SYSTEM PRIVATE
+  ${V8_INTERNAL_INCLUDE_DIR}
+  ${INCLUDE_DIRECTORIES}
+  ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
+  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
+  ${CMAKE_SOURCE_DIR}/3rdParty/fuerte/src
+)
+
+
+# ----------------------------------------
+# Link directories
+# ----------------------------------------
+
 foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
 endforeach()
@@ -24,7 +67,6 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
-  Aql/AllRowsFetcherTest.cpp
   Aql/BlockCollector.cpp
   Aql/AqlCallListTest.cpp
   Aql/AqlExecutorTestCase.cpp
@@ -35,6 +77,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlItemRowPrinter.cpp
   Aql/AqlItemRowTest.cpp
   Aql/AqlShadowRowTest.cpp
+  Aql/AttributeNamePathTest.cpp
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
@@ -51,6 +94,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/ExecutionNodeTest.cpp
   Aql/ExecutorTestHelper.cpp
   Aql/FilterExecutorTest.cpp
+  Aql/GatherExecutorCommonTest.cpp
   Aql/HashedCollectExecutorTest.cpp
   Aql/IdExecutorTest.cpp
   Aql/IndexNodeTest.cpp
@@ -59,11 +103,11 @@ set(ARANGODB_TESTS_SOURCES
   Aql/KShortestPathsExecutorTest.cpp
   Aql/LimitExecutorTest.cpp
   Aql/MockTypedNode.cpp
-  Aql/MultiDependencySingleRowFetcherTest.cpp
   Aql/NgramMatchFunctionTest.cpp
   Aql/NgramSimilarityFunctionTest.cpp
   Aql/NgramPosSimilarityFunctionTest.cpp
   Aql/NoResultsExecutorTest.cpp
+  Aql/ProjectionsTest.cpp
   Aql/QueryHelper.cpp
   Aql/RegisterPlanTest.cpp
   Aql/RemoteExecutorTest.cpp
@@ -74,7 +118,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/ScatterExecutorTest.cpp
   Aql/ShortestPathExecutorTest.cpp
   Aql/SkipResultTest.cpp
-  Aql/SingleRowFetcherTest.cpp
   Aql/SortedCollectExecutorTest.cpp
   Aql/SortExecutorTest.cpp
   Aql/SortLimit-test.cpp
@@ -83,7 +126,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SubqueryEndExecutorTest.cpp
   Aql/SubqueryStartExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
-  Aql/TestExecutorHelper.cpp
   Aql/TestLambdaExecutor.cpp
   Aql/TraversalExecutorTest.cpp
   Aql/UpdateExecutorTest.cpp
@@ -114,6 +156,8 @@ set(ARANGODB_TESTS_SOURCES
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
   Basics/RandomTest.cpp
+  Basics/ReadWriteLockTest.cpp
+  Basics/SpinLockTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
   Basics/VelocyPackHelper-test.cpp
@@ -136,6 +180,7 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterRepairsTest.cpp
   Cluster/RebootTrackerTest.cpp
+  Cluster/QueryAnalyzerRevisions-test.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
@@ -248,7 +293,8 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/vocbase-test.cpp
   VocBase/LogicalDataSource-test.cpp
   VocBase/LogicalView-test.cpp
-  VocBase/VersionTest.cpp)
+  VocBase/VersionTest.cpp
+  VPackDeserializer/BasicTests.cpp)
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags

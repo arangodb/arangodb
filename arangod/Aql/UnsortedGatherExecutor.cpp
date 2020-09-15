@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -105,6 +106,10 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
     skipped = input.skipAllForDependency(currentDependency());
   }
   call.didSkip(skipped);
+  // The Skip reporting to client does not
+  // rely on the call, so reset it here.
+  // We are not allowed to send it to upstream.
+  call.resetSkipCount();
 
   // Skip over dependencies that are DONE, they cannot skip more
   while (!done() && input.upstreamState(currentDependency()) == ExecutorState::DONE) {

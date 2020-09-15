@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -57,8 +58,6 @@ class WorkerConfig {
   inline uint64_t localSuperstep() const { return _localSuperstep; }
 
   inline bool asynchronousMode() const { return _asynchronousMode; }
-
-  inline bool lazyLoading() const { return _lazyLoading; }
 
   inline bool useMemoryMaps() const { return _useMemoryMaps; }
 
@@ -134,8 +133,6 @@ class WorkerConfig {
 
   /// Let async
   bool _asynchronousMode = false;
-  /// load vertices on a lazy basis
-  bool _lazyLoading = false;
   bool _useMemoryMaps = false; /// always use mmaps
 
   size_t _parallelism = 1;

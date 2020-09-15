@@ -5,20 +5,19 @@ ArangoDB
 
 Slack: [![ArangoDB-Logo](https://slack.arangodb.com/badge.svg)](https://slack.arangodb.com)
 
-ArangoDB is a multi-model, open-source database with flexible data models for
-documents, graphs, and key-values. Build high performance applications using a
-convenient SQL-like query language or JavaScript extensions. Use ACID
-transactions if you require them. Scale horizontally with a few mouse clicks.
+ArangoDB is a scalable open-source multi-model database natively supporting graph, document and search. All supported data models & access patterns can be comnbined in queries allowing for maximal flexibility. ArangoDB runs on prem, in the cloud – anywhere.
 
-ArangoDB runs everywhere: On-prem, in the cloud and also on
-[ArangoDBs Cloud Service Oasis](https://cloud.arangodb.com/home).
+ArangoDB Cloud Service
+------------------------
 
-The supported data models can be mixed in queries and allow ArangoDB to be the
-aggregation point for your data.
+Oasis is the simplest way to run ArangoDB. Users can make deployments on all major cloud providers in many regions. Test [ArangoDBs Cloud Service Oasis](https://cloud.arangodb.com/home) for free.
 
-Check out our [training center](https://www.arangodb.com/arangodb-training-center/)
-to get started and see the full [documentation](https://www.arangodb.com/docs/stable/)
-to dive deeper.
+Getting Started
+------------------------
+
+- [Free Udemy Course](https://www.udemy.com/course/getting-started-with-arangodb) 
+- [Training Center](https://www.arangodb.com/arangodb-training-center/)
+- [Documentation](https://www.arangodb.com/docs/stable/)
 
 For the impatient:
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -86,15 +86,15 @@ void RocksDBKey::constructDatabase(TRI_voc_tick_t databaseId) {
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
-  TRI_ASSERT(databaseId != 0 && collectionId != 0);
+void RocksDBKey::constructCollection(TRI_voc_tick_t databaseId, DataSourceId collectionId) {
+  TRI_ASSERT(databaseId != 0 && collectionId.isSet());
   _type = RocksDBEntryType::Collection;
   size_t keyLength = sizeof(char) + 2 * sizeof(uint64_t);
   _buffer->clear();
   _buffer->reserve(keyLength);
   _buffer->push_back(static_cast<char>(_type));
   uint64ToPersistent(*_buffer, databaseId);
-  uint64ToPersistent(*_buffer, collectionId);
+  uint64ToPersistent(*_buffer, collectionId.id());
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
@@ -199,15 +199,15 @@ void RocksDBKey::constructGeoIndexValue(uint64_t indexId, uint64_t value,
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructView(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) {
-  TRI_ASSERT(databaseId != 0 && viewId != 0);
+void RocksDBKey::constructView(TRI_voc_tick_t databaseId, DataSourceId viewId) {
+  TRI_ASSERT(databaseId != 0 && viewId.isSet());
   _type = RocksDBEntryType::View;
   size_t keyLength = sizeof(char) + 2 * sizeof(uint64_t);
   _buffer->clear();
   _buffer->reserve(keyLength);
   _buffer->push_back(static_cast<char>(_type));
   uint64ToPersistent(*_buffer, databaseId);
-  uint64ToPersistent(*_buffer, viewId);
+  uint64ToPersistent(*_buffer, viewId.id());
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
@@ -296,11 +296,11 @@ TRI_voc_tick_t RocksDBKey::databaseId(rocksdb::Slice const& slice) {
   return databaseId(slice.data(), slice.size());
 }
 
-TRI_voc_cid_t RocksDBKey::collectionId(RocksDBKey const& key) {
+DataSourceId RocksDBKey::collectionId(RocksDBKey const& key) {
   return collectionId(key._buffer->data(), key._buffer->size());
 }
 
-TRI_voc_cid_t RocksDBKey::collectionId(rocksdb::Slice const& slice) {
+DataSourceId RocksDBKey::collectionId(rocksdb::Slice const& slice) {
   return collectionId(slice.data(), slice.size());
 }
 
@@ -312,11 +312,11 @@ uint64_t RocksDBKey::objectId(rocksdb::Slice const& slice) {
   return objectId(slice.data(), slice.size());
 }
 
-TRI_voc_cid_t RocksDBKey::viewId(RocksDBKey const& key) {
+DataSourceId RocksDBKey::viewId(RocksDBKey const& key) {
   return viewId(key._buffer->data(), key._buffer->size());
 }
 
-TRI_voc_cid_t RocksDBKey::viewId(rocksdb::Slice const& slice) {
+DataSourceId RocksDBKey::viewId(rocksdb::Slice const& slice) {
   return viewId(slice.data(), slice.size());
 }
 
@@ -392,7 +392,7 @@ TRI_voc_tick_t RocksDBKey::databaseId(char const* data, size_t size) {
   }
 }
 
-TRI_voc_cid_t RocksDBKey::collectionId(char const* data, size_t size) {
+DataSourceId RocksDBKey::collectionId(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
   RocksDBEntryType type = RocksDBKey::type(data, size);
@@ -400,7 +400,7 @@ TRI_voc_cid_t RocksDBKey::collectionId(char const* data, size_t size) {
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::View: {
       TRI_ASSERT(size >= (sizeof(char) + (2 * sizeof(uint64_t))));
-      return uint64FromPersistent(data + sizeof(char) + sizeof(uint64_t));
+      return DataSourceId{uint64FromPersistent(data + sizeof(char) + sizeof(uint64_t))};
     }
 
     default:
@@ -408,14 +408,14 @@ TRI_voc_cid_t RocksDBKey::collectionId(char const* data, size_t size) {
   }
 }
 
-TRI_voc_cid_t RocksDBKey::viewId(char const* data, size_t size) {
+DataSourceId RocksDBKey::viewId(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
   RocksDBEntryType type = RocksDBKey::type(data, size);
   switch (type) {
     case RocksDBEntryType::View: {
       TRI_ASSERT(size >= (sizeof(char) + (2 * sizeof(uint64_t))));
-      return uint64FromPersistent(data + sizeof(char) + sizeof(uint64_t));
+      return DataSourceId{uint64FromPersistent(data + sizeof(char) + sizeof(uint64_t))};
     }
 
     default:
@@ -423,7 +423,7 @@ TRI_voc_cid_t RocksDBKey::viewId(char const* data, size_t size) {
   }
 }
 
-TRI_voc_cid_t RocksDBKey::objectId(char const* data, size_t size) {
+uint64_t RocksDBKey::objectId(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(uint64_t));
   return uint64FromPersistent(data);

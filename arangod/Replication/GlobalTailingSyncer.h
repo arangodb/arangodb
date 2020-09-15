@@ -1,7 +1,7 @@
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +34,7 @@ class GlobalReplicationApplier;
 class GlobalTailingSyncer : public TailingSyncer {
  public:
   GlobalTailingSyncer(ReplicationApplierConfiguration const&, TRI_voc_tick_t initialTick,
-                      bool useTick, TRI_voc_tick_t barrierId);
+                      bool useTick);
 
  public:
   /// @brief return the syncer's replication applier

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,7 +82,6 @@ struct ApplierThread : public Thread {
 
     {
       MUTEX_LOCKER(locker, _syncerMutex);
-      // will make the syncer remove its barrier too
       _syncer->setAborted(false);
       _syncer.reset();
     }
@@ -124,13 +123,11 @@ struct FullApplierThread final : public ApplierThread {
     if (r.fail() || initSync->isAborted()) {
       return r;
     }
-    // steal the barrier from the syncer
-    TRI_voc_tick_t barrierId = initSync->stealBarrier();
     TRI_voc_tick_t lastLogTick = initSync->getLastLogTick();
 
     {
       MUTEX_LOCKER(locker, _syncerMutex);
-      auto tailer = _applier->buildTailingSyncer(lastLogTick, true, barrierId);
+      auto tailer = _applier->buildTailingSyncer(lastLogTick, true);
       _syncer.reset();
       _syncer = std::move(tailer);
     }
@@ -355,8 +352,7 @@ void ReplicationApplier::startReplication() {
 }
 
 /// @brief start the replication applier
-void ReplicationApplier::startTailing(TRI_voc_tick_t initialTick, bool useTick,
-                                      TRI_voc_tick_t barrierId) {
+void ReplicationApplier::startTailing(TRI_voc_tick_t initialTick, bool useTick) {
   if (!applies()) {
     return;
   }
@@ -366,7 +362,7 @@ void ReplicationApplier::startTailing(TRI_voc_tick_t initialTick, bool useTick,
             << "requesting replication applier start for " << _databaseName
             << ". initialTick: " << initialTick << ", useTick: " << useTick;
         std::shared_ptr<TailingSyncer> syncer =
-            buildTailingSyncer(initialTick, useTick, barrierId);
+            buildTailingSyncer(initialTick, useTick);
         _thread.reset(new TailingApplierThread(_configuration._server, this,
                                                std::move(syncer)));
       },

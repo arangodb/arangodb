@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for transaction Manager
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,6 +15,8 @@
 /// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +76,7 @@ class TransactionManagerTest : public ::testing::Test {
   arangodb::tests::mocks::TransactionManagerSetup setup;
   TRI_vocbase_t vocbase;
   transaction::Manager* mgr;
-  TRI_voc_tid_t tid;
+  TransactionId tid;
 
   TransactionManagerTest()
       : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(setup.server.server())),
@@ -394,6 +393,7 @@ TEST_F(TransactionManagerTest, aql_standalone_transaction) {
   auto qq = "FOR doc IN testCollection RETURN doc";
   arangodb::aql::QueryResult qres = executeQuery(vocbase, qq, ctx);
   ASSERT_TRUE(qres.ok());
+  ASSERT_NE(nullptr, qres.data);
   VPackSlice data = qres.data->slice();
   ASSERT_TRUE(data.isArray());
   ASSERT_EQ(data.length(), 1);
@@ -431,8 +431,9 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
   ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
 
   //
-  mgr->abortManagedTrx([](TransactionState const& state, std::string const& /*user*/) -> bool {
-    TransactionCollection* tcoll = state.collection(42, AccessMode::Type::NONE);
+  mgr->abortManagedTrx([](TransactionState const& state, std::string const & /*user*/) -> bool {
+    TransactionCollection* tcoll =
+        state.collection(DataSourceId{42}, AccessMode::Type::NONE);
     return tcoll != nullptr;
   });
 
@@ -462,7 +463,7 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
   EXPECT_TRUE(res.ok());
   ASSERT_TRUE(mgr->abortManagedTrx(tid).ok());
 
-  tid = TRI_NewTickServer();
+  tid = TransactionId::createSingleServer();
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
   res = mgr->createManagedTrx(vocbase, tid, json->slice());

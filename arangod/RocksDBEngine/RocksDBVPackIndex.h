@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -116,21 +116,23 @@ class RocksDBVPackIndex : public RocksDBIndex {
                                                       arangodb::aql::Variable const* reference,
                                                       IndexIteratorOptions const& opts) override;
 
-  void afterTruncate(TRI_voc_tick_t tick) override;
+  void afterTruncate(TRI_voc_tick_t tick,
+                     arangodb::transaction::Methods* trx) override;
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice const& doc,
+                LocalDocumentId const& documentId, velocypack::Slice const doc,
                 OperationOptions& options) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, Index::OperationMode mode) override;
+                velocypack::Slice const doc) override;
 
   Result update(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& oldDocumentId,
-                velocypack::Slice const& oldDoc, LocalDocumentId const& newDocumentId,
-                velocypack::Slice const& newDoc, Index::OperationMode mode) override;
+                velocypack::Slice const oldDoc, LocalDocumentId const& newDocumentId,
+                velocypack::Slice const newDoc,
+                OperationOptions& options) override;
 
  private:
   /// @brief return the number of paths

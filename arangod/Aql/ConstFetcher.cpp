@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,8 +27,10 @@
 #include "Aql/DependencyProxy.h"
 #include "Aql/ShadowAqlItemRow.h"
 #include "Aql/SkipResult.h"
-#include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
+#include "Containers/SmallVector.h"
+
+#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -43,29 +46,34 @@ auto ConstFetcher::execute(AqlCallStack& stack)
   // We can replace this by pop again if all executors also only take a reference to the stack.
   auto call = stack.peek();
   if (_blockForPassThrough == nullptr) {
+    SkipResult skipped = _skipped;
+    _skipped.reset();
     // we are done, nothing to move arround here.
-    return {ExecutionState::DONE, SkipResult{}, AqlItemBlockInputRange{ExecutorState::DONE}};
+    return {ExecutionState::DONE, skipped, AqlItemBlockInputRange{ExecutorState::DONE}};
   }
-  std::vector<std::pair<size_t, size_t>> sliceIndexes;
-  sliceIndexes.emplace_back(_rowIndex, _blockForPassThrough->size());
+
+  arangodb::containers::SmallVector<std::pair<size_t, size_t>>::allocator_type::arena_type arena;
+  arangodb::containers::SmallVector<std::pair<size_t, size_t>> sliceIndexes{arena};
+
+  sliceIndexes.emplace_back(_rowIndex, _blockForPassThrough->numRows());
+
   // Modifiable first slice indexes.
   // from is the first data row to be returned
   // to is one after the last data row to be returned
 
   if (_blockForPassThrough->hasShadowRows()) {
-    auto shadowIndexes = _blockForPassThrough->getShadowRowIndexes();
-    auto shadowRow = shadowIndexes.lower_bound(_rowIndex);
-    if (shadowRow != shadowIndexes.end()) {
-      size_t fromShadowRow = *shadowRow;
-      size_t toShadowRow = *shadowRow + 1;
-      for (++shadowRow; shadowRow != shadowIndexes.end(); ++shadowRow) {
-        if (*shadowRow == toShadowRow) {
+    auto [shadowRowsBegin, shadowRowsEnd] = _blockForPassThrough->getShadowRowIndexesFrom(_rowIndex);
+    if (shadowRowsBegin != shadowRowsEnd) {
+      size_t fromShadowRow = *shadowRowsBegin;
+      size_t toShadowRow = *shadowRowsBegin + 1;
+      for (++shadowRowsBegin; shadowRowsBegin != shadowRowsEnd; ++shadowRowsBegin) {
+        if (*shadowRowsBegin == toShadowRow) {
           ShadowAqlItemRow srow{_blockForPassThrough, toShadowRow};
           TRI_ASSERT(srow.isInitialized());
           if (srow.isRelevant()) {
-            // we cannot jump over relveant shadow rows.
+            // we cannot jump over relevant shadow rows.
             // Unfortunately we need to stop including rows here.
-            // NOTE: As all blocks have this behaviour anyway
+            // NOTE: As all blocks have this behavior anyway
             // this is not cirtical.
             break;
           }
@@ -127,7 +135,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
       _rowIndex = sliceIndexes.back().second;
     } else {
       // We do not have shadowRows in use, need to to go the end.
-      _rowIndex = _blockForPassThrough->size();
+      _rowIndex = _blockForPassThrough->numRows();
     }
   } else {
     // No hardLimit, but softLimit.
@@ -149,7 +157,8 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     // FastPath
     // No need for slicing
     _rowIndex = 0;
-    SkipResult skipped{};
+    SkipResult skipped = _skipped;
+    _skipped.reset();
     skipped.didSkip(call.getSkipCount());
     return {ExecutionState::DONE, skipped,
             DataRange{ExecutorState::DONE, call.getSkipCount(), std::move(_blockForPassThrough), 0}};
@@ -157,7 +166,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
 
   SharedAqlItemBlockPtr resultBlock = _blockForPassThrough;
 
-  if (_rowIndex >= resultBlock->size()) {
+  if (_rowIndex >= resultBlock->numRows()) {
     // used the full block by now.
     _blockForPassThrough.reset(nullptr);
   }
@@ -174,86 +183,49 @@ auto ConstFetcher::execute(AqlCallStack& stack)
   ExecutorState rangeState =
       _blockForPassThrough == nullptr ? ExecutorState::DONE : ExecutorState::HASMORE;
 
-  SkipResult skipped{};
+  SkipResult skipped = _skipped;
+  _skipped.reset();
   skipped.didSkip(call.getSkipCount());
 
   if (sliceIndexes.empty()) {
     // No data to be returned
-    resultBlock = nullptr;
     return {resState, skipped, DataRange{rangeState, call.getSkipCount()}};
   }
 
   // Slowest path need to slice, this unfortunately requires copy of data
   resultBlock = resultBlock->slice(sliceIndexes);
-  return {resState, skipped, DataRange{rangeState, call.getSkipCount(), resultBlock, 0}};
+  return {resState, skipped, DataRange{rangeState, call.getSkipCount(), std::move(resultBlock), 0}};
 }
 
-void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block) {
+void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block, SkipResult skipped) {
+  // If this assert triggers, we have injected a block adn skip pair
+  // that has not yet been fetched.
+  TRI_ASSERT(_skipped.nothingSkipped());
   _currentBlock = block;
+  _skipped = skipped;
   _blockForPassThrough = std::move(block);
   _rowIndex = 0;
 }
 
-std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::fetchRow(size_t) {
-  // This fetcher does not use atMost
-  // This fetcher never waits because it can return only its
-  // injected block and does not have the ability to pull.
-  if (!indexIsValid()) {
-    return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-  }
-  TRI_ASSERT(_currentBlock != nullptr);
-
-  // set state
-  ExecutionState rowState = ExecutionState::HASMORE;
-  if (isLastRowInBlock()) {
-    rowState = ExecutionState::DONE;
-  }
-
-  return {rowState, InputAqlItemRow{_currentBlock, _rowIndex++}};
-}
-
-std::pair<ExecutionState, size_t> ConstFetcher::skipRows(size_t) {
-  // This fetcher never waits because it can return only its
-  // injected block and does not have the ability to pull.
-  if (!indexIsValid()) {
-    return {ExecutionState::DONE, 0};
-  }
-  TRI_ASSERT(_currentBlock != nullptr);
-
-  // set state
-  ExecutionState rowState = ExecutionState::HASMORE;
-  if (isLastRowInBlock()) {
-    rowState = ExecutionState::DONE;
-  }
-  _rowIndex++;
-
-  return {rowState, 1};
-}
-
 auto ConstFetcher::indexIsValid() const noexcept -> bool {
-  return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->size();
-}
-
-auto ConstFetcher::isLastRowInBlock() const noexcept -> bool {
-  TRI_ASSERT(indexIsValid());
-  return _rowIndex + 1 == _currentBlock->size();
+  return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->numRows();
 }
 
 auto ConstFetcher::numRowsLeft() const noexcept -> size_t {
   if (!indexIsValid()) {
     return 0;
   }
-  return _currentBlock->size() - _rowIndex;
+  return _currentBlock->numRows() - _rowIndex;
 }
 
-auto ConstFetcher::canUseFullBlock(std::vector<std::pair<size_t, size_t>> const& ranges) const
+auto ConstFetcher::canUseFullBlock(arangodb::containers::SmallVector<std::pair<size_t, size_t>> const& ranges) const
     noexcept -> bool {
   TRI_ASSERT(!ranges.empty());
   if (ranges.front().first != 0) {
     // We do not start at the first index.
     return false;
   }
-  if (ranges.back().second != _currentBlock->size()) {
+  if (ranges.back().second != _currentBlock->numRows()) {
     // We de not stop at the last index
     return false;
   }
@@ -268,8 +240,4 @@ auto ConstFetcher::canUseFullBlock(std::vector<std::pair<size_t, size_t>> const&
   }
   // If we get here, the ranges covers the full block
   return true;
-}
-
-std::pair<ExecutionState, ShadowAqlItemRow> ConstFetcher::fetchShadowRow(size_t) const {
-  return {ExecutionState::DONE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
 }

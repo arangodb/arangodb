@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -38,13 +38,13 @@ LogThread::~LogThread() {
   shutdown();
 }
 
-bool LogThread::log(std::unique_ptr<LogMessage>& message) {
+bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
   TRI_ASSERT(message != nullptr);
 
   bool const isDirectLogLevel =
              (message->_level == LogLevel::FATAL || message->_level == LogLevel::ERR || message->_level == LogLevel::WARN);
 
-  if (!_messages.push(message.get())) {
+  if (!_messages.push({&group, message.get()})) {
     return false;
   }
 
@@ -103,17 +103,18 @@ void LogThread::run() {
 
 bool LogThread::processPendingMessages() {
   bool worked = false;
-  LogMessage* msg = nullptr;
+  MessageEnvelope env{nullptr, nullptr};
 
-  while (_messages.pop(msg)) {
+  while (_messages.pop(env)) {
     worked = true;
-    TRI_ASSERT(msg != nullptr);
+    TRI_ASSERT(env.group != nullptr);
+    TRI_ASSERT(env.msg != nullptr);
     try {
-      LogAppender::log(*msg);
+      LogAppender::log(*env.group, *env.msg);
     } catch (...) {
     }
 
-    delete msg;
+    delete env.msg;
   }
   return worked;
 }

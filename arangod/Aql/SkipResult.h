@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -56,7 +57,7 @@ class SkipResult {
 
   auto didSkipSubquery(size_t skipped, size_t depth) -> void;
 
-  auto getSkipOnSubqueryLevel(size_t depth) -> size_t;
+  auto getSkipOnSubqueryLevel(size_t depth) const -> size_t;
 
   auto nothingSkipped() const noexcept -> bool;
 

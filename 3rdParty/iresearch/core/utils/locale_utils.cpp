@@ -103,7 +103,8 @@ std::string system_encoding() {
 ////////////////////////////////////////////////////////////////////////////////
 class converter_pool: private irs::util::noncopyable {
  public:
-  DECLARE_SHARED_PTR(UConverter);
+  using ptr = std::shared_ptr<UConverter>;
+
   converter_pool(std::string&& encoding)
     : encoding_(std::move(encoding)), pool_(POOL_SIZE) {}
   ptr get() { return pool_.emplace(encoding_).release(); }
@@ -111,7 +112,8 @@ class converter_pool: private irs::util::noncopyable {
 
  private:
   struct builder {
-    DECLARE_SHARED_PTR(UConverter);
+    using ptr = std::shared_ptr<UConverter>;
+
     static ptr make(const std::string& encoding) {
       UErrorCode status = U_ZERO_ERROR;
       ptr value(
@@ -177,7 +179,7 @@ class codecvtu_base: public std::codecvt<InternType, char, mbstate_t> {
 
  protected:
   struct context_t {
-    DECLARE_UNIQUE_PTR(context_t);
+    using ptr = std::unique_ptr<context_t>;
     std::basic_string<typename parent_t::intern_type> buf_;
     converter_pool::ptr converter_;
 
@@ -1337,7 +1339,7 @@ class codecvt_base: public std::codecvt<InternType, char, mbstate_t> {
 
  protected:
   struct context_t {
-    DECLARE_UNIQUE_PTR(context_t);
+    using ptr = std::unique_ptr<context_t>;
     std::basic_string<typename parent_t::intern_type> buf_;
     converter_pool::ptr converter_ext_;
     converter_pool::ptr converter_int_;
@@ -2483,7 +2485,7 @@ class num_put_facet: public std::num_put<CharType> {
 
  private:
   struct context_t {
-    DECLARE_UNIQUE_PTR(context_t);
+    using ptr = std::unique_ptr<context_t>;
     std::basic_string<char_type> buf_;
     icu::UnicodeString icu_buf0_;
     icu::UnicodeString icu_buf1_;

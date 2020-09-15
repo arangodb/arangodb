@@ -185,7 +185,8 @@ struct IRESEARCH_API tracking_directory final : public directory {
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API ref_tracking_directory: public directory {
  public:
-  DECLARE_UNIQUE_PTR(ref_tracking_directory);
+  using ptr = std::unique_ptr<ref_tracking_directory>;
+
   // @param track_open - track file refs for calls to open(...)
   explicit ref_tracking_directory(directory& impl, bool track_open = false);
   ref_tracking_directory(ref_tracking_directory&& other) noexcept;

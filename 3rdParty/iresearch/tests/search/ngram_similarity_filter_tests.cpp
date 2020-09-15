@@ -845,13 +845,24 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
 }
 
 struct test_score_ctx : public irs::score_ctx {
-  test_score_ctx(std::vector<size_t>* f, const irs::frequency* p, std::vector<irs::boost_t>* b, const irs::filter_boost* fb)
-    : freq(f), freq_from_filter(p), filter_boost(b), boost_from_filter(fb)  {}
+  test_score_ctx(
+      std::vector<size_t>* f,
+      const irs::frequency* p,
+      std::vector<irs::boost_t>* b,
+      const irs::filter_boost* fb,
+      irs::byte_type* score_buf) noexcept
+    : freq(f),
+      filter_boost(b),
+      freq_from_filter(p),
+      boost_from_filter(fb),
+      score_buf(score_buf) {
+  }
 
   std::vector<size_t>* freq;
   std::vector<irs::boost_t>* filter_boost;
   const irs::frequency* freq_from_filter;
   const irs::filter_boost* boost_from_filter;
+  irs::byte_type* score_buf;
 };
 
 TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
@@ -897,19 +908,23 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
     return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
   };
-  scorer.prepare_scorer = [&frequency, &filter_boost](const irs::sub_reader& segment,
+  scorer.prepare_scorer = [&frequency, &filter_boost](
+    const irs::sub_reader& segment,
     const irs::term_reader& term,
-    const irs::byte_type* data,
-    const irs::attribute_provider& attr)->std::pair<irs::score_ctx_ptr, irs::score_f> {
+    const irs::byte_type* stats_buf,
+    irs::byte_type* score_buf,
+    const irs::attribute_provider& attr)->irs::score_function {
       auto* freq = irs::get<irs::frequency>(attr);
       auto* boost = irs::get<irs::filter_boost>(attr);
       return {
-        irs::memory::make_unique<test_score_ctx>(&frequency, freq, &filter_boost, boost),
-        [](const irs::score_ctx* ctx, irs::byte_type* RESTRICT score_buf) noexcept {
-        auto& freq = *reinterpret_cast<const test_score_ctx*>(ctx);
-        freq.freq->push_back(freq.freq_from_filter->value);
-        freq.filter_boost->push_back(freq.boost_from_filter->value);
-      }
+        irs::memory::make_unique<test_score_ctx>(&frequency, freq, &filter_boost, boost, score_buf),
+        [](irs::score_ctx* ctx) noexcept -> const irs::byte_type* {
+          const auto& freq = *reinterpret_cast<test_score_ctx*>(ctx);
+          freq.freq->push_back(freq.freq_from_filter->value);
+          freq.filter_boost->push_back(freq.boost_from_filter->value);
+
+          return freq.score_buf;
+        }
       };
   };
   std::vector<size_t> expectedFrequency{1, 1, 2, 1, 1, 1, 1};
@@ -969,20 +984,24 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
     return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
   };
-  scorer.prepare_scorer = [&frequency, &filter_boost](const irs::sub_reader& segment,
-    const irs::term_reader& term,
-    const irs::byte_type* data,
-    const irs::attribute_provider& attr)->std::pair<irs::score_ctx_ptr, irs::score_f> {
-      auto* freq = irs::get<irs::frequency>(attr);
-      auto* boost = irs::get<irs::filter_boost>(attr);
-      return {
-          irs::memory::make_unique<test_score_ctx>(&frequency, freq, &filter_boost, boost),
-          [](const irs::score_ctx* ctx, irs::byte_type* RESTRICT score_buf) noexcept {
-          auto& freq = *reinterpret_cast<const test_score_ctx*>(ctx);
+  scorer.prepare_scorer = [&frequency, &filter_boost](
+      const irs::sub_reader& /*segment*/,
+      const irs::term_reader& /*term*/,
+      const irs::byte_type* /*stats_buf*/,
+      irs::byte_type* score_buf,
+      const irs::attribute_provider& attr)->irs::score_function {
+    auto* freq = irs::get<irs::frequency>(attr);
+    auto* boost = irs::get<irs::filter_boost>(attr);
+    return {
+        irs::memory::make_unique<test_score_ctx>(&frequency, freq, &filter_boost, boost, score_buf),
+        [](irs::score_ctx* ctx) noexcept -> const irs::byte_type* {
+          const auto& freq = *reinterpret_cast<test_score_ctx*>(ctx);
           freq.freq->push_back(freq.freq_from_filter->value);
           freq.filter_boost->push_back(freq.boost_from_filter->value);
+
+          return freq.score_buf;
         }
-      };
+    };
   };
   std::vector<size_t> expected_frequency{1, 1, 2, 1, 1, 1, 1};
   std::vector<irs::boost_t> expected_filter_boost{4.f/6.f, 4.f/6.f, 4.f/6.f, 4.f/6.f, 0.5, 0.5, 0.5};

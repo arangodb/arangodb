@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -161,9 +161,9 @@ std::shared_ptr<InitialSyncer> DatabaseReplicationApplier::buildInitialSyncer() 
 }
 
 std::shared_ptr<TailingSyncer> DatabaseReplicationApplier::buildTailingSyncer(
-    TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) const {
+    TRI_voc_tick_t initialTick, bool useTick) const {
   return std::make_shared<arangodb::DatabaseTailingSyncer>(_vocbase, _configuration,
-                                                           initialTick, useTick, barrierId);
+                                                           initialTick, useTick);
 }
 
 std::string DatabaseReplicationApplier::getStateFilename() const {

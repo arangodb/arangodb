@@ -161,6 +161,7 @@ describe('AQL query analyzer', function () {
     });
     
     it('should have proper running query descriptions', function () {
+      let now = (new Date()).toISOString();
       sendQuery(1, true);
       let q;
       let counter = 0;
@@ -173,16 +174,22 @@ describe('AQL query analyzer', function () {
       }
       expect(q.length).to.equal(1);
       expect(q[0]).to.have.property('id');
+      expect(q[0]).to.have.property('database', '_system');
+      expect(q[0]).to.have.property('user', 'root');
       expect(q[0]).to.have.property('query', query);
       expect(q[0]).to.have.property('bindVars');
       expect(q[0].bindVars).to.eql({ value: 1 });
       expect(q[0]).to.have.property('started');
+      expect(q[0].started).to.be.greaterThan(now);
       expect(q[0]).to.have.property('runTime');
+      expect(q[0].runTime).to.be.greaterThan(0.0);
+      expect(q[0].runTime).to.be.lessThan(60.0);
       expect(q[0]).to.have.property('state', 'executing');
       expect(q[0]).to.have.property('stream', false);
     });
     
     it('should have proper running query descriptions, without bind vars', function () {
+      let now = (new Date()).toISOString();
       testee.properties({
         trackBindVars: false
       });
@@ -198,11 +205,16 @@ describe('AQL query analyzer', function () {
       }
       expect(q.length).to.equal(1);
       expect(q[0]).to.have.property('id');
+      expect(q[0]).to.have.property('database', '_system');
+      expect(q[0]).to.have.property('user', 'root');
       expect(q[0]).to.have.property('query', query);
       expect(q[0]).to.have.property('bindVars');
       expect(q[0].bindVars).to.eql({ });
       expect(q[0]).to.have.property('started');
+      expect(q[0].started).to.be.greaterThan(now);
       expect(q[0]).to.have.property('runTime');
+      expect(q[0].runTime).to.be.greaterThan(0.0);
+      expect(q[0].runTime).to.be.lessThan(60.0);
       expect(q[0]).to.have.property('state', 'executing');
       expect(q[0]).to.have.property('stream', false);
     });
@@ -236,6 +248,7 @@ describe('AQL query analyzer', function () {
     });
 
     it('should track slow queries by threshold', function () {
+      let now = (new Date()).toISOString();
       sendQuery(1, false);
       expect(testee.current().filter(filterQueries).length).to.equal(0);
       expect(testee.slow().filter(filterQueries).length).to.equal(0);
@@ -249,11 +262,16 @@ describe('AQL query analyzer', function () {
       let queries = testee.slow().filter(filterQueries);
       expect(queries.length).to.equal(1);
       expect(queries[0]).to.have.property('id');
+      expect(queries[0]).to.have.property('database', '_system');
+      expect(queries[0]).to.have.property('user', 'root');
       expect(queries[0]).to.have.property('query', query);
       expect(queries[0]).to.have.property('bindVars');
       expect(queries[0].bindVars).to.eql({ value: 1 });
       expect(queries[0]).to.have.property('started');
+      expect(queries[0].started).to.be.greaterThan(now);
       expect(queries[0]).to.have.property('runTime');
+      expect(queries[0].runTime).to.be.greaterThan(0.0);
+      expect(queries[0].runTime).to.be.lessThan(60.0);
       expect(queries[0]).to.have.property('state', 'finished');
       expect(queries[0]).to.have.property('stream', false);
     });

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,7 +51,7 @@ enum class ValueType {
 
 QueryExecutionState::ValueType fromNumber(size_t value);
 size_t toNumber(QueryExecutionState::ValueType value);
-std::string toString(QueryExecutionState::ValueType state);
+std::string const& toString(QueryExecutionState::ValueType state);
 std::string toStringWithPrefix(QueryExecutionState::ValueType state);
 
 }  // namespace QueryExecutionState

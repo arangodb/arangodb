@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -665,7 +666,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
 #else
     auto& ci = collection->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     res = ci.dropIndexCoordinator(  // drop index
-        collection->vocbase().name(), std::to_string(collection->id()), iid, 0.0  // args
+        collection->vocbase().name(), std::to_string(collection->id().id()), iid, 0.0  // args
     );
 #endif
     events::DropIndex(collection->vocbase().name(), collection->name(),

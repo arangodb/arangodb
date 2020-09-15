@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -117,13 +118,6 @@ class TraversalExecutor {
   TraversalExecutor(TraversalExecutor const&) = default;
   TraversalExecutor(Fetcher& fetcher, Infos&);
   ~TraversalExecutor();
-
-  /**
-   * @brief Shutdown will be called once for every query
-   *
-   * @return ExecutionState and no error.
-   */
-  std::pair<ExecutionState, Result> shutdown(int errorCode);
 
   [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;

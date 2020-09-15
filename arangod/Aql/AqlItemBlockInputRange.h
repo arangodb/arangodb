@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -63,6 +64,9 @@ class AqlItemBlockInputRange {
   /// @brief optimized version of nextDataRow, only to be used when it is known that 
   /// there is a next data row (i.e. if a previous call to hasDataRow() returned true)
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow(HasDataRow);
+
+  /// @brief moves the row index one forward if we are at a row right now
+  void advanceDataRow() noexcept;
 
   std::size_t getRowIndex() const noexcept { return _rowIndex; };
 

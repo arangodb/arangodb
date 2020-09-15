@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -66,6 +67,14 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
     std::unordered_map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>> databases;
   };
 
+  typedef std::map<ShardID, std::shared_ptr<maintenance::ActionDescription>> ShardActionMap;
+
+  /// @brief Lowest limit for worker threads
+  static constexpr uint32_t const minThreadLimit = 2;
+
+  /// @brief Highest limit for worker threads
+  static constexpr uint32_t const maxThreadLimit = 64;
+
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -79,12 +88,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   // Proceed doing maintenance
   void proceed();
 
-  // preparation phase for feature in the preparation phase, the features must
-  // not start any threads. furthermore, they must not write any files under
-  // elevated privileges if they want other features to access them, or if they
-  // want to access these files with dropped privileges
-  virtual void prepare() override;
-
   // start the feature
   virtual void start() override;
 
@@ -93,9 +96,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   // stop the feature
   virtual void stop() override;
-
-  // shut down the feature
-  virtual void unprepare() override {}
 
   //
   // api features
@@ -127,6 +127,22 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   std::shared_ptr<maintenance::Action> postAction(
       std::shared_ptr<maintenance::ActionDescription> const& description);
 
+  /// @brief Check if a shard is locked for a maintenance action.
+  /// returns the ActionDescription of the job if locked. If the shard
+  /// is not locked, a nullptr is returned.
+  std::shared_ptr<maintenance::ActionDescription> isShardLocked(ShardID const& shardId) const;
+
+  /// @brief Lock a shard for a certain action description. Returns `false` if
+  /// the shard is already locked and `true` otherwise. If the lock succeeds, the
+  /// action description is retained for later query.
+  bool lockShard(ShardID const& shardId, std::shared_ptr<maintenance::ActionDescription> const& description);
+
+  /// @brief Release shard lock. Returns `true` if the shard was locked and `false` otherwise.
+  bool unlockShard(ShardID const& shardId);
+
+  /// @brief Get shard locks, this copies the whole map of shard locks.
+  ShardActionMap getShardLocks() const;
+
  protected:
   std::shared_ptr<maintenance::Action> createAction(
       std::shared_ptr<maintenance::ActionDescription> const& description);
@@ -156,12 +172,12 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   /// @brief Process specific ID for a new action
   /// @returns uint64_t
-  uint64_t nextActionId() { return _nextActionId++; };
+  uint64_t nextActionId() { return _nextActionId++; }
 
-  bool isShuttingDown() const { return (_isShuttingDown); };
+  bool isShuttingDown() const { return (_isShuttingDown); }
 
   /// @brief Return number of seconds to say "not done" to block retries too soon
-  uint32_t getSecondsActionsBlock() const { return _secondsActionsBlock; };
+  uint32_t getSecondsActionsBlock() const { return _secondsActionsBlock; }
 
   /**
    * @brief Find and return first found not-done action or nullptr
@@ -288,12 +304,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
    */
   arangodb::Result copyAllErrors(errors_t& errors) const;
 
-  /// @brief Lowest limit for worker threads
-  static uint32_t const minThreadLimit;
-
-  /// @brief Highest limit for worker threads
-  static uint32_t const maxThreadLimit;
-
   /**
    * @brief get volatile shard version
    */
@@ -314,9 +324,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   void initializeMetrics();
 
  private:
-  /// @brief common code used by multiple constructors
-  void init();
-
   /// @brief Search for first action matching hash and predicate
   /// @return shared pointer to action object if exists, empty shared_ptr if not
   std::shared_ptr<maintenance::Action> findFirstActionHash(
@@ -340,6 +347,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
  protected:
   /// @brief option for forcing this feature to always be enable - used by the catch tests
   bool _forceActivation;
+  
+  bool _resignLeadershipOnShutdown;
 
   /// @brief tunable option for thread pool size
   uint32_t _maintenanceThreadsMax;
@@ -421,9 +430,20 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// independant actions
   std::unordered_map<std::string, size_t> _shardVersion;
 
-  bool _resignLeadershipOnShutdown;
-
   std::atomic<std::chrono::steady_clock::duration> _pauseUntil;
+
+  /// @brief shard action map, this map holds information which job (can only
+  /// be one) is currently scheduled or executing for a given shard name. An
+  /// entry is added whenever an ActionDescription is created in Maintenance
+  /// and is removed, when the action for the shard is finished. The main Maintenance
+  /// loop with phaseOne and phaseTwo creates a copy of this map before it does
+  /// getLocalCollections and then avoids pondering over any shard which has an
+  /// entry in the map. In this way, shard deliberations as well as shard actions
+  /// are serialized and only one is happening at a time.
+  ShardActionMap _shardActionMap;
+
+  /// @brief mutex protecting _shardActionMap
+  mutable std::mutex _shardActionMapMutex;
 
  public:
   std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _phase1_runtime_msec;

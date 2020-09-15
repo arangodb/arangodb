@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -87,7 +87,10 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
     auto cols = vocbase.collections(false);
 
     for (auto const& collection : cols) {
-      if (!collection->system()) {
+      // note: system collections are ignored here, but the local parts of 
+      // smart edge collections are system collections, too. these are
+      // included.
+      if (!collection->system() || collection->isSmartChild()) {
         std::string const colname = collection->name();
 
         collections.add(VPackValue(colname));
@@ -130,7 +133,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   AgencyComm comm(_server);
 
-
   LOG_TOPIC("62fd8", DEBUG, Logger::MAINTENANCE)
       << "DBServerAgencySync::execute starting";
   DBServerAgencySyncResult result;
@@ -154,12 +156,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     return result;
   }
 
-  Result tmp;
-  VPackBuilder rb;
   auto& clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo();
   uint64_t planIndex = 0;
   auto plan = clusterInfo.getPlan(planIndex);
-  auto serverId = arangodb::ServerState::instance()->getId();
 
   if (plan == nullptr) {
     // TODO increase log level, except during shutdown?
@@ -168,6 +167,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     result.errorMessage = "DBServerAgencySync::execute no plan";
     return result;
   }
+
+  auto serverId = arangodb::ServerState::instance()->getId();
+
+  // It is crucial that the following happens before we do `getLocalCollections`!
+  MaintenanceFeature::ShardActionMap currentShardLocks = mfeature.getShardLocks();
 
   VPackBuilder local;
   LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE) << "Before getLocalCollections for phaseOne";
@@ -180,6 +184,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
   LOG_TOPIC("54263", TRACE, Logger::MAINTENANCE) << "local for phaseOne: " << local.toJson();
 
+  VPackBuilder rb;
+  Result tmp;
   try {
     // in previous life handlePlanChange
 
@@ -189,7 +195,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne";
     tmp = arangodb::maintenance::phaseOne(plan->slice(), planIndex, local.slice(),
-                                          serverId, mfeature, rb);
+                                          serverId, mfeature, rb, currentShardLocks);
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne done";
@@ -215,6 +221,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("675fd", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
 
+    // It is crucial that the following happens before we do `getLocalCollections`!
+    currentShardLocks = mfeature.getShardLocks();
+
     local.clear();
     glc = getLocalCollections(local);
     // We intentionally refetch local collections here, such that phase 2
@@ -232,7 +241,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         << "DBServerAgencySync::phaseTwo";
 
     tmp = arangodb::maintenance::phaseTwo(plan->slice(), current->slice(),
-                                          local.slice(), serverId, mfeature, rb);
+                                          local.slice(), serverId, mfeature, rb,
+                                          currentShardLocks);
 
     LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";
@@ -246,8 +256,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     auto report = rb.slice();
     if (report.isObject()) {
       std::vector<std::string> path = {maintenance::PHASE_TWO, "agency"};
-      if (report.hasKey(path) && report.get(path).isObject()) {
-        auto agency = report.get(path);
+      auto agency = report.get(path);
+      if (agency.isObject()) {
         LOG_TOPIC("9c099", DEBUG, Logger::MAINTENANCE)
             << "DBServerAgencySync reporting to Current: " << agency.toJson();
 
@@ -259,8 +269,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
             auto const key = ao.key.copyString();
             auto const op = ao.value.get("op").copyString();
 
-            if (ao.value.hasKey("precondition")) {
-              auto const precondition = ao.value.get("precondition");
+            auto const precondition = ao.value.get("precondition");
+            if (!precondition.isNone()) {
+              // have a precondition 
               preconditions.push_back(AgencyPrecondition(precondition.keyAt(0).copyString(),
                                                          AgencyPrecondition::Type::VALUE,
                                                          precondition.valueAt(0)));

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,7 +89,7 @@ class Supervision : public arangodb::CriticalThread {
     std::string jobId;
   };
 
-  /// @brief Construct sanity checking
+  /// @brief Construct cluster consistency checking
   explicit Supervision(application_features::ApplicationServer& server);
 
   /// @brief Default dtor
@@ -203,7 +203,7 @@ class Supervision : public arangodb::CriticalThread {
   /// @brief Get unique ids from agency
   void getUniqueIds();
 
-  /// @brief Perform sanity checking
+  /// @brief Perform consistency checking
   bool doChecks();
 
   /// @brief update my local agency snapshot

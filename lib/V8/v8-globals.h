@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -300,6 +300,16 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
 #define TRI_V8_RETURN_STRING(WHAT)                                                             \
   args.GetReturnValue().Set(v8::String::NewFromUtf8(isolate, WHAT, v8::NewStringType::kNormal) \
                                 .FromMaybe(v8::Local<v8::String>()));                          \
+  return
+
+/// @brief return a std::string_view
+///   implicitly requires 'args and 'isolate' to be available
+/// @param WHAT the name of the std::string_view variable
+#define TRI_V8_RETURN_STD_STRING_VIEW(WHAT)                                     \
+  args.GetReturnValue().Set(v8::String::NewFromUtf8(isolate, WHAT.data(),       \
+                                                    v8::NewStringType::kNormal, \
+                                                    (int)WHAT.length())         \
+                                .FromMaybe(v8::Local<v8::String>()));           \
   return
 
 /// @brief return a std::string
@@ -736,6 +746,9 @@ struct TRI_v8_global_t {
 
   /// @brief information about the currently running transaction
   void* _transactionContext;
+
+  /// @brief current AQL expressionContext
+  void* _expressionContext;
 
   /// @brief pointer to the vocbase (TRI_vocbase_t*)
   TRI_vocbase_t* _vocbase;

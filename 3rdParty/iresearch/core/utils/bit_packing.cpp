@@ -556,9 +556,9 @@ NS_END // NS_LOCAL
 NS_ROOT
 NS_BEGIN(packed)
 
-void pack_block(
-    const uint32_t* RESTRICT in, uint32_t* RESTRICT out, const uint32_t bit
-) noexcept {
+void pack_block(const uint32_t* RESTRICT in,
+                uint32_t* RESTRICT out,
+                const uint32_t bit) noexcept {
   switch (bit) {
     case 1:   __fastpack<1>(in, out); break;
     case 2:   __fastpack<2>(in, out); break;
@@ -596,9 +596,9 @@ void pack_block(
   }
 }
 
-void pack_block(
-  const uint64_t* RESTRICT in, uint64_t* RESTRICT out, const uint32_t bit
-) noexcept {
+void pack_block(const uint64_t* RESTRICT in,
+                uint64_t* RESTRICT out,
+                const uint32_t bit) noexcept {
   switch (bit) {
     case 1:   __fastpack<1>(in, out); break;
     case 2:   __fastpack<2>(in, out); break;
@@ -668,9 +668,9 @@ void pack_block(
   }
 }
 
-void unpack_block(
-  const uint32_t* RESTRICT in, uint32_t* RESTRICT out, const uint32_t bit
-) noexcept {
+void unpack_block(const uint32_t* RESTRICT in,
+                  uint32_t* RESTRICT out,
+                  const uint32_t bit) noexcept {
   switch (bit) {
     case 1:   __fastunpack<1>(in, out); break;
     case 2:   __fastunpack<2>(in, out); break;
@@ -708,9 +708,9 @@ void unpack_block(
   }
 }
 
-void unpack_block(
-  const uint64_t* RESTRICT in, uint64_t* RESTRICT out, const uint32_t bit
-) noexcept {
+void unpack_block(const uint64_t* RESTRICT in,
+                  uint64_t* RESTRICT out,
+                  const uint32_t bit) noexcept {
   switch (bit) {
     case 1:   __fastunpack<1>(in, out); break;
     case 2:   __fastunpack<2>(in, out); break;
@@ -796,9 +796,8 @@ uint64_t at(const uint64_t* encoded, size_t i, const uint32_t bit) noexcept {
   );
 }
 
-void pack(
-  const uint32_t* first, const uint32_t* last, uint32_t* out, const uint32_t bit
-) noexcept {
+void pack(const uint32_t* first, const uint32_t* last,
+          uint32_t* out, const uint32_t bit) noexcept {
   assert(0 == (last - first) % BLOCK_SIZE_32);
 
   for (; first < last; first += BLOCK_SIZE_32, out += bit) {
@@ -806,9 +805,8 @@ void pack(
   }
 }
 
-void pack(
-  const uint64_t* first, const uint64_t* last, uint64_t* out, const uint32_t bit
-) noexcept {
+void pack(const uint64_t* first, const uint64_t* last,
+          uint64_t* out, const uint32_t bit) noexcept {
   assert(0 == (last - first) % BLOCK_SIZE_64);
 
   for (; first < last; first += BLOCK_SIZE_64, out += bit) {
@@ -816,17 +814,15 @@ void pack(
   }
 }
 
-void unpack(
-  uint32_t* first, uint32_t* last, const uint32_t* in, const uint32_t bit
-) noexcept {
+void unpack(uint32_t* first, uint32_t* last,
+            const uint32_t* in, const uint32_t bit) noexcept {
   for (; first < last; first += BLOCK_SIZE_32, in += bit) {
     unpack_block(in, first, bit);
   }
 }
 
-void unpack(
-  uint64_t* first, uint64_t* last, const uint64_t* in, const uint32_t bit
-) noexcept {
+void unpack(uint64_t* first, uint64_t* last,
+            const uint64_t* in, const uint32_t bit) noexcept {
   for (; first < last; first += BLOCK_SIZE_64, in += bit) {
     unpack_block(in, first, bit);
   }

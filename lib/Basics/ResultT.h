@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -75,7 +76,15 @@ class ResultT {
     return ResultT(std::nullopt, errorNumber);
   }
 
-  ResultT static error(int errorNumber, std::string const& errorMessage) {
+  ResultT static error(int errorNumber, std::string_view const& errorMessage) {
+    return ResultT(std::nullopt, errorNumber, errorMessage);
+  }
+
+  ResultT static error(int errorNumber, std::string&& errorMessage) {
+    return ResultT(std::nullopt, errorNumber, std::move(errorMessage));
+  }
+
+  ResultT static error(int errorNumber, const char* errorMessage) {
     return ResultT(std::nullopt, errorNumber, errorMessage);
   }
 
@@ -227,16 +236,19 @@ class ResultT {
   ResultT(std::optional<T>&& val_, int errorNumber)
       : _result(errorNumber), _val(std::move(val_)) {}
 
-  ResultT(std::optional<T>&& val_, int errorNumber, std::string const& errorMessage)
+  ResultT(std::optional<T>&& val_, int errorNumber, std::string_view const& errorMessage)
       : _result(errorNumber, errorMessage), _val(val_) {}
 
   ResultT(std::optional<T>&& val_, int errorNumber, std::string&& errorMessage)
       : _result(errorNumber, std::move(errorMessage)), _val(val_) {}
 
+  ResultT(std::optional<T>&& val_, int errorNumber, const char* errorMessage)
+      : _result(errorNumber, errorMessage), _val(val_) {}
+
   ResultT(std::optional<T> const& val_, int errorNumber)
       : _result(errorNumber), _val(std::move(val_)) {}
 
-  ResultT(std::optional<T> const& val_, int errorNumber, std::string const& errorMessage)
+  ResultT(std::optional<T> const& val_, int errorNumber, std::string_view const& errorMessage)
       : _result(errorNumber, errorMessage), _val(val_) {}
 
   ResultT(std::optional<T> const& val_, int errorNumber, std::string&& errorMessage)

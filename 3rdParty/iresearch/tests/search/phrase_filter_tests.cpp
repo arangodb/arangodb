@@ -6994,8 +6994,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_FALSE(!score);
 
     ASSERT_TRUE(docs->next());
-    score->evaluate();
-    ASSERT_EQ(docs->value(),pord.get<irs::doc_id_t>(score->c_str(), 0));
+    ASSERT_EQ(docs->value(),pord.get<irs::doc_id_t>(score->evaluate(), 0));
     ASSERT_EQ(1, freq->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -7056,8 +7055,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_FALSE(!score);
 
     ASSERT_TRUE(docs->next());
-    score->evaluate();
-    ASSERT_EQ(docs->value(),pord.get<irs::doc_id_t>(score->c_str(), 0));
+    ASSERT_EQ(docs->value(),pord.get<irs::doc_id_t>(score->evaluate(), 0));
     ASSERT_EQ(1, freq->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));

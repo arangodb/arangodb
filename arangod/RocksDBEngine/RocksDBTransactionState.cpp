@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,7 +62,7 @@
 using namespace arangodb;
 
 /// @brief transaction type
-RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                                  transaction::Options const& options)
     : TransactionState(vocbase, tid, options),
       _rocksTransaction(nullptr),
@@ -77,6 +77,7 @@ RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, TRI_voc
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
   cleanupTransaction();
+  _status = transaction::Status::ABORTED;
 }
 
 /// @brief start a transaction
@@ -97,7 +98,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   }
 
   // register with manager
-  transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction());
+  transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
   updateStatus(transaction::Status::RUNNING);
   _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted++;
 
@@ -299,7 +300,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // sanity check our on-disk WAL format
+  // integrity-check our on-disk WAL format
   uint64_t x = _numInserts + _numRemoves + _numUpdates;
   if (hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
     TRI_ASSERT(x <= 1 && _numLogdata == x);
@@ -425,7 +426,7 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
   return result;
 }
 
-void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t rid,
+void RocksDBTransactionState::prepareOperation(DataSourceId cid, RevisionId rid,
                                                TRI_voc_document_operation_e operationType) {
   TRI_ASSERT(!isReadOnlyTransaction());
 
@@ -451,7 +452,7 @@ void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t 
         break;
       }
       case TRI_VOC_DOCUMENT_OPERATION_REMOVE: {
-        TRI_ASSERT(rid != 0);
+        TRI_ASSERT(rid.isSet());
 
         auto logValue = RocksDBLogValue::SingleRemoveV2(_vocbase.id(), cid, rid);
 
@@ -499,7 +500,7 @@ void RocksDBTransactionState::rollbackOperation(TRI_voc_document_operation_e ope
 }
 
 /// @brief add an operation for a transaction collection
-Result RocksDBTransactionState::addOperation(TRI_voc_cid_t cid, TRI_voc_rid_t revisionId,
+Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisionId,
                                              TRI_voc_document_operation_e operationType,
                                              bool& hasPerformedIntermediateCommit) {
   size_t currentSize = _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
@@ -513,7 +514,7 @@ Result RocksDBTransactionState::addOperation(TRI_voc_cid_t cid, TRI_voc_rid_t re
 
   auto tcoll = static_cast<RocksDBTransactionCollection*>(findCollection(cid));
   if (tcoll == nullptr) {
-    std::string message = "collection '" + std::to_string(cid) +
+    std::string message = "collection '" + std::to_string(cid.id()) +
                           "' not found in transaction state";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
@@ -632,13 +633,13 @@ Result RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize, bool& 
   return TRI_ERROR_NO_ERROR;
 }
 
-RocksDBTransactionCollection::TrackedOperations& RocksDBTransactionState::trackedOperations(TRI_voc_cid_t cid) {
+RocksDBTransactionCollection::TrackedOperations& RocksDBTransactionState::trackedOperations(DataSourceId cid) {
   auto col = findCollection(cid);
   TRI_ASSERT(col != nullptr);
   return static_cast<RocksDBTransactionCollection*>(col)->trackedOperations();
 }
 
-void RocksDBTransactionState::trackInsert(TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
+void RocksDBTransactionState::trackInsert(DataSourceId cid, RevisionId rid) {
   auto col = findCollection(cid);
   if (col != nullptr) {
     static_cast<RocksDBTransactionCollection*>(col)->trackInsert(rid);
@@ -647,7 +648,7 @@ void RocksDBTransactionState::trackInsert(TRI_voc_cid_t cid, TRI_voc_rid_t rid) 
   }
 }
 
-void RocksDBTransactionState::trackRemove(TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
+void RocksDBTransactionState::trackRemove(DataSourceId cid, RevisionId rid) {
   auto col = findCollection(cid);
   if (col != nullptr) {
     static_cast<RocksDBTransactionCollection*>(col)->trackRemove(rid);
@@ -656,7 +657,7 @@ void RocksDBTransactionState::trackRemove(TRI_voc_cid_t cid, TRI_voc_rid_t rid) 
   }
 }
 
-void RocksDBTransactionState::trackIndexInsert(TRI_voc_cid_t cid, IndexId idxId, uint64_t hash) {
+void RocksDBTransactionState::trackIndexInsert(DataSourceId cid, IndexId idxId, uint64_t hash) {
   auto col = findCollection(cid);
   if (col != nullptr) {
     static_cast<RocksDBTransactionCollection*>(col)->trackIndexInsert(idxId, hash);
@@ -665,7 +666,7 @@ void RocksDBTransactionState::trackIndexInsert(TRI_voc_cid_t cid, IndexId idxId,
   }
 }
 
-void RocksDBTransactionState::trackIndexRemove(TRI_voc_cid_t cid, IndexId idxId, uint64_t hash) {
+void RocksDBTransactionState::trackIndexRemove(DataSourceId cid, IndexId idxId, uint64_t hash) {
   auto col = findCollection(cid);
   if (col != nullptr) {
     static_cast<RocksDBTransactionCollection*>(col)->trackIndexRemove(idxId, hash);

@@ -51,7 +51,7 @@
 
         var callback = function (error, lockedViews) {
           if (error) {
-            console.log('Could not check locked views');
+            arangoHelper.arangoError('Views', 'Could not check locked views.');
           } else {
             var found = false;
             _.each(lockedViews, function (foundView) {
@@ -180,7 +180,10 @@
           delete data.error;
           self.editor.set(data);
           if (expand) {
-            self.editor.expandAll();
+            if (self.editor.expandAll) {
+              // only valid if tabular view is active
+              self.editor.expandAll();
+            }
           }
         }
       };

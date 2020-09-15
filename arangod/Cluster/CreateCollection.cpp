@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -81,8 +81,7 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescriptio
   }
   TRI_ASSERT(desc.has(SERVER_ID));
 
-  if (!properties().hasKey(StaticStrings::DataSourceType) ||
-      !properties().get(StaticStrings::DataSourceType).isNumber()) {
+  if (!properties().get(StaticStrings::DataSourceType).isNumber()) {
     error << "properties slice must specify collection type. ";
   }
   TRI_ASSERT(properties().hasKey(StaticStrings::DataSourceType) &&
@@ -124,12 +123,12 @@ bool CreateCollection::first() {
     auto& cluster = _feature.server().getFeature<ClusterFeature>();
 
     bool waitForRepl =
-        (props.hasKey(WAIT_FOR_SYNC_REPL) && props.get(WAIT_FOR_SYNC_REPL).isBool())
+        (props.get(WAIT_FOR_SYNC_REPL).isBool())
             ? props.get(WAIT_FOR_SYNC_REPL).getBool()
             : cluster.createWaitsForSyncReplication();
 
     bool enforceReplFact =
-        (props.hasKey(ENF_REPL_FACT) && props.get(ENF_REPL_FACT).isBool())
+        (props.get(ENF_REPL_FACT).isBool())
             ? props.get(ENF_REPL_FACT).getBool()
             : true;
 
@@ -216,10 +215,12 @@ bool CreateCollection::first() {
 }
 
 void CreateCollection::setState(ActionState state) {
-  if ((COMPLETE == state || FAILED == state) && _state != state && !_doNotIncrement) {
-    TRI_ASSERT(_description.has("shard"));
-    _feature.incShardVersion(_description.get("shard"));
+  if ((COMPLETE == state || FAILED == state) && _state != state) {
+    TRI_ASSERT(_description.has(SHARD));
+    _feature.unlockShard(_description.get(SHARD));
+    if (!_doNotIncrement) {
+      _feature.incShardVersion(_description.get(SHARD));
+    }
   }
-
   ActionBase::setState(state);
 }

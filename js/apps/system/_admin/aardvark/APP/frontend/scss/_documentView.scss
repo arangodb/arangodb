@@ -24,6 +24,10 @@
       margin-left: 10px;
       margin-top: 5px;
 
+      > .document-attribute {
+        margin-bottom: 5px;
+      }
+
       .document-attribute {
         @extend %clear-float;
         margin-right: 20px;
@@ -31,6 +35,46 @@
         div {
           float: left;
         }
+
+        input {
+          @extend %inputs;
+          margin: 0;
+          margin-top: -2px;
+          margin-bottom: -4px;
+          padding: 0;
+          width: auto;
+        }
+
+        .fa {
+          font-size: 16px;
+
+          &:hover {
+            cursor: pointer;
+          }
+        }
+
+        .fa-edit {
+          opacity: .7;
+          &:hover {
+            opaciy: 1;
+            color: $c-positive;
+          }
+        }
+
+        .fa-check {
+          color: $c-positive;
+          &:hover {
+            color: $c-positive-hover;
+          }
+        }
+
+        .fa-times {
+          color: $c-negative;
+          &:hover {
+            color: $c-negative-hover;
+          }
+        }
+
       }
     }
   }
@@ -54,6 +98,17 @@
 
     #document-id {
       margin-left: 10px;
+    }
+  }
+}
+
+.document-link {
+  &.unsaved {
+    color: $c-warning;
+
+    &:hover {
+      cursor: default;
+      text-decoration: none;
     }
   }
 }

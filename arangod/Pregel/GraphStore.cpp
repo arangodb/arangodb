@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,6 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Indexes/IndexIterator.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IndexHelpers.h"
@@ -33,7 +35,6 @@
 #include "Pregel/WorkerConfig.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -180,6 +181,8 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config, std::string const& doc
 template <typename V, typename E>
 void GraphStore<V, E>::loadDocument(WorkerConfig* config, PregelShard sourceShard,
                                     VPackStringRef const& _key) {
+  // Apparently this code has not been implemented yet; find out whether it's
+  // needed at all or remove
   TRI_ASSERT(false);
 }
 
