@@ -290,7 +290,7 @@ OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSli
     return OperationResult(res);
   }
   return result;
-};
+}
 
 OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool waitForSync,
                                                      bool createCollection) {

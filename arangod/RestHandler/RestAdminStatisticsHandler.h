@@ -36,7 +36,9 @@ class RestAdminStatisticsHandler : public RestBaseHandler {
   char const* name() const override final {
     return "RestAdminStatisticsHandler";
   }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  /// @brief must be on fast lane so that statistics can always be retrieved, 
+  /// even from otherwise totally busy servers
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override final;
 
  private:

@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/QueryRegistry.h"
+#include "RestServer/Metrics.h"
 
 namespace arangodb {
 
@@ -43,6 +44,9 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
+
+  // tracks a slow query by increasing the counter
+  void trackSlowQuery() { ++_slowQueriesCounter; }
 
   bool trackSlowQueries() const { return _trackSlowQueries; }
   bool trackBindVars() const { return _trackBindVars; }
@@ -80,6 +84,8 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   static std::atomic<aql::QueryRegistry*> QUERY_REGISTRY;
 
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
+
+  Counter& _slowQueriesCounter;
 };
 
 }  // namespace arangodb

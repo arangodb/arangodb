@@ -391,7 +391,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
     if (column_family_id == _index.columnFamily()->GetID() &&
         RocksDBKey::objectId(begin_key) == _objectId &&
         RocksDBKey::objectId(end_key) == _objectId) {
-      _index.afterTruncate(_currentSequence);
+      _index.afterTruncate(_currentSequence, &_trx);
     }
     return rocksdb::Status();  // make WAL iterator happy
   }
