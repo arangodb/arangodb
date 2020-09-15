@@ -774,7 +774,6 @@ void ClusterInfo::loadPlan() {
     swapAnalyzers = true;
   }
 
-  LOG_DEVEL << __LINE__;
   for (auto const& database : changeSet.dbs) {
 
     if (database.first.empty()) { // Rest of plan
@@ -843,8 +842,6 @@ void ClusterInfo::loadPlan() {
   //    },...
   //  },...
   //  }}
-
-    LOG_DEVEL << __LINE__;
 
   // Now the same for views: // TODO change
   for (auto const& database : changeSet.dbs) {
@@ -942,7 +939,6 @@ void ClusterInfo::loadPlan() {
   //  },...
   // }}
   // Now the same for analyzers:
-  LOG_DEVEL << __LINE__;
   for (auto const& database : changeSet.dbs) {
 
     if (database.first.empty()) { // Rest of plan
@@ -1040,7 +1036,6 @@ void ClusterInfo::loadPlan() {
   //    },...
   //  },...
   // }}
-  LOG_DEVEL << __LINE__;
   for (auto const& database : changeSet.dbs) {
 
     if (database.first.empty()) { // Rest of plan
@@ -1208,7 +1203,6 @@ void ClusterInfo::loadPlan() {
     }
   }
 
-  LOG_DEVEL << __LINE__;
   WRITE_LOCKER(writeLocker, _planProt.lock);
 
   _planVersion = changeSet.version;
