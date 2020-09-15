@@ -463,9 +463,13 @@ VPackBuilder getShardMap(VPackSlice const& collections) {
   VPackBuilder shardMap;
   {
     VPackObjectBuilder o(&shardMap);
-    for (auto collection : VPackObjectIterator(collections)) {
-      for (auto shard : VPackObjectIterator(collection.value.get(SHARDS))) {
-        shardMap.add(shard.key.stringRef(), shard.value);
+    // Note: collections can be NoneSlice if database is already deleted.
+    // But then shardMap can also be empty, so we are good.
+    if (collections.isObject()) {
+      for (auto collection : VPackObjectIterator(collections)) {
+        for (auto shard : VPackObjectIterator(collection.value.get(SHARDS))) {
+          shardMap.add(shard.key.stringRef(), shard.value);
+        }
       }
     }
   }
@@ -1083,7 +1087,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           // that we only ever modify Current if we are the leader in the Plan:
 
           auto const planPath = std::vector<std::string>{colName, "shards", shName};
-          if (!pdb.hasKey(planPath)) {
+          if (!pdb.isObject() || !pdb.hasKey(planPath)) {
             LOG_TOPIC("43242", DEBUG, Logger::MAINTENANCE)
               << "Ooops, we have a shard for which we believe to be the "
               "leader, but the Plan does not have it any more, we do not "
@@ -1164,7 +1168,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
                 auto const planPath =
                   std::vector<std::string>{colName, "shards", shName};
-                if (!pdb.hasKey(planPath)) {
+                if (!pdb.isObject() || !pdb.hasKey(planPath)) {
                   LOG_TOPIC("65432", DEBUG, Logger::MAINTENANCE)
                     << "Ooops, we have a shard for which we believe that we "
                     "just resigned, but the Plan does not have it any "
