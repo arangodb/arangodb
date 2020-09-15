@@ -22,9 +22,12 @@
 
 #include "GeoFilter.h"
 
+#include "s2/s2cap.h"
+#include "s2/s2earth.h"
 #include "s2/s2point_region.h"
 
 #include "index/index_reader.hpp"
+#include "search/all_filter.hpp"
 #include "search/collectors.hpp"
 #include "search/disjunction.hpp"
 #include "search/filter_visitor.hpp"
@@ -90,11 +93,6 @@ static bool shape(VPackSlice loc, geo::ShapeContainer& shape) {
 
 constexpr double_t EXTRA_COST = 1.5;
 
-}
-
-namespace arangodb {
-namespace iresearch {
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class GeoIterator
 //////////////////////////////////////////////////////////////////////////////
@@ -104,7 +102,7 @@ class GeoIterator : public irs::doc_iterator {
   GeoIterator(
       doc_iterator::ptr&& approx,
       doc_iterator::ptr&& columnIt,
-      Acceptor&& acceptor,
+      Acceptor& acceptor,
       const irs::sub_reader& reader,
       const irs::term_reader& field,
       const irs::byte_type* query_stats,
@@ -123,7 +121,7 @@ class GeoIterator : public irs::doc_iterator {
         { irs::type<irs::cost>::id(),      &_cost  },
         { irs::type<irs::score>::id(),     &_score },
       }},
-      _acceptor(std::move(acceptor)) {
+      _acceptor(acceptor) {
     if (!order.empty()) {
       irs::order::prepared::scorers scorers(
         order, reader, field,
@@ -169,7 +167,7 @@ class GeoIterator : public irs::doc_iterator {
       return false;
     }
 
-    if (!shape(iresearch::slice(_storedValue->value), _shape)) {
+    if (!shape(arangodb::iresearch::slice(_storedValue->value), _shape)) {
       return false;
     }
 
@@ -184,7 +182,7 @@ class GeoIterator : public irs::doc_iterator {
   irs::cost _cost;
   irs::score _score;
   irs::frozen_attributes<3, attribute_provider> _attrs;
-  Acceptor _acceptor;
+  Acceptor& _acceptor;
 }; // GeoIterator
 
 template<typename Acceptor>
@@ -196,10 +194,10 @@ irs::doc_iterator::ptr make_iterator(
     const irs::byte_type* query_stats,
     irs::order::prepared const& order,
     irs::boost_t boost,
-    Acceptor&& acceptor) {
+    Acceptor& acceptor) {
   return irs::memory::make_managed<GeoIterator<Acceptor>>(
     irs::make_disjunction<Disjunction>(std::move(itrs)),
-    std::move(columnIt), std::move(acceptor),
+    std::move(columnIt), acceptor,
     reader, field, query_stats, order, boost);
 }
 
@@ -226,24 +224,24 @@ struct GeoState {
   std::vector<irs::seek_term_iterator::seek_cookie::ptr> states;
 }; // GeoState
 
+using GeoStates = irs::states_cache<GeoState>;
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class GeoQuery
 /// @brief compiled GeoFilter
 //////////////////////////////////////////////////////////////////////////////
+template<typename Acceptor>
 class GeoQuery final : public irs::filter::prepared {
  public:
-  using States = irs::states_cache<GeoState>;
-
   GeoQuery(
-      States&& states,
+      GeoStates&& states,
       irs::bstring&& stats,
-      geo::ShapeContainer&& filterShape,
-      irs::boost_t boost,
-      GeoFilterType type) noexcept
-    : prepared(boost), _states(std::move(states)),
+      Acceptor&& acceptor,
+      irs::boost_t boost) noexcept
+    : prepared(boost),
+      _states(std::move(states)),
       _stats(std::move(stats)),
-      _filterShape(std::move(filterShape)),
-      _type(type) {
+      _acceptor(std::move(acceptor)) {
   }
 
   virtual irs::doc_iterator::ptr execute(
@@ -288,10 +286,6 @@ class GeoQuery final : public irs::filter::prepared {
       }
     }
 
-    if (_type == GeoFilterType::NEAR) {
-      return irs::make_disjunction<Disjunction>(std::move(itrs));
-    }
-
     auto* reader = state->storedField;
     auto columnIt = reader ? reader->iterator() : nullptr;
 
@@ -299,82 +293,42 @@ class GeoQuery final : public irs::filter::prepared {
       return irs::doc_iterator::empty();
     }
 
-    switch (_type) {
-      case GeoFilterType::INTERSECTS: {
-        return make_iterator(
-          std::move(itrs), std::move(columnIt),
-          segment, *state->reader, _stats.c_str(), ord, boost(),
-          [this](geo::ShapeContainer const& shape) {
-            return _filterShape.intersects(&shape);
-        });
-      }
-      case GeoFilterType::CONTAINS:
-        return make_iterator(
-          std::move(itrs), std::move(columnIt),
-          segment, *state->reader, _stats.c_str(), ord, boost(),
-          [this](geo::ShapeContainer const& shape) {
-            return _filterShape.contains(&shape);
-        });
-      case GeoFilterType::IS_CONTAINED:
-        return make_iterator(
-          std::move(itrs), std::move(columnIt),
-          segment, *state->reader, _stats.c_str(), ord, boost(),
-          [this](geo::ShapeContainer const& shape) {
-            return shape.contains(&_filterShape);
-        });
-      default:
-        TRI_ASSERT(false);
-        return irs::doc_iterator::empty();
-    }
+    return make_iterator(
+      std::move(itrs), std::move(columnIt),
+      segment, *state->reader, _stats.c_str(),
+      ord, boost(), _acceptor);
   }
 
  private:
-  States _states;
+  GeoStates _states;
   irs::bstring _stats;
-  geo::ShapeContainer _filterShape;
-  GeoFilterType _type;
+  Acceptor _acceptor;
 }; // GeoQuery
 
-NS_END
+template<typename Acceptor>
+irs::filter::prepared::ptr make_query(
+    GeoStates&& states, irs::bstring&& stats,
+    irs::boost_t boost, Acceptor&& acceptor) {
+  return irs::memory::make_managed<GeoQuery<Acceptor>>(
+    std::move(states), std::move(stats),
+    std::move(acceptor), boost);
+}
 
-NS_ROOT
+std::pair<GeoStates, irs::bstring> prepareStates(
+    irs::index_reader const& index,
+    irs::order::prepared const& order,
+    std::vector<std::string> const& geoTerms,
+    irs::string_ref const& field,
+    irs::string_ref const& storedField) {
+  assert(!geoTerms.empty());
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                        GeoFilter
-// ----------------------------------------------------------------------------
+  std::pair<GeoStates, irs::bstring> res(
+    std::piecewise_construct,
+    std::forward_as_tuple(index.size()),
+    std::forward_as_tuple(order.stats_size(), 0));
 
-irs::filter::prepared::ptr GeoFilter::prepare(
-    const irs::index_reader& index,
-    const irs::order::prepared& order,
-    irs::boost_t boost,
-    const irs::attribute_provider* /*ctx*/) const {
-  auto& shape = const_cast<geo::ShapeContainer&>(options().shape);
-
-  if (shape.empty()) {
-    return prepared::empty();
-  }
-
-  S2RegionTermIndexer indexer(options().options);
-  std::vector<std::string> geoTerms;
-  TRI_ASSERT(shape.region());
-  if (geo::ShapeContainer::Type::S2_POINT == shape.type()) {
-    auto const* region = static_cast<S2PointRegion const*>(shape.region());
-    geoTerms = indexer.GetQueryTerms(region->point(), options().prefix);
-  } else {
-    geoTerms = indexer.GetQueryTerms(*shape.region(), options().prefix);
-  }
-
-  boost *= this->boost();
-  size_t const size = geoTerms.size();
-
-  if (0 == size) {
-    return prepared::empty();
-  }
-
-  irs::string_ref const field = this->field();
-  irs::string_ref const storedField = options().storedField;
+  auto const size = geoTerms.size();
   irs::field_collectors fieldStats(order);
-  GeoQuery::States states(index.size());
   std::vector<GeoState::TermState> termStates;
 
   for (auto& segment : index) {
@@ -407,22 +361,229 @@ irs::filter::prepared::ptr GeoFilter::prepare(
       continue;
     }
 
-    auto& state = states.insert(segment);
+    auto& state = res.first.insert(segment);
     state.reader = reader;
     state.states = std::move(termStates);
     state.storedField = segment.column_reader("\1" + std::string(storedField)); // FIXME
   }
 
-  irs::bstring stats(order.stats_size(), 0);
-  fieldStats.finish(const_cast<irs::byte_type*>(stats.data()), index);
+  fieldStats.finish(const_cast<irs::byte_type*>(res.second.data()), index);
 
-  return irs::memory::make_managed<GeoQuery>(
-    std::move(states), std::move(stats),
-    std::move(shape), // steal shape from options
-    boost, options().type);
+  return res;
+}
+
+}
+
+namespace arangodb {
+namespace iresearch {
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                        GeoFilter
+// ----------------------------------------------------------------------------
+
+irs::filter::prepared::ptr GeoFilter::prepare(
+    const irs::index_reader& index,
+    const irs::order::prepared& order,
+    irs::boost_t boost,
+    const irs::attribute_provider* /*ctx*/) const {
+  auto& shape = const_cast<geo::ShapeContainer&>(options().shape);
+
+  if (shape.empty()) {
+    return prepared::empty();
+  }
+
+  TRI_ASSERT(shape.region());
+
+  S2RegionTermIndexer indexer(options().options);
+  auto const geoTerms = geo::ShapeContainer::Type::S2_POINT == shape.type()
+    ? [&](){ auto const* region = static_cast<S2PointRegion const*>(shape.region());
+             return indexer.GetQueryTerms(region->point(), options().prefix); }()
+    : [&](){ return indexer.GetQueryTerms(*shape.region(), options().prefix); }();
+
+  if (geoTerms.empty()) {
+    return prepared::empty();
+  }
+
+  auto [states, stats] = prepareStates(
+    index, order, geoTerms, field(), options().storedField);
+
+  boost *= this->boost();
+
+  switch (options().type) {
+    case GeoFilterType::INTERSECTS: {
+      return ::make_query(
+        std::move(states), std::move(stats), boost,
+        [filterShape = std::move(shape)](geo::ShapeContainer const& shape) {
+          return filterShape.intersects(&shape);
+      });
+    }
+    case GeoFilterType::CONTAINS:
+      return ::make_query(
+        std::move(states), std::move(stats), boost,
+        [filterShape = std::move(shape)](geo::ShapeContainer const& shape) {
+          return filterShape.contains(&shape);
+      });
+    case GeoFilterType::IS_CONTAINED:
+      return ::make_query(
+        std::move(states), std::move(stats), boost,
+        [filterShape = std::move(shape)](geo::ShapeContainer const& shape) {
+          return shape.contains(&filterShape);
+      });
+    default:
+      TRI_ASSERT(false);
+      return prepared::empty();
+  }
 }
 
 DEFINE_FACTORY_DEFAULT(GeoFilter)
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                GeoDistanceFilter
+// ----------------------------------------------------------------------------
+
+std::pair<S2Cap, bool> getBound(irs::BoundType type,
+                                S2Point origin,
+                                double_t distance) {
+  if (distance == 0.) {
+    return { S2Cap::Empty(), false };
+  }
+
+  bool incl = true;
+  switch (type) {
+    case irs::BoundType::UNBOUNDED:
+      return { S2Cap::Full(), incl };
+    case irs::BoundType::EXCLUSIVE:
+      incl = false;
+      [[fallthrough]];
+    case irs::BoundType::INCLUSIVE:
+      return {
+        S2Cap(origin, S1Angle::Radians(S2Earth::MetersToRadians(distance))),
+        incl
+      };
+  }
+
+  TRI_ASSERT(false);
+  return {};
+};
+
+template<bool MinIncl, bool MaxIncl>
+struct GeoDistanceRangeAcceptor {
+  S2Cap min;
+  S2Cap max;
+
+  bool operator()(geo::ShapeContainer const& shape) const {
+    TRI_ASSERT(geo::ShapeContainer::Type::S2_POINT == shape.type());
+    auto const point = static_cast<S2PointRegion const*>(shape.region())->point();
+
+    return (MinIncl ? !min.InteriorContains(point) : !min.Contains(point)) &&
+           (MaxIncl ? max.Contains(point) : max.InteriorContains(point));
+  }
+};
+
+template<bool Incl>
+struct GeoDistanceAcceptor {
+  S2Cap filter;
+
+  bool operator()(geo::ShapeContainer const& shape) const {
+    TRI_ASSERT(geo::ShapeContainer::Type::S2_POINT == shape.type());
+    auto const point = static_cast<S2PointRegion const*>(shape.region())->point();
+
+    return (Incl ? filter.Contains(point) : filter.InteriorContains(point));
+  }
+};
+
+irs::filter::prepared::ptr GeoDistanceFilter::prepare(
+    const irs::index_reader& index,
+    const irs::order::prepared& order,
+    irs::boost_t boost,
+    const irs::attribute_provider* /*ctx*/) const {
+  auto const& range = options().range;
+  auto const& origin = options().origin;
+
+  auto [minShape, minIncl] = getBound(range.min_type, origin, range.min);
+  auto [maxShape, maxIncl] = getBound(range.max_type, origin, range.max);
+
+  if (!minShape.is_valid() || !maxShape.is_valid()) {
+    return prepared::empty();
+  } else if (minShape.is_full() || maxShape.is_full()) {
+    // FIXME
+    return irs::all().prepare(index, order, boost);
+  } else if (minShape.is_empty() && maxShape.is_empty()) {
+    return prepared::empty();
+  }
+
+  S2RegionTermIndexer indexer(options().options);
+  std::vector<std::string> geoTerms;
+
+  if (!minShape.is_empty() && !maxShape.is_empty()) {
+    S2RegionCoverer coverer(options().options);
+    S2CellUnion covering = coverer.GetCovering(maxShape);
+    covering.Difference(coverer.GetCovering(minShape));
+
+    geoTerms = indexer.GetQueryTermsForCanonicalCovering(covering, options().prefix);
+  } else if (!minShape.is_empty()) {
+    geoTerms = indexer.GetQueryTerms(minShape, options().prefix);
+  } else {
+    TRI_ASSERT(!maxShape.is_empty());
+    geoTerms = indexer.GetQueryTerms(maxShape, options().prefix);
+  }
+
+  if (geoTerms.empty()) {
+    return prepared::empty();
+  }
+
+  auto [states, stats] = prepareStates(
+    index, order, geoTerms, field(), options().storedField);
+
+  boost *= this->boost();
+
+  if (!minShape.is_empty() && !maxShape.is_empty()) {
+    switch (size_t(minIncl) + 2*size_t(maxIncl)) {
+      case 0:
+        return ::make_query(
+          std::move(states), std::move(stats), boost,
+          GeoDistanceRangeAcceptor<false, false>{minShape, maxShape});
+      case 1:
+        return ::make_query(
+          std::move(states), std::move(stats), boost,
+          GeoDistanceRangeAcceptor<true, false>{minShape, maxShape});
+      case 2:
+        return ::make_query(
+          std::move(states), std::move(stats), boost,
+          GeoDistanceRangeAcceptor<false, true>{minShape, maxShape});
+      case 3:
+        return ::make_query(
+          std::move(states), std::move(stats), boost,
+          GeoDistanceRangeAcceptor<true, true>{minShape, maxShape});
+      default:
+        TRI_ASSERT(false);
+        return prepared::empty();
+    }
+  }
+
+  S2Cap* shape;
+  bool incl;
+
+  if (minShape.is_empty()) {
+    shape = &maxShape;
+    incl = maxIncl;
+  } else {
+    shape = &minShape;
+    incl = minIncl;
+  }
+
+  if (incl) {
+    return ::make_query(
+      std::move(states), std::move(stats), boost,
+      GeoDistanceAcceptor<true>{*shape});
+  } else {
+    return ::make_query(
+      std::move(states), std::move(stats), boost,
+      GeoDistanceAcceptor<false>{*shape});
+  }
+}
+
+DEFINE_FACTORY_DEFAULT(GeoDistanceFilter)
 
 } // iresearch
 } // arangodb

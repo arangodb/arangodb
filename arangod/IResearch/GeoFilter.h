@@ -26,6 +26,7 @@
 #include <s2/s2region_term_indexer.h>
 
 #include "search/filter.hpp"
+#include "search/search_range.hpp"
 #include "utils/type_limits.hpp"
 
 #include "Basics/debugging.h"
@@ -35,6 +36,7 @@ namespace arangodb {
 namespace iresearch {
 
 class GeoFilter;
+class GeoDistanceFilter;
 
 enum class GeoFilterType : uint32_t {
   NEAR = 0,
@@ -44,10 +46,10 @@ enum class GeoFilterType : uint32_t {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @struct by_term_options
-/// @brief options for term filter
+/// @struct GeoFilterOptions
+/// @brief options for geo filter
 ////////////////////////////////////////////////////////////////////////////////
-class GeoFilterOptions {
+struct GeoFilterOptions {
  public:
   using filter_type = GeoFilter;
 
@@ -75,12 +77,11 @@ class GeoFilterOptions {
   std::string prefix;
   S2RegionTermIndexer::Options options;
   GeoFilterType type{GeoFilterType::NEAR};
-
 }; // GeoFilterOptions
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class by_geo_distance
-/// @brief user-side geo distance filter
+/// @class GeoFilter
+/// @brief user-side geo filter
 //////////////////////////////////////////////////////////////////////////////
 class GeoFilter final
   : public irs::filter_base<GeoFilterOptions>{
@@ -98,7 +99,52 @@ class GeoFilter final
     const irs::order::prepared& ord,
     irs::boost_t boost,
     const irs::attribute_provider* /*ctx*/) const;
-}; // by_geo_terms
+}; // GeoFilter
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct GeoFilterOptions
+/// @brief options for term filter
+////////////////////////////////////////////////////////////////////////////////
+class GeoDistanceFilterOptions {
+ public:
+  using filter_type = GeoDistanceFilter;
+
+  bool operator==(const GeoDistanceFilterOptions& rhs) const noexcept {
+    return origin == rhs.origin && range == rhs.range;
+  }
+
+  size_t hash() const noexcept {
+    return irs::hash_combine(range.hash(), S2PointHash()(origin));
+  }
+
+  S2Point origin;
+  irs::search_range<double_t> range;
+  std::string storedField;
+  std::string prefix;
+  S2RegionTermIndexer::Options options;
+}; // GeoFilterOptions
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class GeoDistanceFilter
+/// @brief user-side geo distance filter
+//////////////////////////////////////////////////////////////////////////////
+class GeoDistanceFilter final
+  : public irs::filter_base<GeoDistanceFilterOptions>{
+ public:
+  static constexpr irs::string_ref type_name() noexcept {
+    return "arangodb::iresearch::GeoFilter";
+  }
+
+  DECLARE_FACTORY();
+
+  using filter::prepare;
+
+  virtual prepared::ptr prepare(
+    const irs::index_reader& rdr,
+    const irs::order::prepared& ord,
+    irs::boost_t boost,
+    const irs::attribute_provider* /*ctx*/) const;
+}; // GeoDistanceFilter
 
 } // iresearch
 } // arangodb
