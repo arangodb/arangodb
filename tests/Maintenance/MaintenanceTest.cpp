@@ -752,15 +752,22 @@ std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> planToChangeset(No
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> ret;
   for (auto const& db : plan(DATABASES).children()) {
     VPackBuilder& dbbuilder =
-      *ret.try_emplace(db.first, std::shared_ptr<VPackBuilder>()).first->second;
-    dbbuilder.add(VPackValue("arango"));
-    VPackObjectBuilder a(&dbbuilder);
-    dbbuilder.add(VPackValue(PLAN));
-    VPackObjectBuilder p(&dbbuilder);
-    for (auto const& section : PLAN_SECTIONS) {
-      dbbuilder.add(
-        section, plan(std::vector<std::string>{section, db.first}).toBuilder().slice());
-    }
+      *ret.try_emplace(db.first, std::make_shared<VPackBuilder>()).first->second;
+
+    { VPackArrayBuilder env(&dbbuilder);
+      { VPackObjectBuilder o(&dbbuilder);
+        dbbuilder.add(VPackValue(std::string()));
+        { VPackObjectBuilder a(&dbbuilder);
+          dbbuilder.add(VPackValue(PLAN));
+          { VPackObjectBuilder p(&dbbuilder);
+            for (auto const& section : PLAN_SECTIONS) {
+              dbbuilder.add(VPackValue(section));
+              VPackObjectBuilder c(&dbbuilder);
+              auto path = std::vector<std::string>{section, db.first};
+              if (plan.has(path)) {
+                dbbuilder.add(db.first, plan(path).toBuilder().slice());
+              }
+            }}}}}
   }
   return ret;
 }
@@ -773,27 +780,51 @@ std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> localToChangeset(N
   return ret;
 }
 
-
 TEST_F(MaintenanceTestActionPhaseOne, in_sync_should_have_0_effects) {
   std::vector<std::shared_ptr<ActionDescription>> actions;
 
-  std::unordered_set<std::string> dirty;
+  auto pcs = planToChangeset(plan);
 
+  std::unordered_set<std::string> dirty {};
   for (auto const& node : localNodes) {
     arangodb::maintenance::diffPlanLocal(
-      planToChangeset(plan), 0, dirty, localToChangeset(node.second), node.first, errors,
+      pcs, 0, dirty, localToChangeset(node.second), node.first, errors,
       *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
-
     ASSERT_EQ(actions.size(), 0);
   }
+
+  dirty.emplace("_system"); // should still have no effect (equilibrium)
+  for (auto const& node : localNodes) {
+    arangodb::maintenance::diffPlanLocal(
+      pcs, 0, dirty, localToChangeset(node.second), node.first, errors,
+      *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
+    ASSERT_EQ(actions.size(), 0);
+  }
+
+  dirty.emplace("foo"); // should still have no effect (equilibrium)
+  for (auto const& node : localNodes) {
+    arangodb::maintenance::diffPlanLocal(
+      pcs, 0, dirty, localToChangeset(node.second), node.first, errors,
+      *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
+    ASSERT_EQ(actions.size(), 0);
+  }
+
 }
 
 TEST_F(MaintenanceTestActionPhaseOne, local_databases_one_more_empty_database_should_be_dropped) {
   std::vector<std::shared_ptr<ActionDescription>> actions;
 
   localNodes.begin()->second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
-  std::unordered_set<std::string> dirty{"db3"};
+  std::unordered_set<std::string> dirty{};
 
+  arangodb::maintenance::diffPlanLocal(
+    planToChangeset(plan), 0, dirty, localToChangeset(localNodes.begin()->second),
+    localNodes.begin()->first, errors, *feature, actions,
+    arangodb::MaintenanceFeature::ShardActionMap{});
+
+  ASSERT_EQ(actions.size(), 0);
+
+  dirty.emplace("db3");
   arangodb::maintenance::diffPlanLocal(
     planToChangeset(plan), 0, dirty, localToChangeset(localNodes.begin()->second),
     localNodes.begin()->first, errors, *feature, actions,
