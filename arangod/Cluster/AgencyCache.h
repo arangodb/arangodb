@@ -140,7 +140,9 @@ private:
   void invokeCallbackNoLock(uint64_t, std::string const& = std::string()) const;
 
   /// @brief handle callbacks for specific log document
-  void handleCallbacksNoLock(VPackSlice, std::unordered_set<uint64_t>&, std::vector<uint64_t>&, std::unordered_set<std::string>& plannedChanges, std::unordered_set<std::string>& currentChanges);
+  void handleCallbacksNoLock(
+    VPackSlice, std::unordered_set<uint64_t>&, std::vector<uint64_t>&,
+    std::unordered_set<std::string>& plannedChanges, std::unordered_set<std::string>& currentChanges);
 
   /// @brief trigger all waiting call backs for index <= _commitIndex
   ///        caller must hold lock

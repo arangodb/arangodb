@@ -26,6 +26,7 @@
 #include "gtest/gtest.h"
 
 #include "Agency/AgencyPaths.h"
+#include "Agency/AgencyStrings.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
@@ -745,14 +746,22 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   }
 };
 
+
+std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> nodeToChangeset(Node const& plan) {
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> ret;
+  return ret;
+}
+
+
 TEST_F(MaintenanceTestActionPhaseOne, in_sync_should_have_0_effects) {
   std::vector<std::shared_ptr<ActionDescription>> actions;
 
+  std::unordered_set<std::string> dirty;
+
   for (auto const& node : localNodes) {
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(node.second), node.first, errors,
+      *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 0);
   }
@@ -762,11 +771,12 @@ TEST_F(MaintenanceTestActionPhaseOne, local_databases_one_more_empty_database_sh
   std::vector<std::shared_ptr<ActionDescription>> actions;
 
   localNodes.begin()->second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
+  std::unordered_set<std::string> dirty{"db3"};
 
-  arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                       localNodes.begin()->second.toBuilder().slice(),
-                                       localNodes.begin()->first, errors, *feature, actions,
-                                       arangodb::MaintenanceFeature::ShardActionMap{});
+  arangodb::maintenance::diffPlanLocal(
+    nodeToChangeset(plan), 0, dirty, nodeToChangeset(localNodes.begin()->second),
+    localNodes.begin()->first, errors, *feature, actions,
+    arangodb::MaintenanceFeature::ShardActionMap{});
 
   ASSERT_EQ(actions.size(), 1);
   ASSERT_EQ(actions.front()->name(), "DropDatabase");
@@ -777,11 +787,12 @@ TEST_F(MaintenanceTestActionPhaseOne,
        local_databases_one_more_non_empty_database_should_be_dropped) {
   std::vector<std::shared_ptr<ActionDescription>> actions;
   localNodes.begin()->second("db3/col") = arangodb::velocypack::Slice::emptyObjectSlice();
+  std::unordered_set<std::string> dirty{"db3"};
 
-  arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                       localNodes.begin()->second.toBuilder().slice(),
-                                       localNodes.begin()->first, errors, *feature, actions,
-                                       arangodb::MaintenanceFeature::ShardActionMap{});
+  arangodb::maintenance::diffPlanLocal(
+    nodeToChangeset(plan), 0, dirty, nodeToChangeset(localNodes.begin()->second),
+    localNodes.begin()->first, errors, *feature, actions,
+    arangodb::MaintenanceFeature::ShardActionMap{});
 
   ASSERT_EQ(actions.size(), 1);
   ASSERT_EQ(actions[0]->name(), "DropDatabase");
@@ -795,16 +806,16 @@ TEST_F(MaintenanceTestActionPhaseOne,
   plan = originalPlan;
   createPlanDatabase(dbname, plan);
   createPlanCollection(dbname, colname, 1, 3, plan);
+  std::unordered_set<std::string> dirty{"db3"};
 
   for (auto node : localNodes) {
     std::vector<std::shared_ptr<ActionDescription>> actions;
 
     node.second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(node.second), node.first,
+      errors, *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 1);
     for (auto const& action : actions) {
@@ -817,13 +828,14 @@ TEST_F(MaintenanceTestActionPhaseOne,
        add_one_collection_to_db3_in_plan_with_shards_for_all_db_servers_shard_locked) {
   // This tests that phaseOne does not consider a shard which is locked.
   std::string dbname("db3"), colname("x");
+  std::unordered_set<std::string> dirty{"db3"};
 
   plan = originalPlan;
   createPlanDatabase(dbname, plan);
   createPlanCollection(dbname, colname, 1, 3, plan);
 
   auto cid = collectionMap(plan).at("db3/x");
-  auto shards = plan({"Collections", dbname, cid}).hasAsChildren("shards");
+  auto shards = plan({COLLECTIONS, dbname, cid}).hasAsChildren(SHARDS);
   ASSERT_TRUE(shards.second);
   ASSERT_EQ(shards.first.size(), 1);
   std::string shardName = shards.first.begin()->first;
@@ -834,13 +846,10 @@ TEST_F(MaintenanceTestActionPhaseOne,
     node.second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
 
     arangodb::maintenance::diffPlanLocal(
-        plan.toBuilder().slice(), 0, node.second.toBuilder().slice(),
-        node.first, errors, *feature, actions,
-        arangodb::MaintenanceFeature::ShardActionMap{
-            {shardName, std::make_shared<ActionDescription>(
-                            std::map<std::string, std::string>(
-                                {{"name", "CreateCollection"}}),
-                            0, true)}});
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(node.second), node.first, errors,
+      *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{
+        {shardName, std::make_shared<ActionDescription>(
+            std::map<std::string, std::string>({{"name", CREATE_COLLECTION}}), 0, true)}});
 
     ASSERT_EQ(actions.size(), 0);
   }
@@ -849,6 +858,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
 TEST_F(MaintenanceTestActionPhaseOne,
        add_two_more_collections_to_db3_in_plan_with_shards_for_all_db_servers) {
   std::string dbname("db3"), colname1("x"), colname2("y");
+  std::unordered_set<std::string> dirty{"db3"};
 
   plan = originalPlan;
   createPlanDatabase(dbname, plan);
@@ -860,10 +870,9 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     node.second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(node.second), node.first,
+      errors, *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -876,6 +885,7 @@ TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_queues) {
   plan = originalPlan;
   auto cid = collectionMap(plan).at("_system/_queues");
   auto shards = plan({"Collections", "_system", cid, "shards"}).children();
+  std::unordered_set<std::string> dirty{"_system"};
 
   createPlanIndex("_system", cid, "hash", {"someField"}, false, false, false, plan);
 
@@ -884,10 +894,9 @@ TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_queues) {
 
     auto local = node.second;
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(), node.first,
-                                         errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), node.first, errors, *feature,
+      actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     size_t n = 0;
     for (auto const& shard : shards) {
@@ -911,17 +920,18 @@ TEST_F(MaintenanceTestActionPhaseOne, remove_an_index_from_plan) {
   auto cid = collectionMap(plan).at("_system/bar");
   auto shards = plan({"Collections", dbname, cid, "shards"}).children();
 
-  plan({"Collections", dbname, cid, indexes}).handle<POP>(arangodb::velocypack::Slice::emptyObjectSlice());
+  plan({"Collections", dbname, cid, indexes}).handle<POP>(
+    arangodb::velocypack::Slice::emptyObjectSlice());
+  std::unordered_set<std::string> dirty{"_system"};
 
   for (auto node : localNodes) {
-    std::vector<std::shared_ptr<ActionDescription>> actions;
 
+    std::vector<std::shared_ptr<ActionDescription>> actions;
     auto local = node.second;
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(), node.first,
-                                         errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), node.first, errors,
+      *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     size_t n = 0;
     for (auto const& shard : shards) {
@@ -939,15 +949,16 @@ TEST_F(MaintenanceTestActionPhaseOne, remove_an_index_from_plan) {
 
 TEST_F(MaintenanceTestActionPhaseOne, add_one_collection_to_local) {
   plan = originalPlan;
+  std::unordered_set<std::string> dirty{"_system"};
 
   for (auto node : localNodes) {
     std::vector<std::shared_ptr<ActionDescription>> actions;
     createLocalCollection("_system", "1111111", node.second);
+    std::unordered_set<std::string> dirty{"_system"};
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(node.second), node.first, errors,
+      *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 1);
     for (auto const& action : actions) {
@@ -962,22 +973,22 @@ TEST_F(MaintenanceTestActionPhaseOne,
        modify_journalsize_in_plan_should_update_the_according_collection) {
   VPackBuilder v;
   v.add(VPackValue(true));
+  std::string dbname = "_system";
+  std::string prop = arangodb::maintenance::WAIT_FOR_SYNC;
+  std::unordered_set<std::string> dirty{dbname};
 
   for (auto node : localNodes) {
     std::vector<std::shared_ptr<ActionDescription>> actions;
-    std::string dbname = "_system";
-    std::string prop = arangodb::maintenance::WAIT_FOR_SYNC;
 
-    auto cb = node.second(dbname).children().begin()->second->toBuilder();
+    /*auto cb = node.second(dbname).children().begin()->second->toBuilder();
     auto collection = cb.slice();
-    auto shname = collection.get(NAME).copyString();
+    auto shname = collection.get(NAME).copyString();*/
 
     (*node.second(dbname).children().begin()->second)(prop) = v.slice();
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(node.second), node.first,
+      errors, *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     /*
     if (actions.size() != 1) {
@@ -1000,6 +1011,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_self) {
   plan = originalPlan;
   takeLeadershipPlan(dbName(), planId(), plan);
+  std::unordered_set<std::string> dirty{dbName()};
 
   for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
@@ -1007,10 +1019,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_self) {
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(),
-                                         server, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), server, errors, *feature,
+      actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 0);
   }
@@ -1019,6 +1030,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_self) {
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_self) {
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
+  std::unordered_set<std::string> dirty{dbName()};
 
   for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
@@ -1026,10 +1038,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_se
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(),
-                                         server, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), server, errors, *feature,
+      actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1044,6 +1055,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_se
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_self) {
   plan = originalPlan;
   otherTakeLeadershipPlan(dbName(), planId(), plan);
+  std::unordered_set<std::string> dirty{dbName()};
 
   for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
@@ -1051,10 +1063,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_self) {
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(),
-                                         server, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), server, errors,
+      *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1069,17 +1080,17 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_self) {
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_self) {
   plan = originalPlan;
   otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
+  std::unordered_set<std::string> dirty{dbName()};
 
-  for (auto [server, local]  : localNodes) {
+  for (auto [server, local] : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     takeLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(),
-                                         server, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), server, errors, *feature,
+      actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     for (auto const& action : actions) {
       assertIsResignLeadershipAction(*action, dbName());
@@ -1093,17 +1104,17 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_s
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_other) {
   plan = originalPlan;
   takeLeadershipPlan(dbName(), planId(), plan);
+  std::unordered_set<std::string> dirty{dbName()};
 
-  for (auto [server, local]  : localNodes) {
+  for (auto [server, local] : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     otherTakeLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(),
-                                         server, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), server, errors, *feature,
+      actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1120,6 +1131,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_other) {
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_other) {
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
+  std::unordered_set<std::string> dirty{dbName()};
 
   for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
@@ -1127,10 +1139,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_ot
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(),
-                                         server, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), server, errors, *feature,
+      actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1145,17 +1156,17 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_ot
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_other) {
   plan = originalPlan;
   otherTakeLeadershipPlan(dbName(), planId(), plan);
+  std::unordered_set<std::string> dirty{dbName()};
 
-  for (auto [server, local]  : localNodes) {
+  for (auto [server, local] : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     otherTakeLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(),
-                                         server, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), server, errors,
+      *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 0);
   }
@@ -1164,17 +1175,17 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_other) {
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_other) {
   plan = originalPlan;
   otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
+  std::unordered_set<std::string> dirty{dbName()};
 
-  for (auto [server, local]  : localNodes) {
+  for (auto [server, local] : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
     otherTakeLeadershipLocal(dbName(), relevantShards, local);
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(),
-                                         server, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), server, errors,
+      *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 0);
   }
@@ -1183,6 +1194,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_o
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_resigned) {
   plan = originalPlan;
   takeLeadershipPlan(dbName(), planId(), plan);
+  std::unordered_set<std::string> dirty{dbName()};
 
   for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
@@ -1190,10 +1202,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_resigned)
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(),
-                                         server, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), server, errors,
+      *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1210,6 +1221,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_resigned)
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_resigned) {
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
+  std::unordered_set<std::string> dirty{dbName()};
 
   for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
@@ -1217,10 +1229,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_re
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(),
-                                         server, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), server, errors,
+      *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 0);
   }
@@ -1229,6 +1240,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_re
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_resigned) {
   plan = originalPlan;
   otherTakeLeadershipPlan(dbName(), planId(), plan);
+  std::unordered_set<std::string> dirty{dbName()};
 
   for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
@@ -1236,10 +1248,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_resigned
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(),
-                                         server, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), server, errors,
+      *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     // Synchronize in Phase 2 is responsible for this.
     ASSERT_EQ(actions.size(), 0);
@@ -1249,6 +1260,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_resigned
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_resigned) {
   plan = originalPlan;
   otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
+  std::unordered_set<std::string> dirty{dbName()};
 
   for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
@@ -1256,10 +1268,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_r
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(),
-                                         server, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), server, errors,
+      *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     // Synchronize in Phase 2 is responsible for this.
     ASSERT_EQ(actions.size(), 0);
@@ -1269,6 +1280,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_r
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_reboot) {
   plan = originalPlan;
   takeLeadershipPlan(dbName(), planId(), plan);
+  std::unordered_set<std::string> dirty{dbName()};
 
   for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
@@ -1276,10 +1288,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_reboot) {
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(),
-                                         server, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), server, errors,
+      *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1296,6 +1307,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_reboot) {
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_reboot) {
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
+  std::unordered_set<std::string> dirty{dbName()};
 
   for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
@@ -1303,10 +1315,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_re
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(),
-                                         server, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), server, errors,
+      *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1321,6 +1332,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_re
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_reboot) {
   plan = originalPlan;
   otherTakeLeadershipPlan(dbName(), planId(), plan);
+  std::unordered_set<std::string> dirty{dbName()};
 
   for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
@@ -1328,11 +1340,10 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_reboot) 
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(),
-                                         server, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
-    
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), server, errors,
+      *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
+
     // We will just resign in this case to get a clear state.
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1347,6 +1358,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_reboot) 
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_reboot) {
   plan = originalPlan;
   otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
+  std::unordered_set<std::string> dirty{dbName()};
 
   for (auto [server, local]  : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), server, originalPlan);
@@ -1354,10 +1366,9 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_r
 
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         local.toBuilder().slice(),
-                                         server, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(local), server, errors,
+      *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     // We will just resign in this case to get a clear state.
     ASSERT_EQ(actions.size(), 2);
@@ -1373,6 +1384,7 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_r
 TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
   VPackBuilder v;
   v.add(VPackValue(std::string()));
+  std::unordered_set<std::string> dirty{dbName()};
 
   for (auto node : localNodes) {
     std::vector<std::shared_ptr<ActionDescription>> actions;
@@ -1385,10 +1397,9 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
       check = true;
       leader = v.slice();
     }
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(node.second), node.first,
+      errors, *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     if (check) {
       ASSERT_EQ(actions.size(), 1);
@@ -1403,15 +1414,15 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
 TEST_F(MaintenanceTestActionPhaseOne, resign_leadership_plan) {
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
+  std::unordered_set<std::string> dirty{dbName()};
 
   for (auto node : localNodes) {
     auto relevantShards = getShardsForServer(dbName(), planId(), node.first, originalPlan);
     std::vector<std::shared_ptr<ActionDescription>> actions;
     // every server is responsible for two shards of dbName() and planId()
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(node.second), node.first,
+      errors, *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), relevantShards.size());
     for (auto const& action : actions) {
@@ -1426,6 +1437,7 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership_plan) {
 TEST_F(MaintenanceTestActionPhaseOne,
        empty_db3_in_plan_should_drop_all_local_db3_collections_on_all_servers) {
   plan(PLAN_COL_PATH + "db3") = arangodb::velocypack::Slice::emptyObjectSlice();
+  std::unordered_set<std::string> dirty{"db3"};
 
   createPlanDatabase("db3", plan);
 
@@ -1433,10 +1445,9 @@ TEST_F(MaintenanceTestActionPhaseOne,
     std::vector<std::shared_ptr<ActionDescription>> actions;
     node.second("db3") = node.second("_system");
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(node.second), node.first,
+      errors, *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), node.second("db3").children().size());
     for (auto const& action : actions) {
@@ -1451,6 +1462,7 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
   std::string const colname("bar");
   auto cid = collectionMap(plan).at(dbname + "/" + colname);
   auto& shards = plan({"Collections", dbname, cid, "shards"}).children();
+  std::unordered_set<std::string> dirty{dbname};
 
   for (auto const& node : localNodes) {
     std::vector<std::shared_ptr<ActionDescription>> actions;
@@ -1479,10 +1491,9 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
       }
     }
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(node.second), node.first,
+      errors, *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 1);
     assertIsResignLeadershipAction(*actions[0], "_system");
@@ -1502,14 +1513,14 @@ TEST_F(MaintenanceTestActionPhaseOne, removed_follower_in_plan_must_be_dropped) 
   std::string const leaderName = b.slice()[0].copyString();
   std::string const followerName = b.slice()[1].copyString();
   firstShard->second->handle<POP>(arangodb::velocypack::Slice::emptyObjectSlice());
+  std::unordered_set<std::string> dirty{dbname};
 
   for (auto const& node : localNodes) {
     std::vector<std::shared_ptr<ActionDescription>> actions;
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
-                                         node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions,
-                                         arangodb::MaintenanceFeature::ShardActionMap{});
+    arangodb::maintenance::diffPlanLocal(
+      nodeToChangeset(plan), 0, dirty, nodeToChangeset(node.second), node.first,
+      errors, *feature, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
     if (node.first == followerName) {
       // Must see an action dropping the shard
