@@ -1334,6 +1334,8 @@ void ClusterInfo::loadCurrent() {
     auto databaseSlice = database.second->slice()[0];
     if (!databaseSlice.hasKey(dbPath)) {
       newDatabases.erase(databaseName);
+      swapDatabases = true;
+      continue;
     }
     databaseSlice = databaseSlice.get(dbPath);
 
@@ -1360,10 +1362,10 @@ void ClusterInfo::loadCurrent() {
     std::vector<std::string> dbPath{
       AgencyCommHelper::path(), "Current", "Collections", databaseName};
     auto databaseSlice = database.second->slice()[0];
-    if (!databaseSlice.hasKey(dbPath)) { //TODO
-      LOG_DEVEL << "TODO";
-        //newDatabases.erase(database);
-        // swapDatabases = true?
+    if (!databaseSlice.hasKey(dbPath)) {
+      newCollections.erase(databaseName);
+      swapCollections = true;
+      continue;
     }
     databaseSlice = databaseSlice.get(dbPath);
 
