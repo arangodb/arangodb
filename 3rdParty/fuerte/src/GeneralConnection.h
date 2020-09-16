@@ -48,7 +48,7 @@ class GeneralConnection : public fuerte::Connection {
 
   virtual ~GeneralConnection() noexcept {
     _state.store(Connection::State::Closed);
-    terminateActivity(fuerte::Error::ConnectionClosed);
+    terminateActivity(fuerte::Error::ConnectionCanceled);
   }
 
   /// @brief connection state
@@ -107,11 +107,9 @@ class GeneralConnection : public fuerte::Connection {
   /// @brief cancel the connection, unusable afterwards
   void cancel() override {
     FUERTE_LOG_DEBUG << "cancel: this=" << this << "\n";
-    asio_ns::post(*_io_context, [self(weak_from_this()), this] {
-      auto s = self.lock();
-      if (s) {
+    asio_ns::post(*_io_context, [self(shared_from_this())] {
+      static_cast<GeneralConnection<ST, RT>&>(*self).
         shutdownConnection(Error::ConnectionCanceled);
-      }
     });
   }
 
