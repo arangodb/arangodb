@@ -716,17 +716,20 @@ void ClusterInfo::loadPlan() {
     planVersion = _planVersion;
   }
 
+  decltype(_plan) newPlan;
+
   bool changed = false;
   auto changeSet = agencyCache.changedSince("Plan", planIndex); // also delivers plan/version
   {
     WRITE_LOCKER(writeLocker, _planProt.lock);
+    newPlan = _plan;
     for (auto const& db : changeSet.dbs) { // Databases
-      _plan[db.first] = db.second;
+      newPlan[db.first] = db.second;
       clusterFeature.addDirty(db.first); // TODO this goes last
       changed = true;
     }
     if (changeSet.rest != nullptr) {       // Rest
-      _plan[std::string()] = changeSet.rest;
+      newPlan[std::string()] = changeSet.rest;
       changed = true;
     }
   }
@@ -744,7 +747,6 @@ void ClusterInfo::loadPlan() {
   decltype(_shardServers) newShardServers;
   decltype(_shardToName) newShardToName;
   decltype(_dbAnalyzersRevision) newDbAnalyzersRevision;
-  decltype(_plan) newPlan;
   bool swapDatabases = false;
   bool swapCollections = false;
   bool swapViews = false;
@@ -753,7 +755,6 @@ void ClusterInfo::loadPlan() {
 
   {
     READ_LOCKER(guard, _planProt.lock);
-    newPlan = _plan;
     newDatabases = _plannedDatabases;
     newCollections = _plannedCollections;
     newShards = _shards;
@@ -765,7 +766,7 @@ void ClusterInfo::loadPlan() {
   std::string name;
 
   // mark for swap even if no databases present to ensure dangling datasources are removed
-  // TODO: Maybe optimize. Else remove alltogether
+  // TODO: Maybe optimize. Else remove altogether
   if (!changeSet.dbs.empty()) {
     swapDatabases = true;
     swapCollections = true;
@@ -1285,17 +1286,20 @@ void ClusterInfo::loadCurrent() {
     currentIndex = _currentIndex;
     currentVersion = _currentVersion;
   }
+  decltype(_current) newCurrent;
+
   bool changed = false;
   auto changeSet = agencyCache.changedSince("Current", currentIndex);
   {
     WRITE_LOCKER(writeLocker, _currentProt.lock);
+    newCurrent = _current;
     for (auto const& db : changeSet.dbs) { // Databases
-      _current[db.first] = db.second;
+      newCurrent[db.first] = db.second;
       feature.addDirty(db.first);
       changed = true;
     }
     if (changeSet.rest != nullptr) {       // Rest
-      _current[std::string()] = changeSet.rest;
+      newCurrent[std::string()] = changeSet.rest;
       changed = true;
     }
   }
@@ -1405,6 +1409,7 @@ void ClusterInfo::loadCurrent() {
   // Now set the new value:
   WRITE_LOCKER(writeLocker, _currentProt.lock);
 
+  _current.swap(newCurrent);
   _currentVersion = changeSet.version;
   _currentIndex = changeSet.ind;
   LOG_TOPIC("feddd", DEBUG, Logger::CLUSTER)

@@ -734,11 +734,6 @@ arangodb::Result arangodb::maintenance::executePlan(
     for (auto const& db : makeDirty) {
       feature.addDirty(db);
     }
-    if (!makeDirty.empty()) {
-      if (feature.server().hasFeature<ClusterFeature>()) {
-        feature.server().getFeature<ClusterFeature>().notify();
-      }
-    }
   }
 
   for (auto const& i : errors.databases) {
