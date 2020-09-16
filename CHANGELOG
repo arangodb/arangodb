@@ -1,6 +1,40 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Added `details` option to figures command of a collection:
+  `collection.figures(details)`
+
+  Setting `details` to `true` will return extended storage engine-specific
+  details to the figures. The details are intended for debugging ArangoDB itself
+  and their format is subject to change. There is not much use in using the
+  details from a client application.
+  By default, `details` is set to `false`, so no details are returned and the
+  behavior is identical to previous versions of ArangoDB.
+
+* Implement RebootTracker usage for AQL queries in case of coordinator restarts
+  or failures. This will clean up the rest of an AQL query on dbservers more
+  quickly and in particular release locks faster.
+
+* Serialize maintenance actions for each shard. This addresses lost document
+  problems found in chaos testing.
+
+* Enforce a maximum result register usage limit in AQL queries. In an AQL query,
+  every user-defined or internal (unnamed) variable will need a register to
+  store results in.
+
+  AQL queries that use more result registers than allowed (currently 1000) will
+  now abort deterministically during the planning stage with error 32
+  (`resource limit exceeded`) and the error message
+  "too many registers (1000) needed for AQL query".
+
+  Before this fix, an AQL query that used more than 1000 result registers
+  crashed the server when assertions were turned on, and the behavior was
+  undefined when assertions were turned off.
+
+* Fixed some cases where subqueries in PRUNE did not result in a parse error,
+  but either in an incomprehensible error (in 3.7), or undefined behaviour
+  during execution (pre 3.7).
+
 * Fixed an issue with audit logging misreporting some document requests as
   internal instead of logging the proper request information.
 

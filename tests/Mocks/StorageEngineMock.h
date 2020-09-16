@@ -74,7 +74,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
                                                        bool restore, bool& created) override;
   virtual void deferDropCollection(std::function<bool(arangodb::LogicalCollection&)> const& callback) override;
   virtual bool dropIndex(arangodb::IndexId iid) override;
-  virtual void figuresSpecific(arangodb::velocypack::Builder&) override;
+  virtual void figuresSpecific(bool details, arangodb::velocypack::Builder&) override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAllIterator(
       arangodb::transaction::Methods* trx) const override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAnyIterator(
