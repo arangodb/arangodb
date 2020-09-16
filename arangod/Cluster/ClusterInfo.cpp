@@ -716,16 +716,14 @@ void ClusterInfo::loadPlan() {
     planVersion = _planVersion;
   }
 
-  decltype(_plan) newPlan;
-
   bool changed = false;
   auto changeSet = agencyCache.changedSince("Plan", planIndex); // also delivers plan/version
+  decltype(_plan) newPlan;
   {
     WRITE_LOCKER(writeLocker, _planProt.lock);
     newPlan = _plan;
     for (auto const& db : changeSet.dbs) { // Databases
       newPlan[db.first] = db.second;
-      clusterFeature.addDirty(db.first); // TODO this goes last
       changed = true;
     }
     if (changeSet.rest != nullptr) {       // Rest
@@ -747,11 +745,11 @@ void ClusterInfo::loadPlan() {
   decltype(_shardServers) newShardServers;
   decltype(_shardToName) newShardToName;
   decltype(_dbAnalyzersRevision) newDbAnalyzersRevision;
+
   bool swapDatabases = false;
   bool swapCollections = false;
   bool swapViews = false;
   bool swapAnalyzers = false;
-
 
   {
     READ_LOCKER(guard, _planProt.lock);
@@ -787,7 +785,7 @@ void ClusterInfo::loadPlan() {
       newDatabases.erase(name);
       continue;
     }
-    
+
     dbSlice = dbSlice.get(dbPath);
     bool const isBuilding = dbSlice.hasKey(StaticStrings::AttrIsBuilding);
 
@@ -1233,6 +1231,12 @@ void ClusterInfo::loadPlan() {
     _planProt.isValid = true;
   }
 
+  for (auto const& db : changeSet.dbs) { // Databases
+    if (!db.first.empty()) {
+      clusterFeature.addDirty(db.first);
+    }
+  }
+
   {
     std::lock_guard w(_waitPlanLock);
     triggerWaiting(_waitPlan, _planIndex);
@@ -1295,7 +1299,6 @@ void ClusterInfo::loadCurrent() {
     newCurrent = _current;
     for (auto const& db : changeSet.dbs) { // Databases
       newCurrent[db.first] = db.second;
-      feature.addDirty(db.first);
       changed = true;
     }
     if (changeSet.rest != nullptr) {       // Rest
@@ -1428,6 +1431,12 @@ void ClusterInfo::loadCurrent() {
   }
 
   _currentProt.isValid = true;
+
+  for (auto const& db : changeSet.dbs) {
+    if (!db.first.empty()) {
+      feature.addDirty(db.first);
+    }
+  }
 
   {
     std::lock_guard w(_waitCurrentLock);
