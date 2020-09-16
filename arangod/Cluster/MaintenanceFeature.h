@@ -321,10 +321,12 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   void delShardVersion(std::string const& shardId);
 
   /**
-   * @brief list of dirty databases
+   * @brief mark and list dirty databases
    */
   void addDirty(std::string const& database);
   void addDirty(std::string&& database);
+  void addDirty(std::unordered_set<std::string> const& databases);
+  void addDirty(std::unordered_set<std::string>&& databases);
   std::unordered_set<std::string> dirty();
 
 

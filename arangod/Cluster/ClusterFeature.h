@@ -98,8 +98,9 @@ class ClusterFeature : public application_features::ApplicationFeature {
    */
   void addDirty(std::string const& database);
   void addDirty(std::string&& database);
+  void addDirty(std::unordered_set<std::string> const& database);
+  void addDirty(std::unordered_set<std::string>&& database);
   std::unordered_set<std::string> dirty();
-
 
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,

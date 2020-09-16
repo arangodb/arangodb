@@ -781,6 +781,26 @@ void ClusterFeature::allocateMembers() {
   _allocated = true;
 }
 
+void ClusterFeature::addDirty(std::unordered_set<std::string>&& databases) {
+  MUTEX_LOCKER(guard, _dirtyLock);
+  for (auto&& database : databases) {
+    if (_dirty.emplace(std::move(database)).second) {
+      LOG_TOPIC("35b74", DEBUG, Logger::MAINTENANCE)
+        << "adding " << database << " to dirty databsases";
+    }
+  }
+  notify();
+}
+void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases) {
+  MUTEX_LOCKER(guard, _dirtyLock);
+  for (auto const& database : databases) {
+    if (_dirty.emplace(database).second) {
+      LOG_TOPIC("35b74", DEBUG, Logger::MAINTENANCE)
+        << "adding " << database << " to dirty databsases";
+    }
+  }
+  notify();
+}
 void ClusterFeature::addDirty(std::string&& database) {
   MUTEX_LOCKER(guard, _dirtyLock);
   if (_dirty.emplace(std::move(database)).second) {

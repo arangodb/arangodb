@@ -731,9 +731,7 @@ arangodb::Result arangodb::maintenance::executePlan(
     VPackArrayBuilder a(&report);
     std::unordered_set<DatabaseID> makeDirty;
     diffPlanLocal(plan, planIndex, dirty, local, serverId, errors, makeDirty, actions, shardActionMap);
-    for (auto const& db : makeDirty) {
-      feature.addDirty(db);
-    }
+    feature.addDirty(makeDirty);
   }
 
   for (auto const& i : errors.databases) {
