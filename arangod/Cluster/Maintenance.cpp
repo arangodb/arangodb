@@ -487,6 +487,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
   std::vector<std::shared_ptr<ActionDescription>>& actions,
   MaintenanceFeature::ShardActionMap const& shardActionMap) {
 
+  // You are entering the functional sector.
+  // Vous entrez dans le secteur fonctionel.
+  // Sie betreten den funktionalen Sektor.
+
   arangodb::Result result;
   std::unordered_set<std::string> commonShrds;  // Intersection collections plan&local
   std::unordered_set<std::string> indis;  // Intersection indexes plan&local
@@ -691,6 +695,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     }
   }
 
+  // You are leaving the functional sector.
+  // Vous sortez du secteur fonctionnel.
+  // Sie verlassen den funktionalen Sektor.
+
   return result;
 }
 
@@ -725,6 +733,11 @@ arangodb::Result arangodb::maintenance::executePlan(
     diffPlanLocal(plan, planIndex, dirty, local, serverId, errors, makeDirty, actions, shardActionMap);
     for (auto const& db : makeDirty) {
       feature.addDirty(db);
+    }
+    if (!makeDirty.empty()) {
+      if (feature.server().hasFeature<ClusterFeature>()) {
+        feature.server().getFeature<ClusterFeature>().notify();
+      }
     }
   }
 
