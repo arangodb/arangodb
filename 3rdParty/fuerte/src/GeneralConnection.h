@@ -107,9 +107,11 @@ class GeneralConnection : public fuerte::Connection {
   /// @brief cancel the connection, unusable afterwards
   void cancel() override {
     FUERTE_LOG_DEBUG << "cancel: this=" << this << "\n";
-    asio_ns::post(*_io_context, [self(shared_from_this())] {
-      static_cast<GeneralConnection<ST, RT>&>(*self).
+    asio_ns::post(*_io_context, [self(weak_from_this()), this] {
+      auto s = self.lock();
+      if (s) {
         shutdownConnection(Error::ConnectionCanceled);
+      }
     });
   }
 
