@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -67,23 +67,15 @@ class SortCondition;
 struct Variable;
 }  // namespace aql
 
-namespace rest {
-enum class ResponseCode;
-}
-
-namespace traverser {
-class BaseEngine;
-}
-
 namespace transaction {
 class Context;
 struct Options;
 }  // namespace transaction
 
 /// @brief forward declarations
-class ClusterFeature;
 class CollectionNameResolver;
 class Index;
+class IndexIterator;
 class LocalDocumentId;
 class ManagedDocumentResult;
 struct IndexIteratorOptions;

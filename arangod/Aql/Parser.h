@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -106,10 +106,7 @@ class Parser {
 
   /// @brief register a parse error, position is specified as line / column
   void registerParseError(int, char const*, int, int);
-
-  /// @brief register a non-parse error
-  void registerError(int, char const* = nullptr);
-
+  
   /// @brief register a warning
   void registerWarning(int, char const*, int, int);
 

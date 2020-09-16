@@ -490,6 +490,7 @@ set(LIB_ARANGO_REPLICATION_SOURCES
   Replication/ReplicationApplierState.cpp
   Replication/ReplicationClients.cpp
   Replication/ReplicationFeature.cpp
+  Replication/ReplicationMetricsFeature.cpp
   Replication/Syncer.cpp
   Replication/SyncerId.cpp
   Replication/TailingSyncer.cpp
@@ -656,6 +657,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestAuthReloadHandler.cpp
   RestHandler/RestBaseHandler.cpp
   RestHandler/RestBatchHandler.cpp
+  RestHandler/RestCompactHandler.cpp
   RestHandler/RestCursorHandler.cpp
   RestHandler/RestDatabaseHandler.cpp
   RestHandler/RestDebugHandler.cpp

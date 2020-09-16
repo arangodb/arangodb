@@ -85,6 +85,7 @@
               errCallback();
             } else {
               // existing jwt login is not valid anymore => reload
+              arangoHelper.setCurrentJwt(null, null);
               location.reload(true);
             }
           }

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -308,6 +309,7 @@ std::string const StaticStrings::RevisionTreeVersion("version");
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");
 std::string const StaticStrings::AttrCoordinatorRebootId("coordinatorRebootId");
+std::string const StaticStrings::AttrCoordinatorId("coordinatorId");
 std::string const StaticStrings::AttrIsBuilding("isBuilding");
 
 // misc strings
@@ -405,9 +407,6 @@ std::string const StaticStrings::ShardsNotReplicated(
 
 std::string const StaticStrings::AgencyCommRequestTimeMs(
     "arangodb_agencycomm_request_time_msec");
-
-std::string const StaticStrings::AqlQueryRuntimeMs(
-    "arangodb_aql_total_query_time_msec");
 
 std::string const StaticStrings::SchedulerQueueLength(
     "arangodb_scheduler_queue_length");

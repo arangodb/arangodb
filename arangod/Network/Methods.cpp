@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -155,7 +156,8 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     if (!pool || !pool->config().clusterInfo) {
       LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION)
         << "connection pool unavailable";
-      return futures::makeFuture(Response{std::move(dest), Error::Canceled, nullptr, std::move(req)});
+      return futures::makeFuture(Response{std::move(dest),
+        Error::ConnectionCanceled, nullptr, std::move(req)});
     }
 
     arangodb::network::EndpointSpec spec;
@@ -203,7 +205,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
             p->promise.setValue(Response{std::move(p->dest), err, std::move(p->tmp), std::move(p->tmp_req)});
           });
         if (ADB_UNLIKELY(!queued)) {
-          p->promise.setValue(Response{std::move(p->dest), fuerte::Error::Canceled, nullptr, std::move(p->tmp_req)});
+          p->promise.setValue(Response{std::move(p->dest), fuerte::Error::ConnectionCanceled, nullptr, std::move(p->tmp_req)});
         }
       });
     return f;
@@ -213,7 +215,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
   } catch (...) {
     LOG_TOPIC("36d72", DEBUG, Logger::COMMUNICATION) << "failed to send request.";
   }
-  return futures::makeFuture(Response{std::string(), Error::Canceled, nullptr, nullptr});
+  return futures::makeFuture(Response{std::string(), Error::ConnectionCanceled, nullptr, nullptr});
 }
 
 /// Handler class with enough information to keep retrying
@@ -265,13 +267,13 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     if (ADB_UNLIKELY(!_pool)) {
       LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION)
           << "connection pool unavailable";
-      callResponse(Error::Canceled, nullptr, std::move(_request));
+      callResponse(Error::ConnectionCanceled, nullptr, std::move(_request));
       return;
     }
 
     auto now = std::chrono::steady_clock::now();
     if (now > _endTime || _pool->config().clusterInfo->server().isStopping()) {
-      callResponse(Error::Timeout, nullptr, std::move(_request));
+      callResponse(Error::RequestTimeout, nullptr, std::move(_request));
       return;  // we are done
     }
 
@@ -317,8 +319,8 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
       case fuerte::Error::CouldNotConnect:
       case fuerte::Error::ConnectionClosed:
-      case fuerte::Error::Timeout:
-      case fuerte::Error::Canceled: {
+      case fuerte::Error::RequestTimeout:
+      case fuerte::Error::ConnectionCanceled: {
         // Note that this case includes the refusal of a leader to accept
         // the operation, in which case we have to flush ClusterInfo:
 
@@ -421,7 +423,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
     auto* sch = SchedulerFeature::SCHEDULER;
     if (ADB_UNLIKELY(sch == nullptr)) {
-      _promise.setValue(Response{std::move(_destination), fuerte::Error::Canceled, nullptr, std::move(_request)});
+      _promise.setValue(Response{std::move(_destination), fuerte::Error::ConnectionCanceled, nullptr, std::move(_request)});
       return;
     }
 
@@ -430,7 +432,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         sch->queueDelay(RequestLane::CLUSTER_INTERNAL, tryAgainAfter,
                         [self = shared_from_this()](bool canceled) {
           if (canceled) {
-            self->_promise.setValue(Response{std::move(self->_destination), Error::Canceled, nullptr, std::move(self->_request)});
+            self->_promise.setValue(Response{std::move(self->_destination), Error::ConnectionCanceled, nullptr, std::move(self->_request)});
           } else {
             self->startRequest();
           }
@@ -454,7 +456,7 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
     if (!pool || !pool->config().clusterInfo) {
       LOG_TOPIC("59b96", ERR, Logger::COMMUNICATION)
         << "connection pool unavailable";
-      return futures::makeFuture(Response{destination, Error::Canceled, nullptr, nullptr});
+      return futures::makeFuture(Response{destination, Error::ConnectionCanceled, nullptr, nullptr});
     }
 
     LOG_TOPIC("2713b", DEBUG, Logger::COMMUNICATION)
@@ -474,7 +476,7 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
     LOG_TOPIC("d7236", DEBUG, Logger::COMMUNICATION) << "failed to send request.";
   }
 
-  return futures::makeFuture(Response{std::string(), Error::Canceled, nullptr, nullptr});
+  return futures::makeFuture(Response{std::string(), Error::ConnectionCanceled, nullptr, nullptr});
 }
 
 }  // namespace network

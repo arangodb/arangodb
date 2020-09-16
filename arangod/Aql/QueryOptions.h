@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,21 +37,20 @@ namespace velocypack {
 class Builder;
 class Slice;
 }  // namespace velocypack
-class QueryRegistryFeature;
 
 namespace aql {
 
-enum ProfileLevel : uint16_t {
+enum class ProfileLevel : uint8_t {
   /// no profiling information
-  PROFILE_LEVEL_NONE = 0,
+  None = 0,
   /// Output timing for query stages
-  PROFILE_LEVEL_BASIC = 1,
-  /// Enable instrumentation for getSome calls
-  PROFILE_LEVEL_BLOCKS = 2,
-  /// Log tracing info for getSome calls
-  PROFILE_LEVEL_TRACE_1 = 3,
-  /// Log tracing information including getSome results
-  PROFILE_LEVEL_TRACE_2 = 4
+  Basic = 1,
+  /// Enable instrumentation for execute calls
+  Blocks = 2,
+  /// Log tracing info for execute calls
+  TraceOne = 3,
+  /// Log tracing information including execute results
+  TraceTwo = 4
 };
 
 struct QueryOptions {
@@ -103,6 +102,7 @@ struct QueryOptions {
   
   static size_t defaultMemoryLimit;
   static size_t defaultMaxNumberOfPlans;
+  static double defaultMaxRuntime;
   static double defaultTtl;
   static bool defaultFailOnWarning;
 };

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -842,18 +843,16 @@ arangodb::Result visitAnalyzers(
 
       auto& response = f.get();
 
-      if (response.error == arangodb::fuerte::Error::Timeout) {
+      if (response.error == arangodb::fuerte::Error::RequestTimeout) {
         // timeout, try another coordinator
         res = arangodb::Result{ arangodb::network::fuerteToArangoErrorCode(response) };
         continue;
+      } else if (response.fail()) { // any other error abort
+        return { arangodb::network::fuerteToArangoErrorCode(response) };
       }
 
       if (response.response->statusCode() == arangodb::fuerte::StatusNotFound) {
         return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
-      }
-
-      if (response.error != arangodb::fuerte::Error::NoError) {
-        return { arangodb::network::fuerteToArangoErrorCode(response) };
       }
 
       std::vector<VPackSlice> slices = response.response->slices();

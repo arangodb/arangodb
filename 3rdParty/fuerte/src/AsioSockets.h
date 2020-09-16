@@ -98,7 +98,8 @@ struct Socket<SocketType::Tcp> {
         ec.clear();
         socket.close(ec);
       }
-    } catch(...) {}
+    } catch (...) {
+    }
     std::forward<F>(cb)(ec);
   }
 
@@ -135,7 +136,7 @@ struct Socket<fuerte::SocketType::Ssl> {
             } else {
               socket.set_verify_mode(asio_ns::ssl::verify_none);
             }
-          } catch(boost::system::system_error const& exc) {
+          } catch (boost::system::system_error const& exc) {
             done(exc.code());
             return;
           }

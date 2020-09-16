@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -45,8 +46,10 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void stop() override final;
   void unprepare() override final;
 
-  // tracks a slow query by increasing the counter
-  void trackSlowQuery() { ++_slowQueriesCounter; }
+  // tracks a query, using execution time
+  void trackQuery(double time);
+  // tracks a slow query, using execution time
+  void trackSlowQuery(double time);
 
   bool trackSlowQueries() const { return _trackSlowQueries; }
   bool trackBindVars() const { return _trackBindVars; }
@@ -60,6 +63,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool parallelizeTraversals() const { return _parallelizeTraversals; }
 #endif
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
+  double queryMaxRuntime() const { return _queryMaxRuntime; }
   uint64_t maxQueryPlans() const { return _maxQueryPlans; }
   aql::QueryRegistry* queryRegistry() const { return _queryRegistry.get(); }
   uint64_t maxParallelism() const { return _maxParallelism; }
@@ -74,6 +78,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool _parallelizeTraversals;
 #endif
   uint64_t _queryMemoryLimit;
+  double _queryMaxRuntime;
   uint64_t _maxQueryPlans;
   uint64_t _queryCacheMaxResultsCount;
   uint64_t _queryCacheMaxResultsSize;
@@ -89,6 +94,10 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
 
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
 
+  Histogram<log_scale_t<double>>& _queryTimes;
+  Histogram<log_scale_t<double>>& _slowQueryTimes;
+  Counter& _totalQueryExecutionTime;
+  Counter& _queriesCounter;
   Counter& _slowQueriesCounter;
 };
 

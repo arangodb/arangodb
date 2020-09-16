@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -332,7 +333,7 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
   auto queryOptions = std::make_shared<VPackBuilder>();
   queryOptions->openObject();
   if (activateTracing) {
-    queryOptions->add("profile", VPackValue(aql::PROFILE_LEVEL_TRACE_2));
+    queryOptions->add("profile", VPackValue(int(aql::ProfileLevel::TraceTwo)));
   }
   queryOptions->close();
   if (queryString.empty()) {
@@ -507,7 +508,7 @@ TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
     maintenance::ActionDescription ad(
       {{std::string(maintenance::NAME), std::string(maintenance::CREATE_DATABASE)},
        {std::string(maintenance::DATABASE), std::string(name)}},
-      maintenance::HIGHER_PRIORITY);
+      maintenance::HIGHER_PRIORITY, false);
     auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
     maintenance::CreateDatabase cd(mf, ad);
     cd.first();  // Does the job
@@ -529,7 +530,7 @@ void MockDBServer::dropDatabase(std::string const& name) {
   maintenance::ActionDescription ad(
     {{std::string(maintenance::NAME), std::string(maintenance::DROP_DATABASE)},
      {std::string(maintenance::DATABASE), std::string(name)}},
-    maintenance::HIGHER_PRIORITY);
+    maintenance::HIGHER_PRIORITY, false);
   auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
   maintenance::DropDatabase dd(mf, ad);
   dd.first();  // Does the job

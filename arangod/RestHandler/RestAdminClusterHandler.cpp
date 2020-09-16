@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -926,12 +926,12 @@ RestStatus RestAdminClusterHandler::handleProxyGetRequest(std::string const& url
               response()->setPayload(std::move(*payload));
             } else {
               switch (result.error) {
-                case fuerte::Error::Canceled:
+                case fuerte::Error::ConnectionCanceled:
                   generateError(rest::ResponseCode::BAD,
                                 TRI_ERROR_HTTP_BAD_PARAMETER, "unknown server");
                   break;
                 case fuerte::Error::CouldNotConnect:
-                case fuerte::Error::Timeout:
+                case fuerte::Error::RequestTimeout:
                   generateError(rest::ResponseCode::REQUEST_TIMEOUT, TRI_ERROR_HTTP_GATEWAY_TIMEOUT,
                                 "server did not answer");
                   break;

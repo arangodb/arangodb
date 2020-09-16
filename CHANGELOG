@@ -4,9 +4,180 @@ devel
 * Expose available server metrics also in JSON format via new REST endpoint GET 
   `/_admin/metrics/json`.
 
-* Allow calling of REST APIs `/_api/engine/stats`, GET `/_api/collection` and
-  GET `/_api/database/current` on followers in active failover deployments. 
-  This can help debugging and inspecting the follower.
+* Fixed inifinite reload of the login window after logout of an LDAP user.
+
+* Added startup option `--query.max-runtime` to limit the maximum runtime of
+  all AQL queries to a specified threshold value (in seconds). By default,
+  the threshold is 0, meaning that the runtime of AQL queries is not limited.
+  Setting it to any positive value will restrict the runtime of all AQL
+  queries unless it is overwritten in the per-query "maxRuntime" query option.
+  Please note that setting this option will affect *all* queries in all
+  databases, and also queries issues for administration and database-internal
+  purposes.
+  If a query exceeds the configured runtime, it will be killed on the next
+  occasion when the query checks its own status. Killing is best effort, 
+  so it is not guaranteed that a query will no longer than exactly the 
+  configured amount of time.
+
+* Updated rclone to 1.53.0.
+
+* Fixed slightly wrong log level for authentication and also added login event
+  to the standard log.
+
+* Ensure that the argument to an AQL OPTIONS clause is always an object
+  which does not contain any dynamic (run-time) values. Previously, this
+  was only enforced for traversal options and options for data-modification
+  queries. This change extends the check to all occurrences of OPTIONS.
+
+* Added `details` option to figures command of a collection:
+  `collection.figures(details)`
+
+  Setting `details` to `true` will return extended storage engine-specific 
+  details to the figures. The details are intended for debugging ArangoDB
+  itself and their format is subject to change. There is not much use in using
+  the details from a client application.
+  By default, `details` is set to `false`, so no details are returned and the
+  behavior is identical to previous versions of ArangoDB.
+
+* Enforce a maximum result register usage limit in AQL queries. In an AQL
+  query, every user-defined or internal (unnamed) variable will need a 
+  register to store results in.
+
+  AQL queries that use more result registers than allowed (currently 1000) 
+  will now abort deterministically during the planning stage with error 32 
+  (`resource limit exceeded`) and the error message 
+  "too many registers (1000) needed for AQL query".
+
+  Before this fix, an AQL query that used more than 1000 result registers
+  crashed the server when assertions were turned on, and the behavior was 
+  undefined when assertions were turned off.
+
+* Implement RebootTracker usage for AQL queries in case of coordinator
+  restarts or failures. This will clean up the rest of an AQL query
+  on dbservers more quickly and in particular release locks faster.
+
+* Serialize maintenance actions for each shard. This addresses lost document
+  problems found in chaos testing.
+
+* Fixed an issue with audit logging misreporting some document requests as 
+  internal instead of logging the proper request information
+
+* Add option `--rocksdb.max-write-buffer-size-to-maintain` with default of 0.
+  This configures how much memory RocksDB is allowed to use for immutable
+  flushed memtables/write-buffers. The default of 0 will usually be good
+  for all purposes and restores the 3.6 memory usage for write-buffers.
+
+* Updated arangosync to 0.7.10.
+
+* Make followers in active failover run a compaction after they process a
+  truncate operation and the truncate removed more than 4k documents. This
+  can help to reclaim disk space on the follower earlier than without running
+  the truncate.
+
+* Added REST API PUT `/_admin/compact` for compacting the entire database
+  data. This endpoint can be used to reclaim disk space after substantial data 
+  deletions have taken place. The command is also exposed via the JavaScript
+  API as `db._compact();`.
+
+  This command can cause a full rewrite of all data in all databases, which 
+  may take very long for large databases. It should thus only be used with care
+  and only when additional I/O load can be tolerated for a prolonged time.
+  
+  This command requires superuser access.
+
+* Added new metrics for the total and the free disk space for the mount
+  used for the RocksDB database directory:
+
+  * `arangodb_rocksdb_free_disk_space`: provides the free disk space for
+    the mount, in bytes
+  * `arangodb_rocksdb_total_disk_space`: provides the total disk space of
+    the mount, in bytes
+
+* Apply user-defined idle connection timeouts for HTTP/2 and VST connections.
+  The timeout value for idle HTTP/2 and VST connections can now be configured 
+  via the configuration option `--http.keep-alive-timeout` in the same way
+  as for HTTP/1 connections. 
+  HTTP/2 and VST connections that are sending data back to the client are now 
+  closed after 300 seconds or the configured idle timeout (the higher of both
+  values is used here).
+  Before this change, the timeouts for HTTP/2 and VST connections were hard-
+  coded to 120 seconds, and even non-idle connections were closed after this
+  timeout.
+
+* Added new metric `arangodb_network_forwarded_requests` to track the number
+  of requests forwarded from one coordinator to another in a load-balancing
+  context.
+
+* Added new metrics for tracking AQL queries and slow queries:
+  * `arangodb_aql_query_time`: histogram with AQL query times distribution.
+  * `arangodb_aql_slow_query_time`: histogram with AQL slow query times 
+    distribution.
+  * `arangodb_aql_all_query`: total number of all AQL queries.
+
+* Added new metrics for replication:
+  * `arangodb_replication_dump_requests`: number of replication dump requests
+    made.
+  * `arangodb_replication_dump_bytes_received`: number of bytes received in 
+    replication dump requests.
+  * `arangodb_replication_dump_documents`: number of documents received in
+    replication dump requests.
+  * `arangodb_replication_dump_request_time`: wait time for replication dump 
+    requests.
+  * `arangodb_replication_dump_apply_time`: time required for applying data
+    from replication dump responses.
+  * `arangodb_replication_initial_sync_keys_requests`: number of replication 
+    initial sync keys requests made.
+  * `arangodb_replication_initial_sync_docs_requests`: number of replication 
+    initial sync docs requests made.
+  * `arangodb_replication_initial_sync_docs_requested`: number of documents 
+    requested via replication initial sync requests.
+  * `arangodb_replication_initial_sync_docs_inserted`: number of documents 
+    inserted by replication initial sync.
+  * `arangodb_replication_initial_sync_docs_removed`: number of documents 
+    inserted by replication initial sync.
+  * `arangodb_replication_initial_chunks_requests_time`: wait time histogram 
+    for replication key chunks determination requests.
+  * `arangodb_replication_initial_keys_requests_time`: wait time for replication
+    keys requests.
+  * `arangodb_replication_initial_docs_requests_time`: time needed to apply
+    replication docs data.
+  * `arangodb_replication_initial_insert_apply_time`: time needed to apply
+    replication initial sync insertions.
+  * `arangodb_replication_initial_remove_apply_time`: time needed to apply
+    replication initial sync removals.
+  * `arangodb_replication_initial_lookup_time`: time needed for replication 
+    initial sync key lookups.
+  * `arangodb_replication_tailing_requests`: number of replication tailing 
+    requests.
+  * `arangodb_replication_tailing_follow_tick_failures`: number of replication 
+    tailing failures due to missing tick on leader.
+  * `arangodb_replication_tailing_markers`: number of replication tailing 
+    markers processed.
+  * `arangodb_replication_tailing_documents`: number of replication tailing 
+    document inserts/replaces processed.
+  * `arangodb_replication_tailing_removals`: number of replication tailing 
+    document removals processed.
+  * `arangodb_replication_tailing_bytes_received`: number of bytes received 
+    for replication tailing requests.
+  * `arangodb_replication_tailing_request_time`: wait time for replication
+    tailing requests.
+  * `arangodb_replication_tailing_apply_time`: time needed to apply replication
+    tailing markers.
+
+* Allow calling of REST APIs `/_api/engine/stats`, GET `/_api/collection`,
+  GET `/_api/database/current` and GET `/_admin/metrics` on followers in active 
+  failover deployments. This can help debugging and inspecting the follower.
+
+* Added metrics for V8 contexts usage:
+  * `arangodb_v8_context_alive`: number of V8 contexts currently alive.
+  * `arangodb_v8_context_busy`: number of V8 contexts currently busy.
+  * `arangodb_v8_context_dirty`: number of V8 contexts currently dirty.
+  * `arangodb_v8_context_free`: number of V8 contexts currently free.
+  * `arangodb_v8_context_max`: maximum number of concurrent V8 contexts.
+  * `arangodb_v8_context_min`: minimum number of concurrent V8 contexts.
+
+* Fix for issue BTS-183: added pending operations purging before ArangoSearch
+  index truncation
 
 * Don't allow creation of smart satellite graphs or collections (i.e. using
   `"isSmart":true` together with `"replicationFactor":"satellite"` when creating
@@ -220,7 +391,7 @@ as well as the identifiers:
 * Hard-code returned "planVersion" attribute of collections to a value of 1.
   Before 3.7, the most recent Plan version from the agency was returned inside
   "planVersion".
-  In 3.7, the attribute contained the Plan version that was in use when the 
+  In 3.7, the attribute contained the Plan version that was in use when the
   in-memory LogicalCollection object was last constructed. The object was
   always reconstructed in case the underlying Plan data for the collection
   changed or when a collection contained links to arangosearch views.
@@ -235,11 +406,11 @@ as well as the identifiers:
 
 * Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late materialzation
   after OneShard optimization
-  
+
 * Improve performance of many non-subquery AQL queries, by optimizing away
   some storage overhead for subquery context data.
 
-* Improve performance of internal cluster Plan and Current reload operations. 
+* Improve performance of internal cluster Plan and Current reload operations.
 
 * Fixed issue #12349: arangosh compact Arangoerror 404.
 
@@ -284,12 +455,12 @@ as well as the identifiers:
   RETURN 1
   ```
 
-* Revive faster out-of-range comparator for secondary index scans that do a full 
-  collection index scan for index types "hash", "skiplist", "persistent". 
+* Revive faster out-of-range comparator for secondary index scans that do a full
+  collection index scan for index types "hash", "skiplist", "persistent".
 
 * Fixed internal issue #733: Primary sort compression in views now used properly.
 
-* Errors with error code 1200 (Arango conflict) will now get the HTTP response 
+* Errors with error code 1200 (Arango conflict) will now get the HTTP response
   code 409 (Conflict) instead of 412 (Precondition failed), unless "if-match" header
   was used in `_api/document` or `_api/gharial`.
 
@@ -357,7 +528,7 @@ as well as the identifiers:
   Without this fix, the workaround for is to either drop the graph (or the database) before the
   restore call, yielding an identical result.
   
-* Keep the list of last-acknowledged entires in Agency more consistent.
+* Keep the list of last-acknowledged entries in Agency more consistent.
   During leadership take-over it was possible to get into a situation that
   the new leader does not successfully report the agency config, which
   was eventually fixed by the Agent itself. Now this situation is impossible.
