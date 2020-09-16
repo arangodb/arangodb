@@ -181,7 +181,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   auto dirty = mfeature.dirty(); // Get all dirty databases
 
   if (dirty.empty()) {
-    LOG_TOPIC("0a6f2", DEBUG, Logger::MAINTENANCE)
+    LOG_TOPIC("0a62f", DEBUG, Logger::MAINTENANCE)
       << "DBServerAgencySync::execute no dirty collections";
     result.errorMessage = "DBServerAgencySync::execute no dirty collections";
   }
