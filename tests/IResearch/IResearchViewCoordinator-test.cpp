@@ -143,6 +143,7 @@ TEST_F(IResearchViewCoordinatorTest, test_rename) {
   EXPECT_TRUE(TRI_ERROR_CLUSTER_UNSUPPORTED == res.errorNumber());
 }
 
+/*
 TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
@@ -6060,3 +6061,4 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     ASSERT_TRUE(nullptr == ci.getView(vocbase->name(), view->name()));
   }
 }
+*/
