@@ -852,7 +852,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
     "Bytes received for a request"}},
   {"userTime",
    {"arangodb_process_statistics_user_time ", "gauge",
-    "On Windows, this figure contains the total amount of memory that the memory manager has committed for the arangod process. On other systems, this figure contains The size of the virtual memory the process is using.\n"}},
+    "Amount of time that this process has been scheduled in user mode, measured in seconds.\n"}},
   {"systemTime",
    {"arangodb_process_statistics_system_time ", "gauge",
     "Amount of time that this process has been scheduled in kernel mode, measured in seconds.\n"}},
@@ -877,6 +877,42 @@ std::map<std::string, std::vector<std::string>> statStrings{
   {"connectionTimeSum",
    {"arangodb_client_connection_statistics_connection_time_sum ", "gauge",
     "Total connection time of a client.\n"}},
+  {"httpReqsTotal",
+   {"arangodb_http_request_statistics_total_requests", "gauge",
+    "Total number of HTTP requests\n"}},
+  {"httpReqsAsync",
+   {"arangodb_http_request_statistics_async_requests", "gauge",
+    "Number of asynchronously executed HTTP requests\n"}},
+  {"httpReqsDelete",
+   {"arangodb_http_request_statistics_http_delete_requests", "gauge",
+    "Number of HTTP DELETE requests\n"}},
+  {"httpReqsGet",
+   {"arangodb_http_request_statistics_http_get_requests", "gauge",
+    "Number of HTTP GET requests\n"}},
+  {"httpReqsHead",
+   {"arangodb_http_request_statistics_http_head_requests", "gauge",
+    "Number of HTTP HEAD requests\n"}},
+  {"httpReqsOptions",
+   {"arangodb_http_request_statistics_http_options_requests", "gauge",
+    "Number of HTTP OPTIONS requests\n"}},
+  {"httpReqsPatch",
+   {"arangodb_http_request_statistics_http_patch_requests", "gauge",
+    "Number of HTTP PATCH requests\n"}},
+  {"httpReqsPost",
+   {"arangodb_http_request_statistics_http_post_requests", "gauge",
+    "Number of HTTP POST requests\n"}},
+  {"httpReqsPut",
+   {"arangodb_http_request_statistics_http_put_requests", "gauge",
+    "Number of HTTP PUT requests\n"}},
+  {"httpReqsOther",
+   {"arangodb_http_request_statistics_other_http_requests", "gauge",
+    "Number of other HTTP requests\n"}},
+  {"uptime",
+   {"arangodb_server_statistics_server_uptime", "gauge",
+    "Number of seconds elapsed since server start\n"}},
+  {"physicalSize",
+   {"arangodb_server_statistics_physical_memory", "gauge",
+    "Physical memory in bytes\n"}},
   {"v8ContextAvailable",
    {"arangodb_v8_context_alive", "gauge",
     "Number of V8 contexts currently alive\n"}},
@@ -901,185 +937,113 @@ std::map<std::string, std::vector<std::string>> statStrings{
 };
 
 void StatisticsWorker::generateRawStatistics(std::string& result, double const& now) {
-    ProcessInfo info = TRI_ProcessInfoSelf();
-    uint64_t rss = static_cast<uint64_t>(info._residentSize);
-    double rssp = 0;
+  ProcessInfo info = TRI_ProcessInfoSelf();
+  uint64_t rss = static_cast<uint64_t>(info._residentSize);
+  double rssp = 0;
+  
+  ServerStatistics const& serverInfo =
+    application_features::ApplicationServer::server().
+    getFeature<MetricsFeature>().serverStatistics();
 
-    if (TRI_PhysicalMemory != 0) {
-        rssp = static_cast<double>(rss) / static_cast<double>(TRI_PhysicalMemory);
-    }
+  if (TRI_PhysicalMemory != 0) {
+    rssp = static_cast<double>(rss) / static_cast<double>(TRI_PhysicalMemory);
+  }
 
-    StatisticsCounter httpConnections;
-    StatisticsCounter totalRequests;
-    std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
-    StatisticsCounter asyncRequests;
-    StatisticsDistribution connectionTime;
+  StatisticsCounter httpConnections;
+  StatisticsCounter totalRequests;
+  std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
+  StatisticsCounter asyncRequests;
+  StatisticsDistribution connectionTime;
 
-    ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                               asyncRequests, connectionTime);
+  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
+                             asyncRequests, connectionTime);
 
-    StatisticsDistribution totalTime;
-    StatisticsDistribution requestTime;
-    StatisticsDistribution queueTime;
-    StatisticsDistribution ioTime;
-    StatisticsDistribution bytesSent;
-    StatisticsDistribution bytesReceived;
+  StatisticsDistribution totalTime;
+  StatisticsDistribution requestTime;
+  StatisticsDistribution queueTime;
+  StatisticsDistribution ioTime;
+  StatisticsDistribution bytesSent;
+  StatisticsDistribution bytesReceived;
 
-    RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
+  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
 
-    // processStatistics()
-    result +=
-      TYPE_ + statStrings.at("minorPageFaults")[0] + statStrings.at("minorPageFaults")[1] +
-      HELP_ + statStrings.at("minorPageFaults")[0] + statStrings.at("minorPageFaults")[2] +
-      statStrings.at("minorPageFaults")[0] + std::to_string(info._minorPageFaults);
-    result +=
-      TYPE_ + statStrings.at("majorPageFaults")[0] + statStrings.at("majorPageFaults")[1] +
-      HELP_ + statStrings.at("majorPageFaults")[0] + statStrings.at("majorPageFaults")[2] +
-      statStrings.at("majorPageFaults")[0] + std::to_string(info._majorPageFaults);
-
-    if (info._scClkTck != 0) {  // prevent division by zero
-      result +=
-        TYPE_ + statStrings.at("userTime")[0] + statStrings.at("userTime")[1] +
-        HELP_ + statStrings.at("userTime")[0] + statStrings.at("userTime")[2] +
-        statStrings.at("userTime")[0] +
-        std::to_string(static_cast<double>(info._userTime) / static_cast<double>(info._scClkTck));
-      result +=
-        TYPE_ + statStrings.at("systemTime")[0] + statStrings.at("systemTime")[1] +
-        HELP_ + statStrings.at("systemTime")[0] + statStrings.at("systemTime")[2] +
-        statStrings.at("systemTime")[0] +
-        std::to_string(static_cast<double>(info._systemTime) / static_cast<double>(info._scClkTck));
-    }
-
-    result +=
-      TYPE_ + statStrings.at("numberOfThreads")[0] + statStrings.at("numberOfThreads")[1] +
-      HELP_ + statStrings.at("numberOfThreads")[0] + statStrings.at("numberOfThreads")[2] +
-      statStrings.at("numberOfThreads")[0] + std::to_string(info._numberThreads);
-    result +=
-      TYPE_ + statStrings.at("residentSize")[0] + statStrings.at("residentSize")[1] +
-      HELP_ + statStrings.at("residentSize")[0] + statStrings.at("residentSize")[2] +
-      statStrings.at("residentSize")[0] + std::to_string(rss);
-    result +=
-      TYPE_ + statStrings.at("residentSizePercent")[0] + statStrings.at("residentSizePercent")[1] +
-      HELP_ + statStrings.at("residentSizePercent")[0] + statStrings.at("residentSizePercent")[2] +
-      statStrings.at("residentSizePercent")[0] + std::to_string(rssp);
-    result +=
-      TYPE_ + statStrings.at("virtualSize")[0] + statStrings.at("virtualSize")[1] +
-      HELP_ + statStrings.at("virtualSize")[0] + statStrings.at("virtualSize")[2] +
-      statStrings.at("virtualSize")[0] + std::to_string(info._virtualSize);
+  // processStatistics()
+  appendMetric(result, std::to_string(info._minorPageFaults), "minorPageFaults");
+  appendMetric(result, std::to_string(info._majorPageFaults), "majorPageFaults");
+  if (info._scClkTck != 0) {  // prevent division by zero
+    appendMetric(
+      result, std::to_string(
+        static_cast<double>(info._userTime) / static_cast<double>(info._scClkTck)), "userTime");
+    appendMetric(
+      result, std::to_string(
+        static_cast<double>(info._systemTime) / static_cast<double>(info._scClkTck)), "systemTime");
+  }
+  appendMetric(result, std::to_string(info._numberThreads), "numberOfThreads");
+  appendMetric(result, std::to_string(rss), "residentSize");
+  appendMetric(result, std::to_string(rssp), "residentSizePercent");
+  appendMetric(result, std::to_string(info._virtualSize), "virtualSize");
+  appendMetric(result, std::to_string(TRI_PhysicalMemory), "physicalSize");
+  appendMetric(result, std::to_string(serverInfo._uptime), "uptime");
     
+  // _clientStatistics()    
+  result +=
+    TYPE_ + statStrings.at("clientHttpConnections")[0] + statStrings.at("clientHttpConnections")[1] +
+    HELP_ + statStrings.at("clientHttpConnections")[0] + statStrings.at("clientHttpConnections")[2] +
+    statStrings.at("clientHttpConnections")[0] + std::to_string(httpConnections._count);
 
-    // _clientStatistics()    
-    result +=
-      TYPE_ + statStrings.at("clientHttpConnections")[0] + statStrings.at("clientHttpConnections")[1] +
-      HELP_ + statStrings.at("clientHttpConnections")[0] + statStrings.at("clientHttpConnections")[2] +
-      statStrings.at("clientHttpConnections")[0] + std::to_string(httpConnections._count);
+  VPackBuilder tmp = fillDistribution(connectionTime);
+  VPackSlice slc = tmp.slice();
+  
+  result +=
+    TYPE_ + statStrings.at("connectionTimeCounts")[0] + statStrings.at("connectionTimeCounts")[1] +
+    HELP_ + statStrings.at("connectionTimeCounts")[0] + statStrings.at("connectionTimeCounts")[2] +
+    statStrings.at("connectionTimeCounts")[0] + "{le=\"0.1\"}"  + " " +
+    std::to_string(slc.get("counts").at(0).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("connectionTimeCounts")[0] + "{le=\"1\"}"    + " " +
+    std::to_string(slc.get("counts").at(1).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("connectionTimeCounts")[0] + "{le=\"60\"}"   + " " +
+    std::to_string(slc.get("counts").at(1).getNumber<uint64_t>()) + "\n" +
+    statStrings.at("connectionTimeCounts")[0] + "{le=\"+Inf\"}" + " " +
+    std::to_string(slc.get("counts").at(3).getNumber<uint64_t>());
 
-    VPackBuilder tmp = fillDistribution(connectionTime);
-    VPackSlice slc = tmp.slice();
-    
-    result +=
-      TYPE_ + statStrings.at("connectionTimeCounts")[0] + statStrings.at("connectionTimeCounts")[1] +
-      HELP_ + statStrings.at("connectionTimeCounts")[0] + statStrings.at("connectionTimeCounts")[2] +
-      statStrings.at("connectionTimeCounts")[0] + "{le=\"0.1\"}"  + " " +
-      std::to_string(slc.get("counts").at(0).getNumber<uint64_t>()) + "\n" +
-      statStrings.at("connectionTimeCounts")[0] + "{le=\"1\"}"    + " " +
-      std::to_string(slc.get("counts").at(1).getNumber<uint64_t>()) + "\n" +
-      statStrings.at("connectionTimeCounts")[0] + "{le=\"60\"}"   + " " +
-      std::to_string(slc.get("counts").at(1).getNumber<uint64_t>()) + "\n" +
-      statStrings.at("connectionTimeCounts")[0] + "{le=\"+Inf\"}" + " " +
-      std::to_string(slc.get("counts").at(3).getNumber<uint64_t>());
+  result +=
+    TYPE_ + statStrings.at("connectionTimeCount")[0] + statStrings.at("connectionTimeCount")[1] +
+    HELP_ + statStrings.at("connectionTimeCount")[0] + statStrings.at("connectionTimeCount")[2] +
+    statStrings.at("connectionTimeCount")[0] + std::to_string(slc.get("count").template getNumber<uint64_t>());
+  
+  result +=
+    TYPE_ + statStrings.at("connectionTimeSum")[0] + statStrings.at("connectionTimeSum")[1] +
+    HELP_ + statStrings.at("connectionTimeSum")[0] + statStrings.at("connectionTimeSum")[2] +
+    statStrings.at("connectionTimeSum")[0] + std::to_string(slc.get("sum").template getNumber<uint64_t>());
+  
+  // _httpStatistics()
+  using rest::RequestType;
+  appendMetric(result, std::to_string(asyncRequests._count), "httpReqsAsync");
+  appendMetric(result, std::to_string(methodRequests[(int)RequestType::DELETE_REQ]._count), "httpReqsDelete");
+  appendMetric(result, std::to_string(methodRequests[(int)RequestType::GET]._count), "httpReqsGet");
+  appendMetric(result, std::to_string(methodRequests[(int)RequestType::HEAD]._count), "httpReqsHead");
+  appendMetric(result, std::to_string(methodRequests[(int)RequestType::OPTIONS]._count), "httpReqsOptions");
+  appendMetric(result, std::to_string(methodRequests[(int)RequestType::PATCH]._count), "httpReqsPatch");
+  appendMetric(result, std::to_string(methodRequests[(int)RequestType::POST]._count), "httpReqsPost");
+  appendMetric(result, std::to_string(methodRequests[(int)RequestType::PUT]._count), "httpReqsPut");
+  appendMetric(result, std::to_string(methodRequests[(int)RequestType::ILLEGAL]._count), "httpReqsOther");
+  appendMetric(result, std::to_string(totalRequests._count), "httpReqsTotal");
 
-    result +=
-      TYPE_ + statStrings.at("connectionTimeCount")[0] + statStrings.at("connectionTimeCount")[1] +
-      HELP_ + statStrings.at("connectionTimeCount")[0] + statStrings.at("connectionTimeCount")[2] +
-      statStrings.at("connectionTimeCount")[0] + std::to_string(slc.get("count").template getNumber<uint64_t>());
-    
-    result +=
-      TYPE_ + statStrings.at("connectionTimeSum")[0] + statStrings.at("connectionTimeSum")[1] +
-      HELP_ + statStrings.at("connectionTimeSum")[0] + statStrings.at("connectionTimeSum")[2] +
-      statStrings.at("connectionTimeSum")[0] + std::to_string(slc.get("sum").template getNumber<uint64_t>());
-
-    V8DealerFeature::Statistics v8Counters{};
-    if (_server.hasFeature<V8DealerFeature>()) {
-      V8DealerFeature& dealer = _server.getFeature<V8DealerFeature>();
-      if (dealer.isEnabled()) {
-        v8Counters = dealer.getCurrentContextNumbers();
-      }
+  V8DealerFeature::Statistics v8Counters{};
+  if (_server.hasFeature<V8DealerFeature>()) {
+    V8DealerFeature& dealer = _server.getFeature<V8DealerFeature>();
+    if (dealer.isEnabled()) {
+      v8Counters = dealer.getCurrentContextNumbers();
     }
-    appendMetric(result, std::to_string(v8Counters.available), "v8ContextAvailable");
-    appendMetric(result, std::to_string(v8Counters.busy), "v8ContextBusy");
-    appendMetric(result, std::to_string(v8Counters.dirty), "v8ContextDirty");
-    appendMetric(result, std::to_string(v8Counters.free), "v8ContextFree");
-    appendMetric(result, std::to_string(v8Counters.min), "v8ContextMin");
-    appendMetric(result, std::to_string(v8Counters.max), "v8ContextMax");
+  }
+  appendMetric(result, std::to_string(v8Counters.available), "v8ContextAvailable");
+  appendMetric(result, std::to_string(v8Counters.busy), "v8ContextBusy");
+  appendMetric(result, std::to_string(v8Counters.dirty), "v8ContextDirty");
+  appendMetric(result, std::to_string(v8Counters.free), "v8ContextFree");
+  appendMetric(result, std::to_string(v8Counters.min), "v8ContextMin");
+  appendMetric(result, std::to_string(v8Counters.max), "v8ContextMax");
 
-    result += "\n";
-
-      /*
-
-        // _clientStatistics()
-
-        tmp = fillDistribution(totalTime);
-        builder.add("totalTime", tmp.slice());
-
-        tmp = fillDistribution(requestTime);
-        builder.add("requestTime", tmp.slice());
-
-        tmp = fillDistribution(queueTime);
-        builder.add("queueTime", tmp.slice());
-
-        tmp = fillDistribution(ioTime);
-        builder.add("ioTime", tmp.slice());
-
-        tmp = fillDistribution(bytesSent);
-        builder.add("bytesSent", tmp.slice());
-
-        tmp = fillDistribution(bytesReceived);
-        builder.add("bytesReceived", tmp.slice());
-        builder.close();
-
-        // _httpStatistics()
-        builder.add("http", VPackValue(VPackValueType::Object));
-        builder.add("requestsTotal", VPackValue(totalRequests._count));
-        builder.add("requestsAsync", VPackValue(asyncRequests._count));
-        builder.add("requestsGet",
-                    VPackValue(methodRequests[(int)rest::RequestType::GET]._count));
-        builder.add("requestsHead",
-                    VPackValue(methodRequests[(int)rest::RequestType::HEAD]._count));
-        builder.add("requestsPost",
-                    VPackValue(methodRequests[(int)rest::RequestType::POST]._count));
-        builder.add("requestsPut",
-                    VPackValue(methodRequests[(int)rest::RequestType::PUT]._count));
-        builder.add("requestsPatch",
-                    VPackValue(methodRequests[(int)rest::RequestType::PATCH]._count));
-        builder.add("requestsDelete",
-                    VPackValue(methodRequests[(int)rest::RequestType::DELETE_REQ]._count));
-        builder.add("requestsOptions",
-                    VPackValue(methodRequests[(int)rest::RequestType::OPTIONS]._count));
-        builder.add("requestsOther",
-                    VPackValue(methodRequests[(int)rest::RequestType::ILLEGAL]._count));
-        builder.close();
-
-        // _serverStatistics()
-        builder.add("server", VPackValue(VPackValueType::Object));
-        builder.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
-        builder.add("transactions", VPackValue(VPackValueType::Object));
-        builder.close();
-
-        // export threads statistics
-        builder.add("threads", VPackValue(VPackValueType::Object));
-        SchedulerFeature::SCHEDULER->toVelocyPack(builder);
-        builder.close();
-
-        // export ttl statistics
-        TtlFeature& ttlFeature = _server.getFeature<TtlFeature>();
-        builder.add(VPackValue("ttl"));
-        ttlFeature.statsToVelocyPack(builder);
-
-        builder.close();
-
-        builder.close();
-    */
+  result += "\n";
 }
 
 void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const& now) {
@@ -1247,13 +1211,11 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.close();
 }
 
-void StatisticsWorker::appendMetric(
-   std::string& result, std::string const& val, std::string const& label) const {
- 
-   result +=
-     TYPE_ + statStrings.at(label).at(0) + " " + statStrings.at(label)[1] +
-     HELP_ + statStrings.at(label).at(0) + " " + statStrings.at(label)[2] +
-     statStrings.at(label).at(0) + " " + val + "\n";
+void StatisticsWorker::appendMetric(std::string& result, std::string const& val, std::string const& label) const {
+  result +=
+    TYPE_ + statStrings.at(label).at(0) + " " + statStrings.at(label)[1] +
+    HELP_ + statStrings.at(label).at(0) + " " + statStrings.at(label)[2] +
+    statStrings.at(label).at(0) + " " + val + "\n";
 }
 
 VPackBuilder StatisticsWorker::fillDistribution(StatisticsDistribution const& dist) const {
