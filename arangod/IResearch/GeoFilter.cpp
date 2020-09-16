@@ -435,6 +435,7 @@ irs::filter::prepared::ptr prepareInterval(
   TRI_ASSERT(!minBound.is_empty());
   TRI_ASSERT(!maxBound.is_empty());
 
+  // FIXME points only???
   S2RegionTermIndexer indexer(opts.options);
   S2RegionCoverer coverer(opts.options);
 
@@ -500,6 +501,7 @@ irs::filter::prepared::ptr prepareOpenInterval(
                    : irs::filter::prepared::empty();
   }
 
+  // FIXME points only???
   S2RegionTermIndexer indexer(opts.options);
 
   if (greater) {

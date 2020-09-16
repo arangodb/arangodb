@@ -199,8 +199,8 @@ Result failedToEvaluate(const char* funcName, size_t i) {
 }
 
 Result typeMismatch(const char* funcName, size_t i,
-                              ScopedValueType expectedType,
-                              ScopedValueType actualType) {
+                    ScopedValueType expectedType,
+                    ScopedValueType actualType) {
   return {
     TRI_ERROR_BAD_PARAMETER,
     "'"s.append(funcName).append("' AQL function: argument at position '").append(std::to_string(i))
@@ -303,6 +303,46 @@ Result evaluateArg(
   }
 
   return {};
+}
+
+Result getLatLong(
+    ScopedAqlValue const& value,
+    S2LatLng& point,
+    char const* funcName,
+    size_t argIdx) {
+  switch (value.type()) {
+    case SCOPED_VALUE_TYPE_ARRAY: { // [lng, lat] is valid input
+      auto const latValue = value.at(1);
+      auto const lonValue = value.at(0);
+
+      double_t lat, lon;
+
+      if (!latValue.getDouble(lat) || !lonValue.getDouble(lon)) {
+        return error::failedToEvaluate(funcName, argIdx);
+      }
+
+      point = S2LatLng::FromDegrees(lat, lon);
+      return {};
+    }
+    case SCOPED_VALUE_TYPE_OBJECT: {
+      VPackSlice const json = value.slice();
+      geo::ShapeContainer shape;
+      Result res;
+      if (json.isArray() && json.length() >= 2) {
+        res = shape.parseCoordinates(json, /*GeoJson*/ true);
+      } else {
+        res = geo::geojson::parseRegion(json, shape);
+      }
+      if (res.fail()) {
+        return res;
+      }
+      point = S2LatLng(shape.centroid());
+      return {};
+    }
+    default: {
+      return error::invalidArgument(funcName, argIdx);
+    }
+  }
 }
 
 Result getAnalyzerByName(
@@ -938,35 +978,10 @@ Result fromGeoDistanceInterval(
       return error::failedToEvaluate(GEO_DISTANCE_FUNC, centroidNodeIdx);
     }
 
-    switch (centroidValue.type()) {
-      case SCOPED_VALUE_TYPE_ARRAY: { // [lng, lat] is valid input
-        auto const latValue = centroidValue.at(1);
-        auto const lonValue = centroidValue.at(0);
+    auto const res = getLatLong(centroidValue, centroid, GEO_DISTANCE_FUNC, centroidNodeIdx);
 
-        double_t lat, lon;
-
-        if (!latValue.getDouble(lat) || !lonValue.getDouble(lon)) {
-          return error::failedToEvaluate(GEO_DISTANCE_FUNC, centroidNodeIdx);
-        }
-
-        centroid = S2LatLng::FromDegrees(lat, lon);
-      } break;
-      case SCOPED_VALUE_TYPE_OBJECT: {
-        VPackSlice const json = centroidValue.slice();
-        geo::ShapeContainer shape;
-        Result res;
-        if (json.isArray() && json.length() >= 2) {
-          res = shape.parseCoordinates(json, /*GeoJson*/ true);
-        } else {
-          res = geo::geojson::parseRegion(json, shape);
-        }
-        if (res.fail()) {
-          return res;
-        }
-        centroid = S2LatLng(shape.centroid());
-      } break;
-      default:
-        return error::invalidArgument(GEO_DISTANCE_FUNC, centroidNodeIdx);
+    if (res.fail()) {
+      return res;
     }
   }
 
