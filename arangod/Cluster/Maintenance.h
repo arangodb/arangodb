@@ -71,7 +71,7 @@ arangodb::Result diffPlanLocal(
   uint64_t planIndex, std::unordered_set<std::string> dirty,
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature::errors_t& errors,
-  MaintenanceFeature& feature,
+  std::unordered_set<DatabaseID>& makeDirty,
   std::vector<std::shared_ptr<ActionDescription>>& actions,
   MaintenanceFeature::ShardActionMap const& shardActionMap);
 

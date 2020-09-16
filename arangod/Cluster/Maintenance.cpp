@@ -201,14 +201,15 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
                      std::string const& shname, std::string const& serverId,
                      std::string const& leaderId, std::unordered_set<std::string>& commonShrds,
                      std::unordered_set<std::string>& indis,
-                     MaintenanceFeature::errors_t& errors, MaintenanceFeature& feature,
+                     MaintenanceFeature::errors_t& errors,
+                     std::unordered_set<DatabaseID>& makeDirty,
                      std::vector<std::shared_ptr<ActionDescription>>& actions,
                      MaintenanceFeature::ShardActionMap const& shardActionMap) {
 
   // First check if the shard is locked:
   auto it = shardActionMap.find(shname);
   if (it != shardActionMap.end()) {
-    feature.addDirty(dbname);
+    makeDirty.insert(dbname);
     LOG_TOPIC("aaed1", DEBUG, Logger::MAINTENANCE)
         << "Skipping handlePlanShard for shard " << shname
         << " because it is locked by an action: " << *it->second;
@@ -276,7 +277,7 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
              {SERVER_ID, serverId},
              {FOLLOWERS_TO_DROP, followersToDropString}},
             HIGHER_PRIORITY, true, std::move(properties));
-        feature.addDirty(dbname);
+        makeDirty.insert(dbname);
         actions.emplace_back(std::move(description));
       } else {
         LOG_TOPIC("0285b", DEBUG, Logger::MAINTENANCE)
@@ -302,7 +303,7 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
             {OLD_CURRENT_COUNTER, "0"},  // legacy, no longer used
             {PLAN_RAFT_INDEX, std::to_string(planIndex)}},
           LEADER_PRIORITY, true);
-      feature.addDirty(dbname);
+      makeDirty.insert(dbname);
       actions.emplace_back(std::move(description));
     }
 
@@ -321,7 +322,7 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
           // these actions to run in parallel to others and to similar ones.
           // Note however, that new index jobs are intentionally not discovered
           // when the shard is locked for maintenance.
-          feature.addDirty(dbname);
+          makeDirty.insert(dbname);
           actions.emplace_back(
             std::make_shared<ActionDescription>(
               std::map<std::string, std::string>{
@@ -349,7 +350,7 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
           {SERVER_ID, serverId},
           {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
         shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true, std::move(props));
-      feature.addDirty(dbname);
+      makeDirty.insert(dbname);
       actions.emplace_back(std::move(description));
     } else {
       LOG_TOPIC("c1d8e", DEBUG, Logger::MAINTENANCE)
@@ -364,11 +365,11 @@ void handleLocalShard(
   VPackSlice const& shardMap, std::unordered_set<std::string>& commonShrds,
   std::unordered_set<std::string>& indis, std::string const& serverId,
   std::vector<std::shared_ptr<ActionDescription>>& actions,
-  MaintenanceFeature& feature, MaintenanceFeature::ShardActionMap const& shardActionMap) {
+  std::unordered_set<DatabaseID>& makeDirty, MaintenanceFeature::ShardActionMap const& shardActionMap) {
   // First check if the shard is locked:
   auto iter = shardActionMap.find(colname);
   if (iter != shardActionMap.end()) {
-    feature.addDirty(dbname);
+    makeDirty.insert(dbname);
     LOG_TOPIC("aaed6", DEBUG, Logger::MAINTENANCE)
     << "Skipping handleLocalShard for shard " << colname
     << " because it is locked by an action: " << *iter->second;
@@ -390,7 +391,7 @@ void handleLocalShard(
         {DATABASE, dbname},
         {SHARD, colname}},
       isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true);
-    feature.addDirty(dbname);
+    makeDirty.insert(dbname);
     actions.emplace_back(std::move(description));
     return;
   }
@@ -426,7 +427,7 @@ void handleLocalShard(
                                          {DATABASE, dbname},
                                          {SHARD, colname}},
       RESIGN_PRIORITY, true);
-    feature.addDirty(dbname);
+    makeDirty.insert(dbname);
     actions.emplace_back(description);
   }
 
@@ -445,7 +446,7 @@ void handleLocalShard(
           } else {
             // Note that drop index actions are exempt from locking, since we
             // want that they can run in parallel.
-            feature.addDirty(dbname);
+            makeDirty.insert(dbname);
             actions.emplace_back(
               std::make_shared<ActionDescription>(
                 std::map<std::string, std::string>{
@@ -482,7 +483,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
   uint64_t planIndex, std::unordered_set<std::string> dirty,
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature::errors_t& errors,
-  MaintenanceFeature& feature, std::vector<std::shared_ptr<ActionDescription>>& actions,
+  std::unordered_set<DatabaseID>& makeDirty,
+  std::vector<std::shared_ptr<ActionDescription>>& actions,
   MaintenanceFeature::ShardActionMap const& shardActionMap) {
 
   arangodb::Result result;
@@ -499,7 +501,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
     if (pdb.isObject() && local.find(dbname) == local.end()) {
       if (errors.databases.find(dbname) == errors.databases.end()) {
-        feature.addDirty(dbname);
+        makeDirty.insert(dbname);
         actions.emplace_back(
           std::make_shared<ActionDescription>(
             std::map<std::string, std::string>{
@@ -534,7 +536,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
         }
       }
       if (needDrop) {
-        feature.addDirty(dbname);
+        makeDirty.insert(dbname);
         actions.emplace_back(
           std::make_shared<ActionDescription>(
             std::map<std::string, std::string>{
@@ -584,7 +586,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                     handlePlanShard(planIndex, cprops, ldb, dbname, pcol.key.copyString(),
                                     shard.key.copyString(), serverId,
                                     shard.value[0].copyString(), commonShrds, indis,
-                                    errors, feature, actions, shardActionMap);
+                                    errors, makeDirty, actions, shardActionMap);
                     break;
                   }
                 }
@@ -623,7 +625,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
           auto const& colname = lcol.key.copyString();
           auto const shardMap = getShardMap(plan);            // plan shards -> servers
           handleLocalShard(ldbname, colname, lcol.value, shardMap.slice(),
-                           commonShrds, indis, serverId, actions, feature, shardActionMap);
+                           commonShrds, indis, serverId, actions, makeDirty, shardActionMap);
         }
       }
     }
@@ -688,6 +690,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       }
     }
   }
+
   return result;
 }
 
@@ -718,7 +721,11 @@ arangodb::Result arangodb::maintenance::executePlan(
   report.add(VPackValue(AGENCY));
   {
     VPackArrayBuilder a(&report);
-    diffPlanLocal(plan, planIndex, dirty, local, serverId, errors, feature, actions, shardActionMap);
+    std::unordered_set<DatabaseID> makeDirty;
+    diffPlanLocal(plan, planIndex, dirty, local, serverId, errors, makeDirty, actions, shardActionMap);
+    for (auto const& db : makeDirty) {
+      feature.addDirty(db);
+    }
   }
 
   for (auto const& i : errors.databases) {
