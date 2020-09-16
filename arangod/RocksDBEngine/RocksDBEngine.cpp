@@ -2332,7 +2332,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     uint64_t totalSpace = 0;
     // free disk space in database directory
     uint64_t freeSpace = 0;
-    Result res = TRI_GetDiskSpace(_basePath, totalSpace, freeSpace);
+    Result res = TRI_GetDiskSpaceInfo(_basePath, totalSpace, freeSpace);
     if (res.ok()) {
       builder.add("rocksdb.free-disk-space", VPackValue(freeSpace));
       builder.add("rocksdb.total-disk-space", VPackValue(totalSpace));
@@ -2342,6 +2342,20 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     }
   }
 
+  {
+    // total inodes for database directory
+    uint64_t totalINodes = 0;
+    // free inodes for database directory
+    uint64_t freeINodes = 0;
+    Result res = TRI_GetINodesInfo(_basePath, totalINodes, freeINodes);
+    if (res.ok()) {
+      builder.add("rocksdb.free-inodes", VPackValue(freeINodes));
+      builder.add("rocksdb.total-inodes", VPackValue(totalINodes));
+    } else {
+      builder.add("rocksdb.free-inodes", VPackValue(VPackValueType::Null));
+      builder.add("rocksdb.total-inodes", VPackValue(VPackValueType::Null));
+    }
+  }
 
   builder.close();
 }
