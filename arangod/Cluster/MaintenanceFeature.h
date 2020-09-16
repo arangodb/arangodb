@@ -438,11 +438,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// independant actions
   std::unordered_map<std::string, size_t> _shardVersion;
 
-  /// @brief lock for dirty database list
-  mutable arangodb::Mutex _dirtyLock;
-  /// @brief dirty databases, where a job could not be posted)
-  std::unordered_set<std::string> _dirty;
-
   std::atomic<std::chrono::steady_clock::duration> _pauseUntil;
 
   /// @brief shard action map, this map holds information which job (can only

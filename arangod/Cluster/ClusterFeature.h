@@ -93,6 +93,14 @@ class ClusterFeature : public application_features::ApplicationFeature {
 
   Counter& getDroppedFollowerCounter() { return _dropped_follower_counter->get(); }
 
+  /**
+   * @brief list of dirty databases
+   */
+  void addDirty(std::string const& database);
+  void addDirty(std::string&& database);
+  std::unordered_set<std::string> dirty();
+
+
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                             uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
@@ -130,6 +138,12 @@ class ClusterFeature : public application_features::ApplicationFeature {
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
   std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
   std::optional<std::reference_wrapper<Counter>> _dropped_follower_counter;
+
+  /// @brief lock for dirty database list
+  mutable arangodb::Mutex _dirtyLock;
+  /// @brief dirty databases, where a job could not be posted)
+  std::unordered_set<std::string> _dirty;
+
 };
 
 }  // namespace arangodb

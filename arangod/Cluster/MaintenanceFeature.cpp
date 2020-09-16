@@ -952,22 +952,13 @@ void MaintenanceFeature::proceed() {
 }
 
 void MaintenanceFeature::addDirty(std::string&& database) {
-  MUTEX_LOCKER(guard, _dirtyLock);
-  if (_dirty.emplace(std::move(database)).second) {
-    LOG_TOPIC("35b74", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databsases";
-  }
+  server().getFeature<ClusterFeature>().addDirty(std::move(database));
 }
 void MaintenanceFeature::addDirty(std::string const& database) {
-  MUTEX_LOCKER(guard, _dirtyLock);
-  if (_dirty.emplace(database).second) {
-    LOG_TOPIC("357b4", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databsases";
-  }
+  server().getFeature<ClusterFeature>().addDirty(database);
 }
 std::unordered_set<std::string> MaintenanceFeature::dirty() {
-  MUTEX_LOCKER(guard, _dirtyLock);
-  std::unordered_set<std::string > ret;
-  ret.swap(_dirty);
-  return ret;
+  return server().getFeature<ClusterFeature>().dirty();
 }
 
 std::shared_ptr<maintenance::ActionDescription> MaintenanceFeature::isShardLocked(

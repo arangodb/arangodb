@@ -780,3 +780,22 @@ void ClusterFeature::allocateMembers() {
     std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry);
   _allocated = true;
 }
+
+void ClusterFeature::addDirty(std::string&& database) {
+  MUTEX_LOCKER(guard, _dirtyLock);
+  if (_dirty.emplace(std::move(database)).second) {
+    LOG_TOPIC("35b74", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databsases";
+  }
+}
+void ClusterFeature::addDirty(std::string const& database) {
+  MUTEX_LOCKER(guard, _dirtyLock);
+  if (_dirty.emplace(database).second) {
+    LOG_TOPIC("357b4", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databsases";
+  }
+}
+std::unordered_set<std::string> ClusterFeature::dirty() {
+  MUTEX_LOCKER(guard, _dirtyLock);
+  std::unordered_set<std::string > ret;
+  ret.swap(_dirty);
+  return ret;
+}

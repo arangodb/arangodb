@@ -719,11 +719,10 @@ void ClusterInfo::loadPlan() {
   bool changed = false;
   auto changeSet = agencyCache.changedSince("Plan", planIndex); // also delivers plan/version
   {
-    auto& maintenance = _server.getFeature<MaintenanceFeature>();
     WRITE_LOCKER(writeLocker, _planProt.lock);
     for (auto const& db : changeSet.dbs) { // Databases
       _plan[db.first] = db.second;
-      maintenance.addDirty(db.first); // TODO this goes last
+      clusterFeature.addDirty(db.first); // TODO this goes last
       changed = true;
     }
     if (changeSet.rest != nullptr) {       // Rest
@@ -1272,7 +1271,8 @@ void ClusterInfo::loadCurrent() {
   // means small bits of the plan are read twice.
   loadServers();
 
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& feature = _server.getFeature<ClusterFeature>();
+  auto& agencyCache = feature.agencyCache();
   auto currentBuilder = std::make_shared<arangodb::velocypack::Builder>();
 
   // reread from the agency!
@@ -1288,11 +1288,10 @@ void ClusterInfo::loadCurrent() {
   bool changed = false;
   auto changeSet = agencyCache.changedSince("Current", currentIndex);
   {
-    auto& maintenance = _server.getFeature<MaintenanceFeature>();
     WRITE_LOCKER(writeLocker, _currentProt.lock);
     for (auto const& db : changeSet.dbs) { // Databases
       _current[db.first] = db.second;
-      maintenance.addDirty(db.first);
+      feature.addDirty(db.first);
       changed = true;
     }
     if (changeSet.rest != nullptr) {       // Rest
