@@ -2165,7 +2165,7 @@ void RocksDBEngine::getStatistics(std::string& result) const {
         name = EngineName + "_" + name; 
       }
       result += "\n#TYPE " + name +
-        " counter\n#HELP " + name + " " + name + "\n" +
+        " gauge\n#HELP " + name + " " + name + "\n" +
         name + " " + std::to_string(a.value.getNumber<uint64_t>()) + "\n";
     }
   }
