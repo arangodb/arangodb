@@ -15,7 +15,7 @@ You should reference them via their names instead.
 @RESTURLPARAM{collection-name,string,required}
 The name of the collection.
 
-@RESTURLPARAM{details,boolean,optional}
+@RESTURLPARAM{details,boolean,required}
 Setting `details` to `true` will return extended storage engine-specific
 details to the figures. The details are intended for debugging ArangoDB itself
 and their format is subject to change. By default, `details` is set to `false`,
