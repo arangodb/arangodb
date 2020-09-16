@@ -34,7 +34,7 @@ if the request was not authenticated as a user with sufficient rights
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestAdminCompact}
-    var response = logCurlRequest('PUT', '/_admin/compact');
+    var response = logCurlRequest('PUT', '/_admin/compact', '');
 
     assert(response.code === 200);
 
