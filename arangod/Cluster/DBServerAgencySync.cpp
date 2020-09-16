@@ -187,11 +187,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   auto plan = clusterInfo.getPlan(planIndex, dirty);
-  if (plan.empty()) {
+  if (!dirty.empty() && plan.empty()) {
     // TODO increase log level, except during shutdown?
     LOG_TOPIC("0a6f2", DEBUG, Logger::MAINTENANCE)
-        << "DBServerAgencySync::execute no plan";
-    result.errorMessage = "DBServerAgencySync::execute no plan";
+        << "DBServerAgencySync::execute no plan change set";
+    result.errorMessage = "DBServerAgencySync::execute no reconciliation plan";
     return result;
   }
 

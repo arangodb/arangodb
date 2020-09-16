@@ -527,7 +527,9 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
         VPackSlice pdb = pb.get(
             std::vector<std::string>{AgencyCommHelper::path(), PLAN, DATABASES, dbname});
         if (pdb.isNone() || pdb.isEmptyObject()) {
-          LOG_DEVEL << "Dropping databases: pdb is " << pdb.toJson();
+          LOG_TOPIC("12274", INFO, Logger::MAINTENANCE)
+            << "Dropping databases: pdb is "
+            << std::string(pdb.isNone() ? "non Slice" : pdb.toJson());
           needDrop = true;
         }
       }
@@ -562,7 +564,6 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       auto pdb = pit->second->slice()[0];
       std::vector<std::string> ppath {
         AgencyCommHelper::path(), PLAN, COLLECTIONS, dbname};
-
       if (!pdb.hasKey(ppath)) {
         continue;
       }
@@ -1034,7 +1035,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     auto lit = local.find(dbName);
     VPackSlice ldb;
     if (lit == local.end()) {
-      LOG_DEVEL << dbName << " missing in local";
+      LOG_TOPIC("324e7", TRACE, Logger::MAINTENANCE)
+        << "database " << dbName << " missing in local";
     } else {
       // TODO assertions
       ldb = lit->second->slice();
@@ -1043,7 +1045,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     auto cit = current.find(dbName);
     VPackSlice cur;
     if (cit == current.end()) {
-      LOG_DEVEL << dbName << " missing in current";
+      LOG_TOPIC("427e3", TRACE, Logger::MAINTENANCE)
+        << dbName << " missing in current";
     } else {
       // TODO assertions
       cur = cit->second->slice()[0];
@@ -1053,7 +1056,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     auto pit = plan.find(dbName);
     VPackSlice pdb;
     if (pit == plan.end()) {
-      LOG_DEVEL << dbName << " missing in plan";
+      LOG_TOPIC("47e23", TRACE, Logger::MAINTENANCE)
+        << dbName << " missing in plan";
     } else {
       // TODO assertions
       pdb = pit->second->slice()[0];
