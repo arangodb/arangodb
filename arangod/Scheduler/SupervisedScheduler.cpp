@@ -164,6 +164,10 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _fifo2Size(fifo2Size),
       _metricsQueueLength(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           "arangodb_scheduler_queue_length", 0, "Servers internal queue length (approximate)")),
+      _metricsAwakeThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
+          "arangodb_scheduler_awake_threads", 0, "Number of awake worker threads")),
+      _metricsNumWorkerThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
+          "arangodb_scheduler_num_worker_threads", 0, "Number of worker threads")),
       _metricsQueueFull(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_scheduler_queue_full_failures", 0, "Tasks dropped and not added to internal queue")) {
   _queues[0].reserve(maxQueueSize);
@@ -427,7 +431,8 @@ void SupervisedScheduler::runSupervisor() {
     uint64_t queueLength = jobsSubmitted - jobsDequeued;
 
     uint64_t awake = _nrAwake.load(std::memory_order_relaxed);
-    bool sleeperFound = (awake < _numWorkers.load(std::memory_order_relaxed));
+    uint64_t numWorker = _numWorkers.load(std::memory_order_relaxed);
+    bool sleeperFound = (awake < numWorker);
 
     bool doStartOneThread = (((queueLength >= 3 * _numWorkers) &&
                               ((lastQueueLength + _numWorkers) < queueLength)) ||
@@ -446,6 +451,8 @@ void SupervisedScheduler::runSupervisor() {
     if (roundCount++ >= 5) {
       // approx every 0.5s update the metrics
       _metricsQueueLength.operator=(queueLength);
+      _metricsAwakeThreads.operator=(awake);
+      _metricsNumWorkerThreads.operator=(numWorker);
       roundCount = 0;
     }
 

@@ -3,6 +3,11 @@ v3.6.7 (XXXX-XX-XX)
 
 * Exposed the following metrics via the `/_admin/metrics` endpoint:
 
+  - `arangodb_scheduler_awake_threads`: Number of awake worker threads
+  - `arangodb_scheduler_num_worker_threads`: Number of worker threads
+
+* Exposed the following metrics via the `/_admin/metrics` endpoint:
+
   - arangodb_http_request_statistics_total_requests: Total number of HTTP requests
   - arangodb_http_request_statistics_async_requests: Number of asynchronously executed HTTP requests
   - arangodb_http_request_statistics_http_delete_requests: Number of HTTP DELETE requests
