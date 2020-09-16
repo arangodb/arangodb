@@ -765,6 +765,14 @@ Debugging a storage engine:
     (gdb) r
     arangod> require("jsunity").runTest("tests/js/client/shell/shell-client.js");
 
+### Forcing downgrade from VPack to JSON
+
+While velocypack is better for the machine to machine communication, JSON does a better job
+if you want to observe the communication using `tcpdump`.
+Hence a downgrade of the communication to JSON can be made at start time:
+
+    arangosh --server.force-json true --server.endpoint ... 
+
 ### Running tcpdump / windump for the SUT
 
 Don't want to miss a beat of your test? If you want to invoke tcpdump with sudo,
@@ -789,11 +797,12 @@ Choose the `Npcap Loopback Adapter` number - 1:
     ./scripts/unittest http_server \
       --sniff true \
       --cleanup false \
-      --sniffDevice 1\
-      --sniffProgram c:/Programm Files/wireshark/tshark.exe
+      --sniffDevice 1 \
+      --sniffProgram 'c:/Programm Files/wireshark/tshark.exe' \
+      --forceJson true
 
-You can later on use Wireshark to inpsect the capture files.
-
+You can later on use Wireshark to inspect the capture files.
+(please note that `--forceJson` will downgrade the communication VPACK->JSON for better readability)
 
 ### Evaluating json test reports from previous testruns
 
