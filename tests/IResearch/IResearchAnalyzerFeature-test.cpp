@@ -1260,7 +1260,7 @@ class IResearchAnalyzerFeatureCoordinatorTest
 
   TRI_vocbase_t* specificBase() const { return _vocbase; }
 };
-
+/*
 TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
   // add index factory
   {
@@ -1354,7 +1354,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
     EXPECT_TRUE(res.ok());
   }
 }
-
+*/
 // -----------------------------------------------------------------------------
 // --SECTION--                                               identity test suite
 // -----------------------------------------------------------------------------
