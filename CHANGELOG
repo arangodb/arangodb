@@ -1,6 +1,11 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Added scheduler thread creation/destruction metrics:
+
+  - `arangodb_scheduler_threads_started`: Number of scheduler threads started
+  - `arangodb_scheduler_threads_stopped`: Number of scheduler threads stopped
+
 * Added `details` option to figures command of a collection:
   `collection.figures(details)`
 
