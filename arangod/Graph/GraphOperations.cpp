@@ -214,9 +214,9 @@ Result GraphOperations::checkVertexCollectionAvailability(std::string const& ver
       GraphManager::getCollectionByName(_vocbase, vertexCollectionName);
 
   if (def == nullptr) {
-    return Result(Result(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,
+    return Result(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,
                          vertexCollectionName + " " +
-                             std::string{TRI_errno_string(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST)}));
+                             std::string{TRI_errno_string(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST)});
   }
 
   return Result(TRI_ERROR_NO_ERROR);
