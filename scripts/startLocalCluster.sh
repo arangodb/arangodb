@@ -266,9 +266,6 @@ start() {
         --log.force-direct false \
         --log.thread true \
         --log.level $LOG_LEVEL_CLUSTER \
-        --log.level=maintenance=trace \
-        --log.level=cluster=trace \
-        --log.level=replication=debug \
         --javascript.allow-admin-execute true \
         $SYSTEM_REPLICATION_FACTOR \
         $STORAGE_ENGINE \
