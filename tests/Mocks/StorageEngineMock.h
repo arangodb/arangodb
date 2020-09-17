@@ -168,6 +168,7 @@ class TransactionStateMock : public arangodb::TransactionState {
   virtual arangodb::Result abortTransaction(arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result beginTransaction(arangodb::transaction::Hints hints) override;
   virtual arangodb::Result commitTransaction(arangodb::transaction::Methods* trx) override;
+  virtual uint64_t numCommits() const override;
   virtual bool hasFailedOperations() const override;
 };
 
