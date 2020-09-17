@@ -404,18 +404,21 @@ void handleOnStatusCoordinator(Agent* agent, Node const& snapshot, HealthRecord&
                                HealthRecord& transisted, std::string const& serverID) {
 
   if (transisted.status == Supervision::HEALTH_STATUS_FAILED) {
-    // if the current foxxmaster server failed => reset the value to ""
-    if (snapshot.hasAsString(foxxmaster).first == serverID) {
-      VPackBuilder create;
+    VPackBuilder create;
+    {
+      VPackArrayBuilder tx(&create);
       {
-        VPackArrayBuilder tx(&create);
-        {
-          VPackObjectBuilder d(&create);
+        VPackObjectBuilder b(&create);
+        // unconditionally increase reboot id and plan version
+        Job::addIncreaseRebootId(create, serverID);
+
+        // if the current foxxmaster server failed => reset the value to ""
+        if (snapshot.hasAsString(foxxmaster).first == serverID) {
           create.add(foxxmaster, VPackValue(""));
         }
       }
-      singleWriteTransaction(agent, create, false);
     }
+    singleWriteTransaction(agent, create, false);
   }
 }
 

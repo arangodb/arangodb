@@ -580,7 +580,7 @@ TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
     maintenance::ActionDescription ad(
         {{std::string(maintenance::NAME), std::string(maintenance::CREATE_DATABASE)},
          {std::string(maintenance::DATABASE), std::string(name)}},
-         maintenance::HIGHER_PRIORITY);
+         maintenance::HIGHER_PRIORITY, false);
     auto* mf = arangodb::application_features::ApplicationServer::lookupFeature<arangodb::MaintenanceFeature>("Maintenance");
     maintenance::CreateDatabase cd(*mf, ad);
     cd.first();   // Does the job
@@ -608,7 +608,7 @@ void MockDBServer::dropDatabase(std::string const& name) {
   maintenance::ActionDescription ad(
       {{std::string(maintenance::NAME), std::string(maintenance::DROP_DATABASE)},
        {std::string(maintenance::DATABASE), std::string(name)}},
-       maintenance::HIGHER_PRIORITY);
+       maintenance::HIGHER_PRIORITY, false);
   auto* mf = arangodb::application_features::ApplicationServer::lookupFeature<arangodb::MaintenanceFeature>("Maintenance");
   maintenance::DropDatabase dd(*mf, ad);
   dd.first();   // Does the job

@@ -600,6 +600,10 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
   TRI_ASSERT(infoBuilder.isEmpty());
 
   infoBuilder.openObject();
+    
+  infoBuilder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(ServerState::instance()->getRebootId()));
+  infoBuilder.add(StaticStrings::AttrCoordinatorId, VPackValue(ServerState::instance()->getId()));
+
   infoBuilder.add(VPackValue("lockInfo"));
   infoBuilder.openObject();
   for (auto const& shardLocks : _shardLocking) {
