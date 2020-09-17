@@ -805,7 +805,7 @@ void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases) 
     notify();
   }
 }
-void ClusterFeature::addDirty(std::unordered_set<std::string,std::shared_ptr<VPackBuilder>>&& databases) {
+void ClusterFeature::addDirty(std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>&& databases) {
   MUTEX_LOCKER(guard, _dirtyLock);
   if (databases.size() > 0) {
     for (auto&& database : databases) {
@@ -816,8 +816,8 @@ void ClusterFeature::addDirty(std::unordered_set<std::string,std::shared_ptr<VPa
     }
     notify();
   }
-}
-void ClusterFeature::addDirty(std::unordered_set<std::string,std::shared_ptr<VPackBuilder>> const& databases) {
+}                             
+void ClusterFeature::addDirty(std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& databases) {
   MUTEX_LOCKER(guard, _dirtyLock);
   if (databases.size() > 0) {
     for (auto const& database : databases) {
