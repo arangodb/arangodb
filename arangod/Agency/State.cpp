@@ -206,11 +206,14 @@ bool State::persistConf(index_t index, term_t term, uint64_t millis,
 
   try {
     OperationResult logResult = trx.insert("log", log.slice(), _options);
+    if (logResult.fail()) {
+      THROW_ARANGO_EXCEPTION(logResult.result);
+    }
     OperationResult confResult =
         trx.replace("configuration", configuration.slice(), _options);
     res = trx.finish(confResult.result);
   } catch (std::exception const& e) {
-    LOG_TOPIC("ced35", ERR, Logger::AGENCY) << "Failed to persist log entry:" << e.what();
+    LOG_TOPIC("ced35", ERR, Logger::AGENCY) << "Failed to persist log entry: " << e.what();
     return false;
   }
 
