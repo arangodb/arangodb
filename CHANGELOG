@@ -1,6 +1,11 @@
 devel
 -----
 
+* Make the reboot tracker catch failed coordinators, too. Previously the
+  reboot tracker was invoked only when a DB server failed or was restarted, 
+  and when a coordinator was restarted. Now it will also act if a coordinator
+  just fails (without restart).
+
 * Added replication metrics `arangodb_replication_initial_sync_bytes_received`
   for the number of bytes received during replication initial sync operations
   and `arangodb_replication_tailing_bytes_received` for the number of bytes
