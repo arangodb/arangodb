@@ -285,18 +285,34 @@ set(TZ_DATA_FILES ${TZ_DATA_FILES} PARENT_SCOPE)
 
 if (MSVC)
   add_custom_command(
-    TARGET boost-static POST_BUILD
+    TARGET fuerte POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/tzdata)
+
+  add_custom_command(
+    TARGET fuerte POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/tests/$<CONFIG>/tzdata)
+
+  add_custom_command(
+    TARGET fuerte POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/tzdata)
 
   add_custom_command(
-    TARGET boost-static POST_BUILD
+    TARGET fuerte POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/tests/$<CONFIG>/tzdata)
 else()
   add_custom_command(
-    TARGET boost-static POST_BUILD
+    TARGET fuerte POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/tzdata)
+
+  add_custom_command(
+    TARGET fuerte POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/tests/tzdata)
+
+  add_custom_command(
+    TARGET fuerte POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/bin/tzdata)
 
   add_custom_command(
-    TARGET boost-static POST_BUILD
+    TARGET fuerte POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/tests/tzdata)
 endif()
