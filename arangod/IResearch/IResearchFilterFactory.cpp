@@ -932,6 +932,7 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
   return {};
 }
 
+// GEO_DISTANCE(.. , ..) <|<=|>|>= Distance
 Result fromGeoDistanceInterval(
     irs::boolean_filter* filter,
     arangodb::iresearch::NormalizedCmpNode const& node,
@@ -1019,11 +1020,9 @@ Result fromGeoDistanceInterval(
 
     if (aql::NODE_TYPE_OPERATOR_BINARY_GT == node.cmp ||
         aql::NODE_TYPE_OPERATOR_BINARY_GE == node.cmp) {
-      options->range.max = 0;
       options->range.min = distance;
       options->range.min_type = type;
     } else {
-      options->range.min = 0;
       options->range.max = distance;
       options->range.max_type = type;
     }
