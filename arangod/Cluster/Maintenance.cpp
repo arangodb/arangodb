@@ -510,7 +510,6 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
           std::make_shared<ActionDescription>(
             std::map<std::string, std::string>{
               {std::string(NAME), std::string(CREATE_DATABASE)},
-              {std::string("tick"), std::to_string(TRI_NewTickServer())},
               {std::string(DATABASE), std::move(dbname)}},
             HIGHER_PRIORITY, false,
                                std::make_shared<VPackBuilder>(pdb)));
@@ -545,7 +544,6 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
           std::make_shared<ActionDescription>(
             std::map<std::string, std::string>{
               {std::string(NAME), std::string(DROP_DATABASE)},
-              {std::string("tick"), std::to_string(TRI_NewTickServer())},
               {std::string(DATABASE), std::move(dbname)}},
             HIGHER_PRIORITY, false));
       }
