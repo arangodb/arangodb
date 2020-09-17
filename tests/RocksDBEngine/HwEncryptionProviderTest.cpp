@@ -28,6 +28,7 @@
 #include "gtest/gtest.h"
 
 #include <array>
+#include <chrono>
 #include <iostream>
 #include <memory>
 #include <string>
