@@ -411,12 +411,11 @@ void handleOnStatusCoordinator(Agent* agent, Node const& snapshot, HealthRecord&
         VPackObjectBuilder b(&create);
         // unconditionally increase reboot id and plan version
         Job::addIncreaseRebootId(create, serverID);
-      }
 
-      // if the current foxxmaster server failed => reset the value to ""
-      if (snapshot.hasAsString(foxxmaster).first == serverID) {
-        VPackObjectBuilder d(&create);
-        create.add(foxxmaster, VPackValue(""));
+        // if the current foxxmaster server failed => reset the value to ""
+        if (snapshot.hasAsString(foxxmaster).first == serverID) {
+          create.add(foxxmaster, VPackValue(""));
+        }
       }
     }
     singleWriteTransaction(agent, create, false);
