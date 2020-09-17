@@ -28,6 +28,7 @@
 #include "gtest/gtest.h"
 
 #include <array>
+#include <iostream>
 #include <memory>
 #include <string>
 
@@ -38,7 +39,6 @@
 #endif
 
 using namespace arangodb;
-using namespace arangodb::basics;
 
 #ifdef USE_ENTERPRISE
 
@@ -94,6 +94,7 @@ TEST(EncryptionProviderTest, simple) {
     ASSERT_EQ(memcmp(buffer1.data() + offset, buffer2.data() + offset, len), 0);
     
     // decrypt data at offset
+    auto now = std::chrono::steady_clock::now();
     ASSERT_TRUE(stream1->Encrypt(offset, buffer1.data() + offset, len).ok());
     ASSERT_TRUE(stream1->Encrypt(offset, buffer2.data() + offset, len).ok());
 
@@ -102,6 +103,70 @@ TEST(EncryptionProviderTest, simple) {
     // check is it equal to original
     ASSERT_EQ(memcmp(buffer1.data(), buffer3.data(), kBuffSize), 0);
   }
+}
+
+TEST(EncryptionProviderTest, benchmark) {
+  
+  // hand rolled AES-256-CTR mode
+  arangodb::enterprise::HwEncryptionProvider hwprovider(rocksdb::Slice(SAMPLE_KEY, 32));
+
+  // this is the hand-rolled CTR mode with the openssl software-only AES_encrypt
+  arangodb::enterprise::AES256BlockCipher cipher(rocksdb::Slice(SAMPLE_KEY, 32));
+  rocksdb::CTREncryptionProvider softprovider(cipher);
+  
+  ASSERT_EQ(hwprovider.GetPrefixLength(), softprovider.GetPrefixLength());
+  
+  std::string prefix;
+  prefix.resize(softprovider.GetPrefixLength());
+  
+  rocksdb::EnvOptions opts;
+  
+  constexpr size_t kBuffSize = (1<<20) * 64;
+  std::vector<char> buffer;
+  buffer.resize(kBuffSize);
+  for (size_t i = 0; i < kBuffSize; i++) {
+    buffer[i] = RandomGenerator::interval(0, 255);
+  }
+
+  softprovider.CreateNewPrefix("", prefix.data(), prefix.size());
+  rocksdb::Slice prefixSlice(prefix);
+  
+  std::unique_ptr<rocksdb::BlockAccessCipherStream> streamHw, streamSf;
+  ASSERT_TRUE(hwprovider.CreateCipherStream("", opts, prefixSlice, &streamHw).ok());
+  ASSERT_TRUE(softprovider.CreateCipherStream("", opts, prefixSlice, &streamSf).ok());
+  ASSERT_NE(streamHw, nullptr);
+  ASSERT_NE(streamSf, nullptr);
+
+  std::cout << "Benchmarking hardware accelerated variant...";
+
+  const int reps = 1024;
+  auto start = std::chrono::steady_clock::now();
+  for (int x = 0; x < reps; x++) {
+    // encrypt data at offset
+    ASSERT_TRUE(streamHw->Encrypt(0, buffer.data(), kBuffSize).ok());
+  }
+  auto durationHw = std::chrono::steady_clock::now() - start;
+  auto avgDurationHw = durationHw / reps;
+  
+  std::cout << "\n------------------------------";
+  std::cout << "Algorithm\t\tTotal\t\tAvg\n";
+  std::cout << "Hardware\t\t" << durationHw.count() << "s\t\t" << avgDurationHw.count() << "s\n";
+  std::cout << "------------------------------";
+  std::cout << "Benchmarking software only variant...";
+
+  start = std::chrono::steady_clock::now();
+  for (int x = 0; x < reps; x++) {
+    // encrypt data at offset
+    ASSERT_TRUE(streamSf->Encrypt(0, buffer.data(), kBuffSize).ok());
+  }
+  auto durationSf = std::chrono::steady_clock::now() - start;
+  auto avgDurationSf = durationSf / reps;
+  
+  std::cout << "\n------------------------------";
+  std::cout << "Algorithm\t\tTotal\t\tAvg\n";
+  std::cout << "Hardware\t\t" << durationHw.count() << "s\t\t" << avgDurationHw.count() << "s\n";
+  std::cout << "Software\t\t" << durationSf.count() << "s\t\t" << avgDurationSf.count() << "s\n";
+  std::cout << "------------------------------";
 }
 
 #endif
