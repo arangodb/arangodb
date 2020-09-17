@@ -1,10 +1,10 @@
 v3.6.7 (XXXX-XX-XX)
 -------------------
 
-* Make the reboot tracker catch failed coordinators, too. Previously the
-  reboot tracker was invoked only when a DB server failed or was restarted,
-  and when a coordinator was restarted. Now it will also act if a coordinator
-  just fails (without restart).
+* Make the reboot tracker catch failed coordinators, too. Previously the reboot
+  tracker was invoked only when a DB server failed or was restarted, and when a
+  coordinator was restarted. Now it will also act if a coordinator just fails
+  (without restart).
 
 * Implement RebootTracker usage for AQL queries in case of coordinator restarts
   or failures. This will clean up the rest of an AQL query on dbservers more
