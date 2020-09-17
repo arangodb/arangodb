@@ -105,7 +105,7 @@ TEST(EncryptionProviderTest, simple) {
   }
 }
 
-TEST(EncryptionProviderTest, benchmark) {
+TEST(EncryptionProviderTest, microbenchmark) {
   
   // hand rolled AES-256-CTR mode
   arangodb::enterprise::HwEncryptionProvider hwprovider(rocksdb::Slice(SAMPLE_KEY, 32));
@@ -121,7 +121,7 @@ TEST(EncryptionProviderTest, benchmark) {
   
   rocksdb::EnvOptions opts;
   
-  constexpr size_t kBuffSize = (1<<20) * 64;
+  constexpr size_t kBuffSize = (1<<20) * 16;
   std::vector<char> buffer;
   buffer.resize(kBuffSize);
   for (size_t i = 0; i < kBuffSize; i++) {
@@ -137,36 +137,42 @@ TEST(EncryptionProviderTest, benchmark) {
   ASSERT_NE(streamHw, nullptr);
   ASSERT_NE(streamSf, nullptr);
 
-  std::cout << "Benchmarking hardware accelerated variant...";
+  std::cout << "Encrypting 16MB blocks of memory with AES-256-CTR\n"
+            << "Benchmarking hardware accelerated variant..." << std::endl;
 
-  const int reps = 1024;
+  const int reps = 128;
   auto start = std::chrono::steady_clock::now();
   for (int x = 0; x < reps; x++) {
     // encrypt data at offset
     ASSERT_TRUE(streamHw->Encrypt(0, buffer.data(), kBuffSize).ok());
   }
-  auto durationHw = std::chrono::steady_clock::now() - start;
-  auto avgDurationHw = durationHw / reps;
+  auto duration = std::chrono::steady_clock::now() - start;
+  auto durationHw = std::chrono::duration_cast<std::chrono::seconds>(duration);
+  auto avgDurationHw = std::chrono::duration_cast<std::chrono::milliseconds>(duration / reps);
   
-  std::cout << "\n------------------------------";
-  std::cout << "Algorithm\t\tTotal\t\tAvg\n";
-  std::cout << "Hardware\t\t" << durationHw.count() << "s\t\t" << avgDurationHw.count() << "s\n";
-  std::cout << "------------------------------";
-  std::cout << "Benchmarking software only variant...";
+  std::cout << "------------------------------" << std::endl;
+  std::cout << "Algorithm\tTotal\tAvg" << std::endl;
+  std::cout << "Hardware\t" << durationHw.count() << "s\t"
+            << avgDurationHw.count() << "ms" << std::endl;
+  std::cout << "------------------------------" << std::endl;;
+  std::cout << "\nBenchmarking software only variant..." << std::endl;;
 
   start = std::chrono::steady_clock::now();
   for (int x = 0; x < reps; x++) {
     // encrypt data at offset
     ASSERT_TRUE(streamSf->Encrypt(0, buffer.data(), kBuffSize).ok());
   }
-  auto durationSf = std::chrono::steady_clock::now() - start;
-  auto avgDurationSf = durationSf / reps;
+  duration = std::chrono::steady_clock::now() - start;
+  auto durationSf = std::chrono::duration_cast<std::chrono::seconds>(duration);
+  auto avgDurationSf = std::chrono::duration_cast<std::chrono::milliseconds>(duration / reps);
   
-  std::cout << "\n------------------------------";
-  std::cout << "Algorithm\t\tTotal\t\tAvg\n";
-  std::cout << "Hardware\t\t" << durationHw.count() << "s\t\t" << avgDurationHw.count() << "s\n";
-  std::cout << "Software\t\t" << durationSf.count() << "s\t\t" << avgDurationSf.count() << "s\n";
-  std::cout << "------------------------------";
+  std::cout << "------------------------------" << std::endl;
+  std::cout << "Algorithm\tTotal\tAvg" << std::endl;;
+  std::cout << "Hardware\t" << durationHw.count() << "s\t"
+            << avgDurationHw.count() << "ms" << std::endl;
+  std::cout << "Software\t" << durationSf.count() << "s\t"
+            << avgDurationSf.count() << "ms" << std::endl;
+  std::cout << "------------------------------" << std::endl;;
 }
 
 #endif
