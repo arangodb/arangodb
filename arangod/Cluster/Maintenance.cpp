@@ -475,7 +475,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     if (!local.hasKey(dbname)) {
       if (errors.databases.find(dbname) == errors.databases.end()) {
         actions.emplace_back(ActionDescription(
-              std::map<std::string, std::string>{{std::string(NAME), std::string(CREATE_DATABASE)}, {std::string("tick"), std::to_string(TRI_NewTickServer())},
+              std::map<std::string, std::string>{{std::string(NAME), std::string(CREATE_DATABASE)},
                {std::string(DATABASE), std::move(dbname)}},
               HIGHER_PRIORITY, false));
       } else {
