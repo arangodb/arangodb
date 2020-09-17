@@ -1774,9 +1774,8 @@ void ClusterInfo::buildFinalSlice(CreateDatabaseInfo const& database,
 
 // This waits for the database described in `database` to turn up in `Current`
 // and no DBServer is allowed to report an error.
-Result ClusterInfo::waitForDatabaseInCurrent(CreateDatabaseInfo const& database) {
-  AgencyComm ac(_server);
-  AgencyCommResult res;
+Result ClusterInfo::waitForDatabaseInCurrent(
+  CreateDatabaseInfo const& database, AgencyWriteTransaction const& trx) {
 
   auto DBServers = std::make_shared<std::vector<ServerID>>(getCurrentDBServers());
   auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
@@ -1828,11 +1827,26 @@ Result ClusterInfo::waitForDatabaseInCurrent(CreateDatabaseInfo const& database)
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
   auto agencyCallback =
-      std::make_shared<AgencyCallback>(_server, "Current/Databases/" + database.getName(),
-                                       dbServerChanged, true, false);
+    std::make_shared<AgencyCallback>(
+      _server, "Current/Databases/" + database.getName(), dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard(
     [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
+
+
+  // TODO: Should this never timeout?
+  AgencyComm ac(_server);
+  auto res = ac.sendTransactionWithFailover(trx, 0.0);
+  if (!res.successful()) {
+    if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("duplicate database name '") + database.getName() + "'");
+    }
+    return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN);
+  }
+
+  if (res.slice().get("results").length() > 0) {
+    waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  }
 
   // Waits for the database to turn up in Current/Databases
   {
@@ -1874,7 +1888,6 @@ Result ClusterInfo::waitForDatabaseInCurrent(CreateDatabaseInfo const& database)
 // Start creating a database in a coordinator by entering it into Plan/Databases with,
 // status flag `isBuilding`; this makes the database invisible to the outside world.
 Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const& database) {
-  AgencyComm ac(_server);
   AgencyCommResult res;
 
   // Instruct the Agency to enter the creation of the new database
@@ -1885,31 +1898,16 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const
   buildIsBuildingSlice(database, builder);
 
   AgencyWriteTransaction trx(
-      {AgencyOperation("Plan/Databases/" + database.getName(),
-                       AgencyValueOperationType::SET, builder.slice()),
-       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
-      {AgencyPrecondition("Plan/Databases/" + database.getName(),
-                          AgencyPrecondition::Type::EMPTY, true),
-       AgencyPrecondition(analyzersPath(database.getName()),
-                          AgencyPrecondition::Type::EMPTY, true)});
-
-  // TODO: Should this never timeout?
-  res = ac.sendTransactionWithFailover(trx, 0.0);
-
-  if (!res.successful()) {
-    if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
-      return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("duplicate database name '") + database.getName() + "'");
-    }
-
-    return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN);
-  }
-
-  if (res.slice().get("results").length() > 0) {
-    waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-  }
+    { AgencyOperation(
+        "Plan/Databases/" + database.getName(), AgencyValueOperationType::SET, builder.slice()),
+      AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
+    { AgencyPrecondition(
+        "Plan/Databases/" + database.getName(), AgencyPrecondition::Type::EMPTY, true),
+      AgencyPrecondition(
+        analyzersPath(database.getName()), AgencyPrecondition::Type::EMPTY, true)});
 
   // And wait for our database to show up in `Current/Databases`
-  auto waitresult = waitForDatabaseInCurrent(database);
+  auto waitresult = waitForDatabaseInCurrent(database, trx);
 
   if (waitresult.fail()) {
     // cleanup: remove database from plan

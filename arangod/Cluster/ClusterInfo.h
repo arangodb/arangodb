@@ -1019,7 +1019,8 @@ public:
   void buildFinalSlice(CreateDatabaseInfo const& database,
                          VPackBuilder& builder);
 
-  Result waitForDatabaseInCurrent(CreateDatabaseInfo const& database);
+  Result waitForDatabaseInCurrent(
+    CreateDatabaseInfo const& database, AgencyWriteTransaction const& trx);
   void loadClusterId();
 
   void triggerWaiting(

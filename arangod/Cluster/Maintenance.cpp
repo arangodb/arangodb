@@ -510,7 +510,6 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
           std::make_shared<ActionDescription>(
             std::map<std::string, std::string>{
               {std::string(NAME), std::string(CREATE_DATABASE)},
-              {std::string("tick"), std::to_string(TRI_NewTickServer())},
               {std::string(DATABASE), std::move(dbname)}},
             HIGHER_PRIORITY, false,
                                std::make_shared<VPackBuilder>(pdb)));
@@ -545,7 +544,6 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
           std::make_shared<ActionDescription>(
             std::map<std::string, std::string>{
               {std::string(NAME), std::string(DROP_DATABASE)},
-              {std::string("tick"), std::to_string(TRI_NewTickServer())},
               {std::string(DATABASE), std::move(dbname)}},
             HIGHER_PRIORITY, false));
       }
@@ -1088,7 +1086,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       AgencyCommHelper::path(), CURRENT, DATABASES, dbName, serverId};
 
     if (ldb.isObject()) {
-      
+
       if (cur.isNone() || (cur.isObject() && !cur.hasKey(cdbpath))) {
         auto const localDatabaseInfo = assembleLocalDatabaseInfo(dbName, allErrors);
         TRI_ASSERT(!localDatabaseInfo.slice().isNone());
@@ -1102,8 +1100,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           }
         }
       }
-    
-      
+
+
 
       for (auto const& shard : VPackObjectIterator(lit->second->slice(), true)) {
         auto const shName = shard.key.copyString();
