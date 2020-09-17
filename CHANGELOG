@@ -1,6 +1,11 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Make the reboot tracker catch failed coordinators, too. Previously the
+  reboot tracker was invoked only when a DB server failed or was restarted, 
+  and when a coordinator was restarted. Now it will also act if a coordinator
+  just fails (without restart).
+
 * Ensure that the argument to an AQL OPTIONS clause is always an object which
   does not contain any dynamic (run-time) values. Previously, this was only
   enforced for traversal options and options for data-modification queries. This
