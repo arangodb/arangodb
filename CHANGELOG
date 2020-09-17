@@ -6,6 +6,11 @@ v3.7.3 (XXXX-XX-XX)
   - `arangodb_scheduler_threads_started`: Number of scheduler threads started
   - `arangodb_scheduler_threads_stopped`: Number of scheduler threads stopped
 
+* Ensure that the argument to an AQL OPTIONS clause is always an object which
+  does not contain any dynamic (run-time) values. Previously, this was only
+  enforced for traversal options and options for data-modification queries. This
+  change extends the check to all occurrences of OPTIONS.
+
 * Added `details` option to figures command of a collection:
   `collection.figures(details)`
 
