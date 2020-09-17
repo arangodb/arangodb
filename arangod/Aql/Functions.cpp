@@ -1214,12 +1214,13 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
   }
 
   AqlValueMaterializer mat2(trx);
-  res.reset(TRI_ERROR_BAD_PARAMETER,
-            "Second arg requires coordinate pair or GeoJSON");
   if (p2.isArray() && p2.length() >= 2) {
     res = inner.parseCoordinates(mat2.slice(p2, true), /*geoJson*/ true);
   } else if (p2.isObject()) {
     res = geo::geojson::parseRegion(mat2.slice(p2, true), inner);
+  } else {
+    res.reset(TRI_ERROR_BAD_PARAMETER,
+              "Second arg requires coordinate pair or GeoJSON");
   }
   if (res.fail()) {
     registerWarning(expressionContext, func, res);
@@ -5379,13 +5380,15 @@ AqlValue Functions::GeoDistance(ExpressionContext* expressionContext,
   AqlValue loc1 = extractFunctionParameterValue(parameters, 0);
   AqlValue loc2 = extractFunctionParameterValue(parameters, 1);
 
-  Result res(TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON");
+  Result res;
   AqlValueMaterializer mat1(trx);
   geo::ShapeContainer shape1, shape2;
   if (loc1.isArray() && loc1.length() >= 2) {
     res = shape1.parseCoordinates(mat1.slice(loc1, true), /*geoJson*/ true);
   } else if (loc1.isObject()) {
     res = geo::geojson::parseRegion(mat1.slice(loc1, true), shape1);
+  } else {
+    res.reset(TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON");
   }
   if (res.fail()) {
     registerWarning(expressionContext, "GEO_DISTANCE", res);
@@ -5393,11 +5396,12 @@ AqlValue Functions::GeoDistance(ExpressionContext* expressionContext,
   }
 
   AqlValueMaterializer mat2(trx);
-  res.reset(TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON");
   if (loc2.isArray() && loc2.length() >= 2) {
     res = shape2.parseCoordinates(mat2.slice(loc2, true), /*geoJson*/ true);
   } else if (loc2.isObject()) {
     res = geo::geojson::parseRegion(mat2.slice(loc2, true), shape2);
+  } else {
+    res.reset(TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON");
   }
   if (res.fail()) {
     registerWarning(expressionContext, "GEO_DISTANCE", res);
