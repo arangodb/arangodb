@@ -932,6 +932,135 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
   return {};
 }
 
+// IN_GEO_RANGE(attribute, shape, lower, upper[, includeLower = true, includeUpper = true])
+Result fromFuncGeoInRange(
+    char const* funcName,
+    irs::boolean_filter* filter,
+    QueryContext const& ctx,
+    FilterContext const& filterCtx,
+    aql::AstNode const& args) {
+  TRI_ASSERT(funcName);
+  using ArgsRange = error::Range<4, 6>;
+
+  if (!args.isDeterministic()) {
+    return error::nondeterministicArgs(funcName);
+  }
+
+  auto const argc = args.numMembers();
+
+
+  if (argc < ArgsRange::MIN || argc > ArgsRange::MAX) {
+    return error::invalidArgsCount<ArgsRange>(funcName);
+  }
+
+  auto const* fieldNode = args.getMemberUnchecked(0);
+  auto const* centroidNode = args.getMemberUnchecked(1);
+  size_t fieldNodeIdx = 1;
+  size_t centroidNodeIdx = 2;
+
+  if (!arangodb::iresearch::checkAttributeAccess(fieldNode, *ctx.ref)) {
+    if (!arangodb::iresearch::checkAttributeAccess(centroidNode, *ctx.ref)) {
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+         "'"s.append(funcName)
+             .append("' AQL function: Unable to find argument denoting an attribute identifier")
+      };
+    }
+
+    std::swap(fieldNode, centroidNode);
+    fieldNodeIdx = 2;
+    centroidNodeIdx = 1;
+  }
+
+  if (!fieldNode) {
+    return error::invalidAttribute(funcName, fieldNodeIdx);
+  }
+
+  if (!centroidNode) {
+    return error::invalidAttribute(funcName, centroidNodeIdx);
+  }
+
+  bool const buildFilter = filter;
+
+  S2LatLng centroid;
+  ScopedAqlValue tmpValue(*centroidNode);
+  if (buildFilter || tmpValue.isConstant()) {
+    if (!tmpValue.execute(ctx)) {
+      return error::failedToEvaluate(funcName, centroidNodeIdx);
+    }
+
+    auto const res = getLatLong(tmpValue, centroid, funcName, centroidNodeIdx);
+
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  double_t minDistance = 0;
+
+  auto rv = evaluateArg(minDistance, tmpValue, funcName, args, 2, buildFilter, ctx);
+
+  if (rv.fail()) {
+    return rv;
+  }
+
+  double_t maxDistance = 0;
+
+  rv = evaluateArg(maxDistance, tmpValue, funcName, args, 3, buildFilter, ctx);
+
+  if (rv.fail()) {
+    return rv;
+  }
+
+  bool includeMin = true;
+  bool includeMax = true;
+
+  if (argc > 4) {
+    rv = evaluateArg(includeMin, tmpValue, funcName, args, 4, buildFilter, ctx);
+
+    if (rv.fail()) {
+      return rv;
+    }
+
+    if (argc > 5) {
+      rv = evaluateArg(includeMax, tmpValue, funcName, args, 4, buildFilter, ctx);
+
+      if (rv.fail()) {
+        return rv;
+      }
+    }
+  }
+
+  if (filter) {
+    std::string name;
+
+    if (!nameFromAttributeAccess(name, *fieldNode, ctx)) {
+      return error::failedToGenerateName(funcName, fieldNodeIdx);
+    }
+
+    auto& geo_filter = filter->add<GeoDistanceFilter>();
+    geo_filter.boost(filterCtx.boost);
+
+    auto* options = geo_filter.mutable_options();
+    options->storedField = name;
+    options->origin = centroid.ToPoint();
+    options->range.min = minDistance;
+    options->range.min_type = includeMin
+      ? irs::BoundType::INCLUSIVE
+      : irs::BoundType::EXCLUSIVE;
+    options->range.max = maxDistance;
+    options->range.max_type = includeMax
+      ? irs::BoundType::INCLUSIVE
+      : irs::BoundType::EXCLUSIVE;
+
+    TRI_ASSERT(filterCtx.analyzer);
+    kludge::mangleField(name, filterCtx.analyzer);
+    *geo_filter.mutable_field() = std::move(name);
+  }
+
+  return {};
+}
+
 // GEO_DISTANCE(.. , ..) <|<=|>|>= Distance
 Result fromGeoDistanceInterval(
     irs::boolean_filter* filter,
@@ -3744,6 +3873,7 @@ std::map<irs::string_ref, ConvertionHandler> const FCallSystemConvertionHandlers
   {"NGRAM_MATCH", fromFuncNgramMatch},
   // geo function
   {GEO_INTERSECT_FUNC, fromFuncGeoContainsIntersect},
+  {"GEO_IN_RANGE", fromFuncGeoInRange},
   {"GEO_CONTAINS", fromFuncGeoContainsIntersect},
   // context functions
   {"BOOST", fromFuncBoost},
