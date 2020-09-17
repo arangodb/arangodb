@@ -143,7 +143,7 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   if (isIndex) {
     result = _trx.document(_info._aqlCollection->name(), inSlice, _info._options);
   } else if (isInsert) {
-    if (_info.options.returnOld && !_info.options.isOverwriteModeUpdateReplace()) {
+    if (_info._options.returnOld && !_info._options.isOverwriteModeUpdateReplace()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
           "OLD is only available when using INSERT with overwriteModes 'update' or 'replace'");
