@@ -490,7 +490,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     auto const& dbname = ldb.key.copyString();
     if (!plan.hasKey(std::vector<std::string>{DATABASES, dbname})) {
       actions.emplace_back(ActionDescription(
-          std::map<std::string, std::string>{{std::string(NAME), std::string(DROP_DATABASE)}, {std::string("tick"), std::to_string(TRI_NewTickServer())},
+          std::map<std::string, std::string>{{std::string(NAME), std::string(DROP_DATABASE)}, 
            {std::string(DATABASE), std::move(dbname)}}, 
           HIGHER_PRIORITY, false));
     }
