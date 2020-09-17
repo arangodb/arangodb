@@ -1157,12 +1157,13 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
 void SynchronizeShard::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
-    auto const& shard = _description.get("shard");
+    auto const& shard = _description.get(SHARD);
     if (COMPLETE == state) {
       LOG_TOPIC("50827", INFO, Logger::MAINTENANCE)
         << "SynchronizeShard: synchronization completed for shard " << shard;
     }
     _feature.incShardVersion(shard);
+    _feature.unlockShard(shard);
   }
   ActionBase::setState(state);
 }

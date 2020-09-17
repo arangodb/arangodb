@@ -32,8 +32,10 @@ using namespace arangodb::maintenance;
 /// @brief ctor
 ActionDescription::ActionDescription(std::map<std::string, std::string> const& d,
                                      int priority,
+                                     bool runEvenIfDuplicate,
                                      std::shared_ptr<VPackBuilder> const& p)
-    : _description(d), _properties(p), _priority(priority) {
+    : _description(d), _properties(p), _priority(priority),
+      _runEvenIfDuplicate(runEvenIfDuplicate) {
   TRI_ASSERT(d.find(NAME) != d.end());
   TRI_ASSERT(p == nullptr || p->isEmpty() || p->slice().isObject());
 }
