@@ -186,7 +186,7 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
-  LOG_TOPIC("54321", DEBUG, Logger::CLUSTER) << "createDatabase on coordinator: Starting, name: " << info.getName();
+  LOG_TOPIC("56372", DEBUG, Logger::CLUSTER) << "createDatabase on coordinator: Starting, name: " << info.getName();
 
   // This operation enters the database as isBuilding into the agency
   // while the database is still building it is not visible.
@@ -246,7 +246,7 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return ci.createFinalizeDatabaseCoordinator(info);
   }
 
-  LOG_TOPIC("54326", DEBUG, Logger::CLUSTER) << "createDatabase on coordinator: cancelling, database: " << info.getName();
+  LOG_TOPIC("24653", DEBUG, Logger::CLUSTER) << "createDatabase on coordinator: cancelling, database: " << info.getName();
 
   // We leave this handling here to be able to capture
   // error messages and return
