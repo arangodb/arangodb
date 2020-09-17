@@ -1231,11 +1231,7 @@ void ClusterInfo::loadPlan() {
     _planProt.isValid = true;
   }
 
-  for (auto const& db : changeSet.dbs) { // Databases
-    if (!db.first.empty()) {
-      clusterFeature.addDirty(db.first);
-    }
-  }
+  feature.addDirty(changeSet.dbs);
 
   {
     std::lock_guard w(_waitPlanLock);
@@ -1431,12 +1427,7 @@ void ClusterInfo::loadCurrent() {
   }
 
   _currentProt.isValid = true;
-
-  for (auto const& db : changeSet.dbs) {
-    if (!db.first.empty()) {
-      feature.addDirty(db.first);
-    }
-  }
+  feature.addDirty(changeSet.dbs);
 
   {
     std::lock_guard w(_waitCurrentLock);
