@@ -111,7 +111,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
                         std::shared_ptr<transaction::Context> const& ctx,
                         double const ttl, aql::SerializationFormat format,
                         bool& needToLock, arangodb::velocypack::Builder& answer,
-                        RebootId rebootId, std::string coordinatorId);
+                        RebootId rebootId, std::string const& coordinatorId);
 
   bool registerTraverserEngines(arangodb::velocypack::Slice const traversers,
                                 std::shared_ptr<transaction::Context> const& ctx,

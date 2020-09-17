@@ -310,7 +310,7 @@ bool RestAqlHandler::registerSnippets(
     VPackSlice const variablesSlice, std::shared_ptr<VPackBuilder> const& options,
     std::shared_ptr<transaction::Context> const& ctx, double const ttl,
     SerializationFormat format, bool& needToLock, VPackBuilder& answerBuilder,
-    RebootId rebootId, std::string coordinatorId) {
+    RebootId rebootId, std::string const& coordinatorId) {
   TRI_ASSERT(answerBuilder.isOpenObject());
   answerBuilder.add(VPackValue("snippets"));
   answerBuilder.openObject();
