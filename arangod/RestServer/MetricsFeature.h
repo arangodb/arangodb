@@ -262,6 +262,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   /// @brief serialize metrics in JSON format
   void toBuilder(arangodb::velocypack::Builder& result) const;
+
   /// @brief serialize metrics in Prometheus format
   void toPrometheus(std::string& result) const;
 

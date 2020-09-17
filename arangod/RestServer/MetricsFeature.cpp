@@ -90,16 +90,12 @@ void MetricsFeature::toBuilder(arangodb::velocypack::Builder& result) const {
     sf.toBuilder(result, std::chrono::duration<double,std::milli>(
                       std::chrono::system_clock::now().time_since_epoch()).count());
   }
-
-  // RocksDBEngine
-  auto es = EngineSelectorFeature::ENGINE;
-  if (es != nullptr) {
-    std::string const& engineName = es->typeName();
-    if (engineName == RocksDBEngine::EngineName) {
-      es->getStatistics(result);
-    }
+*/
+  // storage engine
+  if (!ServerState::instance()->isCoordinator()) {
+    auto es = EngineSelectorFeature::ENGINE;
+    es->getStatistics(result);
   }
-  */
 }
 
 void MetricsFeature::toPrometheus(std::string& result) const {
@@ -116,17 +112,14 @@ void MetricsFeature::toPrometheus(std::string& result) const {
   // StatisticsFeature
   auto& sf = server().getFeature<StatisticsFeature>();
   if (sf.enabled()) {
-    sf.toPrometheus(result, std::chrono::duration<double,std::milli>(
+    sf.toPrometheus(result, std::chrono::duration<double, std::milli>(
                       std::chrono::system_clock::now().time_since_epoch()).count());
   }
 
-  // RocksDBEngine
-  auto es = EngineSelectorFeature::ENGINE;
-  if (es != nullptr) {
-    std::string const& engineName = es->typeName();
-    if (engineName == RocksDBEngine::EngineName) {
-      es->getStatistics(result);
-    }
+  // storage engine
+  if (!ServerState::instance()->isCoordinator()) {
+    auto es = EngineSelectorFeature::ENGINE;
+    es->getStatistics(result);
   }
 }
 
