@@ -8,6 +8,47 @@ v3.6.7 (XXXX-XX-XX)
 * Serialize maintenance actions for each shard. This addresses lost document
   problems found in chaos testing.
 
+* Exposed the following metrics via the `/_admin/metrics` endpoint:
+
+  - arangodb_http_request_statistics_total_requests: Total number of HTTP requests
+  - arangodb_http_request_statistics_async_requests: Number of asynchronously executed HTTP requests
+  - arangodb_http_request_statistics_http_delete_requests: Number of HTTP DELETE requests
+  - arangodb_http_request_statistics_http_get_requests: Number of HTTP GET requests
+  - arangodb_http_request_statistics_http_head_requests: Number of HTTP HEAD requests
+  - arangodb_http_request_statistics_http_options_requests: Number of HTTP OPTIONS requests
+  - arangodb_http_request_statistics_http_patch_requests: Number of HTTP PATCH requests
+  - arangodb_http_request_statistics_http_post_requests: Number of HTTP POST requests
+  - arangodb_http_request_statistics_http_put_requests: Number of HTTP PUT requests
+  - arangodb_http_request_statistics_other_http_requests: Number of other HTTP requests
+  - arangodb_server_statistics_server_uptime: Number of seconds elapsed since server start
+  - arangodb_server_statistics_physical_memory: Physical memory in bytes
+
+* Added startup option `--query.max-runtime` to limit the maximum runtime of all
+  AQL queries to a specified threshold value (in seconds). By default, the
+  threshold is 0, meaning that the runtime of AQL queries is not limited.
+  Setting it to any positive value will restrict the runtime of all AQL queries
+  unless it is overwritten in the per-query "maxRuntime" query option.
+  Please note that setting this option will affect *all* queries in all
+  databases, and also queries issues for administration and database-internal
+  purposes.
+  If a query exceeds the configured runtime, it will be killed on the next
+  occasion when the query checks its own status. Killing is best effort, so it
+  is not guaranteed that a query will no longer than exactly the configured
+  amount of time.
+
+* Enforce a maximum result register usage limit in AQL queries. In an AQL query,
+  every user-defined or internal (unnamed) variable will need a  register to
+  store results in.
+
+  AQL queries that use more result registers than allowed (currently 1000) will
+  now abort deterministically during the planning stage with error 32
+  (`resource limit exceeded`) and the error message
+  "too many registers (1000) needed for AQL query".
+
+  Before this fix, an AQL query that used more than 1000 result registers
+  crashed the server when assertions were turned on, and the behavior was
+  undefined when assertions were turned off.
+
 * Added `details` option to figures command of a collection:
   `collection.figures(details)`
 

@@ -38,7 +38,7 @@ QueryOptions::QueryOptions()
     : memoryLimit(0),
       maxNumberOfPlans(0),
       maxWarningCount(10),
-      maxRuntime(0),
+      maxRuntime(0.0),
       satelliteSyncWait(60.0),
       ttl(0),
       profile(PROFILE_LEVEL_NONE),
@@ -56,10 +56,20 @@ QueryOptions::QueryOptions()
   auto& server = application_features::ApplicationServer::server();
   auto& feature = server.getFeature<QueryRegistryFeature>();
 
-  // use global memory limit value
-  uint64_t globalLimit = feature.queryMemoryLimit();
-  if (globalLimit > 0) {
-    memoryLimit = globalLimit;
+  {
+    // use global memory limit value
+    uint64_t globalLimit = feature.queryMemoryLimit();
+    if (globalLimit > 0) {
+      memoryLimit = globalLimit;
+    }
+  }
+  
+  {
+    // use global max runtime value
+    double globalLimit = feature.queryMaxRuntime();
+    if (globalLimit > 0.0) {
+      maxRuntime = globalLimit;
+    }
   }
 
   // get global default ttl
