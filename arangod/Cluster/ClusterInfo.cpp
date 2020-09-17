@@ -1231,7 +1231,7 @@ void ClusterInfo::loadPlan() {
     _planProt.isValid = true;
   }
 
-  feature.addDirty(changeSet.dbs);
+  clusterFeature.addDirty(changeSet.dbs);
 
   {
     std::lock_guard w(_waitPlanLock);
