@@ -29,6 +29,7 @@
 #include "gtest/gtest.h"
 
 #include "Cluster/Maintenance.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -305,7 +306,7 @@ class SharedMaintenanceTest : public ::testing::Test {
 
     Slice col = tmp.slice();
     auto id = col.get("id").copyString();
-    plan(PLAN_COL_PATH + dbname + "/" + col.get("id").copyString()) = col;
+    plan(PLAN_COL_PATH + dbname + "/" + col.get("id").copyString()).applies(col);
   }
 
   void createLocalCollection(std::string const& dbname,
@@ -321,7 +322,7 @@ class SharedMaintenanceTest : public ::testing::Test {
               VPackValue(C + colname + "/" + S + std::to_string(planId + 1)));
       tmp.add("objectId", VPackValue("9031415"));
     }
-    node(dbname + "/" + S + std::to_string(planId + 1)) = tmp.slice();
+    node(dbname + "/" + S + std::to_string(planId + 1)).applies(tmp.slice());
   }
 
   std::map<std::string, std::string> collectionMap(Node const& plan) {
@@ -348,24 +349,24 @@ class MaintenanceTestActionDescription : public SharedMaintenanceTest {
 TEST_F(MaintenanceTestActionDescription, construct_minimal_actiondescription) {
   ActionDescription desc(std::map<std::string, std::string>{{"name",
                                                              "SomeAction"}},
-                         NORMAL_PRIORITY);
+                         NORMAL_PRIORITY, false);
   ASSERT_EQ(desc.get("name"), "SomeAction");
 }
 
 TEST_F(MaintenanceTestActionDescription, construct_minimal_actiondescription_with_nullptr_props) {
   std::shared_ptr<VPackBuilder> props;
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
 }
 
 TEST_F(MaintenanceTestActionDescription, construct_minimal_actiondescription_with_empty_props) {
   std::shared_ptr<VPackBuilder> props;
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondescription) {
   std::shared_ptr<VPackBuilder> props;
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   try {
     auto bogus = desc.get("bogus");
@@ -379,7 +380,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondes
 
 TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondescription_2) {
   std::shared_ptr<VPackBuilder> props;
-  ActionDescription desc({{"name", "SomeAction"}, {"bogus", "bogus"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}, {"bogus", "bogus"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   try {
     auto bogus = desc.get("bogus");
@@ -393,14 +394,14 @@ TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondes
 
 TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_properties_from_actiondescription) {
   std::shared_ptr<VPackBuilder> props;
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_EQ(desc.properties(), nullptr);
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_empty_properties_from_actiondescription) {
   auto props = std::make_shared<VPackBuilder>();
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->isEmpty());
 }
@@ -408,7 +409,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_empty_properties_from_actionde
 TEST_F(MaintenanceTestActionDescription, retrieve_empty_object_properties_from_actiondescription) {
   auto props = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder empty(props.get()); }
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().isEmptyObject());
 }
@@ -419,7 +420,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_string_value_from_actiondescri
     VPackObjectBuilder obj(props.get());
     props->add("hello", VPackValue("world"));
   }
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().hasKey("hello"));
   ASSERT_EQ(desc.properties()->slice().get("hello").copyString(), "world");
@@ -432,7 +433,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_double_value_from_actiondescri
     VPackObjectBuilder obj(props.get());
     props->add("pi", VPackValue(3.14159265359));
   }
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().hasKey("pi"));
   ASSERT_EQ(desc.properties()->slice().get("pi").getNumber<double>(), pi);
@@ -445,7 +446,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_integer_value_from_actiondescr
     VPackObjectBuilder obj(props.get());
     props->add("one", VPackValue(one));
   }
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().hasKey("one"));
   ASSERT_EQ(desc.properties()->slice().get("one").getNumber<size_t>(), one);
@@ -466,7 +467,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_array_value_from_actiondescrip
       props->add(VPackValue(hello));
     }
   }
-  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
+  ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, false, props);
   ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().hasKey("array"));
   ASSERT_TRUE(desc.properties()->slice().get("array").isArray());
@@ -725,7 +726,8 @@ TEST_F(MaintenanceTestActionPhaseOne, in_sync_should_have_0_effects) {
   for (auto const& node : localNodes) {
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions);
+                                         node.first, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     if (actions.size() != 0) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
@@ -741,7 +743,8 @@ TEST_F(MaintenanceTestActionPhaseOne, local_databases_one_more_empty_database_sh
 
   arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                        localNodes.begin()->second.toBuilder().slice(),
-                                       localNodes.begin()->first, errors, *feature, actions);
+                                       localNodes.begin()->first, errors, *feature, actions,
+                                       MaintenanceFeature::ShardActionMap{});
 
   if (actions.size() != 1) {
     std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
@@ -758,7 +761,8 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
   arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                        localNodes.begin()->second.toBuilder().slice(),
-                                       localNodes.begin()->first, errors, *feature, actions);
+                                       localNodes.begin()->first, errors, *feature, actions,
+                                       MaintenanceFeature::ShardActionMap{});
 
   ASSERT_EQ(actions.size(), 1);
   ASSERT_EQ(actions.front().name(), "DropDatabase");
@@ -780,7 +784,8 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions);
+                                         node.first, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     if (actions.size() != 1) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
@@ -789,6 +794,39 @@ TEST_F(MaintenanceTestActionPhaseOne,
     for (auto const& action : actions) {
       ASSERT_EQ(action.name(), "CreateCollection");
     }
+  }
+}
+
+TEST_F(MaintenanceTestActionPhaseOne,
+       add_one_collection_to_db3_in_plan_with_shards_for_all_db_servers_shard_locked) {
+  // This tests that phaseOne does not consider a shard which is locked.
+  std::string dbname("db3"), colname("x");
+
+  plan = originalPlan;
+  createPlanDatabase(dbname, plan);
+  createPlanCollection(dbname, colname, 1, 3, plan);
+
+  auto cid = collectionMap(plan).at("db3/x");
+  auto shards = plan({"Collections", dbname, cid}).hasAsChildren("shards");
+  ASSERT_TRUE(shards.second);
+  ASSERT_EQ(shards.first.size(), 1);
+  std::string shardName = shards.first.begin()->first;
+
+  for (auto node : localNodes) {
+    std::vector<ActionDescription> actions;
+
+    node.second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
+
+    arangodb::maintenance::diffPlanLocal(
+        plan.toBuilder().slice(), node.second.toBuilder().slice(),
+        node.first, errors, *feature, actions,
+        arangodb::MaintenanceFeature::ShardActionMap{
+            {shardName, std::make_shared<ActionDescription>(
+                            std::map<std::string, std::string>(
+                                {{"name", "CreateCollection"}}),
+                            0, true)}});
+
+    ASSERT_EQ(actions.size(), 0);
   }
 }
 
@@ -808,7 +846,8 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions);
+                                         node.first, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     if (actions.size() != 2) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
@@ -834,7 +873,8 @@ TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_queues) {
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(), node.first,
-                                         errors, *feature, actions);
+                                         errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     size_t n = 0;
     for (auto const& shard : shards) {
@@ -870,7 +910,8 @@ TEST_F(MaintenanceTestActionPhaseOne, remove_an_index_from_plan) {
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(), node.first,
-                                         errors, *feature, actions);
+                                         errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     size_t n = 0;
     for (auto const& shard : shards) {
@@ -898,7 +939,8 @@ TEST_F(MaintenanceTestActionPhaseOne, add_one_collection_to_local) {
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions);
+                                         node.first, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     if (actions.size() != 1) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
@@ -907,7 +949,7 @@ TEST_F(MaintenanceTestActionPhaseOne, add_one_collection_to_local) {
     for (auto const& action : actions) {
       ASSERT_EQ(action.name(), "DropCollection");
       ASSERT_EQ(action.get("database"), "_system");
-      ASSERT_EQ(action.get("collection"), "s1111112");
+      ASSERT_EQ(action.get("shard"), "s1111112");
     }
   }
 }
@@ -930,7 +972,8 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions);
+                                         node.first, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     /*
     if (actions.size() != 1) {
@@ -964,7 +1007,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_self) {
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(),
-                                         server, errors, *feature, actions);
+                                         server, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 0);
   }
@@ -984,7 +1028,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_se
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(),
-                                         server, errors, *feature, actions);
+                                         server, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1010,7 +1055,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_self) {
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(),
-                                         server, errors, *feature, actions);
+                                         server, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1036,7 +1082,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_s
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(),
-                                         server, errors, *feature, actions);
+                                         server, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     for (auto const& action : actions) {
       assertIsResignLeadershipAction(action, dbName());
@@ -1061,7 +1108,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_other) {
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(),
-                                         server, errors, *feature, actions);
+                                         server, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1089,7 +1137,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_ot
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(),
-                                         server, errors, *feature, actions);
+                                         server, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1115,7 +1164,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_other) {
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(),
-                                         server, errors, *feature, actions);
+                                         server, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 0);
   }
@@ -1135,7 +1185,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_o
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(),
-                                         server, errors, *feature, actions);
+                                         server, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 0);
   }
@@ -1155,7 +1206,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_resigned)
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(),
-                                         server, errors, *feature, actions);
+                                         server, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1183,7 +1235,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_re
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(),
-                                         server, errors, *feature, actions);
+                                         server, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 0);
   }
@@ -1203,7 +1256,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_resigned
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(),
-                                         server, errors, *feature, actions);
+                                         server, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     // Synchronize in Phase 2 is responsible for this.
     ASSERT_EQ(actions.size(), 0);
@@ -1224,7 +1278,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_r
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(),
-                                         server, errors, *feature, actions);
+                                         server, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     // Synchronize in Phase 2 is responsible for this.
     ASSERT_EQ(actions.size(), 0);
@@ -1245,7 +1300,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_reboot) {
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(),
-                                         server, errors, *feature, actions);
+                                         server, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1273,7 +1329,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_self_local_re
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(),
-                                         server, errors, *feature, actions);
+                                         server, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
@@ -1299,7 +1356,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_reboot) 
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(),
-                                         server, errors, *feature, actions);
+                                         server, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
     
     // We will just resign in this case to get a clear state.
     ASSERT_EQ(actions.size(), 2);
@@ -1326,7 +1384,8 @@ TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_resign_other_local_r
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(),
-                                         server, errors, *feature, actions);
+                                         server, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     // We will just resign in this case to get a clear state.
     ASSERT_EQ(actions.size(), 2);
@@ -1357,7 +1416,8 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions);
+                                         node.first, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     if (check) {
       if (actions.size() != 1) {
@@ -1382,7 +1442,8 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership_plan) {
     // every server is responsible for two shards of dbName() and planId()
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions);
+                                         node.first, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), relevantShards.size());
     for (auto const& action : actions) {
@@ -1406,7 +1467,8 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions);
+                                         node.first, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     ASSERT_EQ(actions.size(), node.second("db3").children().size());
     for (auto const& action : actions) {
@@ -1451,7 +1513,8 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions);
+                                         node.first, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     if (actions.size() != 1) {
       std::cout << actions << std::endl;
@@ -1480,14 +1543,15 @@ TEST_F(MaintenanceTestActionPhaseOne, removed_follower_in_plan_must_be_dropped) 
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, *feature, actions);
+                                         node.first, errors, *feature, actions,
+                                         arangodb::MaintenanceFeature::ShardActionMap{});
 
     if (node.first == followerName) {
       // Must see an action dropping the shard
       ASSERT_EQ(actions.size(), 1);
-      ASSERT_EQ(actions.front().name(), "DropCollection");
-      ASSERT_EQ(actions.front().get(DATABASE), dbname);
-      ASSERT_EQ(actions.front().get(COLLECTION), shname);
+      ASSERT_EQ(actions[0].name(), "DropCollection");
+      ASSERT_EQ(actions[0].get(DATABASE), dbname);
+      ASSERT_EQ(actions[0].get(SHARD), shname);
     } else if (node.first == leaderName) {
       // Must see an UpdateCollection action to drop the follower
       ASSERT_EQ(actions.size(), 1);

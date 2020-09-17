@@ -254,3 +254,9 @@ bool TakeoverShardLeadership::first() {
   return false;
 }
 
+void TakeoverShardLeadership::setState(ActionState state) {
+  if ((COMPLETE == state || FAILED == state) && _state != state) {
+    _feature.unlockShard(_description.get(SHARD));
+  }
+  ActionBase::setState(state);
+}
