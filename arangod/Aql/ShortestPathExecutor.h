@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -164,13 +165,6 @@ class ShortestPathExecutor {
 
   ShortestPathExecutor(Fetcher& fetcher, Infos&);
   ~ShortestPathExecutor() = default;
-
-  /**
-   * @brief Shutdown will be called once for every query
-   *
-   * @return ExecutionState and no error.
-   */
-  [[nodiscard]] auto shutdown(int errorCode) -> std::pair<ExecutionState, Result>;
 
   /**
    * @brief produce the next Row of Aql Values.

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -150,7 +150,7 @@ class PlanCollectionReader {
   PlanCollectionReader(PlanCollectionReader const&) = delete;
   explicit PlanCollectionReader(LogicalCollection const& collection) {
     std::string databaseName = collection.vocbase().name();
-    std::string collectionID = std::to_string(collection.id());
+    std::string collectionID = std::to_string(collection.id().id());
     std::vector<std::string> path{
       AgencyCommHelper::path("Plan/Collections/" + databaseName + "/" + collectionID)};
 
@@ -600,7 +600,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
   // collection is in building stage
   if (collection == nullptr) {
     // no previous version of the collection exists, or its hash value has changed
-    collection = createCollectionObject(data, vocbase, planVersion);
+    collection = createCollectionObject(data, vocbase);
     TRI_ASSERT(collection != nullptr);
 
     if (!isBuilding) { 
@@ -630,7 +630,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
 /// @brief helper function to build a new LogicalCollection object from the velocypack
 /// input
 /*static*/ std::shared_ptr<LogicalCollection> ClusterInfo::createCollectionObject(
-    arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase, uint64_t planVersion) {
+    arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase) {
 #ifdef USE_ENTERPRISE
   auto isSmart = data.get(StaticStrings::IsSmart);
 
@@ -638,12 +638,12 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     auto type = data.get(StaticStrings::DataSourceType);
 
     if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
-      return std::make_shared<VirtualSmartEdgeCollection>(vocbase, data, planVersion); 
+      return std::make_shared<VirtualSmartEdgeCollection>(vocbase, data); 
     } 
-    return std::make_shared<SmartVertexCollection>(vocbase, data, planVersion); 
+    return std::make_shared<SmartVertexCollection>(vocbase, data); 
   } 
 #endif
-  return std::make_shared<LogicalCollection>(vocbase, data, true, planVersion);
+  return std::make_shared<LogicalCollection>(vocbase, data, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -701,6 +701,8 @@ void ClusterInfo::loadPlan() {
     if (diff > std::chrono::milliseconds(500)) {
       LOG_TOPIC("66666", WARN, Logger::CLUSTER) << "Loading the new plan took: " << std::chrono::duration<double>(diff).count() << "s";
     }
+#else
+    (void)start;
 #endif
   });
 
@@ -883,9 +885,7 @@ void ClusterInfo::loadPlan() {
 
         try {
           LogicalView::ptr view;
-          auto res = LogicalView::instantiate(  // instantiate
-              view, *vocbase, viewPairSlice.value, newPlanVersion  // args
-          );
+          auto res = LogicalView::instantiate(view, *vocbase, viewPairSlice.value);
 
           if (!res.ok() || !view) {
             LOG_TOPIC("b0d48", ERR, Logger::AGENCY)
@@ -1059,7 +1059,7 @@ void ClusterInfo::loadPlan() {
       if (!vocbase) {
         // No database with this name found.
         // We have an invalid state here.
-        LOG_TOPIC("83d4c", WARN, Logger::AGENCY)
+        LOG_TOPIC("83d4c", DEBUG, Logger::AGENCY)
             << "No database '" << databaseName << "' found,"
             << " corresponding collection will be ignored for now and the "
             << "invalid information will be repaired. VelocyPack: "
@@ -2899,7 +2899,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
            VPackValue(info->usesRevisionsAsDocumentIds()));
   temp.add(StaticStrings::SyncByRevision, VPackValue(info->syncByRevision()));
   temp.add(VPackValue(StaticStrings::Schema));
-  info->validatorsToVelocyPack(temp);
+  info->schemaToVelocyPack(temp);
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
 
@@ -3659,7 +3659,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
   std::string databaseName = collection.vocbase().name();
-  std::string collectionID = std::to_string(collection.id());
+  std::string collectionID = std::to_string(collection.id().id());
 
   std::string where = "Current/Collections/" + databaseName + "/" + collectionID;
   auto agencyCallback =
@@ -4739,7 +4739,7 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(CollectionID con
     {
       // Get the sharding keys and the number of shards:
       READ_LOCKER(readLocker, _planProt.lock);
-      // _shards is a map-type <CollectionId, shared_ptr<vector<string>>>
+      // _shards is a map-type <DataSourceId, shared_ptr<vector<string>>>
       auto it = _shards.find(collectionID);
 
       if (it != _shards.end()) {
@@ -5413,8 +5413,8 @@ void ClusterInfo::SyncerThread::beginShutdown() {
   {
     std::lock_guard<std::mutex> lck(_m);
     _news = false;
-    _cv.notify_one();
   }
+  _cv.notify_one();
 }
 
 void ClusterInfo::SyncerThread::start() {
@@ -5475,10 +5475,10 @@ void ClusterInfo::SyncerThread::run() {
         _f();
       } catch (std::exception const& ex) {
         LOG_TOPIC("752c4", ERR, arangodb::Logger::CLUSTER)
-          << "Caugt an error while loading " << _section << ": " << ex.what();
+          << "Caught an error while loading " << _section << ": " << ex.what();
       } catch (...) {
         LOG_TOPIC("30968", ERR, arangodb::Logger::CLUSTER)
-          << "Caugt an error while loading " << _section;
+          << "Caught an error while loading " << _section;
       }
     }
     // next round...

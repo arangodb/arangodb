@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -151,7 +151,6 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 
   auto variableToRegisterId(Variable const* variable) const -> RegisterId;
 
-  // compatibility function for 3.6. can be removed in 3.8
   auto calcRegsToKeep(VarSetStack const& varsUsedLaterStack, VarSetStack const& varsValidStack,
                       std::vector<Variable const*> const& varsSetHere) const -> RegIdSetStack;
 

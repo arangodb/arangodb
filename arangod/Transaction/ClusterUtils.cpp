@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -50,7 +51,7 @@ void abortTransactions(LogicalCollection& coll) {
   "aborted leader transactions on shard '" << coll.id() << "'";
 }
 
-void abortLeaderTransactionsOnShard(TRI_voc_cid_t cid) {
+void abortLeaderTransactionsOnShard(DataSourceId cid) {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
@@ -67,7 +68,7 @@ void abortLeaderTransactionsOnShard(TRI_voc_cid_t cid) {
   "aborted leader transactions on shard '" << cid << "'";
 }
 
-void abortFollowerTransactionsOnShard(TRI_voc_cid_t cid) {
+void abortFollowerTransactionsOnShard(DataSourceId cid) {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);

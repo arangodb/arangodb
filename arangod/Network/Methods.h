@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -80,13 +81,15 @@ struct Response {
 static_assert(std::is_nothrow_move_constructible<Response>::value, "");
 using FutureRes = arangodb::futures::Future<Response>;
 
+static constexpr Timeout TimeoutDefault = Timeout(120.0);
+
 // Container for optional (often defaulted) parameters
 struct RequestOptions {
   std::string database;
   std::string contentType; // uses vpack by default
   std::string acceptType; // uses vpack by default
   fuerte::StringMap parameters;
-  Timeout timeout = Timeout(120.0);
+  Timeout timeout = TimeoutDefault;
   bool retryNotFound = false; // retry if answers is "datasource not found"
   bool skipScheduler = false; // do not use Scheduler queue
 

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -88,7 +89,7 @@ void ConnectionPool::shutdownConnections() {
 
 /// remove unused and broken connections
 void ConnectionPool::pruneConnections() {
-  const auto ttl = std::chrono::milliseconds(_config.idleConnectionMilli * 2);
+  const auto ttl = std::chrono::milliseconds(_config.idleConnectionMilli + 10);
 
   READ_LOCKER(guard, _lock);
   for (auto& pair : _connections) {
@@ -106,7 +107,7 @@ void ConnectionPool::pruneConnections() {
     while (it != buck.list.end()) {
       bool remove = false;
 
-      if ((*it)->fuerte->state() == fuerte::Connection::State::Failed) {
+      if ((*it)->fuerte->state() == fuerte::Connection::State::Closed) {
         // lets not keep around disconnected fuerte connection objects
         remove = true;
       } else {
@@ -177,8 +178,7 @@ ConnectionPool::Context::Context(std::shared_ptr<fuerte::Connection> c,
     : fuerte(std::move(c)), lastLeased(t), leases(l) {}
 
 std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::ConnectionBuilder& builder) {
-  auto idle = std::chrono::milliseconds(_config.idleConnectionMilli);
-  builder.idleTimeout(idle);
+  builder.useIdleTimeout(false);
   builder.verifyHost(_config.verifyHosts);
   builder.protocolType(_config.protocol); // always overwrite protocol
   TRI_ASSERT(builder.socketType() != SocketType::Undefined);
@@ -203,11 +203,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
 
   for (std::shared_ptr<Context>& c : bucket.list) {
     const fuerte::Connection::State state = c->fuerte->state();
-    if (state == fuerte::Connection::State::Failed) {
-      continue;
-    }
-
-    if (!c->fuerte->lease()) {
+    if (state == fuerte::Connection::State::Closed) {
       continue;
     }
 

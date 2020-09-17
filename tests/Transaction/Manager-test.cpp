@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for transaction Manager
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,6 +15,8 @@
 /// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
@@ -432,8 +431,9 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
   ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
 
   //
-  mgr->abortManagedTrx([](TransactionState const& state, std::string const& /*user*/) -> bool {
-    TransactionCollection* tcoll = state.collection(42, AccessMode::Type::NONE);
+  mgr->abortManagedTrx([](TransactionState const& state, std::string const & /*user*/) -> bool {
+    TransactionCollection* tcoll =
+        state.collection(DataSourceId{42}, AccessMode::Type::NONE);
     return tcoll != nullptr;
   });
 

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -50,9 +51,9 @@ static const AqlValue EmptyValue;
 SortedCollectExecutor::CollectGroup::CollectGroup(bool count, Infos& infos)
     : groupLength(0),
       count(count),
-      _shouldDeleteBuilderBuffer(true),
       infos(infos),
-      _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
+      _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _builder(_buffer) {
   for (auto const& aggName : infos.getAggregateTypes()) {
     aggregators.emplace_back(Aggregator::fromTypeString(infos.getVPackOptions(), aggName));
   }
@@ -85,10 +86,7 @@ void SortedCollectExecutor::CollectGroup::initialize(size_t capacity) {
 }
 
 void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
-  _shouldDeleteBuilderBuffer = true;
-  ConditionalDeleter<VPackBuffer<uint8_t>> deleter(_shouldDeleteBuilderBuffer);
-  std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
-  _builder = VPackBuilder(buffer);
+  _builder.clear();
 
   if (!groupValues.empty()) {
     for (auto& it : groupValues) {
@@ -175,14 +173,18 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) 
       groupLength++;
     } else if (infos.getExpressionVariable() != nullptr) {
       // compute the expression
-      input.getValue(infos.getExpressionRegister()).toVelocyPack(infos.getVPackOptions(), _builder, false);
+      input.getValue(infos.getExpressionRegister()).toVelocyPack(infos.getVPackOptions(), _builder,
+                                                                 /*resolveExternals*/false,
+                                                                 /*allowUnindexed*/false);
     } else {
       // copy variables / keep variables into result register
 
       _builder.openObject();
       for (auto const& pair : infos.getInputVariables()) {
         _builder.add(VPackValue(pair.first));
-        input.getValue(pair.second).toVelocyPack(infos.getVPackOptions(), _builder, false);
+        input.getValue(pair.second).toVelocyPack(infos.getVPackOptions(), _builder,
+                                                 /*resolveExternals*/false,
+                                                 /*allowUnindexed*/false);
       }
       _builder.close();
     }
@@ -202,6 +204,12 @@ bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow const& inp
     size_t i = 0;
 
     for (auto& it : infos.getGroupRegisters()) {
+      // Note that `None` and `null` are considered equal by AqlValue::Compare,
+      // which is a problem if we encounter `null` values on the very first row,
+      // when groupValues is still uninitialized and thus `None`.
+      if (this->groupValues[i].isNone()) {
+        return false;
+      }
       // we already had a group, check if the group has changed
       // compare values 1 1 by one
       int cmp = AqlValue::Compare(infos.getVPackOptions(), this->groupValues[i],
@@ -221,7 +229,9 @@ bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow const& inp
 void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& builder) {
   builder.openArray();
   for (auto const& value : groupValues) {
-    value.toVelocyPack(infos.getVPackOptions(), builder, false);
+    value.toVelocyPack(infos.getVPackOptions(), builder,
+                       /*resolveExternals*/false,
+                       /*allowUnindexed*/false);
   }
 
   builder.close();
@@ -266,9 +276,10 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
       TRI_ASSERT(_builder.isOpenArray());
       _builder.close();
 
-      auto buffer = _builder.steal();
-      AqlValue val(buffer.get(), _shouldDeleteBuilderBuffer);
+      AqlValue val(std::move(_buffer)); // _buffer still usable after
       AqlValueGuard guard{val, true};
+      TRI_ASSERT(_buffer.size() == 0);
+      _builder.clear(); // necessary
 
       output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
     }

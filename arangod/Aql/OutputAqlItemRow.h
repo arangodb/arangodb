@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -127,7 +128,7 @@ class OutputAqlItemRow {
    */
   auto fastForwardAllRows(InputAqlItemRow const& sourceRow, size_t rows) -> void;
 
-  [[nodiscard]] RegisterCount getNrRegisters() const;
+  [[nodiscard]] RegisterCount getNumRegisters() const;
 
   /**
    * @brief May only be called after all output values in the current row have
@@ -165,7 +166,7 @@ class OutputAqlItemRow {
    *        the left-over space for ShadowRows.
    */
   [[nodiscard]] bool allRowsUsed() const {
-    return _block == nullptr || block().size() <= _baseIndex;
+    return _block == nullptr || block().numRows() <= _baseIndex;
   }
 
   /**
@@ -183,7 +184,7 @@ class OutputAqlItemRow {
     if (_block == nullptr) {
       return 0;
     }
-    return (std::min)(block().size() - _baseIndex, _call.getLimit());
+    return (std::min)(block().numRows() - _baseIndex, _call.getLimit());
   }
 
   // Use this function with caution! We need it only for the ConstrainedSortExecutor

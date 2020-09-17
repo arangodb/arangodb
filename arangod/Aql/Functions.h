@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -276,12 +276,20 @@ struct Functions {
                       VPackFunctionParameters const&);
   static AqlValue Average(arangodb::aql::ExpressionContext*,
                           transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue Product(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                          VPackFunctionParameters const&);
   static AqlValue Sleep(arangodb::aql::ExpressionContext*,
                         transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue Collections(arangodb::aql::ExpressionContext*,
                               transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue RandomToken(arangodb::aql::ExpressionContext*,
                               transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue IpV4FromNumber(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                                 VPackFunctionParameters const&);
+  static AqlValue IpV4ToNumber(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                               VPackFunctionParameters const&);
+  static AqlValue IsIpV4(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                         VPackFunctionParameters const&);
   static AqlValue Md5(arangodb::aql::ExpressionContext*, transaction::Methods*,
                       VPackFunctionParameters const&);
   static AqlValue Sha1(arangodb::aql::ExpressionContext*, transaction::Methods*,

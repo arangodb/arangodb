@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -76,13 +77,6 @@ class SubqueryExecutor {
 
   SubqueryExecutor(Fetcher& fetcher, SubqueryExecutorInfos& infos);
   ~SubqueryExecutor() = default;
-
-  /**
-   * @brief Shutdown will be called once for every query
-   *
-   * @return ExecutionState and no error.
-   */
-  std::pair<ExecutionState, Result> shutdown(int errorCode);
 
   /**
    * @brief produce the next Row of Aql Values.

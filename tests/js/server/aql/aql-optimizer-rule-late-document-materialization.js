@@ -484,7 +484,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         let query = "FOR c IN " + collectionNames[i] + " FILTER c.obj.a == 'a_val_1' SORT c.obj.c LIMIT 10 " +
                     "FOR d IN " + collectionNames[(i + 1) % numOfCollectionIndexes] + " FILTER c.obj.a == d.obj.a RETURN d";
-        let plan = AQL_EXPLAIN(query).plan;
+        let plan = AQL_EXPLAIN(query, null, {optimizer:{rules:["-reduce-extraction-to-projection"]}}).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
         assertEqual(1, result.json.length);

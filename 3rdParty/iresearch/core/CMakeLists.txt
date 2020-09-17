@@ -228,10 +228,12 @@ set(IResearch_core_headers
   ./utils/compression.hpp
   ./utils/lz4compression.hpp
   ./utils/file_utils.hpp
-  ./utils/fst.hpp
-  ./utils/fst_decl.hpp
   ./utils/fst_utils.hpp
-  ./utils/mmap_utils.hpp 
+  ./utils/fstext/fst_builder.hpp
+  ./utils/fstext/fst_decl.hpp
+  ./utils/fstext/fst_table_matcher.hpp
+  ./utils/fstext/fst_string_weight.h
+  ./utils/mmap_utils.hpp
   ./utils/integer.hpp
   ./utils/io_utils.hpp
   ./utils/iterator.hpp

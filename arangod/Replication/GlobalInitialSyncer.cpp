@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Result.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -94,16 +95,16 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
 
   setAborted(false);
 
-  LOG_TOPIC("23d92", DEBUG, Logger::REPLICATION) << "client: getting master state";
-  Result r = _state.master.getState(_state.connection, _state.isChildSyncer);
+  LOG_TOPIC("23d92", DEBUG, Logger::REPLICATION) << "client: getting leader state";
+  Result r = _state.leader.getState(_state.connection, _state.isChildSyncer);
   if (r.fail()) {
     return r;
   }
 
-  if (_state.master.majorVersion < 3 ||
-      (_state.master.majorVersion == 3 && _state.master.minorVersion < 3)) {
+  if (_state.leader.majorVersion < 3 ||
+      (_state.leader.majorVersion == 3 && _state.leader.minorVersion < 3)) {
     char const* msg =
-        "global replication is not supported with a master < ArangoDB 3.3";
+        "global replication is not supported with a leader < ArangoDB 3.3";
     LOG_TOPIC("57394", WARN, Logger::REPLICATION) << msg;
     return Result(TRI_ERROR_INTERNAL, msg);
   }
@@ -111,7 +112,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
   if (!_state.isChildSyncer) {
     // start batch is required for the inventory request
     LOG_TOPIC("0da14", DEBUG, Logger::REPLICATION) << "sending start batch";
-    r = _batch.start(_state.connection, _progress, _state.master, _state.syncerId);
+    r = _batch.start(_state.connection, _progress, _state.leader, _state.syncerId);
     if (r.fail()) {
       return r;
     }
@@ -189,7 +190,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
       configurationCopy._database = nameSlice.copyString();
 
       auto syncer = std::make_shared<DatabaseInitialSyncer>(*vocbase, configurationCopy);
-      syncer->useAsChildSyncer(_state.master, _state.syncerId, _batch.id, _batch.updateTime);
+      syncer->useAsChildSyncer(_state.leader, _state.syncerId, _batch.id, _batch.updateTime);
 
       // run the syncer with the supplied inventory collections
       r = syncer->runWithInventory(incremental, dbInventory);
@@ -204,21 +205,25 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
         _batch.extend(_state.connection, _progress, _state.syncerId);
       }
     }
+  } catch (arangodb::basics::Exception const& ex) {
+    return Result(ex.code(), std::string("syncer caught an unexpected exception: ") + ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, std::string("syncer caught an unexpected exception: ") + ex.what());
   } catch (...) {
-    return Result(TRI_ERROR_INTERNAL, "caught an unexpected exception");
+    return Result(TRI_ERROR_INTERNAL, "syncer caught an unexpected exception");
   }
 
   return Result();
 }
 
 /// @brief add or remove databases such that the local inventory
-/// mirrors the masters
-Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDatabases) {
+/// mirrors the leader's
+Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDatabases) {
   std::set<std::string> existingDBs;
   DatabaseFeature::DATABASE->enumerateDatabases(
       [&](TRI_vocbase_t& vocbase) -> void { existingDBs.insert(vocbase.name()); });
 
-  for (auto const& database : VPackObjectIterator(masterDatabases)) {
+  for (auto const& database : VPackObjectIterator(leaderDatabases)) {
     VPackSlice it = database.value;
 
     if (!it.isObject()) {
@@ -273,7 +278,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
 
       std::vector<arangodb::LogicalCollection*> toDrop;
 
-      // drop all collections that do not exist (anymore) on the master
+      // drop all collections that do not exist (anymore) on the leader
       vocbase->processCollections(
           [&survivingCollections, &toDrop](arangodb::LogicalCollection* collection) {
             if (survivingCollections.find(collection->guid()) !=
@@ -303,14 +308,14 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
       }
     }
 
-    existingDBs.erase(dbName);  // remove dbs that exists on the master
+    existingDBs.erase(dbName);  // remove dbs that exists on the leader
 
     if (!_state.isChildSyncer) {
       _batch.extend(_state.connection, _progress, _state.syncerId);
     }
   }
 
-  // all dbs left in this list no longer exist on the master
+  // all dbs left in this list no longer exist on the leader
   for (std::string const& dbname : existingDBs) {
     _state.vocbases.erase(dbname);  // make sure to release the db first
 
@@ -343,7 +348,7 @@ Result GlobalInitialSyncer::getInventory(VPackBuilder& builder) {
     return Result(TRI_ERROR_SHUTTING_DOWN);
   }
 
-  auto r = _batch.start(_state.connection, _progress, _state.master, _state.syncerId);
+  auto r = _batch.start(_state.connection, _progress, _state.leader, _state.syncerId);
   if (r.fail()) {
     return r;
   }
@@ -383,7 +388,7 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
   if (r.fail()) {
     return Result(
         r.errorNumber(),
-        std::string("got invalid response from master at ") + _state.master.endpoint +
+        std::string("got invalid response from leader at ") + _state.leader.endpoint +
             ": invalid response type for initial data. expecting array");
   }
 
@@ -393,8 +398,8 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
     LOG_TOPIC("1db22", DEBUG, Logger::REPLICATION)
         << "client: InitialSyncer::run - inventoryResponse is not an object";
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from master at ") +
-                      _state.master.endpoint + ": invalid JSON");
+                  std::string("got invalid response from leader at ") +
+                      _state.leader.endpoint + ": invalid JSON");
   }
 
   return Result();

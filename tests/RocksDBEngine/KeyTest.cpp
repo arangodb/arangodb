@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for PathEnumerator class
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
@@ -99,38 +96,38 @@ TEST_F(RocksDBKeyTestLittleEndian, test_collection) {
   static_assert(static_cast<char>(RocksDBEntryType::Collection) == '1', "");
 
   RocksDBKey key;
-  key.constructCollection(23, 42);
+  key.constructCollection(23, DataSourceId{42});
   auto const& s2 = key.string();
 
   EXPECT_EQ(s2.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_EQ(s2, std::string("1\x17\0\0\0\0\0\0\0\x2a\0\0\0\0\0\0\0", 17));
 
-  key.constructCollection(255, 255);
+  key.constructCollection(255, DataSourceId{255});
   auto const& s3 = key.string();
 
   EXPECT_EQ(s3.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_EQ(s3, std::string("1\xff\0\0\0\0\0\0\0\xff\0\0\0\0\0\0\0", 17));
 
-  key.constructCollection(256, 257);
+  key.constructCollection(256, DataSourceId{257});
   auto const& s4 = key.string();
 
   EXPECT_EQ(s4.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_EQ(s4, std::string("1\0\x01\0\0\0\0\0\0\x01\x01\0\0\0\0\0\0", 17));
 
-  key.constructCollection(49152, 16384);
+  key.constructCollection(49152, DataSourceId{16384});
   auto const& s5 = key.string();
 
   EXPECT_EQ(s5.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_EQ(s5, std::string("1\0\xc0\0\0\0\0\0\0\0\x40\0\0\0\0\0\0", 17));
 
-  key.constructCollection(12345678901, 987654321);
+  key.constructCollection(12345678901, DataSourceId{987654321});
   auto const& s6 = key.string();
 
   EXPECT_EQ(s6.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_TRUE(s6 ==
               std::string("1\x35\x1c\xdc\xdf\x02\0\0\0\xb1\x68\xde\x3a\0\0\0\0", 17));
 
-  key.constructCollection(0xf0f1f2f3f4f5f6f7ULL, 0xf0f1f2f3f4f5f6f7ULL);
+  key.constructCollection(0xf0f1f2f3f4f5f6f7ULL, DataSourceId{0xf0f1f2f3f4f5f6f7ULL});
   auto const& s7 = key.string();
 
   EXPECT_EQ(s7.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
@@ -320,38 +317,38 @@ TEST_F(RocksDBKeyTestBigEndian, test_collection) {
   static_assert(static_cast<char>(RocksDBEntryType::Collection) == '1', "");
 
   RocksDBKey key;
-  key.constructCollection(23, 42);
+  key.constructCollection(23, DataSourceId{42});
   auto const& s2 = key.string();
 
   EXPECT_EQ(s2.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_EQ(s2, std::string("1\0\0\0\0\0\0\0\x17\0\0\0\0\0\0\0\x2a", 17));
 
-  key.constructCollection(255, 255);
+  key.constructCollection(255, DataSourceId{255});
   auto const& s3 = key.string();
 
   EXPECT_EQ(s3.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_EQ(s3, std::string("1\0\0\0\0\0\0\0\xff\0\0\0\0\0\0\0\xff", 17));
 
-  key.constructCollection(256, 257);
+  key.constructCollection(256, DataSourceId{257});
   auto const& s4 = key.string();
 
   EXPECT_EQ(s4.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_EQ(s4, std::string("1\0\0\0\0\0\0\x01\0\0\0\0\0\0\0\x01\x01", 17));
 
-  key.constructCollection(49152, 16384);
+  key.constructCollection(49152, DataSourceId{16384});
   auto const& s5 = key.string();
 
   EXPECT_EQ(s5.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_EQ(s5, std::string("1\0\0\0\0\0\0\xc0\0\0\0\0\0\0\0\x40\0", 17));
 
-  key.constructCollection(12345678901, 987654321);
+  key.constructCollection(12345678901, DataSourceId{987654321});
   auto const& s6 = key.string();
 
   EXPECT_EQ(s6.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   EXPECT_TRUE(s6 ==
               std::string("1\0\0\0\x02\xdf\xdc\x1c\x35\0\0\0\0\x3a\xde\x68\xb1", 17));
 
-  key.constructCollection(0xf0f1f2f3f4f5f6f7ULL, 0xf0f1f2f3f4f5f6f7ULL);
+  key.constructCollection(0xf0f1f2f3f4f5f6f7ULL, DataSourceId{0xf0f1f2f3f4f5f6f7ULL});
   auto const& s7 = key.string();
 
   EXPECT_EQ(s7.size(), sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));

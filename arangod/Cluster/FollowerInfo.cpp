@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,24 +49,24 @@ static std::string CurrentShardPath(arangodb::LogicalCollection const& col) {
   // Agency path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
   return "Current/Collections/" + col.vocbase().name() + "/" +
-         std::to_string(col.planId()) + "/" + col.name();
+         std::to_string(col.planId().id()) + "/" + col.name();
 }
 
 static VPackSlice CurrentShardEntry(arangodb::LogicalCollection const& col, VPackSlice current) {
   return current.get(std::vector<std::string>(
-      {AgencyCommHelper::path(), "Current", "Collections",
-       col.vocbase().name(), std::to_string(col.planId()), col.name()}));
+      {AgencyCommHelper::path(), "Current", "Collections", col.vocbase().name(),
+       std::to_string(col.planId().id()), col.name()}));
 }
 
 static std::string PlanShardPath(arangodb::LogicalCollection const& col) {
   return "Plan/Collections/" + col.vocbase().name() + "/" +
-         std::to_string(col.planId()) + "/shards/" + col.name();
+         std::to_string(col.planId().id()) + "/shards/" + col.name();
 }
 
 static VPackSlice PlanShardEntry(arangodb::LogicalCollection const& col, VPackSlice plan) {
   return plan.get(std::vector<std::string>(
       {AgencyCommHelper::path(), "Plan", "Collections", col.vocbase().name(),
-       std::to_string(col.planId()), "shards", col.name()}));
+       std::to_string(col.planId().id()), "shards", col.name()}));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,7 +119,7 @@ Result FollowerInfo::add(ServerID const& sid) {
   std::string errorMessage =
       "unable to add follower in agency, timeout in agency CAS operation for "
       "key " +
-      _docColl->vocbase().name() + "/" + std::to_string(_docColl->planId()) +
+      _docColl->vocbase().name() + "/" + std::to_string(_docColl->planId().id()) +
       ": " + TRI_errno_string(agencyRes.errorNumber());
   LOG_TOPIC("6295b", ERR, Logger::CLUSTER) << errorMessage;
   agencyRes.reset(agencyRes.errorNumber(), std::move(errorMessage));
@@ -208,7 +208,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
   std::string errorMessage =
       "unable to remove follower from agency, timeout in agency CAS operation "
       "for key " +
-      _docColl->vocbase().name() + "/" + std::to_string(_docColl->planId()) +
+      _docColl->vocbase().name() + "/" + std::to_string(_docColl->planId().id()) +
       ": " + TRI_errno_string(agencyRes.errorNumber());
   LOG_TOPIC("a0dcc", ERR, Logger::CLUSTER) << errorMessage;
   agencyRes.resetErrorMessage<std::string>(std::move(errorMessage));
@@ -318,7 +318,7 @@ bool FollowerInfo::updateFailoverCandidates() {
     // Collection left in RO mode.
     LOG_TOPIC("7af00", INFO, Logger::CLUSTER)
         << "Could not persist insync follower for " << _docColl->vocbase().name()
-        << "/" << std::to_string(_docColl->planId())
+        << "/" << std::to_string(_docColl->planId().id())
         << " keep RO-mode for now, next write will retry.";
     TRI_ASSERT(!_canWrite);
   } else {
@@ -371,11 +371,12 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
         }
       } else {
         if (!planEntry.isArray() || planEntry.length() == 0 || !planEntry[0].isString() ||
-            !planEntry[0].isEqualString(ServerState::instance()->getId())) {
+            !(planEntry[0].isEqualString(ServerState::instance()->getId()) ||
+              planEntry[0].isEqualString("_" + ServerState::instance()->getId()))) {
           LOG_TOPIC("42231", INFO, Logger::CLUSTER)
               << reportName(isRemove)
               << ", did not find myself in Plan: " << _docColl->vocbase().name()
-              << "/" << std::to_string(_docColl->planId())
+              << "/" << std::to_string(_docColl->planId().id())
               << " (can happen when the leader changed recently).";
           if (!planEntry.isNone()) {
             LOG_TOPIC("ffede", INFO, Logger::CLUSTER) << "Found: " << planEntry.toJson();

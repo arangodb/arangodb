@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,7 @@
 #include <openssl/evp.h>
 
 #include "Basics/Common.h"
-#include "Basics/StringUtils.h"
+#include "Basics/Result.h"
 #include "Basics/debugging.h"
 
 #ifdef USE_ENTERPRISE
@@ -397,6 +397,17 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_PathIsAbsolute(std::string const& path);
+
+/// @brief return the amount of total and free disk space for the given path
+arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path, 
+                                      uint64_t& totalSpace,
+                                      uint64_t& freeSpace);
+
+/// @brief return the amount of total and free inodes for the given path.
+/// always returns 0 on Windows!
+arangodb::Result TRI_GetINodesInfo(std::string const& path, 
+                                   uint64_t& totalINodes, 
+                                   uint64_t& freeINodes); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads an environment variable. returns false if env var was not set.

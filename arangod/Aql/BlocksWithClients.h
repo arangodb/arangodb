@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -119,9 +119,6 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
   /// @brief initializeCursor
   auto initializeCursor(InputAqlItemRow const& input)
       -> std::pair<ExecutionState, Result> override;
-
-  /// @brief shutdown
-  std::pair<ExecutionState, Result> shutdown(int) override;
 
   /// @brief execute: shouldn't be used, use executeForClient
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,7 +71,7 @@ class CollectionWatcher {
     : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
 
     std::string databaseName = collection.vocbase().name();
-    std::string collectionID = std::to_string(collection.id());
+    std::string collectionID = std::to_string(collection.id().id());
     std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
 
     _agencyCallback = std::make_shared<AgencyCallback>(
@@ -984,7 +984,7 @@ public:
   /// @brief helper function to build a new LogicalCollection object from the velocypack
   /// input
   static std::shared_ptr<LogicalCollection> createCollectionObject(
-      arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase, uint64_t planVersion);
+      arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase);
 
   /// @brief create a new collecion object from the data, using the cache if possible
   CollectionWithHash buildCollection(

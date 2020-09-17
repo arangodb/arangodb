@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -87,7 +88,7 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
           if (!cc) {
             continue;
           }
-          auto shards = ci.getShardList(std::to_string(cc->id()));
+          auto shards = ci.getShardList(std::to_string(cc->id().id()));
           for (ShardID const& shard : *shards) {
             auto sss = ci.getResponsibleServer(shard);
             if (server == sss->at(0)) {
@@ -400,15 +401,19 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
     }
     state.addKnownServer(server);  // remember server
   } else if (state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
-     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal AQL transaction state");
+    // this case cannot occur for be a top-level AQL query,
+    // simon: however it might occur when UDF functions uses
+    // db._query(...) in which case we can get here
+    bool canHaveUDF = trx.transactionContext()->isV8Context();
+    TRI_ASSERT(canHaveUDF);
+    if (!canHaveUDF) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal AQL transaction state");
+    }
   }
   headers.try_emplace(arangodb::StaticStrings::TransactionId, std::move(value));
 }
 template void addAQLTransactionHeader<std::map<std::string, std::string>>(
     transaction::Methods const&, ServerID const&, std::map<std::string, std::string>&);
-template void addAQLTransactionHeader<std::unordered_map<std::string, std::string>>(
-    transaction::Methods const&, ServerID const&,
-    std::unordered_map<std::string, std::string>&);
 
 bool isElCheapo(transaction::Methods const& trx) {
   return isElCheapo(*trx.state());

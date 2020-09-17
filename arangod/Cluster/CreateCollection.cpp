@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -215,10 +215,12 @@ bool CreateCollection::first() {
 }
 
 void CreateCollection::setState(ActionState state) {
-  if ((COMPLETE == state || FAILED == state) && _state != state && !_doNotIncrement) {
-    TRI_ASSERT(_description.has("shard"));
-    _feature.incShardVersion(_description.get("shard"));
+  if ((COMPLETE == state || FAILED == state) && _state != state) {
+    TRI_ASSERT(_description.has(SHARD));
+    _feature.unlockShard(_description.get(SHARD));
+    if (!_doNotIncrement) {
+      _feature.incShardVersion(_description.get(SHARD));
+    }
   }
-
   ActionBase::setState(state);
 }

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlCallStack.h"
-#include "Basics/Exceptions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -77,7 +77,7 @@ auto AqlCallStack::popCall() -> AqlCallList {
     // This code is to be removed in the next version after 3.7
     _operations.emplace_back(AqlCall{});
   }
-  auto call = _operations.back();
+  auto call = std::move(_operations.back());
   _operations.pop_back();
   return call;
 }
@@ -93,7 +93,7 @@ auto AqlCallStack::peek() const -> AqlCall const& {
     // to the upwards subquery.
     // => Simply put another fetchAll Call on the stack.
     // This code is to be removed in the next version after 3.7
-    _operations.emplace_back(AqlCallList{AqlCall{}});
+    _operations.emplace_back(AqlCall{});
   }
   TRI_ASSERT(!_operations.empty());
   return _operations.back().peekNextCall();
@@ -179,13 +179,15 @@ auto AqlCallStack::createEquivalentFetchAllShadowRowsStack() const -> AqlCallSta
 
 auto AqlCallStack::needToCountSubquery() const noexcept -> bool {
   return std::any_of(_operations.begin(), _operations.end(), [](AqlCallList const& call) -> bool {
-    return call.peekNextCall().needSkipMore() || call.peekNextCall().hasLimit();
+    auto const& nextCall = call.peekNextCall();
+    return nextCall.needSkipMore() || nextCall.hasLimit();
   });
 }
 
 auto AqlCallStack::needToSkipSubquery() const noexcept -> bool {
   return std::any_of(_operations.begin(), _operations.end(), [](AqlCallList const& call) -> bool {
-    return call.peekNextCall().needSkipMore() || call.peekNextCall().hardLimit == 0;
+    auto const& nextCall = call.peekNextCall();
+    return nextCall.needSkipMore() || nextCall.hardLimit == 0;
   });
 }
 
@@ -234,7 +236,7 @@ auto AqlCallStack::modifyTopCall() -> AqlCall& {
     // to the upwards subquery.
     // => Simply put another fetchAll Call on the stack.
     // This code is to be removed in the next version after 3.7
-    _operations.emplace_back(AqlCallList{AqlCall{}});
+    _operations.emplace_back(AqlCall{});
   }
   TRI_ASSERT(!_operations.empty());
   return modifyCallAtDepth(0);
@@ -245,9 +247,9 @@ auto AqlCallStack::hasAllValidCalls() const noexcept -> bool {
     if (!list.hasMoreCalls()) {
       return false;
     }
-    auto const& call = list.peekNextCall();
+    auto const& nextCall = list.peekNextCall();
     // We cannot continue if any of our calls has a softLimit reached.
-    return !(call.hasSoftLimit() && call.getLimit() == 0 && call.getOffset() == 0);
+    return !(nextCall.hasSoftLimit() && nextCall.getLimit() == 0 && nextCall.getOffset() == 0);
   });
 }
 

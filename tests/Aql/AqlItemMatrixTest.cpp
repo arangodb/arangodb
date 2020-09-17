@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,7 +36,7 @@ class AqlItemMatrixTest : public AqlExecutorTestCase<> {};
 TEST_F(AqlItemMatrixTest, should_forward_number_of_regs) {
   for (RegisterCount c = 1; c < 3; c++) {
     AqlItemMatrix testee(c);
-    EXPECT_EQ(testee.getNrRegisters(), c);
+    EXPECT_EQ(testee.getNumRegisters(), c);
   }
 }
 

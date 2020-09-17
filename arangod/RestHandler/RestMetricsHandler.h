@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -33,6 +34,8 @@ class RestMetricsHandler : public arangodb::RestBaseHandler {
                      GeneralResponse*);
 
   char const* name() const override final { return "RestMetricsHandler"; }
+  /// @brief must be on fast lane so that metrics can always be retrieved, 
+  /// even from otherwise totally busy servers
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
 

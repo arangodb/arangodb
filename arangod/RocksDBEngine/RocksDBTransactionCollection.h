@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,7 +42,7 @@ class TransactionState;
 /// @brief collection used in a transaction
 class RocksDBTransactionCollection final : public TransactionCollection {
  public:
-  RocksDBTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid,
+  RocksDBTransactionCollection(TransactionState* trx, DataSourceId cid,
                                AccessMode::Type accessType);
   ~RocksDBTransactionCollection();
 

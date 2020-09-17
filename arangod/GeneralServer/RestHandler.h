@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,9 +61,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   RestHandler(RestHandler const&) = delete;
   RestHandler& operator=(RestHandler const&) = delete;
-
- public:
-  static thread_local RestHandler const* CURRENT_HANDLER;
 
  public:
   RestHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);

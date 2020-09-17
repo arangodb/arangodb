@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -161,7 +162,7 @@ class RebootTrackerTest : public ::testing::Test,
   bool schedulerEmpty() const {
     auto stats = scheduler->queueStatistics();
 
-    return stats._blocked == 0 && stats._queued == 0 && stats._working == 0;
+    return stats._queued == 0 && stats._working == 0;
   }
 
   void waitForSchedulerEmpty() const {

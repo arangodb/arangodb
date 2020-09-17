@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -37,18 +38,18 @@ auto asserthelper::RowsAreIdentical(SharedAqlItemBlockPtr actual, size_t actualR
                                     std::optional<std::vector<RegisterId>> const& onlyCompareRegisters)
     -> bool {
   if (onlyCompareRegisters) {
-    if (actual->getNrRegs() < onlyCompareRegisters->size()) {
+    if (actual->numRegisters() < onlyCompareRegisters->size()) {
       // Registers do not match
       return false;
     }
   } else {
-    if (actual->getNrRegs() != expected->getNrRegs()) {
+    if (actual->numRegisters() != expected->numRegisters()) {
       // Registers do not match
       return false;
     }
   }
 
-  for (RegisterId reg = 0; reg < expected->getNrRegs(); ++reg) {
+  for (RegisterId reg = 0; reg < expected->numRegisters(); ++reg) {
     auto const& x =
         actual->getValueReference(actualRow, onlyCompareRegisters
                                                  ? onlyCompareRegisters->at(reg)
@@ -81,16 +82,16 @@ auto asserthelper::ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual,
     -> void {
   ASSERT_NE(expected, nullptr);
   ASSERT_NE(actual, nullptr);
-  EXPECT_EQ(actual->size(), expected->size());
-  auto outRegs = (std::min)(actual->getNrRegs(), expected->getNrRegs());
+  EXPECT_EQ(actual->numRows(), expected->numRows());
+  auto outRegs = (std::min)(actual->numRegisters(), expected->numRegisters());
   if (onlyCompareRegisters) {
     outRegs = onlyCompareRegisters->size();
-    ASSERT_GE(actual->getNrRegs(), outRegs);
+    ASSERT_GE(actual->numRegisters(), outRegs);
   } else {
-    EXPECT_EQ(actual->getNrRegs(), expected->getNrRegs());
+    EXPECT_EQ(actual->numRegisters(), expected->numRegisters());
   }
 
-  for (size_t row = 0; row < (std::min)(actual->size(), expected->size()); ++row) {
+  for (size_t row = 0; row < (std::min)(actual->numRows(), expected->numRows()); ++row) {
     // Compare registers
     for (RegisterId reg = 0; reg < outRegs; ++reg) {
       RegisterId actualRegister =
@@ -128,20 +129,20 @@ auto asserthelper::ValidateBlocksAreEqualUnordered(
       << "unordered validation does not support shadowRows yet. If you need "
          "this please implement!";
 
-  EXPECT_EQ(actual->size() + numRowsNotContained, expected->size());
+  EXPECT_EQ(actual->numRows() + numRowsNotContained, expected->numRows());
 
-  auto outRegs = (std::min)(actual->getNrRegs(), expected->getNrRegs());
+  auto outRegs = (std::min)(actual->numRegisters(), expected->numRegisters());
   if (onlyCompareRegisters) {
     outRegs = onlyCompareRegisters->size();
-    ASSERT_GE(actual->getNrRegs(), outRegs);
+    ASSERT_GE(actual->numRegisters(), outRegs);
   } else {
-    EXPECT_EQ(actual->getNrRegs(), expected->getNrRegs());
+    EXPECT_EQ(actual->numRegisters(), expected->numRegisters());
   }
 
   matchedRows.clear();
 
-  for (size_t expectedRow = 0; expectedRow < expected->size(); ++expectedRow) {
-    for (size_t actualRow = 0; actualRow < actual->size(); ++actualRow) {
+  for (size_t expectedRow = 0; expectedRow < expected->numRows(); ++expectedRow) {
+    for (size_t actualRow = 0; actualRow < actual->numRows(); ++actualRow) {
       if (RowsAreIdentical(actual, actualRow, expected, expectedRow, onlyCompareRegisters)) {
         auto const& [unused, inserted] = matchedRows.emplace(expectedRow);
         if (inserted) {
@@ -152,10 +153,10 @@ auto asserthelper::ValidateBlocksAreEqualUnordered(
     }
   }
 
-  if (matchedRows.size() + numRowsNotContained < expected->size()) {
+  if (matchedRows.size() + numRowsNotContained < expected->numRows()) {
     // Did not find all rows.
     // This is for reporting only:
-    for (size_t expectedRow = 0; expectedRow < expected->size(); ++expectedRow) {
+    for (size_t expectedRow = 0; expectedRow < expected->numRows(); ++expectedRow) {
       if (matchedRows.find(expectedRow) == matchedRows.end()) {
         InputAqlItemRow missing(expected, expectedRow);
         velocypack::Options vpackOptions;

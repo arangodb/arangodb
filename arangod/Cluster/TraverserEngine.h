@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -87,7 +87,10 @@ class BaseEngine {
 
   virtual bool produceVertices() const { return true; }
   
+  arangodb::aql::EngineId engineId() const { return _engineId; }
+  
  protected:
+  const arangodb::aql::EngineId _engineId;
   arangodb::aql::QueryContext& _query;
   transaction::Methods* _trx;
   std::unordered_map<std::string, std::vector<std::string>> _vertexShards;

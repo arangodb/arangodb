@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,7 +44,8 @@ namespace aql {
 class Query;
 
 struct QueryEntryCopy {
-  QueryEntryCopy(TRI_voc_tick_t id, std::string&& queryString,
+  QueryEntryCopy(TRI_voc_tick_t id, std::string const& database,
+                 std::string const& user, std::string&& queryString,
                  std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
                  double started, double runTime,
                  QueryExecutionState::ValueType state, bool stream);
@@ -52,6 +53,8 @@ struct QueryEntryCopy {
   void toVelocyPack(arangodb::velocypack::Builder& out) const;
 
   TRI_voc_tick_t const id;
+  std::string const database;
+  std::string const user;
   std::string const queryString;
   std::shared_ptr<arangodb::velocypack::Builder> const bindParameters;
   double const started;
@@ -215,6 +218,9 @@ class QueryList {
   static constexpr size_t defaultMaxQueryStringLength = 4096;
 
  private:
+  /// @brief query registry, for keeping track of slow queries counter
+  QueryRegistryFeature& _queryRegistryFeature;
+
   /// @brief r/w lock for the list
   arangodb::basics::ReadWriteLock _lock;
 

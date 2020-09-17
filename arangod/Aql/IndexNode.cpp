@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexExecutor.h"
+#include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
@@ -65,8 +66,8 @@ IndexNode::IndexNode(ExecutionPlan* plan, ExecutionNodeId id,
       _options(opts),
       _outNonMaterializedDocId(nullptr) {
   TRI_ASSERT(_condition != nullptr);
-
-  initIndexCoversProjections();
+  
+  _projections.determineIndexSupport(this->collection()->id(), _indexes);
 }
 
 /// @brief constructor for IndexNode
@@ -124,8 +125,6 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 
   TRI_ASSERT(_condition != nullptr);
 
-  initIndexCoversProjections();
-
   if (_outNonMaterializedDocId != nullptr) {
     auto const* vars = plan->getAst()->variables();
     TRI_ASSERT(vars);
@@ -176,64 +175,14 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _outNonMaterializedIndVars.second.try_emplace(var, fieldNumber);
     }
   }
+
+  _projections.determineIndexSupport(this->collection()->id(), _indexes);
 }
 
-/// @brief called to build up the matching positions of the index values for
-/// the projection attributes (if any)
-void IndexNode::initIndexCoversProjections() {
-  _coveringIndexAttributePositions.clear();
-
-  if (_indexes.empty()) {
-    // no indexes used
-    return;
-  }
-
-  // cannot apply the optimization if we use more than one different index
-  auto const& idx = _indexes[0];
-  for (size_t i = 1; i < _indexes.size(); ++i) {
-    if (_indexes[i] != idx) {
-      // different index used => optimization not possible
-      return;
-    }
-  }
-
-  // note that we made sure that if we have multiple index instances, they
-  // are actually all of the same index
-
-  if (!idx->hasCoveringIterator()) {
-    // index does not have a covering index iterator
-    return;
-  }
-
-  // check if we can use covering indexes
-  auto const& fields = idx->coveredFields();
-
-  if (fields.size() < projections().size()) {
-    // we will not be able to satisfy all requested projections with this index
-    return;
-  }
-
-  std::vector<size_t> coveringAttributePositions;
-  // test if the index fields are the same fields as used in the projection
-  std::string result;
-  for (auto const& it : projections()) {
-    bool found = false;
-    for (size_t j = 0; j < fields.size(); ++j) {
-      result.clear();
-      TRI_AttributeNamesToString(fields[j], result, false);
-      if (result == it) {
-        found = true;
-        coveringAttributePositions.emplace_back(j);
-        break;
-      }
-    }
-    if (!found) {
-      return;
-    }
-  }
-
-  _coveringIndexAttributePositions = std::move(coveringAttributePositions);
-  _options.forceProjection = true;
+void IndexNode::setProjections(arangodb::aql::Projections projections) {
+  auto dn = dynamic_cast<DocumentProducingNode*>(this);
+  dn->setProjections(std::move(projections));
+  dn->projections().determineIndexSupport(this->collection()->id(), _indexes);
 }
 
 /// @brief toVelocyPack, for IndexNode
@@ -250,8 +199,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
 
   // Now put info about vocbase and cid in there
   builder.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
-  builder.add("indexCoversProjections",
-              VPackValue(!_coveringIndexAttributePositions.empty()));
+  builder.add("indexCoversProjections", VPackValue(_projections.supportsCoveringIndex()));
 
   builder.add(VPackValue("indexes"));
   {
@@ -511,7 +459,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   auto executorInfos =
       IndexExecutorInfos(outRegister, engine.getQuery(), this->collection(),
                          _outVariable, isProduceResult(), this->_filter.get(),
-                         this->projections(), this->coveringIndexAttributePositions(),
+                         this->projections(),
                          std::move(nonConstExpressions), std::move(inVars),
                          std::move(inRegs), hasV8Expression, doCount(), _condition->root(),
                          this->getIndexes(), _plan->getAst(), this->options(),
@@ -548,9 +496,8 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
       std::make_unique<IndexNode>(plan, _id, collection(), outVariable, _indexes,
                                   std::unique_ptr<Condition>(_condition->clone()), _options);
 
-  c->projections(_projections);
+  c->_projections = _projections;
   c->needsGatherNodeSort(_needsGatherNodeSort);
-  c->initIndexCoversProjections();
   c->_outNonMaterializedDocId = outNonMaterializedDocId;
   c->_outNonMaterializedIndVars = std::move(outNonMaterializedIndVars);
   CollectionAccessingNode::cloneInto(*c);

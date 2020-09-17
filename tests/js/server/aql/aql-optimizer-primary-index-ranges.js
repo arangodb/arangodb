@@ -53,6 +53,112 @@ function optimizerIndexesRangesTestSuite () {
     tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
+    
+    testIndexOnlyMixedProjections: function () {
+      let data = [
+        [ `FOR doc IN UnitTestsCollection RETURN { key: doc._key, id: doc._id }`, [ '_id', '_key' ], [ 0, 1999 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._key == 'test1234' RETURN { key: doc._key, id: doc._id }`, [ '_id', '_key' ], [ 1234, 1234 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._key > 'test1234' RETURN { key: doc._key, id: doc._id }`, [ '_id', '_key' ], [ 1235, 1999 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._key >= 'test1234' RETURN { key: doc._key, id: doc._id }`, [ '_id', '_key' ], [ 1234, 1999 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._key < 'test1234' RETURN { key: doc._key, id: doc._id }`, [ '_id', '_key' ], [ 0, 1233 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._key <= 'test1234' RETURN { key: doc._key, id: doc._id }`, [ '_id', '_key' ], [ 0, 1234 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._key >= 'test1000' && doc._key <= 'test1234' RETURN { key: doc._key, id: doc._id }`, [ '_id', '_key' ], [ 1000, 1234 ] ],
+      ];
+
+      data.forEach(function(data) {
+        let query = data[0];
+        let results = db._query(query).toArray();
+        results.sort(function(lhs, rhs) {
+          return lhs._key < rhs._key;
+        });
+
+        let plan = AQL_EXPLAIN(query, null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+        let nodes = plan.nodes.filter(function(node) {
+          return node.type === 'IndexNode';
+        });
+        
+        assertEqual(1, nodes.length);
+        assertTrue(nodes[0].indexCoversProjections);
+        assertTrue(data[1], nodes[0].projection);
+
+        let [low, high] = data[2];
+        assertEqual(high - low + 1, results.length);
+        for (let i = 0; i < results.length; ++i) {
+          assertEqual(results[i].key, 'test' + String(i + low).padStart(4, '0'));
+          assertEqual(results[i].id, 'UnitTestsCollection/test' + String(i + low).padStart(4, '0'));
+        }
+      });
+    },
+
+    testIndexOnlyProjectionsKey: function () {
+      let data = [
+        [ `FOR doc IN UnitTestsCollection RETURN doc._key`, [ '_key' ], [ 0, 1999 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._key == 'test1234' RETURN doc._key`, [ '_key' ], [ 1234, 1234 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._key > 'test1234' RETURN doc._key`, [ '_key' ], [ 1235, 1999 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._key >= 'test1234' RETURN doc._key`, [ '_key' ], [ 1234, 1999 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._key < 'test1234' RETURN doc._key`, [ '_key' ], [ 0, 1233 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._key <= 'test1234' RETURN doc._key`, [ '_key' ], [ 0, 1234 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._key >= 'test1000' && doc._key <= 'test1234' RETURN doc._key`, [ '_key' ], [ 1000, 1234 ] ],
+      ];
+
+      data.forEach(function(data) {
+        let query = data[0];
+        let results = db._query(query).toArray();
+        results.sort(function(lhs, rhs) {
+          return lhs._key < rhs._key;
+        });
+
+        let plan = AQL_EXPLAIN(query, null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+        let nodes = plan.nodes.filter(function(node) {
+          return node.type === 'IndexNode';
+        });
+        
+        assertEqual(1, nodes.length);
+        assertTrue(nodes[0].indexCoversProjections);
+        assertTrue(data[1], nodes[0].projection);
+
+        let [low, high] = data[2];
+        assertEqual(high - low + 1, results.length);
+        for (let i = 0; i < results.length; ++i) {
+          assertEqual(results[i], 'test' + String(i + low).padStart(4, '0'));
+        }
+      });
+    },
+    
+    testIndexOnlyProjectionsId: function () {
+      let data = [
+        [ `FOR doc IN UnitTestsCollection RETURN doc._id`, [ '_id' ], [ 0, 1999 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._id == 'UnitTestsCollection/test1234' RETURN doc._id`, [ '_id' ], [ 1234, 1234 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._id > 'UnitTestsCollection/test1234' RETURN doc._id`, [ '_id' ], [ 1235, 1999 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._id >= 'UnitTestsCollection/test1234' RETURN doc._id`, [ '_id' ], [ 1234, 1999 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._id < 'UnitTestsCollection/test1234' RETURN doc._id`, [ '_id' ], [ 0, 1233 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._id <= 'UnitTestsCollection/test1234' RETURN doc._id`, [ '_id' ], [ 0, 1234 ] ],
+        [ `FOR doc IN UnitTestsCollection FILTER doc._id >= 'UnitTestsCollection/test1000' && doc._id <= 'UnitTestsCollection/test1234' RETURN doc._id`, [ '_id' ], [ 1000, 1234 ] ],
+      ];
+
+      data.forEach(function(data) {
+        let query = data[0];
+        let results = db._query(query).toArray();
+        results.sort(function(lhs, rhs) {
+          return lhs._key < rhs._key;
+        });
+
+        let plan = AQL_EXPLAIN(query, null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+        let nodes = plan.nodes.filter(function(node) {
+          return node.type === 'IndexNode';
+        });
+        
+        assertEqual(1, nodes.length);
+        assertTrue(nodes[0].indexCoversProjections);
+        assertTrue(data[1], nodes[0].projection);
+
+        let [low, high] = data[2];
+        assertEqual(high - low + 1, results.length);
+        for (let i = 0; i < results.length; ++i) {
+          assertEqual(results[i], 'UnitTestsCollection/test' + String(i + low).padStart(4, '0'));
+        }
+      });
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test primary index usage

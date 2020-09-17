@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -42,8 +43,9 @@
 
 namespace {
 
-std::string ensureGuid(std::string&& guid, TRI_voc_cid_t id, TRI_voc_cid_t planId,
-                       std::string const& name, bool isSystem) {
+std::string ensureGuid(std::string&& guid, arangodb::DataSourceId id,
+                       arangodb::DataSourceId planId, std::string const& name,
+                       bool isSystem) {
   if (!guid.empty()) {
     return std::move(guid);
   }
@@ -58,7 +60,7 @@ std::string ensureGuid(std::string&& guid, TRI_voc_cid_t id, TRI_voc_cid_t planI
       arangodb::ServerState::instance()->isDBServer()) {
     TRI_ASSERT(planId); // ensured by LogicalDataSource constructor + '_id' != 0
     guid.append("c");
-    guid.append(std::to_string(planId));
+    guid.append(std::to_string(planId.id()));
     guid.push_back('/');
     if (arangodb::ServerState::instance()->isDBServer()) {
       // we add the shard name to the collection. If we ever
@@ -75,13 +77,13 @@ std::string ensureGuid(std::string&& guid, TRI_voc_cid_t id, TRI_voc_cid_t planI
     guid.append(buf, len);
     TRI_ASSERT(guid.size() > 3);
     guid.push_back('/');
-    guid.append(std::to_string(id));
+    guid.append(std::to_string(id.id()));
   }
 
   return std::move(guid);
 }
 
-TRI_voc_cid_t ensureId(TRI_vocbase_t& vocbase, TRI_voc_cid_t id) {
+arangodb::DataSourceId ensureId(TRI_vocbase_t& vocbase, arangodb::DataSourceId id) {
   if (id) {
     return id;
   }
@@ -89,14 +91,14 @@ TRI_voc_cid_t ensureId(TRI_vocbase_t& vocbase, TRI_voc_cid_t id) {
   if (!arangodb::ServerState::instance()->isCoordinator() // not coordinator
       && !arangodb::ServerState::instance()->isDBServer() // not db-server
      ) {
-    return TRI_NewTickServer();
+    return arangodb::DataSourceId(TRI_NewTickServer());
   }
 
   TRI_ASSERT(vocbase.server().hasFeature<arangodb::ClusterFeature>());
   arangodb::ClusterInfo* ci = &vocbase.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   TRI_ASSERT(ci != nullptr);
-  id = ci->uniqid(1);
+  id = arangodb::DataSourceId{ci->uniqid(1)};
 
   if (!id) {
     THROW_ARANGO_EXCEPTION_MESSAGE( // exception
@@ -161,22 +163,24 @@ namespace arangodb {
 
 LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
                                      TRI_vocbase_t& vocbase,
-                                     velocypack::Slice const& definition, uint64_t planVersion)
+                                     velocypack::Slice const& definition)
     : LogicalDataSource(
-          category, type, vocbase, basics::VelocyPackHelper::extractIdValue(definition),
+          category, type, vocbase,
+          DataSourceId{basics::VelocyPackHelper::extractIdValue(definition)},
           basics::VelocyPackHelper::getStringValue(definition, StaticStrings::DataSourceGuid,
                                                    ""),
-          basics::VelocyPackHelper::stringUInt64(definition.get(StaticStrings::DataSourcePlanId)),
+          DataSourceId{basics::VelocyPackHelper::stringUInt64(
+              definition.get(StaticStrings::DataSourcePlanId))},
           basics::VelocyPackHelper::getStringValue(definition, StaticStrings::DataSourceName,
                                                    ""),
-          planVersion, readIsSystem(definition),
+          readIsSystem(definition),
           basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::DataSourceDeleted,
-                                                     false)) {}
+                                                    false)) {}
 
 LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
-                                     TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
-                                     std::string&& guid, TRI_voc_cid_t planId,
-                                     std::string&& name, uint64_t planVersion,
+                                     TRI_vocbase_t& vocbase, DataSourceId id,
+                                     std::string&& guid, DataSourceId planId,
+                                     std::string&& name,
                                      bool system, bool deleted)
     : _name(std::move(name)),
       _category(category),
@@ -184,7 +188,6 @@ LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
       _vocbase(vocbase),
       _id(ensureId(vocbase, id)),
       _planId(planId ? planId : _id),
-      _planVersion(planVersion),
       _guid(ensureGuid(std::move(guid), _id, _planId, _name, system)),
       _deleted(deleted),
       _system(system) {
@@ -201,7 +204,7 @@ Result LogicalDataSource::properties(velocypack::Builder& builder,
 
   builder.add(StaticStrings::DataSourceGuid,
               toValuePair(guid()));  // required for dump/restore
-  builder.add(StaticStrings::DataSourceId, velocypack::Value(std::to_string(id())));
+  builder.add(StaticStrings::DataSourceId, velocypack::Value(std::to_string(id().id())));
   builder.add(StaticStrings::DataSourceName, toValuePair(name()));
 
   // note: includeSystem and forPersistence are not 100% synonymous,
@@ -214,7 +217,7 @@ Result LogicalDataSource::properties(velocypack::Builder& builder,
     // FIXME not sure if the following is relevant
     // Cluster Specific
     builder.add(StaticStrings::DataSourcePlanId,
-                velocypack::Value(std::to_string(planId())));
+                velocypack::Value(std::to_string(planId().id())));
   }
 
   return appendVelocyPack(builder, context);

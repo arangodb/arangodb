@@ -1,7 +1,8 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 EMC Corporation
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasily Nabatchikov
@@ -364,7 +365,7 @@ bool upgradeSingleServerArangoSearchView0_1(
     dataPath += std::to_string(vocbase.id());
     dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
     dataPath += "-";
-    dataPath += std::to_string(view->id());
+    dataPath += std::to_string(view->id().id());
 
     res = view->drop();  // drop view (including all links)
 
@@ -775,23 +776,24 @@ void IResearchFeature::Async::Thread::run() {
     // transfer some tasks to '_next' if have too many
     if (!pendingRedelegate.empty() ||
         (_size.load() > _next->_size.load() * 2 && _tasks.size() > 1)) {
-      SCOPED_LOCK(_next->_mutex);
+      {
+        SCOPED_LOCK(_next->_mutex);
 
-      // reassign to '_next' tasks that failed resourceMutex aquisition
-      while (!pendingRedelegate.empty()) {
-        _next->_pending.emplace_back(std::move(pendingRedelegate.back()));
-        pendingRedelegate.pop_back();
-        ++_next->_size;
+        // reassign to '_next' tasks that failed resourceMutex aquisition
+        while (!pendingRedelegate.empty()) {
+          _next->_pending.emplace_back(std::move(pendingRedelegate.back()));
+          pendingRedelegate.pop_back();
+          ++_next->_size;
+        }
+
+        // transfer some tasks to '_next' if have too many
+        while (_size.load() > _next->_size.load() * 2 && _tasks.size() > 1) {
+          _next->_pending.emplace_back(std::move(_tasks.back()));
+          _tasks.pop_back();
+          ++_next->_size;
+          --_size;
+        }
       }
-
-      // transfer some tasks to '_next' if have too many
-      while (_size.load() > _next->_size.load() * 2 && _tasks.size() > 1) {
-        _next->_pending.emplace_back(std::move(_tasks.back()));
-        _tasks.pop_back();
-        ++_next->_size;
-        --_size;
-      }
-
       _next->_cond.notify_all();  // notify thread about a new task (thread may
                                   // be sleeping indefinitely)
     }
@@ -882,9 +884,11 @@ void IResearchFeature::Async::emplace(std::shared_ptr<ResourceMutex> const& mute
   }
 
   auto& thread = _pool[0];
-  SCOPED_LOCK(thread._mutex);
-  thread._pending.emplace_back(mutex, std::move(fn));
-  ++thread._size;
+  {
+    SCOPED_LOCK(thread._mutex);
+    thread._pending.emplace_back(mutex, std::move(fn));
+    ++thread._size;
+  }
   thread._cond.notify_all();  // notify thread about a new task (thread may be
                               // sleeping indefinitely)
 }
@@ -924,14 +928,16 @@ void IResearchFeature::Async::stop(Thread* redelegate /*= nullptr*/) {
 
     // redelegate all thread tasks if requested
     if (redelegate) {
-      SCOPED_LOCK(redelegate->_mutex);
+      {
+        SCOPED_LOCK(redelegate->_mutex);
 
-      for (auto& task : thread._pending) {
-        redelegate->_pending.emplace_back(std::move(task));
-        ++redelegate->_size;
+        for (auto& task : thread._pending) {
+          redelegate->_pending.emplace_back(std::move(task));
+          ++redelegate->_size;
+        }
+
+        thread._pending.clear();
       }
-
-      thread._pending.clear();
       redelegate->_cond.notify_all();  // notify thread about a new task (thread
                                        // may be sleeping indefinitely)
     }

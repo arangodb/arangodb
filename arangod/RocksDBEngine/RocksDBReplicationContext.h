@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/vocbase.h"
 
@@ -135,9 +136,9 @@ class RocksDBReplicationContext {
   bool removeCollection(LogicalCollection&);
 
   /// remove matching iterator
-  void releaseIterators(TRI_vocbase_t&, TRI_voc_cid_t);
+  void releaseIterators(TRI_vocbase_t&, DataSourceId);
 
-  std::tuple<Result, TRI_voc_cid_t, uint64_t> bindCollectionIncremental(
+  std::tuple<Result, DataSourceId, uint64_t> bindCollectionIncremental(
       TRI_vocbase_t& vocbase, std::string const& cname);
 
   // returns inventory
@@ -184,14 +185,14 @@ class RocksDBReplicationContext {
   // iterates over all documents in a collection, previously bound with
   // bindCollection. Generates array of objects with minKey, maxKey and hash
   // per chunk. Distance between min and maxKey should be chunkSize
-  arangodb::Result dumpKeyChunks(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+  arangodb::Result dumpKeyChunks(TRI_vocbase_t& vocbase, DataSourceId cid,
                                  velocypack::Builder& outBuilder, uint64_t chunkSize);
   /// dump all keys from collection
-  arangodb::Result dumpKeys(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+  arangodb::Result dumpKeys(TRI_vocbase_t& vocbase, DataSourceId cid,
                             velocypack::Builder& outBuilder, size_t chunk,
                             size_t chunkSize, std::string const& lowKey);
   /// dump keys and document
-  arangodb::Result dumpDocuments(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+  arangodb::Result dumpDocuments(TRI_vocbase_t& vocbase, DataSourceId cid,
                                  velocypack::Builder& b, size_t chunk,
                                  size_t chunkSize, size_t offsetInChunk,
                                  size_t maxChunkSize, std::string const& lowKey,
@@ -222,7 +223,7 @@ class RocksDBReplicationContext {
  private:
   void lazyCreateSnapshot();
 
-  CollectionIterator* getCollectionIterator(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+  CollectionIterator* getCollectionIterator(TRI_vocbase_t& vocbase, DataSourceId cid,
                                             bool sorted, bool allowCreate);
 
   void releaseDumpIterator(CollectionIterator*);
@@ -236,7 +237,7 @@ class RocksDBReplicationContext {
 
   uint64_t _snapshotTick;  // tick in WAL from _snapshot
   rocksdb::Snapshot const* _snapshot;
-  std::map<TRI_voc_cid_t, std::unique_ptr<CollectionIterator>> _iterators;
+  std::map<DataSourceId, std::unique_ptr<CollectionIterator>> _iterators;
 
   double const _ttl;
   /// @brief expiration time, updated under lock by ReplicationManager

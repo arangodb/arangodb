@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -307,7 +307,7 @@ void ShardingStrategyHashBase::determineShards() {
   // determine all available shards (which will stay const afterwards)
   auto& ci =
       _sharding->collection()->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-  auto shards = ci.getShardList(std::to_string(_sharding->collection()->id()));
+  auto shards = ci.getShardList(std::to_string(_sharding->collection()->id().id()));
 
   _shards = *shards;
 

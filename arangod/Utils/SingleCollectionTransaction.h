@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,14 +57,15 @@ class SingleCollectionTransaction final : public transaction::Methods {
   LogicalCollection* documentCollection();
 
   /// @brief get the underlying collection's id
-  inline TRI_voc_cid_t cid() const { return _cid; }
+  inline DataSourceId cid() const { return _cid; }
 
 #ifdef USE_ENTERPRISE
   using transaction::Methods::addCollectionAtRuntime;
 #endif
   /// @brief add a collection to the transaction for read, at runtime
   /// note that this can only be ourselves
-  TRI_voc_cid_t addCollectionAtRuntime(std::string const& name, AccessMode::Type type) override final;
+  DataSourceId addCollectionAtRuntime(std::string const& name,
+                                      AccessMode::Type type) override final;
 
   /// @brief get the underlying collection's name
   std::string name();
@@ -74,7 +75,7 @@ class SingleCollectionTransaction final : public transaction::Methods {
   TransactionCollection* resolveTrxCollection();
 
   /// @brief collection id
-  TRI_voc_cid_t _cid;
+  DataSourceId _cid;
 
   /// @brief trxCollection cache
   TransactionCollection* _trxCollection;

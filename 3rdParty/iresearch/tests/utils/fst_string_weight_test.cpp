@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
-#include "utils/fst_string_weight.h"
+#include "utils/fstext/fst_string_weight.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           fst_string_weight_tests

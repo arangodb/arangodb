@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,6 +65,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   bool hasCoveringIterator() const override { return true; }
 
   bool isSorted() const override { return true; }
+  
+  std::vector<std::vector<arangodb::basics::AttributeName>> const& coveredFields() const override;
 
   bool hasSelectivityEstimate() const override { return true; }
 
@@ -109,18 +111,19 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice const& doc,
+                LocalDocumentId const& documentId, velocypack::Slice const doc,
                 OperationOptions& options) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, Index::OperationMode mode) override;
+                velocypack::Slice const doc) override;
 
   Result update(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& oldDocumentId,
-                velocypack::Slice const& oldDoc, LocalDocumentId const& newDocumentId,
-                velocypack::Slice const& newDoc, Index::OperationMode mode) override;
+                velocypack::Slice const oldDoc, LocalDocumentId const& newDocumentId,
+                velocypack::Slice const newDoc,
+                OperationOptions& options) override;
 
  private:
   /// @brief create the iterator, for a single attribute, IN operator
@@ -143,6 +146,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                      arangodb::aql::AstNode const* valNode, bool isId) const;
 
  private:
+  std::vector<std::vector<arangodb::basics::AttributeName>> const _coveredFields;
+
   bool const _isRunningInCluster;
 };
 }  // namespace arangodb

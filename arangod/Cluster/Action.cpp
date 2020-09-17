@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -162,11 +162,6 @@ bool Action::matches(std::unordered_set<std::string> const& labels) const {
 arangodb::Result Action::result() {
   TRI_ASSERT(_action != nullptr);
   return _action->result();
-}
-
-arangodb::Result Action::kill(Signal const& signal) {
-  TRI_ASSERT(_action != nullptr);
-  return _action->kill(signal);
 }
 
 arangodb::Result Action::progress(double& p) {
