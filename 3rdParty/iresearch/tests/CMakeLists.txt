@@ -30,6 +30,7 @@ set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
   ./analysis/delimited_token_stream_tests.cpp
   ./analysis/ngram_token_stream_test.cpp
+  ./analysis/pipeline_stream_tests.cpp
   ./analysis/text_token_normalizing_stream_tests.cpp
   ./analysis/text_token_stemming_stream_tests.cpp
   ./analysis/token_masking_stream_tests.cpp
