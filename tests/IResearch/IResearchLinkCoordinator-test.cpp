@@ -99,7 +99,6 @@ class IResearchLinkCoordinatorTest : public ::testing::Test {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-/*
 TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1}); // Hack.
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
@@ -420,4 +419,3 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   }
 
 }
-*/

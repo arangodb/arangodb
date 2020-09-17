@@ -843,7 +843,6 @@ class IResearchFeatureTestCoordinator
   }
 };
 
-/*
 TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   // test coordinator
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -1216,4 +1215,4 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   EXPECT_FALSE(logicalView);  // ensure view removed after upgrade
   EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure view directory removed after upgrade
 }
-*/
+

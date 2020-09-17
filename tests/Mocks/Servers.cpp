@@ -368,7 +368,7 @@ std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::
 
   std::unordered_set<uint64_t> uniq;
   std::vector<uint64_t> toCall;
-  std::unordered_set<std::string> dummy;
+  std::unordered_set<std::string> pc, cc;
   std::pair<std::vector<consensus::apply_ret_t>,consensus::index_t> res;
 
   {
@@ -380,7 +380,16 @@ std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::
   {
     std::lock_guard g(_callbacksLock);
     for (auto const& trx : VPackArrayIterator(trxs->slice())) {
-      handleCallbacksNoLock(trx[0], uniq, toCall, dummy, dummy);
+      handleCallbacksNoLock(trx[0], uniq, toCall, pc, cc);
+    }
+    {
+      std::lock_guard g(_storeLock);
+      for (auto const& i : pc) {
+        _planChanges.emplace(_commitIndex, i);
+      }
+      for (auto const& i : cc) {
+        _currentChanges.emplace(_commitIndex, i);
+      }
     }
   }
   invokeCallbacks(toCall);

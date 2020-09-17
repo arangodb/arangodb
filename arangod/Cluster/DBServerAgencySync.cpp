@@ -191,6 +191,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     // TODO increase log level, except during shutdown?
     LOG_TOPIC("0a6f2", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::execute no plan change set";
+    result.success = true;
     result.errorMessage = "DBServerAgencySync::execute no reconciliation plan";
     return result;
   }

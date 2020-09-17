@@ -686,7 +686,7 @@ void ClusterInfo::loadPlan() {
   // '_newPlannedViews' member instead of '_plannedViews'
 
   // set plan loader
-  TRI_ASSERT(_newPlannedViews.empty());
+  //TRI_ASSERT(_newPlannedViews.empty());
   _newPlannedViews.clear();
   _planLoader = std::this_thread::get_id();
 
