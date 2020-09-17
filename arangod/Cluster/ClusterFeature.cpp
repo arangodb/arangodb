@@ -799,7 +799,7 @@ void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases) 
     for (auto const& database : databases) {
       if (_dirty.emplace(database).second) {
         LOG_TOPIC("35b75", DEBUG, Logger::MAINTENANCE)
-          << "adding " << database << " to dirty databsases";
+          << "adding " << database << " to dirty databases";
       }
     }
     notify();
@@ -832,14 +832,14 @@ void ClusterFeature::addDirty(std::unordered_set<std::string,std::shared_ptr<VPa
 void ClusterFeature::addDirty(std::string&& database) {
   MUTEX_LOCKER(guard, _dirtyLock);
   if (_dirty.emplace(std::move(database)).second) {
-    LOG_TOPIC("35b78", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databsases";
+    LOG_TOPIC("35b78", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databases";
   }
   notify();
 }
 void ClusterFeature::addDirty(std::string const& database) {
   MUTEX_LOCKER(guard, _dirtyLock);
   if (_dirty.emplace(database).second) {
-    LOG_TOPIC("357b9", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databsases";
+    LOG_TOPIC("357b9", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databases";
   }
   notify();
 }
