@@ -2200,6 +2200,11 @@ Result ClusterInfo::createCollectionsCoordinator(
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   using arangodb::velocypack::Slice;
 
+  LOG_TOPIC("98761", DEBUG, Logger::CLUSTER)
+      << "Starting createCollectionsCoordinator for " << infos.size()
+      << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
+      << " first collection name: " << infos[0].name;
+
   double const interval = getPollInterval();
 
   // The following three are used for synchronization between the callback
@@ -2442,6 +2447,10 @@ Result ClusterInfo::createCollectionsCoordinator(
     if (!isNewDatabase) {
       Result res = checkCollectionPreconditions(databaseName, infos, planVersion);
       if (res.fail()) {
+        LOG_TOPIC("98762", DEBUG, Logger::CLUSTER)
+            << "Failed createCollectionsCoordinator for " << infos.size()
+            << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
+            << " first collection name: " << infos[0].name;
         return res;
       }
     }
@@ -2545,6 +2554,11 @@ Result ClusterInfo::createCollectionsCoordinator(
         if (res.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
           // use this special error code to signal that we got a precondition failure
           // in this case the caller can try again with an updated version of the plan change
+          LOG_TOPIC("98763", DEBUG, Logger::CLUSTER)
+              << "Failed createCollectionsCoordinator for " << infos.size()
+              << " collections in database " << databaseName
+              << " isNewDatabase: " << isNewDatabase
+              << " first collection name: " << infos[0].name;
           return {TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED,
                   "operation aborted due to precondition failure"};
         }
@@ -2557,6 +2571,10 @@ Result ClusterInfo::createCollectionsCoordinator(
           events::CreateCollection(databaseName, info.name,
                                    TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
         }
+        LOG_TOPIC("98767", DEBUG, Logger::CLUSTER)
+            << "Failed createCollectionsCoordinator for " << infos.size()
+            << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
+            << " first collection name: " << infos[0].name;
         return {TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, std::move(errorMsg)};
       }
 
@@ -2611,6 +2629,10 @@ Result ClusterInfo::createCollectionsCoordinator(
                                                              info.isBuildingSlice()));
       }
 
+      LOG_TOPIC("98bcb", DEBUG, Logger::CLUSTER)
+          << "createCollectionCoordinator, collections ok, removing "
+             "isBuilding...";
+
       AgencyWriteTransaction transaction(opers, precs);
 
       // This is a best effort, in the worst case the collection stays, but will
@@ -2619,6 +2641,10 @@ Result ClusterInfo::createCollectionsCoordinator(
       // important so that the creation of all collections is atomic, and
       // the deleteCollectionGuard relies on it, too.
       auto res = ac.sendTransactionWithFailover(transaction);
+
+      LOG_TOPIC("98bcc", DEBUG, Logger::CLUSTER)
+          << "createCollectionCoordinator, isBuilding removed, waiting for new "
+             "Plan...";
 
       if (res.successful()) {
         // Note that this is not strictly necessary, just to avoid an
@@ -2636,6 +2662,10 @@ Result ClusterInfo::createCollectionsCoordinator(
         events::CreateCollection(databaseName, info.name, res.errorCode());
       }
 
+      LOG_TOPIC("98764", DEBUG, Logger::CLUSTER)
+          << "Finished createCollectionsCoordinator for " << infos.size()
+          << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
+          << " first collection name: " << infos[0].name << " result: " << res.errorCode();
       return res.asResult();
 
     }
@@ -2654,6 +2684,11 @@ Result ClusterInfo::createCollectionsCoordinator(
           events::CreateCollection(databaseName, info.name, tmpRes);
         }
       }
+      LOG_TOPIC("98765", DEBUG, Logger::CLUSTER)
+          << "Failed createCollectionsCoordinator for " << infos.size()
+          << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
+          << " first collection name: " << infos[0].name
+          << " result: " << tmpRes;
       return {tmpRes, *errMsg};
     }
 
