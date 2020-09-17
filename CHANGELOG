@@ -20,17 +20,28 @@ v3.6.7 (XXXX-XX-XX)
 
 * Exposed the following metrics via the `/_admin/metrics` endpoint:
 
-  - arangodb_http_request_statistics_total_requests: Total number of HTTP requests
-  - arangodb_http_request_statistics_async_requests: Number of asynchronously executed HTTP requests
-  - arangodb_http_request_statistics_http_delete_requests: Number of HTTP DELETE requests
-  - arangodb_http_request_statistics_http_get_requests: Number of HTTP GET requests
-  - arangodb_http_request_statistics_http_head_requests: Number of HTTP HEAD requests
-  - arangodb_http_request_statistics_http_options_requests: Number of HTTP OPTIONS requests
-  - arangodb_http_request_statistics_http_patch_requests: Number of HTTP PATCH requests
-  - arangodb_http_request_statistics_http_post_requests: Number of HTTP POST requests
-  - arangodb_http_request_statistics_http_put_requests: Number of HTTP PUT requests
-  - arangodb_http_request_statistics_other_http_requests: Number of other HTTP requests
-  - arangodb_server_statistics_server_uptime: Number of seconds elapsed since server start
+  - arangodb_http_request_statistics_total_requests:Total number of HTTP
+    requests
+  - arangodb_http_request_statistics_async_requests: Number of asynchronously
+    executed HTTP requests
+  - arangodb_http_request_statistics_http_delete_requests: Number of HTTP DELETE
+    requests
+  - arangodb_http_request_statistics_http_get_requests: Number of HTTP GET
+    requests
+  - arangodb_http_request_statistics_http_head_requests: Number of HTTP HEAD
+    requests
+  - arangodb_http_request_statistics_http_options_requests: Number of HTTP
+    OPTIONS requests
+  - arangodb_http_request_statistics_http_patch_requests: Number of HTTP PATCH
+    requests
+  - arangodb_http_request_statistics_http_post_requests: Number of HTTP POST
+    requests
+  - arangodb_http_request_statistics_http_put_requests: Number of HTTP PUT
+    requests
+  - arangodb_http_request_statistics_other_http_requests: Number of other HTTP
+    requests
+  - arangodb_server_statistics_server_uptime: Number of seconds elapsed since
+    server start
   - arangodb_server_statistics_physical_memory: Physical memory in bytes
 
 * Added startup option `--query.max-runtime` to limit the maximum runtime of all
