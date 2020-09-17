@@ -88,13 +88,15 @@ void ConnectionPool::shutdownConnections() {
 /// remove unused and broken connections
 void ConnectionPool::pruneConnections() {
   const std::chrono::milliseconds ttl(_config.idleConnectionMilli);
-  auto now = std::chrono::steady_clock::now();
 
   READ_LOCKER(guard, _lock);
   for (auto& pair : _connections) {
 
     Bucket& buck = *(pair.second);
     std::lock_guard<std::mutex> lock(buck.mutex);
+    
+    // get under lock
+    auto now = std::chrono::steady_clock::now();
 
     // this loop removes broken connections, and closes the ones we don't
     // need anymore
@@ -190,10 +192,11 @@ std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::Con
 ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
                                                ConnectionPool::Bucket& bucket) {
   const std::chrono::milliseconds ttl(_config.idleConnectionMilli);
-  auto now = std::chrono::steady_clock::now();
   
   std::lock_guard<std::mutex> guard(bucket.mutex);
 
+  auto now = std::chrono::steady_clock::now();
+  
   for (std::shared_ptr<Context>& c : bucket.list) {
     if (c->fuerte->state() == fuerte::Connection::State::Closed ||
         (now - c->lastLeased) > ttl) {
