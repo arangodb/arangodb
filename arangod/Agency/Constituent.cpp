@@ -144,7 +144,7 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
       OperationResult result = (tmp != t)
                                    ? trx.insert("election", body.slice(), options)
                                    : trx.replace("election", body.slice(), options);
-      res = trx.finish(result.errorNumber());
+      res = trx.finish(result.result);
     } catch (std::exception const& e) {
       LOG_TOPIC("334ae", FATAL, Logger::AGENCY)
           << "Failed to " << ((tmp != t) ? "insert" : "replace")
