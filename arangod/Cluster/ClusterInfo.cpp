@@ -687,12 +687,13 @@ void ClusterInfo::loadPlan() {
 
   // set plan loader
   //TRI_ASSERT(_newPlannedViews.empty());
-  _newPlannedViews.clear();
+  _newPlannedViews = _plannedViews;   // Create a copy, since we might not visit all databases
   _planLoader = std::this_thread::get_id();
 
   // ensure we'll eventually reset plan loader
   auto resetLoader = scopeGuard([this, start]() {
     _planLoader = std::thread::id();
+    _newPlannedViews.clear();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto diff = clock::now() - start;
