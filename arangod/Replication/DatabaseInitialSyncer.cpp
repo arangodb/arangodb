@@ -956,6 +956,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   if (!_config.isChild()) {
     batchExtend();
   }
+  
+  ReplicationMetricsFeature::InitialSyncStats stats(coll->vocbase().server().getFeature<ReplicationMetricsFeature>(), true);
 
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
   std::string url = baseUrl + "?collection=" + urlEncode(leaderColl) +
@@ -979,8 +981,10 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
     response.reset(client->retryRequest(rest::RequestType::POST, url, nullptr, 0, headers));
   });
+  ++stats.numKeysRequests;
 
   if (replutils::hasFailed(response.get())) {
+    ++stats.numFailedConnects;
     return replutils::buildHttpError(response.get(), url, _config.connection);
   }
 
@@ -988,6 +992,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   std::string jobId = response->getHeaderField(StaticStrings::AsyncId, found);
 
   if (!found) {
+    ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from leader at ") +
                       _config.leader.endpoint + url +
@@ -1005,23 +1010,30 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
     _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
       response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
     });
+    
+    double waitTime = TRI_microtime() - startTime;
 
     if (response != nullptr && response->isComplete()) {
-      if (response->hasHeaderField("x-arango-async-id")) {
+      if (response->hasContentLength()) {
+        stats.numSyncBytesReceived += response->getContentLength();
+      }
+      if (response->hasHeaderField(StaticStrings::AsyncId)) {
         // job is done, got the actual response
         break;
       }
       if (response->getHttpReturnCode() == 404) {
         // unknown job, we can abort
+        ++stats.numFailedConnects;
+        stats.waitedForInitial += waitTime;
         return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
                       std::string("job not found on leader at ") +
                           _config.leader.endpoint);
       }
     }
 
-    double waitTime = TRI_microtime() - startTime;
-
     if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >= _config.applier._initialSyncMaxWaitTime) {
+      ++stats.numFailedConnects;
+      stats.waitedForInitial += waitTime;
       return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
                     std::string(
                         "timed out waiting for response from leader at ") +
@@ -1029,14 +1041,18 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
     }
 
     if (isAborted()) {
+      stats.waitedForInitial += waitTime;
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
     std::chrono::milliseconds sleepTime = ::sleepTimeFromWaitTime(waitTime);
     std::this_thread::sleep_for(sleepTime);
   }
+  
+  stats.waitedForInitial += TRI_microtime() - startTime;
 
   if (replutils::hasFailed(response.get())) {
+    ++stats.numFailedConnects;
     return replutils::buildHttpError(response.get(), url, _config.connection);
   }
 
@@ -1044,6 +1060,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   Result r = replutils::parseResponse(builder, response.get());
 
   if (r.fail()) {
+    ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from leader at ") +
                       _config.leader.endpoint + url + ": " + r.errorMessage());
@@ -1051,6 +1068,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 
   VPackSlice const slice = builder.slice();
   if (!slice.isObject()) {
+    ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from leader at ") +
                       _config.leader.endpoint + url + ": response is no object");
@@ -1059,6 +1077,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   VPackSlice const keysId = slice.get("id");
 
   if (!keysId.isString()) {
+    ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from leader at ") +
                       _config.leader.endpoint + url +
@@ -1084,6 +1103,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   VPackSlice const count = slice.get("count");
 
   if (!count.isNumber()) {
+    ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from leader at ") +
                       _config.leader.endpoint + url +
@@ -1180,17 +1200,24 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         // collection on leader doesn't support revisions-based protocol, fallback
         return fetchCollectionSyncByKeys(coll, leaderColl, maxTick);
       }
+      stats.numFailedConnects++;
       return replutils::buildHttpError(response.get(), url, _config.connection);
+    }
+
+    if (response->hasContentLength()) {
+      stats.numSyncBytesReceived += response->getContentLength();
     }
 
     auto body = response->getBodyVelocyPack();
     if (!body) {
+      ++stats.numFailedConnects;
       return Result(
           TRI_ERROR_INTERNAL,
           "received improperly formed response when fetching revision tree");
     }
     treeLeader = containers::RevisionTree::deserialize(body->slice());
     if (!treeLeader) {
+      ++stats.numFailedConnects;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from leader at ") +
                         _config.leader.endpoint + url +
@@ -1351,12 +1378,18 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       ++stats.numKeysRequests;
 
       if (replutils::hasFailed(response.get())) {
+        ++stats.numFailedConnects;
         return replutils::buildHttpError(response.get(), batchUrl, _config.connection);
+      }
+    
+      if (response->hasContentLength()) {
+        stats.numSyncBytesReceived += response->getContentLength();
       }
 
       VPackBuilder responseBuilder;
       Result r = replutils::parseResponse(responseBuilder, response.get());
       if (r.fail()) {
+        ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
                           _config.leader.endpoint + batchUrl + ": " + r.errorMessage());
@@ -1364,6 +1397,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
       VPackSlice const slice = responseBuilder.slice();
       if (!slice.isObject()) {
+        ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
                           _config.leader.endpoint + batchUrl +
@@ -1372,6 +1406,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
       VPackSlice const resumeSlice = slice.get("resume");
       if (!resumeSlice.isNone() && !resumeSlice.isString()) {
+        ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
                           _config.leader.endpoint + batchUrl +
@@ -1382,6 +1417,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
       VPackSlice const rangesSlice = slice.get("ranges");
       if (!rangesSlice.isArray()) {
+        ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
                           _config.leader.endpoint + batchUrl +
@@ -1390,6 +1426,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
       for (VPackSlice leaderSlice : VPackArrayIterator(rangesSlice)) {
         if (!leaderSlice.isArray()) {
+          ++stats.numFailedConnects;
           return Result(
               TRI_ERROR_REPLICATION_INVALID_RESPONSE,
               std::string("got invalid response from leader at ") +
@@ -1510,13 +1547,14 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   }
 
   setProgress(
-      std::string("incremental sync statistics for collection '") + coll->name() +
-      "': " + "keys requests: " + std::to_string(stats.numKeysRequests) + ", " +
-      "docs requests: " + std::to_string(stats.numDocsRequests) + ", " +
-      "number of documents requested: " + std::to_string(stats.numDocsRequested) +
-      ", " + "number of documents inserted: " + std::to_string(stats.numDocsInserted) +
-      ", " + "number of documents removed: " + std::to_string(stats.numDocsRemoved) +
-      ", " + "waited for initial: " + std::to_string(stats.waitedForInitial) +
+      std::string("incremental tree sync statistics for collection '") + coll->name() +
+      "': keys requests: " + std::to_string(stats.numKeysRequests) + 
+      ", docs requests: " + std::to_string(stats.numDocsRequests) + 
+      ", bytes received: " + std::to_string(stats.numSyncBytesReceived) +
+      ", number of documents requested: " + std::to_string(stats.numDocsRequested) +
+      ", number of documents inserted: " + std::to_string(stats.numDocsInserted) +
+      ", number of documents removed: " + std::to_string(stats.numDocsRemoved) +
+      ", waited for initial: " + std::to_string(stats.waitedForInitial) +
       " s, " + "waited for keys: " + std::to_string(stats.waitedForKeys) +
       " s, " + "waited for docs: " + std::to_string(stats.waitedForDocs) +
       " s, " + "waited for insertions: " + std::to_string(stats.waitedForInsertions) +
@@ -1548,7 +1586,8 @@ int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection const& col) {
     return -1;
   }
 
-  auto result = trx.count(col.name(), transaction::CountType::Normal);
+  OperationOptions options(ExecContext::current());
+  auto result = trx.count(col.name(), transaction::CountType::Normal, options);
 
   if (result.result.fail()) {
     return -1;

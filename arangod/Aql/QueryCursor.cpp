@@ -164,7 +164,9 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
   // this is a hack for the export API only
   auto const& exportCollection = _query->queryOptions().exportCollection;
   if (!exportCollection.empty()) {
-     OperationResult opRes = trx.count(exportCollection, transaction::CountType::Normal);
+    OperationOptions opOptions(ExecContext::current());
+    OperationResult opRes =
+        trx.count(exportCollection, transaction::CountType::Normal, opOptions);
     if (opRes.fail()) {
       THROW_ARANGO_EXCEPTION(opRes.result);
     }

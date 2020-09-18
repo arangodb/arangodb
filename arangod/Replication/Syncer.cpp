@@ -141,7 +141,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
     options.indexOperationMode = arangodb::IndexOperationMode::internal;
 
     try {
-      OperationResult opRes;
+      OperationResult opRes(Result(), options);
       bool useReplace = false;
       VPackSlice keySlice = arangodb::transaction::helpers::extractKeyFromDocument(slice);
 

@@ -757,7 +757,6 @@ class IResearchFeatureTestCoordinator
     arangodb::network::ConnectionPool::Config poolConfig;
     poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
     poolConfig.numIOThreads = 1;
-    poolConfig.minOpenConnections = 1;
     poolConfig.maxOpenConnections = 3;
     poolConfig.verifyHosts = false;
     _pool = std::make_unique<AsyncAgencyStorePoolMock>(server.server(), poolConfig);
@@ -1008,7 +1007,6 @@ class IResearchFeatureTestDBServer
     arangodb::network::ConnectionPool::Config poolConfig;
     poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
     poolConfig.numIOThreads = 1;
-    poolConfig.minOpenConnections = 1;
     poolConfig.maxOpenConnections = 3;
     poolConfig.verifyHosts = false;
     _pool = std::make_unique<AsyncAgencyStorePoolMock>(server.server(), poolConfig);
