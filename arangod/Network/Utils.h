@@ -54,8 +54,10 @@ Result resultFromBody(arangodb::velocypack::Slice b, int defaultError);
 
 /// @brief extract the error from a cluster response
 template <typename T>
-OperationResult opResultFromBody(T const& body, int defaultErrorCode) {
-  return OperationResult(arangodb::network::resultFromBody(body, defaultErrorCode));
+OperationResult opResultFromBody(T const& body, int defaultErrorCode,
+                                 OperationOptions&& options) {
+  return OperationResult(arangodb::network::resultFromBody(body, defaultErrorCode),
+                         std::move(options));
 }
 
 /// @brief extract the error code form the body

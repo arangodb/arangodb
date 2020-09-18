@@ -94,7 +94,6 @@ struct NetworkMethodsTest
     network::ConnectionPool::Config config;
     config.clusterInfo = &server.getFeature<ClusterFeature>().clusterInfo();
     config.numIOThreads = 1;
-    config.minOpenConnections = 1;
     config.maxOpenConnections = 3;
     config.verifyHosts = false;
     return config;
