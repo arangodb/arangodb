@@ -28,8 +28,11 @@
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
 
+#include <vector>
+
 namespace arangodb {
 
+template <typename T>
 class FixedSizeAllocator {
  private:
   class MemoryBlock {
@@ -37,9 +40,12 @@ class FixedSizeAllocator {
     MemoryBlock(MemoryBlock const&) = delete;
     MemoryBlock& operator=(MemoryBlock const&) = delete;
 
-    MemoryBlock(size_t itemSize, size_t nrItems)
-        : _itemSize(itemSize), _nrAlloc(nrItems), _nrUsed(0), _alloc(nullptr), _data(nullptr) {
-      _alloc = new char[(itemSize * nrItems) + 64];
+    MemoryBlock(size_t numItems)
+        : _numAllocated(0), _numUsed(0), _alloc(nullptr), _data(nullptr) {
+      TRI_ASSERT(numItems >= 32);
+      _alloc = new char[(sizeof(T) * numItems) + 64];
+
+      _numAllocated = numItems;
 
       // adjust to cache line offset (assumed to be 64 bytes)
       _data = reinterpret_cast<char*>((reinterpret_cast<uintptr_t>(_alloc) + 63) &
@@ -48,54 +54,29 @@ class FixedSizeAllocator {
       TRI_ASSERT(reinterpret_cast<uintptr_t>(_data) % sizeof(void*) == 0);
     }
 
-    MemoryBlock(MemoryBlock&& other) noexcept
-        : _itemSize(other._itemSize),
-          _nrAlloc(other._nrAlloc),
-          _nrUsed(other._nrUsed),
-          _alloc(other._alloc),
-          _data(other._data) {
-      other._nrAlloc = 0;
-      other._nrUsed = 0;
-      other._alloc = nullptr;
-      other._data = nullptr;
-    }
-
-    MemoryBlock& operator=(MemoryBlock&& other) noexcept {
-      if (this != &other) {
-        TRI_ASSERT(_itemSize == other._itemSize);
-
-        delete[] _alloc;
-        _nrAlloc = other._nrAlloc;
-        _nrUsed = other._nrUsed;
-        _alloc = other._alloc;
-        _data = other._data;
-
-        other._nrAlloc = 0;
-        other._nrUsed = 0;
-        other._alloc = nullptr;
-        other._data = nullptr;
+    ~MemoryBlock() noexcept { 
+      // free all items
+      for (size_t i = 0; i < _numUsed; ++i) {
+        T* p =  reinterpret_cast<T*>(_data + (sizeof(T) * i));
+        // call destructor
+        p->~T();
       }
-
-      return *this;
+      delete[] _alloc; 
     }
 
-    ~MemoryBlock() { delete[] _alloc; }
-
-    void* next() {
-      TRI_ASSERT(_nrUsed < _nrAlloc);
-      return static_cast<void*>(_data + (_itemSize * _nrUsed++));
+    /// @brief return memory address for next in-place object construction
+    T* nextSlot() noexcept {
+      TRI_ASSERT(_numUsed < _numAllocated);
+      return reinterpret_cast<T*>(_data + (sizeof(T) * _numUsed++));
     }
+    
+    bool full() const noexcept { return _numUsed == _numAllocated; }
 
-    inline bool full() const { return _nrUsed == _nrAlloc; }
-
-    size_t memoryUsage() const {
-      return (_data - _alloc) + _itemSize * _nrAlloc;
-    }
+    size_t numUsed() const noexcept { return _numUsed; }
 
    private:
-    size_t const _itemSize;
-    size_t _nrAlloc;
-    size_t _nrUsed;
+    size_t _numAllocated;
+    size_t _numUsed;
     char* _alloc;
     char* _data;
   };
@@ -104,63 +85,43 @@ class FixedSizeAllocator {
   FixedSizeAllocator(FixedSizeAllocator const&) = delete;
   FixedSizeAllocator& operator=(FixedSizeAllocator const&) = delete;
 
-  explicit FixedSizeAllocator(size_t itemSize)
-      : _itemSize(itemSize), _freelist(nullptr) {
-    _blocks.reserve(4);
-
-#ifndef TRI_UNALIGNED_ACCESS
-    // align _itemSize to a multiple of sizeof(void*) on system that require it
-    _itemSize +=
-        (_itemSize % sizeof(void*) == 0 ? 0 : sizeof(void*) - _itemSize % sizeof(void*));
-#endif
+  FixedSizeAllocator() {
+    _blocks.reserve(2);
   }
 
   ~FixedSizeAllocator() = default;
 
-  void* allocate() {
-    if (_freelist != nullptr) {
-      void* element = _freelist;
-      _freelist = *reinterpret_cast<void**>(_freelist);
-      return element;
-    }
-
+  T* nextSlot() {
     if (_blocks.empty() || _blocks.back()->full()) {
       allocateBlock();
     }
     TRI_ASSERT(!_blocks.empty());
     TRI_ASSERT(!_blocks.back()->full());
 
-    return _blocks.back()->next();
+    return _blocks.back()->nextSlot();
   }
 
-  void deallocateAll() {
+  void clear() {
     _blocks.clear();
-    _freelist = nullptr;
   }
 
-  void deallocate(void* value) noexcept {
-    *reinterpret_cast<void**>(value) = _freelist;
-    _freelist = value;
-  }
-
-  size_t memoryUsage() const {
-    size_t total = 0;
-    for (auto const& it : _blocks) {
-      total += it->memoryUsage();
+  size_t numUsed() const noexcept {
+    size_t used = 0;
+    for (auto const& block : _blocks) {
+      used += block->numUsed();
     }
-    return total;
+    return used;
   }
 
  private:
   void allocateBlock() {
-    size_t const size = 128 << (std::min)(size_t(8), _blocks.size());
-    auto block = std::make_unique<MemoryBlock>(_itemSize, size);
-    _blocks.emplace_back(std::move(block));
+    // minimum block size is for 64 items
+    // maximum block size is for 16384 items
+    size_t const numItems = 16 << std::min<size_t>(6, std::max<size_t>(2, _blocks.size()));
+    _blocks.emplace_back(std::make_unique<MemoryBlock>(numItems));
   }
 
   std::vector<std::unique_ptr<MemoryBlock>> _blocks;
-  size_t _itemSize;
-  void* _freelist;
 };
 
 }  // namespace arangodb
