@@ -545,7 +545,8 @@ exports.checkAvailableVersions = function() {
           "') of ArangoDB"
       );
     }
-  } else if (internal.isEnterprise()) {
+  } 
+  if (internal.isEnterprise()) {
     // don't check for version updates in the Enterprise Edition
     return;
   }
