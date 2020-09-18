@@ -755,7 +755,7 @@ std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> planToChangeset(No
 
     { VPackArrayBuilder env(&dbbuilder);
       { VPackObjectBuilder o(&dbbuilder);
-        dbbuilder.add(VPackValue(std::string()));
+        dbbuilder.add(VPackValue(AgencyCommHelper::path()));
         { VPackObjectBuilder a(&dbbuilder);
           dbbuilder.add(VPackValue(PLAN));
           { VPackObjectBuilder p(&dbbuilder);
