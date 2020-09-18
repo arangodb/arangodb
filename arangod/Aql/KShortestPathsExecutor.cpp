@@ -236,21 +236,21 @@ auto KShortestPathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output) 
   transaction::BuilderLeaser tmp{_finder.options().trx()};
   tmp->clear();
 
-if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
-  if (_finder.getNextPathAql(*tmp.builder())) {
-    AqlValue path{tmp->slice()};
-    AqlValueGuard guard{path, true};
-    output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
-    output.advanceRow();
+  if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
+    if (_finder.getNextPathAql(*tmp.builder())) {
+      AqlValue path{tmp->slice()};
+      AqlValueGuard guard{path, true};
+      output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
+      output.advanceRow();
+    }
+  } else {
+    if (_finder.getNextPath(*tmp.builder())) {
+      AqlValue path{tmp->slice()};
+      AqlValueGuard guard{path, true};
+      output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
+      output.advanceRow();
+    }
   }
-} else {
-  if (_finder.getNextPath(*tmp.builder())) {
-    AqlValue path{tmp->slice()};
-    AqlValueGuard guard{path, true};
-    output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
-    output.advanceRow();
-  }
-}
 
 }
 
