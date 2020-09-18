@@ -87,6 +87,7 @@ class HeartbeatBackgroundJobThread : public Thread {
         _heartbeatThread(heartbeatThread),
         _stop(false),
         _sleeping(false),
+        _anotherRun(true),
         _backgroundJobsLaunched(0) {}
 
   ~HeartbeatBackgroundJobThread() { shutdown(); }
