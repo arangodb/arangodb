@@ -1909,6 +1909,12 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const
   // And wait for our database to show up in `Current/Databases`
   auto waitresult = waitForDatabaseInCurrent(database, trx);
 
+  if (waitresult.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME ||
+      waitresult.errorNumber() == TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN) {
+    // Early exit without cancellation if we did not do anything
+    return waitresult;
+  }
+
   if (waitresult.fail()) {
     // cleanup: remove database from plan
     auto ret = cancelCreateDatabaseCoordinator(database);
