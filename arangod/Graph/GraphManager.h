@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -49,24 +50,23 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create vertex collection by name
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult findOrCreateVertexCollectionByName(const std::string& name,
-                                                     bool waitForSync, VPackSlice options);
+  Result findOrCreateVertexCollectionByName(const std::string& name,
+                                            bool waitForSync, VPackSlice options);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collection by name and type
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult createCollection(std::string const& name, TRI_col_type_e colType,
-                                   bool waitForSync, VPackSlice options);
+  Result createCollection(std::string const& name, TRI_col_type_e colType,
+                          bool waitForSync, VPackSlice options);
 
  public:
   explicit GraphManager(TRI_vocbase_t& vocbase) : _vocbase(vocbase) {}
 
-  OperationResult readGraphs(velocypack::Builder& builder) const;
+  Result readGraphs(velocypack::Builder& builder) const;
 
-  OperationResult readGraphKeys(velocypack::Builder& builder) const;
+  Result readGraphKeys(velocypack::Builder& builder) const;
 
-  OperationResult readGraphByQuery(velocypack::Builder& builder,
-                                   std::string const& queryStr) const;
+  Result readGraphByQuery(velocypack::Builder& builder, std::string const& queryStr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find and return a collections if available
@@ -92,26 +92,23 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collections by EdgeDefinitions
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult findOrCreateCollectionsByEdgeDefinitions(
-      Graph const& graph, std::map<std::string, EdgeDefinition> const& edgeDefinitions,
-      bool waitForSync, VPackSlice options);
+  Result findOrCreateCollectionsByEdgeDefinitions(Graph const& graph,
+                                                  std::map<std::string, EdgeDefinition> const& edgeDefinitions,
+                                                  bool waitForSync, VPackSlice options);
 
-  OperationResult findOrCreateCollectionsByEdgeDefinition(Graph const& graph,
-                                                          EdgeDefinition const& edgeDefinition,
-                                                          bool waitForSync,
-                                                          VPackSlice options);
+  Result findOrCreateCollectionsByEdgeDefinition(Graph const& graph,
+                                                 EdgeDefinition const& edgeDefinition,
+                                                 bool waitForSync, VPackSlice options);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a vertex collection
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult createVertexCollection(std::string const& name,
-                                         bool waitForSync, VPackSlice options);
+  Result createVertexCollection(std::string const& name, bool waitForSync, VPackSlice options);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create an edge collection
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult createEdgeCollection(std::string const& name,
-                                       bool waitForSync, VPackSlice options);
+  Result createEdgeCollection(std::string const& name, bool waitForSync, VPackSlice options);
 
   /// @brief rename a collection used in an edge definition
   bool renameGraphCollection(std::string const& oldName, std::string const& newName);
@@ -129,9 +126,8 @@ class GraphManager {
   /// @brief Remove a graph and optional all connected collections
   OperationResult removeGraph(Graph const& graph, bool waitForSync, bool dropCollections);
 
-  OperationResult pushCollectionIfMayBeDropped(const std::string& colName,
-                                               const std::string& graphName,
-                                               std::unordered_set<std::string>& toBeRemoved);
+  Result pushCollectionIfMayBeDropped(const std::string& colName, const std::string& graphName,
+                                      std::unordered_set<std::string>& toBeRemoved);
 
   bool collectionExists(std::string const& collection) const;
 

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -106,12 +107,11 @@ template <typename Modifier>
 template <typename Modifier>
 auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOperation(
     InputAqlItemRow& input, Stats& stats) -> OperationResult {
-  OperationResult result;
-  OperationOptions& options = _info._options;
-
   _info._options.silent = false;
   _info._options.returnOld = _info._options.returnOld ||
                              _info._outputRegisterId != RegisterPlan::MaxRegisterId;
+
+  OperationResult result(Result(), _info._options);
 
   const bool isIndex = std::is_same<Modifier, IndexTag>::value;
   const bool isInsert = std::is_same<Modifier, Insert>::value;
@@ -143,7 +143,7 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   if (isIndex) {
     result = _trx.document(_info._aqlCollection->name(), inSlice, _info._options);
   } else if (isInsert) {
-    if (options.returnOld && !options.isOverwriteModeUpdateReplace()) {
+    if (_info._options.returnOld && !_info._options.isOverwriteModeUpdateReplace()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
           "OLD is only available when using INSERT with overwriteModes 'update' or 'replace'");

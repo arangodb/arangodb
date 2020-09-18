@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -322,7 +322,7 @@ void RestVocbaseBaseHandler::generate20x(arangodb::OperationResult const& result
                                          std::string const& collectionName, TRI_col_type_e type,
                                          VPackOptions const* options, bool isMultiple,
                                          rest::ResponseCode waitForSyncResponseCode) {
-  if (result._options.waitForSync) {
+  if (result.options.waitForSync) {
     resetResponse(waitForSyncResponseCode);
   } else {
     resetResponse(rest::ResponseCode::ACCEPTED);
@@ -414,7 +414,7 @@ void RestVocbaseBaseHandler::generateConflictError(OperationResult const& opres,
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
 
-  writeResult(builder.slice(), *(ctx->getVPackOptionsForDump()));
+  writeResult(builder.slice(), *(ctx->getVPackOptions()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -498,8 +498,8 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
       } else {
         // This case happens if we call this method directly with a dummy
         // OperationResult:
-        
-        OperationResult tmp(result.result);
+
+        OperationResult tmp(result.result, result.options);
         tmp.buffer = std::make_shared<VPackBufferUInt8>();
         VPackBuilder builder(tmp.buffer);
         builder.openObject();

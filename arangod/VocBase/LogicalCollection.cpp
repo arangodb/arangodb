@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -976,8 +976,9 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
 }
 
 /// @brief return the figures for a collection
-futures::Future<OperationResult> LogicalCollection::figures() const {
-  return getPhysical()->figures();
+futures::Future<OperationResult> LogicalCollection::figures(bool details,
+                                                            OperationOptions const& options) const {
+  return getPhysical()->figures(details, options);
 }
 
 /// SECTION Indexes

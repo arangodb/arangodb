@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -200,13 +200,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
                                 std::string const& key = "",
                                 RevisionId rid = RevisionId::none());
 
-  /// @brief generate an error message for a transaction error
-  void generateTransactionError(std::string const& collectionName,
-                                Result const& res, std::string const& key,
-                                RevisionId rid = RevisionId::none()) {
-    generateTransactionError(collectionName, OperationResult(res), key, rid);
-  }
-  
   /// @brief extracts the revision. "header" must be lowercase.
   RevisionId extractRevision(char const* header, bool& isValid) const;
 

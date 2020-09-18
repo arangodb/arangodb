@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -891,7 +892,8 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   if (ServerState::instance()->isCoordinator()) {
     auto cid = std::to_string(coll.id().id());
     auto& feature = vocbase.server().getFeature<ClusterFeature>();
-    return warmupOnCoordinator(feature, vocbase.name(), cid);
+    OperationOptions options(exec);
+    return warmupOnCoordinator(feature, vocbase.name(), cid, options);
   }
 
   auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, false);
@@ -948,12 +950,13 @@ futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
   return futures::makeFuture(res);
 }
 
-futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
+futures::Future<OperationResult> Collections::revisionId(Context& ctxt,
+                                                         OperationOptions const& options) {
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = ctxt.coll()->vocbase().name();
     auto cid = std::to_string(ctxt.coll()->id().id());
     auto& feature = ctxt.coll()->vocbase().server().getFeature<ClusterFeature>();
-    return revisionOnCoordinator(feature, databaseName, cid);
+    return revisionOnCoordinator(feature, databaseName, cid, options);
   }
 
   RevisionId rid = ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true, true));
@@ -961,7 +964,7 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
   VPackBuilder builder;
   builder.add(VPackValue(rid.toString()));
 
-  return futures::makeFuture(OperationResult(Result(), builder.steal()));
+  return futures::makeFuture(OperationResult(Result(), builder.steal(), options));
 }
 
 /// @brief Helper implementation similar to ArangoCollection.all() in v8

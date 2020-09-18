@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -585,9 +585,9 @@ bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
 
 Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
-                                   velocypack::Slice const& slice,
+                                   velocypack::Slice const slice,
                                    OperationOptions& options) {
-  Index::OperationMode mode = options.indexOperationMode;
+  IndexOperationMode mode = options.indexOperationMode;
   VPackSlice keySlice;
   RevisionId revision;
   transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
@@ -603,7 +603,7 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
     rocksdb::Status s = mthd->GetForUpdate(_cf, key->string(), &ps);
 
     if (s.ok()) {  // detected conflicting primary key
-      if (mode == OperationMode::internal) {
+      if (mode == IndexOperationMode::internal) {
         return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, keySlice.copyString());
       }
       res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
@@ -633,10 +633,10 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
 
 Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& oldDocumentId,
-                                   velocypack::Slice const& oldDoc,
+                                   velocypack::Slice const oldDoc,
                                    LocalDocumentId const& newDocumentId,
-                                   velocypack::Slice const& newDoc,
-                                   Index::OperationMode mode) {
+                                   velocypack::Slice const newDoc,
+                                   OperationOptions& options) {
   Result res;
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(keySlice.binaryEquals(oldDoc.get(StaticStrings::KeyString)));
@@ -660,8 +660,7 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
 
 Result RocksDBPrimaryIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
-                                   velocypack::Slice const& slice,
-                                   Index::OperationMode mode) {
+                                   velocypack::Slice const slice) {
   Result res;
 
   // TODO: deal with matching revisions?

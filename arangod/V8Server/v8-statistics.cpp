@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -142,6 +142,8 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
                      v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.free))).FromMaybe(false);
   v8CountersObj->Set(context, TRI_V8_ASCII_STRING(isolate, "max"),
                      v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.max))).FromMaybe(false);
+  v8CountersObj->Set(context, TRI_V8_ASCII_STRING(isolate, "min"),
+                     v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.min))).FromMaybe(false);
 
   auto memoryStatistics = dealer.getCurrentContextDetails();
 

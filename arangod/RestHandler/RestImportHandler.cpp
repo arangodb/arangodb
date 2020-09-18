@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -345,14 +345,15 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   Result res = trx.begin();
 
   if (res.fail()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(res, opOptions),
+                             "");
     return false;
   }
 
   bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
 
   if (overwrite) {
-    OperationOptions truncateOpts;
+    OperationOptions truncateOpts(_context);
     truncateOpts.waitForSync = false;
     // truncate collection first
     trx.truncate(collectionName, truncateOpts);
@@ -493,7 +494,8 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   res = trx.finish(res);
 
   if (res.fail()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(res, opOptions),
+                             "");
   } else {
     generateDocumentsCreated(result);
   }
@@ -542,7 +544,8 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   Result res = trx.begin();
 
   if (res.fail()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(res, opOptions),
+                             "");
 
     return false;
   }
@@ -597,7 +600,8 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   res = trx.finish(res);
 
   if (res.fail()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(res, opOptions),
+                             "");
   } else {
     generateDocumentsCreated(result);
   }
@@ -627,7 +631,7 @@ bool RestImportHandler::createFromKeyValueList() {
   bool const complete = _request->parsedValue("complete", false);
   bool const overwrite = _request->parsedValue("overwrite", false);
   _ignoreMissing = _request->parsedValue("ignoreMissing", false);
-  OperationOptions opOptions;
+  OperationOptions opOptions(_context);
   opOptions.waitForSync = _request->parsedValue("waitForSync", false);
 
   // extract the collection name
@@ -720,14 +724,15 @@ bool RestImportHandler::createFromKeyValueList() {
   Result res = trx.begin();
 
   if (res.fail()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(res, opOptions),
+                             "");
     return false;
   }
 
   bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
 
   if (overwrite) {
-    OperationOptions truncateOpts;
+    OperationOptions truncateOpts(_context);
     truncateOpts.waitForSync = false;
     // truncate collection first
     trx.truncate(collectionName, truncateOpts);
@@ -822,7 +827,8 @@ bool RestImportHandler::createFromKeyValueList() {
   res = trx.finish(res);
 
   if (res.fail()) {
-    generateTransactionError(collectionName, res, "");
+    generateTransactionError(collectionName, OperationResult(res, opOptions),
+                             "");
   } else {
     generateDocumentsCreated(result);
   }
@@ -1023,7 +1029,7 @@ bool RestImportHandler::checkKeys(VPackSlice const& keys) const {
 }
 
 OperationOptions RestImportHandler::buildOperationOptions() const {
-  OperationOptions opOptions;
+  OperationOptions opOptions(_context);
 
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
   opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);

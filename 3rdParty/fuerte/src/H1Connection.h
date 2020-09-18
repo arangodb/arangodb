@@ -38,9 +38,9 @@ namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
 // in-flight request data
 struct RequestItem {
-  RequestItem(std::unique_ptr<Request>&& req,
-              RequestCallback&& cb, std::string&& h);
-  
+  RequestItem(std::unique_ptr<Request>&& req, RequestCallback&& cb,
+              std::string&& h);
+
   /// the request header
   std::string requestHeader;
 
@@ -49,7 +49,7 @@ struct RequestItem {
 
   /// Reference to the request we're processing
   std::unique_ptr<arangodb::fuerte::v1::Request> request;
-  
+
   /// point in time when the request expires
   std::chrono::steady_clock::time_point expires;
 
@@ -68,36 +68,32 @@ class H1Connection final : public fuerte::GeneralConnection<ST, RequestItem> {
 
   /// The following public methods can be called from any thread.
  public:
-  
   /// @brief Return the number of requests that have not yet finished.
   size_t requestsLeft() const override;
 
   /// All methods below here must only be called from the IO thread.
  protected:
+  virtual void finishConnect() override;
 
-  void finishConnect() override;
-  
   /// perform writes
-  void doWrite() override {
-    this->asyncWriteNextRequest();
-  }
+  virtual void doWrite() override { this->asyncWriteNextRequest(); }
 
   // called by the async_read handler (called from IO thread)
-  void asyncReadCallback(asio_ns::error_code const&) override;
+  virtual void asyncReadCallback(asio_ns::error_code const&) override;
 
   /// abort ongoing / unfinished requests
-  void abortOngoingRequests(const fuerte::Error) override;
-  
-  void setIOTimeout() override;
-  
-  std::unique_ptr<RequestItem> createRequest(std::unique_ptr<Request>&& req,
-                                    RequestCallback&& cb) override {
-    auto h = buildRequestHeader(*req);
-    return std::make_unique<RequestItem>(std::move(req), std::move(cb), std::move(h));
-  }
-  
- private:
+  virtual void abortRequests(fuerte::Error err, Clock::time_point now) override;
 
+  virtual void setIOTimeout() override;
+
+  virtual std::unique_ptr<RequestItem> createRequest(
+      std::unique_ptr<Request>&& req, RequestCallback&& cb) override {
+    auto h = buildRequestHeader(*req);
+    return std::make_unique<RequestItem>(std::move(req), std::move(cb),
+                                         std::move(h));
+  }
+
+ private:
   // build request body for given request
   std::string buildRequestHeader(Request const& req);
 
@@ -106,6 +102,26 @@ class H1Connection final : public fuerte::GeneralConnection<ST, RequestItem> {
 
   // called by the async_write handler (called from IO thread)
   void asyncWriteCallback(asio_ns::error_code const&, size_t nwrite);
+
+  fuerte::Error translateError(asio_ns::error_code const& e,
+                               fuerte::Error c) const {
+#ifdef _WIN32
+    if (this->_timeoutOnReadWrite && (c == Error::ReadError ||
+                                      c == Error::WriteError)) {
+      return Error::RequestTimeout;
+    }
+#endif
+    
+    if (e == asio_ns::error::misc_errors::eof ||
+        e == asio_ns::error::connection_reset) {
+      return fuerte::Error::ConnectionClosed;
+    } else if (e == asio_ns::error::operation_aborted) {
+      // keepalive timeout may have expired
+      return this->_timeoutOnReadWrite ? fuerte::Error::RequestTimeout :
+                                         fuerte::Error::ConnectionCanceled;
+    }
+    return c;
+  }
 
  private:
   static int on_message_begin(http_parser* p);

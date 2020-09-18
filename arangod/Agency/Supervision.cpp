@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,6 +38,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
 
@@ -421,18 +422,21 @@ void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
 void handleOnStatusCoordinator(Agent* agent, Node const& snapshot, HealthRecord& persisted,
                                HealthRecord& transisted, std::string const& serverID) {
   if (transisted.status == Supervision::HEALTH_STATUS_FAILED) {
-    // if the current foxxmaster server failed => reset the value to ""
-    if (snapshot.hasAsString(foxxmaster).first == serverID) {
-      VPackBuilder create;
+    VPackBuilder create;
+    {
+      VPackArrayBuilder tx(&create);
       {
-        VPackArrayBuilder tx(&create);
-        {
-          VPackObjectBuilder d(&create);
+        VPackObjectBuilder b(&create);
+        // unconditionally increase reboot id and plan version
+        Job::addIncreaseRebootId(create, serverID);
+
+        // if the current foxxmaster server failed => reset the value to ""
+        if (snapshot.hasAsString(foxxmaster).first == serverID) {
           create.add(foxxmaster, VPackValue(""));
         }
       }
-      singleWriteTransaction(agent, create, false);
     }
+    singleWriteTransaction(agent, create, false);
   }
 }
 

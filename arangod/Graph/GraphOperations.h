@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -199,8 +200,8 @@ class GraphOperations {
   OperationResult createDocument(transaction::Methods* trx, const std::string& collectionName,
                                  VPackSlice document, bool waitForSync, bool returnNew);
 
-  OperationResult checkEdgeCollectionAvailability(std::string const& edgeCollectionName);
-  OperationResult checkVertexCollectionAvailability(std::string const& vertexCollectionName);
+  Result checkEdgeCollectionAvailability(std::string const& edgeCollectionName);
+  Result checkVertexCollectionAvailability(std::string const& vertexCollectionName);
 
   bool hasROPermissionsFor(std::string const& collection) const;
   bool hasRWPermissionsFor(std::string const& collection) const;

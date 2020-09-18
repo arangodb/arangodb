@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -731,7 +731,7 @@ RestStatus RestAgencyHandler::handleState() {
     _agent->readDB(body);
   }
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
-  generateResult(rest::ResponseCode::OK, body.slice(), ctx->getVPackOptionsForDump());
+  generateResult(rest::ResponseCode::OK, body.slice(), ctx->getVPackOptions());
   return RestStatus::DONE;
 }
 
