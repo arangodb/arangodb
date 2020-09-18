@@ -4797,6 +4797,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::SHORTEST_PATH:
         case EN::REMOTESINGLE:
         case EN::ENUMERATE_IRESEARCH_VIEW:
+        case EN::READALL:
 
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -7139,6 +7140,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::SUBQUERY:
     case ExecutionNode::REMOTE:
     case ExecutionNode::ASYNC:
+    case ExecutionNode::READALL:
       return true;
     case ExecutionNode::GATHER:
       // sorting gather is allowed
@@ -7974,6 +7976,7 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* n
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_START:
     case ExecutionNode::SUBQUERY_END:
+    case ExecutionNode::READALL:
     case ExecutionNode::ASYNC:
       // These nodes do not initiate a skip themselves, and thus are fine.
       return false;

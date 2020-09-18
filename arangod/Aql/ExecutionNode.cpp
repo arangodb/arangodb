@@ -124,6 +124,7 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::MATERIALIZE), "MaterializeNode"},
     {static_cast<int>(ExecutionNode::ASYNC), "AsyncNode"},
     {static_cast<int>(ExecutionNode::MUTEX), "MutexNode"},
+    {static_cast<int>(ExecutionNode::READALL), "ReadAllNode"},
 };
 }  // namespace
 
@@ -1406,6 +1407,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case SUBQUERY:
     case SINGLETON:
     case LIMIT:
+    case READALL:
       return false;
     // It should be safe to return false for these, but is it necessary?
     // Returning true can lead to more efficient register usage.

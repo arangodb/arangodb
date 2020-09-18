@@ -345,6 +345,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/QueryString.cpp
   Aql/QueryWarnings.cpp
   Aql/Range.cpp
+  Aql/ReadAllNode.cpp
   Aql/RegisterInfos.cpp
   Aql/RegisterPlan.cpp
   Aql/RemoteExecutor.cpp
