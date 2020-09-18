@@ -972,7 +972,7 @@ void ClusterInfo::loadPlan() {
     std::string revisionError;
     auto revision = AnalyzersRevision::fromVelocyPack(analyzerSlice, revisionError);
     if (revision) {
-      newDbAnalyzersRevision.emplace(std::move(databaseName), std::move(revision));
+      newDbAnalyzersRevision[databaseName] = std::move(revision);
     } else {
       LOG_TOPIC("e3f08", WARN, Logger::AGENCY)
         << "Invalid analyzer data for database '" << databaseName << "'"
