@@ -95,7 +95,6 @@ TEST(EncryptionProviderTest, simple) {
     ASSERT_EQ(memcmp(buffer1.data() + offset, buffer2.data() + offset, len), 0);
     
     // decrypt data at offset
-    auto now = std::chrono::steady_clock::now();
     ASSERT_TRUE(stream1->Encrypt(offset, buffer1.data() + offset, len).ok());
     ASSERT_TRUE(stream1->Encrypt(offset, buffer2.data() + offset, len).ok());
 
