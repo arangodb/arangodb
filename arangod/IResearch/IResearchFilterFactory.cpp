@@ -932,7 +932,7 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
   return {};
 }
 
-// IN_GEO_RANGE(attribute, shape, lower, upper[, includeLower = true, includeUpper = true])
+// GEO_IN_RANGE(attribute, shape, lower, upper[, includeLower = true, includeUpper = true])
 Result fromFuncGeoInRange(
     char const* funcName,
     irs::boolean_filter* filter,

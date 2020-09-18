@@ -30,42 +30,92 @@
 #include "analysis/analyzer.hpp"
 #include "utils/frozen_attributes.hpp"
 
+#include "Geo/ShapeContainer.h"
+
 namespace arangodb {
 namespace iresearch {
 
-class GeoAnalyzer final
+struct GeoOptions {
+  int32_t maxCells;
+  int32_t minLevel;
+  int32_t maxLevel;
+};
+
+class GeoAnalyzer
   : public irs::frozen_attributes<3, irs::analysis::analyzer>,
     private irs::util::noncopyable {
  public:
-  struct Options {
-    int32_t maxCells;
-    int32_t minLevel;
-    int32_t maxLevel;
-    bool pointsOnly;
-    bool optimizeForSpace;
-  };
-
-  static constexpr irs::string_ref type_name() noexcept { return "geo"; }
-  static bool normalize(const irs::string_ref& args,  std::string& out);
-  static irs::analysis::analyzer::ptr make(irs::string_ref const& args);
-
-  GeoAnalyzer(const Options& opts, const irs::string_ref& prefix);
-
   virtual bool next() noexcept final;
+  using irs::analysis::analyzer::reset;
 
-  virtual bool reset(irs::string_ref const& value);
-  virtual bool reset_for_querying(irs::string_ref const& value);
+ protected:
+  explicit GeoAnalyzer(const irs::type_info& type);
+  void reset(std::vector<std::string>&& terms) noexcept;
+  void reset() noexcept {
+    _begin = _terms.data();
+    _end = _begin;
+  }
 
  private:
-  S2RegionTermIndexer _indexer;
   std::vector<std::string> _terms;
   const std::string* _begin{ _terms.data() };
   const std::string* _end{ _begin };
-  std::string _prefix;
   irs::offset _offset;
   irs::increment _inc;
   irs::term_attribute _term;
 }; // GeoAnalyzer
+
+class GeoPointAnalyzer final : public GeoAnalyzer {
+ public:
+  struct Options {
+    GeoOptions options;
+    std::string latitude;
+    std::string longitude;
+  };
+
+  static constexpr irs::string_ref type_name() noexcept { return "geopoint"; }
+  static bool normalize(const irs::string_ref& args,  std::string& out);
+  static irs::analysis::analyzer::ptr make(irs::string_ref const& args);
+
+  explicit GeoPointAnalyzer(Options const& opts);
+
+ protected:
+  virtual bool reset(irs::string_ref const& value);
+
+ private:
+  S2RegionTermIndexer _indexer;
+  std::string _latitude;
+  std::string _longitude;
+  bool _fromArray;
+};
+
+class GeoJSONAnalyzer final : public GeoAnalyzer {
+ public:
+  enum class Type {
+    SHAPE,
+    CENTROID,
+    POINT
+  };
+
+  struct Options {
+    GeoOptions options;
+    Type type{Type::SHAPE};
+  };
+
+  static constexpr irs::string_ref type_name() noexcept { return "geojson"; }
+  static bool normalize(const irs::string_ref& args,  std::string& out);
+  static irs::analysis::analyzer::ptr make(irs::string_ref const& args);
+
+  explicit GeoJSONAnalyzer(Options const& opts);
+
+ protected:
+  virtual bool reset(irs::string_ref const& value);
+
+ private:
+  S2RegionTermIndexer _indexer;
+  geo::ShapeContainer _shape;
+  Type _type;
+};
 
 } // iresearch
 } // arangodb

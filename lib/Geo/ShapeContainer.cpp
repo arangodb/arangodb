@@ -27,7 +27,6 @@
 #include <s2/s1angle.h>
 #include <s2/s2cell.h>
 #include <s2/s2cell_id.h>
-#include <s2/s2latlng.h>
 #include <s2/s2latlng_rect.h>
 #include <s2/s2loop.h>
 #include <s2/s2point_region.h>
@@ -100,10 +99,19 @@ void ShapeContainer::reset(S2Region* ptr, Type tt) noexcept {
   _data = ptr;
 }
 
-void ShapeContainer::resetCoordinates(double lat, double lon) {
-  delete _data;
-  _type = ShapeContainer::Type::S2_POINT;
-  _data = new S2PointRegion(S2LatLng::FromDegrees(lat, lon).ToPoint());
+void ShapeContainer::resetCoordinates(S2LatLng ll) {
+  if (_type != Type::S2_POINT || !_data) {
+    delete _data;
+    _type = ShapeContainer::Type::S2_POINT;
+    _data = new S2PointRegion(ll.ToPoint());
+  } else {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto& region = dynamic_cast<S2PointRegion&>(*_data);
+#else
+    auto& region = static_cast<S2PointRegion&>(*_data);
+#endif
+    region = S2PointRegion(ll.ToPoint());
+  }
 }
 
 S2Point ShapeContainer::centroid() const noexcept {

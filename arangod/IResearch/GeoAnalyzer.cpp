@@ -23,13 +23,13 @@
 #include "GeoAnalyzer.h"
 
 #include "s2/s2point_region.h"
+#include "s2/s2latlng.h"
 
 #include "analysis/analyzers.hpp"
 
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
 
-#include "Geo/ShapeContainer.h"
 #include "Geo/GeoJson.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
@@ -42,38 +42,97 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 using namespace arangodb::velocypack::deserializer;
 
+constexpr const char GEOJSON_POINT_TYPE[] = "point";
+constexpr const char GEOJSON_CENTROID_TYPE[] = "centroid";
+constexpr const char GEOJSON_SHAPE_TYPE[] = "shape";
+constexpr const char TYPE_PARAM[] = "type";
+constexpr const char OPTIONS_PARAM[] = "options";
 constexpr const char MAX_CELLS_PARAM[] = "maxCells";
 constexpr const char MIN_LEVEL_PARAM[] = "minLevel";
 constexpr const char MAX_LEVEL_PARAM[] = "maxLevel";
-constexpr const char POINTS_ONLY_PARAM[] = "pointsOnly";
-constexpr const char OPTIMIZE_FOR_SPACE_PARAM[] = "optimizeForSpace";
+constexpr const char LATITUDE_PARAM[] = "latitude";
+constexpr const char LONGITUDE_PARAM[] = "longitude";
 
-using OptionsDeserializer = velocypack::deserializer::utilities::constructing_deserializer<GeoAnalyzer::Options, parameter_list<
-  factory_simple_parameter<MAX_CELLS_PARAM, int32_t, false, values::numeric_value<int32_t, S2RegionCoverer::Options::kDefaultMaxCells>>,
-  factory_simple_parameter<MIN_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, 0>>,
-  factory_simple_parameter<MAX_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, S2CellId::kMaxLevel>>,
-  factory_simple_parameter<POINTS_ONLY_PARAM, bool, false, std::false_type>,
-  factory_simple_parameter<OPTIMIZE_FOR_SPACE_PARAM, bool, false, std::false_type>>
+using GeoJSONTypeEnumDeserializer = enum_deserializer<
+  GeoJSONAnalyzer::Type,
+  enum_member<GeoJSONAnalyzer::Type::SHAPE, values::string_value<GEOJSON_SHAPE_TYPE>>,
+  enum_member<GeoJSONAnalyzer::Type::CENTROID, values::string_value<GEOJSON_CENTROID_TYPE>>,
+  enum_member<GeoJSONAnalyzer::Type::POINT, values::string_value<GEOJSON_POINT_TYPE>>
 >;
 
-void toVelocyPack(VPackBuilder& builder, GeoAnalyzer::Options const& opts) {
+using GeoOptionsDeserializer = utilities::constructing_deserializer<GeoOptions, parameter_list<
+  factory_simple_parameter<MAX_CELLS_PARAM, int32_t, false, values::numeric_value<int32_t, S2RegionCoverer::Options::kDefaultMaxCells>>,
+  factory_simple_parameter<MIN_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, 0>>,
+  factory_simple_parameter<MAX_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, S2CellId::kMaxLevel>>>
+>;
+
+using GeoJSONOptionsDeserializer = utilities::constructing_deserializer<GeoJSONAnalyzer::Options, parameter_list<
+  factory_deserialized_parameter<OPTIONS_PARAM, GeoOptionsDeserializer, true>,
+  factory_deserialized_parameter<TYPE_PARAM, GeoJSONTypeEnumDeserializer, true>>
+>;
+
+using GeoPointsOptionsDeserializer = utilities::constructing_deserializer<GeoPointAnalyzer::Options, parameter_list<
+  factory_deserialized_parameter<OPTIONS_PARAM, GeoOptionsDeserializer, true>,
+  factory_deserialized_parameter<LATITUDE_PARAM, values::value_deserializer<std::string>, true>,
+  factory_deserialized_parameter<LONGITUDE_PARAM, values::value_deserializer<std::string>, true>>
+>;
+
+template<typename Analyzer>
+struct Deserializer;
+
+template<>
+struct Deserializer<GeoJSONAnalyzer> {
+  using type = GeoJSONOptionsDeserializer;
+};
+
+template<>
+struct Deserializer<GeoPointAnalyzer> {
+  using type = GeoPointsOptionsDeserializer;
+};
+
+void toVelocyPack(VPackBuilder& builder, GeoOptions const& opts) {
   VPackObjectBuilder root(&builder);
   builder.add(MAX_CELLS_PARAM, VPackValue(opts.maxCells));
   builder.add(MIN_LEVEL_PARAM, VPackValue(opts.minLevel));
   builder.add(MAX_LEVEL_PARAM, VPackValue(opts.maxLevel));
-  builder.add(POINTS_ONLY_PARAM, VPackValue(opts.pointsOnly));
-  builder.add(OPTIMIZE_FOR_SPACE_PARAM, VPackValue(opts.optimizeForSpace));
 }
 
-bool fromVelocyPack(irs::string_ref const& args, GeoAnalyzer::Options& out) {
+void toVelocyPack(VPackBuilder& builder, GeoJSONAnalyzer::Options const& opts) {
+  VPackObjectBuilder root(&builder);
+  switch (opts.type) {
+    case GeoJSONAnalyzer::Type::SHAPE:
+      builder.add(TYPE_PARAM, VPackValue(GEOJSON_SHAPE_TYPE));
+      break;
+    case GeoJSONAnalyzer::Type::CENTROID:
+      builder.add(TYPE_PARAM, VPackValue(GEOJSON_CENTROID_TYPE));
+      break;
+    case GeoJSONAnalyzer::Type::POINT:
+      builder.add(TYPE_PARAM, VPackValue(GEOJSON_POINT_TYPE));
+      break;
+  }
+  builder.add(VPackValue(OPTIONS_PARAM));
+  toVelocyPack(builder, opts.options);
+}
+
+void toVelocyPack(VPackBuilder& builder, GeoPointAnalyzer::Options const& opts) {
+  VPackObjectBuilder root(&builder);
+  builder.add(LATITUDE_PARAM, VPackValue(opts.latitude));
+  builder.add(LONGITUDE_PARAM, VPackValue(opts.longitude));
+  builder.add(VPackValue(OPTIONS_PARAM));
+  toVelocyPack(builder, opts.options);
+}
+
+template<typename Analyzer>
+bool fromVelocyPack(irs::string_ref const& args, typename Analyzer::Options& out) {
   auto const slice = arangodb::iresearch::slice(args);
 
-  auto const res = deserialize<OptionsDeserializer>(slice);
+  auto const res = deserialize<typename Deserializer<Analyzer>::type>(slice);
 
   if (!res.ok()) {
     LOG_TOPIC("4349c", WARN, arangodb::iresearch::TOPIC) <<
-      "Failed to deserialize options from JSON while constructing geo_analyzer, error: '" <<
-      res.error().message << "'";
+      "Failed to deserialize options from JSON while constructing '"
+        << irs::type<Analyzer>::name() << "' analyzer, error: '"
+        << res.error().message << "'";
     return false;
   }
 
@@ -82,23 +141,28 @@ bool fromVelocyPack(irs::string_ref const& args, GeoAnalyzer::Options& out) {
 }
 
 S2RegionTermIndexer::Options S2Options(
-    GeoAnalyzer::Options const& opts) {
+    GeoOptions const& opts) {
   S2RegionTermIndexer::Options s2opts;
   s2opts.set_max_cells(opts.maxCells);
   s2opts.set_min_level(opts.minLevel);
   s2opts.set_max_level(opts.maxLevel);
-  s2opts.set_index_contains_points_only(opts.pointsOnly);
-  s2opts.set_optimize_for_space(opts.optimizeForSpace);
 
   return s2opts;
 }
 
-geo::ShapeContainer shape(VPackSlice slice) {
-  geo::ShapeContainer shape;
-
+bool parseShape(VPackSlice slice, geo::ShapeContainer& shape, bool onlyPoint) {
   Result res;
   if (slice.isObject()) {
-    res = geo::geojson::parseRegion(slice, shape);
+    if (onlyPoint) {
+      S2LatLng ll;
+      res = geo::geojson::parsePoint(slice, ll);
+
+      if (res.ok()) {
+        shape.resetCoordinates(ll);
+      }
+    } else {
+      res = geo::geojson::parseRegion(slice, shape);
+    }
   } else if (slice.isArray()) {
     if (slice.isArray() && slice.length() >= 2) {
       res = shape.parseCoordinates(slice, /*geoJson*/ true);
@@ -108,7 +172,7 @@ geo::ShapeContainer shape(VPackSlice slice) {
       << "Geo JSON or array of coordinates expected, got '"
       << slice.typeName() << "'";
 
-    return {};
+    return false;
   }
 
   if (res.fail()) {
@@ -116,22 +180,40 @@ geo::ShapeContainer shape(VPackSlice slice) {
       << "Failed to parse value as GEO JSON or array of coordinates, error '"
       << res.errorMessage() << "'";
 
-    return {};
+    return false;
   }
 
-  return shape;
+  return true;
 }
 
+bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2Point& out) {
+  if (!latSlice.isNumber() || !lngSlice.isNumber()) {
+    return false;
+  }
+
+  double_t lat, lng;
+  try {
+    lat = latSlice.getNumber<double_t>();
+    lng = lngSlice.getNumber<double_t>();
+  } catch (...) {
+    return false;
+  }
+
+  auto const latlng = S2LatLng::FromDegrees(lat, lng);
+
+  if (latlng.is_valid()) {
+    return false;
+  }
+
+  out = latlng.ToPoint();
+  return true;
 }
 
-namespace arangodb {
-namespace iresearch {
+template<typename Analyzer>
+bool normalize(const irs::string_ref& args,  std::string& out) {
+  typename Analyzer::Options opts;
 
-/*static*/ bool GeoAnalyzer::normalize(
-    const irs::string_ref& args,  std::string& out) {
-  Options opts;
-
-  if (!fromVelocyPack(args, opts)) {
+  if (!fromVelocyPack<Analyzer>(args, opts)) {
     return false;
   }
 
@@ -143,27 +225,34 @@ namespace iresearch {
   return true;
 }
 
-/*static*/ irs::analysis::analyzer::ptr GeoAnalyzer::make(
+template<typename Analyzer>
+irs::analysis::analyzer::ptr make(
     irs::string_ref const& args) {
-  Options opts;
+  typename Analyzer::Options opts;
 
-  if (!fromVelocyPack(args, opts)) {
+  if (!fromVelocyPack<Analyzer>(args, opts)) {
     return nullptr;
   }
 
-  return std::make_shared<GeoAnalyzer>(opts, irs::string_ref::EMPTY);
+  return std::make_shared<Analyzer>(opts);
 }
 
-GeoAnalyzer::GeoAnalyzer(const Options& opts,
-                         const irs::string_ref& prefix)
+}
+
+namespace arangodb {
+namespace iresearch {
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                      GeoAnalyzer
+// ----------------------------------------------------------------------------
+
+GeoAnalyzer::GeoAnalyzer(const irs::type_info& type)
   : attributes{{
       { irs::type<irs::increment>::id(), &_inc       },
       { irs::type<irs::offset>::id(), &_offset       },
       { irs::type<irs::term_attribute>::id(), &_term }},
-      irs::type<GeoAnalyzer>::get()
-    },
-    _indexer(S2Options(opts)),
-    _prefix(prefix) {
+      type
+    } {
 }
 
 bool GeoAnalyzer::next() noexcept {
@@ -180,48 +269,101 @@ bool GeoAnalyzer::next() noexcept {
   return true;
 }
 
+void GeoAnalyzer::reset(std::vector<std::string>&& terms) noexcept {
+  _terms = std::move(terms);
+  _begin = _terms.data();
+  _end = _begin + _terms.size();
+}
 
-bool GeoAnalyzer::reset(irs::string_ref const& value) {
-  geo::ShapeContainer const shape = ::shape(iresearch::slice(value));
+// ----------------------------------------------------------------------------
+// --SECTION--                                                  GeoJSONAnalyzer
+// ----------------------------------------------------------------------------
 
-  if (shape.empty()) {
+/*static*/ bool GeoJSONAnalyzer::normalize(
+    const irs::string_ref& args, std::string& out) {
+  return ::normalize<GeoJSONAnalyzer>(args, out);
+}
+
+/*static*/ irs::analysis::analyzer::ptr GeoJSONAnalyzer::make(
+    irs::string_ref const& args) {
+  return ::make<GeoJSONAnalyzer>(args);
+}
+
+GeoJSONAnalyzer::GeoJSONAnalyzer(Options const& opts)
+  : GeoAnalyzer(irs::type<GeoJSONAnalyzer>::get()),
+    _indexer(S2Options(opts.options)),
+    _type(opts.type) {
+}
+
+bool GeoJSONAnalyzer::reset(const irs::string_ref& value) {
+  auto const slice = iresearch::slice(value);
+
+  if (!::parseShape(slice, _shape, _type == Type::POINT)) {
     return false;
   }
 
-  auto const* region = shape.region();
-  TRI_ASSERT(region);
+  TRI_ASSERT(!_shape.empty());
 
-  if (arangodb::geo::ShapeContainer::Type::S2_POINT == shape.type()) {
-    _terms = _indexer.GetIndexTerms(static_cast<S2PointRegion const*>(region)->point(), _prefix);
+  if (_type == Type::CENTROID) {
+    GeoAnalyzer::reset(_indexer.GetIndexTerms(_shape.centroid(), {}));
   } else {
-    _terms = _indexer.GetIndexTerms(*region, _prefix);
-  }
+    auto const* region = _shape.region();
+    TRI_ASSERT(region);
 
-  _begin = _terms.data();
-  _end = _begin + _terms.size();
+    if (arangodb::geo::ShapeContainer::Type::S2_POINT == _shape.type()) {
+      GeoAnalyzer::reset(_indexer.GetIndexTerms(static_cast<S2PointRegion const*>(region)->point(), {}));
+    } else {
+      GeoAnalyzer::reset(_indexer.GetIndexTerms(*region, {}));
+    }
+  }
 
   return true;
 }
 
-bool GeoAnalyzer::reset_for_querying(irs::string_ref const& value) {
-  geo::ShapeContainer const shape = ::shape(iresearch::slice(value));
+// ----------------------------------------------------------------------------
+// --SECTION--                                                 GeoPointAnalyzer
+// ----------------------------------------------------------------------------
 
-  if (shape.empty()) {
+/*static*/ bool GeoPointAnalyzer::normalize(
+    const irs::string_ref& args, std::string& out) {
+  return ::normalize<GeoPointAnalyzer>(args, out);
+}
+
+/*static*/ irs::analysis::analyzer::ptr GeoPointAnalyzer::make(
+    irs::string_ref const& args) {
+  return ::make<GeoPointAnalyzer>(args);
+}
+
+GeoPointAnalyzer::GeoPointAnalyzer(Options const& opts)
+  : GeoAnalyzer(irs::type<GeoPointAnalyzer>::get()),
+    _indexer(S2Options(opts.options)),
+    _latitude(opts.latitude),
+    _longitude(opts.longitude),
+    _fromArray{!_latitude.empty() && !_longitude.empty()} {
+}
+
+bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
+  auto const json = iresearch::slice(value);
+
+  VPackSlice latitude, longitude;
+  S2Point point;
+  if (_fromArray) {
+    if (!json.isArray() || json.length() < 2) {
+      return false;
+    }
+
+    latitude = json.at(0);
+    longitude = json.at(1);
+  } else {
+    latitude = json.get(_latitude);
+    longitude = json.get(_longitude);
+  }
+
+  if (!::parsePoint(latitude, longitude, point)) {
     return false;
   }
 
-  auto const* region = shape.region();
-  TRI_ASSERT(region);
-
-  if (arangodb::geo::ShapeContainer::Type::S2_POINT == shape.type()) {
-    _terms = _indexer.GetQueryTerms(static_cast<S2PointRegion const*>(region)->point(), _prefix);
-  } else {
-    _terms = _indexer.GetQueryTerms(*region, _prefix);
-  }
-
-  _begin = _terms.data();
-  _end = _begin + _terms.size();
-
+  GeoAnalyzer::reset(_indexer.GetIndexTerms(point, {}));
   return true;
 }
 

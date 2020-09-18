@@ -168,7 +168,7 @@ Result parseRegion(VPackSlice const& vpack, ShapeContainer& region) {
         S2LatLng ll;
         Result res = parsePoint(vpack, ll);
         if (res.ok()) {
-          region.reset(new S2PointRegion(ll.ToPoint()), ShapeContainer::Type::S2_POINT);
+          region.resetCoordinates(ll);
         }
         return res;
       }

@@ -98,7 +98,8 @@ static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
 static std::string const FEATURE_NAME("ArangoSearchAnalyzer");
 
 REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
-REGISTER_ANALYZER_VPACK(GeoAnalyzer, GeoAnalyzer::make, GeoAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(GeoJSONAnalyzer, GeoJSONAnalyzer::make, GeoJSONAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(GeoPointAnalyzer, GeoPointAnalyzer::make, GeoPointAnalyzer::normalize);
 
 bool normalize(std::string& out,
                irs::string_ref const& type,
@@ -527,7 +528,7 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* /*expressionContext*/,
           value = arangodb::iresearch::getStringRef(current);
         }
 
-        if (pool->scope() != scope || !analyzer->reset_for_querying(value)) {
+        if (pool->scope() != scope || !analyzer->reset(value)) {
           auto const message = "failure to reset arangosearch analyzer: ' "s +
             static_cast<std::string>(name) +
             "' while computing result for function 'TOKENS'";
@@ -1065,7 +1066,8 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
 }
 
 arangodb::iresearch::AnalyzerScope getAnalyzerScope(irs::type_info::type_id type) noexcept {
-  if (type == irs::type<GeoAnalyzer>::id()) {
+  if (type == irs::type<GeoJSONAnalyzer>::id() ||
+      type == irs::type<GeoPointAnalyzer>::id()) {
     return arangodb::iresearch::AnalyzerScope::COMPLEX_TYPE;
   }
 
