@@ -173,13 +173,15 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     struct Pack {
       DestinationId dest;
       futures::Promise<network::Response> promise;
-      std::unique_ptr<fuerte::Response> tmp;
+      std::unique_ptr<fuerte::Response> tmp_res;
       std::unique_ptr<fuerte::Request> tmp_req;
+      fuerte::Error tmp_err;
       bool skipScheduler;
       Pack(DestinationId&& dest, bool skip)
-        : dest(std::move(dest)), promise(), skipScheduler(skip) {}
+        : dest(std::move(dest)),  skipScheduler(skip) {}
     };
 
+    
     // fits in SSO of std::function
     static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
     auto conn = pool->leaseConnection(spec.endpoint);
@@ -188,24 +190,27 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     FutureRes f = p->promise.getFuture();
     conn->sendRequest(
       std::move(req),
-      [p(std::move(p))](fuerte::Error err, std::unique_ptr<fuerte::Request> req,
-                        std::unique_ptr<fuerte::Response> res) {
+      [p(std::move(p))](fuerte::Error err,
+                        std::unique_ptr<fuerte::Request> req,
+                        std::unique_ptr<fuerte::Response> res) mutable {
         Scheduler* sch = SchedulerFeature::SCHEDULER;
         if (p->skipScheduler || sch == nullptr) {
           p->promise.setValue(network::Response{std::move(p->dest), err, std::move(res), std::move(req)});
           return;
         }
 
-        p->tmp = std::move(res);
+        p->tmp_err = err;
+        p->tmp_res = std::move(res);
         p->tmp_req = std::move(req);
 
         bool queued = sch->queue(
           RequestLane::CLUSTER_INTERNAL,
-          [p, err]() {
-            p->promise.setValue(Response{std::move(p->dest), err, std::move(p->tmp), std::move(p->tmp_req)});
+          [p]() mutable {
+            p->promise.setValue(Response{std::move(p->dest), p->tmp_err,
+                                         std::move(p->tmp_res), std::move(p->tmp_req)});
           });
         if (ADB_UNLIKELY(!queued)) {
-          p->promise.setValue(Response{std::move(p->dest), fuerte::Error::ConnectionCanceled, nullptr, std::move(p->tmp_req)});
+          p->promise.setValue(Response{std::move(p->dest), fuerte::Error::QueueCapacityExceeded, nullptr, std::move(p->tmp_req)});
         }
       });
     return f;
@@ -232,9 +237,6 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         _options(options),
         _pool(pool),
         _type(type),
-        _workItem(nullptr),
-        _response(nullptr),
-        _promise(),
         _startTime(std::chrono::steady_clock::now()),
         _endTime(_startTime + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
                                   options.timeout)) {}
@@ -242,21 +244,24 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   ~RequestsState() = default;
 
  private:
-  velocypack::Buffer<uint8_t> _payload;
-  DestinationId _destination;
-  std::string _path;
-  Headers _headers;
+  velocypack::Buffer<uint8_t> const _payload;
+  DestinationId const _destination;
+  std::string const _path;
+  Headers const _headers;
   RequestOptions const _options;
   ConnectionPool* _pool;
-  RestVerb _type;
+  RestVerb const _type;
 
   std::shared_ptr<arangodb::Scheduler::WorkItem> _workItem;
-  std::unique_ptr<fuerte::Response> _response;   /// temporary response
-  std::unique_ptr<fuerte::Request> _request;
+  std::unique_ptr<fuerte::Response> _tmp_res;   /// temporary response
+  std::unique_ptr<fuerte::Request> _tmp_req;
+  
   futures::Promise<network::Response> _promise;  /// promise called
 
   std::chrono::steady_clock::time_point const _startTime;
   std::chrono::steady_clock::time_point const _endTime;
+  
+  fuerte::Error _tmp_err;
 
  public:
   FutureRes future() { return _promise.getFuture(); }
@@ -267,13 +272,13 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     if (ADB_UNLIKELY(!_pool)) {
       LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION)
           << "connection pool unavailable";
-      callResponse(Error::ConnectionCanceled, nullptr, std::move(_request));
+      callResponse(Error::ConnectionCanceled, nullptr, nullptr);
       return;
     }
 
     auto now = std::chrono::steady_clock::now();
     if (now > _endTime || _pool->config().clusterInfo->server().isStopping()) {
-      callResponse(Error::RequestTimeout, nullptr, std::move(_request));
+      callResponse(Error::RequestTimeout, nullptr, nullptr);
       return;  // we are done
     }
 
@@ -283,7 +288,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       // We fake a successful request with statusCode 503 and a backend not available
       // error here:
       auto resp = buildResponse(fuerte::StatusServiceUnavailable, Result{res});
-      callResponse(Error::NoError, std::move(resp), std::move(_request));
+      callResponse(Error::NoError, nullptr, nullptr);
       return;
     }
     
@@ -311,7 +316,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     switch (err) {
       case fuerte::Error::NoError: {
         TRI_ASSERT(res);
-        if (checkResponse(err, req, res)) {
+        if (checkResponse(req, res)) {
           break;
         }
         [[fallthrough]];
@@ -349,7 +354,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         }
 
         if (found || (now + tryAgainAfter) >= _endTime) { // cancel out
-          callResponse(err, std::move(res), std::move(req));
+          callResponse(err, std::move(req), std::move(res));
         } else {
           retryLater(tryAgainAfter);
         }
@@ -357,20 +362,19 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       }
 
       default:  // a "proper error" which has to be returned to the client
-        callResponse(err, std::move(res), std::move(req));
+        callResponse(err, std::move(req), std::move(res));
         break;
     }
   }
 
-  bool checkResponse(fuerte::Error err,
-                     std::unique_ptr<fuerte::Request>& req,
+  bool checkResponse(std::unique_ptr<fuerte::Request>& req,
                      std::unique_ptr<fuerte::Response>& res) {
     switch (res->statusCode()) {
       case fuerte::StatusOK:
       case fuerte::StatusCreated:
       case fuerte::StatusAccepted:
       case fuerte::StatusNoContent:
-        callResponse(Error::NoError, std::move(res), std::move(req));
+        callResponse(Error::NoError, std::move(req), std::move(res));
         return true; // done
 
       case fuerte::StatusServiceUnavailable:
@@ -383,13 +387,15 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         }
         [[fallthrough]];
       default:  // a "proper error" which has to be returned to the client
-        callResponse(err, std::move(res), std::move(req));
+        callResponse(Error::NoError, std::move(req), std::move(res));
         return true; // done
     }
   }
 
   /// @brief schedule calling the response promise
-  void callResponse(Error err, std::unique_ptr<fuerte::Response> res, std::unique_ptr<fuerte::Request> req) {
+  void callResponse(Error err,
+                    std::unique_ptr<fuerte::Request> req,
+                    std::unique_ptr<fuerte::Response> res) {
 
     LOG_TOPIC_IF("2713e", DEBUG, Logger::COMMUNICATION, err != fuerte::Error::NoError)
         << "error on request to '" << _destination
@@ -401,17 +407,19 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       _promise.setValue(Response{std::move(_destination), err, std::move(res), std::move(req)});
       return;
     }
-
-    _response = std::move(res);
-    _request = std::move(req);
+    
+    _tmp_err = err;
+    _tmp_req = std::move(req);
+    _tmp_res = std::move(res);
     bool queued =
-        sch->queue(RequestLane::CLUSTER_INTERNAL, [self = shared_from_this(), err]() {
-          self->_promise.setValue(Response{std::move(self->_destination), err,
-                                           std::move(self->_response),
-                                           std::move(self->_request)});
+        sch->queue(RequestLane::CLUSTER_INTERNAL, [self = shared_from_this()]() {
+          self->_promise.setValue(Response{std::move(self->_destination),
+                                           self->_tmp_err,
+                                           std::move(self->_tmp_res),
+                                           std::move(self->_tmp_req)});
         });
     if (ADB_UNLIKELY(!queued)) {
-      _promise.setValue(Response{std::move(_destination), fuerte::Error::QueueCapacityExceeded, nullptr, std::move(_request)});
+      _promise.setValue(Response{std::move(_destination), fuerte::Error::QueueCapacityExceeded, nullptr, std::move(_tmp_req)});
     }
   }
 
@@ -423,7 +431,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
     auto* sch = SchedulerFeature::SCHEDULER;
     if (ADB_UNLIKELY(sch == nullptr)) {
-      _promise.setValue(Response{std::move(_destination), fuerte::Error::ConnectionCanceled, nullptr, std::move(_request)});
+      _promise.setValue(Response{std::move(_destination), fuerte::Error::ConnectionCanceled, nullptr, nullptr});
       return;
     }
 
@@ -432,14 +440,14 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         sch->queueDelay(RequestLane::CLUSTER_INTERNAL, tryAgainAfter,
                         [self = shared_from_this()](bool canceled) {
           if (canceled) {
-            self->_promise.setValue(Response{std::move(self->_destination), Error::ConnectionCanceled, nullptr, std::move(self->_request)});
+            self->_promise.setValue(Response{std::move(self->_destination), Error::ConnectionCanceled, nullptr, nullptr});
           } else {
             self->startRequest();
           }
         });
     if (ADB_UNLIKELY(!queued)) {
       // scheduler queue is full, cannot requeue
-      _promise.setValue(Response{std::move(_destination), Error::QueueCapacityExceeded, nullptr, std::move(_request)});
+      _promise.setValue(Response{std::move(_destination), Error::QueueCapacityExceeded, nullptr, nullptr});
     }
   }
 };
