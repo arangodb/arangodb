@@ -133,6 +133,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
                                std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
   typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
   FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
+  OperationOptions options(ExecContext::current());
 
   std::vector<CollectionCreationInfo> systemCollectionsToCreate;
   // the order of systemCollections is important. If we're in _system db, the
@@ -155,8 +156,9 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
     
     if (colToDistributeShardsLike == nullptr) {
       // otherwise, we will use UsersCollection for distributeShardsLike
-      res = methods::Collections::createSystem(vocbase, StaticStrings::UsersCollection,
-                                               /*isNewDatabase*/ true, colToDistributeShardsLike);
+      res = methods::Collections::createSystem(vocbase, options, StaticStrings::UsersCollection,
+                                               /*isNewDatabase*/ true,
+                                               colToDistributeShardsLike);
       if (!res.ok()) {
         return res;
       }
@@ -172,8 +174,9 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   } else {
     // we will use GraphsCollection for distributeShardsLike
     // this is equal to older versions
-    res = methods::Collections::createSystem(vocbase, StaticStrings::GraphsCollection,
-                                           /*isNewDatabase*/ true, colToDistributeShardsLike);
+    res = methods::Collections::createSystem(vocbase, options, StaticStrings::GraphsCollection,
+                                             /*isNewDatabase*/ true,
+                                             colToDistributeShardsLike);
     if (!res.ok()) {
       return res;
     }
@@ -210,8 +213,9 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
     }
 
     std::vector<std::shared_ptr<LogicalCollection>> cols;
-    auto res = methods::Collections::create(vocbase, testSystemCollectionsToCreate, true, true, true,
-                                            colToDistributeShardsLike, cols);
+    auto res = methods::Collections::create(vocbase, options,
+                                            testSystemCollectionsToCreate, true, true,
+                                            true, colToDistributeShardsLike, cols);
     // capture created collection vector
     createdCollections.insert(std::end(createdCollections), std::begin(cols), std::end(cols));
   }
@@ -240,10 +244,9 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   // to use it to create indices later.
   if (systemCollectionsToCreate.size() > 0) {
     std::vector<std::shared_ptr<LogicalCollection>> cols;
-    
-    res = methods::Collections::create(vocbase, systemCollectionsToCreate,
-                                       true, true, true,
-                                       colToDistributeShardsLike, cols);
+
+    res = methods::Collections::create(vocbase, options, systemCollectionsToCreate, true,
+                                       true, true, colToDistributeShardsLike, cols);
     if (res.fail()) {
       return res;
     }
@@ -296,8 +299,9 @@ Result createSystemStatisticsCollections(TRI_vocbase_t& vocbase,
     // to use it to create indices later.
     if (systemCollectionsToCreate.size() > 0) {
       std::vector<std::shared_ptr<LogicalCollection>> cols;
-      res = methods::Collections::create(
-          vocbase, systemCollectionsToCreate, true, false, false, nullptr, cols);
+      OperationOptions options(ExecContext::current());
+      res = methods::Collections::create(vocbase, options, systemCollectionsToCreate,
+                                         true, false, false, nullptr, cols);
       if (res.fail()) {
         return res;
       }

@@ -34,7 +34,8 @@ void Authenticated(GeneralRequest const&, rest::AuthenticationMethod) {}
 void NotAuthorized(GeneralRequest const&) {}
 void CreateCollection(std::string const& db, std::string const& name, int result) {}
 void DropCollection(std::string const& db, std::string const& name, int result) {}
-void PropertyUpdateCollection(std::string const& db, std::string const& collectionName, VPackSlice const& propertiesSlice) {}
+void PropertyUpdateCollection(std::string const& db, std::string const& collectionName,
+                              OperationResult const&) {}
 void TruncateCollection(std::string const& db, std::string const& name,
                         OperationResult const& result) {}
 void CreateDatabase(std::string const& name, int result) {}

@@ -53,8 +53,10 @@ class NgramMatchFunctionTest : public ::testing::Test {
     arangodb::tests::init();
 
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::methods::Collections::createSystem(server.getSystemDatabase(), arangodb::tests::AnalyzerCollectionName,
-      false, unused);
+    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::methods::Collections::createSystem(server.getSystemDatabase(), options,
+                                                 arangodb::tests::AnalyzerCollectionName,
+                                                 false, unused);
 
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
