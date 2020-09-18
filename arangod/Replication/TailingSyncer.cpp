@@ -1268,6 +1268,7 @@ retry:
 
     if (res.is(TRI_ERROR_REPLICATION_NO_RESPONSE)) {
       // leader error. try again after a sleep period
+      ++_stats.numFailedConnects;
       connectRetries++;
       {
         WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);

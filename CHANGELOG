@@ -1,6 +1,30 @@
 devel
 -----
 
+* Make the reboot tracker catch failed coordinators, too. Previously the
+  reboot tracker was invoked only when a DB server failed or was restarted, 
+  and when a coordinator was restarted. Now it will also act if a coordinator
+  just fails (without restart).
+
+* Added scheduler thread creation/destruction metrics:
+
+  - `arangodb_scheduler_threads_started`: Number of scheduler threads started
+  - `arangodb_scheduler_threads_stopped`: Number of scheduler threads stopped
+
+* Added replication metrics `arangodb_replication_initial_sync_bytes_received`
+  for the number of bytes received during replication initial sync operations
+  and `arangodb_replication_tailing_bytes_received` for the number of bytes
+  received for replication tailing requests.
+  Also added `arangodb_replication_failed_connects` to track the number of
+  connection failures or non-OK response during replication.
+
+* Added metrics `rocksdb_free_inodes` and `rocksdb_total_inodes` to track the
+  number of free inodes and the total/maximum number of inodes for the file
+  system the RocksDB database directory is located in. These metrics will 
+  always be 0 on Windows.
+
+* Fixed inifinite reload of the login window after logout of an LDAP user.
+
 * Added startup option `--query.max-runtime` to limit the maximum runtime of
   all AQL queries to a specified threshold value (in seconds). By default,
   the threshold is 0, meaning that the runtime of AQL queries is not limited.
