@@ -48,7 +48,7 @@ class GeneralConnection : public fuerte::Connection {
 
   virtual ~GeneralConnection() noexcept {
     _state.store(Connection::State::Closed);
-    terminateActivity(fuerte::Error::ConnectionClosed);
+    terminateActivity(fuerte::Error::ConnectionCanceled);
   }
 
   /// @brief connection state

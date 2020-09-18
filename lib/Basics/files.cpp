@@ -2624,9 +2624,9 @@ bool TRI_PathIsAbsolute(std::string const& path) {
 }
 
 /// @brief return the amount of total and free disk space for the given path
-arangodb::Result TRI_GetDiskSpace(std::string const& path, 
-                                  uint64_t& totalSpace, 
-                                  uint64_t& freeSpace) {
+arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path, 
+                                      uint64_t& totalSpace, 
+                                      uint64_t& freeSpace) {
 #if _WIN32
   ULARGE_INTEGER freeBytesAvailableToCaller;
   ULARGE_INTEGER totalNumberOfBytes;
@@ -2646,6 +2646,30 @@ arangodb::Result TRI_GetDiskSpace(std::string const& path,
   }
   totalSpace = static_cast<uint64_t>(stat.f_frsize) * static_cast<uint64_t>(stat.f_blocks);
   freeSpace = static_cast<uint64_t>(stat.f_frsize) * static_cast<uint64_t>(stat.f_bfree);
+#endif
+  return {};
+}
+
+/// @brief return the amount of total and free inodes for the given path.
+/// always returns 0 on Windows
+arangodb::Result TRI_GetINodesInfo(std::string const& path, 
+                                   uint64_t& totalINodes, 
+                                   uint64_t& freeINodes) {
+#if _WIN32
+  // hard-coded to always return 0
+  totalINodes = 0;
+  freeINodes = 0;
+#else
+  struct statvfs stat;
+
+  if (statvfs(path.c_str(), &stat) == -1) {
+    TRI_SYSTEM_ERROR();
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    return {TRI_errno(), TRI_last_error()};
+  }
+  LOG_DEVEL << "INODES: " << stat.f_files;
+  totalINodes = static_cast<uint64_t>(stat.f_files);
+  freeINodes = static_cast<uint64_t>(stat.f_ffree);
 #endif
   return {};
 }

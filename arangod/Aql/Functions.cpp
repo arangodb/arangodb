@@ -7136,7 +7136,8 @@ AqlValue Functions::CollectionCount(ExpressionContext*, transaction::Methods* tr
 
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
   std::string const collectionName = element.slice().copyString();
-  OperationResult res = trx->count(collectionName, transaction::CountType::Normal);
+  OperationOptions options(ExecContext::current());
+  OperationResult res = trx->count(collectionName, transaction::CountType::Normal, options);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result);
   }

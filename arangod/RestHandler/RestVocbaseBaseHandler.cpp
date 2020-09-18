@@ -498,8 +498,8 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
       } else {
         // This case happens if we call this method directly with a dummy
         // OperationResult:
-        
-        OperationResult tmp(result.result);
+
+        OperationResult tmp(result.result, result.options);
         tmp.buffer = std::make_shared<VPackBufferUInt8>();
         VPackBuilder builder(tmp.buffer);
         builder.openObject();
