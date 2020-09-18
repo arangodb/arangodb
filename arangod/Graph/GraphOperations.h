@@ -200,8 +200,8 @@ class GraphOperations {
   OperationResult createDocument(transaction::Methods* trx, const std::string& collectionName,
                                  VPackSlice document, bool waitForSync, bool returnNew);
 
-  OperationResult checkEdgeCollectionAvailability(std::string const& edgeCollectionName);
-  OperationResult checkVertexCollectionAvailability(std::string const& vertexCollectionName);
+  Result checkEdgeCollectionAvailability(std::string const& edgeCollectionName);
+  Result checkVertexCollectionAvailability(std::string const& vertexCollectionName);
 
   bool hasROPermissionsFor(std::string const& collection) const;
   bool hasRWPermissionsFor(std::string const& collection) const;
