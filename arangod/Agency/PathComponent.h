@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -52,10 +53,14 @@ class Path {
     return stream;
   }
 
-  std::vector<std::string> vec() const {
+  std::vector<std::string> vec(size_t skip = 0) const {
     std::vector<std::string> res;
-    forEach([&res](const char* component) {
-      res.emplace_back(std::string{component});
+    forEach([&res, &skip](const char* component) {
+      if (skip == 0) {
+        res.emplace_back(std::string{component});
+      } else {
+        skip--;
+      }
     });
     return res;
   }

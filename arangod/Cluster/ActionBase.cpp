@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -223,15 +223,6 @@ VPackBuilder ActionBase::toVelocyPack() const {
 ActionState ActionBase::getState() const { return _state; }
 
 void ActionBase::setState(ActionState state) { _state = state; }
-
-/**
- * kill() operation is an expected future feature.  Not supported in the
- *  original ActionBase derivatives
- */
-arangodb::Result ActionBase::kill(Signal const& signal) {
-  return actionError(TRI_ERROR_ACTION_OPERATION_UNABORTABLE,
-                     "Kill operation not supported on this action.");
-}
 
 /**
  * progress() operation is an expected future feature.  Not supported in the

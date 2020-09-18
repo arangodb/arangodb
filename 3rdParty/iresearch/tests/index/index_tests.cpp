@@ -33,7 +33,7 @@
 #include "utils/delta_compression.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/wildcard_utils.hpp"
-#include "utils/fst_table_matcher.hpp"
+#include "utils/fstext/fst_table_matcher.hpp"
 
 NS_BEGIN(tests)
 

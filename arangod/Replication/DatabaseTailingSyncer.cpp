@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,11 +26,13 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
+#include "Replication/ReplicationMetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -60,9 +62,8 @@ arangodb::velocypack::StringRef const cuidRef("cuid");
 DatabaseTailingSyncer::DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
                                              ReplicationApplierConfiguration const& configuration,
                                              TRI_voc_tick_t initialTick,
-                                             bool useTick, TRI_voc_tick_t barrierId)
-    : TailingSyncer(vocbase.replicationApplier(), configuration, initialTick,
-                    useTick, barrierId),
+                                             bool useTick)
+    : TailingSyncer(vocbase.replicationApplier(), configuration, initialTick, useTick),
       _vocbase(&vocbase),
       _queriedTranslations(false) {
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
@@ -90,8 +91,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
   didTimeout = false;
 
   setAborted(false);
-  // fetch master state just once
-  Result r = _state.master.getState(_state.connection, _state.isChildSyncer);
+  // fetch leader state just once
+  Result r = _state.leader.getState(_state.connection, _state.isChildSyncer);
   if (r.fail()) {
     return r;
   }
@@ -128,10 +129,14 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
                             "&collection=" + StringUtils::urlEncode(collectionName);
 
     // send request
+    double start = TRI_microtime();
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      ++_stats.numTailingRequests;
       response.reset(client->request(rest::RequestType::GET, url, nullptr, 0));
     });
+
+    _stats.waitedForTailing += TRI_microtime() - start;
 
     if (replutils::hasFailed(response.get())) {
       until = fromTick;
@@ -142,6 +147,10 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
       // HTTP 204 No content: this means we are done
       until = fromTick;
       return Result();
+    }
+  
+    if (response->hasContentLength()) {
+      _stats.numTailingBytesReceived += response->getContentLength();
     }
 
     bool found;
@@ -161,8 +170,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     if (!found) {
       until = fromTick;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from master at ") +
-                        _state.master.endpoint + ": required header " +
+                    std::string("got invalid response from leader at ") +
+                        _state.leader.endpoint + ": required header " +
                         StaticStrings::ReplicationHeaderLastIncluded +
                         " is missing");
     }
@@ -177,13 +186,14 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     if (!fromIncluded && fromTick > 0) {
       until = fromTick;
       abortOngoingTransactions();
+      ++_stats.numFollowTickNotPresent;
       return Result(
           TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
           std::string("required follow tick value '") + StringUtils::itoa(lastIncludedTick) +
-              "' is not present (anymore?) on master at " + _state.master.endpoint +
-              ". Last tick available on master is '" + StringUtils::itoa(lastIncludedTick) +
+              "' is not present (anymore?) on leader at " + _state.leader.endpoint +
+              ". Last tick available on leader is '" + StringUtils::itoa(lastIncludedTick) +
               "'. It may be required to do a full resync and increase the "
-              "number of historic logfiles on the master.");
+              "number of historic logfiles on the leader.");
     }
 
     ApplyStats applyStats;
@@ -232,6 +242,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     }
     LOG_TOPIC("2598f", DEBUG, Logger::REPLICATION) << "Fetching more data, fromTick: " << fromTick
                                           << ", lastScannedTick: " << lastScannedTick;
+
+    _stats.publish();
   }
 }
 
@@ -245,14 +257,14 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
     return false;
   }
 
-  if (_state.master.majorVersion < 3 ||
-      (_state.master.majorVersion == 3 && _state.master.minorVersion <= 2)) {
+  if (_state.leader.majorVersion < 3 ||
+      (_state.leader.majorVersion == 3 && _state.leader.minorVersion <= 2)) {
     // globallyUniqueId only exists in 3.3 and higher
     return false;
   }
 
   if (!_queriedTranslations) {
-    // no translations yet... query master inventory to find names of all
+    // no translations yet... query leader inventory to find names of all
     // collections
     try {
       VPackBuilder inventoryResponse;
@@ -262,7 +274,7 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
       _queriedTranslations = true;
       if (res.fail()) {
         LOG_TOPIC("89080", ERR, Logger::REPLICATION)
-            << "got error while fetching master inventory for collection name "
+            << "got error while fetching leader inventory for collection name "
                "translations: "
             << res.errorMessage();
         return false;

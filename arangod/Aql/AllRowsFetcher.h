@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -106,9 +107,6 @@ class AllRowsFetcher {
   // only for ModificationNodes
   ExecutionState upstreamState();
 
-  //@deprecated
-  auto useStack(AqlCallStack const& stack) -> void;
-
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
 
@@ -121,22 +119,6 @@ class AllRowsFetcher {
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
   RegisterCount getNrInputRegisters() const;
-
-  /**
-   * @brief Delegates to ExecutionBlock::fetchBlock()
-   */
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock();
-
-  /**
-   * @brief intermediate function to fetch data from
-   *        upstream and does upstream state checking
-   */
-  ExecutionState fetchData();
-
-  /**
-   * @brief Fetch blocks from upstream until done
-   */
-  ExecutionState fetchUntilDone();
 };
 
 }  // namespace aql

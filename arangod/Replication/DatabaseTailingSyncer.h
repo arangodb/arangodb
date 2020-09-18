@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,7 @@ class DatabaseTailingSyncer final : public TailingSyncer {
  public:
   DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
                         ReplicationApplierConfiguration const& configuration,
-                        TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
+                        TRI_voc_tick_t initialTick, bool useTick);
 
   TRI_vocbase_t* resolveVocbase(velocypack::Slice const&) override {
     return _vocbase;

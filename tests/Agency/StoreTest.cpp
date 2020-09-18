@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test case for CleanOutServer job
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -117,4 +114,48 @@ TEST(StoreTest, store_split) {
   ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("/foo///bar//"));
   
   ASSERT_EQ((std::vector<std::string>{"foo", "bar", "baz"}), Store::split("/foo///bar//baz"));
+}
+
+TEST(StoreTest, store_normalize) {
+  using namespace arangodb::consensus;
+
+  EXPECT_EQ("/", Store::normalize(""));
+  EXPECT_EQ("/", Store::normalize("/"));
+  EXPECT_EQ("/", Store::normalize("//"));
+  EXPECT_EQ("/", Store::normalize("////"));
+  EXPECT_EQ("/a", Store::normalize("a"));
+  EXPECT_EQ("/a", Store::normalize("/a"));
+  EXPECT_EQ("/a", Store::normalize("/a/"));
+  EXPECT_EQ("/a", Store::normalize("//a/"));
+  EXPECT_EQ("/a", Store::normalize("//a//"));
+  EXPECT_EQ("/a/b", Store::normalize("a/b"));
+  EXPECT_EQ("/a/b", Store::normalize("a/b/"));
+  EXPECT_EQ("/a/b", Store::normalize("/a/b"));
+  EXPECT_EQ("/a/b", Store::normalize("//a/b"));
+  EXPECT_EQ("/a/b", Store::normalize("/a//b"));
+  EXPECT_EQ("/a/b", Store::normalize("/a/b/"));
+  EXPECT_EQ("/a/b", Store::normalize("/a/b//"));
+  EXPECT_EQ("/a/b", Store::normalize("//a//b//"));
+  EXPECT_EQ("/a/b/c", Store::normalize("a/b/c"));
+  EXPECT_EQ("/a/b/c", Store::normalize("a/b/c/"));
+  EXPECT_EQ("/a/b/c", Store::normalize("/a/b/c"));
+  EXPECT_EQ("/a/b/c", Store::normalize("a//b/c"));
+  EXPECT_EQ("/a/b/c", Store::normalize("a/b//c"));
+  EXPECT_EQ("/mutter", Store::normalize("mutter"));
+  EXPECT_EQ("/mutter", Store::normalize("/mutter"));
+  EXPECT_EQ("/mutter", Store::normalize("//mutter"));
+  EXPECT_EQ("/mutter", Store::normalize("mutter/"));
+  EXPECT_EQ("/mutter", Store::normalize("mutter//"));
+  EXPECT_EQ("/mutter", Store::normalize("/mutter//"));
+  EXPECT_EQ("/mutter", Store::normalize("//mutter//"));
+  EXPECT_EQ("/der/hund", Store::normalize("der/hund"));
+  EXPECT_EQ("/der/hund", Store::normalize("/der/hund"));
+  EXPECT_EQ("/der/hund", Store::normalize("der/hund/"));
+  EXPECT_EQ("/der/hund", Store::normalize("/der/hund/"));
+  EXPECT_EQ("/der/hund", Store::normalize("der/////hund"));
+  EXPECT_EQ("/der/hund", Store::normalize("der/hund/////"));
+  EXPECT_EQ("/der/hund", Store::normalize("////der/hund"));
+  EXPECT_EQ("/der/hund/der/schwitzt", Store::normalize("der/hund/der/schwitzt"));
+  EXPECT_EQ("/der/hund/der/schwitzt", Store::normalize("der/hund/der/schwitzt/"));
+  EXPECT_EQ("/der/hund/der/schwitzt", Store::normalize("/der/hund/der/schwitzt/"));
 }

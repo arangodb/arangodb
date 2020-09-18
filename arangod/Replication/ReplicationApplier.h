@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -81,10 +81,10 @@ class ReplicationApplier {
   void startReplication();
 
   /// @brief switch to tailing mode, DO NOT USE EXTERNALLY
-  void continueTailing(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
+  void continueTailing(TRI_voc_tick_t initialTick, bool useTick);
 
   /// @brief start the replication applier in tailing
-  void startTailing(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
+  void startTailing(TRI_voc_tick_t initialTick, bool useTick);
 
   /// @brief stop the replication applier, resets the error message
   void stop();
@@ -161,7 +161,7 @@ class ReplicationApplier {
 
   virtual std::shared_ptr<InitialSyncer> buildInitialSyncer() const = 0;
   virtual std::shared_ptr<TailingSyncer> buildTailingSyncer(
-      TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) const = 0;
+      TRI_voc_tick_t initialTick, bool useTick) const = 0;
 
  protected:
   virtual std::string getStateFilename() const = 0;

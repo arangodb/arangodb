@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -85,25 +86,6 @@ MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher(
     DependencyProxy<BlockPassthrough::Disable>& executionBlock)
     : _dependencyProxy(&executionBlock) {}
 
-std::pair<ExecutionState, SharedAqlItemBlockPtr> MultiDependencySingleRowFetcher::fetchBlockForDependency(
-    size_t dependency, size_t atMost) {
-  TRI_ASSERT(!_dependencyInfos.empty());
-  atMost = (std::min)(atMost, ExecutionBlock::DefaultBatchSize);
-  TRI_ASSERT(dependency < _dependencyInfos.size());
-
-  auto& depInfo = _dependencyInfos[dependency];
-  TRI_ASSERT(depInfo._upstreamState != ExecutionState::DONE);
-
-  // There are still some blocks left that ask their parent even after they got
-  // DONE the last time, and I don't currently have time to track them down.
-  // Thus the following assert is commented out.
-  // TRI_ASSERT(_upstreamState != ExecutionState::DONE);
-  auto res = _dependencyProxy->fetchBlockForDependency(dependency, atMost);
-  depInfo._upstreamState = res.first;
-
-  return res;
-}
-
 MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher()
     : _dependencyProxy(nullptr) {}
 
@@ -138,38 +120,12 @@ void MultiDependencySingleRowFetcher::init() {
 
 bool MultiDependencySingleRowFetcher::indexIsValid(
     const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
-  return info._currentBlock != nullptr && info._rowIndex < info._currentBlock->size();
+  return info._currentBlock != nullptr && info._rowIndex < info._currentBlock->numRows();
 }
 
 bool MultiDependencySingleRowFetcher::isDone(
     const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
   return info._upstreamState == ExecutionState::DONE;
-}
-
-bool MultiDependencySingleRowFetcher::fetchBlockIfNecessary(size_t const dependency,
-                                                            size_t const atMost) {
-  MultiDependencySingleRowFetcher::DependencyInfo& depInfo = _dependencyInfos[dependency];
-  if (!indexIsValid(depInfo) && !isDone(depInfo)) {
-    // This returns the AqlItemBlock to the ItemBlockManager before fetching a
-    // new one, so we might reuse it immediately!
-    depInfo._currentBlock = nullptr;
-
-    ExecutionState state;
-    SharedAqlItemBlockPtr newBlock;
-    std::tie(state, newBlock) = fetchBlockForDependency(dependency, atMost);
-    if (state == ExecutionState::WAITING) {
-      return false;
-    }
-
-    depInfo._currentBlock = std::move(newBlock);
-    depInfo._rowIndex = 0;
-  }
-  return true;
-}
-
-//@deprecated
-auto MultiDependencySingleRowFetcher::useStack(AqlCallStack const& stack) -> void {
-  _dependencyProxy->useStack(stack);
 }
 
 auto MultiDependencySingleRowFetcher::executeForDependency(size_t const dependency,

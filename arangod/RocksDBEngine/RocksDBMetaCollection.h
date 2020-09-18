@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -53,8 +54,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   uint64_t tempObjectId() const { return _tempObjectId.load(); }
 
   RocksDBMetadata& meta() { return _meta; }
-  
-  TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override final;
+
+  RevisionId revision(arangodb::transaction::Methods* trx) const override final;
   uint64_t numberDocuments(transaction::Methods* trx) const override final;
   
   int lockWrite(double timeout = 0.0);
@@ -86,8 +87,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   void revisionTreeSummary(VPackBuilder& builder);
 
-  void placeRevisionTreeBlocker(TRI_voc_tid_t transactionId) override;
-  void removeRevisionTreeBlocker(TRI_voc_tid_t transactionId) override;
+  void placeRevisionTreeBlocker(TransactionId transactionId) override;
+  void removeRevisionTreeBlocker(TransactionId transactionId) override;
 
   /**
    * @brief Buffer updates to this collection to be applied when appropriate
@@ -100,8 +101,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
    * @param  inserts  Vector of revisions to insert
    * @param  removals Vector of revisions to remove
    */
-  void bufferUpdates(rocksdb::SequenceNumber seq, std::vector<std::size_t>&& inserts,
-                     std::vector<std::size_t>&& removals);
+  void bufferUpdates(rocksdb::SequenceNumber seq, std::vector<std::uint64_t>&& inserts,
+                     std::vector<std::uint64_t>&& removals);
 
   Result bufferTruncate(rocksdb::SequenceNumber seq);
 
@@ -140,8 +141,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   rocksdb::SequenceNumber _revisionTreeSerializedSeq;
   std::chrono::steady_clock::time_point _revisionTreeSerializedTime;
   mutable std::mutex _revisionTreeLock;
-  std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>> _revisionInsertBuffers;
-  std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>> _revisionRemovalBuffers;
+  std::multimap<rocksdb::SequenceNumber, std::vector<std::uint64_t>> _revisionInsertBuffers;
+  std::multimap<rocksdb::SequenceNumber, std::vector<std::uint64_t>> _revisionRemovalBuffers;
   std::set<rocksdb::SequenceNumber> _revisionTruncateBuffer;
   mutable std::mutex _revisionBufferLock;
 };

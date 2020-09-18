@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -72,24 +72,16 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
       _stringBuffer(),
       _strings{_strArena},
       _options(arangodb::velocypack::Options::Defaults),
-      _dumpOptions(arangodb::velocypack::Options::Defaults),
-      _transaction{0, false},
-      _ownsResolver(false) {
-  /// dump options contain have the escapeUnicode attribute set to true
-  /// this allows dumping of string values as plain 7-bit ASCII values.
-  /// for example, the string "möter" will be dumped as "m\u00F6ter".
-  /// this allows faster JSON parsing in some client implementations,
-  /// which speculate on ASCII strings first and only fall back to slower
-  /// multibyte strings on first actual occurrence of a multibyte character.
-  _dumpOptions.escapeUnicode = true;
-}
+      _transaction{TransactionId::none(), false, false},
+      _ownsResolver(false) {}
 
 /// @brief destroy the context
 transaction::Context::~Context() {
   // unregister the transaction from the logfile manager
-  if (_transaction.id > 0) {
+  if (_transaction.id.isSet()) {
     transaction::ManagerFeature::manager()->unregisterTransaction(_transaction.id,
-                                                                  _transaction.isReadOnlyTransaction);
+                                                                  _transaction.isReadOnlyTransaction,
+                                                                  _transaction.isFollowerTransaction);
   }
 
   // call the actual cleanup routine which frees all
@@ -205,22 +197,6 @@ VPackOptions* transaction::Context::getVPackOptions() {
   return &_options;
 }
 
-/// @brief get velocypack options with a custom type handler for dumping
-VPackOptions* transaction::Context::getVPackOptionsForDump() {
-  if (_customTypeHandler == nullptr) {
-    // this modifies options!
-    orderCustomTypeHandler();
-  }
-
-  /// dump options have the escapeUnicode attribute set to true.
-  /// this allows dumping of string values as plain 7-bit ASCII values.
-  /// for example, the string "möter" will be dumped as "m\u00F6ter".
-  /// this allows faster JSON parsing in some client implementations,
-  /// which speculate on ASCII strings first and only fall back to slower
-  /// multibyte strings on first actual occurrence of a multibyte character.
-  return &_dumpOptions;
-}
-
 /// @brief create a resolver
 CollectionNameResolver const* transaction::Context::createResolver() {
   TRI_ASSERT(_resolver == nullptr);
@@ -239,18 +215,19 @@ std::shared_ptr<TransactionState> transaction::Context::createState(transaction:
 
 /// @brief unregister the transaction
 /// this will save the transaction's id and status locally
-void transaction::Context::storeTransactionResult(TRI_voc_tid_t id,
-                                                  bool wasRegistered,
-                                                  bool isReadOnlyTransaction) noexcept {
-  TRI_ASSERT(_transaction.id == 0);
+void transaction::Context::storeTransactionResult(TransactionId id, bool wasRegistered,
+                                                  bool isReadOnlyTransaction,
+                                                  bool isFollowerTransaction) noexcept {
+  TRI_ASSERT(_transaction.id.empty());
 
   if (wasRegistered) {
     _transaction.id = id;
     _transaction.isReadOnlyTransaction = isReadOnlyTransaction;
+    _transaction.isFollowerTransaction = isFollowerTransaction;
   }
 }
 
-TRI_voc_tid_t transaction::Context::generateId() const {
+TransactionId transaction::Context::generateId() const {
   return Context::makeTransactionId();
 }
 
@@ -260,12 +237,12 @@ std::shared_ptr<transaction::Context> transaction::Context::clone() const {
                                  "transaction::Context::clone() is not implemented");
 }
 
-/*static*/ TRI_voc_tid_t transaction::Context::makeTransactionId() {
+/*static*/ TransactionId transaction::Context::makeTransactionId() {
   auto role = ServerState::instance()->getRole();
   if (ServerState::isCoordinator(role)) {
-    return TRI_NewServerSpecificTickMod4();
+    return TransactionId::createCoordinator();
   } else if (ServerState::isDBServer(role)) {
-    return TRI_NewServerSpecificTickMod4() + 3; // legacy
+    return TransactionId::createLegacy();
   }
-  return TRI_NewTickServer(); // single-server
+  return TransactionId::createSingleServer();
 }

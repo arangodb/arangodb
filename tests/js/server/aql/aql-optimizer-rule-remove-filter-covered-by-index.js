@@ -51,8 +51,6 @@ function optimizerRuleTestSuite() {
   var paramNone = { optimizer: { rules: [ "-all" ] } };
   var paramIndexRangeFilter = { optimizer: { rules: [ "-all", "+" + IndexesRule,  "+" + FilterRemoveRule] } };
   var paramIndexRangeSortFilter = { optimizer: { rules: [ "-all", "+" + IndexesRule,  "+" + FilterRemoveRule, "+" + SortRemoveRule] } };
-  var skiplist;
-  var skiplist2;
 
   var hasNoFilterNode = function (plan) {
     assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, "has a filter node");
@@ -81,37 +79,41 @@ function optimizerRuleTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUpAll : function () {
-      var loopto = 10;
+      const loopTo = 10;
 
       internal.db._drop(colName);
-      skiplist = internal.db._create(colName, { numberOfShards: 2 });
-      var i, j;
-      for (j = 1; j <= loopto; ++j) {
-        for (i = 1; i <= loopto; ++i) {
-          skiplist.save({ "a" : i, "b": j , "c": j, "d": i, "e": i, "joinme" : "aoeu " + j});
+      let collection = internal.db._create(colName, { numberOfShards: 2 });
+      let docs = [];
+      for (let j = 1; j <= loopTo; ++j) {
+        for (let i = 1; i <= loopTo; ++i) {
+          docs.push({ "a" : i, "b": j , "c": j, "d": i, "e": i, "joinme" : "aoeu " + j });
         }
-        skiplist.save(    { "a" : i,          "c": j, "d": i, "e": i, "joinme" : "aoeu " + j});
-        skiplist.save(    {                   "c": j,                 "joinme" : "aoeu " + j});
+        docs.push({ "a" : loopTo, "c": j, "d": loopTo, "e": loopTo, "joinme" : "aoeu " + j });
+        docs.push({ "c": j, "joinme" : "aoeu " + j });
       }
+      collection.insert(docs);
 
-      skiplist.ensureSkiplist("a", "b");
-      skiplist.ensureSkiplist("d");
-      skiplist.ensureSkiplist("z[*]");
-      skiplist.ensureIndex({ type: "hash", fields: [ "c" ], unique: false });
+      collection.ensureIndex({ type: "persistent", fields: ["a", "b"] });
+      collection.ensureIndex({ type: "persistent", fields: ["d"] });
+      collection.ensureIndex({ type: "persistent", fields: ["z[*]"] });
+      collection.ensureIndex({ type: "persistent", fields: [ "c" ], unique: false });
 
       internal.db._drop(colNameOther);
-      skiplist2 = internal.db._create(colNameOther);
-      for (j = 1; j <= loopto; ++j) {
-        for (i = 1; i <= loopto; ++i) {
-          skiplist2.save({ "f" : i, "g": j , "h": j, "i": i, "j": i, "joinme" : "aoeu " + j});
+      collection = internal.db._create(colNameOther);
+      docs = [];
+      for (let j = 1; j <= loopTo; ++j) {
+        for (let i = 1; i <= loopTo; ++i) {
+          docs.push({ "f" : i, "g": j , "h": j, "i": i, "j": i, "joinme" : "aoeu " + j });
         }
-        skiplist2.save(    { "f" : i, "g": j,          "i": i, "j": i, "joinme" : "aoeu " + j});
-        skiplist2.save(    {                   "h": j,                 "joinme" : "aoeu " + j});
+        docs.push({ "f" : loopTo, "g": j, "i": loopTo, "j": loopTo, "joinme" : "aoeu " + j });
+        docs.push({ "h": j, "joinme" : "aoeu " + j });
       }
-      skiplist2.ensureSkiplist("f", "g");
-      skiplist2.ensureSkiplist("i");
-      skiplist2.ensureIndex({ type: "hash", fields: [ "h" ], unique: false });
-      skiplist2.ensureIndex({ type: "hash", fields: [ "x", "y" ], unique: false });
+      collection.insert(docs);
+
+      collection.ensureIndex({ type: "persistent", fields: ["f", "g"] });
+      collection.ensureIndex({ type: "persistent", fields: ["i"] });
+      collection.ensureIndex({ type: "persistent", fields: [ "h" ], unique: false });
+      collection.ensureIndex({ type: "persistent", fields: [ "x", "y" ], unique: false });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,7 +123,6 @@ function optimizerRuleTestSuite() {
     tearDownAll : function () {
       internal.db._drop(colName);
       internal.db._drop(colNameOther);
-      skiplist = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -458,9 +459,7 @@ function optimizerRuleTestSuite() {
     testOptimizeAwayFilter : function() {
       var query = "FOR outer IN [ { id: 123 } ] LET id = outer.id RETURN (FOR inner IN "  + colNameOther + " FILTER inner.x == id && inner.y == null RETURN inner)";
       
-      var result;
-
-      result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
+      var result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
       assertEqual([ FilterRemoveRule, IndexesRule ].sort(), 
         removeAlwaysOnClusterRules(result.plan.rules).sort(), query);
       hasIndexNodeWithRanges(result);
@@ -471,16 +470,33 @@ function optimizerRuleTestSuite() {
         removeAlwaysOnClusterRules(result.plan.rules).sort(), query);
       hasIndexNodeWithRanges(result);
       hasNoFilterNode(result);
+    },
+
+    testOptimizeAwayFilterWhenAliased : function() {
+      let query = "FOR doc IN "  + colNameOther + " LET xAlias = doc.x FILTER xAlias == 3 RETURN doc";
+      let result = AQL_EXPLAIN(query);
+      let rules = removeAlwaysOnClusterRules(result.plan.rules);
+      assertNotEqual(-1, rules.indexOf(IndexesRule));
+      assertNotEqual(-1, rules.indexOf(FilterRemoveRule));
+      assertEqual(0, result.plan.nodes.filter(function(node) { return node.type === 'CalculationNode'; }).length);
+      hasIndexNodeWithRanges(result);
+      hasNoFilterNode(result);
+    },
+    
+    testOptimizeAwayFiltersWhenAliased : function() {
+      let query = "FOR doc IN "  + colNameOther + " LET xAlias = doc.x FILTER xAlias > 3 FILTER xAlias < 6 RETURN doc";
+      let result = AQL_EXPLAIN(query);
+      let rules = removeAlwaysOnClusterRules(result.plan.rules);
+      assertNotEqual(-1, rules.indexOf(IndexesRule));
+      assertNotEqual(-1, rules.indexOf(FilterRemoveRule));
+      assertEqual(0, result.plan.nodes.filter(function(node) { return node.type === 'CalculationNode'; }).length);
+      hasIndexNodeWithRanges(result);
+      hasNoFilterNode(result);
     }
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(optimizerRuleTestSuite);
 
 return jsunity.done();
-

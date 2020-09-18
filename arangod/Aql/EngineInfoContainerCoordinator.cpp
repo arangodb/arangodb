@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,7 +66,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     sqs = query.sharedState();
   }
   
-  engine = std::make_unique<ExecutionEngine>(query, query.itemBlockManager(),
+  engine = std::make_unique<ExecutionEngine>(_id, query, query.itemBlockManager(),
                                              SerializationFormat::SHADOWROWS, sqs);
 
   auto res = engine->createBlocks(_nodes, dbServerQueryIds);
@@ -134,9 +134,10 @@ Result EngineInfoContainerCoordinator::buildEngines(
       }
       TRI_ASSERT(!first || info.engineId() == 0);
       TRI_ASSERT(!first || query.sharedState() == engine->sharedState());
+      TRI_ASSERT(info.engineId() == engine->engineId());
       
       first = false;
-      coordSnippets.emplace_back(std::make_pair(info.engineId(), std::move(engine)));
+      coordSnippets.emplace_back(std::move(engine));
     }
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.message());

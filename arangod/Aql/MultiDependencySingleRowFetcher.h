@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -78,7 +79,7 @@ class MultiDependencySingleRowFetcher {
     DependencyInfo();
     ~DependencyInfo() = default;
     /**
-     * @brief Holds state returned by the last fetchBlock() call.
+     * @brief Holds state returned by the last execute() call.
      *        This is similar to ExecutionBlock::_upstreamState, but can also be
      *        WAITING.
      *        Part of the Fetcher, and may be moved if the Fetcher
@@ -119,9 +120,6 @@ class MultiDependencySingleRowFetcher {
 
   size_t numberDependencies();
 
-  //@deprecated
-  auto useStack(AqlCallStack const& stack) -> void;
-
   [[nodiscard]] auto execute(AqlCallStack const&, AqlCallSet const&)
       -> std::tuple<ExecutionState, SkipResult, std::vector<std::pair<size_t, AqlItemBlockInputRange>>>;
 
@@ -153,12 +151,6 @@ class MultiDependencySingleRowFetcher {
       -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>;
 
   /**
-   * @brief Delegates to ExecutionBlock::fetchBlock()
-   */
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(size_t dependency,
-                                                                           size_t atMost);
-
-  /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
   RegisterCount getNrInputRegisters() const;
@@ -167,7 +159,6 @@ class MultiDependencySingleRowFetcher {
 
   bool isDone(DependencyInfo const& info) const;
 
-  bool fetchBlockIfNecessary(const size_t dependency, const size_t atMost);
 
   AqlCallStack adjustStackWithSkipReport(AqlCallStack const& stack, const size_t dependency);
 

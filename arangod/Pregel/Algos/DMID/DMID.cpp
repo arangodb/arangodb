@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DMID.h"
-#include <cmath>
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
@@ -32,6 +33,8 @@
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
+
+#include <cmath>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -649,7 +652,7 @@ GraphFormat<DMIDValue, float>* DMID::inputFormat() const {
 }
 
 struct DMIDMasterContext : public MasterContext {
-  DMIDMasterContext() {}  // TODO use _threashold
+  DMIDMasterContext() {}  // TODO use _threshold
 
   void preGlobalSuperstep() override {
     /**

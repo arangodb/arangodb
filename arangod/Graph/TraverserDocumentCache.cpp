@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -107,8 +108,8 @@ aql::AqlValue TraverserDocumentCache::fetchVertexAqlResult(arangodb::velocypack:
   if (finding.found()) {
     auto val = finding.value();
     VPackSlice slice(val->value());
-    // finding makes sure that slice contant stays valid.
-    return aql::AqlValue(slice);
+    // finding makes sure that slice constant stays valid.
+    return aql::AqlValue(slice, val->size());
   }
   // Not in cache. Fetch and insert.
   return aql::AqlValue(lookupAndCache(idString));

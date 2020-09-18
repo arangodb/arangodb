@@ -91,8 +91,15 @@ if(MSVC)
 endif()
 
 ################################################################################
-### OpenFST library
+### OpenFST + Kaldi library
 ################################################################################
+
+# We build OpenFST extensions provided by Kaldi as a part of OpenFST
+set(Kaldi_sources
+  ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src/base/io-funcs.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src/base/kaldi-error.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src/base/kaldi-utils.cc
+)
 
 set(OpenFST_sources
   ${CMAKE_CURRENT_SOURCE_DIR}/openfst/compat.cc
@@ -105,6 +112,7 @@ set(OpenFST_sources
   ${CMAKE_CURRENT_SOURCE_DIR}/openfst/symbol-table.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/openfst/symbol-table-ops.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/openfst/util.cc
+  ${Kaldi_sources}
 )
 
 add_library(
@@ -213,6 +221,7 @@ target_include_directories(
   ${IResearch_TARGET_NAME}-ofst
   SYSTEM
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/openfst
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src
 )
 
 # setup CRT
@@ -221,6 +230,7 @@ if(MSVC)
     ${IResearch_TARGET_NAME}-ofst-scrt
     SYSTEM
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/openfst
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src
   )
 endif()
 

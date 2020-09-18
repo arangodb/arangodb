@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,6 +28,7 @@
 #include "../Mocks/StorageEngineMock.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -39,7 +41,7 @@ namespace {
 class LogicalViewImpl : public arangodb::LogicalView {
  public:
   LogicalViewImpl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
-      : LogicalView(vocbase, definition, 0) {}
+      : LogicalView(vocbase, definition) {}
   virtual arangodb::Result appendVelocyPackImpl(
       arangodb::velocypack::Builder&, Serialization) const override {
     return arangodb::Result();
@@ -72,6 +74,7 @@ class LogicalDataSourceTest : public ::testing::Test {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // setup required application features
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);  
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::ShardingFeature>(), false);
 
@@ -137,8 +140,8 @@ TEST_F(LogicalDataSourceTest, test_construct) {
         "\"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
 
-    EXPECT_EQ(1, instance.id());
-    EXPECT_EQ(2, instance.planId());
+    EXPECT_EQ(1, instance.id().id());
+    EXPECT_EQ(2, instance.planId().id());
     EXPECT_EQ(std::string("abc"), instance.guid());
   }
 
@@ -150,8 +153,8 @@ TEST_F(LogicalDataSourceTest, test_construct) {
         "\"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());
 
-    EXPECT_EQ(1, instance.id());
-    EXPECT_EQ(2, instance.planId());
+    EXPECT_EQ(1, instance.id().id());
+    EXPECT_EQ(2, instance.planId().id());
     EXPECT_EQ(std::string("abc"), instance.guid());
   }
 }
@@ -164,8 +167,8 @@ TEST_F(LogicalDataSourceTest, test_defaults) {
         "{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
 
-    EXPECT_NE(0, instance.id());
-    EXPECT_NE(0, instance.planId());
+    EXPECT_TRUE(instance.id().isSet());
+    EXPECT_TRUE(instance.planId().isSet());
     EXPECT_FALSE(instance.guid().empty());
   }
 
@@ -176,8 +179,8 @@ TEST_F(LogicalDataSourceTest, test_defaults) {
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());
 
-    EXPECT_NE(0, instance.id());
-    EXPECT_NE(0, instance.planId());
+    EXPECT_TRUE(instance.id().isSet());
+    EXPECT_TRUE(instance.planId().isSet());
     EXPECT_EQ(instance.id(), instance.planId());
     EXPECT_FALSE(instance.guid().empty());
   }

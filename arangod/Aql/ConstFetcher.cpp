@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,8 +27,10 @@
 #include "Aql/DependencyProxy.h"
 #include "Aql/ShadowAqlItemRow.h"
 #include "Aql/SkipResult.h"
-#include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
+#include "Containers/SmallVector.h"
+
+#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -48,20 +51,23 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     // we are done, nothing to move arround here.
     return {ExecutionState::DONE, skipped, AqlItemBlockInputRange{ExecutorState::DONE}};
   }
-  std::vector<std::pair<size_t, size_t>> sliceIndexes;
-  sliceIndexes.emplace_back(_rowIndex, _blockForPassThrough->size());
+
+  arangodb::containers::SmallVector<std::pair<size_t, size_t>>::allocator_type::arena_type arena;
+  arangodb::containers::SmallVector<std::pair<size_t, size_t>> sliceIndexes{arena};
+
+  sliceIndexes.emplace_back(_rowIndex, _blockForPassThrough->numRows());
+
   // Modifiable first slice indexes.
   // from is the first data row to be returned
   // to is one after the last data row to be returned
 
   if (_blockForPassThrough->hasShadowRows()) {
-    auto const& shadowIndexes = _blockForPassThrough->getShadowRowIndexes();
-    auto shadowRow = shadowIndexes.lower_bound(_rowIndex);
-    if (shadowRow != shadowIndexes.end()) {
-      size_t fromShadowRow = *shadowRow;
-      size_t toShadowRow = *shadowRow + 1;
-      for (++shadowRow; shadowRow != shadowIndexes.end(); ++shadowRow) {
-        if (*shadowRow == toShadowRow) {
+    auto [shadowRowsBegin, shadowRowsEnd] = _blockForPassThrough->getShadowRowIndexesFrom(_rowIndex);
+    if (shadowRowsBegin != shadowRowsEnd) {
+      size_t fromShadowRow = *shadowRowsBegin;
+      size_t toShadowRow = *shadowRowsBegin + 1;
+      for (++shadowRowsBegin; shadowRowsBegin != shadowRowsEnd; ++shadowRowsBegin) {
+        if (*shadowRowsBegin == toShadowRow) {
           ShadowAqlItemRow srow{_blockForPassThrough, toShadowRow};
           TRI_ASSERT(srow.isInitialized());
           if (srow.isRelevant()) {
@@ -129,7 +135,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
       _rowIndex = sliceIndexes.back().second;
     } else {
       // We do not have shadowRows in use, need to to go the end.
-      _rowIndex = _blockForPassThrough->size();
+      _rowIndex = _blockForPassThrough->numRows();
     }
   } else {
     // No hardLimit, but softLimit.
@@ -160,7 +166,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
 
   SharedAqlItemBlockPtr resultBlock = _blockForPassThrough;
 
-  if (_rowIndex >= resultBlock->size()) {
+  if (_rowIndex >= resultBlock->numRows()) {
     // used the full block by now.
     _blockForPassThrough.reset(nullptr);
   }
@@ -202,24 +208,24 @@ void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block, SkipResult skipped) 
 }
 
 auto ConstFetcher::indexIsValid() const noexcept -> bool {
-  return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->size();
+  return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->numRows();
 }
 
 auto ConstFetcher::numRowsLeft() const noexcept -> size_t {
   if (!indexIsValid()) {
     return 0;
   }
-  return _currentBlock->size() - _rowIndex;
+  return _currentBlock->numRows() - _rowIndex;
 }
 
-auto ConstFetcher::canUseFullBlock(std::vector<std::pair<size_t, size_t>> const& ranges) const
+auto ConstFetcher::canUseFullBlock(arangodb::containers::SmallVector<std::pair<size_t, size_t>> const& ranges) const
     noexcept -> bool {
   TRI_ASSERT(!ranges.empty());
   if (ranges.front().first != 0) {
     // We do not start at the first index.
     return false;
   }
-  if (ranges.back().second != _currentBlock->size()) {
+  if (ranges.back().second != _currentBlock->numRows()) {
     // We de not stop at the last index
     return false;
   }

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -33,6 +34,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
@@ -54,14 +56,13 @@ std::vector<size_t> const emptyAttributePositions;
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     RegisterId outputRegister, aql::QueryContext& query,
     Collection const* collection, Variable const* outVariable, bool produceResult,
-    Expression* filter, std::vector<std::string> const& projections,
-    std::vector<size_t> const& coveringIndexAttributePositions, bool random, bool count)
+    Expression* filter, arangodb::aql::Projections projections,
+    bool random, bool count)
     : _query(query),
       _collection(collection),
       _outVariable(outVariable),
       _filter(filter),
-      _projections(projections),
-      _coveringIndexAttributePositions(coveringIndexAttributePositions),
+      _projections(std::move(projections)),
       _outputRegisterId(outputRegister),
       _produceResult(produceResult),
       _random(random),
@@ -83,13 +84,8 @@ Expression* EnumerateCollectionExecutorInfos::getFilter() const noexcept {
   return _filter;
 }
 
-std::vector<std::string> const& EnumerateCollectionExecutorInfos::getProjections() const noexcept {
+arangodb::aql::Projections const& EnumerateCollectionExecutorInfos::getProjections() const noexcept {
   return _projections;
-}
-
-std::vector<size_t> const& EnumerateCollectionExecutorInfos::getCoveringIndexAttributePositions() const
-    noexcept {
-  return _coveringIndexAttributePositions;
 }
 
 bool EnumerateCollectionExecutorInfos::getProduceResult() const noexcept {
@@ -110,7 +106,6 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
       _documentProducingFunctionContext(_currentRow, nullptr, _infos.getOutputRegisterId(),
                                         _infos.getProduceResult(), _infos.getQuery(), _trx,
                                         _infos.getFilter(), _infos.getProjections(),
-                                        _infos.getCoveringIndexAttributePositions(),
                                         true, false),
       _state(ExecutionState::HASMORE),
       _executorState(ExecutorState::HASMORE),

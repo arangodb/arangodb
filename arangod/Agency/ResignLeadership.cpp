@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -390,7 +390,7 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         if (isLeader) {
 
           std::string toServer = Job::findNonblockedCommonHealthyInSyncFollower(
-            _snapshot, database.first, collptr.first, shard.first);
+            _snapshot, database.first, collptr.first, shard.first, _server);
 
           if (toServer.empty()) {
             continue ; // can not resign from that shard

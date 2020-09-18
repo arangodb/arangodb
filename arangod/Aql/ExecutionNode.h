@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -98,8 +98,6 @@ using RegisterPlanWalker = RegisterPlanWalkerT<ExecutionNode>;
 template<typename T> struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct Variable;
-template <class T>
-class WalkerWorker;
 
 /// @brief sort element, consisting of variable, sort direction, and a possible
 /// attribute path to dig into the document
@@ -780,7 +778,7 @@ class CalculationNode : public ExecutionNode {
   /// @brief return out variable
   Variable const* outVariable() const;
 
-  /// @brief return the expression
+  /// @brief return the expression. never a nullptr!
   Expression* expression() const;
 
   /// @brief estimateCost

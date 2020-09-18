@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,9 +37,10 @@ class Methods;
 namespace aql {
 
 class AqlItemBlock;
+struct AqlValue;
+struct AttributeNamePath;
 class ExpressionContext;
 struct Variable;
-struct AqlValue;
 
 /// @brief AttributeAccessor
 class AttributeAccessor {
@@ -54,7 +55,7 @@ class AttributeAccessor {
   void replaceVariable(std::unordered_map<VariableId, Variable const*> const& replacements);
 
   /// @brief the attribute names vector (e.g. [ "a", "b", "c" ] for a.b.c)
-  static AttributeAccessor* create(std::vector<std::string>&& path,
+  static AttributeAccessor* create(arangodb::aql::AttributeNamePath&& path,
                                    Variable const* variable, bool dataIsFromCollection);
 
  protected:

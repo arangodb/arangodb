@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,11 +20,7 @@
 ///
 /// @author Achim Brandt
 /// @author Dr. Frank Celler
-///
-/// Portions of the code are:
-///
-/// Copyright (c) 1999, Google Inc.
-/// All rights reserved.
+////////////////////////////////////////////////////////////////////////////////
 //
 /// Redistribution and use in source and binary forms, with or without
 /// modification, are permitted provided that the following conditions are
@@ -61,6 +57,7 @@
 
 #include <stddef.h>
 #include <atomic>
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -77,6 +74,7 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
+class LogGroup;
 class LogThread;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -244,6 +242,7 @@ class Logger {
   };
 
  public:
+  static LogGroup& defaultLogGroup();
   static LogLevel logLevel();
   static std::vector<std::pair<std::string, LogLevel>> logLevelTopics();
   static void setLogLevel(LogLevel);
@@ -279,6 +278,10 @@ class Logger {
 
   static void log(char const* logid, char const* function, char const* file, int line,
                   LogLevel level, size_t topicId, std::string const& message);
+
+  static void append(LogGroup&, std::unique_ptr<LogMessage>& msg,
+                     std::function<void(std::unique_ptr<LogMessage>&)> const& inactive =
+                         [](std::unique_ptr<LogMessage>&) -> void {});
 
   static bool isEnabled(LogLevel level) {
     return (int)level <= (int)_level.load(std::memory_order_relaxed);

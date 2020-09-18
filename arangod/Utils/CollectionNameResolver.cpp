@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,7 @@ CollectionNameResolver::CollectionNameResolver(CollectionNameResolver const& oth
   _dataSourceByName = other._dataSourceByName;
 }
 
-std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(TRI_voc_cid_t id) const {
+std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(DataSourceId id) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   return std::dynamic_pointer_cast<LogicalCollection>(getDataSource(id));
 #else
@@ -79,11 +79,13 @@ std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(std::st
 /// and need to look up a local collection name (or shard name).
 //////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(std::string const& name) const {
+DataSourceId CollectionNameResolver::getCollectionIdLocal(std::string const& name) const {
   if (!name.empty()) {
     if (name[0] >= '0' && name[0] <= '9') {
       // name is a numeric id
-      return NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
+      return DataSourceId{
+          NumberUtils::atoi_zero<DataSourceId::BaseType>(name.data(),
+                                                         name.data() + name.size())};
     }
 
     auto ds = _vocbase.lookupDataSource(name);
@@ -93,7 +95,7 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(std::string const& na
     }
   }
 
-  return 0;
+  return DataSourceId::none();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -103,23 +105,24 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(std::string const& na
 /// cluster wide collection id is returned.
 //////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(std::string const& name) const {
+DataSourceId CollectionNameResolver::getCollectionIdCluster(std::string const& name) const {
   if (!ServerState::isRunningInCluster(_serverRole)) {
     return getCollectionIdLocal(name);
   }
   if (name.empty()) {
-    return 0;
+    DataSourceId::none();
   }
   if (name[0] >= '0' && name[0] <= '9') {
     // name is a numeric id
-    TRI_voc_cid_t cid =
-        NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
+    DataSourceId cid{
+        NumberUtils::atoi_zero<DataSourceId::BaseType>(name.data(),
+                                                       name.data() + name.size())};
     auto collection = getCollection(cid);
     // Now validate the cid
     auto type = collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
 
     if (type == TRI_COL_TYPE_UNKNOWN) {
-      return 0;
+      DataSourceId::none();
     }
     return cid;
   }
@@ -139,7 +142,7 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(std::string const& 
   } catch (...) {
   }
 
-  return 0;
+  return DataSourceId::none();
 }
 
 std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollectionStructCluster(
@@ -162,7 +165,7 @@ std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollectionStructCl
 /// coordinator it will use the cluster wide lookup.
 //////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_cid_t CollectionNameResolver::getCollectionId(std::string const& name) const {
+DataSourceId CollectionNameResolver::getCollectionId(std::string const& name) const {
   if (!ServerState::isRunningInCluster(_serverRole) || ServerState::isDBServer(_serverRole)) {
     return getCollectionIdLocal(name);
   }
@@ -175,7 +178,7 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionId(std::string const& name) c
 /// translate the local collection ID into a cluster wide collection name.
 //////////////////////////////////////////////////////////////////////////////
 
-std::string CollectionNameResolver::getCollectionName(TRI_voc_cid_t cid) const {
+std::string CollectionNameResolver::getCollectionName(DataSourceId cid) const {
   {
     READ_LOCKER(locker, _lock);
     auto it = _resolvedIds.find(cid);
@@ -199,7 +202,7 @@ std::string CollectionNameResolver::getCollectionName(TRI_voc_cid_t cid) const {
 /// collection id
 //////////////////////////////////////////////////////////////////////////////
 
-std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) const {
+std::string CollectionNameResolver::getCollectionNameCluster(DataSourceId cid) const {
   if (!ServerState::isClusterRole(_serverRole)) {
     // This handles the case of a standalone server
     return getCollectionName(cid);
@@ -224,7 +227,7 @@ std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) 
 
   if (name == ::UNKNOWN) {
     auto ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
-        _vocbase.name(), arangodb::basics::StringUtils::itoa(cid));
+        _vocbase.name(), arangodb::basics::StringUtils::itoa(cid.id()));
     if (ci != nullptr) {
       name = ci->name();
     }
@@ -247,12 +250,11 @@ std::string CollectionNameResolver::getCollectionName(std::string const& nameOrI
   if (!nameOrId.empty() && (nameOrId[0] < '0' || nameOrId[0] > '9')) {
     return nameOrId;
   }
-  return getCollectionName(
-      NumberUtils::atoi_zero<TRI_voc_cid_t>(nameOrId.data(),
-                                            nameOrId.data() + nameOrId.size()));
+  return getCollectionName(DataSourceId{NumberUtils::atoi_zero<DataSourceId::BaseType>(
+      nameOrId.data(), nameOrId.data() + nameOrId.size())});
 }
 
-std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(TRI_voc_cid_t id) const {
+std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(DataSourceId id) const {
   decltype(_dataSourceById)::iterator itr;
 
   {
@@ -265,7 +267,7 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(TRI_voc
   
   // db server / standalone
   auto ptr = ServerState::isCoordinator(_serverRole)
-                 ? getDataSource(std::to_string(id))
+                 ? getDataSource(std::to_string(id.id()))
                  : _vocbase.lookupDataSource(id);
 
   if (ptr) {
@@ -311,7 +313,7 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(std::st
   return ptr;
 }
 
-std::shared_ptr<LogicalView> CollectionNameResolver::getView(TRI_voc_cid_t id) const {
+std::shared_ptr<LogicalView> CollectionNameResolver::getView(DataSourceId id) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   return std::dynamic_pointer_cast<LogicalView>(getDataSource(id));
 #else
@@ -336,7 +338,7 @@ std::shared_ptr<LogicalView> CollectionNameResolver::getView(std::string const& 
 }
 
 bool CollectionNameResolver::visitCollections(std::function<bool(LogicalCollection&)> const& visitor,
-                                              TRI_voc_cid_t id) const {
+                                              DataSourceId id) const {
   auto dataSource = getDataSource(id);
 
   if (!dataSource) {
@@ -363,7 +365,7 @@ bool CollectionNameResolver::visitCollections(std::function<bool(LogicalCollecti
 #endif
 
     // each CID in a view might need further resolution
-    return view->visitCollections([this, &visitor, id](TRI_voc_cid_t cid) -> bool {
+    return view->visitCollections([this, &visitor, id](DataSourceId cid) -> bool {
       return cid == id ? false : visitCollections(visitor, cid);  // avoid infinite recursion
     });
   }
@@ -372,7 +374,7 @@ bool CollectionNameResolver::visitCollections(std::function<bool(LogicalCollecti
 }
 
 /// PRIVATE ---------------
-std::string CollectionNameResolver::lookupName(TRI_voc_cid_t cid) const {
+std::string CollectionNameResolver::lookupName(DataSourceId cid) const {
   auto collection = _vocbase.lookupCollection(cid);
 
   // exactly as in the non-cluster case
@@ -383,7 +385,7 @@ std::string CollectionNameResolver::lookupName(TRI_voc_cid_t cid) const {
   // DBserver case of a shard:
   if (collection && collection->planId() != collection->id()) {
     collection = _vocbase.server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
-        collection->vocbase().name(), std::to_string(collection->planId()));
+        collection->vocbase().name(), std::to_string(collection->planId().id()));
   }
 
   // can be empty, if collection unknown

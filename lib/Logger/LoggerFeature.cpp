@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -373,14 +374,15 @@ void LoggerFeature::prepare() {
 
   for (auto const& definition : _output) {
     if (_supervisor && StringUtils::isPrefix(definition, "file://")) {
-      LogAppender::addAppender(definition + ".supervisor");
+      LogAppender::addAppender(Logger::defaultLogGroup(),
+                               definition + ".supervisor");
     } else {
-      LogAppender::addAppender(definition);
+      LogAppender::addAppender(Logger::defaultLogGroup(), definition);
     }
   }
 
   if (_foregroundTty) {
-    LogAppender::addAppender("-");
+    LogAppender::addAppender(Logger::defaultLogGroup(), "-");
   }
 
   if (_forceDirect || _supervisor) {

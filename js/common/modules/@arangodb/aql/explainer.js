@@ -218,19 +218,47 @@ function printModificationFlags(flags) {
 }
 
 /* print optimizer rules */
-function printRules(rules) {
+function printRules(rules, stats) {
   'use strict';
 
+  const maxIdLen = String('Id').length;
   stringBuilder.appendLine(section('Optimization rules applied:'));
   if (rules.length === 0) {
     stringBuilder.appendLine(' ' + value('none'));
   } else {
-    var maxIdLen = String('Id').length;
     stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' + header('RuleName'));
-    for (var i = 0; i < rules.length; ++i) {
+    for (let i = 0; i < rules.length; ++i) {
       stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String(i + 1).length) + variable(String(i + 1)) + '   ' + keyword(rules[i]));
     }
   }
+  stringBuilder.appendLine();
+ 
+  if (!stats || !stats.rules) {
+    return;
+  }
+
+  let maxNameLength = 0;
+  let times = Object.keys(stats.rules).map(function(key) {
+    if (key.length > maxNameLength) {
+      maxNameLength = key.length;
+    }
+    return { name: key, time: stats.rules[key] };
+  });
+  times.sort(function(l, r) {
+    // highest cost first
+    return r.time - l.time;
+  });
+  // top few only
+  times = times.slice(0, 5);
+
+  stringBuilder.appendLine(section('Optimization rules with highest execution times:'));
+  stringBuilder.appendLine(' ' + header('RuleName') + '   ' + pad(maxNameLength - 'RuleName'.length) + header('Duration [s]'));
+  times.forEach(function(rule) {
+    stringBuilder.appendLine(' ' + keyword(rule.name) + '   ' + pad(12 + maxNameLength - rule.name.length - rule.time.toFixed(5).length) + value(rule.time.toFixed(5)));
+  });
+  
+  stringBuilder.appendLine();
+  stringBuilder.appendLine(value(stats.rulesExecuted) + annotation(' rule(s) executed, ') + value(stats.plansCreated) + annotation(' plan(s) created'));
   stringBuilder.appendLine();
 }
 
@@ -1073,7 +1101,13 @@ function processQuery(query, explain, planIndex) {
 
   var projection = function (node) {
     if (node.projections && node.projections.length > 0) {
-      return ', projections: `' + node.projections.join('`, `') + '`';
+      let p = node.projections.map(function(p) {
+        if (Array.isArray(p)) {
+          return p.join('`.`', p);
+        }
+        return p;
+      });
+      return ', projections: `' + p.join('`, `') + '`';
     }
     return '';
   };
@@ -2001,7 +2035,7 @@ function processQuery(query, explain, planIndex) {
   printKShortestPathsDetails(kShortestPathsDetails);
   stringBuilder.appendLine();
 
-  printRules(plan.rules);
+  printRules(plan.rules, explain.stats);
   printModificationFlags(modificationFlags);
   printWarnings(explain.warnings);
   if (profileMode) {
@@ -2027,6 +2061,9 @@ function explain(data, options, shouldPrint) {
   options.verbosePlans = true;
   setColors(options.colors === undefined ? true : options.colors);
 
+  if (!options.profile) {
+    options.profile = 2;
+  }
   stringBuilder.clearOutput();
   let stmt = db._createStatement(data);
   let result = stmt.explain(options);

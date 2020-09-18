@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -77,7 +78,7 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   ///        IDs
   /// @return success == view does not track collection
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result unlink(TRI_voc_cid_t cid) noexcept;
+  arangodb::Result unlink(DataSourceId cid) noexcept;
 
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
@@ -113,9 +114,9 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
  private:
   struct ViewFactory;  // forward declaration
 
-  IResearchViewCoordinator(TRI_vocbase_t& vocbase, velocypack::Slice info, uint64_t planVersion);
+  IResearchViewCoordinator(TRI_vocbase_t& vocbase, velocypack::Slice info);
 
-  std::unordered_map<TRI_voc_cid_t, std::pair<std::string, arangodb::velocypack::Builder>> _collections;  // transient member, not persisted
+  std::unordered_map<DataSourceId, std::pair<std::string, arangodb::velocypack::Builder>> _collections;  // transient member, not persisted
   mutable irs::async_utils::read_write_mutex _mutex;  // for use with '_collections'
   IResearchViewMeta _meta;
 };  // IResearchViewCoordinator

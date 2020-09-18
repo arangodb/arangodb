@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -68,8 +69,8 @@ TEST_F(IResearchQueryLevenhsteinMatchTest, test) {
         "  \"testCollection1\": { \"includeAllFields\": true } "
         "}}");
     EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
-    std::set<TRI_voc_cid_t> cids;
-    impl->visitCollections([&cids](TRI_voc_cid_t cid) -> bool {
+    std::set<arangodb::DataSourceId> cids;
+    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
       return true;
     });
@@ -249,6 +250,29 @@ TEST_F(IResearchQueryLevenhsteinMatchTest, test) {
     EXPECT_EQ(i, expected.size());
   }
 
+  // distance 1, default limit, default damerau
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[29].slice(),
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.title, 'cba', 1) RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
   // distance 2, defatul limit
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -341,7 +365,7 @@ TEST_F(IResearchQueryLevenhsteinMatchTest, test) {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.title, 'ababab', 3) RETURN d");
+      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.title, 'ababab', 3, false) RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     ASSERT_TRUE(slice.isArray());
@@ -802,6 +826,14 @@ TEST_F(IResearchQueryLevenhsteinMatchTest, test) {
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.value, 'foo', 4, true) RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test max Damerau-Levenshtein distance
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.value, 'foo', 4) RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 

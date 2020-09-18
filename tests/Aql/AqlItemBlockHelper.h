@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -130,7 +131,7 @@ SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
 
   if (!shadowRows.empty()) {
     for (auto const& it : shadowRows) {
-      block->setShadowRowDepth(it.first, AqlValue(AqlValueHintUInt(it.second)));
+      block->makeShadowRow(it.first, it.second);
     }
   }
 

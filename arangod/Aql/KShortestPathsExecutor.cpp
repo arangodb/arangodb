@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -209,11 +210,11 @@ auto KShortestPathsExecutor::fetchPaths(AqlItemBlockInputRange& input) -> bool {
 }
 
 auto KShortestPathsExecutor::doOutputPath(OutputAqlItemRow& output) -> void {
-  auto tmp = transaction::BuilderLeaser{_finder.options().trx()};
+  transaction::BuilderLeaser tmp{_finder.options().trx()};
   tmp->clear();
 
   if (_finder.getNextPathAql(*tmp.builder())) {
-    AqlValue path{*tmp.builder()};
+    AqlValue path{tmp->slice()};
     AqlValueGuard guard{path, true};
     output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
     output.advanceRow();

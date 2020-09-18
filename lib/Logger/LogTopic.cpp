@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -111,7 +111,7 @@ class Topics {
 LogTopic Logger::AGENCY("agency", LogLevel::INFO);
 LogTopic Logger::AGENCYCOMM("agencycomm", LogLevel::INFO);
 LogTopic Logger::AQL("aql", LogLevel::INFO);
-LogTopic Logger::AUTHENTICATION("authentication");
+LogTopic Logger::AUTHENTICATION("authentication", LogLevel::WARN);
 LogTopic Logger::AUTHORIZATION("authorization");
 LogTopic Logger::BACKUP("backup");
 LogTopic Logger::CACHE("cache", LogLevel::INFO);
@@ -222,4 +222,5 @@ LogTopic::LogTopic(std::string const& name, LogLevel level)
   }
 
   Topics::instance().emplace(name, this);
+  TRI_ASSERT(_id < MAX_LOG_TOPICS);
 }

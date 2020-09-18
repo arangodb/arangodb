@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,10 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryRegistry.h"
+#include <Cluster/CallbackGuard.h>
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/ClusterQuery.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/Query.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
@@ -45,7 +46,7 @@ QueryRegistry::~QueryRegistry() {
 }
 
 /// @brief insert
-void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl) {
+void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard) {
   TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->state() != QueryExecutionState::ValueType::INITIALIZATION);
   LOG_TOPIC("77778", DEBUG, arangodb::Logger::AQL)
@@ -59,7 +60,7 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl)
 
   QueryId qId = query->id();
   // create the query info object outside of the lock
-  auto p = std::make_unique<QueryInfo>(std::move(query), ttl);
+  auto p = std::make_unique<QueryInfo>(std::move(query), ttl, std::move(guard));
   TRI_ASSERT(p->_expires != 0);
 
   // now insert into table of running queries
@@ -70,16 +71,16 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl)
     }
 
     try {
-      for (auto& pair : p->_query->snippets()) {
-        if (pair.first != 0) { // skip the root snippet
-          auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), p.get()));
+      for (auto& engine : p->_query->snippets()) {
+        if (engine->engineId() != 0) { // skip the root snippet
+          auto result = _engines.try_emplace(engine->engineId(), EngineInfo(engine.get(), p.get()));
           TRI_ASSERT(result.second);
           TRI_ASSERT(result.first->second._type == EngineType::Execution);
           p->_numEngines++;
         }
       }
-      for (auto& pair : p->_query->traversers()) {
-        auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), p.get()));
+      for (auto& engine : p->_query->traversers()) {
+        auto result = _engines.try_emplace(engine->engineId(), EngineInfo(engine.get(), p.get()));
         TRI_ASSERT(result.second);
         TRI_ASSERT(result.first->second._type == EngineType::Graph);
         p->_numEngines++;
@@ -93,11 +94,11 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl)
     
     } catch (...) {
       // revert engine registration
-      for (auto& pair : p->_query->snippets()) {
-        _engines.erase(pair.first);
+      for (auto& engine : p->_query->snippets()) {
+        _engines.erase(engine->engineId());
       }
-      for (auto& pair : p->_query->traversers()) {
-        _engines.erase(pair.first);
+      for (auto& engine : p->_query->traversers()) {
+        _engines.erase(engine->engineId());
       }
       // no need to revert last insert
       throw;
@@ -225,12 +226,12 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
     m->second.erase(q);
     
     // remove engines
-    for (auto const& pair : queryInfo->_query->snippets()) {
+    for (auto const& engine : queryInfo->_query->snippets()) {
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
-      _engines.erase(pair.first);
+      _engines.erase(engine->engineId());
 #else
       
-      auto it = _engines.find(pair.first);
+      auto it = _engines.find(engine->engineId());
       if (it != _engines.end()) {
         TRI_ASSERT(it->second._queryInfo != nullptr);
         TRI_ASSERT(!it->second._isOpen);
@@ -238,8 +239,8 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
       }
 #endif
     }
-    for (auto& pair : queryInfo->_query->traversers()) {
-      _engines.erase(pair.first);
+    for (auto& engine : queryInfo->_query->traversers()) {
+      _engines.erase(engine->engineId());
     }
 
     if (m->second.empty()) {
@@ -363,7 +364,7 @@ void QueryRegistry::expireQueries() {
   for (auto& p : toDelete) {
     try {  // just in case
       LOG_TOPIC("e95dc", DEBUG, arangodb::Logger::AQL)
-          << "timeout for query with id " << p.second;
+          << "timeout or RebootChecker alert for query with id " << p.second;
       destroyQuery(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED);
     } catch (...) {
     }
@@ -424,9 +425,9 @@ void QueryRegistry::registerSnippets(SnippetList const& snippets) {
   if (_disallowInserts) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-  for (auto& pair : snippets) {
-    if (pair.first != 0) { // skip the root snippet
-      auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), nullptr));
+  for (auto& engine : snippets) {
+    if (engine->engineId() != 0) { // skip the root snippet
+      auto result = _engines.try_emplace(engine->engineId(), EngineInfo(engine.get(), nullptr));
       TRI_ASSERT(result.second);
     }
   }
@@ -438,15 +439,15 @@ void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
   while(true) {
     WRITE_LOCKER(guard, _lock);
     size_t remain = snippets.size();
-    for (auto& pair : snippets) {
-      auto it = _engines.find(pair.first);
+    for (auto& engine : snippets) {
+      auto it = _engines.find(engine->engineId());
       if (it == _engines.end()) {
         remain--;
         continue;
       }
       if (it->second._isOpen) { // engine still in use
         LOG_TOPIC("33cfb", WARN, arangodb::Logger::AQL)
-          << "engine snippet '" << pair.first << "' is still in use";
+          << "engine snippet '" << it->first << "' is still in use";
         continue;
       }
       _engines.erase(it);
@@ -460,11 +461,13 @@ void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
   }
 }
 
-QueryRegistry::QueryInfo::QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl)
+QueryRegistry::QueryInfo::QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard)
     : _query(std::move(query)),
       _timeToLive(ttl),
       _expires(TRI_microtime() + ttl),
       _numEngines(0),
-      _numOpen(0) {}
+      _numOpen(0),
+      _rebootTrackerCallbackGuard(std::move(guard))
+{}
 
 QueryRegistry::QueryInfo::~QueryInfo() = default;

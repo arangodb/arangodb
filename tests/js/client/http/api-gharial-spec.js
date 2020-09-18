@@ -1276,7 +1276,7 @@ describe('_api/gharial', () => {
           });
           expect(req.error).to.equal(true);
           expect(req.code).to.equal(ERRORS.ERROR_HTTP_PRECONDITION_FAILED.code);
-          expect(req.errorMessage).to.equal(ERRORS.ERROR_HTTP_PRECONDITION_FAILED.message);
+          expect(req.errorMessage).to.equal(ERRORS.ERROR_ARANGO_CONFLICT.message);
         });
       });
 

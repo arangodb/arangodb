@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -90,6 +90,9 @@ struct QueryCacheResultEntry {
   double executionTime() const;
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  
+  /// current user has all permissions
+  bool currentUserHasPermissions() const;
 };
 
 struct QueryCacheDatabaseEntry {

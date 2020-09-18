@@ -4332,9 +4332,224 @@ function transactionTTLStreamSuite () {
   };
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes the test suites
-// //////////////////////////////////////////////////////////////////////////////
+function transactionIteratorSuite() {
+  'use strict';
+  var cn = 'UnitTestsTransaction';
+  var c = null;
+
+  return {
+
+    setUp: function () {
+      db._drop(cn);
+      c = db._create(cn, { numberOfShards: 4 });
+    },
+
+    tearDown: function () {
+      db._drop(cn);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test: make sure forward iterators respect bounds in write transaction
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testIteratorBoundsForward: function () {
+      c.ensureIndex({ type: "persistent", fields: ["value1"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
+      let res = c.getIndexes();
+      assertEqual(3, res.length);
+
+      const opts = {
+        collections: {
+          write: [cn]
+        }
+      };
+      const trx = internal.db._createTransaction(opts);
+
+      const tc = trx.collection(cn);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ value1: i, value2: (100 - i) });
+      }
+      tc.save(docs);
+
+      const cur = trx.query('FOR doc IN @@c SORT doc.value1 ASC RETURN doc', { '@c': cn });
+
+      const half = cur.toArray();
+      assertEqual(half.length, 100);
+
+      trx.commit();
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test: make sure reverse iterators respect bounds in write transaction
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testIteratorBoundsReverse: function () {
+      c.ensureIndex({ type: "persistent", fields: ["value1"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
+      let res = c.getIndexes();
+      assertEqual(3, res.length);
+
+      const opts = {
+        collections: {
+          write: [cn]
+        }
+      };
+      const trx = internal.db._createTransaction(opts);
+
+      const tc = trx.collection(cn);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ value1: i, value2: (100 - i) });
+      }
+      tc.save(docs);
+
+      const cur = trx.query('FOR doc IN @@c SORT doc.value2 DESC RETURN doc', { '@c': cn });
+
+      const half = cur.toArray();
+      assertEqual(half.length, 100);
+
+      trx.commit();
+    },
+    
+  };
+}
+
+function transactionOverlapSuite() {
+  'use strict';
+  const cn = 'UnitTestsTransaction';
+
+  return {
+
+    setUp: function () {
+      db._drop(cn);
+      db._create(cn, { numberOfShards: 4 });
+    },
+
+    tearDown: function () {
+      db._drop(cn);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test: overlapping transactions writing to the same document
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testOverlapInsert: function () {
+      const opts = {
+        collections: {
+          write: [cn]
+        }
+      };
+      const trx1 = internal.db._createTransaction(opts);
+      try {
+        const tc1 = trx1.collection(cn);
+        tc1.insert({ _key: "test" });
+
+        const trx2 = internal.db._createTransaction(opts);
+        const tc2 = trx2.collection(cn);
+        try { 
+          // should produce a conflict
+          tc2.insert({ _key: "test" });
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+        } finally { 
+          trx2.abort();
+        }
+      } finally {
+        trx1.abort();
+      }
+    },
+    
+    testOverlapUpdate: function () {
+      db[cn].insert({ _key: "test" });
+
+      const opts = {
+        collections: {
+          write: [cn]
+        }
+      };
+      const trx1 = internal.db._createTransaction(opts);
+      try {
+        const tc1 = trx1.collection(cn);
+        tc1.update("test", { value: "der fux" });
+
+        const trx2 = internal.db._createTransaction(opts);
+        const tc2 = trx2.collection(cn);
+        try { 
+          // should produce a conflict
+          tc2.update("test", { value: "der hans" });
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+        } finally { 
+          trx2.abort();
+        }
+      } finally {
+        trx1.abort();
+      }
+    },
+    
+    testOverlapReplace: function () {
+      db[cn].insert({ _key: "test" });
+
+      const opts = {
+        collections: {
+          write: [cn]
+        }
+      };
+      const trx1 = internal.db._createTransaction(opts);
+      try {
+        const tc1 = trx1.collection(cn);
+        tc1.replace("test", { value: "der fux" });
+
+        const trx2 = internal.db._createTransaction(opts);
+        const tc2 = trx2.collection(cn);
+        try { 
+          // should produce a conflict
+          tc2.replace("test", { value: "der hans" });
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+        } finally { 
+          trx2.abort();
+        }
+      } finally {
+        trx1.abort();
+      }
+    },
+    
+    testOverlapRemove: function () {
+      db[cn].insert({ _key: "test" });
+
+      const opts = {
+        collections: {
+          write: [cn]
+        }
+      };
+      const trx1 = internal.db._createTransaction(opts);
+      try {
+        const tc1 = trx1.collection(cn);
+        tc1.remove("test");
+
+        const trx2 = internal.db._createTransaction(opts);
+        const tc2 = trx2.collection(cn);
+        try { 
+          // should produce a conflict
+          tc2.remove("test");
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+        } finally { 
+          trx2.abort();
+        }
+      } finally {
+        trx1.abort();
+      }
+    },
+
+  };
+}
 
 jsunity.run(transactionRevisionsSuite);
 jsunity.run(transactionRollbackSuite);
@@ -4347,5 +4562,7 @@ jsunity.run(transactionCrossCollectionSuite);
 jsunity.run(transactionTraversalSuite);
 jsunity.run(transactionAQLStreamSuite);
 jsunity.run(transactionTTLStreamSuite);
+jsunity.run(transactionIteratorSuite);
+jsunity.run(transactionOverlapSuite);
 
 return jsunity.done();

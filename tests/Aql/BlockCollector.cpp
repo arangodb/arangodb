@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Infrastructure for ExecutionPlans
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
@@ -42,7 +41,7 @@ size_t BlockCollector::totalSize() const { return _totalSize; }
 RegisterId BlockCollector::nrRegs() const {
   TRI_ASSERT(_totalSize > 0);
   TRI_ASSERT(!_blocks.empty());
-  return _blocks[0]->getNrRegs();
+  return _blocks[0]->numRegisters();
 }
 
 void BlockCollector::clear() {
@@ -55,13 +54,13 @@ void BlockCollector::clear() {
 
 void BlockCollector::add(SharedAqlItemBlockPtr block) {
   TRI_ASSERT(block != nullptr);
-  TRI_ASSERT(block->size() > 0);
+  TRI_ASSERT(block->numRows() > 0);
 
   if (_blocks.capacity() == 0) {
     _blocks.reserve(8);
   }
   _blocks.push_back(block);
-  _totalSize += block->size();
+  _totalSize += block->numRows();
 }
 
 SharedAqlItemBlockPtr BlockCollector::steal() {

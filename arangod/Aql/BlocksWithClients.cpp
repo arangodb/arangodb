@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -126,21 +126,6 @@ auto BlocksWithClientsImpl<Executor>::initializeCursor(InputAqlItemRow const& in
     list.clear();
   }
   return ExecutionBlock::initializeCursor(input);
-}
-
-/// @brief shutdown
-template <class Executor>
-auto BlocksWithClientsImpl<Executor>::shutdown(int errorCode)
-    -> std::pair<ExecutionState, Result> {
-  if (_wasShutdown) {
-    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-  }
-  auto res = ExecutionBlock::shutdown(errorCode);
-  if (res.first == ExecutionState::WAITING) {
-    return res;
-  }
-  _wasShutdown = true;
-  return res;
 }
 
 /// @brief getClientId: get the number <clientId> (used internally)

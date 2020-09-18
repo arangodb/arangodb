@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -1313,8 +1314,8 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
     // simulate heartbeat thread
     // We need this call BEFORE creation of collection if at all
     {
-      auto const colPath =
-          "/Current/Collections/_system/" + std::to_string(logicalCollection->id());
+      auto const colPath = "/Current/Collections/_system/" +
+                           std::to_string(logicalCollection->id().id());
       auto const colValue =
           VPackParser::fromJson(
               "{ \"same-as-dummy-shard-id\": { \"indexes\": [ { \"id\": \"43\" "
@@ -1324,7 +1325,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
                       .successful());
       auto const dummyPath = "/Plan/Collections";
       auto const dummyValue = VPackParser::fromJson(
-          "{ \"_system\": { \"" + std::to_string(logicalCollection->id()) +
+          "{ \"_system\": { \"" + std::to_string(logicalCollection->id().id()) +
           "\": { \"name\": \"testCollection\", "
           "\"shards\": { \"same-as-dummy-shard-id\": [ "
           "\"same-as-dummy-shard-server\" ] } } } }");
@@ -2097,7 +2098,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
   arangodb::network::ConnectionPool::Config poolConfig;
   poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
-  poolConfig.minOpenConnections = 1;
   poolConfig.maxOpenConnections = 3;
   poolConfig.verifyHosts = false;
 
@@ -2177,7 +2177,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // cannot use the existing server since its features already have some state
 
     arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    newServer.addFeature<arangodb::MetricsFeature>();  // Required by everything now.
+    newServer.addFeature<arangodb::MetricsFeature>();
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>();  // required to create ClusterInfo instance
     auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>();  // required to create ClusterInfo instance
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace>(std::make_unique<arangodb::DatabaseFeature(newServer));  // required for IResearchAnalyzerFeature::emplace>(...)
@@ -2240,7 +2240,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     });
 
     arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    newServer.addFeature<arangodb::MetricsFeature>();  // Required by everything now.
+    newServer.addFeature<arangodb::MetricsFeature>();
     auto& auth = newServer.addFeature<arangodb::AuthenticationFeature>();
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>();  // required to create ClusterInfo instance
     auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>();  // required to create ClusterInfo instance
@@ -2622,6 +2622,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto& dbfeature = newServer.addFeature<arangodb::DatabaseFeature>();
   auto& functions = newServer.addFeature<arangodb::aql::AqlFunctionFeature>();
+  newServer.addFeature<arangodb::MetricsFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
   auto& sharding = newServer.addFeature<arangodb::ShardingFeature>();
   auto& systemdb = newServer.addFeature<arangodb::SystemDatabaseFeature>();
@@ -2872,17 +2873,13 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // empty nested array
   {
     VPackFunctionParametersWrapper args;
-    auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
-    VPackBuilder builder(*buffer);
+    arangodb::velocypack::Buffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
     builder.openArray();
     builder.openArray();
     builder.close();
     builder.close();
-    auto bufOwner = true;
-    auto aqlValue = arangodb::aql::AqlValue(buffer.get(), bufOwner);
-    if (!bufOwner) {
-      buffer.release();
-    }
+    auto aqlValue = arangodb::aql::AqlValue(std::move(buffer));
     args->push_back(std::move(aqlValue));
     auto result = AqlValueWrapper(impl(nullptr, &trx, *args));
     EXPECT_TRUE(result->isArray());
@@ -2898,8 +2895,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // non-empty nested array
   {
     VPackFunctionParametersWrapper args;
-    auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
-    VPackBuilder builder(*buffer);
+    arangodb::velocypack::Buffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
     builder.openArray();
     builder.openArray();
     builder.openArray();
@@ -2907,11 +2904,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     builder.close();
     builder.close();
     builder.close();
-    auto bufOwner = true;
-    auto aqlValue = arangodb::aql::AqlValue(buffer.get(), bufOwner);
-    if (!bufOwner) {
-      buffer.release();
-    }
+    auto aqlValue = arangodb::aql::AqlValue(std::move(buffer));
     args->push_back(std::move(aqlValue));
     auto result = AqlValueWrapper(impl(nullptr, &trx, *args));
     EXPECT_TRUE(result->isArray());
@@ -2933,18 +2926,14 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
 
   // array of bools
   {
-    auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
-    VPackBuilder builder(*buffer);
+    arangodb::velocypack::Buffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
     builder.openArray();
     builder.add(arangodb::velocypack::Value(true));
     builder.add(arangodb::velocypack::Value(false));
     builder.add(arangodb::velocypack::Value(true));
     builder.close();
-    auto bufOwner = true;
-    auto aqlValue = arangodb::aql::AqlValue(buffer.get(), bufOwner);
-    if (!bufOwner) {
-      buffer.release();
-    }
+    auto aqlValue = arangodb::aql::AqlValue(std::move(buffer));
     VPackFunctionParametersWrapper args;
     args->push_back(std::move(aqlValue));
     irs::string_ref analyzer("text_en");
@@ -2985,8 +2974,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // [ [[]], [['test', 123.4, true]], 123, 123.4, true, null, false, 'jumps', ['quick', 'dog'] ]
   {
     VPackFunctionParametersWrapper args;
-    auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
-    VPackBuilder builder(*buffer);
+    arangodb::velocypack::Buffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
     builder.openArray();
     // [[]]
     builder.openArray();
@@ -3018,11 +3007,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
 
     builder.close();
 
-    auto bufOwner = true;
-    auto aqlValue = arangodb::aql::AqlValue(buffer.get(), bufOwner);
-    if (!bufOwner) {
-      buffer.release();
-    }
+    auto aqlValue = arangodb::aql::AqlValue(std::move(buffer));
     args->push_back(std::move(aqlValue));
     irs::string_ref analyzer("text_en");
     args->emplace_back(analyzer.c_str(), analyzer.size());
@@ -3508,6 +3493,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
+  newServer.addFeature<arangodb::MetricsFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
   newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)
@@ -3786,6 +3772,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
+  newServer.addFeature<arangodb::MetricsFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
   newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)
@@ -3902,6 +3889,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
+  newServer.addFeature<arangodb::MetricsFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
   newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)

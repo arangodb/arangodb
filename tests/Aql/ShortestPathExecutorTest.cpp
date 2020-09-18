@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -314,7 +315,7 @@ class ShortestPathExecutorTest
     auto block = buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix));
 
     // We should always only call the finder at most for all input rows
-    ASSERT_LE(pathsQueriedBetween.size(), block->size());
+    ASSERT_LE(pathsQueriedBetween.size(), block->numRows());
 
     auto blockIndex = size_t{0};
     for (auto const& input : pathsQueriedBetween) {
@@ -375,7 +376,7 @@ class ShortestPathExecutorTest
     for (auto const& block : results) {
       if (block != nullptr) {
         ASSERT_NE(block, nullptr);
-        for (size_t blockIndex = 0; blockIndex < block->size(); ++blockIndex, ++expectedRowsIndex) {
+        for (size_t blockIndex = 0; blockIndex < block->numRows(); ++blockIndex, ++expectedRowsIndex) {
           if (executorInfos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
             AqlValue value =
                 block->getValue(blockIndex, executorInfos.getOutputRegister(
