@@ -26,6 +26,9 @@
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 
+#include <velocypack/HashedStringRef.h>
+#include <velocypack/StringRef.h>
+
 using namespace arangodb;
 
 /// @brief create a StringHeap instance
@@ -41,23 +44,16 @@ StringHeap::~StringHeap() {
 }
 
 /// @brief register a string
-arangodb::velocypack::StringRef StringHeap::registerString(char const* ptr, size_t length) {
-  if (_current == nullptr || (_current + length + 1 > _end)) {
-    allocateBlock();
-  }
+template <>
+arangodb::velocypack::StringRef StringHeap::registerString<arangodb::velocypack::StringRef>(arangodb::velocypack::StringRef const& value) {
+  char const* p = registerString(value.data(), value.size());
+  return arangodb::velocypack::StringRef(p, value.size());
+}
 
-  TRI_ASSERT(!_blocks.empty());
-  TRI_ASSERT(_current != nullptr);
-  TRI_ASSERT(_end != nullptr);
-  TRI_ASSERT(_current + length + 1 <= _end);
-
-  char* position = _current;
-  memcpy(static_cast<void*>(position), ptr, length);
-  // null-terminate the string
-  _current[length] = '\0';
-  _current += length + 1;
-
-  return arangodb::velocypack::StringRef(position, length);
+template <>
+arangodb::velocypack::HashedStringRef StringHeap::registerString<arangodb::velocypack::HashedStringRef>(arangodb::velocypack::HashedStringRef const& value) {
+  char const* p = registerString(value.data(), value.size());
+  return arangodb::velocypack::HashedStringRef(p, value.size());
 }
 
 void StringHeap::clear() {
@@ -76,6 +72,27 @@ void StringHeap::merge(StringHeap&& heap) {
   heap._blocks.clear();
   heap._current = nullptr;
 }
+
+/// @brief register a string
+char const* StringHeap::registerString(char const* ptr, size_t length) {
+  if (_current == nullptr || (_current + length + 1 > _end)) {
+    allocateBlock();
+  }
+
+  TRI_ASSERT(!_blocks.empty());
+  TRI_ASSERT(_current != nullptr);
+  TRI_ASSERT(_end != nullptr);
+  TRI_ASSERT(_current + length + 1 <= _end);
+
+  char* position = _current;
+  memcpy(static_cast<void*>(position), ptr, length);
+  // null-terminate the string
+  _current[length] = '\0';
+  _current += length + 1;
+
+  return position;
+}
+
 
 /// @brief allocate a new block of memory
 void StringHeap::allocateBlock() {

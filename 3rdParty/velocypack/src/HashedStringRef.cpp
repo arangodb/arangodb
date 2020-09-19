@@ -135,6 +135,10 @@ bool HashedStringRef::equals(HashedStringRef const& other) const noexcept {
           (memcmp(data(), other.data(), size()) == 0));
 }
 
+StringRef HashedStringRef::stringRef() const noexcept {
+  return StringRef(data(), size());
+}
+
 namespace arangodb {
 namespace velocypack {
 

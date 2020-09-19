@@ -26,7 +26,7 @@
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
 
-#include <velocypack/StringRef.h>
+#include <velocypack/HashedStringRef.h>
 
 #include <deque>
 #include <set>
@@ -49,7 +49,7 @@ class KPathFinder : public ShortestPathFinder {
  private:
   enum Direction {FORWARD, BACKWARD};
  
-  using VertexRef = arangodb::velocypack::StringRef;
+  using VertexRef = arangodb::velocypack::HashedStringRef;
 
   struct VertexIdentifier {
     VertexRef id;
@@ -113,7 +113,6 @@ class KPathFinder : public ShortestPathFinder {
     // We do not take responsibility for the Cache
     TraverserCache* _cache;
     size_t _minDepth{0};
-
   };
 
  public:

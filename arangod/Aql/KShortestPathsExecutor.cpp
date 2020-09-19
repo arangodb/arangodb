@@ -37,6 +37,7 @@
 #include "Transaction/Helpers.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/HashedStringRef.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -223,7 +224,7 @@ auto KShortestPathsExecutor<FinderType>::fetchPaths(AqlItemBlockInputRange& inpu
       if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
         return _finder.startKShortestPathsTraversal(source, target);
       } else {
-        _finder.reset(arangodb::velocypack::StringRef(source), arangodb::velocypack::StringRef(target));
+        _finder.reset(arangodb::velocypack::HashedStringRef(source), arangodb::velocypack::HashedStringRef(target));
         return true;
       }
     }

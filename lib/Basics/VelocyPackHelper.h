@@ -58,36 +58,6 @@ class AttributeTranslator;
 
 namespace basics {
 
-struct VPackHashedSlice {
-  arangodb::velocypack::Slice slice;
-  uint64_t hash;
-
-  constexpr VPackHashedSlice() noexcept : slice(), hash(0) {}
-  VPackHashedSlice(arangodb::velocypack::Slice slice, uint64_t hash) noexcept
-      : slice(slice), hash(hash) {}
-  explicit VPackHashedSlice(arangodb::velocypack::Slice slice)
-      : slice(slice), hash(slice.hash()) {}
-
-  VPackHashedSlice(VPackHashedSlice const& other) noexcept
-      : slice(other.slice), hash(other.hash) {}
-  VPackHashedSlice(VPackHashedSlice&& other) noexcept
-      : slice(other.slice), hash(other.hash) {}
-  // cppcheck-suppress operatorEqVarError
-  VPackHashedSlice& operator=(VPackHashedSlice const& other) noexcept {
-    slice = other.slice;
-    hash = other.hash;
-    return *this;
-  }
-  // cppcheck-suppress operatorEqVarError
-  VPackHashedSlice& operator=(VPackHashedSlice&& other) noexcept {
-    slice = other.slice;
-    hash = other.hash;
-    return *this;
-  }
-
-  ~VPackHashedSlice() = default;
-};
-
 class VelocyPackHelper {
  private:
   VelocyPackHelper() = delete;
@@ -412,21 +382,6 @@ struct less<arangodb::velocypack::StringRef> {
   bool operator()(arangodb::velocypack::StringRef const& lhs,
                   arangodb::velocypack::StringRef const& rhs) const noexcept {
     return lhs.compare(rhs) < 0;
-  }
-};
-
-template <>
-struct hash<arangodb::basics::VPackHashedSlice> {
-  inline size_t operator()(arangodb::basics::VPackHashedSlice const& slice) const noexcept {
-    return slice.hash;
-  }
-};
-
-template <>
-struct equal_to<arangodb::basics::VPackHashedSlice> {
-  bool operator()(arangodb::basics::VPackHashedSlice const& lhs,
-                  arangodb::basics::VPackHashedSlice const& rhs) const {
-    return lhs.slice.binaryEquals(rhs.slice);
   }
 };
 

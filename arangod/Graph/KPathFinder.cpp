@@ -27,6 +27,7 @@
 #include "Graph/TraverserCache.h"
 #include "Transaction/Helpers.h"
 
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -63,7 +64,7 @@ auto KPathFinder::PathResult::toVelocyPack(TraverserCache& cache,
     builder.add(VPackValue(StaticStrings::GraphQueryVertices));
     VPackArrayBuilder vertices{&builder};
     for (auto const& v : _vertices) {
-      cache.insertVertexIntoResult(v, builder);
+      cache.insertVertexIntoResult(v.stringRef(), builder);
     }
   }
 
@@ -184,7 +185,7 @@ auto KPathFinder::Ball::computeNeighbourhoodOfNextVertex(Ball const& other,
                                                          ResultList& results) -> void {
   TRI_ASSERT(!doneWithDepth());
   auto const& vertex = _interior[_searchIndex].id;
-  _cursor->rearm(vertex, 0);
+  _cursor->rearm(vertex.stringRef(), 0);
   _cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
     VertexRef id = _cache->persistString(([&]() -> auto {
       if (edge.isString()) {
