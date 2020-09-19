@@ -28,6 +28,7 @@
 #include "Graph/KPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 
+#include <velocypack/HashedStringRef.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -167,7 +168,7 @@ TEST_F(KPathFinderTest, no_path_exists) {
   auto source = vId(91);
   auto target = vId(99);
   auto& finder = pathFinder(1,1);
-  finder.reset(StringRef(source), StringRef(target));
+  finder.reset(HashedStringRef(source), HashedStringRef(target));
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -197,7 +198,7 @@ TEST_F(KPathFinderTest, path_depth_0) {
   auto source = vId(91);
   auto target = vId(91);
 
-  finder.reset(StringRef(source), StringRef(target));
+  finder.reset(HashedStringRef(source), HashedStringRef(target));
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -228,7 +229,7 @@ TEST_F(KPathFinderTest, path_depth_1) {
   auto source = vId(1);
   auto target = vId(2);
 
-  finder.reset(StringRef(source), StringRef(target));
+  finder.reset(HashedStringRef(source), HashedStringRef(target));
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -259,7 +260,7 @@ TEST_F(KPathFinderTest, path_depth_2) {
   auto source = vId(1);
   auto target = vId(3);
 
-  finder.reset(StringRef(source), StringRef(target));
+  finder.reset(HashedStringRef(source), HashedStringRef(target));
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -291,7 +292,7 @@ TEST_F(KPathFinderTest, path_depth_3) {
   auto source = vId(1);
   auto target = vId(4);
 
-  finder.reset(StringRef(source), StringRef(target));
+  finder.reset(HashedStringRef(source), HashedStringRef(target));
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -323,7 +324,7 @@ auto& finder = pathFinder(2, 2);
   auto source = vId(5);
   auto target = vId(9);
 
-  finder.reset(StringRef(source), StringRef(target));
+  finder.reset(HashedStringRef(source), HashedStringRef(target));
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -369,7 +370,7 @@ auto& finder = pathFinder(1, 2);
   auto source = vId(10);
   auto target = vId(11);
 
-  finder.reset(StringRef(source), StringRef(target));
+  finder.reset(HashedStringRef(source), HashedStringRef(target));
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -410,7 +411,7 @@ TEST_F(KPathFinderTest, path_depth_2_to_3) {
   auto source = vId(10);
   auto target = vId(11);
 
-  finder.reset(StringRef(source), StringRef(target));
+  finder.reset(HashedStringRef(source), HashedStringRef(target));
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -452,7 +453,7 @@ TEST_F(KPathFinderTest, path_loop) {
   auto source = vId(20);
   auto target = vId(22);
 
-  finder.reset(StringRef(source), StringRef(target));
+  finder.reset(HashedStringRef(source), HashedStringRef(target));
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -483,7 +484,7 @@ TEST_F(KPathFinderTest, triangle_loop) {
   auto source = vId(30);
   auto target = vId(34);
 
-  finder.reset(StringRef(source), StringRef(target));
+  finder.reset(HashedStringRef(source), HashedStringRef(target));
 
   EXPECT_FALSE(finder.isDone());
   {
