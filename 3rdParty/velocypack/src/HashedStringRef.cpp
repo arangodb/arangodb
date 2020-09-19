@@ -26,8 +26,8 @@
 #include <iostream>
 
 #include "velocypack/Exception.h"
-#include "velocypack/HashedStringRef.h"
 #include "velocypack/Slice.h"
+#include "velocypack/HashedStringRef.h"
 #include "velocypack/StringRef.h"
 
 using namespace arangodb::velocypack;
@@ -38,50 +38,55 @@ extern void* memrchr(void const* block, int c, std::size_t size);
 }
 }
 
-StringRef::StringRef(Slice slice) {
+HashedStringRef::HashedStringRef(Slice slice) {
   VELOCYPACK_ASSERT(slice.isString());
   ValueLength l;
   _data = slice.getString(l);
   _length = l;
+  _hash = hash(_data, _length);
 }
 
-StringRef::StringRef(HashedStringRef const& other) noexcept 
-  : _data(other.data()), _length(other.size()) {}
+HashedStringRef::HashedStringRef(StringRef const& other) noexcept 
+  : _data(other.data()),
+    _length(other.size()),
+    _hash(hash(_data, _length)) {}
   
-/// @brief create a StringRef from another HashedStringRef
-StringRef& StringRef::operator=(HashedStringRef const& other) noexcept {
-  _data = other.data();
-  _length = other.size();
-  return *this;
-}
-  
-/// @brief create a StringRef from a VPack slice of type String
-StringRef& StringRef::operator=(Slice slice) {
+/// @brief create a HashedStringRef from a VPack slice of type String
+HashedStringRef& HashedStringRef::operator=(Slice slice) {
   VELOCYPACK_ASSERT(slice.isString());
   ValueLength l;
   _data = slice.getString(l);
   _length = l;
+  _hash = hash(_data, _length);
+  return *this;
+}
+
+/// @brief create a HashedStringRef from another StringRef
+HashedStringRef& HashedStringRef::operator=(StringRef const& other) noexcept {
+  _data = other.data();
+  _length = other.size();
+  _hash = hash(_data, _length);
   return *this;
 }
   
-StringRef StringRef::substr(std::size_t pos, std::size_t count) const {
+HashedStringRef HashedStringRef::substr(std::size_t pos, std::size_t count) const {
   if (pos > _length) {
     throw Exception(Exception::IndexOutOfBounds, "substr index out of bounds");
   }
   if (count == std::string::npos || (count + pos >= _length)) {
     count = _length - pos;
   }
-  return StringRef(_data + pos, count);
+  return HashedStringRef(_data + pos, count);
 }
 
-char StringRef::at(std::size_t index) const {
+char HashedStringRef::at(std::size_t index) const {
   if (index >= _length) {
     throw Exception(Exception::IndexOutOfBounds, "index out of bounds");
   }
   return operator[](index);
 }
   
-std::size_t StringRef::find(char c, std::size_t offset) const noexcept {
+std::size_t HashedStringRef::find(char c, std::size_t offset) const noexcept {
   if (offset > _length) {
     offset = _length;
   }
@@ -96,7 +101,7 @@ std::size_t StringRef::find(char c, std::size_t offset) const noexcept {
   return (p - _data);
 }
   
-std::size_t StringRef::rfind(char c, std::size_t offset) const noexcept {
+std::size_t HashedStringRef::rfind(char c, std::size_t offset) const noexcept {
   std::size_t length;
   if (offset >= _length + 1) {
     length = _length; 
@@ -114,7 +119,7 @@ std::size_t StringRef::rfind(char c, std::size_t offset) const noexcept {
   return (p - _data);
 }
   
-int StringRef::compare(StringRef const& other) const noexcept {
+int HashedStringRef::compare(HashedStringRef const& other) const noexcept {
   int res = memcmp(_data, other._data, (std::min)(_length, other._length));
 
   if (res != 0) {
@@ -124,15 +129,16 @@ int StringRef::compare(StringRef const& other) const noexcept {
   return static_cast<int>(_length) - static_cast<int>(other._length);
 }
 
-bool StringRef::equals(StringRef const& other) const noexcept {
+bool HashedStringRef::equals(HashedStringRef const& other) const noexcept {
   return (size() == other.size() &&
+          hash() == other.hash() &&
           (memcmp(data(), other.data(), size()) == 0));
 }
 
 namespace arangodb {
 namespace velocypack {
 
-std::ostream& operator<<(std::ostream& stream, StringRef const& ref) {
+std::ostream& operator<<(std::ostream& stream, HashedStringRef const& ref) {
   stream.write(ref.data(), ref.length());
   return stream;
 }

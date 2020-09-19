@@ -43,6 +43,7 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Compare.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Dumper.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Exception.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/HashedStringRef.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/HexDump.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Iterator.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Options.cpp
@@ -60,6 +61,7 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/asm-functions.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/asm-utf8check.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/fpconv.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/string-functions.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/velocypack-common.cpp
   ${PROJECT_SOURCE_DIR}/lib/Basics/xxhash.cpp
   )
