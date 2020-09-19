@@ -67,9 +67,7 @@ AstNode* AstResources::registerNode(AstNodeType type) {
   _resourceMonitor->increaseMemoryUsage(sizeof(AstNode));
 
   try {
-    AstNode* p = _nodes.nextSlot();
-    new (p) AstNode(type);
-    return p;
+    return _nodes.allocate(type);
   } catch (...) {
     _resourceMonitor->decreaseMemoryUsage(sizeof(AstNode));
     throw;
@@ -82,9 +80,7 @@ AstNode* AstResources::registerNode(Ast* ast, arangodb::velocypack::Slice slice)
   _resourceMonitor->increaseMemoryUsage(sizeof(AstNode));
 
   try {
-    AstNode* p = _nodes.nextSlot();
-    new (p) AstNode(ast, slice);
-    return p;
+    return _nodes.allocate(ast, slice);
   } catch (...) {
     _resourceMonitor->decreaseMemoryUsage(sizeof(AstNode));
     throw;

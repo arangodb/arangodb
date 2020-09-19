@@ -43,31 +43,42 @@ class FixedSizeAllocator {
     MemoryBlock(size_t numItems)
         : _numAllocated(0), _numUsed(0), _alloc(nullptr), _data(nullptr) {
       TRI_ASSERT(numItems >= 32);
+      // assumption is that the size of a cache line is at least 64,
+      // so we are allocating 64 bytes in addition
       _alloc = new char[(sizeof(T) * numItems) + 64];
 
       _numAllocated = numItems;
 
-      // adjust to cache line offset (assumed to be 64 bytes)
-      _data = reinterpret_cast<char*>((reinterpret_cast<uintptr_t>(_alloc) + 63) &
-                                      ~((uintptr_t)0x3fu));
+      // adjust memory address to cache line offset (assumed to be 64 bytes)
+      _data = reinterpret_cast<char*>((reinterpret_cast<uintptr_t>(_alloc) + 63u) &
+                                      ~(uintptr_t(63u)));
 
+      // the result should at least be 8-byte aligned
       TRI_ASSERT(reinterpret_cast<uintptr_t>(_data) % sizeof(void*) == 0);
+      TRI_ASSERT(reinterpret_cast<uintptr_t>(_data) % 64u == 0);
     }
 
     ~MemoryBlock() noexcept { 
-      // free all items
+      // destroy all items
       for (size_t i = 0; i < _numUsed; ++i) {
         T* p =  reinterpret_cast<T*>(_data + (sizeof(T) * i));
-        // call destructor
+        // call destructor for each item
         p->~T();
       }
+      // free storage
       delete[] _alloc; 
     }
 
-    /// @brief return memory address for next in-place object construction
+    /// @brief return memory address for next in-place object construction.
     T* nextSlot() noexcept {
       TRI_ASSERT(_numUsed < _numAllocated);
       return reinterpret_cast<T*>(_data + (sizeof(T) * _numUsed++));
+    }
+
+    /// @brief roll back the effect of nextSlot()
+    void rollbackSlot() noexcept {
+      TRI_ASSERT(_numUsed > 0);
+      --_numUsed;
     }
     
     bool full() const noexcept { return _numUsed == _numAllocated; }
@@ -85,26 +96,31 @@ class FixedSizeAllocator {
   FixedSizeAllocator(FixedSizeAllocator const&) = delete;
   FixedSizeAllocator& operator=(FixedSizeAllocator const&) = delete;
 
-  FixedSizeAllocator() {
-    _blocks.reserve(2);
-  }
-
+  FixedSizeAllocator() = default;
   ~FixedSizeAllocator() = default;
 
-  T* nextSlot() {
+  template <typename... Args>
+  T* allocate(Args&&... args) {
     if (_blocks.empty() || _blocks.back()->full()) {
       allocateBlock();
     }
     TRI_ASSERT(!_blocks.empty());
     TRI_ASSERT(!_blocks.back()->full());
-
-    return _blocks.back()->nextSlot();
+   
+    try {
+      T* p = _blocks.back()->nextSlot();
+      return new (p) T(std::forward<Args>(args)...);
+    } catch (...) {
+      _blocks.back()->rollbackSlot();
+      throw;
+    }
   }
 
   void clear() {
     _blocks.clear();
   }
 
+  /// @brief return the total number of used elements, in all blocks
   size_t numUsed() const noexcept {
     size_t used = 0;
     for (auto const& block : _blocks) {
@@ -116,8 +132,8 @@ class FixedSizeAllocator {
  private:
   void allocateBlock() {
     // minimum block size is for 64 items
-    // maximum block size is for 16384 items
-    size_t const numItems = 16 << std::min<size_t>(6, std::max<size_t>(2, _blocks.size()));
+    // maximum block size is for 4096 items
+    size_t const numItems = 64 << std::min<size_t>(6, _blocks.size() + 1);
     _blocks.emplace_back(std::make_unique<MemoryBlock>(numItems));
   }
 
