@@ -171,18 +171,17 @@ class KPathFinder : public ShortestPathFinder {
 
   bool skipPath();
 
+ private:
+  auto searchDone() const -> bool;
+  auto startNextDepth() -> void;
 
-private:
- auto searchDone() const -> bool;
- auto startNextDepth() -> void;
+ private:
+  Ball _left;
+  Ball _right;
+  bool _searchLeft{true};
+  ResultList _results{};
 
-private:
- Ball _left;
- Ball _right;
- bool _searchLeft{true};
- ResultList _results{};
-
- PathResult _resultPath;
+  PathResult _resultPath;
 };
 
 }  // namespace graph
