@@ -343,12 +343,13 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     // increase it. this is to ensure that the follower can process at least as many
     // data as the leader, even if the data representation is slightly varied for
     // network transport etc.
-    // note that this increase may overflow the value beyond what a uint64_t can hold
-    decltype(options.maxTransactionSize) adjustedSize = double(options.maxTransactionSize) * 1.1;
-    if (adjustedSize > options.maxTransactionSize) {
-      // now the transaction on the follower should be able to grow to at least the
-      // size of the transaction on the leader.
-      options.maxTransactionSize = adjustedSize;
+    if (options.maxTransactionSize != UINT64_MAX) {
+      uint64_t adjust = options.maxTransactionSize / 10;
+      if (adjust < UINT64_MAX - options.maxTransactionSize) {
+        // now the transaction on the follower should be able to grow to at least the
+        // size of the transaction on the leader.
+        options.maxTransactionSize += adjust;
+      }
     }
     // it is also important that we set this option, so that it is ok for two 
     // different leaders to add "their" shards to the same follower transaction.
