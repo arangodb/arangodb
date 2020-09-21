@@ -217,6 +217,7 @@ void KPathFinder::reset(VertexRef source, VertexRef target) {
   _results.clear();
   _left.reset(source);
   _right.reset(target);
+  _resultPath.clear();
 
   // Special Case depth == 0
   if (options().minDepth == 0 && source == target) {
