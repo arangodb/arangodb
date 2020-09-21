@@ -136,7 +136,7 @@ function jsDriver (options) {
       print((isSucces ? GREEN + '[     PASSED ] ':
              RED + '[   FAILED   ] ') + test.title + RESET);
       if (!isSucces) {
-        print(test)
+        print(test);
         totalSuccess = false;
         message += test.err.message + '\n' + test.err.stack;
       }
@@ -148,7 +148,7 @@ function jsDriver (options) {
         "duration": test.duration,
         "message": message
       };
-    })
+    });
     results['timeout'] = false;
     results['status'] = totalSuccess;
     results['message'] = '';
