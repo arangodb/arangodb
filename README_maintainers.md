@@ -759,6 +759,19 @@ For possible `javaOptions` see
 in the java source, or the 
 [surefire documentation](https://maven.apache.org/surefire/maven-surefire-plugin/examples/single-test.html]
 
+#### ArangoJS
+
+Pre-requisites:
+ - have a arangojs checkout next to the ArangoDB source tree 
+ - have a nodejs and yarn binaries installed and in the path
+ - ran `yarn` once in the arangojs source tree
+ 
+Once this is completed, you may run it like this:
+
+    ./scripts/unittest js_driver --jssource ../arangojs/ \
+        --testCase 'kills the given query' \
+        --cluster true 
+
 ### Debugging Tests
 
 This is quick introduction only.
