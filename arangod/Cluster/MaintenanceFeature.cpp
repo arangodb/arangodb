@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <set>
+#include <random>
 
 #include "MaintenanceFeature.h"
 
@@ -47,6 +48,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb;
@@ -66,6 +68,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
     : ApplicationFeature(server, "Maintenance"),
       _forceActivation(false),
       _resignLeadershipOnShutdown(false),
+      _firstRun(true),
       _maintenanceThreadsMax((std::max)(static_cast<uint32_t>(minThreadLimit),
                                         static_cast<uint32_t>(NumberOfCores::getValue() / 4 + 1))),
       _secondsActionsBlock(2),
@@ -951,20 +954,55 @@ void MaintenanceFeature::proceed() {
   _pauseUntil = std::chrono::steady_clock::duration::zero();
 }
 
-void MaintenanceFeature::addDirty(std::string&& database) {
-  server().getFeature<ClusterFeature>().addDirty(std::move(database));
-}
 void MaintenanceFeature::addDirty(std::string const& database) {
   server().getFeature<ClusterFeature>().addDirty(database);
-}
-void MaintenanceFeature::addDirty(std::unordered_set<std::string>&& databases) {
-  server().getFeature<ClusterFeature>().addDirty(std::move(databases));
 }
 void MaintenanceFeature::addDirty(std::unordered_set<std::string> const& databases) {
   server().getFeature<ClusterFeature>().addDirty(databases);
 }
-std::unordered_set<std::string> MaintenanceFeature::dirty() {
-  return server().getFeature<ClusterFeature>().dirty();
+
+std::unordered_set<std::string> MaintenanceFeature::pickRandomDirty(size_t n) {
+  size_t left = _databasesToCheck.size();
+  if (n >= left) {
+    n = left;
+    refillToCheck();
+  }
+  std::unordered_set<std::string> ret(std::make_move_iterator(_databasesToCheck.end()-n),
+                                      std::make_move_iterator(_databasesToCheck.end()));
+  return ret;
+}
+
+void MaintenanceFeature::refillToCheck() {
+  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+  std::default_random_engine e(seed);
+  _databasesToCheck = server().getFeature<DatabaseFeature>().getDatabaseNames();
+  std::shuffle(_databasesToCheck.begin(), _databasesToCheck.end(), e);
+}
+
+std::unordered_set<std::string> MaintenanceFeature::dirty(
+  std::unordered_set<std::string> const& more) {
+  auto& clusterFeature = server().getFeature<ClusterFeature>();
+  auto ret = clusterFeature.dirty(); // plan & current in first run
+  if (_firstRun) {
+    auto all = allDatabases();
+    ret.insert(std::make_move_iterator(all.begin()),std::make_move_iterator(all.end()));
+    _firstRun = false;
+  } else {
+    if (!more.empty()) {
+      ret.insert(std::make_move_iterator(more.begin()),std::make_move_iterator(more.end()));
+    }
+  }
+  return ret;
+}
+
+std::unordered_set<std::string> MaintenanceFeature::allDatabases() const {
+  std::unordered_set<std::string> allDBNames;
+  auto const tmp = server().getFeature<DatabaseFeature>().getDatabaseNames();
+  allDBNames.reserve(tmp.size());
+  for (auto const& i : tmp) {
+    allDBNames.emplace(i);
+  }
+  return allDBNames;
 }
 
 std::shared_ptr<maintenance::ActionDescription> MaintenanceFeature::isShardLocked(
@@ -974,6 +1012,10 @@ std::shared_ptr<maintenance::ActionDescription> MaintenanceFeature::isShardLocke
     return nullptr;
   }
   return it->second;
+}
+
+bool MaintenanceFeature::isDirty(std::string const& dbName) const {
+  return server().getFeature<ClusterFeature>().isDirty(dbName);
 }
 
 bool MaintenanceFeature::lockShard(

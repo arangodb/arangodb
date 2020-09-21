@@ -705,6 +705,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 arangodb::Result arangodb::maintenance::executePlan(
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
   uint64_t planIndex, std::unordered_set<std::string> const& dirty,
+  std::unordered_set<std::string> const& moreDirt,
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, arangodb::MaintenanceFeature& feature, VPackBuilder& report,
   MaintenanceFeature::ShardActionMap const& shardActionMap) {
@@ -730,6 +731,17 @@ arangodb::Result arangodb::maintenance::executePlan(
     std::unordered_set<DatabaseID> makeDirty;
     diffPlanLocal(plan, planIndex, dirty, local, serverId, errors, makeDirty, actions, shardActionMap);
     feature.addDirty(makeDirty);
+  }
+
+  for (auto const& action : actions) {
+    // check if any action from moreDirt
+    // and db not in feature.dirty
+    if (action->has(DATABASE) && moreDirt.find(action->get(DATABASE)) != moreDirt.end() &&
+        !feature.isDirty(action->get(DATABASE))) {
+      LOG_TOPIC("38739", ERR, Logger::MAINTENANCE) <<
+        "Maintenance feature detected action " << *action << " for randomly chosen database";
+      TRI_ASSERT(false);
+    }
   }
 
   for (auto const& i : errors.databases) {
@@ -844,6 +856,7 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent(
 arangodb::Result arangodb::maintenance::phaseOne(
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
   uint64_t planIndex, std::unordered_set<std::string> const& dirty,
+  std::unordered_set<std::string> const& moreDirt,
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
   MaintenanceFeature::ShardActionMap const& shardActionMap) {
@@ -858,8 +871,8 @@ arangodb::Result arangodb::maintenance::phaseOne(
 
     // Execute database changes
     try {
-
-      result = executePlan(plan, planIndex, dirty, local, serverId, feature, report, shardActionMap);
+      result = executePlan(
+        plan, planIndex, dirty, moreDirt, local, serverId, feature, report, shardActionMap);
     } catch (std::exception const& e) {
       LOG_TOPIC("55938", ERR, Logger::MAINTENANCE)
           << "Error executing plan: " << e.what() << ". " << __FILE__ << ":" << __LINE__;
@@ -1341,37 +1354,53 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         }
       }
     }
+  }
 
-    // Finally, let's find shard errors for shards which do not occur in
-    // Local but in Plan, we need to make sure that these errors are reported
-    // in Current:
-    /* TODO
-    for (auto const& p : allErrors.shards) {
-      // First split the key:
-      std::string const& key = p.first;
-      auto pos = key.find('/');
-      TRI_ASSERT(pos != std::string::npos);
-      std::string d = key.substr(0, pos);  // database
-      auto pos2 = key.find('/', pos + 1);  // collection
-      TRI_ASSERT(pos2 != std::string::npos);
-      std::string c = key.substr(pos + 1, pos2);
-      std::string s = key.substr(pos2 + 1);  // shard name
+  // Finally, let's find shard errors for shards which do not occur in
+  // Local but in Plan, we need to make sure that these errors are reported
+  // in Current:
+  for (auto const& p : allErrors.shards) {
+    // First split the key:
+    std::string const& key = p.first;
+    auto pos = key.find('/');
+    TRI_ASSERT(pos != std::string::npos);
+    std::string d = key.substr(0, pos);  // database
+    if (dirty.find(d) != dirty.end()) {
+      auto const pit = plan.find(d);
+      auto const lit = local.find(d);
+      auto const cit = current.find(d);
 
-      // Now find out if the shard appears in the Plan but not in Local:
-      VPackSlice inPlan = pdb.get(std::vector<std::string>({d, c, "shards", s}));
-      VPackSlice inLoc = local.get(std::vector<std::string>({d, s}));
-      if (inPlan.isObject() && inLoc.isNone()) {
-        VPackSlice inCur = curcolls.get(std::vector<std::string>({d, c, s}));
-        VPackSlice theErr(static_cast<uint8_t const*>(p.second->data()));
-        if (inCur.isNone() || !equivalent(theErr, inCur)) {
-          report.add(VPackValue(CURRENT_COLLECTIONS + d + "/" + c + "/" + s));
-          {
-            VPackObjectBuilder o(&report);
-            report.add(OP, VP_SET);
-            report.add("payload", theErr);
+      if (lit != local.end()) {
+        auto pos2 = key.find('/', pos + 1);  // collection
+        TRI_ASSERT(pos2 != std::string::npos);
+
+        std::string c = key.substr(pos + 1, pos2);
+        std::string s = key.substr(pos2 + 1);  // shard name
+        auto const pdb = pit->second->slice();
+        auto const ldb = lit->second->slice();
+
+        // Now find out if the shard appears in the Plan but not in Local:
+        std::vector<std::string> const planPath {
+          AgencyCommHelper::path(), PLAN, COLLECTIONS, d, c, "shards", s};
+        if (pdb.hasKey(planPath) && !ldb.hasKey(s)) {
+          VPackSlice servers = pdb.get(planPath);
+          if (servers.isArray()) {
+            std::vector<std::string> const curPath {
+              AgencyCommHelper::path(), CURRENT, COLLECTIONS, d, c, s};
+            VPackSlice theErr(static_cast<uint8_t const*>(p.second->data()));
+            if (!cit->second->slice().hasKey(curPath) ||
+                !equivalent(theErr, cit->second->slice().get(curPath))) {
+              report.add(VPackValue(CURRENT_COLLECTIONS + d + "/" + c + "/" + s));
+              {
+                VPackObjectBuilder o(&report);
+                report.add(OP, VP_SET);
+                report.add("payload", theErr);
+              }
+            }
           }
         }
-        }*/
+      }
+    }
   }
 
   return {};

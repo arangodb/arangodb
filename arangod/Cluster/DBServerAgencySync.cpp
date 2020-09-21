@@ -178,7 +178,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   auto& clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo();
   uint64_t planIndex = 0, currentIndex = 0;
 
-  auto dirty = mfeature.dirty(); // Get all dirty databases
+
+  auto moreDirt = mfeature.pickRandomDirty(5);
+  auto dirty = mfeature.dirty();
+  // remove all dirty from moreDirt
 
   if (dirty.empty()) {
     LOG_TOPIC("0a62f", DEBUG, Logger::MAINTENANCE)
@@ -225,7 +228,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         << "DBServerAgencySync::phaseOne";
 
     tmp = arangodb::maintenance::phaseOne(
-      plan, planIndex, dirty, local, serverId, mfeature, rb, currentShardLocks);
+      plan, planIndex, dirty, moreDirt, local, serverId, mfeature, rb, currentShardLocks);
 
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
@@ -242,7 +245,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     }
 
     auto current = clusterInfo.getCurrent(currentIndex, dirty);
-    
+
     LOG_TOPIC("675fd", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current;
 

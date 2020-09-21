@@ -129,7 +129,12 @@ class HeartbeatBackgroundJobThread : public Thread {
           _sleeping.store(true, std::memory_order_release);
 
           while (true) {
-            _condition.wait(guard);
+
+            //
+            if(_condition.wait_for(guard, std::chrono::seconds(5)) == std::cv_status::timeout) {
+              // ceil(#databases / 720)
+              _anotherRun = true;
+            }
 
             if (_stop) {
               return;
@@ -1091,7 +1096,7 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
     LOG_TOPIC("ce0db", DEBUG, Logger::HEARTBEAT)
         << "Sync request successful. Now have Plan " << result.planVersion
         << " (" << result.planIndex << ")" << ", Current " << result.currentVersion
-        << " (" << result.currentIndex << ")"; 
+        << " (" << result.currentIndex << ")";
     _currentVersions = AgencyVersions(result);
   } else {
     LOG_TOPIC("b72a6", ERR, Logger::HEARTBEAT)

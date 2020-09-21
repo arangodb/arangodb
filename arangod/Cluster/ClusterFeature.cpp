@@ -814,7 +814,11 @@ void ClusterFeature::addDirty(std::string const& database) {
 }
 std::unordered_set<std::string> ClusterFeature::dirty() {
   MUTEX_LOCKER(guard, _dirtyLock);
-  std::unordered_set<std::string > ret;
+  std::unordered_set<std::string> ret;
   ret.swap(_dirty);
   return ret;
+}
+bool ClusterFeature::isDirty(std::string const& dbName) const {
+  MUTEX_LOCKER(guard, _dirtyLock);
+  return _dirty.find(dbName) != _dirty.end();
 }

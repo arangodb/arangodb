@@ -899,6 +899,7 @@ futures::Future<query_t> Agent::poll(
 
   using namespace std::chrono;
 
+  // COMMENT TODO Agency Cache depends on corretness at start time
   std::vector<log_t> logs;
   query_t builder;
   {
