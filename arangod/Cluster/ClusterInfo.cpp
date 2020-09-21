@@ -849,6 +849,7 @@ void ClusterInfo::loadPlan() {
       continue;
     }
     auto const& databaseName = database.first;
+    _newPlannedViews.erase(databaseName);   // clear views for this database
     std::vector<std::string> viewsPath {
       AgencyCommHelper::path(), "Plan", "Views", databaseName};
     auto viewsSlice = database.second->slice()[0];
