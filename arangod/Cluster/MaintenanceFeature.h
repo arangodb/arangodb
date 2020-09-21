@@ -79,6 +79,9 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
+  // @brief #databases last time we checked allDatabases
+  size_t lastNumberOfDatabases();
+
   // Is maintenance paused?
   bool isPaused() const;
 
@@ -469,6 +472,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   mutable std::mutex _shardActionMapMutex;
 
   std::vector<std::string> _databasesToCheck;
+  std::atomic<size_t> _lastNumberOfDatabases;
 
  public:
   std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _phase1_runtime_msec;

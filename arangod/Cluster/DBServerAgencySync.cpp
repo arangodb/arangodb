@@ -179,7 +179,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   uint64_t planIndex = 0, currentIndex = 0;
 
 
-  auto moreDirt = mfeature.pickRandomDirty(5);
+
+  auto moreDirt = mfeature.pickRandomDirty(
+    std::ceil(1.f * mfeature.lastNumberOfDatabases() / 720.f));
   auto dirty = mfeature.dirty();
 
   if (dirty.empty()) {

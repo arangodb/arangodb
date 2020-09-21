@@ -976,6 +976,7 @@ void MaintenanceFeature::refillToCheck() {
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
   std::default_random_engine e(seed);
   _databasesToCheck = server().getFeature<DatabaseFeature>().getDatabaseNames();
+  _lastNumberOfDatabases.store(_databasesToCheck.size(), std::memory_order_relaxed);
   std::shuffle(_databasesToCheck.begin(), _databasesToCheck.end(), e);
 }
 
@@ -1003,6 +1004,10 @@ std::unordered_set<std::string> MaintenanceFeature::allDatabases() const {
     allDBNames.emplace(i);
   }
   return allDBNames;
+}
+
+size_t MaintenanceFeature::lastNumberOfDatabases() {
+  return _lastNumberOfDatabases.load();
 }
 
 std::shared_ptr<maintenance::ActionDescription> MaintenanceFeature::isShardLocked(
