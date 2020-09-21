@@ -36,9 +36,13 @@ namespace arangodb {
 namespace iresearch {
 
 struct GeoOptions {
-  int32_t maxCells;
-  int32_t minLevel;
-  int32_t maxLevel;
+  static constexpr int32_t MAX_CELLS = S2RegionCoverer::Options::kDefaultMaxCells;
+  static constexpr int32_t MIN_LEVEL = 0;
+  static constexpr int32_t MAX_LEVEL = S2CellId::kMaxLevel;
+
+  int32_t maxCells{MAX_CELLS};
+  int32_t minLevel{MIN_LEVEL};
+  int32_t maxLevel{MAX_LEVEL};
 };
 
 class GeoAnalyzer
@@ -91,8 +95,8 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
 
 class GeoJSONAnalyzer final : public GeoAnalyzer {
  public:
-  enum class Type {
-    SHAPE,
+  enum class Type : uint32_t {
+    SHAPE = 0,
     CENTROID,
     POINT
   };

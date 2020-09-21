@@ -31,6 +31,7 @@
 #include "velocypack/velocypack-aliases.h"
 
 #include "Geo/GeoJson.h"
+#include "Geo/GeoParams.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
@@ -61,21 +62,23 @@ using GeoJSONTypeEnumDeserializer = enum_deserializer<
 >;
 
 using GeoOptionsDeserializer = utilities::constructing_deserializer<GeoOptions, parameter_list<
-  factory_simple_parameter<MAX_CELLS_PARAM, int32_t, false, values::numeric_value<int32_t, S2RegionCoverer::Options::kDefaultMaxCells>>,
-  factory_simple_parameter<MIN_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, 0>>,
-  factory_simple_parameter<MAX_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, S2CellId::kMaxLevel>>>
->;
+  factory_simple_parameter<MAX_CELLS_PARAM, int32_t, false, values::numeric_value<int32_t, GeoOptions::MAX_CELLS>>,
+  factory_simple_parameter<MIN_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, GeoOptions::MIN_LEVEL>>,
+  factory_simple_parameter<MAX_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, GeoOptions::MAX_LEVEL>>
+>>;
 
 using GeoJSONOptionsDeserializer = utilities::constructing_deserializer<GeoJSONAnalyzer::Options, parameter_list<
-  factory_deserialized_parameter<OPTIONS_PARAM, GeoOptionsDeserializer, true>,
-  factory_deserialized_parameter<TYPE_PARAM, GeoJSONTypeEnumDeserializer, true>>
+  factory_deserialized_default<OPTIONS_PARAM, GeoOptionsDeserializer>,
+  factory_deserialized_default<TYPE_PARAM, GeoJSONTypeEnumDeserializer,
+                                           values::numeric_value<GeoJSONAnalyzer::Type,
+                                                                 static_cast<std::underlying_type_t<GeoJSONAnalyzer::Type>>(GeoJSONAnalyzer::Type::SHAPE)>>>
 >;
 
 using GeoPointsOptionsDeserializer = utilities::constructing_deserializer<GeoPointAnalyzer::Options, parameter_list<
-  factory_deserialized_parameter<OPTIONS_PARAM, GeoOptionsDeserializer, true>,
-  factory_deserialized_parameter<LATITUDE_PARAM, values::value_deserializer<std::string>, true>,
-  factory_deserialized_parameter<LONGITUDE_PARAM, values::value_deserializer<std::string>, true>>
->;
+  factory_deserialized_default<OPTIONS_PARAM, GeoOptionsDeserializer>,
+  factory_deserialized_default<LATITUDE_PARAM, values::value_deserializer<std::string>, values::empty_string_value>,
+  factory_deserialized_default<LONGITUDE_PARAM, values::value_deserializer<std::string>, values::empty_string_value>
+>>;
 
 template<typename Analyzer>
 struct Deserializer;
