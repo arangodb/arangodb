@@ -81,7 +81,7 @@ auto KPathFinder::PathResult::isValid() const -> bool {
   return _uniqueVertices.size() == _vertices.size();
 }
 
-bool KPathFinder::VertexIdentifier::operator<(VertexIdentifier const& other) const {
+bool KPathFinder::VertexIdentifier::operator<(VertexIdentifier const& other) const noexcept {
   // We only compare on the id vaue.
   // predecessor does not matter
   return id < other.id;
@@ -103,12 +103,9 @@ void KPathFinder::Ball::clear() {
 }
 
 void KPathFinder::Ball::reset(VertexRef center) {
+  clear();
   _center = center;
-  _shell.clear();
-  _interior.clear();
   _shell.emplace(VertexIdentifier{center, 0, EdgeDocumentToken{}});
-  _depth = 0;
-  _searchIndex = std::numeric_limits<size_t>::max();
 }
 
 void KPathFinder::Ball::startNextDepth() {

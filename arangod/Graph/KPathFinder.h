@@ -58,7 +58,7 @@ class KPathFinder : public ShortestPathFinder {
     EdgeDocumentToken edge;
 
     // Make the set work on the VertexRef attribute only
-    bool operator<(VertexIdentifier const& other) const;
+    bool operator<(VertexIdentifier const& other) const noexcept;
   };
 
   class PathResult {
