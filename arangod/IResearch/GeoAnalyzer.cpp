@@ -204,7 +204,7 @@ bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2Point& out) {
 
   auto const latlng = S2LatLng::FromDegrees(lat, lng);
 
-  if (latlng.is_valid()) {
+  if (!latlng.is_valid()) {
     return false;
   }
 
@@ -342,7 +342,7 @@ GeoPointAnalyzer::GeoPointAnalyzer(Options const& opts)
     _indexer(S2Options(opts.options)),
     _latitude(opts.latitude),
     _longitude(opts.longitude),
-    _fromArray{!_latitude.empty() && !_longitude.empty()} {
+    _fromArray{_latitude.empty() || _longitude.empty()} {
 }
 
 bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
