@@ -113,6 +113,7 @@ class SharedMaintenanceTest : public ::testing::Test {
     supervision = createNode(supervisionStr);
     current = createNode(currentStr);
     dbsIds = matchShortLongIds(supervision);
+    arangodb::AgencyCommHelper::initialize("arango");
   }
 
  protected:
