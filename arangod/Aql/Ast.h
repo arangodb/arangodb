@@ -134,6 +134,9 @@ class Ast {
 
   /// @brief find the bottom-most expansion subnodes (if any)
   AstNode const* findExpansionSubNode(AstNode const*) const;
+  
+  /// @brief create a node from the velocypack data
+  AstNode* createNode(arangodb::velocypack::Slice slice);
 
   /// @brief create an AST passthru node
   /// note: this type of node is only used during parsing and optimized away

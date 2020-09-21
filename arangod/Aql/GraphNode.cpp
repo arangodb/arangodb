@@ -424,12 +424,12 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   TRI_ASSERT(base.hasKey("tmpObjVarNode"));
   // the plan's AST takes ownership of the newly created AstNode, so this is
   // safe cppcheck-suppress *
-  _tmpObjVarNode = new AstNode(plan->getAst(), base.get("tmpObjVarNode"));
+  _tmpObjVarNode = plan->getAst()->createNode(base.get("tmpObjVarNode"));
 
   TRI_ASSERT(base.hasKey("tmpIdNode"));
   // the plan's AST takes ownership of the newly created AstNode, so this is
   // safe cppcheck-suppress *
-  _tmpIdNode = new AstNode(plan->getAst(), base.get("tmpIdNode"));
+  _tmpIdNode = plan->getAst()->createNode(base.get("tmpIdNode"));
 
   VPackSlice opts = base.get("options");
   if (!opts.isObject()) {

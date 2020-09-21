@@ -122,8 +122,7 @@ std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan, velocypack::Slice c
     }
 
     // will be owned by Ast
-    auto* node = new aql::AstNode(ast, sortSlice.get("node"));
-
+    auto* node = ast->createNode(sortSlice.get("node"));
     scorers.emplace_back(var, node);
     ++i;
   }
@@ -936,7 +935,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
 
   if (filterSlice.isObject() && !filterSlice.isEmptyObject()) {
     // AST will own the node
-    _filterCondition = new aql::AstNode(plan.getAst(), filterSlice);
+    _filterCondition = plan.getAst()->createNode(filterSlice);
   }
 
   // shards

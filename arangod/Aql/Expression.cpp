@@ -80,7 +80,7 @@ Expression::Expression(Ast* ast, AstNode* node)
 
 /// @brief create an expression from VPack
 Expression::Expression(Ast* ast, arangodb::velocypack::Slice const& slice)
-    : Expression(ast, new AstNode(ast, slice.get("expression"))) {
+    : Expression(ast, ast->createNode(slice.get("expression"))) {
   TRI_ASSERT(_type != UNPROCESSED);
 }
 
