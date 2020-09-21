@@ -669,13 +669,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     auto const& colname = path[1];
 
     if (dirty.find(dbname) != dirty.end()) { // only if among dirty
-
-      path.pop_back();             // dbname, collection
-      path.emplace_back(INDEXES);  // dbname, collection, indexes
       auto const planit = plan.find(dbname);
 
       if (planit == plan.end() ||                        // database gone
-          planit->second->slice()[0].hasKey(std::vector<std::string>{ // collection gone
+          !planit->second->slice()[0].hasKey(std::vector<std::string>{ // collection gone
               AgencyCommHelper::path(), PLAN, COLLECTIONS, dbname, colname})) {
         for (auto& index : shard.second) {
           index.second.reset();

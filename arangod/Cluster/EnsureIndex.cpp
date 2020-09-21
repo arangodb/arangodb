@@ -131,7 +131,7 @@ bool EnsureIndex::first() {
       std::stringstream error;
       error << "failed to ensure index " << body.slice().toJson() << " "
             << _result.errorMessage();
-      LOG_TOPIC("bc555", WARN, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+      LOG_TOPIC("bc555", WARN, Logger::MAINTENANCE) << "EnsureIndex: " << _description << ", error: " << error.str();
 
       VPackBuilder eb;
       {
