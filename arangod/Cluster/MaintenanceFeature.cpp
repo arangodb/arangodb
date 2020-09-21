@@ -963,12 +963,17 @@ void MaintenanceFeature::addDirty(std::unordered_set<std::string> const& databas
 
 std::unordered_set<std::string> MaintenanceFeature::pickRandomDirty(size_t n) {
   size_t left = _databasesToCheck.size();
+  bool more = false;
   if (n >= left) {
     n = left;
-    refillToCheck();
+    more = true;
   }
   std::unordered_set<std::string> ret(std::make_move_iterator(_databasesToCheck.end()-n),
                                       std::make_move_iterator(_databasesToCheck.end()));
+  _databasesToCheck.erase(_databasesToCheck.end()-n,_databasesToCheck.end());
+  if (more) {
+    refillToCheck();
+  }
   return ret;
 }
 
