@@ -409,6 +409,10 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     results.status = true;
     print(RED + 'No testcase matched the filter.' + RESET);
   }
+  if (options.sleepBeforeShutdown !=0) {
+    print("Sleeping for " + options.sleepBeforeShutdown + " seconds");
+    sleep(options.sleepBeforeShutdown);
+  }
   let shutDownStart = time();
   results['testDuration'] = shutDownStart - testrunStart;
   print(Date() + ' Shutting down...');
