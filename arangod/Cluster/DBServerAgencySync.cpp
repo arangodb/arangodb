@@ -181,7 +181,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   auto moreDirt = mfeature.pickRandomDirty(5);
   auto dirty = mfeature.dirty();
-  // remove all dirty from moreDirt
 
   if (dirty.empty()) {
     LOG_TOPIC("0a62f", DEBUG, Logger::MAINTENANCE)

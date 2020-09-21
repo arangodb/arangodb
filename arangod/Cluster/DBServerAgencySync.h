@@ -77,6 +77,7 @@ class DBServerAgencySync {
  private:
   application_features::ApplicationServer& _server;
   HeartbeatThread* _heartbeat;
+  size_t _lastNumberOfLocalDatabases;
 };
 }  // namespace arangodb
 
