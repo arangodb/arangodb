@@ -773,7 +773,7 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     if (intermediateCommits &&
         ServerState::instance()->isDBServer() &&
         tid.isFollowerTransactionId()) {
-      // we are trying to abort a follower transaction (again) that had intermediate
+      // we are trying to abort a follower transaction that had intermediate
       // commits already. in this case we return a special error code, which makes
       // the leader drop us as a follower for all shards in the transaction.
       res.reset(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED);

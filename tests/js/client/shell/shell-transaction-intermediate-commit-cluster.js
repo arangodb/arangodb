@@ -202,11 +202,13 @@ function transactionIntermediateCommitsSingleSuite() {
       
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_count");
       let intermediateCommitsBefore = getMetric(follower, "arangodb_intermediate_commits");
+      let didWork = false;
       try {
         db._query('FOR i IN 1..10000 INSERT { _key: CONCAT("test", i), value: ASSERT(i < 10000, "peng!") } IN ' + cn, {}, {intermediateCommitCount: 1000});
-        fail();
+        didWork = true;
       } catch (err) {
       }
+      assertEqual(didWork, false);
       
       // follower must have been dropped
       let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_count");
@@ -276,6 +278,7 @@ function transactionIntermediateCommitsSingleSuite() {
       
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_count");
       let intermediateCommitsBefore = getMetric(follower, "arangodb_intermediate_commits");
+      let didWork = false;
       try {
         db._executeTransaction({
           collections: { write: cn },
@@ -295,10 +298,11 @@ function transactionIntermediateCommitsSingleSuite() {
           params: { cn },
           intermediateCommitCount: 1000,
         });
-        fail();
-      } catch (err) {
+        didWork = true;
+      } catch (ignore) {
       }
-      
+      assertEqual(didWork, false);
+
       // follower must have been dropped
       let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_count");
       assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
@@ -461,11 +465,13 @@ function transactionIntermediateCommitsMultiSuite() {
 
       let droppedFollowersBefore1 = getMetric(leader1, "arangodb_dropped_followers_count");
       let droppedFollowersBefore2 = getMetric(leader2, "arangodb_dropped_followers_count");
+      let didWork = false;
       try {
         db._query('FOR i IN 1..10000 INSERT { _key: CONCAT("test", i), value: ASSERT(i < 10000, "peng!") } IN ' + cn + '1 INSERT { _key: CONCAT("test", i), value: ASSERT(i < 10000, "peng!") } IN ' + cn + '2', {}, {intermediateCommitCount: 1000});
-        fail();
+        didWork = true;
       } catch (err) {
       }
+      assertEqual(didWork, false);
       
       // follower must have been dropped
       let droppedFollowersAfter1 = getMetric(leader1, "arangodb_dropped_followers_count");
