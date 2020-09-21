@@ -39,20 +39,50 @@ TEST(FixedSizeAllocatorTest, test_Int) {
 
   // first allocation should be aligned to a cache line
   EXPECT_EQ(0, (uintptr_t(p) % 64));
-  EXPECT_EQ(0, (uintptr_t(p) % sizeof(int)));
+  EXPECT_EQ(0, (uintptr_t(p) % alignof(int)));
   EXPECT_EQ(24, *p);
   EXPECT_EQ(1, allocator.numUsed());
   
   p = allocator.allocate(42);
 
   EXPECT_EQ(42, *p);
-  EXPECT_EQ(0, (uintptr_t(p) % sizeof(int)));
+  EXPECT_EQ(0, (uintptr_t(p) % alignof(int)));
   EXPECT_EQ(2, allocator.numUsed());
 
   p = allocator.allocate(23);
 
   EXPECT_EQ(23, *p);
-  EXPECT_EQ(0, (uintptr_t(p) % sizeof(int)));
+  EXPECT_EQ(0, (uintptr_t(p) % alignof(int)));
+  EXPECT_EQ(3, allocator.numUsed());
+
+  allocator.clear();
+
+  EXPECT_EQ(0, allocator.numUsed());
+}
+
+TEST(FixedSizeAllocatorTest, test_UInt64) {
+  FixedSizeAllocator<uint64_t> allocator;
+
+  EXPECT_EQ(0, allocator.numUsed());
+
+  uint64_t* p = allocator.allocate(24);
+
+  // first allocation should be aligned to a cache line
+  EXPECT_EQ(0, (uintptr_t(p) % 64));
+  EXPECT_EQ(0, (uintptr_t(p) % alignof(uint64_t)));
+  EXPECT_EQ(24, *p);
+  EXPECT_EQ(1, allocator.numUsed());
+  
+  p = allocator.allocate(42);
+
+  EXPECT_EQ(42, *p);
+  EXPECT_EQ(0, (uintptr_t(p) % alignof(int)));
+  EXPECT_EQ(2, allocator.numUsed());
+
+  p = allocator.allocate(23);
+
+  EXPECT_EQ(23, *p);
+  EXPECT_EQ(0, (uintptr_t(p) % alignof(int)));
   EXPECT_EQ(3, allocator.numUsed());
 
   allocator.clear();
@@ -77,13 +107,13 @@ TEST(FixedSizeAllocatorTest, test_Struct) {
 
   // first allocation should be aligned to a cache line
   EXPECT_EQ(0, (uintptr_t(p) % 64));
-  EXPECT_EQ(0, (uintptr_t(p) % sizeof(Testee)));
+  EXPECT_EQ(0, (uintptr_t(p) % alignof(Testee)));
   EXPECT_EQ("foo", p->abc);
   EXPECT_EQ("bar", p->def);
   EXPECT_EQ(1, allocator.numUsed());
   
   p = allocator.allocate("foobar", "baz");
-  EXPECT_EQ(0, (uintptr_t(p) % sizeof(Testee)));
+  EXPECT_EQ(0, (uintptr_t(p) % alignof(Testee)));
   EXPECT_EQ("foobar", p->abc);
   EXPECT_EQ("baz", p->def);
   EXPECT_EQ(2, allocator.numUsed());

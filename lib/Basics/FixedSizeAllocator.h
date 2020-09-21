@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
 
+#include <algorithm>
 #include <vector>
 
 namespace arangodb {
@@ -45,7 +46,7 @@ class FixedSizeAllocator {
       TRI_ASSERT(numItems >= 32);
       // assumption is that the size of a cache line is at least 64,
       // so we are allocating 64 bytes in addition
-      _alloc = new char[(sizeof(T) * numItems) + 64];
+      _alloc = new char[(std::max<size_t>(sizeof(T), alignof(T)) * numItems) + 64];
 
       _numAllocated = numItems;
 
@@ -61,7 +62,7 @@ class FixedSizeAllocator {
     ~MemoryBlock() noexcept { 
       // destroy all items
       for (size_t i = 0; i < _numUsed; ++i) {
-        T* p =  reinterpret_cast<T*>(_data + (sizeof(T) * i));
+        T* p =  reinterpret_cast<T*>(_data + (std::max<size_t>(sizeof(T), alignof(T)) * i));
         // call destructor for each item
         p->~T();
       }
