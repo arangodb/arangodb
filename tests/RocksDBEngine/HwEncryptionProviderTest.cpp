@@ -50,7 +50,8 @@ static const char* SAMPLE_KEY = "01234567890123456789012345678901";
 TEST(EncryptionProviderTest, simple) {
   
   // hand rolled AES-256-CTR mode
-  arangodb::enterprise::HwEncryptionProvider hwprovider(rocksdb::Slice(SAMPLE_KEY, 32));
+  arangodb::enterprise::HwEncryptionProvider hwprovider(rocksdb::Slice(SAMPLE_KEY, 32),
+                                                        /*allowAcceleration*/true);
 
   // this is the hand-rolled CTR mode with the openssl software-only AES_encrypt
   arangodb::enterprise::AES256BlockCipher cipher(rocksdb::Slice(SAMPLE_KEY, 32));
@@ -108,7 +109,8 @@ TEST(EncryptionProviderTest, simple) {
 TEST(EncryptionProviderTest, microbenchmark) {
   
   // hand rolled AES-256-CTR mode
-  arangodb::enterprise::HwEncryptionProvider hwprovider(rocksdb::Slice(SAMPLE_KEY, 32));
+  arangodb::enterprise::HwEncryptionProvider hwprovider(rocksdb::Slice(SAMPLE_KEY, 32),
+                                                        /*allowAcceleration*/true);
 
   // this is the hand-rolled CTR mode with the openssl software-only AES_encrypt
   arangodb::enterprise::AES256BlockCipher cipher(rocksdb::Slice(SAMPLE_KEY, 32));
