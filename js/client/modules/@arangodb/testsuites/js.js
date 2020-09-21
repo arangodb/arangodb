@@ -30,8 +30,7 @@ const functionsDocumentation = {
 };
 const optionsDocumentation = [
   '   - `jssource`: directory of the java driver',
-  '   - `jsOptions`: additional arguments to pass via the commandline',
-  '                  can be found in arangodb-java-driver/src/test/java/utils/TestUtils.java'
+  '   - `jsOptions`: additional arguments to pass via the commandline'
 ];
 
 const internal = require('internal');
@@ -108,14 +107,18 @@ function jsDriver (options) {
     }
     let start = Date();
     let status = true;
-    const res = executeExternalAndWait('yarn', args, true, [], options.jssource);
+    const res = executeExternal('yarn', args, true, [], options.jssource);
 
-    let allBuff;
+    let allBuff = '';
+    let count = 0;
+    let rc;
     do {
+      print('.')
       let buf = fs.readPipe(res.pid);
       allBuff += buf;
       while ((buf.length === 1023) || count === 0) {
-        print(buf)
+        //print('--------')
+        //print(buf)
         count += 1;
         buf = fs.readPipe(res.pid);
         allBuff += buf;
@@ -128,6 +131,7 @@ function jsDriver (options) {
     if (rc.exit !== 0) {
       status = false;
     }
+    print('xxxxxx-----------')
     print(allBuff);
     let testResults = JSON.parse(allBuff);
   }
