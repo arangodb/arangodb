@@ -92,6 +92,7 @@ arangodb::Result diffPlanLocal(
 arangodb::Result executePlan(
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
   uint64_t planIndex, std::unordered_set<std::string> const& dirty,
+  std::unordered_set<std::string> const& moreDirt,
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, arangodb::MaintenanceFeature& feature, VPackBuilder& report,
   arangodb::MaintenanceFeature::ShardActionMap const& shardActionMap);
@@ -129,6 +130,7 @@ arangodb::Result diffLocalCurrent(
 arangodb::Result phaseOne(
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
   uint64_t planIndex, std::unordered_set<std::string> const& dirty,
+  std::unordered_set<std::string> const& moreDirt,
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
   MaintenanceFeature::ShardActionMap const& shardActionMap);
