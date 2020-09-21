@@ -401,7 +401,6 @@ MockClusterServer::MockClusterServer() : MockServer() {
 
   arangodb::network::ConnectionPool::Config config;
   config.numIOThreads = 1;
-  config.minOpenConnections = 1;
   config.maxOpenConnections = 8;
   config.verifyHosts = false;
   addFeature<arangodb::NetworkFeature>(true, config);
@@ -419,7 +418,6 @@ void MockClusterServer::startFeatures() {
   arangodb::network::ConnectionPool::Config poolConfig;
   poolConfig.clusterInfo = &getFeature<arangodb::ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
-  poolConfig.minOpenConnections = 1;
   poolConfig.maxOpenConnections = 3;
   poolConfig.verifyHosts = false;
 
