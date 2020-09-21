@@ -23,6 +23,7 @@
 #ifndef ARANGODB_GRAPH_K_PATHS_FINDER_H
 #define ARANGODB_GRAPH_K_PATHS_FINDER_H 1
 
+#include "Containers/HashSet.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
 
@@ -76,7 +77,8 @@ class KPathFinder : public ShortestPathFinder {
    private:
     std::deque<VertexRef> _vertices;
     std::deque<EdgeDocumentToken> _edges;
-    std::unordered_set<VertexRef> _uniqueVertices;
+
+    ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> _uniqueVertices;
   };
 
   using Shell = std::multiset<VertexIdentifier>;
