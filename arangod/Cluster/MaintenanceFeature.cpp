@@ -462,7 +462,7 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescript
     // similar action not in the queue (or at least no longer viable)
     if (!curAction) {
       LOG_TOPIC("fead2", DEBUG, Logger::MAINTENANCE)
-          << "Did not find action with same hash: " << description << " adding to queue";
+          << "Did not find action with same hash: " << *description << " adding to queue";
       newAction = createAndRegisterAction(description, executeNow);
 
       if (!newAction || !newAction->ok()) {
