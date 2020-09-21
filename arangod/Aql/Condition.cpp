@@ -562,7 +562,7 @@ std::unique_ptr<Condition> Condition::fromVPack(ExecutionPlan* plan, arangodb::v
 
   if (slice.isObject() && slice.length() != 0) {
     // note: the AST is responsible for freeing the AstNode later!
-    AstNode* node = new AstNode(plan->getAst(), slice);
+    AstNode* node = plan->getAst()->createNode(slice);
     condition->andCombine(node);
   }
 

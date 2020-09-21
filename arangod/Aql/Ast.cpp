@@ -249,6 +249,11 @@ AstNode const* Ast::findExpansionSubNode(AstNode const* current) const {
   }
 }
 
+/// @brief create a node from the velocypack slice
+AstNode* Ast::createNode(arangodb::velocypack::Slice slice) {
+  return _resources.registerNode(this, slice);
+}
+
 /// @brief create an AST passhthru node
 /// note: this type of node is only used during parsing and optimized away later
 AstNode* Ast::createNodePassthru(AstNode const* what) {
@@ -3914,12 +3919,7 @@ std::pair<std::string, bool> Ast::normalizeFunctionName(char const* name, size_t
 
 /// @brief create a node of the specified type
 AstNode* Ast::createNode(AstNodeType type) {
-  auto node = new AstNode(type);
-
-  // register the node so it gets freed automatically later
-  _resources.addNode(node);
-
-  return node;
+  return _resources.registerNode(type);
 }
 
 /// @brief validate the name of the given datasource
