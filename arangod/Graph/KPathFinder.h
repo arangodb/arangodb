@@ -58,7 +58,6 @@ class KPathFinder : public ShortestPathFinder {
 
     // Make the set work on the VertexRef attribute only
     bool operator<(VertexIdentifier const& other) const;
-//    bool operator<(VertexRef const& other) const;
   };
 
   class PathResult {
@@ -82,7 +81,7 @@ class KPathFinder : public ShortestPathFinder {
 
   using Shell = std::multiset<VertexIdentifier>;
   using Interior = std::vector<VertexIdentifier>;
-  using ResultList = std::deque<std::pair<VertexIdentifier, VertexIdentifier>>;
+  using ResultList = std::vector<std::pair<VertexIdentifier, VertexIdentifier>>;
 
   // We have two balls, one arround source, one around target, and try to find intersections of the balls
   class Ball {
