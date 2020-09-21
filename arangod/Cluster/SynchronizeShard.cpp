@@ -186,8 +186,9 @@ static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollect
     return res;
   }
 
+  OperationOptions options(ExecContext::current());
   OperationResult opResult =
-    trx.count(collectionName, arangodb::transaction::CountType::Normal);
+      trx.count(collectionName, arangodb::transaction::CountType::Normal, options);
   res = trx.finish(opResult.result);
 
   if (res.fail()) {

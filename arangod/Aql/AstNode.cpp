@@ -608,7 +608,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
           // special handling for nop as it is a singleton
           addMember(ast->createNodeNop());
         } else {
-          addMember(new AstNode(ast, it));
+          addMember(ast->createNode(it));
         }
       }
     } catch (...) {
@@ -621,8 +621,6 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
       throw;
     }
   }
-
-  ast->resources().addNode(this);
 }
 
 /// @brief create the node
