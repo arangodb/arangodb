@@ -981,7 +981,8 @@ void MaintenanceFeature::refillToCheck() {
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
   std::default_random_engine e(seed);
   _databasesToCheck = server().getFeature<DatabaseFeature>().getDatabaseNames();
-  _lastNumberOfDatabases.store(_databasesToCheck.size(), std::memory_order_relaxed);
+  // This number is not guarded relies on single threadedness of the maintenance
+  _lastNumberOfDatabases = _databasesToCheck.size();
   std::shuffle(_databasesToCheck.begin(), _databasesToCheck.end(), e);
 }
 
@@ -1012,7 +1013,8 @@ std::unordered_set<std::string> MaintenanceFeature::allDatabases() const {
 }
 
 size_t MaintenanceFeature::lastNumberOfDatabases() {
-  return _lastNumberOfDatabases.load();
+  // This number is not guarded relies on single threadedness of the maintenance
+  return _lastNumberOfDatabases;
 }
 
 std::shared_ptr<maintenance::ActionDescription> MaintenanceFeature::isShardLocked(

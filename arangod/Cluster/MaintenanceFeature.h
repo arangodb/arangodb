@@ -472,7 +472,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   mutable std::mutex _shardActionMapMutex;
 
   std::vector<std::string> _databasesToCheck;
-  std::atomic<size_t> _lastNumberOfDatabases;
+  size_t _lastNumberOfDatabases;
 
  public:
   std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _phase1_runtime_msec;

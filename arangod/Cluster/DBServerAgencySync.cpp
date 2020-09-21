@@ -179,10 +179,18 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   uint64_t planIndex = 0, currentIndex = 0;
 
 
-
   auto moreDirt = mfeature.pickRandomDirty(
-    std::ceil(1.f * mfeature.lastNumberOfDatabases() / 720.f));
+    std::ceil(mfeature.lastNumberOfDatabases() / 720.));
   auto dirty = mfeature.dirty();
+  for (auto it = moreDirt.begin(); it != moreDirt.end();) {
+    if (dirty.find(*it) != dirty.end()) {
+      dirty.insert(*it);
+      it++;
+    } else {
+      it = moreDirt.erase(it);
+    }
+  }
+
 
   if (dirty.empty()) {
     LOG_TOPIC("0a62f", DEBUG, Logger::MAINTENANCE)
