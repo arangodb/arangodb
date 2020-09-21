@@ -1233,6 +1233,25 @@ TEST_CASE("Test [dict-keys] primitive", "[dict-keys]") {
   }
 }
 
+
+TEST_CASE("Test [sort] primitive", "[sort]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("sort ints") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["sort", "lt?", ["list", 3, 1, 2]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().toJson() == "[1,2,3]");
+  }
+}
+
 TEST_CASE("Test [str] primitive", "[str]") {
   Machine m;
   InitMachine(m);
@@ -1596,14 +1615,6 @@ TEST_CASE("Test [array-set] primitive", "[array-set]") {
     REQUIRE(res.fail());
   }
 }
-
-// TODO: this is not a language primitive but part of `VertexComputation`
-TEST_CASE("Test [accum-ref] primitive", "[accumref]") {}
-TEST_CASE("Test [this] primitive", "[this]") {}
-TEST_CASE("Test [send-to-accum] primitive", "[send-to-accum]") {}
-TEST_CASE("Test [send-to-all-neighbours] primitive",
-          "[send-to-all-neighbours]") {}
-TEST_CASE("Test [global-superstep] primitive", "[global-superstep]") {}
 
 TEST_CASE("Test [apply] primitive", "[apply]") {
   Machine m;
