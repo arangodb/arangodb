@@ -890,6 +890,62 @@ EvalResult Prim_Assert(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
   return {};
 }
 
+EvalResult Prim_Sort(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+
+  auto res = extract<VPackSlice, VPackSlice>(paramsList);
+  if (!res) {
+    return std::move(res).asResult();
+  }
+
+  auto&& [func, list] = res.value();
+  if (!list.isArray()) {
+    return EvalError("expected list as second parameter, found: " + list.toJson());
+  }
+
+  VPackArrayIterator iter(list);
+  std::vector<VPackSlice> v;
+  v.reserve(list.length());
+  v.assign(iter.begin(), iter.end());
+
+  struct Compare {
+    Machine& ctx;
+    VPackSlice func;
+
+    // return true if A is _less_ than B
+    bool operator()(VPackSlice A, VPackSlice B) {
+
+      VPackBuilder parameter;
+      {
+        VPackArrayBuilder pb(&parameter);
+        parameter.add(A);
+        parameter.add(B);
+      }
+
+      VPackBuilder tempBuffer;
+
+      auto res = EvaluateApply(ctx, func,
+                               VPackArrayIterator(parameter.slice()), tempBuffer, false);
+      if (res.fail()) {
+        throw res.error().wrapMessage("when mapping pair " + parameter.toJson());
+      }
+
+      return ValueConsideredTrue(tempBuffer.slice());
+    }
+  };
+
+  try {
+    std::sort(v.begin(), v.end(), Compare{ctx, func});
+  } catch (EvalError& err) {
+    return err.wrapMessage("in compare function");
+  }
+
+  VPackArrayBuilder ab(&result);
+  for (auto&& slice : v) {
+    result.add(slice);
+  }
+  return {};
+}
+
 void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_type&& f) {
   ctx.setFunction(name, std::move(f));
 }
@@ -924,6 +980,8 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("list-set", Prim_ListSet);
   ctx.setFunction("list-empty?", Prim_ListEmptyHuh);
   ctx.setFunction("list-length", Prim_ListLength);
+  ctx.setFunction("sort", Prim_Sort);
+
   // deprecated list functions
   ctx.setFunction("array-ref", Prim_ListRef);
   ctx.setFunction("array-set", Prim_ListSet);
