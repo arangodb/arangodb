@@ -744,7 +744,8 @@ arangodb::Result arangodb::maintenance::executePlan(
   for (auto const& action : actions) {
     // check if any action from moreDirt
     // and db not in feature.dirty
-    if (action->has(DATABASE) && moreDirt.find(action->get(DATABASE)) != moreDirt.end() &&
+    if (action->has(DATABASE) && dirty.find(action->get(DATABASE)) == dirty.end() &&
+        moreDirt.find(action->get(DATABASE)) != moreDirt.end() &&
         !feature.isDirty(action->get(DATABASE))) {
       LOG_TOPIC("38739", ERR, Logger::MAINTENANCE) <<
         "Maintenance feature detected action " << *action << " for randomly chosen database";
