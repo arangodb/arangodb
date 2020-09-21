@@ -33,14 +33,26 @@ constexpr irs::string_ref PIPELINE_PARAM_NAME = "pipeline";
 constexpr irs::string_ref TYPE_PARAM_NAME = "type";
 constexpr irs::string_ref PROPERTIES_PARAM_NAME = "properties";
 
-struct options_normalize_t {
-  std::vector<std::pair<std::string, std::string>> pipeline;
+const irs::offset NO_OFFSET;
+
+class empty_analyzer
+  : public irs::analysis::analyzer, private irs::util::noncopyable {
+ public:
+  empty_analyzer() : analyzer(irs::type<empty_analyzer>::get()) {}
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) { return nullptr;  }
+  static constexpr irs::string_ref type_name() noexcept { return "empty_analyzer"; }
+  virtual bool next() override { return false; }
+  virtual bool reset(const irs::string_ref&) override { return false; }
 };
+
+empty_analyzer EMPTY_ANALYZER;
+
+using  options_normalize_t = std::vector<std::pair<std::string, std::string>>;
 
 template<typename T>
 bool parse_json_config(const irs::string_ref& args, T& options) {
   if constexpr (std::is_same_v<T, irs::analysis::pipeline_token_stream::options_t>) {
-    assert(options.pipeline.empty());
+    assert(options.empty());
   }
   rapidjson::Document json;
   if (json.Parse(args.c_str(), args.size()).HasParseError()) {
@@ -96,7 +108,7 @@ bool parse_json_config(const irs::string_ref& args, T& options) {
                 irs::type<irs::text_format::json>::get(),
                 properties_buffer.GetString());
               if (analyzer) {
-                options.pipeline.push_back(std::move(analyzer));
+                options.push_back(std::move(analyzer));
               } else {
                 IR_FRMT_ERROR(
                   "Failed to create pipeline member of type '%s' with properties '%s' while constructing "
@@ -107,7 +119,7 @@ bool parse_json_config(const irs::string_ref& args, T& options) {
             } else {
               std::string normalized;
               if (!irs::analysis::analyzers::normalize(normalized, type,
-                irs::type<irs::text_format::json>::get(),
+                                                       irs::type<irs::text_format::json>::get(),
                 properties_buffer.GetString())) {
                 IR_FRMT_ERROR(
                   "Failed to normalize pipeline member of type '%s' with properties '%s' while constructing "
@@ -115,7 +127,7 @@ bool parse_json_config(const irs::string_ref& args, T& options) {
                   type.c_str(), properties_buffer.GetString(), args.c_str());
                 return false;
               }
-              options.pipeline.emplace_back(type, normalized);
+              options.emplace_back(type, normalized);
             }
           } else {
             IR_FRMT_ERROR(
@@ -147,7 +159,7 @@ bool parse_json_config(const irs::string_ref& args, T& options) {
       args.c_str());
     return false;
   }
-  if (options.pipeline.empty()) {
+  if (options.empty()) {
     IR_FRMT_ERROR(
       "Empty pipeline found while constructing pipeline_token_stream, "
       "arguments: %s", args.c_str());
@@ -162,7 +174,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
     definition.clear();
     definition.append("{\"").append(PIPELINE_PARAM_NAME).append("\":[");
     bool first{ true };
-    for (auto analyzer : options.pipeline) {
+    for (auto analyzer : options) {
       if (first) {
         first = false;
       } else {
@@ -189,7 +201,7 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   irs::analysis::pipeline_token_stream::options_t options;
   if (parse_json_config(args, options)) {
-    return std::make_shared<irs::analysis::pipeline_token_stream>(options);
+    return std::make_shared<irs::analysis::pipeline_token_stream>(std::move(options));
   } else {
     return nullptr;
   }
@@ -199,20 +211,48 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 REGISTER_ANALYZER_JSON(irs::analysis::pipeline_token_stream, make_json,
   normalize_json_config);
 
+irs::attribute* find_payload(const std::vector<irs::analysis::analyzer::ptr>& pipeline) {
+  for (auto it = pipeline.rbegin(); it != pipeline.rend(); ++it) {
+    auto payload = irs::get_mutable<irs::payload>(it->get());
+    if (payload) {
+      return payload;
+    }
+  }
+  return nullptr;
+}
+
+bool all_have_offset(const std::vector<irs::analysis::analyzer::ptr>& pipeline) {
+  for (auto it = pipeline.begin(); it != pipeline.end(); ++it) {
+    auto offset = irs::get<irs::offset>(*it->get());
+    if (!offset) {
+      return false;
+    }
+  }
+  return true;
+}
+
 NS_END
 
 NS_ROOT
 NS_BEGIN(analysis)
 
-pipeline_token_stream::pipeline_token_stream(const pipeline_token_stream::options_t& options)
+pipeline_token_stream::pipeline_token_stream(pipeline_token_stream::options_t&& options)
   : attributes{ {
-    { irs::type<increment>::id(), &inc_ },
-    { irs::type<offset>::id(), &offs_ },
-    { irs::type<term_attribute>::id(), irs::get_mutable<term_attribute>(options.pipeline.back().get()) }},
-    irs::type<pipeline_token_stream>::get() } {
-  pipeline_.reserve(options.pipeline.size());
-  for (const auto& p : options.pipeline) {
-    pipeline_.emplace_back(p);
+    { irs::type<payload>::id(), find_payload(options)},
+    { irs::type<increment>::id(), &inc_},
+    { irs::type<offset>::id(), all_have_offset(options)? &offs_: nullptr},
+    { irs::type<term_attribute>::id(), options.empty() ?
+                                         nullptr
+                                         : irs::get_mutable<term_attribute>(options.back().get())}},
+    irs::type<pipeline_token_stream>::get()} {
+  pipeline_.reserve(options.size());
+  const auto track_offset = irs::get<offset>(*this) != nullptr;
+  for (const auto& p : options) {
+    assert(p);
+    pipeline_.emplace_back(p, track_offset);
+  }
+  if (pipeline_.empty()) {
+    pipeline_.push_back(sub_analyzer_t());
   }
   top_ = pipeline_.begin();
   bottom_ = --pipeline_.end();
@@ -220,7 +260,8 @@ pipeline_token_stream::pipeline_token_stream(const pipeline_token_stream::option
 
 /// Moves pipeline to next token.
 /// Term is taken from last analyzer in pipeline
-/// Offset is recalculated accordingly
+/// Offset is recalculated accordingly (only if ALL analyzers in pipeline )
+/// Payload is taken from lowest analyzer having this attribute
 /// Increment is calculated according to following position change rules
 ///  - If none of pipeline members changes position - whole pipeline holds position
 ///  - If one or more pipeline member moves - pipeline moves( change from max->0 is not move, see rules below!).
@@ -231,11 +272,10 @@ pipeline_token_stream::pipeline_token_stream(const pipeline_token_stream::option
 ///  - If parent after next is NOT moved (inc == 0) than pipeline makes one step forward if at least one child changes
 ///    position from any positive value back to 0 due to reset (additional gaps also preserved!) as this is
 ///    not change max->0 and position is indeed changed.
-inline bool pipeline_token_stream::next() {
+bool pipeline_token_stream::next() {
   uint32_t pipeline_inc;
-  bool step_for_rollback;
+  bool step_for_rollback{ false };
   do {
-    step_for_rollback = false;
     while (!current_->next()) {
       if (current_ == top_) { // reached pipeline top and next has failed - we are done
         return false;
@@ -243,9 +283,7 @@ inline bool pipeline_token_stream::next() {
       --current_;
     }
     pipeline_inc = current_->inc->value;
-
     const auto top_holds_position = current_->inc->value == 0;
-
     // go down to lowest pipe to get actual tokens
     while (current_ != bottom_) {
       const auto prev_term = current_->term->value;
@@ -280,7 +318,7 @@ inline bool pipeline_token_stream::next() {
   return true;
 }
 
-inline bool pipeline_token_stream::reset(const string_ref& data) {
+bool pipeline_token_stream::reset(const string_ref& data) {
   current_ = top_;
   return pipeline_.front().reset(0, static_cast<uint32_t>(data.size()), data);
 }
@@ -289,6 +327,19 @@ inline bool pipeline_token_stream::reset(const string_ref& data) {
   REGISTER_ANALYZER_JSON(pipeline_token_stream, make_json,
     normalize_json_config);  // match registration above
 }
+
+pipeline_token_stream::sub_analyzer_t::sub_analyzer_t(const irs::analysis::analyzer::ptr& a, bool track_offset)
+  : term(irs::get<irs::term_attribute>(*a)),
+  inc(irs::get<irs::increment>(*a)),
+  offs(track_offset ? irs::get<irs::offset>(*a) : &NO_OFFSET),
+  analyzer(a) {
+  assert(inc);
+  assert(term);
+}
+
+pipeline_token_stream::sub_analyzer_t::sub_analyzer_t()
+  : term(nullptr), inc(nullptr), offs(nullptr),
+    analyzer(irs::analysis::analyzer::ptr(), &EMPTY_ANALYZER) { }
 
 NS_END
 NS_END

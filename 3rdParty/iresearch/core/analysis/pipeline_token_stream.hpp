@@ -21,8 +21,8 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_IQL_PIPELINE_TOKEN_STREAM_H
-#define IRESEARCH_IQL_PIPELINE_TOKEN_STREAM_H
+#ifndef IRESEARCH_PIPELINE_TOKEN_STREAM_H
+#define IRESEARCH_PIPELINE_TOKEN_STREAM_H
 
 #include "shared.hpp"
 #include "analyzers.hpp"
@@ -34,26 +34,21 @@ NS_ROOT
 NS_BEGIN(analysis)
 
 class pipeline_token_stream final
-  : public frozen_attributes<3, analyzer>, private util::noncopyable {
+  : public frozen_attributes<4, analyzer>, private util::noncopyable {
  public:
-  struct options_t {
-    std::vector<irs::analysis::analyzer::ptr> pipeline;
-  };
+  using options_t = std::vector<irs::analysis::analyzer::ptr>;
 
   static constexpr string_ref type_name() noexcept { return "pipeline"; }
   static void init(); // for triggering registration in a static build
 
-  explicit pipeline_token_stream(const options_t& options);
+  explicit pipeline_token_stream(options_t&& options);
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
  private:
   struct sub_analyzer_t {
-    explicit sub_analyzer_t(const irs::analysis::analyzer::ptr& a)
-      : term(irs::get<irs::term_attribute>(*a)),
-        inc(irs::get<irs::increment>(*a)),
-        offs(irs::get<irs::offset>(*a)),
-        analyzer(a) {}
+    explicit sub_analyzer_t(const irs::analysis::analyzer::ptr& a, bool track_offset);
+    sub_analyzer_t();
 
     bool reset(uint32_t start, uint32_t end, const string_ref& data) {
       data_size = data.size();
@@ -71,10 +66,12 @@ class pipeline_token_stream final
     }
 
     uint32_t start() const noexcept {
+      assert(offs);
       return data_start + offs->start;
     }
 
     uint32_t end() const noexcept {
+      assert(offs);
       return offs->end == data_size ?
         data_end :
         start() + offs->end - offs->start;
@@ -104,4 +101,4 @@ class pipeline_token_stream final
 NS_END
 NS_END
 
-#endif // IRESEARCH_IQL_PIPELINE_TOKEN_STREAM_H
+#endif // IRESEARCH_PIPELINE_TOKEN_STREAM_H
