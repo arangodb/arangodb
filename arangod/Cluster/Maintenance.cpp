@@ -167,7 +167,15 @@ static VPackBuilder compareIndexes(
         if (it1 != errors.indexes.end()) {
           auto it2 = it1->second.find(planIdS);
           if (it2 != it1->second.end()) {
-            haveError = true;
+            // Verify that the error is for this particular index id:
+            VPackSlice err(it2->second->data());
+            VPackSlice idSlice = err.get(ID);
+            if (idSlice.isString()) {
+              std::string_view id = idSlice.stringView();
+              if (id == planIdS) {
+                haveError = true;
+              }
+            }
           }
         }
         if (!haveError) {

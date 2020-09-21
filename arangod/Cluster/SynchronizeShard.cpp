@@ -773,7 +773,6 @@ bool SynchronizeShard::first() {
             LOG_TOPIC("f4a5b", DEBUG, Logger::MAINTENANCE) << msg.str();
           }
           collection->followers()->setTheLeader(leader);
-          notify();
           return false;
         }
       } catch (...) {
@@ -917,7 +916,6 @@ bool SynchronizeShard::first() {
     AppendShardInformationToMessage(database, shard, planId, startTime, msg);
     LOG_TOPIC("e6780", INFO, Logger::MAINTENANCE) << "synchronizeOneShard: done, " << msg.str();
   }
-  notify();
   return false;
 }
 

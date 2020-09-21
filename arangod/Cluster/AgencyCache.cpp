@@ -173,7 +173,7 @@ void AgencyCache::handleCallbacksNoLock(
     }
     
     if (k.size() > 8) {
-      std::string r(k.substr(8)); // TODO: Optimize for string_view
+      std::string_view r(k.c_str() + 8, k.size() - 8);
       auto rs = r.size();
         
       if (rs > strlen(PLAN) && r.compare(0, strlen(PLAN), PLAN) == 0) {

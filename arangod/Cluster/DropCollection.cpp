@@ -110,7 +110,6 @@ bool DropCollection::first() {
   // for new Maintenance run. This should make sure that the next round does not
   // get rejected.
   _feature.delShardVersion(shard);
-  notify();
 
   return false;
 }
