@@ -350,6 +350,7 @@ velocypack::StringRef transaction::helpers::extractCollectionFromId(velocypack::
 }
 
 OperationResult transaction::helpers::buildCountResult(
+    OperationOptions const& options,
     std::vector<std::pair<std::string, uint64_t>> const& count,
     transaction::CountType type, uint64_t& total) {
   total = 0;
@@ -370,7 +371,7 @@ OperationResult transaction::helpers::buildCountResult(
     }
     resultBuilder.add(VPackValue(result));
   }
-  return OperationResult(Result(), resultBuilder.steal());
+  return OperationResult(Result(), resultBuilder.steal(), options);
 }
 
 /// @brief creates an id string from a custom _id value and the _key string

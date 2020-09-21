@@ -39,13 +39,9 @@
 namespace arangodb {
 
 struct OperationResult final {
-  OperationResult() {}
-
   // create from Result
-  explicit OperationResult(Result const& other) : result(other) {}
   explicit OperationResult(Result const& other, OperationOptions const& options)
       : result(other), options(options) {}
-  explicit OperationResult(Result&& other) : result(std::move(other)) {}
   explicit OperationResult(Result&& other, OperationOptions const& options)
       : result(std::move(other)), options(options) {}
 
@@ -67,7 +63,7 @@ struct OperationResult final {
 
   // create result with details
   OperationResult(Result result, std::shared_ptr<VPackBuffer<uint8_t>> buffer,
-                  OperationOptions options = {},
+                  OperationOptions options,
                   std::unordered_map<int, size_t> countErrorCodes = std::unordered_map<int, size_t>())
       : result(std::move(result)),
         buffer(std::move(buffer)),

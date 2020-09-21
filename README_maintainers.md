@@ -730,7 +730,6 @@ arangosh, use this:
 Pre-requisites: 
  - have a go-driver checkout next to the ArangoDB source tree
  - have the go binary in the path
- - have all dependencies of it installed in the system (you may do this by try & error)
 
 Once this is completed, you may run it like this:
 
@@ -741,6 +740,37 @@ As an aditional parameter we pass `-timeout 100m` to the driver test.
 
 The driver integration also features JWT pass in. It will launch a cluster with 3 DB-Servers, as
 the tests expect to have at least 3 DB-Servers.
+
+#### Java driver
+
+Pre-requisites:
+ - have a arangodb-java-driver checkout next to the ArangoDB source tree in the 'next' branch
+ - have a maven binary in the path (mvn)
+ 
+Once this is completed, you may run it like this:
+
+    ./scripts/unittest java_driver --javasource ../arangodb-java-driver/ \
+        --javaOptions:failIfNoTests false \
+        --testCase com.arangodb.next.api.collection.CollectionApiTest#countAndDropCollection \
+        --cluster true 
+
+For possible `javaOptions` see
+[arangodb-java-driver/dev-README.md#test-provided-deployment](https://github.com/arangodb/arangodb-java-driver/blob/next/arangodb-java-driver/dev-README.md)
+in the java source, or the 
+[surefire documentation](https://maven.apache.org/surefire/maven-surefire-plugin/examples/single-test.html]
+
+#### ArangoJS
+
+Pre-requisites:
+ - have a arangojs checkout next to the ArangoDB source tree 
+ - have a nodejs and yarn binaries installed and in the path
+ - ran `yarn` once in the arangojs source tree
+ 
+Once this is completed, you may run it like this:
+
+    ./scripts/unittest js_driver --jssource ../arangojs/ \
+        --testCase 'kills the given query' \
+        --cluster true 
 
 ### Debugging Tests
 
