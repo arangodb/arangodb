@@ -1032,9 +1032,9 @@ TEST_F(MaintenanceTestActionPhaseOne,
   for (auto node : localNodes) {
     std::vector<std::shared_ptr<ActionDescription>> actions;
 
-    /*auto cb = node.second(dbname).children().begin()->second->toBuilder();
+    auto cb = node.second(dbname).children().begin()->second->toBuilder();
     auto collection = cb.slice();
-    auto shname = collection.get(NAME).copyString();*/
+    auto shname = collection.get(NAME).copyString();
 
     (*node.second(dbname).children().begin()->second)(prop) = v.slice();
 
@@ -1042,20 +1042,18 @@ TEST_F(MaintenanceTestActionPhaseOne,
       planToChangeset(plan), 0, dirty, localToChangeset(node.second), node.first,
       errors, makeDirty, actions, arangodb::MaintenanceFeature::ShardActionMap{});
 
-    /*
     if (actions.size() != 1) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
     }
     ASSERT_EQ(actions.size(), 1);
     for (auto const& action : actions) {
 
-      ASSERT_EQ(action.name(), "UpdateCollection");
-      ASSERT_EQ(action.get("shard"), shname);
-      ASSERT_EQ(action.get("database"), dbname);
-      auto const props = action.properties();
+      ASSERT_EQ(action->name(), "UpdateCollection");
+      ASSERT_EQ(action->get("shard"), shname);
+      ASSERT_EQ(action->get("database"), dbname);
+      auto const props = action->properties();
 
     }
-    */
   }
 }
 
