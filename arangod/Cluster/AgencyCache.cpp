@@ -569,7 +569,6 @@ void AgencyCache::invokeAllCallbacks() const {
 }
 
 
-//TODO Snapshot case to do
 AgencyCache::change_set_t AgencyCache::changedSince(
   std::string const& what, consensus::index_t const& last) const {
 
