@@ -59,6 +59,10 @@
 #include <libunwind.h>
 #endif
 
+#ifdef __linux__
+#include <dlfcn.h>
+#endif
+
 namespace {
 
 #ifdef _WIN32
@@ -150,7 +154,7 @@ void appendHexValue(unsigned char const* src, size_t len, char*& dst) {
 /// Assumes that the buffer pointed to by s has enough space to
 /// hold the thread id, the thread name and the signal name
 /// (4096 bytes should be more than enough).
-size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const* info) {
+size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const* info, void* ucontext) {
   // build a crash message
   char* p = s;
   appendNullTerminatedString("ArangoDB ", p);
@@ -190,16 +194,55 @@ size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const
   appendNullTerminatedString(": ", p);
   appendNullTerminatedString(context, p);
 
+#ifdef __linux__
+  auto ctx = static_cast<ucontext_t*>(ucontext);
+  if (ctx) {
+    auto appendRegister = [ctx, &p](const char* prefix, int reg) {
+      appendNullTerminatedString(prefix, p);
+      unsigned char const* s = reinterpret_cast<unsigned char const*>(&ctx->uc_mcontext.gregs[reg]);
+      appendHexValue(s, sizeof(greg_t), p);
+    };
+    appendNullTerminatedString("\nCPU context:", p);
+    appendRegister("\n  rip: 0x", REG_RIP);
+    appendRegister(" rsp: 0x", REG_RSP);
+    appendRegister("\n  efl: 0x", REG_EFL);
+    appendRegister(" rbp: 0x", REG_RBP);
+    appendRegister("\n  rsi: 0x", REG_RSI);
+    appendRegister(" rdi: 0x", REG_RDI);
+    appendRegister("\n  rax: 0x", REG_RAX);
+    appendRegister(" rbx: 0x", REG_RBX);
+    appendRegister("\n  rcx: 0x", REG_RCX);
+    appendRegister(" rdx: 0x", REG_RDX);    
+    appendRegister("\n  r8:  0x", REG_R8);
+    appendRegister(" r9:  0x", REG_R9);
+    appendRegister("\n  r10: 0x", REG_R10);
+    appendRegister(" r11: 0x", REG_R11);
+    appendRegister("\n  r12: 0x", REG_R12);
+    appendRegister(" r13: 0x", REG_R13);
+    appendRegister("\n  r14: 0x", REG_R14);
+    appendRegister(" r15: 0x", REG_R15);
+  }
+
+  {
+    Dl_info dlinfo;
+    dladdr((void*)&buildLogMessage, &dlinfo);
+    appendNullTerminatedString("\nimage base address: 0x", p);
+    unsigned char const* x = reinterpret_cast<unsigned char const*>(dlinfo.dli_fbase);
+    unsigned char const* s = reinterpret_cast<unsigned char const*>(&x);
+    appendHexValue(s, sizeof(unsigned char const*), p);
+  }
+#endif
+
   return p - s;
 }
 
-void logBacktrace(char const* context, int signal, siginfo_t* info) try {
+void logBacktrace(char const* context, int signal, siginfo_t* info, void* ucontext) try {
   // buffer for constructing temporary log messages (to avoid malloc)
   char buffer[4096];
   memset(&buffer[0], 0, sizeof(buffer));
 
   char* p = &buffer[0];
-  size_t length = buildLogMessage(p, context, signal, info);
+  size_t length = buildLogMessage(p, context, signal, info, ucontext);
   // note: LOG_TOPIC() can allocate memory
   LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
 
@@ -321,9 +364,9 @@ void logBacktrace(char const* context, int signal, siginfo_t* info) try {
 ///   efforts, so we are not even trying this.
 /// - Windows and macOS are currently not supported.
 #ifndef _WIN32
-void crashHandlerSignalHandler(int signal, siginfo_t* info, void*) {
+void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
   if (!::crashHandlerInvoked.exchange(true)) {
-    ::logBacktrace("signal handler invoked", signal, info);
+    ::logBacktrace("signal handler invoked", signal, info, ucontext);
     arangodb::Logger::flush();
     arangodb::Logger::shutdown();
   } else {
@@ -345,7 +388,7 @@ namespace arangodb {
 
 /// @brief logs a fatal message and crashes the program
 void CrashHandler::crash(char const* context) {
-  ::logBacktrace(context, SIGABRT, nullptr);
+  ::logBacktrace(context, SIGABRT, nullptr, nullptr);
   Logger::flush();
   Logger::shutdown();
 
@@ -367,7 +410,7 @@ void CrashHandler::assertionFailure(char const* file, int line, char const* cont
   appendNullTerminatedString(": ", p);
   appendNullTerminatedString(context, 256, p);
 
-  ::logBacktrace(&buffer[0], SIGABRT, nullptr);
+  ::logBacktrace(&buffer[0], SIGABRT, nullptr, nullptr);
   Logger::flush();
   Logger::shutdown();
 
