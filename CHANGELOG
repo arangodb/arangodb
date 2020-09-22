@@ -1,6 +1,9 @@
 devel
 -----
 
+* Reduce the number of dropped followers when running larger (>= 128 MB)
+  write transactions.
+
 * Make the reboot tracker catch failed coordinators, too. Previously the
   reboot tracker was invoked only when a DB server failed or was restarted, 
   and when a coordinator was restarted. Now it will also act if a coordinator
