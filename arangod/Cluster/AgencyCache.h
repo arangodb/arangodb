@@ -125,7 +125,7 @@ public:
    * @return        The currently last noted RAFT index and  a velocypack
    *                representation of planned and other desired databases
    */
-  change_set_t const changedSince(
+  change_set_t changedSince(
     std::string const& section, consensus::index_t const& last) const;
   
 private:

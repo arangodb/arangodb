@@ -160,6 +160,7 @@ class Node final {
   /// @brief Apply single slice
   bool applies(arangodb::velocypack::Slice const&);
 
+  /// @brief Return all keys of an object node. Result will be empty for non-objects.
   std::vector<std::string> keys() const;
 
   /// @brief handle "op" keys in write json
