@@ -23,13 +23,12 @@
 #ifndef ARANGODB_IRESEARCH__IRESEARCH_GEO_FILTER
 #define ARANGODB_IRESEARCH__IRESEARCH_GEO_FILTER 1
 
-#include <s2/s2region_term_indexer.h>
-
 #include "search/filter.hpp"
 #include "search/search_range.hpp"
 #include "utils/type_limits.hpp"
 
 #include "Basics/debugging.h"
+#include "IResearch/Geo.h"
 #include "Geo/ShapeContainer.h"
 
 namespace arangodb {

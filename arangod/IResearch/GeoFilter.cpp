@@ -28,6 +28,7 @@
 
 #include "index/index_reader.hpp"
 #include "search/all_filter.hpp"
+#include "search/column_existence_filter.hpp"
 #include "search/collectors.hpp"
 #include "search/disjunction.hpp"
 #include "search/multiterm_query.hpp"
@@ -609,7 +610,11 @@ irs::filter::prepared::ptr GeoDistanceFilter::prepare(
   boost *= this->boost();
 
   if (!lowerBound && !upperBound) {
-    return irs::filter::prepared::empty();
+    // Return everything we've stored
+    irs::by_column_existence filter;
+    *filter.mutable_field() = options().storedField;
+
+    return filter.prepare(index, order, boost);
   } else if (lowerBound && upperBound) {
     return ::prepareInterval(index, order, boost, field(), options());
   } else {

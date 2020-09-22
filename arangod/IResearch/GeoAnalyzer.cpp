@@ -22,6 +22,8 @@
 
 #include "GeoAnalyzer.h"
 
+#include <string>
+
 #include "s2/s2point_region.h"
 #include "s2/s2latlng.h"
 
@@ -32,12 +34,15 @@
 
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
+#include "IResearch/Geo.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "VPackDeserializer/deserializer.h"
 
 namespace  {
+
+using namespace std::literals::string_literals;
 
 using namespace arangodb;
 using namespace arangodb::iresearch;
@@ -61,21 +66,44 @@ using GeoJSONTypeEnumDeserializer = enum_deserializer<
   enum_member<GeoJSONAnalyzer::Type::POINT, values::string_value<GEOJSON_POINT_TYPE>>
 >;
 
+struct GeoOptionsValidator {
+  std::optional<deserialize_error> operator()(GeoOptions const& opts) const {
+    if (opts.minLevel < 0 || opts.maxCells < 0 || opts.maxCells < 0) {
+      return deserialize_error{"'minLevel', 'maxLevel', 'maxCells' must be a positive integer"};
+    }
+
+    if (opts.maxLevel > GeoOptions::MAX_LEVEL || opts.minLevel > GeoOptions::MAX_LEVEL) {
+      return deserialize_error{
+        "'minLevel', 'maxLevel' must not exceed '"s
+        .append(std::to_string(GeoOptions::MAX_LEVEL))
+        .append("'")};
+    }
+
+    if (opts.minLevel > opts.maxLevel) {
+      return deserialize_error{"'minLevel' must be less or equal than 'maxLevel'"};
+    }
+
+    return {};
+  }
+};
+
 using GeoOptionsDeserializer = utilities::constructing_deserializer<GeoOptions, parameter_list<
   factory_simple_parameter<MAX_CELLS_PARAM, int32_t, false, values::numeric_value<int32_t, GeoOptions::MAX_CELLS>>,
   factory_simple_parameter<MIN_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, GeoOptions::MIN_LEVEL>>,
   factory_simple_parameter<MAX_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, GeoOptions::MAX_LEVEL>>
 >>;
 
+using ValidatingGeoOptionsDeserializer = validate<GeoOptionsDeserializer, GeoOptionsValidator>;
+
 using GeoJSONOptionsDeserializer = utilities::constructing_deserializer<GeoJSONAnalyzer::Options, parameter_list<
-  factory_deserialized_default<OPTIONS_PARAM, GeoOptionsDeserializer>,
+  factory_deserialized_default<OPTIONS_PARAM, ValidatingGeoOptionsDeserializer>,
   factory_deserialized_default<TYPE_PARAM, GeoJSONTypeEnumDeserializer,
                                            values::numeric_value<GeoJSONAnalyzer::Type,
                                                                  static_cast<std::underlying_type_t<GeoJSONAnalyzer::Type>>(GeoJSONAnalyzer::Type::SHAPE)>>>
 >;
 
 using GeoPointsOptionsDeserializer = utilities::constructing_deserializer<GeoPointAnalyzer::Options, parameter_list<
-  factory_deserialized_default<OPTIONS_PARAM, GeoOptionsDeserializer>,
+  factory_deserialized_default<OPTIONS_PARAM, ValidatingGeoOptionsDeserializer>,
   factory_deserialized_default<LATITUDE_PARAM, values::value_deserializer<std::string>, values::empty_string_value>,
   factory_deserialized_default<LONGITUDE_PARAM, values::value_deserializer<std::string>, values::empty_string_value>
 >>;
@@ -141,16 +169,6 @@ bool fromVelocyPack(irs::string_ref const& args, typename Analyzer::Options& out
 
   out = res.get();
   return true;
-}
-
-S2RegionTermIndexer::Options S2Options(
-    GeoOptions const& opts) {
-  S2RegionTermIndexer::Options s2opts;
-  s2opts.set_max_cells(opts.maxCells);
-  s2opts.set_min_level(opts.minLevel);
-  s2opts.set_max_level(opts.maxLevel);
-
-  return s2opts;
 }
 
 bool parseShape(VPackSlice slice, geo::ShapeContainer& shape, bool onlyPoint) {
@@ -298,6 +316,11 @@ GeoJSONAnalyzer::GeoJSONAnalyzer(Options const& opts)
     _type(opts.type) {
 }
 
+void GeoJSONAnalyzer::prepare(S2RegionTermIndexer::Options& opts) const {
+  opts = _indexer.options();
+  opts.set_index_contains_points_only(_type != Type::SHAPE);
+}
+
 bool GeoJSONAnalyzer::reset(const irs::string_ref& value) {
   auto const slice = iresearch::slice(value);
 
@@ -345,11 +368,15 @@ GeoPointAnalyzer::GeoPointAnalyzer(Options const& opts)
     _fromArray{_latitude.empty() || _longitude.empty()} {
 }
 
+void GeoPointAnalyzer::prepare(S2RegionTermIndexer::Options& opts) const {
+  opts = _indexer.options();
+  opts.set_index_contains_points_only(true);
+}
+
 bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
   auto const json = iresearch::slice(value);
 
   VPackSlice latitude, longitude;
-  S2Point point;
   if (_fromArray) {
     if (!json.isArray() || json.length() < 2) {
       return false;
@@ -362,11 +389,11 @@ bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
     longitude = json.get(_longitude);
   }
 
-  if (!::parsePoint(latitude, longitude, point)) {
+  if (!::parsePoint(latitude, longitude, _point)) {
     return false;
   }
 
-  GeoAnalyzer::reset(_indexer.GetIndexTerms(point, {}));
+  GeoAnalyzer::reset(_indexer.GetIndexTerms(_point, {}));
   return true;
 }
 

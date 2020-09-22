@@ -31,19 +31,12 @@
 #include "utils/frozen_attributes.hpp"
 
 #include "Geo/ShapeContainer.h"
+#include "IResearch/Geo.h"
+#include "velocypack/Slice.h"
+#include "velocypack/velocypack-aliases.h"
 
 namespace arangodb {
 namespace iresearch {
-
-struct GeoOptions {
-  static constexpr int32_t MAX_CELLS = S2RegionCoverer::Options::kDefaultMaxCells;
-  static constexpr int32_t MIN_LEVEL = 0;
-  static constexpr int32_t MAX_LEVEL = S2CellId::kMaxLevel;
-
-  int32_t maxCells{MAX_CELLS};
-  int32_t minLevel{MIN_LEVEL};
-  int32_t maxLevel{MAX_LEVEL};
-};
 
 class GeoAnalyzer
   : public irs::frozen_attributes<3, irs::analysis::analyzer>,
@@ -51,6 +44,8 @@ class GeoAnalyzer
  public:
   virtual bool next() noexcept final;
   using irs::analysis::analyzer::reset;
+
+  virtual void prepare(S2RegionTermIndexer::Options& opts) const = 0;
 
  protected:
   explicit GeoAnalyzer(const irs::type_info& type);
@@ -82,6 +77,9 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
   static irs::analysis::analyzer::ptr make(irs::string_ref const& args);
 
   explicit GeoPointAnalyzer(Options const& opts);
+  S2Point const& point() const noexcept { return _point; }
+
+  virtual void prepare(S2RegionTermIndexer::Options& opts) const;
 
  protected:
   virtual bool reset(irs::string_ref const& value);
@@ -90,6 +88,7 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
   S2RegionTermIndexer _indexer;
   std::string _latitude;
   std::string _longitude;
+  S2Point _point;
   bool _fromArray;
 };
 
@@ -111,6 +110,9 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
   static irs::analysis::analyzer::ptr make(irs::string_ref const& args);
 
   explicit GeoJSONAnalyzer(Options const& opts);
+  geo::ShapeContainer const& shape() const noexcept { return _shape; }
+
+  virtual void prepare(S2RegionTermIndexer::Options& opts) const;
 
  protected:
   virtual bool reset(irs::string_ref const& value);
@@ -120,6 +122,10 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
   geo::ShapeContainer _shape;
   Type _type;
 };
+
+inline bool isGeoAnalyzer(irs::string_ref type) noexcept {
+  return type.size() > 3 && irs::starts_with(type, "geo");
+}
 
 } // iresearch
 } // arangodb

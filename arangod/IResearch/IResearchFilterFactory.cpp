@@ -30,8 +30,9 @@
 
 #include "IResearch/IResearchFilterFactory.h"
 
-#include "s2/s2point_region.h"
 #include "s2/s2latlng.h"
+#include "s2/s2point_region.h"
+#include "s2/s2region_term_indexer.h"
 
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
@@ -58,6 +59,7 @@
 #include "Geo/ShapeContainer.h"
 #include "Basics/StringUtils.h"
 #include "IResearch/AqlHelper.h"
+#include "IResearch/GeoAnalyzer.h"
 #include "IResearch/GeoFilter.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -239,6 +241,34 @@ Result malformedNode(aql::AstNodeType type) {
   return {TRI_ERROR_BAD_PARAMETER, message};
 }
 
+} // error
+
+bool setupGeoFilter(FieldMeta::Analyzer const& a,
+                    S2RegionTermIndexer::Options& opts) {
+  if (!a._pool) {
+    return false;
+  }
+
+  auto& pool = *a._pool;
+
+  if (isGeoAnalyzer(pool.type())) {
+    auto stream = pool.get();
+
+    if (!stream) {
+      return false;
+    }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto& impl = dynamic_cast<GeoAnalyzer const&>(*stream);
+#else
+    auto& impl = static_cast<GeoAnalyzer const&>(*stream);
+#endif
+
+    impl.prepare(opts);
+    return true;
+  }
+
+  return false;
 }
 
 template<typename T, bool CheckDeterminism = false>
@@ -421,10 +451,11 @@ Result extractAnalyzerFromArg(
 }
 
 struct FilterContext {
-  FilterContext( // constructor
-      arangodb::iresearch::FieldMeta::Analyzer const& analyzer, // analyzer
-                irs::boost_t boost) noexcept
-      : analyzer(analyzer), boost(boost) {
+  FilterContext(
+      arangodb::iresearch::FieldMeta::Analyzer const& analyzer,
+      irs::boost_t boost) noexcept
+    : analyzer(analyzer),
+      boost(boost) {
     TRI_ASSERT(analyzer._pool);
   }
 
@@ -1042,6 +1073,8 @@ Result fromFuncGeoInRange(
     geo_filter.boost(filterCtx.boost);
 
     auto* options = geo_filter.mutable_options();
+    setupGeoFilter(filterCtx.analyzer, options->options);
+
     options->storedField = name;
     options->origin = centroid.ToPoint();
     options->range.min = minDistance;
@@ -3802,6 +3835,8 @@ Result fromFuncGeoContainsIntersect(
     geo_filter.boost(filterCtx.boost);
 
     auto* options = geo_filter.mutable_options();
+    setupGeoFilter(filterCtx.analyzer, options->options);
+
     options->type = GEO_INTERSECT_FUNC == funcName
       ? GeoFilterType::INTERSECTS
       : (1 == shapeNodeIdx ? GeoFilterType::CONTAINS
@@ -3992,7 +4027,7 @@ Result filter(irs::boolean_filter* filter, QueryContext const& queryCtx,
   }
 }
 
-}  // namespace
+} // namespace
 
 namespace arangodb {
 namespace iresearch {

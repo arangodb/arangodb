@@ -472,7 +472,6 @@ setAnalyzers:
       // remove previous suffix
       _nameBuffer.resize(_prefixLength);
 
-      // can have multiple analyzers for string values only
       if (setValue(_valueSlice, *_begin++)) {
         return;
       }
