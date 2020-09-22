@@ -159,7 +159,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   /// @brief lock for dirty database list
   mutable arangodb::Mutex _dirtyLock;
   /// @brief dirty databases, where a job could not be posted)
-  std::unordered_set<std::string> _dirty;
+  std::unordered_set<std::string> _dirtyDatabases;
 
 };
 

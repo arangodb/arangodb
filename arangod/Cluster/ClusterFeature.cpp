@@ -782,10 +782,10 @@ void ClusterFeature::allocateMembers() {
 }
 
 void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases) {
-  MUTEX_LOCKER(guard, _dirtyLock);
   if (databases.size() > 0) {
+    MUTEX_LOCKER(guard, _dirtyLock);
     for (auto const& database : databases) {
-      if (_dirty.emplace(database).second) {
+      if (_dirtyDatabases.emplace(database).second) {
         LOG_TOPIC("35b75", DEBUG, Logger::MAINTENANCE)
           << "adding " << database << " to dirty databases";
       }
@@ -794,10 +794,10 @@ void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases) 
   }
 }
 void ClusterFeature::addDirty(std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& databases) {
-  MUTEX_LOCKER(guard, _dirtyLock);
   if (databases.size() > 0) {
+    MUTEX_LOCKER(guard, _dirtyLock);
     for (auto const& database : databases) {
-      if (_dirty.emplace(database.first).second) {
+      if (_dirtyDatabases.emplace(database.first).second) {
         LOG_TOPIC("35b77", DEBUG, Logger::MAINTENANCE)
           << "adding " << database << " to dirty databases";
       }
@@ -808,7 +808,7 @@ void ClusterFeature::addDirty(std::unordered_map<std::string,std::shared_ptr<VPa
 
 void ClusterFeature::addDirty(std::string const& database) {
   MUTEX_LOCKER(guard, _dirtyLock);
-  if (_dirty.emplace(database).second) {
+  if (_dirtyDatabases.emplace(database).second) {
     LOG_TOPIC("357b9", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databases";
   }
   notify();
@@ -817,13 +817,13 @@ void ClusterFeature::addDirty(std::string const& database) {
 std::unordered_set<std::string> ClusterFeature::dirty() {
   MUTEX_LOCKER(guard, _dirtyLock);
   std::unordered_set<std::string> ret;
-  ret.swap(_dirty);
+  ret.swap(_dirtyDatabases);
   return ret;
 }
 
 bool ClusterFeature::isDirty(std::string const& dbName) const {
   MUTEX_LOCKER(guard, _dirtyLock);
-  return _dirty.find(dbName) != _dirty.end();
+  return _dirtyDatabases.find(dbName) != _dirtyDatabases.end();
 }
 
 std::unordered_set<std::string> ClusterFeature::allDatabases() const {
