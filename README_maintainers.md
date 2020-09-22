@@ -796,7 +796,10 @@ Once this is completed, you may run it like this:
 #### generic driver interface
 The generic driver interface expects to find i.e. script inside the
 driver source, that does all the plumbing to run the respective tests against
-the provided arangodb instance. All required data is passed as parameters:
+the provided arangodb instance.
+The invoked script is expected to exit non-zero on failure.
+All content of `stdout` will be forwarded to the testresults.
+All required data is passed as parameters:
 
  - driversource - the source directory with the workingcopy of the driver
  - driverScript - the script to be executed. defaults to `run_tests.sh`
@@ -818,8 +821,6 @@ Statically provided options (with sample values):
  - `--[no-]enterprise`
  - `--deployment-mode [SINGLE_SERVER|ACTIVE_FAILOVER|CLUSTER]`
 
-The invoked script is expected to exit non-zero on failure.
-All content of `stdout` will be forwarded to the testresults.
 
 ### Debugging Tests
 
