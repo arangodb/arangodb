@@ -681,7 +681,8 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph, EdgeDefinitio
   // simon: why is this part of el-cheapo ??
   auto ctx = createTransactionContext(AccessMode::Type::WRITE);
   GraphOperations gops{graph, _vocbase, ctx};
-  OperationResult result;
+  OperationOptions options(_context);
+  OperationResult result(Result(), options);
 
   if (action == EdgeDefinitionAction::CREATE) {
     result = gops.addEdgeDefinition(body, waitForSync);
@@ -730,7 +731,8 @@ Result RestGraphHandler::modifyVertexDefinition(graph::Graph& graph,
 
   auto ctx = createTransactionContext(AccessMode::Type::WRITE);
   GraphOperations gops{graph, _vocbase, ctx};
-  OperationResult result;
+  OperationOptions options(_context);
+  OperationResult result(Result(), options);
 
   if (action == VertexDefinitionAction::CREATE) {
     result = gops.addOrphanCollection(body, waitForSync, createCollection);
@@ -789,7 +791,8 @@ Result RestGraphHandler::documentModify(graph::Graph& graph, const std::string& 
   auto ctx = createTransactionContext(AccessMode::Type::WRITE);
   GraphOperations gops{graph, _vocbase, ctx};
 
-  OperationResult result;
+  OperationOptions options(_context);
+  OperationResult result(Result(), options);
   // TODO get rid of this branching, rather use several functions and reuse the
   // common code another way.
   if (isPatch && colType == TRI_COL_TYPE_DOCUMENT) {
@@ -849,7 +852,8 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph, std::string const& 
   auto ctx = createTransactionContext(AccessMode::Type::WRITE);
   GraphOperations gops{graph, _vocbase, ctx};
 
-  OperationResult result;
+  OperationOptions options(_context);
+  OperationResult result(Result(), options);
   if (colType == TRI_COL_TYPE_DOCUMENT) {
     result = gops.createVertex(collectionName, body, waitForSync, returnNew);
   } else if (colType == TRI_COL_TYPE_EDGE) {

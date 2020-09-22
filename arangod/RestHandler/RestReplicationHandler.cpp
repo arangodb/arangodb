@@ -1727,15 +1727,14 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
   }
 
   VPackSlice requestSlice = builder.slice();
-  OperationResult opRes;
+  OperationOptions options(_context);
+  options.silent = false;
+  options.ignoreRevs = true;
+  options.isRestore = true;
+  options.waitForSync = false;
+  options.overwriteMode = OperationOptions::OverwriteMode::Replace;
+  OperationResult opRes(Result(), options);
   try {
-    OperationOptions options;
-    options.silent = false;
-    options.ignoreRevs = true;
-    options.isRestore = true;
-    options.waitForSync = false;
-    options.overwriteMode = OperationOptions::OverwriteMode::Replace;
-    
     double startTime = TRI_microtime();
     opRes = trx.insert(collectionName, requestSlice, options);
     double duration = TRI_microtime() - startTime;
@@ -1801,7 +1800,7 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
   }
 
   try {
-    OperationOptions options;
+    OperationOptions options(_context);
     options.silent = true;
     options.ignoreRevs = true;
     options.isRestore = true;
@@ -2470,7 +2469,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
     auto res = trx.begin();
 
     if (res.ok()) {
-      auto countRes = trx.count(col->name(), transaction::CountType::Normal);
+      OperationOptions options(_context);
+      auto countRes = trx.count(col->name(), transaction::CountType::Normal, options);
 
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
