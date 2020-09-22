@@ -805,6 +805,7 @@ void ClusterFeature::addDirty(std::unordered_map<std::string,std::shared_ptr<VPa
     notify();
   }
 }
+
 void ClusterFeature::addDirty(std::string const& database) {
   MUTEX_LOCKER(guard, _dirtyLock);
   if (_dirty.emplace(database).second) {
@@ -812,13 +813,22 @@ void ClusterFeature::addDirty(std::string const& database) {
   }
   notify();
 }
+
 std::unordered_set<std::string> ClusterFeature::dirty() {
   MUTEX_LOCKER(guard, _dirtyLock);
   std::unordered_set<std::string> ret;
   ret.swap(_dirty);
   return ret;
 }
+
 bool ClusterFeature::isDirty(std::string const& dbName) const {
   MUTEX_LOCKER(guard, _dirtyLock);
   return _dirty.find(dbName) != _dirty.end();
+}
+
+void ClusterFeature::markAllLocalDirty() {
+  auto const tmp = server().getFeature<DatabaseFeature>().getDatabaseNames();
+  MUTEX_LOCKER(guard, _dirtyLock);
+  _dirty.insert(tmp.begin(), tmp.end());
+  notify();
 }

@@ -175,7 +175,7 @@ void AgencyCache::handleCallbacksNoLock(
     if (k.size() > 8) {
       std::string_view r(k.c_str() + 8, k.size() - 8);
       auto rs = r.size();
-        
+
       if (rs > strlen(PLAN) && r.compare(0, strlen(PLAN), PLAN) == 0) {
         if (rs >= strlen(PLAN_VERSION) &&                 // Plan/Version -> ignore
             r.compare(0, strlen(PLAN_VERSION), PLAN_VERSION) == 0) {
@@ -184,10 +184,15 @@ void AgencyCache::handleCallbacksNoLock(
                    r.compare(0, strlen(PLAN_COLLECTIONS), PLAN_COLLECTIONS) == 0) {
           auto tmp = r.substr(strlen(PLAN_COLLECTIONS));
           planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
-        } else if (rs > strlen(PLAN_DATABASES) &&         // Plan/Databases
+        } else if (rs >= strlen(PLAN_DATABASES) &&         // Plan/Databases
                    r.compare(0, strlen(PLAN_DATABASES), PLAN_DATABASES) == 0) {
-          auto tmp = r.substr(strlen(PLAN_DATABASES));
-          planChanges.emplace(tmp);
+          if (rs == strlen(PLAN_DATABASES)) {              // OVERWRITE (Hot Backup)
+            server().getFeature<ClusterFeature>().markAllLocalDirty();
+            return;
+          } else {
+            auto tmp = r.substr(strlen(PLAN_DATABASES));
+            planChanges.emplace(tmp);
+          }
         } else if (rs > strlen(PLAN_VIEWS) &&             // Plan/Views
                    r.compare(0, strlen(PLAN_VIEWS), (PLAN_VIEWS)) == 0) {
           auto tmp = r.substr(strlen(PLAN_VIEWS));
