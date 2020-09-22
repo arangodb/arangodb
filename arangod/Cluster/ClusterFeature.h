@@ -113,11 +113,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
    */
   bool isDirty(std::string const& database) const;
 
-  /**
-   * @brief Mark all local databases dirty (hot backup for example)
-   */
-  void markAllLocalDirty(); // Hot backup for example
-
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                             uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
@@ -159,7 +154,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   /// @brief lock for dirty database list
   mutable arangodb::Mutex _dirtyLock;
   /// @brief dirty databases, where a job could not be posted)
-  std::unordered_set<std::string> _dirty;
+  std::unordered_set<std::string> _dirtyDatabases;
 
 };
 

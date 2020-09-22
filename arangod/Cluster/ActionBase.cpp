@@ -227,6 +227,7 @@ void ActionBase::setState(ActionState state) {
   // when we shift from any state to complete or failed 
   if ((COMPLETE == state || FAILED == state) && _state != state && _description.has(DATABASE)) {
     _feature.addDirty(_description.get(DATABASE));
+    TRI_ASSERT(!_description.get(DATABASE).empty());
   }
   _state = state;
 }

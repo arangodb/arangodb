@@ -185,6 +185,11 @@ void AgencyCache::handleCallbacksNoLock(
           auto tmp = r.substr(strlen(PLAN_COLLECTIONS));
           planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
         } else if (r == std::string("Plan/Databases")) {
+          // If this key is set, all databases in the Plan are completely replaced. This means
+          // that loadPlan and the maintenance thread have to revisit everything. In particular,
+          // we have to visit all databases in the new Plan as well as all currently existing
+          // databases locally! Therefore we fake all of these databases as if they were changed
+          // in this raft index.
           planChanges = server().getFeature<ClusterFeature>().allDatabases();
           for (auto const& i :
                  VPackObjectIterator(
@@ -207,7 +212,7 @@ void AgencyCache::handleCallbacksNoLock(
           auto tmp = r.substr(strlen(PLAN_ANALYZERS));
           planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
         } else {
-          planChanges.emplace(std::string());             // To indicate non database
+          planChanges.emplace();             // "" to indicate non database
         }
       } else if (rs > strlen(CURRENT) && r.compare(0, strlen(CURRENT), CURRENT) == 0) {
         if (rs >= strlen(CURRENT_VERSION) &&              // Current/Version is ignored
@@ -222,7 +227,7 @@ void AgencyCache::handleCallbacksNoLock(
           auto tmp = r.substr(strlen(CURRENT_DATABASES));
           currentChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
         } else {
-          currentChanges.emplace(std::string());          // To indicate non database
+          currentChanges.emplace();          // "" to indicate non database
         }
       }
     }
@@ -553,7 +558,7 @@ void AgencyCache::invokeAllCallbacks() const {
 
 
 //TODO Snapshot case to do
-AgencyCache::change_set_t const AgencyCache::changedSince(
+AgencyCache::change_set_t AgencyCache::changedSince(
   std::string const& what, consensus::index_t const& last) const {
 
   static std::vector<std::string> const planGoodies ({
@@ -581,8 +586,8 @@ AgencyCache::change_set_t const AgencyCache::changedSince(
   if (last < _lastSnapshot) {
     get_rest = true;
     auto keys = _readDB.nodePtr(AgencyCommHelper::path(what) + "/" + DATABASES)->keys();
-    for (auto const& i : keys) {
-      databases.emplace(i);
+    for (auto& i : keys) {
+      databases.emplace(std::move(i));
     }
   } else {
     auto it = changes.lower_bound(last+1); 
@@ -605,10 +610,9 @@ AgencyCache::change_set_t const AgencyCache::changedSince(
     return change_set_t(_commitIndex, version, std::move(db_res), std::move(rest_res));
   }
 
-  auto query = std::make_shared<arangodb::velocypack::Builder>();
   {
     for (auto const& i : databases) {
-      if (!i.empty()) { // database
+      if (!i.empty()) { // actual database
         auto query = std::make_shared<arangodb::velocypack::Builder>();
         { VPackArrayBuilder outer(query.get());
           { VPackArrayBuilder inner(query.get());
@@ -639,7 +643,7 @@ AgencyCache::change_set_t const AgencyCache::changedSince(
         [&] (auto x) {
           return std::binary_search(std::begin(exc), std::end(exc),x);}),
       std::end(keys));
-    query->clear();
+    auto query = std::make_shared<arangodb::velocypack::Builder>();
     {
       VPackArrayBuilder outer(query.get());
       for (auto const& i : keys) {

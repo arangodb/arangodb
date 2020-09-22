@@ -48,11 +48,11 @@ public:
     change_set_t (consensus::index_t const& i, uint64_t const& v,
                   std::unordered_map<std::string, consensus::query_t> const& d,
                   consensus::query_t const& r) :
-      ind(i), version(v), dbs(d), rest(r) {};
+      ind(i), version(v), dbs(d), rest(r) {}
     change_set_t (consensus::index_t&& i, uint64_t&& v,
                   std::unordered_map<std::string, consensus::query_t>&& d,
                   consensus::query_t&& r) :
-      ind(std::move(i)), version(std::move(v)), dbs(std::move(d)), rest(std::move(r)) {};
+      ind(std::move(i)), version(std::move(v)), dbs(std::move(d)), rest(std::move(r)) {}
   };
 
   /// @brief start off with our server
@@ -125,7 +125,7 @@ public:
    * @return        The currently last noted RAFT index and  a velocypack
    *                representation of planned and other desired databases
    */
-  change_set_t const changedSince(
+  change_set_t changedSince(
     std::string const& section, consensus::index_t const& last) const;
   
 private:
