@@ -190,7 +190,7 @@ void AgencyCache::handleCallbacksNoLock(
                  VPackObjectIterator(
                    slice.get(
                      std::vector<std::string>{AgencyCommHelper::path(PLAN_DATABASES),"new"}))) {
-            auto const dbname = i.key.copyString()
+            auto const dbname = i.key.copyString();
             planChanges.emplace(dbname);
           }
           planChanges.emplace(std::string());
