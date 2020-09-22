@@ -353,7 +353,7 @@ class ClusterInfo final {
     std::shared_ptr<LogicalCollection> collection;
   };
   typedef std::unordered_map<CollectionID, CollectionWithHash> DatabaseCollections;
-  typedef std::unordered_map<DatabaseID, DatabaseCollections> AllCollections;
+  typedef std::unordered_map<DatabaseID, std::shared_ptr<DatabaseCollections>> AllCollections;
   typedef std::unordered_map<CollectionID, std::shared_ptr<CollectionInfoCurrent>> DatabaseCollectionsCurrent;
   typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent> AllCollectionsCurrent;
 

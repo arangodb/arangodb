@@ -561,7 +561,7 @@ void ClusterInfo::loadClusterId() {
 
 /// @brief create a new collecion object from the data, using the cache if possible
 ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
-    bool isBuilding, AllCollections::const_iterator existingCollections,
+  bool isBuilding, AllCollections::const_iterator existingCollections,
     std::string const& collectionId, arangodb::velocypack::Slice data,
     TRI_vocbase_t& vocbase, uint64_t planVersion) const {
 
@@ -571,8 +571,8 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
   if (!isBuilding &&
       existingCollections != _plannedCollections.end()) {
     // check if we already know this collection from a previous run...
-    auto existing = (*existingCollections).second.find(collectionId);
-    if (existing != (*existingCollections).second.end()) {
+    auto existing = (*existingCollections).second->find(collectionId);
+    if (existing != (*existingCollections).second->end()) {
       CollectionWithHash const& previous = (*existing).second;
       // compare the hash values of what is in the cache with the hash of the collection
       // a hash value of 0 means that the collection must not be read from the cache,
@@ -1051,7 +1051,7 @@ void ClusterInfo::loadPlan() {
     if (!collectionsSlice.hasKey(collectionsPath)) {
       auto it = newCollections.find(databaseName);
       if (it != newCollections.end()) {
-        for (auto collection : it->second) {
+        for (auto collection : *(it->second)) {
           auto collectionId = collection.first;
           newShards.erase(collectionId); // delete from maps with shardID as key
           newShardToName.erase(collectionId);
@@ -1062,7 +1062,7 @@ void ClusterInfo::loadPlan() {
     }
     collectionsSlice = collectionsSlice.get(collectionsPath);
 
-    DatabaseCollections databaseCollections;
+    auto databaseCollections = std::make_shared<DatabaseCollections>();
 
     // Skip databases that are still building.
     if (buildingDatabases.find(databaseName) != buildingDatabases.end()) {
@@ -1129,8 +1129,8 @@ void ClusterInfo::loadPlan() {
 
         if (!isBuilding) {
           // register with name as well as with id:
-          databaseCollections.try_emplace(collectionName, cwh);
-          databaseCollections.try_emplace(collectionId, cwh);
+          databaseCollections->try_emplace(collectionName, cwh);
+          databaseCollections->try_emplace(collectionId, cwh);
         }
 
         auto shardIDs = newCollection->shardIds();
@@ -1190,8 +1190,8 @@ void ClusterInfo::loadPlan() {
       auto it = newCollections.find(StaticStrings::SystemDatabase);
       if (it != newCollections.end()) {
         // find _graphs collection in Plan
-        auto it2 = (*it).second.find(StaticStrings::GraphCollection);
-        if (it2 != (*it).second.end()) {
+        auto it2 = (*it).second->find(StaticStrings::GraphCollection);
+        if (it2 != (*it).second->end()) {
           // found!
           if ((*it2).second.collection->distributeShardsLike().empty()) {
             // _graphs collection has no distributeShardsLike, so it is
@@ -1479,9 +1479,9 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(DatabaseID const
 
   if (it != _plannedCollections.end()) {
     // look up collection by id (or by name)
-    DatabaseCollections::const_iterator it2 = (*it).second.find(collectionID);
+    DatabaseCollections::const_iterator it2 = (*it).second->find(collectionID);
 
-    if (it2 != (*it).second.end()) {
+    if (it2 != (*it).second->end()) {
       return (*it2).second.collection;
     }
   }
@@ -1504,9 +1504,9 @@ std::shared_ptr<LogicalDataSource> ClusterInfo::getCollectionOrViewNT(DatabaseID
 
     if (it != _plannedCollections.end()) {
       // look up collection by id (or by name)
-      auto it2 = (*it).second.find(name);
+      auto it2 = (*it).second->find(name);
 
-      if (it2 != (*it).second.end()) {
+      if (it2 != (*it).second->end()) {
         return (*it2).second.collection;
       }
     }
@@ -1552,8 +1552,8 @@ std::vector<std::shared_ptr<LogicalCollection>> const ClusterInfo::getCollection
   }
 
   // iterate over all collections
-  DatabaseCollections::const_iterator it2 = (*it).second.begin();
-  while (it2 != (*it).second.end()) {
+  DatabaseCollections::const_iterator it2 = (*it).second->begin();
+  while (it2 != (*it).second->end()) {
     char c = (*it2).first[0];
 
     if (c < '0' || c > '9') {
@@ -2163,9 +2163,9 @@ Result ClusterInfo::checkCollectionPreconditions(std::string const& databaseName
     {
       AllCollections::const_iterator it = _plannedCollections.find(databaseName);
       if (it != _plannedCollections.end()) {
-        DatabaseCollections::const_iterator it2 = (*it).second.find(info.name);
+        DatabaseCollections::const_iterator it2 = (*it).second->find(info.name);
 
-        if (it2 != (*it).second.end()) {
+        if (it2 != (*it).second->end()) {
           // collection already exists!
           events::CreateCollection(databaseName, info.name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
           return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("duplicate collection name '") + info.name + "'");
@@ -2389,7 +2389,7 @@ Result ClusterInfo::createCollectionsCoordinator(
     };
     // ATTENTION: The following callback calls the above closure in a
     // different thread. Nevertheless, the closure accesses some of our
-    // local variables. Therefore we have to protect all accesses to them
+    // local variables. Therefore we havessss to protect all accesses to them
     // by a mutex. We use the mutex of the condition variable in the
     // AgencyCallback for this.
 
@@ -2398,7 +2398,7 @@ Result ClusterInfo::createCollectionsCoordinator(
           _server, "Current/Collections/" + databaseName + "/" + info.collectionID,
           closure, true, false);
 
-      _agencyCallbackRegistry->registerCallback(agencyCallback);
+    _agencyCallbackRegistry->registerCallback(agencyCallback);
     agencyCallbacks.emplace_back(std::move(agencyCallback));
     opers.emplace_back(CreateCollectionOrder(databaseName, info.collectionID,
                                              info.isBuildingSlice()));
@@ -3041,9 +3041,9 @@ Result ClusterInfo::createViewCoordinator(  // create view
       // check against planned collections as well
       AllCollections::const_iterator it = _plannedCollections.find(databaseName);
       if (it != _plannedCollections.end()) {
-        DatabaseCollections::const_iterator it2 = (*it).second.find(name);
+        DatabaseCollections::const_iterator it2 = (*it).second->find(name);
 
-        if (it2 != (*it).second.end()) {
+        if (it2 != (*it).second->end()) {
           // collection already exists!
           events::CreateCollection(databaseName, name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
           return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("duplicate view name '") + name + "'");
@@ -5640,7 +5640,7 @@ VPackBuilder ClusterInfo::toVelocyPack() {
         for (auto const& db : _plannedCollections) {
           dump.add(VPackValue(db.first));
           VPackArrayBuilder cs(&dump);
-          for (auto const& col : db.second) {
+          for (auto const& col : *db.second) {
             dump.add(VPackValue(col.first));
           }
         }
