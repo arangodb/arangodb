@@ -1381,7 +1381,7 @@ function testOpenDiamondModeLabelVariableForwarding(testGraph, mode) {
     const query = `
         LET label = NOOPT(100)
         FOR v, e, p IN 0..3 OUTBOUND "${testGraph.vertex('A')}"
-          GRAPH "${testGraph.name()}" OPTIONS { mode: ${mode} }
+          GRAPH "${testGraph.name()}" OPTIONS { mode: @mode }
           FILTER p.edges[0].distance != label
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
@@ -1395,7 +1395,7 @@ function testOpenDiamondModeLabelVariableForwarding(testGraph, mode) {
           ]),
         ])
       ]);
-    const res = db._query(query, {},  { optimizer: { rules } });
+    const res = db._query(query, {mode},  { optimizer: { rules } });
     const actualPaths = res.toArray();
 
     checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
@@ -3220,16 +3220,16 @@ function testLargeBinTreeAllCombinations(testGraph) {
   const expectedPaths = getExpectedBinTreePaths();
 
   const optionsList = [
-    {bfs: false, uniqueEdges: "none", uniqueVertices: "none"},
-    {bfs: false, uniqueEdges: "path", uniqueVertices: "none"},
-    {bfs: false, uniqueEdges: "none", uniqueVertices: "path"},
-    {bfs: false, uniqueEdges: "path", uniqueVertices: "path"}, // same as above
-    {bfs: true, uniqueEdges: "none", uniqueVertices: "none"},
-    {bfs: true, uniqueEdges: "path", uniqueVertices: "none"},
-    {bfs: true, uniqueEdges: "none", uniqueVertices: "path"},
-    {bfs: true, uniqueEdges: "path", uniqueVertices: "path"}, // same as above
-    {bfs: true, uniqueEdges: "none", uniqueVertices: "global"},
-    {bfs: true, uniqueEdges: "path", uniqueVertices: "global"}, // same as above
+    {mode: "dfs", uniqueEdges: "none", uniqueVertices: "none"},
+    {mode: "dfs", uniqueEdges: "path", uniqueVertices: "none"},
+    {mode: "dfs", uniqueEdges: "none", uniqueVertices: "path"},
+    {mode: "dfs", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
+    {mode: "bfs", uniqueEdges: "none", uniqueVertices: "none"},
+    {mode: "bfs", uniqueEdges: "path", uniqueVertices: "none"},
+    {mode: "bfs", uniqueEdges: "none", uniqueVertices: "path"},
+    {mode: "bfs", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
+    {mode: "bfs", uniqueEdges: "none", uniqueVertices: "global"},
+    {mode: "bfs", uniqueEdges: "path", uniqueVertices: "global"}, // same as above
     {mode: "weighted", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
     {mode: "weighted", uniqueEdges: "none", uniqueVertices: "none"},
     {mode: "weighted", uniqueEdges: "path", uniqueVertices: "none"},
@@ -3247,10 +3247,10 @@ function testLargeBinTreeAllCombinations(testGraph) {
     const actualPaths = res.toArray();
 
     try {
-      if (options.bfs) {
-        checkResIsValidBfsOf(expectedPaths, actualPaths);
-      } else {
+      if (options.mode == "dfs") {
         checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+      } else {
+        checkResIsValidBfsOf(expectedPaths, actualPaths);
       }
     } catch (e) {
       // Note that we cannot prepend our message, otherwise the assertion
@@ -3330,16 +3330,16 @@ function testEasyPathAllCombinations(testGraph) {
   const expectedPaths = treeToPaths(easyPathAsTree);
 
   const optionsList = [
-    {bfs: false, uniqueEdges: "none", uniqueVertices: "none"},
-    {bfs: false, uniqueEdges: "path", uniqueVertices: "none"},
-    {bfs: false, uniqueEdges: "none", uniqueVertices: "path"},
-    {bfs: false, uniqueEdges: "path", uniqueVertices: "path"}, // same as above
-    {bfs: true, uniqueEdges: "none", uniqueVertices: "none"},
-    {bfs: true, uniqueEdges: "path", uniqueVertices: "none"},
-    {bfs: true, uniqueEdges: "none", uniqueVertices: "path"},
-    {bfs: true, uniqueEdges: "path", uniqueVertices: "path"}, // same as above
-    {bfs: true, uniqueEdges: "none", uniqueVertices: "global"},
-    {bfs: true, uniqueEdges: "path", uniqueVertices: "global"}, // same as above
+    {mode: "dfs", uniqueEdges: "none", uniqueVertices: "none"},
+    {mode: "dfs", uniqueEdges: "path", uniqueVertices: "none"},
+    {mode: "dfs", uniqueEdges: "none", uniqueVertices: "path"},
+    {mode: "dfs", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
+    {mode: "bfs", uniqueEdges: "none", uniqueVertices: "none"},
+    {mode: "bfs", uniqueEdges: "path", uniqueVertices: "none"},
+    {mode: "bfs", uniqueEdges: "none", uniqueVertices: "path"},
+    {mode: "bfs", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
+    {mode: "bfs", uniqueEdges: "none", uniqueVertices: "global"},
+    {mode: "bfs", uniqueEdges: "path", uniqueVertices: "global"}, // same as above
     {mode: "weighted", uniqueEdges: "none", uniqueVertices: "none"},
     {mode: "weighted", uniqueEdges: "path", uniqueVertices: "none"},
     {mode: "weighted", uniqueEdges: "none", uniqueVertices: "path"},
