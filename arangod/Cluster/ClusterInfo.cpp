@@ -761,7 +761,10 @@ void ClusterInfo::loadPlan() {
     newShardToName = _shardToName;
     newDbAnalyzersRevision = _dbAnalyzersRevision;
     auto ende = std::chrono::steady_clock::now();
-    LOG_DEVEL << "Time for copy operation in loadPlan: " << std::chrono::duration_cast<std::chrono::nanoseconds>(ende-start).count() << " ns";
+    LOG_TOPIC("feee1", TRACE, Logger::CLUSTER)
+        << "Time for copy operation in loadPlan: "
+        << std::chrono::duration_cast<std::chrono::nanoseconds>(ende - start).count()
+        << " ns";
   }
 
   std::string name;

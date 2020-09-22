@@ -132,16 +132,16 @@ index_t AgencyCache::index() const {
 // In particular, we have to visit all databases in the new Plan as well as all currently
 // existing databases locally! Therefore we fake all of these databases as if they were
 // changed in this raft index.
-static void reInitPlan(ClusterFeature& cf, VPackSlice slice, std::unordered_set<std::string>& planChanges) {
-  planChanges = cf.allDatabases();
-  for (auto const& i :
-         VPackObjectIterator(
-           slice.get(
-             std::vector<std::string>{AgencyCommHelper::path(PLAN_DATABASES),"new"}))) {
-    auto const dbname = i.key.copyString();
+std::unordered_set<std::string> AgencyCache::reInitPlan() {
+  std::unordered_set<std::string> planChanges =
+      server().getFeature<ClusterFeature>().allDatabases();  // local databases
+  // And everything under /arango/Plan/Databases:
+  auto keys = _readDB.nodePtr(AgencyCommHelper::path(PLAN) + "/" + DATABASES)->keys();
+  for (auto const& dbname : keys) {
     planChanges.emplace(dbname);
   }
-  planChanges.emplace(std::string());
+  planChanges.emplace();  // and the rest
+  return planChanges;
 }
 
 void AgencyCache::handleCallbacksNoLock(
@@ -203,7 +203,7 @@ void AgencyCache::handleCallbacksNoLock(
           planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
         } else if (r == std::string("Plan/Databases")) {
           // !! Check documentation of the function before making changes here !!
-          reInitPlan (server().getFeature<ClusterFeature>(), slice, planChanges);
+          planChanges = reInitPlan();
         } else if (rs > strlen(PLAN_DATABASES) &&         // Plan/Databases
                    r.compare(0, strlen(PLAN_DATABASES), PLAN_DATABASES) == 0) {
           auto tmp = r.substr(strlen(PLAN_DATABASES));
@@ -359,10 +359,7 @@ void AgencyCache::run() {
                   LOG_TOPIC("4579f", TRACE, Logger::CLUSTER) <<
                     "Fresh start: overwriting agency cache with " << rs.toJson();
                   _readDB = rs;                  // overwrite
-                  std::unordered_set<std::string> pc;
-                  reInitPlan(
-                    server().getFeature<ClusterFeature>(),
-                    rs.get(std::vector<std::string>{AgencyCommHelper::path(), PLAN, DATABASES}), pc);
+                  std::unordered_set<std::string> pc = reInitPlan();
                   for (auto const& i : pc) {
                     _planChanges.emplace(_commitIndex, i);
                   }

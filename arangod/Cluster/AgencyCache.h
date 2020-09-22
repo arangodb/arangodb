@@ -139,6 +139,10 @@ private:
   /// @brief invoke given callbacks
   void invokeCallbackNoLock(uint64_t, std::string const& = std::string()) const;
 
+  /// @brief reinitialize all databases, after a snapshot or after a hotbackup restore
+  /// Must hold storeLock to call!
+  std::unordered_set<std::string> reInitPlan();
+
   /// @brief handle callbacks for specific log document
   void handleCallbacksNoLock(
     VPackSlice, std::unordered_set<uint64_t>&, std::vector<uint64_t>&,
