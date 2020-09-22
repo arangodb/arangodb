@@ -562,13 +562,13 @@ AgencyCache::change_set_t AgencyCache::changedSince(
   std::string const& what, consensus::index_t const& last) const {
 
   static std::vector<std::string> const planGoodies ({
-      AgencyCommHelper::path(PLAN_ANALYZERS),
-      AgencyCommHelper::path(PLAN_COLLECTIONS),
-      AgencyCommHelper::path(PLAN_DATABASES),
-      AgencyCommHelper::path(PLAN_VIEWS)});
+      AgencyCommHelper::path(PLAN_ANALYZERS) + "/",
+      AgencyCommHelper::path(PLAN_COLLECTIONS) + "/",
+      AgencyCommHelper::path(PLAN_DATABASES) + "/",
+      AgencyCommHelper::path(PLAN_VIEWS) + "/"});
   static std::vector<std::string> const currentGoodies ({
-      AgencyCommHelper::path(CURRENT_COLLECTIONS),
-      AgencyCommHelper::path(CURRENT_DATABASES)});
+      AgencyCommHelper::path(CURRENT_COLLECTIONS) + "/",
+      AgencyCommHelper::path(CURRENT_DATABASES) + "/"});
   
   bool get_rest = false;
   std::unordered_map<std::string, query_t> db_res;
