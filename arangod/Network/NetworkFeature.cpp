@@ -143,7 +143,7 @@ void NetworkFeature::prepare() {
   config.clusterInfo = ci;
   config.name = "ClusterComm";
 
-  config.protocol = fuerte::ProtocolType::Vst;
+  config.protocol = fuerte::ProtocolType::Http;
   if (_protocol == "http" || _protocol == "h1") {
     config.protocol = fuerte::ProtocolType::Http;
   } else if (_protocol == "http2" || _protocol == "h2") {
@@ -181,7 +181,6 @@ void NetworkFeature::prepare() {
     };
 
   _prepared = true;
-
 }
 
 void NetworkFeature::start() {

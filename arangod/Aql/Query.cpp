@@ -759,18 +759,7 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
   }
   extras.close();
 
-  // patch executionTime stats value in place
-  // we do this because "executionTime" should include the whole span of the
-  // execution and we have to set it at the very end
-  double const rt = now - _startTime;
-//  try {
-//    basics::VelocyPackHelper::patchDouble(extras.slice().get("stats").get("executionTime"), rt);
-//  } catch (...) {
-//    // if the query has failed, the slice may not
-//    // contain a proper "stats" object once we get here.
-//  }
-
-  LOG_TOPIC("95996", DEBUG, Logger::QUERIES) << rt 
+  LOG_TOPIC("95996", DEBUG, Logger::QUERIES) << now - _startTime
                                              << " Query::finalize:returning"
                                              << " this: " << (uintptr_t)this;
   return ExecutionState::DONE;

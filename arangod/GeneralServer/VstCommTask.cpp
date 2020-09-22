@@ -266,13 +266,6 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t
   // handle request types
   if (mt == fu::MessageType::Authentication) {  // auth
     handleVstAuthRequest(VPackSlice(buffer.data()), messageId);
-    // Separate superuser traffic:
-    // Note that currently, velocystream traffic will never come from
-    // a forwarding, since we always forward with HTTP.
-    if (_authMethod != AuthenticationMethod::NONE && _authenticated &&
-        _authToken.username().empty()) {
-      stat.SET_SUPERUSER();
-    }
   } else if (mt == fu::MessageType::Request) {  // request
 
     // the handler will take ownership of this pointer
