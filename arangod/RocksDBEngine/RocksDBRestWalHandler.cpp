@@ -89,13 +89,9 @@ void RocksDBRestWalHandler::properties() {
 }
 
 void RocksDBRestWalHandler::flush() {
-  std::shared_ptr<VPackBuilder> parsedRequest;
-  VPackSlice slice;
-  try {
-    slice = _request->payload();
-  } catch (...) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid body value. expecting object");
+  bool parseSuccess = true;
+  VPackSlice slice = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) { // error already created
     return;
   }
   if (!slice.isObject() && !slice.isNone()) {
@@ -156,27 +152,6 @@ void RocksDBRestWalHandler::transactions() {
   VPackBuilder builder;
   builder.openObject();
   builder.add("runningTransactions", VPackValue(mngr->getActiveTransactionCount()));
-
-  // lastCollectedId
-  /*{
-    auto value = std::get<1>(info);
-    if (value == UINT64_MAX) {
-      builder.add("minLastCollected", VPackValue(VPackValueType::Null));
-    } else {
-      builder.add("minLastCollected", VPackValue(value));
-    }
-  }
-
-  // lastSealedId
-  {
-    auto value = std::get<2>(info);
-    if (value == UINT64_MAX) {
-      builder.add("minLastSealed", VPackValue(VPackValueType::Null));
-    } else {
-      builder.add("minLastSealed", VPackValue(value));
-    }
-  }*/
-
   builder.close();
   generateResult(rest::ResponseCode::NOT_IMPLEMENTED, builder.slice());
 }

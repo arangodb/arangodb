@@ -715,7 +715,6 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
         return RestStatus::WAITING;
       }
     }
-    // Used in 3.4.0 onwards.
     answerBuilder.add("done", VPackValue(state == ExecutionState::DONE));
     answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
     if (items.get() == nullptr) {

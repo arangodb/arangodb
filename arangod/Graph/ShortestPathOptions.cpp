@@ -189,7 +189,7 @@ void ShortestPathOptions::fetchVerticesCoordinator(
   auto ch = reinterpret_cast<ClusterTraverserCache*>(cache());
   TRI_ASSERT(ch != nullptr);
   // get the map of _ids into the datalake
-  std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache = ch->cache();
+  auto& cache = ch->cache();
 
   std::unordered_set<arangodb::velocypack::StringRef> fetch;
   for (auto const& it : vertexIds) {
@@ -199,8 +199,7 @@ void ShortestPathOptions::fetchVerticesCoordinator(
     }
   }
   if (!fetch.empty()) {
-    fetchVerticesFromEngines(_trx, ch->engines(), fetch, cache, ch->datalake(),
-                             /*forShortestPath*/ true);
+    fetchVerticesFromEngines(_trx, *ch, fetch, cache, /*forShortestPath*/ true);
   }
 }
 

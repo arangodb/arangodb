@@ -121,8 +121,7 @@ void ClusterTraverser::fetchVertices() {
   if (_opts->produceVertices()) {
     auto ch = static_cast<ClusterTraverserCache*>(traverserCache());
     ch->insertedDocuments() += _verticesToFetch.size();
-    fetchVerticesFromEngines(*_trx, _engines, _verticesToFetch, _vertices, ch->datalake(),
-                             /*forShortestPath*/ false);
+    fetchVerticesFromEngines(*_trx, *ch, _verticesToFetch, _vertices, /*forShortestPath*/ false);
 
     _enumerator->incHttpRequests(_engines->size()); 
   } else {
