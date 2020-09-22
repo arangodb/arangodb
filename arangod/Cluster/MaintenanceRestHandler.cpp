@@ -229,26 +229,12 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
 void MaintenanceRestHandler::getAction() {
   // build the action
   auto& maintenance = server().getFeature<MaintenanceFeature>();
-
-  bool found;
-  std::string const& detailsStr = _request->value("details", found);
-
   VPackBuilder builder;
   {
     VPackObjectBuilder o(&builder);
     builder.add("status", VPackValue(maintenance.isPaused() ? "paused" : "running"));
     builder.add(VPackValue("registry"));
     maintenance.toVelocyPack(builder);
-    if (found && StringUtils::boolean(detailsStr)) {
-      builder.add(VPackValue("state"));
-
-      auto& cluster = server().getFeature<ClusterFeature>();
-      auto thread = cluster.heartbeatThread();
-      //TODO 
-      //if (thread) {
-      //  thread->agencySync().getLocalCollections(builder);
-      //}
-    }
   }
 
   generateResult(rest::ResponseCode::OK, builder.slice());

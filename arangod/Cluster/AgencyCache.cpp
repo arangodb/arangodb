@@ -127,6 +127,23 @@ index_t AgencyCache::index() const {
   return _commitIndex;
 }
 
+// If a "arango/Plan/Databases" key is set, all databases in the Plan are completely
+// replaced. This means that loadPlan and the maintenance thread have to revisit everything.
+// In particular, we have to visit all databases in the new Plan as well as all currently
+// existing databases locally! Therefore we fake all of these databases as if they were
+// changed in this raft index.
+static void reInitPlan(ClusterFeature& cf, VPackSlice slice, std::unordered_set<std::string>& planChanges) {
+  planChanges = cf.allDatabases();
+  for (auto const& i :
+         VPackObjectIterator(
+           slice.get(
+             std::vector<std::string>{AgencyCommHelper::path(PLAN_DATABASES),"new"}))) {
+    auto const dbname = i.key.copyString();
+    planChanges.emplace(dbname);
+  }
+  planChanges.emplace(std::string());
+}
+
 void AgencyCache::handleCallbacksNoLock(
   VPackSlice slice, std::unordered_set<uint64_t>& uniq, std::vector<uint64_t>& toCall,
   std::unordered_set<std::string>& planChanges, std::unordered_set<std::string>& currentChanges) {
@@ -185,20 +202,8 @@ void AgencyCache::handleCallbacksNoLock(
           auto tmp = r.substr(strlen(PLAN_COLLECTIONS));
           planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
         } else if (r == std::string("Plan/Databases")) {
-          // If this key is set, all databases in the Plan are completely replaced. This means
-          // that loadPlan and the maintenance thread have to revisit everything. In particular,
-          // we have to visit all databases in the new Plan as well as all currently existing
-          // databases locally! Therefore we fake all of these databases as if they were changed
-          // in this raft index.
-          planChanges = server().getFeature<ClusterFeature>().allDatabases();
-          for (auto const& i :
-                 VPackObjectIterator(
-                   slice.get(
-                     std::vector<std::string>{AgencyCommHelper::path(PLAN_DATABASES),"new"}))) {
-            auto const dbname = i.key.copyString();
-            planChanges.emplace(dbname);
-          }
-          planChanges.emplace(std::string());
+          // !! Check documentation of the function before making changes here !!
+          reInitPlan (server().getFeature<ClusterFeature>(), slice, planChanges);
         } else if (rs > strlen(PLAN_DATABASES) &&         // Plan/Databases
                    r.compare(0, strlen(PLAN_DATABASES), PLAN_DATABASES) == 0) {
           auto tmp = r.substr(strlen(PLAN_DATABASES));
@@ -233,6 +238,8 @@ void AgencyCache::handleCallbacksNoLock(
     }
   }
 }
+
+
 
 void AgencyCache::run() {
 
@@ -352,6 +359,14 @@ void AgencyCache::run() {
                   LOG_TOPIC("4579f", TRACE, Logger::CLUSTER) <<
                     "Fresh start: overwriting agency cache with " << rs.toJson();
                   _readDB = rs;                  // overwrite
+                  std::unordered_set<std::string> pc;
+                  reInitPlan(
+                    server().getFeature<ClusterFeature>(),
+                    rs.get(std::vector<std::string>{AgencyCommHelper::path(), PLAN, DATABASES}), pc);
+                  for (auto const& i : pc) {
+                    _planChanges.emplace(_commitIndex, i);
+                  }
+                  // !! Check documentation of the function before making changes here !!
                   _commitIndex = commitIndex;
                   _lastSnapshot = commitIndex;
                 }
