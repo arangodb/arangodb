@@ -125,10 +125,10 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
   if (tmp == "path") {
     uniqueVertices = TraverserOptions::UniquenessLevel::PATH;
   } else if (tmp == "global") {
-    if (!useBreadthFirst) {
+    if (mode != Mode::BFS && mode != Mode::WEIGHTED) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "uniqueVertices: 'global' is only "
-                                     "supported, with bfs: true due to "
+                                     "supported, with mode: bfs|weighted due to "
                                      "otherwise unpredictable results.");
     }
     uniqueVertices = TraverserOptions::UniquenessLevel::GLOBAL;
