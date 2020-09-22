@@ -2394,7 +2394,7 @@ Result ClusterInfo::createCollectionsCoordinator(
     };
     // ATTENTION: The following callback calls the above closure in a
     // different thread. Nevertheless, the closure accesses some of our
-    // local variables. Therefore we havessss to protect all accesses to them
+    // local variables. Therefore we have to protect all accesses to them
     // by a mutex. We use the mutex of the condition variable in the
     // AgencyCallback for this.
 
