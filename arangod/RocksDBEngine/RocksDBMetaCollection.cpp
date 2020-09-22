@@ -319,7 +319,6 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
   if (!_logicalCollection.useSyncByRevision()) {
     return nullptr;
   }
-  TRI_ASSERT(_revisionTree);
 
   EngineSelectorFeature& selector =
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
