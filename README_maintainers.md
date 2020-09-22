@@ -793,6 +793,34 @@ Once this is completed, you may run it like this:
 
 (without connection keepalive)
 
+#### generic driver interface
+The generic driver interface expects to find i.e. script inside the
+driver source, that does all the plumbing to run the respective tests against
+the provided arangodb instance. All required data is passed as parameters:
+
+ - driversource - the source directory with the workingcopy of the driver
+ - driverScript - the script to be executed. defaults to `run_tests.sh`
+ - driverScriptInterpreter  - since currently there is no shebang support,
+   this needs to be provided or defaults to `/bin/bash`.
+ - driverOptions options to be passed on to the driver works in the form of
+   `--driverOptions.argname value` evaluating to `--argname` `value`
+ - `--test testcase` evaluates to `--testsuite testcase`
+ - `--testCase testcaseExp` evalates to `--filter testcaseExp`
+
+Statically provided options (with sample values):
+ - `--instanceUrl http://127.0.0.1:7327`
+ - `--instanceEndpoint tcp://127.0.0.1:7327`
+ - `--port 7327`
+ - `--host 127.0.0.1`
+ - `--auth false`
+ - `--username root`
+ - `--password ''`
+ - `--[no-]enterprise`
+ - `--deployment-mode [SINGLE_SERVER|ACTIVE_FAILOVER|CLUSTER]`
+
+The invoked script is expected to exit non-zero on failure.
+All content of `stdout` will be forwarded to the testresults.
+
 ### Debugging Tests
 
 This is quick introduction only.
