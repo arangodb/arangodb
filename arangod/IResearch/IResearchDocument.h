@@ -173,13 +173,6 @@ class FieldIterator {
 
   IteratorValue const& topValue() noexcept { return top().it.value(); }
 
-  std::string& nameBuffer() noexcept {
-    TRI_ASSERT(_nameBuffer);
-    return *_nameBuffer;
-  }
-
-  std::string& valueBuffer();
-
   // disallow copy and assign
   FieldIterator(FieldIterator const&) = delete;
   FieldIterator& operator=(FieldIterator const&) = delete;
@@ -197,8 +190,8 @@ class FieldIterator {
   AnalyzerIterator _end{};
   std::vector<Level> _stack;
   size_t _prefixLength{};
-  std::shared_ptr<std::string> _nameBuffer;  // buffer for field name
-  std::shared_ptr<std::string> _valueBuffer;  // need temporary buffer for custom types in VelocyPack
+  std::string _nameBuffer; // buffer for field name
+  std::string _valueBuffer;  // need temporary buffer for custom types in VelocyPack
   arangodb::transaction::Methods* _trx;
   Field _value;  // iterator's value
 }; // FieldIterator
