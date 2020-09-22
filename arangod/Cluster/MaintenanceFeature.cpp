@@ -1003,13 +1003,7 @@ std::unordered_set<std::string> MaintenanceFeature::dirty(
 }
 
 std::unordered_set<std::string> MaintenanceFeature::allDatabases() const {
-  std::unordered_set<std::string> allDBNames;
-  auto const tmp = server().getFeature<DatabaseFeature>().getDatabaseNames();
-  allDBNames.reserve(tmp.size());
-  for (auto const& i : tmp) {
-    allDBNames.emplace(i);
-  }
-  return allDBNames;
+  return server().getFeature<ClusterFeature>().allDatabases();
 }
 
 size_t MaintenanceFeature::lastNumberOfDatabases() {

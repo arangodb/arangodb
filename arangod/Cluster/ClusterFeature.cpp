@@ -826,9 +826,12 @@ bool ClusterFeature::isDirty(std::string const& dbName) const {
   return _dirty.find(dbName) != _dirty.end();
 }
 
-void ClusterFeature::markAllLocalDirty() {
+std::unordered_set<std::string> ClusterFeature::allDatabases() const {
+  std::unordered_set<std::string> allDBNames;
   auto const tmp = server().getFeature<DatabaseFeature>().getDatabaseNames();
-  MUTEX_LOCKER(guard, _dirtyLock);
-  _dirty.insert(tmp.begin(), tmp.end());
-  notify();
+  allDBNames.reserve(tmp.size());
+  for (auto const& i : tmp) {
+    allDBNames.emplace(i);
+  }
+  return allDBNames;
 }

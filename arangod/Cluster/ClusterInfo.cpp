@@ -5021,15 +5021,15 @@ arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
 arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
   // Apply only Collections and DBServers
   AgencyWriteTransaction planTransaction(std::vector<AgencyOperation>{
-      AgencyOperation("Plan/Collections", AgencyValueOperationType::SET,
-                      plan.get(std::vector<std::string>{"arango", "Plan",
-                                                        "Collections"})),
-      AgencyOperation("Plan/Databases", AgencyValueOperationType::SET,
-                      plan.get(std::vector<std::string>{"arango", "Plan",
-                                                        "Databases"})),
-      AgencyOperation("Plan/Views", AgencyValueOperationType::SET,
-                      plan.get(
-                          std::vector<std::string>{"arango", "Plan", "Views"})),
+      AgencyOperation(
+        "Plan/Collections", AgencyValueOperationType::SET,
+        plan.get(std::vector<std::string>{"arango", "Plan", "Collections"})),
+      AgencyOperation(
+        "Plan/Databases", AgencyValueOperationType::SET,
+        plan.get(std::vector<std::string>{"arango", "Plan", "Databases"})),
+      AgencyOperation(
+        "Plan/Views", AgencyValueOperationType::SET,
+        plan.get(std::vector<std::string>{"arango", "Plan", "Views"})),
       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP),
       AgencyOperation("Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP)});
 

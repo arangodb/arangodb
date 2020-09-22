@@ -185,16 +185,15 @@ void AgencyCache::handleCallbacksNoLock(
           auto tmp = r.substr(strlen(PLAN_COLLECTIONS));
           planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
         } else if (r == std::string("Plan/Databases")) {
-          server().getFeature<ClusterFeature>().markAllLocalDirty(); // db servers only
-          std::unordered_set<std::string> dirty{};
+          planChanges = server().getFeature<ClusterFeature>().allDatabases();
           for (auto const& i :
                  VPackObjectIterator(
                    slice.get(
                      std::vector<std::string>{AgencyCommHelper::path(PLAN_DATABASES),"new"}))) {
-            dirty.emplace(i.key.copyString());
+            auto const dbname = i.key.copyString()
+            planChanges.emplace(dbname);
           }
-          server().getFeature<ClusterFeature>().addDirty(dirty); // the plan
-          return;
+          planChanges.emplace(std::string());
         } else if (rs > strlen(PLAN_DATABASES) &&         // Plan/Databases
                    r.compare(0, strlen(PLAN_DATABASES), PLAN_DATABASES) == 0) {
           auto tmp = r.substr(strlen(PLAN_DATABASES));
