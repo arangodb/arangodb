@@ -686,7 +686,6 @@ void ClusterInfo::loadPlan() {
   // '_newPlannedViews' member instead of '_plannedViews'
 
   // set plan loader
-  //TRI_ASSERT(_newPlannedViews.empty());
   _newPlannedViews = _plannedViews;   // Create a copy, since we might not visit all databases
   _planLoader = std::this_thread::get_id();
 
@@ -721,7 +720,7 @@ void ClusterInfo::loadPlan() {
   auto changeSet = agencyCache.changedSince("Plan", planIndex); // also delivers plan/version
   decltype(_plan) newPlan;
   {
-    WRITE_LOCKER(writeLocker, _planProt.lock);
+    READ_LOCKER(readLocker, _planProt.lock);
     newPlan = _plan;
     for (auto const& db : changeSet.dbs) { // Databases
       newPlan[db.first] = db.second;
@@ -754,12 +753,15 @@ void ClusterInfo::loadPlan() {
 
   {
     READ_LOCKER(guard, _planProt.lock);
+    auto start = std::chrono::steady_clock::now();
     newDatabases = _plannedDatabases;
     newCollections = _plannedCollections;
     newShards = _shards;
     newShardServers = _shardServers;
     newShardToName = _shardToName;
     newDbAnalyzersRevision = _dbAnalyzersRevision;
+    auto ende = std::chrono::steady_clock::now();
+    LOG_DEVEL << "Time for copy operation in loadPlan: " << std::chrono::duration_cast<std::chrono::nanoseconds>(ende-start).count() << " ns";
   }
 
   std::string name;
@@ -1293,7 +1295,7 @@ void ClusterInfo::loadCurrent() {
   bool changed = false;
   auto changeSet = agencyCache.changedSince("Current", currentIndex);
   {
-    WRITE_LOCKER(writeLocker, _currentProt.lock);
+    READ_LOCKER(readLocker, _currentProt.lock);
     newCurrent = _current;
     for (auto const& db : changeSet.dbs) { // Databases
       newCurrent[db.first] = db.second;
