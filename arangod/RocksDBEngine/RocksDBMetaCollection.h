@@ -126,6 +126,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   int doLock(double timeout, AccessMode::Type mode);
   bool haveBufferedOperations() const;
   std::size_t revisionTreeDepth() const;
+  std::unique_ptr<containers::RevisionTree> allocateEmptyRevisionTree() const;
   bool ensureRevisionTree();
 
  protected:

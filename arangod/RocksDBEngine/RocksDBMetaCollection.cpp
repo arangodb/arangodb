@@ -283,7 +283,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
   if (!_revisionTree && !haveBufferedOperations()) {
-    return nullptr;  // collection empty
+    return allocateEmptyRevisionTree();  // collection empty
   }
 
   applyUpdates(safeSeq);
@@ -329,7 +329,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
   if (!_revisionTree && !haveBufferedOperations()) {
-    return nullptr;  // collection empty
+    return allocateEmptyRevisionTree();  // collection empty
   }
 
   applyUpdates(safeSeq);
@@ -914,6 +914,11 @@ std::size_t RocksDBMetaCollection::revisionTreeDepth() const {
   return 6;  // TODO make variable
 }
 
+std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::allocateEmptyRevisionTree() const {
+  return std::make_unique<containers::RevisionTree>(
+      revisionTreeDepth(), _logicalCollection.minRevision().id());
+}
+
 bool RocksDBMetaCollection::ensureRevisionTree() {
   try {
     if (_revisionTree) {
@@ -921,8 +926,7 @@ bool RocksDBMetaCollection::ensureRevisionTree() {
     }
     _revisionTreeCreationSeq = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
     _revisionTreeSerializedSeq = _revisionTreeCreationSeq;
-    _revisionTree = std::make_unique<containers::RevisionTree>(
-        revisionTreeDepth(), _logicalCollection.minRevision().id());
+    _revisionTree = allocateEmptyRevisionTree();
     return true;
   } catch (...) {
     _revisionTree.reset();  // should be unnecessary, but just in case

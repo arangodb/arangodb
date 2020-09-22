@@ -1307,6 +1307,10 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   //std::pair<std::size_t, std::size_t> fullRange = treeLeader->range();
   std::unique_ptr<containers::RevisionTree> treeLocal =
       physical->revisionTree(*trx);
+  if (!treeLocal) {
+    // local collection does not support syncing by revision, fall back to keys
+    return fetchCollectionSyncByKeys(coll, leaderColl, maxTick);
+  }
   physical->removeRevisionTreeBlocker(blockerId);
   std::vector<std::pair<std::uint64_t, std::uint64_t>> ranges =
       treeLeader->diff(*treeLocal);
