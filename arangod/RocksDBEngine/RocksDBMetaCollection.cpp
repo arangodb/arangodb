@@ -433,11 +433,9 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
   if (_logicalCollection.useSyncByRevision()) {
     if (!_revisionTree && !haveBufferedOperations()) {  // empty collection
-      LOG_DEVEL << "empty collection, nullptr";
       return commitSeq;
     }
     applyUpdates(commitSeq);  // always apply updates...
-    LOG_DEVEL << "applied";
     bool neverDone = _revisionTreeSerializedSeq == _revisionTreeCreationSeq;
     bool coinFlip = RandomGenerator::interval(static_cast<uint32_t>(5)) == 0;
     bool beenTooLong = 30 < std::chrono::duration_cast<std::chrono::seconds>(
@@ -448,7 +446,6 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
     }
     if (force || neverDone || coinFlip || beenTooLong) {  // ...but only write the tree out sometimes
       _revisionTree->serializeBinary(output, true);
-      LOG_DEVEL << "serialized";
       _revisionTreeSerializedSeq = commitSeq;
       _revisionTreeSerializedTime = std::chrono::steady_clock::now();
     }

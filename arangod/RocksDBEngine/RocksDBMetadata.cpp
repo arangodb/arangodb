@@ -487,7 +487,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
               << coll.id().id() << "'";
         }
       } else {
-        LOG_TOPIC("ecdbe", INFO, Logger::ENGINES)
+        LOG_TOPIC("ecdbe", DEBUG, Logger::ENGINES)
             << "no revision tree found for collection with id '"
             << coll.id().id() << "', but collection appears empty";
       }
