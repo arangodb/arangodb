@@ -1141,7 +1141,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     res = workForOneDocument(value, false);
   }
 
-  auto resDocs = resultBuilder.steal();
+  std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
     TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(followers != nullptr);
@@ -1816,7 +1816,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
           if (res.ok()) {
             _state->removeKnownServer((*followers)[i]);
             LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
-                << "truncateLocal: dropping follower " << (*followers)[i]
+                << "truncateLocal: dropped follower " << (*followers)[i]
                 << " for shard " << collectionName;
           } else {
             LOG_TOPIC("359bc", WARN, Logger::REPLICATION)
@@ -2153,30 +2153,6 @@ bool transaction::Methods::isLocked(LogicalCollection* document, AccessMode::Typ
   return trxColl->isLocked(type);
 }
 
-#if 0
-/// @brief read- or write-lock a collection
-Result transaction::Methods::lockRecursive(DataSourceId cid, AccessMode::Type type) {
-  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
-    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
-                  "transaction not running on lock");
-  }
-  TransactionCollection* trxColl = trxCollection(cid, type);
-  TRI_ASSERT(trxColl != nullptr);
-  return Result(trxColl->lockRecursive(type));
-}
-
-/// @brief read- or write-unlock a collection
-Result transaction::Methods::unlockRecursive(DataSourceId cid, AccessMode::Type type) {
-  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
-    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
-                  "transaction not running on unlock");
-  }
-  TransactionCollection* trxColl = trxCollection(cid, type);
-  TRI_ASSERT(trxColl != nullptr);
-  return Result(trxColl->unlockRecursive(type));
-}
-#endif
-
 Result transaction::Methods::resolveId(char const* handle, size_t length,
                                        std::shared_ptr<LogicalCollection>& collection,
                                        char const*& key, size_t& outLength) {
@@ -2329,8 +2305,7 @@ Future<Result> Methods::replicateOperations(
     bool didRefuse = false;
     // We drop all followers that were not successful:
     for (size_t i = 0; i < followerList->size(); ++i) {
-      auto const& tryRes = responses[i];
-      network::Response const& resp = tryRes.get();
+      network::Response const& resp = responses[i].get();
 
       bool replicationWorked = false;
       if (resp.error == fuerte::Error::NoError) {
@@ -2347,12 +2322,18 @@ Future<Result> Methods::replicateOperations(
 
       if (!replicationWorked) {
         ServerID const& deadFollower = (*followerList)[i];
+        LOG_TOPIC("20f31", INFO, Logger::REPLICATION)
+            << "synchronous replication: dropping follower "
+            << deadFollower << " for shard " << collection->name()
+            << ", status code: " << static_cast<int>(resp.statusCode())
+            << ", message: " << network::fuerteToArangoErrorMessage(resp);
+        
         Result res = collection->followers()->remove(deadFollower);
         if (res.ok()) {
-          // TODO: what happens if a server is re-added during a transaction ?
+          // simon: follower cannot be re-added without lock on collection
           _state->removeKnownServer(deadFollower);
           LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
-              << "synchronous replication: dropping follower "
+              << "synchronous replication: dropped follower "
               << deadFollower << " for shard " << collection->name();
         } else {
           LOG_TOPIC("db473", ERR, Logger::REPLICATION)
