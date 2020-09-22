@@ -346,7 +346,8 @@ class DumpRestoreHelper {
     };
     this.results.restoreHotBackup = pu.run.arangoBackup(this.options, this.instanceInfo, "restore", cmds, this.instanceInfo.rootDir, true);
     this.print("done restoring backup");
-    require("internal").wait(10);
+    //require("internal").wait(300);
+
     return true;
   }
 

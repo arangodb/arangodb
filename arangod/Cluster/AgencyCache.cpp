@@ -184,15 +184,21 @@ void AgencyCache::handleCallbacksNoLock(
                    r.compare(0, strlen(PLAN_COLLECTIONS), PLAN_COLLECTIONS) == 0) {
           auto tmp = r.substr(strlen(PLAN_COLLECTIONS));
           planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
-        } else if (rs >= strlen(PLAN_DATABASES) &&         // Plan/Databases
-                   r.compare(0, strlen(PLAN_DATABASES), PLAN_DATABASES) == 0) {
-          if (rs == strlen(PLAN_DATABASES)) {              // OVERWRITE (Hot Backup)
-            server().getFeature<ClusterFeature>().markAllLocalDirty();
-            return;
-          } else {
-            auto tmp = r.substr(strlen(PLAN_DATABASES));
-            planChanges.emplace(tmp);
+        } else if (r == std::string("Plan/Databases")) {
+          server().getFeature<ClusterFeature>().markAllLocalDirty();
+          std::unordered_set<std::string> dirty{};
+          for (auto const& i :
+                 VPackObjectIterator(
+                   slice.get(
+                     std::vector<std::string>{AgencyCommHelper::path(PLAN_DATABASES),"new"}))) {
+            dirty.emplace(i.key.copyString());
           }
+          server().getFeature<ClusterFeature>().addDirty(dirty);
+          return;
+        } else if (rs > strlen(PLAN_DATABASES) &&         // Plan/Databases
+                   r.compare(0, strlen(PLAN_DATABASES), PLAN_DATABASES) == 0) {
+          auto tmp = r.substr(strlen(PLAN_DATABASES));
+          planChanges.emplace(tmp);
         } else if (rs > strlen(PLAN_VIEWS) &&             // Plan/Views
                    r.compare(0, strlen(PLAN_VIEWS), (PLAN_VIEWS)) == 0) {
           auto tmp = r.substr(strlen(PLAN_VIEWS));
