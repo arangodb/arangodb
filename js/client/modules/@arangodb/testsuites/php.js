@@ -27,10 +27,10 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'php_driver': 'javascript client driver test',
+  'php_driver': 'php client driver test',
 };
 const optionsDocumentation = [
-  '   - `phpsource`: directory of the java driver',
+  '   - `phpsource`: directory of the php driver',
   '   - `phpkeepalive`: whether to use connection keepalive',
   '   - `phpOptions`: additional arguments to pass via the commandline'
 ];
