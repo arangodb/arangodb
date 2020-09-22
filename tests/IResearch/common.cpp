@@ -914,7 +914,8 @@ void assertFilterParseFail(TRI_vocbase_t& vocbase, std::string const& queryStrin
 }
 
 arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id) {
-  arangodb::CreateDatabaseInfo info(server);
+  arangodb::OperationOptions opOptions(arangodb::ExecContext::current());
+  arangodb::CreateDatabaseInfo info(server, opOptions);
   auto rv = info.load(name, id);
   if (rv.fail()) {
     throw std::runtime_error(rv.errorMessage());

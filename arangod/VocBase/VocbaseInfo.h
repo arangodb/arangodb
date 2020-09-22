@@ -29,6 +29,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;
@@ -69,7 +70,7 @@ struct DBUser {
 
 class CreateDatabaseInfo {
  public:
-  explicit CreateDatabaseInfo(application_features::ApplicationServer&);
+  CreateDatabaseInfo(application_features::ApplicationServer&, OperationOptions const&);
   Result load(std::string const& name, uint64_t id);
 
   Result load(uint64_t id, VPackSlice const& options,
@@ -134,6 +135,7 @@ class CreateDatabaseInfo {
 
  private:
   application_features::ApplicationServer& _server;
+  OperationOptions _options;
 
   std::uint64_t _id = 0;
   std::string _name = "";

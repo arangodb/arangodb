@@ -596,7 +596,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
   result = nullptr;
 
   if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
-    events::CreateDatabase(name, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     return {TRI_ERROR_ARANGO_DATABASE_NAME_INVALID};
   }
 
@@ -617,7 +616,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
       auto it = theLists->_databases.find(name);
       if (it != theLists->_databases.end()) {
         // name already in use
-        events::CreateDatabase(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
         return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("duplicate database name '") + name + "'");
       }
     }
@@ -636,13 +634,11 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
         std::string msg = "initializing replication applier for database '" +
             vocbase->name() + "' failed: " + ex.what();
         LOG_TOPIC("e7444", ERR, arangodb::Logger::FIXME) << msg;
-        events::CreateDatabase(name, ex.code());
         return Result(ex.code(), std::move(msg));
       } catch (std::exception const& ex) {
         std::string msg = "initializing replication applier for database '" +
             vocbase->name() + "' failed: " + ex.what();
         LOG_TOPIC("56c41", ERR, arangodb::Logger::FIXME) << msg;
-        events::CreateDatabase(name, TRI_ERROR_INTERNAL);
         return Result(TRI_ERROR_INTERNAL, std::move(msg));
       }
 
@@ -657,7 +653,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
       int res = createApplicationDirectory(name, appPath);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        events::CreateDatabase(name, res);
         THROW_ARANGO_EXCEPTION(res);
       }
     }
@@ -702,7 +697,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
   }
 
   result = vocbase.release();
-  events::CreateDatabase(name, res.errorNumber());
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -717,7 +711,6 @@ int DatabaseFeature::dropDatabase(std::string const& name,
                                   bool removeAppsDirectory) {
   if (name == StaticStrings::SystemDatabase) {
     // prevent deletion of system database
-    events::DropDatabase(name, TRI_ERROR_FORBIDDEN);
     return TRI_ERROR_FORBIDDEN;
   }
 
@@ -738,7 +731,6 @@ int DatabaseFeature::dropDatabase(std::string const& name,
       if (it == newLists->_databases.end()) {
         // not found
         delete newLists;
-        events::DropDatabase(name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
         return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
       }
 
@@ -772,7 +764,6 @@ int DatabaseFeature::dropDatabase(std::string const& name,
       vocbase->visitDataSources(visitor, true);  // acquire a write lock to avoid potential deadlocks
 
       if (TRI_ERROR_NO_ERROR != res) {
-        events::DropDatabase(name, res);
         return res;
       }
 
@@ -780,7 +771,6 @@ int DatabaseFeature::dropDatabase(std::string const& name,
       newLists->_droppedDatabases.insert(vocbase);
     } catch (...) {
       delete newLists;
-      events::DropDatabase(name, TRI_ERROR_OUT_OF_MEMORY);
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
@@ -812,8 +802,6 @@ int DatabaseFeature::dropDatabase(std::string const& name,
   // must not use the database after here, as it may now be
   // deleted by the DatabaseManagerThread!
 
-  events::DropDatabase(name, res);
-
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
     DatabaseFeature::DATABASE->versionTracker()->track("drop database");
@@ -843,7 +831,6 @@ int DatabaseFeature::dropDatabase(TRI_voc_tick_t id,
   }
 
   if (name.empty()) {
-    events::DropDatabase(name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
   // and call the regular drop function
@@ -1220,6 +1207,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   auto newLists = new DatabasesLists(*oldLists);
 
   ServerState::RoleEnum role = arangodb::ServerState::instance()->getRole();
+  OperationOptions opOptions(ExecContext::current());
 
   try {
     for (VPackSlice it : VPackArrayIterator(databases)) {
@@ -1245,7 +1233,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       // open the database and scan collections in it
 
       // try to open this database
-      arangodb::CreateDatabaseInfo info(server());
+      arangodb::CreateDatabaseInfo info(server(), opOptions);
       auto res = info.load(it, VPackSlice::emptyArraySlice());
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);

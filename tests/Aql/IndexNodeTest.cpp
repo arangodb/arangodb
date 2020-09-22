@@ -54,7 +54,8 @@ class IndexNodeTest
 };  // IndexNodeTest
 
 arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::ApplicationServer& server) {
-  arangodb::CreateDatabaseInfo info(server);
+  arangodb::OperationOptions opOptions(arangodb::ExecContext::current());
+  arangodb::CreateDatabaseInfo info(server, opOptions);
   auto rv = info.load("testVocbase", 2);
   if (rv.fail()) {
     throw std::runtime_error(rv.errorMessage());

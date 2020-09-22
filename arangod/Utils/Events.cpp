@@ -38,8 +38,8 @@ void PropertyUpdateCollection(std::string const& db, std::string const& collecti
                               OperationResult const&) {}
 void TruncateCollection(std::string const& db, std::string const& name,
                         OperationResult const& result) {}
-void CreateDatabase(std::string const& name, int result) {}
-void DropDatabase(std::string const& name, int result) {}
+void CreateDatabase(std::string const& name, OperationResult const& result) {}
+void DropDatabase(std::string const& name, OperationResult const& result) {}
 void CreateIndex(std::string const& db, std::string const& col,
                  VPackSlice const&, int result) {}
 void DropIndex(std::string const& db, std::string const& col,

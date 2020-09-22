@@ -195,7 +195,6 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   // because a database with this name already exists, or because we could
   // not write to Plan/ in the agency
   if (!res.ok()) {
-    events::CreateDatabase(info.getName(), res.errorNumber());
     return res;
   }
 
@@ -254,7 +253,6 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
 Result Databases::createOther(CreateDatabaseInfo const& info) {
   // Without the database feature, we can't create a database
   if (!info.server().hasFeature<DatabaseFeature>()) {
-    events::CreateDatabase(info.getName(), TRI_ERROR_INTERNAL);
     return {TRI_ERROR_INTERNAL};
   }
   DatabaseFeature& databaseFeature = info.server().getFeature<DatabaseFeature>();
@@ -284,21 +282,22 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 }
 
 arangodb::Result Databases::create(application_features::ApplicationServer& server,
-                                   std::string const& dbName, VPackSlice const& users,
-                                   VPackSlice const& options) {
+                                   std::string const& dbName,
+                                   VPackSlice const& users, VPackSlice const& options,
+                                   OperationOptions const& opOptions) {
   // Only admin users are permitted to create databases
-  ExecContext const& exec = ExecContext::current();
+  ExecContext const& exec = opOptions.context();
 
   if (!exec.isAdminUser() || (ServerState::readOnly() && !exec.isSuperuser())) {
-    events::CreateDatabase(dbName, TRI_ERROR_FORBIDDEN);
+    events::CreateDatabase(dbName, OperationResult(TRI_ERROR_FORBIDDEN, opOptions));
     return Result(TRI_ERROR_FORBIDDEN);
   }
 
-  CreateDatabaseInfo createInfo(server);
+  CreateDatabaseInfo createInfo(server, opOptions);
   arangodb::Result res = createInfo.load(dbName, options, users);
 
   if (!res.ok()) {
-    events::CreateDatabase(dbName, res.errorNumber());
+    events::CreateDatabase(dbName, OperationResult(res, opOptions));
     return res;
   }
 
@@ -323,6 +322,7 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   if (res.fail()) {
     LOG_TOPIC("1964a", ERR, Logger::FIXME)
         << "Could not create database: " << res.errorMessage();
+    events::CreateDatabase(dbName, OperationResult(res, opOptions));
     return res;
   }
 
@@ -338,6 +338,8 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
     }
   }
 
+  events::CreateDatabase(dbName, OperationResult(res, opOptions));
+
   return Result();
 }
 
@@ -348,7 +350,6 @@ int dropDBCoordinator(std::string const& dbName) {
   TRI_vocbase_t* vocbase = databaseFeature->useDatabase(dbName);
 
   if (vocbase == nullptr) {
-    events::DropDatabase(dbName, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
 
@@ -360,7 +361,6 @@ int dropDBCoordinator(std::string const& dbName) {
   auto res = ci.dropDatabaseCoordinator(dbName, 120.0);
 
   if (!res.ok()) {
-    events::DropDatabase(dbName, res.errorNumber());
     return res.errorNumber();
   }
 
@@ -385,11 +385,12 @@ int dropDBCoordinator(std::string const& dbName) {
 const std::string dropError = "Error when dropping database";
 }  // namespace
 
-arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const& dbName) {
+arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const& dbName,
+                                 OperationOptions const& opOptions) {
   TRI_ASSERT(systemVocbase->isSystem());
-  ExecContext const& exec = ExecContext::current();
+  ExecContext const& exec = opOptions.context();
   if (exec.systemAuthLevel() != auth::Level::RW) {
-    events::DropDatabase(dbName, TRI_ERROR_FORBIDDEN);
+    events::DropDatabase(dbName, OperationResult(TRI_ERROR_FORBIDDEN, opOptions));
     return TRI_ERROR_FORBIDDEN;
   }
 
@@ -403,6 +404,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
       V8ConditionalContextGuard guard(res, isolate, systemVocbase, securityContext);
 
       if (res.fail()) {
+        events::DropDatabase(dbName, OperationResult(res, opOptions));
         return res;
       }
 
@@ -418,7 +420,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
         res = DatabaseFeature::DATABASE->dropDatabase(dbName, true);
 
         if (res.fail()) {
-          events::DropDatabase(dbName, res.errorNumber());
+          events::DropDatabase(dbName, OperationResult(res, opOptions));
           return Result(res);
         }
 
@@ -429,13 +431,13 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
         dealer->addGlobalContextMethod("reloadRouting");
       }
     } catch (arangodb::basics::Exception const& ex) {
-      events::DropDatabase(dbName, TRI_ERROR_INTERNAL);
+      events::DropDatabase(dbName, OperationResult(TRI_ERROR_INTERNAL, opOptions));
       return Result(ex.code(), dropError + ex.message());
     } catch (std::exception const& ex) {
-      events::DropDatabase(dbName, TRI_ERROR_INTERNAL);
+      events::DropDatabase(dbName, OperationResult(TRI_ERROR_INTERNAL, opOptions));
       return Result(TRI_ERROR_INTERNAL, dropError + ex.what());
     } catch (...) {
-      events::DropDatabase(dbName, TRI_ERROR_INTERNAL);
+      events::DropDatabase(dbName, OperationResult(TRI_ERROR_INTERNAL, opOptions));
       return Result(TRI_ERROR_INTERNAL, dropError);
     }
   } else {
@@ -454,6 +456,8 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
     };
     res = um->enumerateUsers(cb, /*retryOnConflict*/ true);
   }
+
+  events::DropDatabase(dbName, OperationResult(res, opOptions));
 
   return res;
 }

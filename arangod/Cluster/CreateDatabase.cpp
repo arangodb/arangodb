@@ -34,6 +34,7 @@
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/Methods/Databases.h"
 
 using namespace arangodb;
@@ -72,7 +73,9 @@ bool CreateDatabase::first() {
 
     // Assertion in constructor makes sure that we have DATABASE.
     auto& server = _feature.server();
-    _result = Databases::create(server, _description.get(DATABASE), users, properties());
+    OperationOptions opOptions(ExecContext::current());
+    _result = Databases::create(server, _description.get(DATABASE), users,
+                                properties(), opOptions);
     if (!_result.ok() && _result.errorNumber() != TRI_ERROR_ARANGO_DUPLICATE_NAME) {
       LOG_TOPIC("5fb67", ERR, Logger::MAINTENANCE)
           << "CreateDatabase: failed to create database " << database << ": " << _result;

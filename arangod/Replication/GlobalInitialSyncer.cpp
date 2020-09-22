@@ -244,9 +244,10 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDataba
 
     if (vocbase == nullptr) {
       // database is missing. we need to create it now
+      OperationOptions opOptions(ExecContext::current());
       Result r = methods::Databases::create(_state.applier._server, dbName,
                                             VPackSlice::emptyArraySlice(),
-                                            VPackSlice::emptyObjectSlice());
+                                            VPackSlice::emptyObjectSlice(), opOptions);
       if (r.fail()) {
         LOG_TOPIC("cf124", WARN, Logger::REPLICATION)
             << "Creating the db failed on replicant";
@@ -316,6 +317,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDataba
   }
 
   // all dbs left in this list no longer exist on the leader
+  OperationOptions opOptions(ExecContext::current());
   for (std::string const& dbname : existingDBs) {
     _state.vocbases.erase(dbname);  // make sure to release the db first
 
@@ -324,7 +326,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDataba
                                                 .getFeature<arangodb::SystemDatabaseFeature>()
                                                 .use()
                                                 .get(),
-                                            dbname)
+                                            dbname, opOptions)
                  : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
 
     if (r.fail()) {
