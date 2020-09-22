@@ -473,7 +473,7 @@ namespace norm_vpack {
     norm_vpack_normalizer);
 } // namespace norm_vpack
 
-namespace pipeine_vpack {
+namespace pipeline_vpack {
 // FIXME implement proper vpack parsing
 irs::analysis::analyzer::ptr pipeline_vpack_builder(irs::string_ref const& args) {
   auto slice = arangodb::iresearch::slice<char>(args);
@@ -500,7 +500,7 @@ bool pipeline_vpack_normalizer(const irs::string_ref& args, std::string& out) {
 
 REGISTER_ANALYZER_VPACK(irs::analysis::pipeline_token_stream, pipeline_vpack_builder,
   pipeline_vpack_normalizer);
-} // namespace norm_vpack
+} // namespace pipeline_vpack
 
 arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressionContext*/,
                                     arangodb::transaction::Methods* trx,
