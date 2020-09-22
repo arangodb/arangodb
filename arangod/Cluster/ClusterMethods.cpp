@@ -99,6 +99,10 @@ using namespace arangodb::rest;
 
 using Helper = arangodb::basics::VelocyPackHelper;
 
+namespace {
+std::string const edgeUrl = "/_internal/traverser/edge/";
+}
+
 // Timeout for write operations, note that these are used for communication
 // with a shard leader and we always have to assume that some follower has
 // stopped writes for some time to get in sync:
@@ -1872,8 +1876,6 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
   }
   leased->close();
 
-  std::string const url = "/_internal/traverser/edge/";
-
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
 
   network::RequestOptions reqOpts;
@@ -1886,7 +1888,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
   for (auto const& engine : *engines) {
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
-                                  url + StringUtils::itoa(engine.second),
+                                  ::edgeUrl + StringUtils::itoa(engine.second),
                                   leased->bufferRef(), reqOpts));
   }
 
@@ -1913,8 +1915,10 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
 
     VPackSlice edges = resSlice.get("edges");
     bool allCached = true;
+    VPackArrayIterator allEdges(edges);
+    result.reserve(allEdges.size());
 
-    for (VPackSlice e : VPackArrayIterator(edges)) {
+    for (VPackSlice e : allEdges) {
       VPackSlice id = e.get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type

@@ -99,7 +99,6 @@ void ClusterShortestPathEdgeCursor::rearm(arangodb::velocypack::StringRef vertex
   _position = 0;
 
   auto trx = _opts->trx();
-  transaction::BuilderLeaser leased(trx);
   transaction::BuilderLeaser b(trx);
 
   b->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
