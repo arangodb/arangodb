@@ -78,14 +78,11 @@ Result DBServerAgencySync::getLocalCollections(
   DatabaseFeature& dbfeature = _server.getFeature<DatabaseFeature>();
 
   for (auto const& dbname : dirty) {
-    TRI_vocbase_t* tmp = dbfeature.lookupDatabase(dbname);
+    TRI_vocbase_t* tmp = dbfeature.useDatabase(dbname);
     if (tmp == nullptr) {
       continue;
     }
     TRI_vocbase_t& vocbase = *tmp;
-    if (!vocbase.use()) {
-      continue;
-    }
     auto unuse = scopeGuard([&vocbase] { vocbase.release(); });
 
     auto [it,created] =
@@ -93,7 +90,7 @@ Result DBServerAgencySync::getLocalCollections(
     if (!created) {
       LOG_TOPIC("0e9d7", ERR, Logger::MAINTENANCE)
         << "Failed to emplace new entry in local collection cache";
-      FATAL_ERROR_EXIT();
+      return Result(TRI_ERROR_INTERNAL, "Failed to emplace new entry in local collection cache");
     }
 
     auto& collections = *it->second;
@@ -179,9 +176,14 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   uint64_t planIndex = 0, currentIndex = 0;
 
 
+  // The rationale is that even with 1000 databases and us waking up every 5 seconds,
+  // we should approximately visit every database without being dirty once per hour.
+  // That is why we divide by 720.
   auto moreDirt = mfeature.pickRandomDirty(
     std::ceil(mfeature.lastNumberOfDatabases() / 720.));
   auto dirty = mfeature.dirty();
+  // Add `moreDirt` to `dirty` but remove from `moreDirt`, if already dirty anyway.
+  // Then we can reasonably be surprised if we find anything in a database in `moreDirt`.
   for (auto it = moreDirt.begin(); it != moreDirt.end();) {
     if (dirty.find(*it) != dirty.end()) {
       dirty.insert(*it);
@@ -195,7 +197,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   if (dirty.empty()) {
     LOG_TOPIC("0a62f", DEBUG, Logger::MAINTENANCE)
       << "DBServerAgencySync::execute no dirty collections";
-    result.errorMessage = "DBServerAgencySync::execute no dirty collections";
+    result.success = true;
+    result.errorMessage = "DBServerAgencySync::execute no dirty databases";
+    return result;
   }
 
   auto plan = clusterInfo.getPlan(planIndex, dirty);
@@ -259,6 +263,13 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         << "DBServerAgencySync::phaseTwo - current state: " << current;
 
     // It is crucial that the following happens before we do `getLocalCollections`!
+    // We must lock a shard if an action for the shard is scheduled. We then unlock
+    // the shard when this action has terminated. This unlock makes the database
+    // dirty again and triggers a run of the maintenance thread. We want the outcome
+    // of the completed action to be visible in what `getLocalCollections` sees, when
+    // the dirtiness of the database is consumed. Therefore, we do it in exactly this
+    // order: First get a snapshot of the locks (copy!) and ignore the shards which
+    // have been locked *now*. Then `getLocalCollections`.
     currentShardLocks = mfeature.getShardLocks();
 
     local.clear();
@@ -334,17 +345,14 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       }
 
       if (tmp.ok()) {
+        VPackSlice planSlice = report.get("Plan");
+        VPackSlice currentSlice = report.get("Current");
         result = DBServerAgencySyncResult(
           true,
-          report.hasKey("Plan") ?
-            report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
-          report.hasKey("Current") ?
-            report.get("Current").get("Version").getNumber<uint64_t>() : 0,
-          report.hasKey("Plan") ?
-            report.get("Plan").get("Index").getNumber<uint64_t>() : 0,
-          report.hasKey("Current") ?
-            report.get("Current").get("Index").getNumber<uint64_t>() : 0);
-
+            planSlice.isObject() ? planSlice.get("Version").getNumber<uint64_t>() : 0,
+            currentSlice.isObject() ? currentSlice.get("Version").getNumber<uint64_t>() : 0,
+            planSlice.isObject() ? planSlice.get("Index").getNumber<uint64_t>() : 0,
+            currentSlice.isObject() ? currentSlice.get("Index").getNumber<uint64_t>() : 0);
       } else {
         // Report an error:
         result = DBServerAgencySyncResult(

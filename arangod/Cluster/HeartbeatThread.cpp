@@ -131,9 +131,7 @@ class HeartbeatBackgroundJobThread : public Thread {
 
           while (true) {
 
-            //
             if(_condition.wait_for(guard, std::chrono::seconds(5)) == std::cv_status::timeout) {
-              // ceil(#databases / 720)
               _anotherRun = true;
             }
 
