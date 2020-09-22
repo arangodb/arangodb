@@ -26,6 +26,7 @@
 #include <map>
 
 #include <Agency/AsyncAgencyComm.h>
+#include <Basics/application-exit.h>
 #include <date/date.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -1076,6 +1077,28 @@ bool HeartbeatThread::init() {
 }
 
 void HeartbeatThread::beginShutdown() {
+  // First shut down the maintenace thread:
+  if (_maintenanceThread != nullptr) {
+    _maintenanceThread->stop();
+
+    // Wait until maintenance thread has terminated:
+    size_t counter = 0;
+    auto start = std::chrono::steady_clock::now();
+    while (_maintenanceThread->isRunning()) {
+      if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
+        LOG_TOPIC("d8a5c", FATAL, Logger::CLUSTER)
+        << "exiting prematurely as we failed terminating the maintenance thread";
+        FATAL_ERROR_EXIT();
+      }
+      if (++counter % 50 == 0) {
+        LOG_TOPIC("acaaa", WARN, arangodb::Logger::CLUSTER)
+        << "waiting for maintenance thread to finish";
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+  }
+
+  // And now the heartbeat thread:
   CONDITION_LOCKER(guard, _condition);
 
   // set the shutdown state in parent class
@@ -1083,6 +1106,7 @@ void HeartbeatThread::beginShutdown() {
 
   // break _condition.wait() in runDBserver
   _condition.signal();
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////

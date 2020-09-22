@@ -475,8 +475,8 @@ RevisionId LogicalCollection::revision(transaction::Methods* trx) const {
 
 bool LogicalCollection::usesRevisionsAsDocumentIds() const {
   // TODO: switch off for now to lower memory consumption:
-  return false;
-  // return _usesRevisionsAsDocumentIds.load();
+  // return false;
+  return _usesRevisionsAsDocumentIds.load();
 }
 
 void LogicalCollection::setUsesRevisionsAsDocumentIds(bool usesRevisions) {
