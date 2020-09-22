@@ -256,13 +256,14 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
 
       std::sort(begin, end,
                 [](auto const& lhs, auto const& rhs) {
-        return lhs._pool->scope() < rhs._pool->scope();
+        return lhs._pool->inputType() < rhs._pool->inputType();
       });
 
+      // find offset of the first non-primitive analyzer
       auto* primitiveEnd = std::find_if(
         begin, end,
         [](auto const& analyzer) noexcept {
-          return analyzer._pool->scope() != AnalyzerScope::PRIMITIVE_TYPE;
+          return analyzer._pool->accepts(AnalyzerValueType::Array | AnalyzerValueType::Object);
       });
 
       _primitiveOffset = std::distance(begin, primitiveEnd);

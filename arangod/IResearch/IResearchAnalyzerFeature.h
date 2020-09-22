@@ -37,6 +37,7 @@
 #include <analysis/analyzers.hpp>
 #include <utils/async_utils.hpp>
 #include <utils/attributes.hpp>
+#include <utils/bit_utils.hpp>
 #include <utils/hash_utils.hpp>
 #include <utils/memory.hpp>
 #include <utils/noncopyable.hpp>
@@ -66,10 +67,19 @@ class ApplicationServer;
 namespace arangodb {
 namespace iresearch {
 
-enum class AnalyzerScope : uint32_t {
-  PRIMITIVE_TYPE = 0,
-  COMPLEX_TYPE
+enum class AnalyzerValueType : uint64_t {
+  Undefined = 0,
+  // Primitive types
+  String    = 1,
+  Number    = 1 << 1,
+  Bool      = 1 << 2,
+  Null      = 1 << 3,
+  // Complex types
+  Array     = 1 << 4,
+  Object    = 1 << 5,
 };
+
+ENABLE_BITMASK_ENUM(AnalyzerValueType);
 
 // thread-safe analyzer pool
 class AnalyzerPool : private irs::util::noncopyable {
@@ -82,7 +92,14 @@ class AnalyzerPool : private irs::util::noncopyable {
   VPackSlice properties() const noexcept { return _properties; }
   irs::string_ref const& type() const noexcept { return _type; }
   AnalyzersRevision::Revision revision() const noexcept { return _revision; }
-  AnalyzerScope scope() const noexcept { return _scope; }
+  AnalyzerValueType inputType() const noexcept { return  _inputType; }
+  AnalyzerValueType returnType() const noexcept { return  _returnType; }
+  bool accepts(AnalyzerValueType types) const noexcept {
+    return (_inputType & types) != AnalyzerValueType::Undefined;
+  }
+  bool returns(AnalyzerValueType types) const noexcept {
+    return (_returnType & types) != AnalyzerValueType::Undefined;
+  }
   // definition to be stored in _analyzers collection or shown to the end user
   void toVelocyPack(velocypack::Builder& builder,
                     bool forPersistence = false);
@@ -126,7 +143,8 @@ class AnalyzerPool : private irs::util::noncopyable {
   VPackSlice _properties;  // IResearch analyzer configuration
   irs::string_ref _type;   // IResearch analyzer name
   arangodb::AnalyzersRevision::Revision _revision{ arangodb::AnalyzersRevision::MIN };
-  AnalyzerScope _scope{ AnalyzerScope::PRIMITIVE_TYPE };
+  AnalyzerValueType _inputType{ AnalyzerValueType::Undefined };
+  AnalyzerValueType _returnType{ AnalyzerValueType::Undefined };
 }; // AnalyzerPool
 
 ////////////////////////////////////////////////////////////////////////////////

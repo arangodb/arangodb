@@ -518,17 +518,17 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* /*expressionContext*/,
     switch (current.type()) {
       case VPackValueType::Object:
       case VPackValueType::String: {
-        AnalyzerScope scope;
         irs::string_ref value;
+        AnalyzerValueType valueType{AnalyzerValueType::Undefined};
         if (current.isObject()) {
-          scope = AnalyzerScope::COMPLEX_TYPE;
+          valueType = AnalyzerValueType::Object;
           value = arangodb::iresearch::ref<char>(current);
         } else {
-          scope = AnalyzerScope::PRIMITIVE_TYPE;
+          valueType = AnalyzerValueType::String;
           value = arangodb::iresearch::getStringRef(current);
         }
 
-        if (pool->scope() != scope || !analyzer->reset(value)) {
+        if (!pool->accepts(valueType) || !analyzer->reset(value)) {
           auto const message = "failure to reset arangosearch analyzer: ' "s +
             static_cast<std::string>(name) +
             "' while computing result for function 'TOKENS'";
@@ -1065,19 +1065,23 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
   }
 }
 
-arangodb::iresearch::AnalyzerScope getAnalyzerScope(irs::type_info::type_id type) noexcept {
+// first - input type,
+// second - output type
+std::pair<AnalyzerValueType, AnalyzerValueType> getAnalyzerValueTypes(
+    irs::type_info::type_id type) noexcept {
   if (type == irs::type<GeoJSONAnalyzer>::id() ||
       type == irs::type<GeoPointAnalyzer>::id()) {
-    return arangodb::iresearch::AnalyzerScope::COMPLEX_TYPE;
+    return { AnalyzerValueType::Object, AnalyzerValueType::String };
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   if ("iresearch-vpack-analyzer" == type().name()) {
-    return arangodb::iresearch::AnalyzerScope::COMPLEX_TYPE;
+    return { AnalyzerValueType::Array | AnalyzerValueType::Object,
+             AnalyzerValueType::String };
   }
 #endif
 
-  return arangodb::iresearch::AnalyzerScope::PRIMITIVE_TYPE;
+  return { AnalyzerValueType::String, AnalyzerValueType::String };
 }
 
 } // namespace
@@ -1164,7 +1168,8 @@ bool AnalyzerPool::operator==(AnalyzerPool const& rhs) const {
   // intentionally do not check revision! Revision does not affects analyzer functionality!
   return _name == rhs._name &&
       _type == rhs._type &&
-      _scope == rhs._scope &&
+      _inputType == rhs._inputType &&
+      _returnType == rhs._returnType &&
       _features == rhs._features &&
       basics::VelocyPackHelper::equal(_properties, rhs._properties, true);
 }
@@ -1210,7 +1215,7 @@ bool AnalyzerPool::init(
         _type = irs::string_ref(_config.c_str() + _properties.byteSize() , type.size());
       }
 
-      _scope = getAnalyzerScope(instance->type());
+      std::tie(_inputType, _returnType) = getAnalyzerValueTypes(instance->type());
       _features = features;  // store only requested features
       _revision = revision;
       return true;

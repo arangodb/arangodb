@@ -23,13 +23,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchDocument.h"
+
 #include "Basics/Endian.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "IResearchCommon.h"
-#include "IResearchKludge.h"
-#include "IResearchPrimaryKeyFilter.h"
-#include "IResearchViewMeta.h"
+#include "IResearch/GeoAnalyzer.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchKludge.h"
+#include "IResearch/IResearchPrimaryKeyFilter.h"
+#include "IResearch/IResearchViewMeta.h"
 #include "Logger/LogMacros.h"
 #include "Misc.h"
 #include "Transaction/Helpers.h"
@@ -410,15 +412,30 @@ bool FieldIterator::setValue(VPackSlice const value,
       || value.isArray()
       || value.isString()); // verbatim string
 
+  auto& pool = valueAnalyzer._pool;
+
+  if (!pool) {
+    LOG_TOPIC("189da", WARN, iresearch::TOPIC)
+        << "got nullptr analyzer factory";
+
+    return false;
+  }
+
   irs::string_ref valueRef;
+  AnalyzerValueType valueType{AnalyzerValueType::Undefined};
 
   switch (value.type()) {
-    case VPackValueType::Array:
+    case VPackValueType::Array: {
+      valueRef = iresearch::ref<char>(value);
+      valueType = AnalyzerValueType::Array;
+    } break;
     case VPackValueType::Object: {
       valueRef = iresearch::ref<char>(value);
+      valueType = AnalyzerValueType::Object;
     } break;
     case VPackValueType::String: {
       valueRef = iresearch::getStringRef(value);
+      valueType = AnalyzerValueType::String;
     } break;
     case VPackValueType::Custom: {
       TRI_ASSERT(!_slice.isNone());
@@ -429,18 +446,14 @@ bool FieldIterator::setValue(VPackSlice const value,
         _trx->resolver(), value, _slice);
 
       valueRef = buffer;
+      valueType = AnalyzerValueType::String;
     } break;
     default:
       TRI_ASSERT(false);
       return false;
   }
 
-  auto& pool = valueAnalyzer._pool;
-
-  if (!pool) {
-    LOG_TOPIC("189da", WARN, iresearch::TOPIC)
-        << "got nullptr analyzer factory";
-
+  if (!pool->accepts(valueType)) {
     return false;
   }
 
