@@ -1,5 +1,6 @@
 devel
 -----
+* Added new ArangoSearch "pipeline" analyzer type
 
 * Reduce the number of dropped followers when running larger (>= 128 MB)
   write transactions.
