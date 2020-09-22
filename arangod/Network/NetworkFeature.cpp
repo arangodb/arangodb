@@ -74,6 +74,7 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                network::ConnectionPool::Config config)
     : ApplicationFeature(server, "Network"),
+      _protocol(),
       _maxOpenConnections(config.maxOpenConnections),
       _idleTtlMilli(config.idleConnectionMilli),
       _numIOThreads(config.numIOThreads),
@@ -142,7 +143,7 @@ void NetworkFeature::prepare() {
   config.clusterInfo = ci;
   config.name = "ClusterComm";
 
-  config.protocol = fuerte::ProtocolType::Http;
+  config.protocol = fuerte::ProtocolType::Vst;
   if (_protocol == "http" || _protocol == "h1") {
     config.protocol = fuerte::ProtocolType::Http;
   } else if (_protocol == "http2" || _protocol == "h2") {
