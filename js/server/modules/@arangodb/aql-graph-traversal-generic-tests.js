@@ -1111,7 +1111,7 @@ function testOpenDiamondDfsUniqueEdgesUniqueVerticesNone(testGraph) {
 
 function testOpenDiamondDfsLabelVariableForwarding(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
-  
+
   const ruleList = [["-all"], ["+all"], ["-all", "+optimize-traversals"], ["+all", "-optimize-traversals"]];
   for (const rules of ruleList) {
     const query = `
@@ -1138,11 +1138,14 @@ function testOpenDiamondDfsLabelVariableForwarding(testGraph) {
   }
 }
 
-function testOpenDiamondBfsUniqueVerticesPath(testGraph) {
+const testOpenDiamondBfsUniqueVerticesPath = (testGraph) => testOpenDiamondModeUniqueVerticesPath(testGraph, "bfs");
+const testOpenDiamondWeightedUniqueVerticesPath = (testGraph) => testOpenDiamondModeUniqueVerticesPath(testGraph, "weighted");
+
+function testOpenDiamondModeUniqueVerticesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", bfs: true}
+        OPTIONS {uniqueVertices: "path", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1164,11 +1167,14 @@ function testOpenDiamondBfsUniqueVerticesPath(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testOpenDiamondBfsUniqueVerticesNone(testGraph) {
+const testOpenDiamondBfsUniqueVerticesNone = (testGraph) => testOpenDiamondModeUniqueVerticesNone(testGraph, "bfs");
+const testOpenDiamondWeightedUniqueVerticesNone = (testGraph) => testOpenDiamondModeUniqueVerticesNone(testGraph, "weighted");
+
+function testOpenDiamondModeUniqueVerticesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", bfs: true}
+        OPTIONS {uniqueVertices: "none", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1190,11 +1196,14 @@ function testOpenDiamondBfsUniqueVerticesNone(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testOpenDiamondBfsUniqueVerticesGlobal(testGraph) {
+const testOpenDiamondBfsUniqueVerticesGlobal = (testGraph) => testOpenDiamondModeUniqueVerticesGlobal(testGraph, "bfs");
+const testOpenDiamondWeightedUniqueVerticesGlobal = (testGraph) => testOpenDiamondModeUniqueVerticesGlobal(testGraph, "weighted");
+
+function testOpenDiamondModeUniqueVerticesGlobal(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "global", bfs: true}
+        OPTIONS {uniqueVertices: "global", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1206,11 +1215,15 @@ function testOpenDiamondBfsUniqueVerticesGlobal(testGraph) {
   checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
-function testOpenDiamondBfsUniqueEdgesPath(testGraph) {
+
+const testOpenDiamondBfsUniqueEdgesPath = (testGraph) => testOpenDiamondParamUniqueEdgesPath(testGraph, "bfs");
+const testOpenDiamondWeightedUniqueEdgesPath = (testGraph) => testOpenDiamondParamUniqueEdgesPath(testGraph, "weighted");
+
+function testOpenDiamondParamUniqueEdgesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", bfs: true}
+        OPTIONS {uniqueEdges: "path", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1232,11 +1245,14 @@ function testOpenDiamondBfsUniqueEdgesPath(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testOpenDiamondBfsUniqueEdgesNone(testGraph) {
+const testOpenDiamondBfsUniqueEdgesNone = (testGraph) => testOpenDiamondModeUniqueEdgesNone(testGraph, "bfs");
+const testOpenDiamondWeightedUniqueEdgesNone = (testGraph) => testOpenDiamondModeUniqueEdgesNone(testGraph, "weighted");
+
+function testOpenDiamondModeUniqueEdgesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", bfs: true}
+        OPTIONS {uniqueEdges: "none", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1258,11 +1274,14 @@ function testOpenDiamondBfsUniqueEdgesNone(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testOpenDiamondBfsUniqueEdgesUniqueVerticesPath(testGraph) {
+const testOpenDiamondBfsUniqueEdgesUniqueVerticesPath = (testGraph) => testOpenDiamondModeUniqueEdgesUniqueVerticesPath(testGraph, "bfs");
+const testOpenDiamondWeightedUniqueEdgesUniqueVerticesPath = (testGraph) => testOpenDiamondModeUniqueEdgesUniqueVerticesPath(testGraph, "weighted");
+
+function testOpenDiamondModeUniqueEdgesUniqueVerticesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", uniqueVertices: "path", bfs: true}
+        OPTIONS {uniqueEdges: "path", uniqueVertices: "path", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1284,11 +1303,14 @@ function testOpenDiamondBfsUniqueEdgesUniqueVerticesPath(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testOpenDiamondBfsUniqueEdgesUniqueVerticesNone(testGraph) {
+const testOpenDiamondBfsUniqueEdgesUniqueVerticesNone = (testGraph) => testOpenDiamondModeUniqueEdgesUniqueVerticesNone(testGraph, "bfs");
+const testOpenDiamondWeightedUniqueEdgesUniqueVerticesNone = (testGraph) => testOpenDiamondModeUniqueEdgesUniqueVerticesNone(testGraph, "weighted");
+
+function testOpenDiamondModeUniqueEdgesUniqueVerticesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", uniqueVertices: "none", bfs: true}
+        OPTIONS {uniqueEdges: "none", uniqueVertices: "none", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1310,11 +1332,14 @@ function testOpenDiamondBfsUniqueEdgesUniqueVerticesNone(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testOpenDiamondBfsUniqueEdgesUniquePathVerticesGlobal(testGraph) {
+const testOpenDiamondBfsUniqueEdgesUniquePathVerticesGlobal = (testGraph) => testOpenDiamondModeUniqueEdgesUniquePathVerticesGlobal(testGraph, "bfs");
+const testOpenDiamondWeightedUniqueEdgesUniquePathVerticesGlobal = (testGraph) => testOpenDiamondModeUniqueEdgesUniquePathVerticesGlobal(testGraph, "weighted");
+
+function testOpenDiamondModeUniqueEdgesUniquePathVerticesGlobal(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", uniqueVertices: "global", bfs: true}
+        OPTIONS {uniqueEdges: "path", uniqueVertices: "global", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1326,11 +1351,14 @@ function testOpenDiamondBfsUniqueEdgesUniquePathVerticesGlobal(testGraph) {
   checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
-function testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal(testGraph) {
+const testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal = (testGraph) => testOpenDiamondModeUniqueEdgesUniqueNoneVerticesGlobal(testGraph, "bfs");
+const testOpenDiamondWeightedUniqueEdgesUniqueNoneVerticesGlobal = (testGraph) => testOpenDiamondModeUniqueEdgesUniqueNoneVerticesGlobal(testGraph, "weighted");
+
+function testOpenDiamondModeUniqueEdgesUniqueNoneVerticesGlobal(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", uniqueVertices: "global", bfs: true}
+        OPTIONS {uniqueEdges: "none", uniqueVertices: "global", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1342,15 +1370,18 @@ function testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal(testGraph) {
   checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
-function testOpenDiamondBfsLabelVariableForwarding(testGraph) {
+const testOpenDiamondBfsLabelVariableForwarding = (testGraph) => testOpenDiamondModeLabelVariableForwarding(testGraph, "bfs");
+const testOpenDiamondWeightedLabelVariableForwarding = (testGraph) => testOpenDiamondModeLabelVariableForwarding(testGraph, "weighted");
+
+function testOpenDiamondModeLabelVariableForwarding(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
-  
+
   const ruleList = [["-all"], ["+all"], ["-all", "+optimize-traversals"], ["+all", "-optimize-traversals"]];
   for (const rules of ruleList) {
     const query = `
         LET label = NOOPT(100)
         FOR v, e, p IN 0..3 OUTBOUND "${testGraph.vertex('A')}"
-          GRAPH "${testGraph.name()}" OPTIONS { bfs: true }
+          GRAPH "${testGraph.name()}" OPTIONS { mode: ${mode} }
           FILTER p.edges[0].distance != label
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
@@ -1625,11 +1656,14 @@ function testSmallCircleDfsUniqueVerticesUniqueEdgesNone(testGraph) {
   checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
-function testSmallCircleBfsUniqueVerticesPath(testGraph) {
+const testSmallCircleBfsUniqueVerticesPath = (testGraph) => testSmallCircleModeUniqueVerticesPath(testGraph, "bfs");
+const testSmallCircleWeightedUniqueVerticesPath = (testGraph) => testSmallCircleModeUniqueVerticesPath(testGraph, "weighted");
+
+function testSmallCircleModeUniqueVerticesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", bfs: true}
+        OPTIONS {uniqueVertices: "path", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1646,11 +1680,14 @@ function testSmallCircleBfsUniqueVerticesPath(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testSmallCircleBfsUniqueVerticesNone(testGraph) {
+const testSmallCircleBfsUniqueVerticesNone = (testGraph) => testSmallCircleModeUniqueVerticesNone(testGraph, "bfs");
+const testSmallCircleWeightedUniqueVerticesNone = (testGraph) => testSmallCircleModeUniqueVerticesNone(testGraph, "weighted");
+
+function testSmallCircleModeUniqueVerticesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", bfs: true}
+        OPTIONS {uniqueVertices: "none", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1668,11 +1705,14 @@ function testSmallCircleBfsUniqueVerticesNone(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testSmallCircleBfsUniqueEdgesPath(testGraph) {
+const testSmallCircleBfsUniqueEdgesPath = (testGraph) => testSmallCircleModeUniqueEdgesPath(testGraph, "bfs");
+const testSmallCircleWeightedUniqueEdgesPath = (testGraph) => testSmallCircleModeUniqueEdgesPath(testGraph, "weighted");
+
+function testSmallCircleModeUniqueEdgesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", bfs: true}
+        OPTIONS {uniqueEdges: "path", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1690,11 +1730,14 @@ function testSmallCircleBfsUniqueEdgesPath(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testSmallCircleBfsUniqueEdgesNone(testGraph) {
+const testSmallCircleBfsUniqueEdgesNone = (testGraph) => testSmallCircleModeUniqueEdgesNone(testGraph, "bfs");
+const testSmallCircleWeightedUniqueEdgesNone = (testGraph) => testSmallCircleModeUniqueEdgesNone(testGraph, "weighted");
+
+function testSmallCircleModeUniqueEdgesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", bfs: true}
+        OPTIONS {uniqueEdges: "none", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1717,11 +1760,14 @@ function testSmallCircleBfsUniqueEdgesNone(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testSmallCircleBfsUniqueVerticesUniqueEdgesPath(testGraph) {
+const testSmallCircleBfsUniqueVerticesUniqueEdgesPath = (testGraph) => testSmallCircleModeUniqueVerticesUniqueEdgesPath(testGraph, "bfs");
+const testSmallCircleWeightedUniqueVerticesUniqueEdgesPath = (testGraph) => testSmallCircleModeUniqueVerticesUniqueEdgesPath(testGraph, "weighted");
+
+function testSmallCircleModeUniqueVerticesUniqueEdgesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", uniqueEdges: "path", bfs: true}
+        OPTIONS {uniqueVertices: "path", uniqueEdges: "path", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1738,11 +1784,14 @@ function testSmallCircleBfsUniqueVerticesUniqueEdgesPath(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testSmallCircleBfsUniqueVerticesUniqueEdgesNone(testGraph) {
+const testSmallCircleBfsUniqueVerticesUniqueEdgesNone = (testGraph) => testSmallCircleModeUniqueVerticesUniqueEdgesNone(testGraph, "bfs");
+const testSmallCircleWeightedUniqueVerticesUniqueEdgesNone = (testGraph) => testSmallCircleModeUniqueVerticesUniqueEdgesNone(testGraph, "weighted");
+
+function testSmallCircleModeUniqueVerticesUniqueEdgesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", uniqueEdges: "none", bfs: true}
+        OPTIONS {uniqueVertices: "none", uniqueEdges: "none", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1765,11 +1814,14 @@ function testSmallCircleBfsUniqueVerticesUniqueEdgesNone(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testSmallCircleBfsUniqueEdgesPathUniqueVerticesGlobal(testGraph) {
+const testSmallCircleBfsUniqueEdgesPathUniqueVerticesGlobal = (testGraph) => testSmallCircleModeUniqueEdgesPathUniqueVerticesGlobal(testGraph, "bfs");
+const testSmallCircleWeightedUniqueEdgesPathUniqueVerticesGlobal = (testGraph) => testSmallCircleModeUniqueEdgesPathUniqueVerticesGlobal(testGraph, "weighted");
+
+function testSmallCircleModeUniqueEdgesPathUniqueVerticesGlobal(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "global", uniqueEdges: "path", bfs: true}
+        OPTIONS {uniqueVertices: "global", uniqueEdges: "path", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1781,11 +1833,14 @@ function testSmallCircleBfsUniqueEdgesPathUniqueVerticesGlobal(testGraph) {
   checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
-function testSmallCircleBfsUniqueEdgesNoneUniqueVerticesGlobal(testGraph) {
+const testSmallCircleBfsUniqueEdgesNoneUniqueVerticesGlobal = (testGraph) => testSmallCircleModeUniqueEdgesNoneUniqueVerticesGlobal(testGraph, "bfs");
+const testSmallCircleWeightedUniqueEdgesNoneUniqueVerticesGlobal = (testGraph) => testSmallCircleModeUniqueEdgesNoneUniqueVerticesGlobal(testGraph, "weighted");
+
+function testSmallCircleModeUniqueEdgesNoneUniqueVerticesGlobal(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "global", uniqueEdges: "none", bfs: true}
+        OPTIONS {uniqueVertices: "global", uniqueEdges: "none", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2159,11 +2214,14 @@ function testCompleteGraphDfsUniqueVerticesUniqueEdgesNoneD2(testGraph) {
   checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
-function testCompleteGraphBfsUniqueVerticesPathD1(testGraph) {
+const testCompleteGraphBfsUniqueVerticesPathD1 = (testGraph) => testCompleteGraphModeUniqueVerticesPathD1(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueVerticesPathD1 = (testGraph) => testCompleteGraphModeUniqueVerticesPathD1(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueVerticesPathD1(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", bfs: true}
+        OPTIONS {uniqueVertices: "path", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2181,11 +2239,14 @@ function testCompleteGraphBfsUniqueVerticesPathD1(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testCompleteGraphBfsUniqueVerticesPathD2(testGraph) {
+const testCompleteGraphBfsUniqueVerticesPathD2 = (testGraph) => testCompleteGraphModeUniqueVerticesPathD2(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueVerticesPathD2 = (testGraph) => testCompleteGraphModeUniqueVerticesPathD2(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueVerticesPathD2(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..2 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", bfs: true}
+        OPTIONS {uniqueVertices: "path", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2215,11 +2276,14 @@ function testCompleteGraphBfsUniqueVerticesPathD2(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testCompleteGraphBfsUniqueVerticesPathD3(testGraph) {
+const testCompleteGraphBfsUniqueVerticesPathD3 = (testGraph) => testCompleteGraphModeUniqueVerticesPathD3(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueVerticesPathD3 = (testGraph) => testCompleteGraphModeUniqueVerticesPathD3(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueVerticesPathD3(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", bfs: true}
+        OPTIONS {uniqueVertices: "path", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2273,11 +2337,14 @@ function testCompleteGraphBfsUniqueVerticesPathD3(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testCompleteGraphBfsUniqueVerticesNoneD1(testGraph) {
+const testCompleteGraphBfsUniqueVerticesNoneD1 = (testGraph) => testCompleteGraphModeUniqueVerticesNoneD1(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueVerticesNoneD1 = (testGraph) => testCompleteGraphModeUniqueVerticesNoneD1(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueVerticesNoneD1(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", bfs: true}
+        OPTIONS {uniqueVertices: "none", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2295,11 +2362,14 @@ function testCompleteGraphBfsUniqueVerticesNoneD1(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testCompleteGraphBfsUniqueVerticesNoneD2(testGraph) {
+const testCompleteGraphBfsUniqueVerticesNoneD2 = (testGraph) => testCompleteGraphModeUniqueVerticesNoneD2(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueVerticesNoneD2 = (testGraph) => testCompleteGraphModeUniqueVerticesNoneD2(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueVerticesNoneD2(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..2 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", bfs: true}
+        OPTIONS {uniqueVertices: "none", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2333,11 +2403,14 @@ function testCompleteGraphBfsUniqueVerticesNoneD2(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testCompleteGraphBfsUniqueVerticesNoneD3(testGraph) {
+const testCompleteGraphBfsUniqueVerticesNoneD3 = (testGraph) => testCompleteGraphModeUniqueVerticesNoneD3(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueVerticesNoneD3 = (testGraph) => testCompleteGraphModeUniqueVerticesNoneD3(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueVerticesNoneD3(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", bfs: true}
+        OPTIONS {uniqueVertices: "none", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2452,11 +2525,14 @@ function testCompleteGraphBfsUniqueVerticesNoneD3(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testCompleteGraphBfsUniqueEdgesPathD1(testGraph) {
+const testCompleteGraphBfsUniqueEdgesPathD1 = (testGraph) => testCompleteGraphModeUniqueEdgesPathD1(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueEdgesPathD1 = (testGraph) => testCompleteGraphModeUniqueEdgesPathD1(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueEdgesPathD1(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", bfs: true}
+        OPTIONS {uniqueEdges: "path", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2474,11 +2550,14 @@ function testCompleteGraphBfsUniqueEdgesPathD1(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testCompleteGraphBfsUniqueEdgesPathD2(testGraph) {
+const testCompleteGraphBfsUniqueEdgesPathD2 = (testGraph) => testCompleteGraphModeUniqueEdgesPathD2(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueEdgesPathD2 = (testGraph) => testCompleteGraphModeUniqueEdgesPathD2(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueEdgesPathD2(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..2 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", bfs: true}
+        OPTIONS {uniqueEdges: "path", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2516,11 +2595,14 @@ function testCompleteGraphBfsUniqueEdgesPathD2(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testCompleteGraphBfsUniqueEdgesPathD3(testGraph) {
+const testCompleteGraphBfsUniqueEdgesPathD3 = (testGraph) => testCompleteGraphModeUniqueEdgesPathD3(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueEdgesPathD3 = (testGraph) => testCompleteGraphModeUniqueEdgesPathD3(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueEdgesPathD3(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", bfs: true}
+        OPTIONS {uniqueEdges: "path", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2634,11 +2716,14 @@ function testCompleteGraphBfsUniqueEdgesPathD3(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testCompleteGraphBfsUniqueEdgesNoneD1(testGraph) {
+const testCompleteGraphBfsUniqueEdgesNoneD1 = (testGraph) => testCompleteGraphModeUniqueEdgesNoneD1(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueEdgesNoneD1 = (testGraph) => testCompleteGraphModeUniqueEdgesNoneD1(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueEdgesNoneD1(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", bfs: true}
+        OPTIONS {uniqueEdges: "none", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2656,11 +2741,14 @@ function testCompleteGraphBfsUniqueEdgesNoneD1(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testCompleteGraphBfsUniqueEdgesNoneD2(testGraph) {
+const testCompleteGraphBfsUniqueEdgesNoneD2 = (testGraph) => testCompleteGraphModeUniqueEdgesNoneD2(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueEdgesNoneD2 = (testGraph) => testCompleteGraphModeUniqueEdgesNoneD2(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueEdgesNoneD2(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..2 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", bfs: true}
+        OPTIONS {uniqueEdges: "none", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2698,11 +2786,14 @@ function testCompleteGraphBfsUniqueEdgesNoneD2(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testCompleteGraphBfsUniqueVerticesUniqueEdgesPathD3(testGraph) {
+const testCompleteGraphBfsUniqueVerticesUniqueEdgesPathD3 = (testGraph) => testCompleteGraphModeUniqueVerticesUniqueEdgesPathD3(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueVerticesUniqueEdgesPathD3 = (testGraph) => testCompleteGraphModeUniqueVerticesUniqueEdgesPathD3(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueVerticesUniqueEdgesPathD3(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", uniqueEdges: "path", bfs: true}
+        OPTIONS {uniqueVertices: "path", uniqueEdges: "path", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2773,11 +2864,14 @@ function testCompleteGraphBfsUniqueVerticesUniqueEdgesPathD3(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testCompleteGraphBfsUniqueVerticesUniqueEdgesNoneD3(testGraph) {
+const testCompleteGraphBfsUniqueVerticesUniqueEdgesNoneD3 = (testGraph) => testCompleteGraphModeUniqueVerticesUniqueEdgesNoneD3(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueVerticesUniqueEdgesNoneD3 = (testGraph) => testCompleteGraphModeUniqueVerticesUniqueEdgesNoneD3(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueVerticesUniqueEdgesNoneD3(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", uniqueEdges: "none", bfs: true}
+        OPTIONS {uniqueVertices: "none", uniqueEdges: "none", mode: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2896,10 +2990,14 @@ function testCompleteGraphBfsUniqueVerticesUniqueEdgesNoneD3(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD1(testGraph) {
+const testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD1 = (testGraph) => testCompleteGraphModeUniqueEdgesPathUniqueVerticesGlobalD1(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueEdgesPathUniqueVerticesGlobalD1 = (testGraph) => testCompleteGraphModeUniqueEdgesPathUniqueVerticesGlobalD1(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueEdgesPathUniqueVerticesGlobalD1(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
-    FOR v, e, p IN 1..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueEdges: "path", uniqueVertices: "global"}
+    FOR v, e, p IN 1..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+    OPTIONS {mode: ${mode}, uniqueEdges: "path", uniqueVertices: "global"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -2911,10 +3009,13 @@ function testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD1(testGraph) {
   checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
-function testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD3(testGraph) {
+const testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD3 = (testGraph) => testCompleteGraphModeUniqueEdgesPathUniqueVerticesGlobalD3(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueEdgesPathUniqueVerticesGlobalD3 = (testGraph) => testCompleteGraphModeUniqueEdgesPathUniqueVerticesGlobalD3(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueEdgesPathUniqueVerticesGlobalD3(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
-    FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueEdges: "path", uniqueVertices: "global"}
+    FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueEdges: "path", uniqueVertices: "global"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -2926,10 +3027,13 @@ function testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD3(testGraph) {
   checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
-function testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobalD3(testGraph) {
+const testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobalD3 = (testGraph) => testCompleteGraphModeUniqueEdgesNoneUniqueVerticesGlobalD3(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueEdgesNoneUniqueVerticesGlobalD3 = (testGraph) => testCompleteGraphModeUniqueEdgesNoneUniqueVerticesGlobalD3(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueEdgesNoneUniqueVerticesGlobalD3(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
-    FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueEdges: "none", uniqueVertices: "global"}
+    FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueEdges: "none", uniqueVertices: "global"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -2942,10 +3046,13 @@ function testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobalD3(testGraph) {
 }
 
 
-function testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD10(testGraph) {
+const testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD10 = (testGraph) => testCompleteGraphModeUniqueEdgesPathUniqueVerticesGlobalD10(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueEdgesPathUniqueVerticesGlobalD10 = (testGraph) => testCompleteGraphModeUniqueEdgesPathUniqueVerticesGlobalD10(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueEdgesPathUniqueVerticesGlobalD10(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueEdges: "path", uniqueVertices: "global"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueEdges: "path", uniqueVertices: "global"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -2957,10 +3064,13 @@ function testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD10(testGraph) {
   checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
-function testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobalD10(testGraph) {
+const testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobalD10 = (testGraph) => testCompleteGraphModeUniqueEdgesNoneUniqueVerticesGlobalD10(testGraph, "bfs");
+const testCompleteGraphWeightedUniqueEdgesNoneUniqueVerticesGlobalD10 = (testGraph) => testCompleteGraphModeUniqueEdgesNoneUniqueVerticesGlobalD10(testGraph, "weighted");
+
+function testCompleteGraphModeUniqueEdgesNoneUniqueVerticesGlobalD10(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueEdges: "none", uniqueVertices: "global"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueEdges: "none", uniqueVertices: "global"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -3120,6 +3230,12 @@ function testLargeBinTreeAllCombinations(testGraph) {
     {bfs: true, uniqueEdges: "path", uniqueVertices: "path"}, // same as above
     {bfs: true, uniqueEdges: "none", uniqueVertices: "global"},
     {bfs: true, uniqueEdges: "path", uniqueVertices: "global"}, // same as above
+    {mode: "weighted", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
+    {mode: "weighted", uniqueEdges: "none", uniqueVertices: "none"},
+    {mode: "weighted", uniqueEdges: "path", uniqueVertices: "none"},
+    {mode: "weighted", uniqueEdges: "none", uniqueVertices: "path"},
+    {mode: "weighted", uniqueEdges: "none", uniqueVertices: "global"},
+    {mode: "weighted", uniqueEdges: "path", uniqueVertices: "global"}, // same as above
   ];
 
   for (const options of optionsList) {
@@ -3224,6 +3340,12 @@ function testEasyPathAllCombinations(testGraph) {
     {bfs: true, uniqueEdges: "path", uniqueVertices: "path"}, // same as above
     {bfs: true, uniqueEdges: "none", uniqueVertices: "global"},
     {bfs: true, uniqueEdges: "path", uniqueVertices: "global"}, // same as above
+    {mode: "weighted", uniqueEdges: "none", uniqueVertices: "none"},
+    {mode: "weighted", uniqueEdges: "path", uniqueVertices: "none"},
+    {mode: "weighted", uniqueEdges: "none", uniqueVertices: "path"},
+    {mode: "weighted", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
+    {mode: "weighted", uniqueEdges: "none", uniqueVertices: "global"},
+    {mode: "weighted", uniqueEdges: "path", uniqueVertices: "global"}, // same as above
   ];
 
   for (const options of optionsList) {
@@ -3655,10 +3777,13 @@ const advancedPathBfsPaths = [
   ["A", "D", "E", "H", "I"],
 ];
 
-function testAdvancedPathBfsUniqueVerticesPath(testGraph) {
+const testAdvancedPathBfsUniqueVerticesPath = (testGraph) => testAdvancedPathModeUniqueVerticesPath(testGraph, "bfs");
+const testAdvancedPathWeightedUniqueVerticesPath = (testGraph) => testAdvancedPathModeUniqueVerticesPath(testGraph, "weighted");
+
+function testAdvancedPathModeUniqueVerticesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex("A")} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueVertices: "path"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex("A")} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueVertices: "path"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -3670,10 +3795,13 @@ function testAdvancedPathBfsUniqueVerticesPath(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testAdvancedPathBfsUniqueVerticesNone(testGraph) {
+const testAdvancedPathBfsUniqueVerticesNone = (testGraph) => testAdvancedPathModeUniqueVerticesNone(testGraph, "bfs");
+const testAdvancedPathWeightedUniqueVerticesNone = (testGraph) => testAdvancedPathModeUniqueVerticesNone(testGraph, "weighted");
+
+function testAdvancedPathModeUniqueVerticesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueVertices: "none"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueVertices: "none"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -3685,10 +3813,13 @@ function testAdvancedPathBfsUniqueVerticesNone(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testAdvancedPathBfsUniqueEdgesPath(testGraph) {
+const testAdvancedPathBfsUniqueEdgesPath = (testGraph) => testAdvancedPathModeUniqueEdgesPath(testGraph, "bfs");
+const testAdvancedPathWeightedUniqueEdgesPath = (testGraph) => testAdvancedPathModeUniqueEdgesPath(testGraph, "weighted");
+
+function testAdvancedPathModeUniqueEdgesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueEdges: "path"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueEdges: "path"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -3700,10 +3831,13 @@ function testAdvancedPathBfsUniqueEdgesPath(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testAdvancedPathBfsUniqueEdgesNone(testGraph) {
+const testAdvancedPathBfsUniqueEdgesNone = (testGraph) => testAdvancedPathModeUniqueEdgesNone(testGraph, "bfs");
+const testAdvancedPathWeightedUniqueEdgesNone = (testGraph) => testAdvancedPathModeUniqueEdgesNone(testGraph, "weighted");
+
+function testAdvancedPathModeUniqueEdgesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueEdges: "none"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueEdges: "none"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -3715,10 +3849,13 @@ function testAdvancedPathBfsUniqueEdgesNone(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testAdvancedPathBfsUniqueEdgesUniqueVerticesPath(testGraph) {
+const testAdvancedPathBfsUniqueEdgesUniqueVerticesPath = (testGraph) => testAdvancedPathModeUniqueEdgesUniqueVerticesPath(testGraph, "bfs");
+const testAdvancedPathWeightedUniqueEdgesUniqueVerticesPath = (testGraph) => testAdvancedPathModeUniqueEdgesUniqueVerticesPath(testGraph, "weighted");
+
+function testAdvancedPathModeUniqueEdgesUniqueVerticesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueEdges: "path", uniqueVertices: "path"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueEdges: "path", uniqueVertices: "path"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -3730,10 +3867,13 @@ function testAdvancedPathBfsUniqueEdgesUniqueVerticesPath(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testAdvancedPathBfsUniqueEdgesUniqueVerticesNone(testGraph) {
+const testAdvancedPathBfsUniqueEdgesUniqueVerticesNone = (testGraph) => testAdvancedPathModeUniqueEdgesUniqueVerticesNone(testGraph, "bfs");
+const testAdvancedPathWeightedUniqueEdgesUniqueVerticesNone = (testGraph) => testAdvancedPathModeUniqueEdgesUniqueVerticesNone(testGraph, "weighted");
+
+function testAdvancedPathModeUniqueEdgesUniqueVerticesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueEdges: "none", uniqueVertices: "none"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueEdges: "none", uniqueVertices: "none"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -3744,10 +3884,13 @@ function testAdvancedPathBfsUniqueEdgesUniqueVerticesNone(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
-function testAdvancedPathBfsUniqueEdgesUniquePathVerticesGlobal(testGraph) {
+const testAdvancedPathBfsUniqueEdgesUniquePathVerticesGlobal = (testGraph) => testAdvancedPathModeUniqueEdgesUniquePathVerticesGlobal(testGraph, "bfs");
+const testAdvancedPathWeightedUniqueEdgesUniquePathVerticesGlobal = (testGraph) => testAdvancedPathModeUniqueEdgesUniquePathVerticesGlobal(testGraph, "weighted");
+
+function testAdvancedPathModeUniqueEdgesUniquePathVerticesGlobal(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueEdges: "path", uniqueVertices: "global"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueEdges: "path", uniqueVertices: "global"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -3759,10 +3902,13 @@ function testAdvancedPathBfsUniqueEdgesUniquePathVerticesGlobal(testGraph) {
   checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
-function testAdvancedPathBfsUniqueEdgesUniqueNoneVerticesGlobal(testGraph) {
+const testAdvancedPathBfsUniqueEdgesUniqueNoneVerticesGlobal = (testGraph) => testAdvancedPathModeUniqueEdgesUniqueNoneVerticesGlobal(testGraph, "bfs");
+const testAdvancedPathWeightedUniqueEdgesUniqueNoneVerticesGlobal = (testGraph) => testAdvancedPathModeUniqueEdgesUniqueNoneVerticesGlobal(testGraph, "weighted");
+
+function testAdvancedPathModeUniqueEdgesUniqueNoneVerticesGlobal(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueEdges: "none", uniqueVertices: "global"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueEdges: "none", uniqueVertices: "global"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -3881,6 +4027,16 @@ const testsByGraph = {
     testOpenDiamondBfsUniqueEdgesUniquePathVerticesGlobal,
     testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal,
     testOpenDiamondBfsLabelVariableForwarding,
+    testOpenDiamondWeightedUniqueVerticesPath,
+    testOpenDiamondWeightedUniqueVerticesNone,
+    testOpenDiamondWeightedUniqueVerticesGlobal,
+    testOpenDiamondWeightedUniqueEdgesPath,
+    testOpenDiamondWeightedUniqueEdgesNone,
+    testOpenDiamondWeightedUniqueEdgesUniqueVerticesPath,
+    testOpenDiamondWeightedUniqueEdgesUniqueVerticesNone,
+    testOpenDiamondWeightedUniqueEdgesUniquePathVerticesGlobal,
+    testOpenDiamondWeightedUniqueEdgesUniqueNoneVerticesGlobal,
+    testOpenDiamondWeightedLabelVariableForwarding,
     testOpenDiamondShortestPath,
     testOpenDiamondShortestPathEnabledWeightCheck,
     testOpenDiamondKShortestPathWithMultipleLimits,
@@ -3901,6 +4057,14 @@ const testsByGraph = {
     testSmallCircleBfsUniqueVerticesUniqueEdgesNone,
     testSmallCircleBfsUniqueEdgesPathUniqueVerticesGlobal,
     testSmallCircleBfsUniqueEdgesNoneUniqueVerticesGlobal,
+    testSmallCircleWeightedUniqueVerticesPath,
+    testSmallCircleWeightedUniqueVerticesNone,
+    testSmallCircleWeightedUniqueEdgesPath,
+    testSmallCircleWeightedUniqueEdgesNone,
+    testSmallCircleWeightedUniqueVerticesUniqueEdgesPath,
+    testSmallCircleWeightedUniqueVerticesUniqueEdgesNone,
+    testSmallCircleWeightedUniqueEdgesPathUniqueVerticesGlobal,
+    testSmallCircleWeightedUniqueEdgesNoneUniqueVerticesGlobal,
     testSmallCircleShortestPath,
     testSmallCircleShortestPathEnabledWeightCheck,
     testSmallCircleKShortestPathWithMultipleLimits,
@@ -3932,6 +4096,24 @@ const testsByGraph = {
     testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobalD3,
     testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD10,
     testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobalD10,
+    testCompleteGraphWeightedUniqueVerticesPathD1,
+    testCompleteGraphWeightedUniqueVerticesPathD2,
+    testCompleteGraphWeightedUniqueVerticesPathD3,
+    testCompleteGraphWeightedUniqueVerticesNoneD1,
+    testCompleteGraphWeightedUniqueVerticesNoneD2,
+    testCompleteGraphWeightedUniqueVerticesNoneD3,
+    testCompleteGraphWeightedUniqueEdgesPathD1,
+    testCompleteGraphWeightedUniqueEdgesPathD2,
+    testCompleteGraphWeightedUniqueEdgesPathD3,
+    testCompleteGraphWeightedUniqueEdgesNoneD1,
+    testCompleteGraphWeightedUniqueEdgesNoneD2,
+    testCompleteGraphWeightedUniqueVerticesUniqueEdgesPathD3,
+    testCompleteGraphWeightedUniqueVerticesUniqueEdgesNoneD3,
+    testCompleteGraphWeightedUniqueEdgesPathUniqueVerticesGlobalD1,
+    testCompleteGraphWeightedUniqueEdgesPathUniqueVerticesGlobalD3,
+    testCompleteGraphWeightedUniqueEdgesNoneUniqueVerticesGlobalD3,
+    testCompleteGraphWeightedUniqueEdgesPathUniqueVerticesGlobalD10,
+    testCompleteGraphWeightedUniqueEdgesNoneUniqueVerticesGlobalD10,
     testCompleteGraphShortestPath,
     testCompleteGraphShortestPathEnabledWeightCheck,
     testCompleteGraphKShortestPathLimit1,
@@ -3960,6 +4142,14 @@ const testsByGraph = {
     testAdvancedPathBfsUniqueEdgesUniqueVerticesNone,
     testAdvancedPathBfsUniqueEdgesUniquePathVerticesGlobal,
     testAdvancedPathBfsUniqueEdgesUniqueNoneVerticesGlobal,
+    testAdvancedPathWeightedUniqueVerticesPath,
+    testAdvancedPathWeightedUniqueVerticesNone,
+    testAdvancedPathWeightedUniqueEdgesPath,
+    testAdvancedPathWeightedUniqueEdgesNone,
+    testAdvancedPathWeightedUniqueEdgesUniqueVerticesPath,
+    testAdvancedPathWeightedUniqueEdgesUniqueVerticesNone,
+    testAdvancedPathWeightedUniqueEdgesUniquePathVerticesGlobal,
+    testAdvancedPathWeightedUniqueEdgesUniqueNoneVerticesGlobal,
     testAdvancedPathShortestPath,
     testAdvancedPathShortestPathEnabledWeightCheck,
     testAdvancedPathKShortestPathMultiLimit,
