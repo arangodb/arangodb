@@ -160,7 +160,7 @@ class Node final {
   /// @brief Apply single slice
   bool applies(arangodb::velocypack::Slice const&);
 
-  std::vector<std::string> const keys() const;
+  std::vector<std::string> keys() const;
 
   /// @brief handle "op" keys in write json
   template <Operation Oper>

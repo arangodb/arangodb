@@ -1219,13 +1219,11 @@ void Node::clear() {
   }
 }
 
-std::vector<std::string> const Node::keys() const {
+std::vector<std::string> Node::keys() const {
   std::vector<std::string> result;
   if (!_isArray) {
-    if (_children.size() > 0) {
-      for (auto const& i : _children) {
-        result.emplace_back(i.first);
-      }
+    for (auto const& i : _children) {
+      result.emplace_back(i.first);
     }
   }
   return result;
