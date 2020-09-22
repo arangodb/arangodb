@@ -206,7 +206,9 @@ auto KPathFinder::Ball::computeNeighbourhoodOfNextVertex(Ball const& other,
 }
 
 KPathFinder::KPathFinder(ShortestPathOptions& options)
-    : ShortestPathFinder(options), _left{Direction::FORWARD, options}, _right{Direction::BACKWARD, options} {}
+    : ShortestPathFinder(options), _left{Direction::FORWARD, options}, _right{Direction::BACKWARD, options} {
+  _results.reserve(8);
+}
 
 KPathFinder::~KPathFinder() = default;
 

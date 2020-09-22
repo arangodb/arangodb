@@ -127,7 +127,7 @@ class KPathFinder : public ShortestPathFinder {
                     arangodb::graph::ShortestPathResult&) override;
 
   /**
-   * @brief Quick test of the finder can proof there is no more data available.
+   * @brief Quick test if the finder can prove there is no more data available.
    *        It can respond with false, even though there is no path left.
    * @return true There will be no further path.
    * @return false There is a chance that there is more data available.
@@ -136,8 +136,8 @@ class KPathFinder : public ShortestPathFinder {
 
   /**
    * @brief Reset to new source and target vertices.
-   * This API uss string references, this class will not take responsibility
-   * for the referenced data. It is callers responsibility to retain the
+   * This API uses string references, this class will not take responsibility
+   * for the referenced data. It is caller's responsibility to retain the
    * underlying data and make sure the StringRefs stay valid until next
    * call of reset.
    *
