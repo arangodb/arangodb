@@ -443,12 +443,20 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   else {
     // the entire request body is one JSON document
-    bool success = false;
-    VPackSlice documents = this->parseVPackBody(success);
-    if (!success) {
-      // error already created
+
+    VPackSlice documents;
+    try {
+      documents = _request->payload();
+    } catch (VPackException const& ex) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    std::string(
+                        "expecting a valid JSON array in the request. got: ") +
+                        ex.what());
       return false;
     }
+
+    // VPackSlice const documents = _request->payload();  //yields different
+    // error from what is expected in the server test
 
     if (!documents.isArray()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -554,11 +562,12 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
 
   VPackBuilder babies;
   babies.openArray();
-    
-  bool success = false;
-  VPackSlice const documents = this->parseVPackBody(success);
-  if (!success) {
-    // error already created
+
+  VPackSlice const documents = _request->payload();
+
+  if (!documents.isArray()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting a JSON array in the request");
     return false;
   }
 
