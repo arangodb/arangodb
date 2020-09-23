@@ -42,7 +42,6 @@ TEST(GeoFilterTest, options) {
   S2RegionTermIndexer::Options const s2opts;
   GeoFilterOptions const opts;
   ASSERT_TRUE(opts.prefix.empty());
-  ASSERT_TRUE(opts.storedField.empty());
   ASSERT_TRUE(opts.shape.empty());
   ASSERT_EQ(s2opts.level_mod(), opts.options.level_mod());
   ASSERT_EQ(s2opts.min_level(), opts.options.min_level());

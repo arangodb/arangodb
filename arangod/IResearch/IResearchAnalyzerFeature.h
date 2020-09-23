@@ -84,22 +84,27 @@ ENABLE_BITMASK_ENUM(AnalyzerValueType);
 // thread-safe analyzer pool
 class AnalyzerPool : private irs::util::noncopyable {
  public:
-  typedef std::shared_ptr<AnalyzerPool> ptr;
+  using ptr = std::shared_ptr<AnalyzerPool>;
+  using StoreFunc = VPackSlice(*)(irs::token_stream const* ctx, VPackSlice, VPackBuffer<uint8_t>&);
+
   explicit AnalyzerPool(irs::string_ref const& name);
   irs::flags const& features() const noexcept { return _features; }
-  irs::analysis::analyzer::ptr get() const noexcept;  // nullptr == error creating analyzer
   std::string const& name() const noexcept { return _name; }
   VPackSlice properties() const noexcept { return _properties; }
   irs::string_ref const& type() const noexcept { return _type; }
   AnalyzersRevision::Revision revision() const noexcept { return _revision; }
   AnalyzerValueType inputType() const noexcept { return  _inputType; }
   AnalyzerValueType returnType() const noexcept { return  _returnType; }
+  StoreFunc storeFunc() const noexcept { return _storeFunc; }
   bool accepts(AnalyzerValueType types) const noexcept {
     return (_inputType & types) != AnalyzerValueType::Undefined;
   }
   bool returns(AnalyzerValueType types) const noexcept {
     return (_returnType & types) != AnalyzerValueType::Undefined;
   }
+
+  irs::analysis::analyzer::ptr get() const noexcept;  // nullptr == error creating analyzer
+
   // definition to be stored in _analyzers collection or shown to the end user
   void toVelocyPack(velocypack::Builder& builder,
                     bool forPersistence = false);
@@ -142,9 +147,10 @@ class AnalyzerPool : private irs::util::noncopyable {
   std::string _name;       // ArangoDB alias for an IResearch analyzer configuration
   VPackSlice _properties;  // IResearch analyzer configuration
   irs::string_ref _type;   // IResearch analyzer name
-  arangodb::AnalyzersRevision::Revision _revision{ arangodb::AnalyzersRevision::MIN };
+  StoreFunc _storeFunc{};
   AnalyzerValueType _inputType{ AnalyzerValueType::Undefined };
   AnalyzerValueType _returnType{ AnalyzerValueType::Undefined };
+  arangodb::AnalyzersRevision::Revision _revision{ arangodb::AnalyzersRevision::MIN };
 }; // AnalyzerPool
 
 ////////////////////////////////////////////////////////////////////////////////

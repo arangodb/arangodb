@@ -1067,21 +1067,23 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
 
 // first - input type,
 // second - output type
-std::pair<AnalyzerValueType, AnalyzerValueType> getAnalyzerValueTypes(
-    irs::type_info::type_id type) noexcept {
-  if (type == irs::type<GeoJSONAnalyzer>::id() ||
-      type == irs::type<GeoPointAnalyzer>::id()) {
-    return { AnalyzerValueType::Object, AnalyzerValueType::String };
+std::tuple<AnalyzerValueType, AnalyzerValueType, AnalyzerPool::StoreFunc>
+getAnalyzerMeta(irs::type_info::type_id type) noexcept {
+  if (type == irs::type<GeoJSONAnalyzer>::id()) {
+    return { AnalyzerValueType::Object, AnalyzerValueType::String, &GeoJSONAnalyzer::store };
+  } else if (type == irs::type<GeoPointAnalyzer>::id()) {
+    return { AnalyzerValueType::Object, AnalyzerValueType::String, &GeoPointAnalyzer::store };
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   if ("iresearch-vpack-analyzer" == type().name()) {
     return { AnalyzerValueType::Array | AnalyzerValueType::Object,
-             AnalyzerValueType::String };
+             AnalyzerValueType::String,
+             nullptr };
   }
 #endif
 
-  return { AnalyzerValueType::String, AnalyzerValueType::String };
+  return { AnalyzerValueType::String, AnalyzerValueType::String, nullptr };
 }
 
 } // namespace
@@ -1215,7 +1217,7 @@ bool AnalyzerPool::init(
         _type = irs::string_ref(_config.c_str() + _properties.byteSize() , type.size());
       }
 
-      std::tie(_inputType, _returnType) = getAnalyzerValueTypes(instance->type());
+      std::tie(_inputType, _returnType, _storeFunc) = getAnalyzerMeta(instance->type());
       _features = features;  // store only requested features
       _revision = revision;
       return true;

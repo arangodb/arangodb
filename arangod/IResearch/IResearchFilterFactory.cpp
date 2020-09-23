@@ -1075,7 +1075,6 @@ Result fromFuncGeoInRange(
     auto* options = geo_filter.mutable_options();
     setupGeoFilter(filterCtx.analyzer, options->options);
 
-    options->storedField = name;
     options->origin = centroid.ToPoint();
     options->range.min = minDistance;
     options->range.min_type = includeMin
@@ -1172,7 +1171,6 @@ Result fromGeoDistanceInterval(
     geo_filter.boost(filterCtx.boost);
 
     auto* options = geo_filter.mutable_options();
-    options->storedField = name;
     options->origin = centroid.ToPoint();
 
     auto const type = (aql::NODE_TYPE_OPERATOR_BINARY_GE == node.cmp ||
@@ -3842,7 +3840,6 @@ Result fromFuncGeoContainsIntersect(
       : (1 == shapeNodeIdx ? GeoFilterType::CONTAINS
                            : GeoFilterType::IS_CONTAINED);
     options->shape = std::move(shape);
-    options->storedField = name;
 
     TRI_ASSERT(filterCtx.analyzer);
     kludge::mangleField(name, filterCtx.analyzer);

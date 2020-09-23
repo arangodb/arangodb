@@ -458,6 +458,12 @@ bool FieldIterator::setValue(VPackSlice const value,
   _value._analyzer = analyzer;
   _value._features = &(pool->features());
 
+  auto* storeFunc = pool->storeFunc();
+
+  if (storeFunc) {
+    _value._value = iresearch::ref<irs::byte_type>(storeFunc(analyzer.get(), value, _buffer));
+  }
+
   return true;
 }
 

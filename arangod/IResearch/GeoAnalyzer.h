@@ -36,6 +36,11 @@
 #include "velocypack/velocypack-aliases.h"
 
 namespace arangodb {
+
+namespace velocypack {
+template<typename T> class Buffer;
+}
+
 namespace iresearch {
 
 class GeoAnalyzer
@@ -76,8 +81,13 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
   static bool normalize(const irs::string_ref& args,  std::string& out);
   static irs::analysis::analyzer::ptr make(irs::string_ref const& args);
 
+  // store point as [lng, lat] array to be GeoJSON compliant
+  static VPackSlice store(
+    irs::token_stream const* ctx,
+    VPackSlice slice,
+    velocypack::Buffer<uint8_t>& buf);
+
   explicit GeoPointAnalyzer(Options const& opts);
-  S2Point const& point() const noexcept { return _point; }
 
   virtual void prepare(S2RegionTermIndexer::Options& opts) const;
 
@@ -85,10 +95,11 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
   virtual bool reset(irs::string_ref const& value);
 
  private:
+  bool parsePoint(VPackSlice slice, S2LatLng& out) const;
+
   S2RegionTermIndexer _indexer;
   std::string _latitude;
   std::string _longitude;
-  S2Point _point;
   bool _fromArray;
 };
 
@@ -109,8 +120,14 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
   static bool normalize(const irs::string_ref& args,  std::string& out);
   static irs::analysis::analyzer::ptr make(irs::string_ref const& args);
 
+  static VPackSlice store(
+      irs::token_stream const*,
+      VPackSlice slice,
+      velocypack::Buffer<uint8_t>&) noexcept {
+    return slice;
+  }
+
   explicit GeoJSONAnalyzer(Options const& opts);
-  geo::ShapeContainer const& shape() const noexcept { return _shape; }
 
   virtual void prepare(S2RegionTermIndexer::Options& opts) const;
 
@@ -123,7 +140,7 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
   Type _type;
 };
 
-inline bool isGeoAnalyzer(irs::string_ref type) noexcept {
+inline bool isGeoAnalyzer(irs::string_ref const& type) noexcept {
   return type.size() > 3 && irs::starts_with(type, "geo");
 }
 

@@ -207,7 +207,7 @@ bool parseShape(VPackSlice slice, geo::ShapeContainer& shape, bool onlyPoint) {
   return true;
 }
 
-bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2Point& out) {
+bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2LatLng& out) {
   if (!latSlice.isNumber() || !lngSlice.isNumber()) {
     return false;
   }
@@ -226,7 +226,6 @@ bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2Point& out) {
     return false;
   }
 
-  out = latlng.ToPoint();
   return true;
 }
 
@@ -373,9 +372,7 @@ void GeoPointAnalyzer::prepare(S2RegionTermIndexer::Options& opts) const {
   opts.set_index_contains_points_only(true);
 }
 
-bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
-  auto const json = iresearch::slice(value);
-
+bool GeoPointAnalyzer::parsePoint(VPackSlice json, S2LatLng& point) const {
   VPackSlice latitude, longitude;
   if (_fromArray) {
     if (!json.isArray() || json.length() < 2) {
@@ -389,12 +386,42 @@ bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
     longitude = json.get(_longitude);
   }
 
-  if (!::parsePoint(latitude, longitude, _point)) {
+  return ::parsePoint(latitude, longitude, point);
+}
+
+bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
+  S2LatLng point;
+  if (!parsePoint(iresearch::slice(value), point)) {
     return false;
   }
 
-  GeoAnalyzer::reset(_indexer.GetIndexTerms(_point, {}));
+  GeoAnalyzer::reset(_indexer.GetIndexTerms(point.ToPoint(), {}));
   return true;
+}
+
+/*static*/ VPackSlice GeoPointAnalyzer::store(
+    irs::token_stream const* ctx,
+    VPackSlice slice,
+    VPackBuffer<uint8_t>& buf) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* impl = dynamic_cast<GeoPointAnalyzer const*>(ctx);
+#else
+  auto* impl = static_cast<GeoPointAnalyzer const*>(ctx);
+#endif
+  TRI_ASSERT(impl);
+
+  S2LatLng point;
+  if (!impl->parsePoint(slice, point)) {
+    return VPackSlice::noneSlice();
+  }
+
+  VPackBuilder array(buf);
+  array.openArray();
+  array.add(VPackValue(point.lng().radians()));
+  array.add(VPackValue(point.lat().radians()));
+  array.close();
+
+  return array.slice();
 }
 
 } // iresearch

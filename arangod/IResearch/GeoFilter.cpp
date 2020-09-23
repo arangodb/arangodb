@@ -39,48 +39,25 @@
 
 namespace {
 
-using Disjunction = irs::disjunction_iterator<irs::doc_iterator::ptr>;
-
-///// @brief geo index variants
-//enum class Variant : uint8_t {
-//  NONE = 0,
-//  /// two distinct fields representing GeoJSON Point
-//  INDIVIDUAL_LAT_LON,
-//  /// pair [<latitude>, <longitude>] eqvivalent to GeoJSON Point
-//  COMBINED_LAT_LON,
-//  // geojson object or legacy coordinate
-//  // pair [<longitude>, <latitude>]. Should also support
-//  // other geojson object types.
-//  GEOJSON
-//};
-
-//static Result shape(velocypack::Slice doc, geo::ShapeContainer& shape, Variant variant) {
-//  if (variant == Variant::GEOJSON) {
-//    VPackSlice loc = doc.get(_location);
-//    if (loc.isArray() && loc.length() >= 2) {
-//      return shape.parseCoordinates(loc, /*geoJson*/ true);
-//    } else if (loc.isObject()) {
-//      return geo::geojson::parseRegion(loc, shape);
-//    }
-//    return TRI_ERROR_BAD_PARAMETER;
-//  } else if (variant == Variant::COMBINED_LAT_LON) {
-//    VPackSlice loc = doc.get(_location);
-//    return shape.parseCoordinates(loc, /*geoJson*/ false);
-//  } else if (variant == Variant::INDIVIDUAL_LAT_LON) {
-//    VPackSlice lon = doc.get(_longitude);
-//    VPackSlice lat = doc.get(_latitude);
-//    if (!lon.isNumber() || !lat.isNumber()) {
-//      return TRI_ERROR_BAD_PARAMETER;
-//    }
-//    shape.resetCoordinates(lat.getNumericValue<double>(), lon.getNumericValue<double>());
-//    return TRI_ERROR_NO_ERROR;
-//  }
-//  return TRI_ERROR_INTERNAL;
-//}
-
 using namespace arangodb;
 
-static bool shape(VPackSlice loc, geo::ShapeContainer& shape) {
+using Disjunction = irs::disjunction_iterator<irs::doc_iterator::ptr>;
+
+constexpr double_t EXTRA_COST = 1.5;
+
+irs::filter::prepared::ptr match_all(
+    irs::index_reader const& index,
+    irs::order::prepared const& order,
+    irs::string_ref const& field,
+    irs::boost_t boost) {
+  // Return everything we've stored
+  irs::by_column_existence filter;
+  *filter.mutable_field() = field;
+
+  return filter.prepare(index, order, boost);
+}
+
+bool shape(VPackSlice loc, geo::ShapeContainer& shape) {
   if (loc.isArray() && loc.length() >= 2) {
     return shape.parseCoordinates(loc, /*geoJson*/ true).ok();
   } else if (loc.isObject()) {
@@ -89,8 +66,6 @@ static bool shape(VPackSlice loc, geo::ShapeContainer& shape) {
 
   return false;
 }
-
-constexpr double_t EXTRA_COST = 1.5;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class GeoIterator
@@ -341,8 +316,7 @@ std::pair<GeoStates, irs::bstring> prepareStates(
     irs::index_reader const& index,
     irs::order::prepared const& order,
     std::vector<std::string> const& geoTerms,
-    irs::string_ref const& field,
-    irs::string_ref const& storedField) {
+    irs::string_ref const& field) {
   assert(!geoTerms.empty());
 
   std::pair<GeoStates, irs::bstring> res(
@@ -387,7 +361,7 @@ std::pair<GeoStates, irs::bstring> prepareStates(
     auto& state = res.first.insert(segment);
     state.reader = reader;
     state.states = std::move(termStates);
-    state.storedField = segment.column_reader("\1" + std::string(storedField)); // FIXME
+    state.storedField = segment.column_reader(field);
   }
 
   fieldStats.finish(const_cast<irs::byte_type*>(res.second.data()), index);
@@ -447,8 +421,7 @@ irs::filter::prepared::ptr prepareInterval(
     return irs::filter::prepared::empty();
   }
 
-  auto [states, stats] = prepareStates(
-    index, order, geoTerms, field, opts.storedField);
+  auto [states, stats] = prepareStates(index, order, geoTerms, field);
 
   switch (size_t(minIncl) + 2*size_t(maxIncl)) {
     case 0:
@@ -492,11 +465,11 @@ irs::filter::prepared::ptr prepareOpenInterval(
 
   if (bound.is_full()) {
     return greater ? irs::filter::prepared::empty()
-                   : irs::all().prepare(index, order, boost); // FIXME
+                   : match_all(index, order, field, boost);
   }
 
   if (bound.is_empty()) {
-    return greater ? irs::all().prepare(index, order, boost) // FIXME
+    return greater ? match_all(index, order, field, boost)
                    : irs::filter::prepared::empty();
   }
 
@@ -513,8 +486,7 @@ irs::filter::prepared::ptr prepareOpenInterval(
     return irs::filter::prepared::empty();
   }
 
-  auto [states, stats] = prepareStates(
-    index, order, geoTerms, field, opts.storedField);
+  auto [states, stats] = prepareStates(index, order, geoTerms, field);
 
   if (incl) {
     return ::make_query(
@@ -559,8 +531,7 @@ irs::filter::prepared::ptr GeoFilter::prepare(
     return prepared::empty();
   }
 
-  auto [states, stats] = prepareStates(
-    index, order, geoTerms, field(), options().storedField);
+  auto [states, stats] = prepareStates(index, order, geoTerms, field());
 
   boost *= this->boost();
 
@@ -608,11 +579,7 @@ irs::filter::prepared::ptr GeoDistanceFilter::prepare(
   boost *= this->boost();
 
   if (!lowerBound && !upperBound) {
-    // Return everything we've stored
-    irs::by_column_existence filter;
-    *filter.mutable_field() = options().storedField;
-
-    return filter.prepare(index, order, boost);
+    return match_all(index, order, field(), boost);
   } else if (lowerBound && upperBound) {
     return ::prepareInterval(index, order, boost, field(), options());
   } else {

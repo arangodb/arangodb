@@ -72,7 +72,6 @@ struct GeoFilterOptions {
   }
 
   geo::ShapeContainer shape;
-  std::string storedField;
   std::string prefix;
   S2RegionTermIndexer::Options options;
   GeoFilterType type{GeoFilterType::NEAR};
@@ -118,7 +117,6 @@ class GeoDistanceFilterOptions {
 
   S2Point origin;
   irs::search_range<double_t> range;
-  std::string storedField;
   std::string prefix;
   S2RegionTermIndexer::Options options;
 }; // GeoFilterOptions

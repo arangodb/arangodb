@@ -192,6 +192,7 @@ class FieldIterator {
   size_t _prefixLength{};
   std::string _nameBuffer; // buffer for field name
   std::string _valueBuffer;  // need temporary buffer for custom types in VelocyPack
+  VPackBuffer<uint8_t> _buffer; // buffer for stored values
   arangodb::transaction::Methods* _trx;
   Field _value;  // iterator's value
 }; // FieldIterator
