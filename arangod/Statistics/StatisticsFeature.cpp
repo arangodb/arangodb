@@ -257,3 +257,9 @@ void StatisticsFeature::stop() {
 
   STATISTICS = nullptr;
 }
+  
+void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
+  if (_statisticsWorker != nullptr) {
+    _statisticsWorker->generateRawStatistics(result, now);
+  }
+}
