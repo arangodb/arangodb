@@ -6,6 +6,19 @@ v3.7.3 (XXXX-XX-XX)
   - `arangodb_scheduler_threads_started`: Number of scheduler threads started
   - `arangodb_scheduler_threads_stopped`: Number of scheduler threads stopped
 
+* Added startup option `--query.max-runtime` to limit the maximum runtime of all
+  AQL queries to a specified threshold value (in seconds). By default, the
+  threshold is 0, meaning that the runtime of AQL queries is not limited.
+  Setting it to any positive value will restrict the runtime of all AQL queries
+  unless it is overwritten in the per-query "maxRuntime" query option.
+  Please note that setting this option will affect *all* queries in all
+  databases, and also queries issues for administration and database-internal
+  purposes.
+  If a query exceeds the configured runtime, it will be killed on the next
+  occasion when the query checks its own status. Killing is best effort, so it
+  is not guaranteed that a query will no longer than exactly the configured
+  amount of time.
+
 * Ensure that the argument to an AQL OPTIONS clause is always an object which
   does not contain any dynamic (run-time) values. Previously, this was only
   enforced for traversal options and options for data-modification queries. This
@@ -49,8 +62,6 @@ v3.7.3 (XXXX-XX-XX)
   internal instead of logging the proper request information.
 
 * Fixed inifinite reload of the login window after logout of an LDAP user.
-
-* Updated rclone to 1.53.0.
 
 * Add attributes `database` and `user` when tracking current and slow AQL
   queries.

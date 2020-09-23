@@ -814,155 +814,152 @@ void StatisticsWorker::avgPercentDistributon(VPackBuilder& builder, VPackSlice c
   builder.close();
 }
 
-std::string const TYPE_("\n#TYPE ");
-std::string const HELP_("\n#HELP ");
-
 // local_name: {"prometheus_name", "type", "help"}
 std::map<std::string, std::vector<std::string>> statStrings{
   {"bytesReceived",
    {"arangodb_client_connection_statistics_bytes_received_bucket", "gauge",
-    "Bytes received for a request\n"}},
+    "Bytes received for a request"}},
   {"bytesReceivedCount",
    {"arangodb_client_connection_statistics_bytes_received_count", "gauge",
-    "Bytes received for a request\n"}},
+    "Bytes received for a request"}},
   {"bytesReceivedSum",
    {"arangodb_client_connection_statistics_bytes_received_sum", "gauge",
-    "Bytes received for a request\n"}},
+    "Bytes received for a request"}},
   {"bytesSent",
    {"arangodb_client_connection_statistics_bytes_sent_bucket", "gauge",
-    "Bytes sent for a request\n"}},
+    "Bytes sent for a request"}},
   {"bytesSentCount",
    {"arangodb_client_connection_statistics_bytes_sent_count", "gauge",
-    "Bytes sent for a request\n"}},
+    "Bytes sent for a request"}},
   {"bytesSentSum",
    {"arangodb_client_connection_statistics_bytes_sent_sum", "gauge",
-    "Bytes sent for a request\n"}},
+    "Bytes sent for a request"}},
   {"minorPageFaults",
    {"arangodb_process_statistics_minor_page_faults", "gauge",
-    "The number of minor faults the process has made which have not required loading a memory page from disk. This figure is not reported on Windows\n"}},
+    "The number of minor faults the process has made which have not required loading a memory page from disk. This figure is not reported on Windows"}},
   {"majorPageFaults",
    {"arangodb_process_statistics_major_page_faults", "gauge",
-    "On Windows, this figure contains the total number of page faults. On other system, this figure contains the number of major faults the process has made which have required loading a memory page from disk\n"}},
+    "On Windows, this figure contains the total number of page faults. On other system, this figure contains the number of major faults the process has made which have required loading a memory page from disk"}},
   {"bytesReceived",
    {"arangodb_client_connection_statistics_bytes_received_bucket", "gauge",
     "Bytes received for a request"}},
   {"userTime",
    {"arangodb_process_statistics_user_time", "gauge",
-    "Amount of time that this process has been scheduled in user mode, measured in seconds\n"}},
+    "Amount of time that this process has been scheduled in user mode, measured in seconds"}},
   {"systemTime",
    {"arangodb_process_statistics_system_time", "gauge",
-    "Amount of time that this process has been scheduled in kernel mode, measured in seconds\n"}},
+    "Amount of time that this process has been scheduled in kernel mode, measured in seconds"}},
   {"numberOfThreads",
    {"arangodb_process_statistics_number_of_threads", "gauge",
-    "Number of threads in the arangod process\n"}},
+    "Number of threads in the arangod process"}},
   {"residentSize",
-   {"arangodb_process_statistics_resident_set_size", "gauge", "The total size of the number of pages the process has in real memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out. The resident set size is reported in bytes\n"}},
+   {"arangodb_process_statistics_resident_set_size", "gauge", "The total size of the number of pages the process has in real memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out. The resident set size is reported in bytes"}},
   {"residentSizePercent",
-   {"arangodb_process_statistics_resident_set_size_percent", "gauge", "The relative size of the number of pages the process has in real memory compared to system memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out. The value is a ratio between 0.00 and 1.00\n"}},
+   {"arangodb_process_statistics_resident_set_size_percent", "gauge", "The relative size of the number of pages the process has in real memory compared to system memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out. The value is a ratio between 0.00 and 1.00"}},
   {"virtualSize",
-   {"arangodb_process_statistics_virtual_memory_size", "gauge", "On Windows, this figure contains the total amount of memory that the memory manager has committed for the arangod process. On other systems, this figure contains The size of the virtual memory the process is using\n"}},
+   {"arangodb_process_statistics_virtual_memory_size", "gauge", "On Windows, this figure contains the total amount of memory that the memory manager has committed for the arangod process. On other systems, this figure contains The size of the virtual memory the process is using"}},
   {"clientHttpConnections",
    {"arangodb_client_connection_statistics_client_connections", "gauge",
-    "The number of client connections that are currently open\n"}},
+    "The number of client connections that are currently open"}},
   {"connectionTime",
    {"arangodb_client_connection_statistics_connection_time_bucket", "gauge",
-    "Total connection time of a client\n"}},
+    "Total connection time of a client"}},
   {"connectionTimeCount",
    {"arangodb_client_connection_statistics_connection_time_count", "gauge",
-    "Total connection time of a client\n"}},
+    "Total connection time of a client"}},
   {"connectionTimeSum",
    {"arangodb_client_connection_statistics_connection_time_sum", "gauge",
-    "Total connection time of a client\n"}},
+    "Total connection time of a client"}},
   {"totalTime",
    {"arangodb_client_connection_statistics_total_time_bucket", "gauge",
-    "Total time needed to answer a request\n"}},
+    "Total time needed to answer a request"}},
   {"totalTimeCount",
    {"arangodb_client_connection_statistics_total_time_count", "gauge",
-    "Total time needed to answer a request\n"}},
+    "Total time needed to answer a request"}},
   {"totalTimeSum",
    {"arangodb_client_connection_statistics_total_time_sum", "gauge",
-    "Total time needed to answer a request\n"}},
+    "Total time needed to answer a request"}},
   {"requestTime",
    {"arangodb_client_connection_statistics_request_time_bucket", "gauge",
-    "Request time needed to answer a request\n"}},
+    "Request time needed to answer a request"}},
   {"requestTimeCount",
    {"arangodb_client_connection_statistics_request_time_count", "gauge",
-    "Request time needed to answer a request\n"}},
+    "Request time needed to answer a request"}},
   {"requestTimeSum",
    {"arangodb_client_connection_statistics_request_time_sum", "gauge",
-    "Request time needed to answer a request\n"}},
+    "Request time needed to answer a request"}},
   {"queueTime",
    {"arangodb_client_connection_statistics_queue_time_bucket", "gauge",
-    "Request time needed to answer a request\n"}},
+    "Request time needed to answer a request"}},
   {"queueTimeCount",
    {"arangodb_client_connection_statistics_queue_time_count", "gauge",
-    "Request time needed to answer a request\n"}},
+    "Request time needed to answer a request"}},
   {"queueTimeSum",
    {"arangodb_client_connection_statistics_queue_time_sum", "gauge",
-    "Request time needed to answer a request\n"}},
+    "Request time needed to answer a request"}},
   {"ioTime",
    {"arangodb_client_connection_statistics_io_time_bucket", "gauge",
-    "Request time needed to answer a request\n"}},
+    "Request time needed to answer a request"}},
   {"ioTimeCount",
    {"arangodb_client_connection_statistics_io_time_count", "gauge",
-    "Request time needed to answer a request\n"}},
+    "Request time needed to answer a request"}},
   {"ioTimeSum",
    {"arangodb_client_connection_statistics_io_time_sum", "gauge",
-    "Request time needed to answer a request\n"}},
+    "Request time needed to answer a request"}},
   {"httpReqsTotal",
    {"arangodb_http_request_statistics_total_requests", "gauge",
-    "Total number of HTTP requests\n"}},
+    "Total number of HTTP requests"}},
   {"httpReqsAsync",
    {"arangodb_http_request_statistics_async_requests", "gauge",
-    "Number of asynchronously executed HTTP requests\n"}},
+    "Number of asynchronously executed HTTP requests"}},
   {"httpReqsDelete",
    {"arangodb_http_request_statistics_http_delete_requests", "gauge",
-    "Number of HTTP DELETE requests\n"}},
+    "Number of HTTP DELETE requests"}},
   {"httpReqsGet",
    {"arangodb_http_request_statistics_http_get_requests", "gauge",
-    "Number of HTTP GET requests\n"}},
+    "Number of HTTP GET requests"}},
   {"httpReqsHead",
    {"arangodb_http_request_statistics_http_head_requests", "gauge",
-    "Number of HTTP HEAD requests\n"}},
+    "Number of HTTP HEAD requests"}},
   {"httpReqsOptions",
    {"arangodb_http_request_statistics_http_options_requests", "gauge",
-    "Number of HTTP OPTIONS requests\n"}},
+    "Number of HTTP OPTIONS requests"}},
   {"httpReqsPatch",
    {"arangodb_http_request_statistics_http_patch_requests", "gauge",
-    "Number of HTTP PATH requests\n"}},
+    "Number of HTTP PATCH requests"}},
   {"httpReqsPost",
    {"arangodb_http_request_statistics_http_post_requests", "gauge",
-    "Number of HTTP POST requests\n"}},
+    "Number of HTTP POST requests"}},
   {"httpReqsPut",
    {"arangodb_http_request_statistics_http_put_requests", "gauge",
-    "Number of HTTP PUT requests\n"}},
+    "Number of HTTP PUT requests"}},
   {"httpReqsOther",
    {"arangodb_http_request_statistics_other_http_requests", "gauge",
-    "Number of other HTTP requests\n"}},
+    "Number of other HTTP requests"}},
   {"uptime",
    {"arangodb_server_statistics_server_uptime", "gauge",
-    "Number of seconds elapsed since server start\n"}},
+    "Number of seconds elapsed since server start"}},
   {"physicalSize",
    {"arangodb_server_statistics_physical_memory", "gauge",
-    "Physical memory in bytes\n"}},
+    "Physical memory in bytes"}},
   {"v8ContextAvailable",
    {"arangodb_v8_context_alive", "gauge",
-    "Number of V8 contexts currently alive\n"}},
+    "Number of V8 contexts currently alive"}},
   {"v8ContextBusy",
    {"arangodb_v8_context_busy", "gauge",
-    "Number of V8 contexts currently busy\n"}},
+    "Number of V8 contexts currently busy"}},
   {"v8ContextDirty",
    {"arangodb_v8_context_dirty", "gauge",
-    "Number of V8 contexts currently dirty\n"}},
+    "Number of V8 contexts currently dirty"}},
   {"v8ContextFree",
    {"arangodb_v8_context_free", "gauge",
-    "Number of V8 contexts currently free\n"}},
+    "Number of V8 contexts currently free"}},
   {"v8ContextMax",
    {"arangodb_v8_context_max", "gauge",
-    "Maximum number of concurrent V8 contexts\n"}},
+    "Maximum number of concurrent V8 contexts"}},
   {"v8ContextMin",
    {"arangodb_v8_context_min", "gauge",
-    "Minimum number of concurrent V8 contexts\n"}},
+    "Minimum number of concurrent V8 contexts"}},
 };
 
 void StatisticsWorker::generateRawStatistics(std::string& result, double const& now) {
@@ -1013,7 +1010,7 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
 
   // _httpStatistics()
   using rest::RequestType;
-  appendMetric(result, std::to_string(connectionStats.httpConnections.get()), "httpReqsAsync");
+  appendMetric(result, std::to_string(connectionStats.asyncRequests.get()), "httpReqsAsync");
   appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::DELETE_REQ].get()), "httpReqsDelete");
   appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::GET].get()), "httpReqsGet");
   appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::HEAD].get()), "httpReqsHead");
@@ -1040,14 +1037,14 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
   result += "\n";
 }
 
-void StatisticsWorker::appendMetric(
-  std::string& result, std::string const& val, std::string const& label) const {
+void StatisticsWorker::appendMetric(std::string& result, std::string const& val, std::string const& label) const {
+  auto const& stat = statStrings.at(label); 
+  std::string const& name = stat.at(0);
 
   result +=
-    TYPE_ + statStrings.at(label).at(0) + " " + statStrings.at(label)[1] +
-    HELP_ + statStrings.at(label).at(0) + " " + statStrings.at(label)[2] +
-    statStrings.at(label).at(0) + " " + val + "\n";
-
+    "\n#TYPE " + name + " " + stat[1] +
+    "\n#HELP " + name + " " + stat[2] + 
+    '\n' + name + " " + val + '\n';
 }
 
 void StatisticsWorker::appendHistogram(
@@ -1059,17 +1056,20 @@ void StatisticsWorker::appendHistogram(
   VPackBuilder tmp = fillDistribution(dist);
   VPackSlice slc = tmp.slice();
   VPackSlice counts = slc.get("counts");
+  
+  auto const& stat = statStrings.at(label); 
+  std::string const& name = stat.at(0);
 
   result +=
-    TYPE_ + statStrings.at(label).at(0) + " " + statStrings.at(label)[1] +
-    HELP_ + statStrings.at(label).at(0) + " " + statStrings.at(label)[2];
+    "\n#TYPE " + name + " " + stat[1] + 
+    "\n#HELP " + name + " " + stat[2] + '\n';
 
   TRI_ASSERT(les.size() == counts.length());
   size_t i = 0;
   for (auto const& le : les) {
     result +=
-      statStrings.at(label).at(0) + "{le=\"" + le + "\"}"  + " " +
-      std::to_string(counts.at(i++).getNumber<uint64_t>()) + "\n";
+      name + "{le=\"" + le + "\"}"  + " " +
+      std::to_string(counts.at(i++).getNumber<uint64_t>()) + '\n';
   }
 
 }

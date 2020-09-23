@@ -56,6 +56,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _smartJoins(true),
       _parallelizeTraversals(true),
       _queryMemoryLimit(0),
+      _queryMaxRuntime(0.0),
       _maxQueryPlans(128),
       _queryCacheMaxResultsCount(0),
       _queryCacheMaxResultsSize(0),
@@ -87,8 +88,13 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOldOption("database.disable-query-tracking", "query.tracking");
 
   options->addOption("--query.memory-limit",
-                     "memory threshold for AQL queries (in bytes)",
+                     "memory threshold for AQL queries (in bytes, 0 = no limit)",
                      new UInt64Parameter(&_queryMemoryLimit));
+  
+  options->addOption("--query.max-runtime",
+                     "runtime threshold for AQL queries (in seconds, 0 = no limit)",
+                     new DoubleParameter(&_queryMaxRuntime))
+                     .setIntroducedIn(30607).setIntroducedIn(30703);
 
   options->addOption("--query.tracking", "whether to track slow AQL queries",
                      new BooleanParameter(&_trackSlowQueries));
@@ -169,6 +175,12 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 }
 
 void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (_queryMaxRuntime < 0.0) {
+    LOG_TOPIC("46572", FATAL, Logger::AQL)
+        << "invalid value for `--query.max-runtime`. expecting 0 or a positive value";
+    FATAL_ERROR_EXIT();
+  }
+
   if (_maxQueryPlans == 0) {
     LOG_TOPIC("4006f", FATAL, Logger::AQL)
         << "invalid value for `--query.optimizer-max-plans`. expecting at "

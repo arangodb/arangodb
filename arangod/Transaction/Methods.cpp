@@ -1710,8 +1710,12 @@ Future<OperationResult> transaction::Methods::truncateAsync(std::string const& c
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   OperationOptions optionsCopy = options;
-  auto cb = [this, collectionName](OperationResult res) {
+  auto cb = [this, collectionName,
+             handler = rest::RestHandler::CURRENT_HANDLER](OperationResult res) {
+    auto old = rest::RestHandler::CURRENT_HANDLER;
+    rest::RestHandler::CURRENT_HANDLER = handler;
     events::TruncateCollection(vocbase().name(), collectionName, res.errorNumber());
+    rest::RestHandler::CURRENT_HANDLER = old;
     return res;
   };
 
