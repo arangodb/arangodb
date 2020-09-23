@@ -104,7 +104,7 @@ struct Field {
     return *_analyzer;
   }
 
-  bool write(irs::data_output& out) const noexcept {
+  bool write(irs::data_output& out) const {
     if (!_value.null()) {
       out.write_bytes(_value.c_str(), _value.size());
     }
