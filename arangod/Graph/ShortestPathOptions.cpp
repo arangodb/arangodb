@@ -180,7 +180,6 @@ std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
 
 void ShortestPathOptions::fetchVerticesCoordinator(
     std::deque<arangodb::velocypack::StringRef> const& vertexIds) {
-  // TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   if (!arangodb::ServerState::instance()->isCoordinator()) {
     return;
   }
@@ -189,13 +188,14 @@ void ShortestPathOptions::fetchVerticesCoordinator(
   auto ch = reinterpret_cast<ClusterTraverserCache*>(cache());
   TRI_ASSERT(ch != nullptr);
   // get the map of _ids into the datalake
-  auto& cache = ch->cache();
+  graph::ClusterTraverserCache::Cache& cache = ch->cache();
 
-  std::unordered_set<arangodb::velocypack::StringRef> fetch;
+  std::unordered_set<arangodb::velocypack::HashedStringRef> fetch;
   for (auto const& it : vertexIds) {
-    if (cache.find(it) == cache.end()) {
+    arangodb::velocypack::HashedStringRef hashedId(it);
+    if (cache.find(hashedId) == cache.end()) {
       // We do not have this vertex
-      fetch.emplace(it);
+      fetch.emplace(hashedId);
     }
   }
   if (!fetch.empty()) {

@@ -32,6 +32,7 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/HashedStringRef.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
@@ -61,7 +62,7 @@ aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(arangodb::velocypack::
   // FIXME: this is only used for ShortestPath, where the shortestpath stuff
   // uses _edges to store its vertices
 
-  auto it = _cache.find(id);
+  auto it = _cache.find(arangodb::velocypack::HashedStringRef(id));
 
   if (it != _cache.end()) {
     // FIXME: the ClusterTraverserCache lifetime is shorter then the query
@@ -82,7 +83,7 @@ void ClusterTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& token,
 }
 
 void ClusterTraverserCache::insertVertexIntoResult(arangodb::velocypack::StringRef id, VPackBuilder& result) {
-  auto it = _cache.find(id);
+  auto it = _cache.find(arangodb::velocypack::HashedStringRef(id));
 
   if (it != _cache.end()) {
     // FIXME: fix TraverserCache lifetime and use addExternal

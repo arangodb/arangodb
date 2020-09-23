@@ -43,6 +43,7 @@ class Methods;
 namespace velocypack {
 class Builder;
 class Slice;
+class HashedStringRef;
 class StringRef;
 }  // namespace velocypack
 
@@ -57,7 +58,7 @@ class ClusterTraverserCache final : public TraverserCache {
 
   ~ClusterTraverserCache() = default;
   
-  using Cache = std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>;
+  using Cache = std::unordered_map<arangodb::velocypack::HashedStringRef, arangodb::velocypack::Slice>;
   using Datalake = std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>>;
 
   /// @brief will convert the EdgeDocumentToken to a slice
