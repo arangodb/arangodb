@@ -268,7 +268,6 @@ exports.shardList = shardList;
 exports.status = status;
 exports.endpointToURL = endpointToURL;
 exports.shardDistribution = shardDistribution;
-exports.rebalanceShards = rebalanceShards;
 exports.supervisionState = supervisionState;
 exports.waitForSyncRepl = waitForSyncRepl;
 exports.endpoints = endpoints;
