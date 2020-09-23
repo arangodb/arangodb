@@ -672,7 +672,24 @@ AgencyCache::change_set_t AgencyCache::changedSince(
 
 }
 
-std::ostream& operator<<(std::ostream& o, AgencyCache::change_set_t const& c) {
+namespace std {
+ostream& operator<<(ostream& o, AgencyCache::change_set_t const& c) {
   o << c.ind;
   return o;
+}
+
+ostream& operator<<(ostream& o, AgencyCache::databases_t const& dbs) {
+  o << "{";
+  bool first = true;
+  for (auto const& db : dbs) {
+    if (!first) {
+      o << ", ";
+    } else {
+      first = false;
+    }
+    o << '"' << db.first << "\": " << db.second->toJson();
+  }
+  o << "}";
+  return o;
+}
 }

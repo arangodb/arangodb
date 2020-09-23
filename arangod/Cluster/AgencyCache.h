@@ -40,18 +40,17 @@ class AgencyCache final : public arangodb::Thread {
 
 public:
 
+  typedef std::unordered_map<std::string, consensus::query_t> databases_t;
+
   struct change_set_t {
     consensus::index_t ind;  // Raft index
     uint64_t version;        // Plan / Current version
-    std::unordered_map<std::string, consensus::query_t> dbs; // touched databases
+    databases_t dbs; // touched databases
     consensus::query_t rest; // Plan / Current rest
-    change_set_t (consensus::index_t const& i, uint64_t const& v,
-                  std::unordered_map<std::string, consensus::query_t> const& d,
+    change_set_t (consensus::index_t const& i, uint64_t const& v, databases_t const& d,
                   consensus::query_t const& r) :
       ind(i), version(v), dbs(d), rest(r) {}
-    change_set_t (consensus::index_t&& i, uint64_t&& v,
-                  std::unordered_map<std::string, consensus::query_t>&& d,
-                  consensus::query_t&& r) :
+    change_set_t (consensus::index_t&& i, uint64_t&& v, databases_t&& d, consensus::query_t&& r) :
       ind(std::move(i)), version(std::move(v)), dbs(std::move(d)), rest(std::move(r)) {}
   };
 
@@ -184,7 +183,9 @@ private:
 } // namespace
 
 namespace std {
-std::ostream& operator<<(std::ostream& o, arangodb::AgencyCache::change_set_t const& c);
+ostream& operator<<(ostream& o, arangodb::AgencyCache::change_set_t const& c);
+ostream& operator<<(ostream& o, arangodb::AgencyCache::databases_t const& d);
 }
+
 
 #endif

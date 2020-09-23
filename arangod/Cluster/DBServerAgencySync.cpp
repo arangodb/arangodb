@@ -27,6 +27,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
@@ -63,7 +64,7 @@ void DBServerAgencySync::work() {
 
 Result DBServerAgencySync::getLocalCollections(
   std::unordered_set<std::string> const& dirty,
-  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>>& databases) {
+  AgencyCache::databases_t& databases) {
 
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
@@ -202,7 +203,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     return result;
   }
 
-  auto plan = clusterInfo.getPlan(planIndex, dirty);
+  AgencyCache::databases_t plan = clusterInfo.getPlan(planIndex, dirty);
   if (!dirty.empty() && plan.empty()) {
     // TODO increase log level, except during shutdown?
     LOG_TOPIC("0a6f2", DEBUG, Logger::MAINTENANCE)
@@ -217,7 +218,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   // It is crucial that the following happens before we do `getLocalCollections`!
   MaintenanceFeature::ShardActionMap currentShardLocks = mfeature.getShardLocks();
 
-  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> local;
+  AgencyCache::databases_t local;
   LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE) << "Before getLocalCollections for phaseOne";
   Result glc = getLocalCollections(dirty, local);
 
@@ -257,7 +258,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    auto current = clusterInfo.getCurrent(currentIndex, dirty);
+    AgencyCache::databases_t current = clusterInfo.getCurrent(currentIndex, dirty);
 
     LOG_TOPIC("675fd", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current;
