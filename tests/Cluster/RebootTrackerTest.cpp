@@ -161,7 +161,7 @@ class RebootTrackerTest : public ::testing::Test,
   bool schedulerEmpty() const {
     auto stats = scheduler->queueStatistics();
 
-    return stats._blocked == 0 && stats._queued == 0 && stats._working == 0;
+    return stats._queued == 0 && stats._working == 0;
   }
 
   void waitForSchedulerEmpty() const {
