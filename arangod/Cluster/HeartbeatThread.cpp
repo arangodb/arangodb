@@ -1240,6 +1240,9 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         TRI_vocbase_t* db = databaseFeature.useDatabase(id);
         TRI_ASSERT(db);
         std::string dbName = db ? db->name() : "n/a";
+        if (db) {
+          db->release();
+        }
         Result res = databaseFeature.dropDatabase(id, true);
         events::DropDatabase(dbName, OperationResult(res, opOptions));
       }
