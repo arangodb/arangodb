@@ -35,11 +35,15 @@
 
 #include "Basics/voc-errors.h"
 #include "Geo/GeoJson.h"
+#include "IResearch/Geo.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 
 namespace {
 
 using namespace arangodb;
+using namespace arangodb::iresearch;
 
 using Disjunction = irs::disjunction_iterator<irs::doc_iterator::ptr>;
 
@@ -55,16 +59,6 @@ irs::filter::prepared::ptr match_all(
   *filter.mutable_field() = field;
 
   return filter.prepare(index, order, boost);
-}
-
-bool shape(VPackSlice loc, geo::ShapeContainer& shape) {
-  if (loc.isArray() && loc.length() >= 2) {
-    return shape.parseCoordinates(loc, /*geoJson*/ true).ok();
-  } else if (loc.isObject()) {
-    return geo::geojson::parseRegion(loc, shape).ok();
-  }
-
-  return false;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -141,7 +135,7 @@ class GeoIterator : public irs::doc_iterator {
       return false;
     }
 
-    if (!shape(arangodb::iresearch::slice(_storedValue->value), _shape)) {
+    if (!parseShape(slice(_storedValue->value), _shape, false)) {
       return false;
     }
 
@@ -389,7 +383,7 @@ irs::filter::prepared::ptr prepareInterval(
     irs::order::prepared const& order,
     irs::boost_t boost,
     irs::string_ref const& field,
-    arangodb::iresearch::GeoDistanceFilterOptions const& opts) {
+    GeoDistanceFilterOptions const& opts) {
   auto const& range = opts.range;
   auto const& origin = opts.origin;
 
@@ -451,7 +445,7 @@ irs::filter::prepared::ptr prepareOpenInterval(
     irs::order::prepared const& order,
     irs::boost_t boost,
     irs::string_ref const& field,
-    arangodb::iresearch::GeoDistanceFilterOptions const& opts,
+    GeoDistanceFilterOptions const& opts,
     bool greater) {
   auto const& range = opts.range;
 

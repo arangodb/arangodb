@@ -171,61 +171,6 @@ bool fromVelocyPack(irs::string_ref const& args, typename Analyzer::Options& out
   return true;
 }
 
-bool parseShape(VPackSlice slice, geo::ShapeContainer& shape, bool onlyPoint) {
-  Result res;
-  if (slice.isObject()) {
-    if (onlyPoint) {
-      S2LatLng ll;
-      res = geo::geojson::parsePoint(slice, ll);
-
-      if (res.ok()) {
-        shape.resetCoordinates(ll);
-      }
-    } else {
-      res = geo::geojson::parseRegion(slice, shape);
-    }
-  } else if (slice.isArray()) {
-    if (slice.isArray() && slice.length() >= 2) {
-      res = shape.parseCoordinates(slice, /*geoJson*/ true);
-    }
-  } else {
-    LOG_TOPIC("4449c", WARN, arangodb::iresearch::TOPIC)
-      << "Geo JSON or array of coordinates expected, got '"
-      << slice.typeName() << "'";
-
-    return false;
-  }
-
-  if (res.fail()) {
-    LOG_TOPIC("4549c", WARN, arangodb::iresearch::TOPIC)
-      << "Failed to parse value as GEO JSON or array of coordinates, error '"
-      << res.errorMessage() << "'";
-
-    return false;
-  }
-
-  return true;
-}
-
-bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2LatLng& out) {
-  if (!latSlice.isNumber() || !lngSlice.isNumber()) {
-    return false;
-  }
-
-  double_t lat, lng;
-  try {
-    lat = latSlice.getNumber<double_t>();
-    lng = lngSlice.getNumber<double_t>();
-  } catch (...) {
-    return false;
-  }
-
-  // FIXME Normalized()?
-  out = S2LatLng::FromDegrees(lat, lng).Normalized();
-
-  return out.is_valid();
-}
-
 template<typename Analyzer>
 bool normalize(const irs::string_ref& args,  std::string& out) {
   typename Analyzer::Options opts;
@@ -320,7 +265,7 @@ void GeoJSONAnalyzer::prepare(S2RegionTermIndexer::Options& opts) const {
 bool GeoJSONAnalyzer::reset(const irs::string_ref& value) {
   auto const slice = iresearch::slice(value);
 
-  if (!::parseShape(slice, _shape, _type == Type::POINT)) {
+  if (!parseShape(slice, _shape, _type == Type::POINT)) {
     return false;
   }
 
@@ -383,7 +328,7 @@ bool GeoPointAnalyzer::parsePoint(VPackSlice json, S2LatLng& point) const {
     longitude = json.get(_longitude);
   }
 
-  return ::parsePoint(latitude, longitude, point);
+  return iresearch::parsePoint(latitude, longitude, point);
 }
 
 bool GeoPointAnalyzer::reset(const irs::string_ref& value) {

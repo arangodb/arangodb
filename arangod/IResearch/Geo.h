@@ -26,6 +26,15 @@
 #include <s2/s2region_term_indexer.h>
 
 namespace arangodb {
+
+namespace velocypack {
+class Slice;
+}
+
+namespace geo{
+class ShapeContainer;
+}
+
 namespace iresearch {
 
 struct GeoOptions {
@@ -46,6 +55,9 @@ inline S2RegionTermIndexer::Options S2Options(GeoOptions const& opts) {
 
   return s2opts;
 }
+
+bool parseShape(velocypack::Slice slice, geo::ShapeContainer& shape, bool onlyPoint);
+bool parsePoint(velocypack::Slice latSlice, velocypack::Slice lngSlice, S2LatLng& out);
 
 } // iresearch
 } // arangodb
