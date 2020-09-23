@@ -439,9 +439,18 @@ bool FieldIterator::setValue(VPackSlice const value,
   _value._features = &(pool->features());
 
   auto* storeFunc = pool->storeFunc();
-  _value._value = storeFunc
-    ? iresearch::ref<irs::byte_type>(storeFunc(analyzer.get(), value, _buffer))
-    : irs::bytes_ref::NIL;
+  if (storeFunc) {
+    auto const valueSlice = storeFunc(analyzer.get(), value, _buffer);
+
+    if (!value.isNone()) {
+      _value._value = iresearch::ref<irs::byte_type>(valueSlice);
+      _value._storeValues = ValueStorage::VALUE;
+    }
+  } else {
+    TRI_ASSERT(_value._value.null());
+    TRI_ASSERT(ValueStorage::NONE == _value._storeValues ||
+               ValueStorage::ID == _value._storeValues);
+  }
 
   return true;
 }
@@ -450,6 +459,10 @@ void FieldIterator::next() {
   TRI_ASSERT(valid());
 
   FieldMeta const* context = top().meta;
+
+  // restore value
+  _value._storeValues = context->_storeValues;
+  _value._value = irs::bytes_ref::NIL;
 
   while (true) {
 setAnalyzers:

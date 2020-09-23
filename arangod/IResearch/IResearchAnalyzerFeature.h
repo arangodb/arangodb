@@ -85,7 +85,10 @@ ENABLE_BITMASK_ENUM(AnalyzerValueType);
 class AnalyzerPool : private irs::util::noncopyable {
  public:
   using ptr = std::shared_ptr<AnalyzerPool>;
-  using StoreFunc = VPackSlice(*)(irs::token_stream const* ctx, VPackSlice, VPackBuffer<uint8_t>&);
+  using StoreFunc = VPackSlice(*)(
+    irs::token_stream const* ctx,
+    VPackSlice slice,
+    VPackBuffer<uint8_t>& buf);
 
   explicit AnalyzerPool(irs::string_ref const& name);
   irs::flags const& features() const noexcept { return _features; }
