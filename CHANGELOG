@@ -1,6 +1,9 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed a possible crash during instantiation of an AQL graph traversal.
+  Reported in #12597.
+
 * Ensure that the argument to an AQL OPTIONS clause is always an object which
   does not contain any dynamic (run-time) values. Previously, this was only
   enforced for traversal options and options for data-modification queries. This
