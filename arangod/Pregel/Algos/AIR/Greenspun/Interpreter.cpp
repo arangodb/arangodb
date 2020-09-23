@@ -567,23 +567,34 @@ EvalResult EvaluateApply(Machine& ctx, VPackSlice const functionSlice,
   return EvalError("function is not a string, found " + functionSlice.toJson());
 }
 
-EvalResult Evaluate(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
-  if (!paramIterator.valid()) {
-    return EvalError("empty application");
-  }
+template <typename F>
+auto exceptionIntoResult(F&& f) -> std::invoke_result_t<F> try {
+  return std::forward<F>(f)();
+} catch (std::exception const& e) {
+  return EvalError(std::string{"unchaught exception with message: "} + e.what());
+} catch (...) {
+  return EvalError("unchaught exception");
+}
 
-  VPackBuilder functionBuilder;
-  {
-    StackFrameGuard<false> guard(ctx);
-    auto err = Evaluate(ctx, *paramIterator, functionBuilder);
-    if (err.fail()) {
-      return err.mapError(
-          [&](EvalError& err) { err.wrapMessage("in function expression"); });
+EvalResult Evaluate(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+  return exceptionIntoResult([&]() -> EvalResult {
+    if (!paramIterator.valid()) {
+      return EvalError("empty application");
     }
-  }
-  ++paramIterator;
-  VPackSlice functionSlice = functionBuilder.slice();
-  return EvaluateApply(ctx, functionSlice, paramIterator, result, true);
+
+    VPackBuilder functionBuilder;
+    {
+      StackFrameGuard<false> guard(ctx);
+      auto err = Evaluate(ctx, *paramIterator, functionBuilder);
+      if (err.fail()) {
+        return err.mapError(
+            [&](EvalError& err) { err.wrapMessage("in function expression"); });
+      }
+    }
+    ++paramIterator;
+    VPackSlice functionSlice = functionBuilder.slice();
+    return EvaluateApply(ctx, functionSlice, paramIterator, result, true);
+  });
 }
 
 EvalResult Evaluate(Machine& ctx, VPackSlice const slice, VPackBuilder& result) {
