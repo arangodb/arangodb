@@ -1,6 +1,9 @@
 v3.6.7 (XXXX-XX-XX)
 -------------------
 
+* Use rclone built from v1.51.0 source with go1.15.2 instead of prebuilt to
+  1.51.0.
+
 * Fix undefined behavior when accessing the `/_admin/metrics` API to retrieve
   metrics when the server statistics history bookkeeping was turned off via
   `--server.statistics-history false`. The default value for this option is
@@ -93,8 +96,6 @@ v3.6.7 (XXXX-XX-XX)
 * Fixed some cases where subqueries in PRUNE did not result in a parse error,
   but either in an incomprehensible error (in 3.7), or undefined behaviour
   during execution (pre 3.7).
-
-* Updated rclone to 1.53.0.
 
 * Added metrics for V8 contexts usage:
   * `arangodb_v8_context_alive`: number of V8 contexts currently alive.
