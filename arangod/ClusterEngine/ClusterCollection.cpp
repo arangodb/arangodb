@@ -161,13 +161,15 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 }
 
 /// @brief return the figures for a collection
-futures::Future<OperationResult> ClusterCollection::figures() {
+futures::Future<OperationResult> ClusterCollection::figures(bool details,
+                                                            OperationOptions const& options) {
   auto& feature = _logicalCollection.vocbase().server().getFeature<ClusterFeature>();
   return figuresOnCoordinator(feature, _logicalCollection.vocbase().name(),
-                              std::to_string(_logicalCollection.id().id()));
+                              std::to_string(_logicalCollection.id().id()),
+                              details, options);
 }
 
-void ClusterCollection::figuresSpecific(arangodb::velocypack::Builder& builder) {
+void ClusterCollection::figuresSpecific(bool /*details*/, arangodb::velocypack::Builder& /*builder*/) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);  // not used here
 }
 

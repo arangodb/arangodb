@@ -29,6 +29,7 @@
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
+#include "Transaction/Context.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -243,9 +244,10 @@ void RocksDBIndex::afterTruncate(TRI_voc_tick_t, arangodb::transaction::Methods*
 
 Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
                             LocalDocumentId const& oldDocumentId,
-                            velocypack::Slice const& oldDoc,
+                            velocypack::Slice const oldDoc,
                             LocalDocumentId const& newDocumentId,
-                            velocypack::Slice const& newDoc, Index::OperationMode mode) {
+                            velocypack::Slice const newDoc,
+                            OperationOptions& options) {
   // It is illegal to call this method on the primary index
   // RocksDBPrimaryIndex must override this method accordingly
   TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
@@ -255,12 +257,10 @@ Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
   
   TRI_ASSERT((hasExpansion() && unique()) ? !mthd->isIndexingDisabled() : true);
   
-  Result res = remove(trx, mthd, oldDocumentId, oldDoc, mode);
+  Result res = remove(trx, mthd, oldDocumentId, oldDoc);
   if (!res.ok()) {
     return res;
   }
-  OperationOptions options;
-  options.indexOperationMode = mode;
   return insert(trx, mthd, newDocumentId, newDoc, options);
 }
 

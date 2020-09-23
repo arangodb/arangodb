@@ -955,6 +955,11 @@ static void JS_FiguresVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
+  bool details = false;
+  if (args.Length() != 0) {
+    details = TRI_ObjectToBoolean(isolate, args[0]);
+  }
+
   SingleCollectionTransaction trx(transaction::V8Context::Create(collection->vocbase(), true),
                                   *collection, AccessMode::Type::READ);
   Result res = trx.begin();
@@ -963,7 +968,8 @@ static void JS_FiguresVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  auto opRes = collection->figures().get();
+  OperationOptions options(ExecContext::current());
+  auto opRes = collection->figures(details, options).get();
 
   trx.finish(TRI_ERROR_NO_ERROR);
 
@@ -1458,12 +1464,9 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  OperationResult opResult;
-  if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
-    opResult = trx.replace(collectionName, update, options);
-  } else {
-    opResult = trx.update(collectionName, update, options);
-  }
+  OperationResult opResult = (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE)
+                                 ? trx.replace(collectionName, update, options)
+                                 : trx.update(collectionName, update, options);
   res = trx.finish(opResult.result);
 
   if (!res.ok()) {
@@ -1574,12 +1577,9 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
 
   VPackSlice const update = updateBuilder.slice();
 
-  OperationResult opResult;
-  if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
-    opResult = trx.replace(collectionName, update, options);
-  } else {
-    opResult = trx.update(collectionName, update, options);
-  }
+  OperationResult opResult = (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE)
+                                 ? trx.replace(collectionName, update, options)
+                                 : trx.update(collectionName, update, options);
 
   res = trx.finish(opResult.result);
 
@@ -1819,7 +1819,8 @@ static void JS_RevisionVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
   // shared_ptr here
   std::shared_ptr<LogicalCollection> coll(collection, NonDeleter());
   methods::Collections::Context ctxt(coll);
-  auto res = methods::Collections::revisionId(ctxt).get();
+  OperationOptions options(ExecContext::current());
+  auto res = methods::Collections::revisionId(ctxt, options).get();
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res.result);
@@ -2493,9 +2494,11 @@ static void JS_CountVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) 
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  OperationResult opResult =
-      trx.count(collectionName, details ? transaction::CountType::Detailed
-                                        : transaction::CountType::Normal);
+  OperationOptions options(ExecContext::current());
+  OperationResult opResult = trx.count(collectionName,
+                                       details ? transaction::CountType::Detailed
+                                               : transaction::CountType::Normal,
+                                       options);
   res = trx.finish(opResult.result);
 
   if (res.fail()) {

@@ -40,6 +40,7 @@ class UpdateCollection : public ActionBase {
   virtual ~UpdateCollection();
 
   virtual bool first() override final;
+  void setState(ActionState state) override final;
 };
 
 }  // namespace maintenance

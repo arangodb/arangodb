@@ -244,7 +244,7 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
     // the plan is so simple that any further optimizations would probably cost
     // more than simply executing the plan
     initialPlan->findVarUsage();
-    if (estimateAllPlans || queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
+    if (estimateAllPlans || queryOptions.profile >= ProfileLevel::Blocks) {
       // if profiling is turned on, we must do the cost estimation here
       // because the cost estimation must be done while the transaction
       // is still running
@@ -317,7 +317,7 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         p->findVarUsage();
         p->setValidity(false);
 
-        if (queryOptions.getProfileLevel() >= PROFILE_LEVEL_BASIC) {
+        if (queryOptions.getProfileLevel() >= ProfileLevel::Blocks) {
           // run rule with tracing optimizer rule execution time
           if (_stats.executionTimes == nullptr) {
             // allocate the map lazily, so we can save the initial memory allocation
@@ -374,7 +374,7 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
   }
 
   // do cost estimation
-  if (estimateAllPlans || _plans.size() > 1 || queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
+  if (estimateAllPlans || _plans.size() > 1 || queryOptions.profile >= ProfileLevel::Blocks) {
     // if profiling is turned on, we must do the cost estimation here
     // because the cost estimation must be done while the transaction
     // is still running

@@ -63,9 +63,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RestHandler& operator=(RestHandler const&) = delete;
 
  public:
-  static thread_local RestHandler const* CURRENT_HANDLER;
-
- public:
   RestHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
   virtual ~RestHandler();
 

@@ -33,8 +33,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/Index.h"
 #include "Transaction/Methods.h"
-#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -97,7 +97,8 @@ TRI_col_type_e Collection::type() const { return getCollection()->type(); }
 
 /// @brief count the number of documents in the collection
 size_t Collection::count(transaction::Methods* trx, transaction::CountType type) const {
-  OperationResult res = trx->count(_name, type); 
+  OperationOptions options;  // TODO get from trx?
+  OperationResult res = trx->count(_name, type, options);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result);
   }

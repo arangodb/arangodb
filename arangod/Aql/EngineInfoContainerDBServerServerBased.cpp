@@ -314,6 +314,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     infoBuilder.add("isModificationQuery", VPackValue(_query.isModificationQuery()));
     infoBuilder.add("isAsyncQuery", VPackValue(_query.isAsyncQuery()));
 
+    infoBuilder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(ServerState::instance()->getRebootId().value()));
+    infoBuilder.add(StaticStrings::AttrCoordinatorId, VPackValue(ServerState::instance()->getId()));
+
     addSnippetPart(nodesById, infoBuilder, _shardLocking, nodeAliases, server);
     TRI_ASSERT(infoBuilder.isOpenObject());
     auto shardMapping = _shardLocking.getShardMapping();
@@ -394,7 +397,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
                                          << server << " : " << response.toJson();
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
             "Unable to deploy query on all required "
-            "servers. This can happen during "
+            "servers: " + response.toJson() + ". This can happen during "
             "failover. Please check: " +
                 server};
   }
@@ -414,7 +417,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
   for (auto const& resEntry : VPackObjectIterator(snippets)) {
     if (!resEntry.value.isString()) {
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-              "Unable to deploy query on all required "
+              "Unable to deploy query snippets on all required "
               "servers. This can happen during "
               "failover. Please check: " +
                   server};
@@ -437,7 +440,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
   if (!travEngines.isNone()) {
     if (!travEngines.isArray()) {
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-              "Unable to deploy query on all required "
+              "Unable to deploy query traverser engines on all required "
               "servers. This can happen during "
               "failover. Please check: " +
                   server};

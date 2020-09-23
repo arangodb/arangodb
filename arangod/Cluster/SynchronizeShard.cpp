@@ -186,8 +186,9 @@ static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollect
     return res;
   }
 
+  OperationOptions options(ExecContext::current());
   OperationResult opResult =
-    trx.count(collectionName, arangodb::transaction::CountType::Normal);
+      trx.count(collectionName, arangodb::transaction::CountType::Normal, options);
   res = trx.finish(opResult.result);
 
   if (res.fail()) {
@@ -889,7 +890,18 @@ bool SynchronizeShard::first() {
         _result.reset(res);
         return false;
       }
-
+    } catch (basics::Exception const& e) {
+      // don't log errors for already dropped databases/collections
+      if (e.code() != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
+          e.code() != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+        std::stringstream error;
+        error << "synchronization of ";
+        AppendShardInformationToMessage(database, shard, planId, startTime, error);
+        error << " failed: " << e.what();
+        LOG_TOPIC("65d6f", ERR, Logger::MAINTENANCE) << error.str();
+      }
+      _result.reset(e.code(), e.what());
+      return false;
     } catch (std::exception const& e) {
       std::stringstream error;
       error << "synchronization of ";
@@ -1094,7 +1106,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
 void SynchronizeShard::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
-    auto const& shard = _description.get("shard");
+    auto const& shard = _description.get(SHARD);
     if (COMPLETE == state) {
       LOG_TOPIC("50827", INFO, Logger::MAINTENANCE)
         << "SynchronizeShard: synchronization completed for shard " << shard;
@@ -1138,6 +1150,7 @@ void SynchronizeShard::setState(ActionState state) {
       _feature.server().getFeature<ClusterFeature>().clusterInfo().waitForCurrentVersion(v).wait();
     }
     _feature.incShardVersion(shard);
+    _feature.unlockShard(shard);
   }
   ActionBase::setState(state);
 }

@@ -830,24 +830,41 @@ Result TailingSyncer::truncateCollection(arangodb::velocypack::Slice const& slic
     return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION, msg);
   }
 
-  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*vocbase),
-                                  *col, AccessMode::Type::EXCLUSIVE);
-  trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-  trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-  Result res = trx.begin();
-  if (!res.ok()) {
-    return res;
+  uint64_t count = 0;
+  Result res;
+  {
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*vocbase),
+                                    *col, AccessMode::Type::EXCLUSIVE);
+    trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+    trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
+    Result res = trx.begin();
+    if (!res.ok()) {
+      return res;
+    }
+
+    OperationOptions opts(ExecContext::current());
+    OperationResult opRes = trx.count(col->name(), transaction::CountType::Normal, opts);
+    if (opRes.ok() && opRes.slice().isNumber()) {
+      count = opRes.slice().getNumber<uint64_t>();
+    }
+
+    opts.isRestore = true;
+    opRes = trx.truncate(col->name(), opts);
+
+    if (opRes.fail()) {
+      return opRes.result;
+    }
+  
+    res = trx.finish(opRes.result);
   }
 
-  OperationOptions opts;
-  opts.isRestore = true;
-  OperationResult opRes = trx.truncate(col->name(), opts);
-
-  if (opRes.fail()) {
-    return opRes.result;
+  if (res.ok() && count >= 4 * 1024) {
+    // only compact if the collection contained a substantial amount of documents
+    // before truncation
+    col->compact();
   }
 
-  return trx.finish(opRes.result);
+  return res;
 }
 
 /// @brief changes the properties of a view,
@@ -1251,6 +1268,7 @@ retry:
 
     if (res.is(TRI_ERROR_REPLICATION_NO_RESPONSE)) {
       // leader error. try again after a sleep period
+      ++_stats.numFailedConnects;
       connectRetries++;
       {
         WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);

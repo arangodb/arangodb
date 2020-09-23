@@ -291,6 +291,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual arangodb::Result dropView(TRI_vocbase_t const& vocbase,
                                     LogicalView const& view) = 0;
 
+  // Compacts the entire database
+  virtual arangodb::Result compactAll(bool changeLevel, bool compactBottomMostLevel) = 0;
+
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate
   // information about indexes.

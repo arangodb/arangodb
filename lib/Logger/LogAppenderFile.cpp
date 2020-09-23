@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <algorithm>
+#include <cstring>
 #include <iostream>
 
 #include "Basics/operating-system.h"

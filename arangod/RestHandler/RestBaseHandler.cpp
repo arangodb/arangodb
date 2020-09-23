@@ -76,18 +76,14 @@ void RestBaseHandler::handleError(Exception const& ex) {
 template <typename Payload>
 void RestBaseHandler::generateResult(rest::ResponseCode code, Payload&& payload) {
   resetResponse(code);
-  VPackOptions options(VPackOptions::Defaults);
-  options.escapeUnicode = true;
-  writeResult(std::forward<Payload>(payload), options);
+  writeResult(std::forward<Payload>(payload), VPackOptions::Defaults);
 }
 
 template <typename Payload>
 void RestBaseHandler::generateResult(rest::ResponseCode code, Payload&& payload,
                                      VPackOptions const* options) {
   resetResponse(code);
-  VPackOptions tmpoptions(*options);
-  tmpoptions.escapeUnicode = true;
-  writeResult(std::forward<Payload>(payload), tmpoptions);
+  writeResult(std::forward<Payload>(payload), *options);
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a result from VelocyPack
@@ -97,7 +93,7 @@ template <typename Payload>
 void RestBaseHandler::generateResult(rest::ResponseCode code, Payload&& payload,
                                      std::shared_ptr<transaction::Context> context) {
   resetResponse(code);
-  writeResult(std::forward<Payload>(payload), *(context->getVPackOptionsForDump()));
+  writeResult(std::forward<Payload>(payload), *(context->getVPackOptions()));
 }
 
 /// convenience function akin to generateError,
@@ -116,10 +112,8 @@ void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice payload) {
       tmp.add("result", payload);
     }
     tmp.close();
-
-    VPackOptions options(VPackOptions::Defaults);
-    options.escapeUnicode = true;
-    writeResult(std::move(buffer), options);
+    
+    writeResult(std::move(buffer), VPackOptions::Defaults);
   } catch (...) {
     // Building the error response failed
   }
@@ -138,9 +132,7 @@ void RestBaseHandler::generateOk(rest::ResponseCode code, VPackBuilder const& pa
 
     tmp = VPackCollection::merge(tmp.slice(), payload.slice(), false);
 
-    VPackOptions options(VPackOptions::Defaults);
-    options.escapeUnicode = true;
-    writeResult(tmp.slice(), options);
+    writeResult(tmp.slice(), VPackOptions::Defaults);
   } catch (...) {
     // Building the error response failed
   }
@@ -161,7 +153,6 @@ void RestBaseHandler::generateCanceled() {
 template <typename Payload>
 void RestBaseHandler::writeResult(Payload&& payload, VPackOptions const& options) {
   try {
-    TRI_ASSERT(options.escapeUnicode);
     if (_request != nullptr) {
       _response->setContentType(_request->contentTypeResponse());
     }

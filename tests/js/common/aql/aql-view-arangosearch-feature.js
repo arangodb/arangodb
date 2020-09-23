@@ -1555,6 +1555,69 @@ function iResearchFeatureAqlTestSuite () {
         }
       }
     },
+    
+    testCustomPipelineAnalyzer : function() {
+      let analyzerName = "pipeUnderTest";
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      {
+        analyzers.save(analyzerName,"pipeline",
+                        {pipeline:[
+                          {type:"delimiter", properties:{delimiter:" "}},
+                          {type:"delimiter", properties:{delimiter:","}},
+                          {type:"norm", properties:{locale:"en", "case":"upper"}}
+                        ]}, ["position", "frequency"]);
+        try {
+          let result = db._query(
+            "RETURN TOKENS('Quick,BrOwn FoX', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(3, result[0].length);
+          assertEqual([ "QUICK", "BROWN", "FOX" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // upper + ngram utf8 sequence
+      {
+        analyzers.save(analyzerName,"pipeline",
+                        {pipeline:[
+                          {type:"norm", properties:{locale:"ru_RU.UTF8", "case":"upper"}},
+                          {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}}]});
+       
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(2, props.pipeline[1].properties.min);
+          assertEqual(3, props.pipeline[1].properties.max);
+          assertEqual(false, props.pipeline[1].properties.preserveOriginal);
+          assertEqual("utf8", props.pipeline[1].properties.streamType);
+          assertEqual("upper", props.pipeline[0].properties["case"]);
+          assertEqual(true, props.pipeline[0].properties.accent);
+          let result = db._query(
+            "RETURN TOKENS('хорошо', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(9, result[0].length);
+          assertEqual([ "ХО", "ХОР", "ОР", "ОРО", "РО", "РОШ", "ОШ", "ОШО", "ШО" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // invalid properties
+      {
+        try {
+          analyzers.save(analyzerName, "pipeline", { pipeline:2 } );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        }
+      }
+    },
+    
     testInvalidTypeAnalyzer : function() {
       let analyzerName = "unknownUnderTest";
       try {

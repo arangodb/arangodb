@@ -69,6 +69,7 @@ RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, Transac
       _readSnapshot(nullptr),
       _rocksReadOptions(),
       _cacheTx(nullptr),
+      _numCommits(0),
       _numInserts(0),
       _numUpdates(0),
       _numRemoves(0),
@@ -314,9 +315,9 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     // begin transaction + commit transaction + n doc removes
     TRI_ASSERT(_numLogdata == (2 + _numRemoves));
   }
-  ++_numCommits;
   TRI_ASSERT(x > 0);
 #endif
+  ++_numCommits;
 
   prepareCollections();
 
@@ -604,6 +605,8 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
     TRI_TerminateDebugging("SegfaultAfterIntermediateCommit");
   }
 
+  // reset counters for DML operations, but intentionally don't reset
+  // the commit counter, as we need to track if we had intermediate commits
   _numInserts = 0;
   _numUpdates = 0;
   _numRemoves = 0;
@@ -619,6 +622,10 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
 
 Result RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit) {
   hasPerformedIntermediateCommit = false;
+    
+  TRI_IF_FAILURE("noIntermediateCommits") {
+    return TRI_ERROR_NO_ERROR;
+  }
 
   if (hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS)) {
     auto numOperations = _numInserts + _numUpdates + _numRemoves;

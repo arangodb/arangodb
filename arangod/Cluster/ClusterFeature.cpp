@@ -438,7 +438,7 @@ void ClusterFeature::prepare() {
   network::ConnectionPool::Config config;
   config.numIOThreads = 2u;
   config.maxOpenConnections = 2;
-  config.idleConnectionMilli = 1000;
+  config.idleConnectionMilli = 10000;
   config.verifyHosts = false;
   config.clusterInfo = &clusterInfo();
   config.name = "AgencyComm";
