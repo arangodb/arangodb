@@ -918,15 +918,18 @@ runInLocalArangosh.info = 'runInLocalArangosh';
 // / @brief runs a unittest file using rspec
 // //////////////////////////////////////////////////////////////////////////////
 function camelize (str) {
-  return str.replace(/(?:^\w|[A-Z]|\b\w)/g, function (letter, index) {
+  return str.replace(/(?:^\w|[A-Z]|\b\w,)/g, function (letter, index) {
     return index === 0 ? letter.toLowerCase() : letter.toUpperCase();
-  }).replace(/\s+/g, '');
+  }).replace(/\s+/g, '_');
 }
 
 const parseRspecJson = function (testCase, res, totalDuration) {
   let tName = camelize(testCase.description);
   let status = (testCase.status === 'passed');
 
+  if (res.hasOwnProperty(tName)) {
+    throw new Error(`duplicate testcase name in ${tName} ${JSON.stringify(testCase)}`)
+  }
   res[tName] = {
     status: status,
     message: testCase.full_description,
@@ -1037,25 +1040,28 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     if (options.extremeVerbosity) {
       print(yaml.safeDump(jsonResult));
     }
-
     for (let j = 0; j < jsonResult.examples.length; ++j) {
       result.failed += parseRspecJson(
-        jsonResult.examples[j], result,
+        jsonResult.examples[j],
+        result,
         jsonResult.summary.duration);
     }
 
     result.duration = jsonResult.summary.duration;
   } catch (x) {
     result.failed = 1;
-    result.message = 'Failed to parse rspec results for: ' + file;
+    result.status = false;
+    result.message = 'Failed to parse rspec results for: ' + file + ' - ' + x.message;
 
     if (res.status === false) {
       options.cleanup = false;
     }
   }
 
-  if (fs.exists(jsonFN)) fs.remove(jsonFN);
-  fs.remove(tmpname);
+  if (options.cleanup) {
+    if (fs.exists(jsonFN)) fs.remove(jsonFN);
+    fs.remove(tmpname);
+  }
   return result;
 }
 runInRSpec.info = 'runInLocalRSpec';
