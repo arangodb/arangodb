@@ -979,7 +979,7 @@ std::unordered_set<std::string> MaintenanceFeature::pickRandomDirty(size_t n) {
 
 void MaintenanceFeature::refillToCheck() {
   auto seed = std::chrono::system_clock::now().time_since_epoch().count();
-  std::default_random_engine e(seed);
+  std::default_random_engine e(static_cast<unsigned int>(seed));
   _databasesToCheck = server().getFeature<DatabaseFeature>().getDatabaseNames();
   // This number is not guarded relies on single threadedness of the maintenance
   _lastNumberOfDatabases = _databasesToCheck.size();
