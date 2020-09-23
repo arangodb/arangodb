@@ -119,6 +119,10 @@ devel
   * `arangodb_rocksdb_total_disk_space`: provides the total disk space of
     the mount, in bytes
 
+* Fixed some cases where subqueries in PRUNE did not result in a parse error,
+  but either in an incomprehensible error (in 3.7), or undefined behaviour
+  during execution (pre 3.7).
+
 * Apply user-defined idle connection timeouts for HTTP/2 and VST connections.
   The timeout value for idle HTTP/2 and VST connections can now be configured 
   via the configuration option `--http.keep-alive-timeout` in the same way
