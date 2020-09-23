@@ -107,15 +107,15 @@ class HashedStringRef {
   /// @brief create a HashedStringRef from an std::string
   HashedStringRef& operator=(std::string const& other) noexcept {
     _data = other.data();
-    _length = other.size();
-    _hash = hash(other.data(), other.size());
+    _length = static_cast<uint32_t>(other.size());
+    _hash = hash(other.data(), static_cast<uint32_t>(other.size()));
     return *this;
   }
   
   /// @brief create a HashedStringRef from a null-terminated C string
   HashedStringRef& operator=(char const* other) noexcept {
     _data = other;
-    _length = strlen(other);
+    _length = static_cast<uint32_t>(strlen(other));
     _hash = hash(_data, _length);
     return *this;
   }
