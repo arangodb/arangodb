@@ -170,6 +170,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   auto serverId = arangodb::ServerState::instance()->getId();
 
+  // It is crucial that the following happens before we do `getLocalCollections`!
+  MaintenanceFeature::ShardActionMap currentShardLocks = mfeature.getShardLocks();
+
   VPackBuilder local;
   LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE) << "Before getLocalCollections for phaseOne";
   Result glc = getLocalCollections(local);
@@ -192,7 +195,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne";
     tmp = arangodb::maintenance::phaseOne(plan->slice(), planIndex, local.slice(),
-                                          serverId, mfeature, rb);
+                                          serverId, mfeature, rb, currentShardLocks);
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne done";
@@ -218,6 +221,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("675fd", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
 
+    // It is crucial that the following happens before we do `getLocalCollections`!
+    currentShardLocks = mfeature.getShardLocks();
+
     local.clear();
     glc = getLocalCollections(local);
     // We intentionally refetch local collections here, such that phase 2
@@ -235,7 +241,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         << "DBServerAgencySync::phaseTwo";
 
     tmp = arangodb::maintenance::phaseTwo(plan->slice(), current->slice(),
-                                          local.slice(), serverId, mfeature, rb);
+                                          local.slice(), serverId, mfeature, rb,
+                                          currentShardLocks);
 
     LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";

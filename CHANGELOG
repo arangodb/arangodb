@@ -9,6 +9,61 @@ v3.7.3 (XXXX-XX-XX)
 
 * Fixed inifinite reload of the login window after logout of an LDAP user.
 
+* Added startup option `--query.max-runtime` to limit the maximum runtime of all
+  AQL queries to a specified threshold value (in seconds). By default, the
+  threshold is 0, meaning that the runtime of AQL queries is not limited.
+  Setting it to any positive value will restrict the runtime of all AQL queries
+  unless it is overwritten in the per-query "maxRuntime" query option.
+  Please note that setting this option will affect *all* queries in all
+  databases, and also queries issues for administration and database-internal
+  purposes.
+  If a query exceeds the configured runtime, it will be killed on the next
+  occasion when the query checks its own status. Killing is best effort, so it
+  is not guaranteed that a query will no longer than exactly the configured
+  amount of time.
+
+* Ensure that the argument to an AQL OPTIONS clause is always an object which
+  does not contain any dynamic (run-time) values. Previously, this was only
+  enforced for traversal options and options for data-modification queries. This
+  change extends the check to all occurrences of OPTIONS.
+
+* Added `details` option to figures command of a collection:
+  `collection.figures(details)`
+
+  Setting `details` to `true` will return extended storage engine-specific
+  details to the figures. The details are intended for debugging ArangoDB itself
+  and their format is subject to change. There is not much use in using the
+  details from a client application.
+  By default, `details` is set to `false`, so no details are returned and the
+  behavior is identical to previous versions of ArangoDB.
+
+* Implement RebootTracker usage for AQL queries in case of coordinator restarts
+  or failures. This will clean up the rest of an AQL query on dbservers more
+  quickly and in particular release locks faster.
+
+* Serialize maintenance actions for each shard. This addresses lost document
+  problems found in chaos testing.
+
+* Enforce a maximum result register usage limit in AQL queries. In an AQL query,
+  every user-defined or internal (unnamed) variable will need a register to
+  store results in.
+
+  AQL queries that use more result registers than allowed (currently 1000) will
+  now abort deterministically during the planning stage with error 32
+  (`resource limit exceeded`) and the error message
+  "too many registers (1000) needed for AQL query".
+
+  Before this fix, an AQL query that used more than 1000 result registers
+  crashed the server when assertions were turned on, and the behavior was
+  undefined when assertions were turned off.
+
+* Fixed some cases where subqueries in PRUNE did not result in a parse error,
+  but either in an incomprehensible error (in 3.7), or undefined behaviour
+  during execution (pre 3.7).
+
+* Fixed an issue with audit logging misreporting some document requests as
+  internal instead of logging the proper request information.
+
 * Add attributes `database` and `user` when tracking current and slow AQL
   queries.
   `database` contains the name of the database the query is/was running in,

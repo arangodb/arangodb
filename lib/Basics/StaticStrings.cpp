@@ -308,6 +308,7 @@ std::string const StaticStrings::RevisionTreeVersion("version");
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");
 std::string const StaticStrings::AttrCoordinatorRebootId("coordinatorRebootId");
+std::string const StaticStrings::AttrCoordinatorId("coordinatorId");
 std::string const StaticStrings::AttrIsBuilding("isBuilding");
 
 // misc strings
