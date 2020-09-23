@@ -310,8 +310,7 @@ struct GeoDistanceRangeAcceptor {
   S2Cap max;
 
   bool operator()(geo::ShapeContainer const& shape) const {
-    TRI_ASSERT(geo::ShapeContainer::Type::S2_POINT == shape.type());
-    auto const point = static_cast<S2PointRegion const*>(shape.region())->point();
+    auto const point = shape.centroid();
 
     return (MinIncl ? min.InteriorContains(point) : min.Contains(point)) &&
            (MaxIncl ? max.Contains(point) : max.InteriorContains(point));
@@ -323,8 +322,7 @@ struct GeoDistanceAcceptor {
   S2Cap filter;
 
   bool operator()(geo::ShapeContainer const& shape) const {
-    TRI_ASSERT(geo::ShapeContainer::Type::S2_POINT == shape.type());
-    auto const point = static_cast<S2PointRegion const*>(shape.region())->point();
+    auto const point = shape.centroid();
 
     return (Incl ? filter.Contains(point) : filter.InteriorContains(point));
   }
