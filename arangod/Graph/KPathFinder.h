@@ -63,6 +63,7 @@ class KPathFinder : public ShortestPathFinder {
 
   class PathResult {
    public:
+    explicit PathResult(size_t numItems);
     auto clear() -> void;
     auto appendVertex(VertexRef v) -> void;
     auto prependVertex(VertexRef v) -> void;
@@ -75,8 +76,8 @@ class KPathFinder : public ShortestPathFinder {
     auto isValid() const -> bool;
 
    private:
-    std::deque<VertexRef> _vertices;
-    std::deque<EdgeDocumentToken> _edges;
+    std::vector<VertexRef> _vertices;
+    std::vector<EdgeDocumentToken> _edges;
 
     ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> _uniqueVertices;
   };

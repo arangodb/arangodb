@@ -33,6 +33,11 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
+KPathFinder::PathResult::PathResult(size_t numItems) {
+  _vertices.reserve(numItems);
+  _edges.reserve(numItems);
+}
+
 auto KPathFinder::PathResult::clear() -> void {
   _vertices.clear();
   _edges.clear();
@@ -45,7 +50,7 @@ auto KPathFinder::PathResult::appendVertex(VertexRef v) -> void {
 }
 
 auto KPathFinder::PathResult::prependVertex(VertexRef v) -> void {
-  _vertices.push_front(v);
+  _vertices.insert(_vertices.begin(), v);
   _uniqueVertices.emplace(v);
 }
 
@@ -54,7 +59,7 @@ auto KPathFinder::PathResult::appendEdge(EdgeDocumentToken e) -> void {
 }
 
 auto KPathFinder::PathResult::prependEdge(EdgeDocumentToken e) -> void {
-  _edges.push_front(e);
+  _edges.insert(_edges.begin(), e);
 }
 
 auto KPathFinder::PathResult::toVelocyPack(TraverserCache& cache,
@@ -206,7 +211,10 @@ auto KPathFinder::Ball::computeNeighbourhoodOfNextVertex(Ball const& other,
 }
 
 KPathFinder::KPathFinder(ShortestPathOptions& options)
-    : ShortestPathFinder(options), _left{Direction::FORWARD, options}, _right{Direction::BACKWARD, options} {
+    : ShortestPathFinder(options), 
+      _left{Direction::FORWARD, options}, 
+      _right{Direction::BACKWARD, options},
+      _resultPath(std::min<size_t>(16, options.maxDepth)) {
   _results.reserve(8);
 }
 
