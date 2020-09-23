@@ -370,8 +370,8 @@ bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
 
   VPackBuilder array(buf);
   array.openArray();
-  array.add(VPackValue(point.lng().radians()));
-  array.add(VPackValue(point.lat().radians()));
+  array.add(VPackValue(point.lng().degrees()));
+  array.add(VPackValue(point.lat().degrees()));
   array.close();
 
   return array.slice();
