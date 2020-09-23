@@ -197,10 +197,8 @@ class Scheduler {
  public:
   struct QueueStatistics {
     uint64_t _running; // numWorkers
-    uint64_t _blocked; // obsolete, always 0 now
     uint64_t _queued;
     uint64_t _working;
-    uint64_t _directExec;
   };
 
   virtual void toVelocyPack(velocypack::Builder&) const = 0;

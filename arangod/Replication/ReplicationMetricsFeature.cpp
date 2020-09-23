@@ -65,6 +65,9 @@ ReplicationMetricsFeature::ReplicationMetricsFeature(arangodb::application_featu
       _numSyncDocsRemoved(
         server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_initial_sync_docs_removed", 0, "Number of documents removed by replication initial sync")),
+      _numSyncBytesReceived(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_initial_sync_bytes_received", 0, "Number of bytes received during replication initial sync")),
       _waitedForSyncInitial(
         server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_initial_chunks_requests_time", 0,
@@ -107,6 +110,9 @@ ReplicationMetricsFeature::ReplicationMetricsFeature(arangodb::application_featu
       _numTailingBytesReceived(
         server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_tailing_bytes_received", 0, "Number of bytes received for replication tailing requests")),
+      _numFailedConnects(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_replication_failed_connects", 0, "Number of failed connection attempts and response errors during replication")),
       _waitedForTailing(
         server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_tailing_request_time", 0,
@@ -138,6 +144,8 @@ void ReplicationMetricsFeature::InitialSyncStats::publish() {
   feature._numSyncDocsRequested += numDocsRequested;
   feature._numSyncDocsInserted += numDocsInserted;
   feature._numSyncDocsRemoved += numDocsRemoved;
+  feature._numSyncBytesReceived += numSyncBytesReceived;
+  feature._numFailedConnects += numFailedConnects;
   feature._waitedForSyncInitial += static_cast<uint64_t>(waitedForInitial * 1000);
   feature._waitedForSyncKeys += static_cast<uint64_t>(waitedForKeys * 1000);
   feature._waitedForSyncDocs += static_cast<uint64_t>(waitedForDocs * 1000);
@@ -160,6 +168,8 @@ void ReplicationMetricsFeature::InitialSyncStats::reset() noexcept {
   numDocsRequested = 0;
   numDocsInserted = 0;
   numDocsRemoved = 0;
+  numSyncBytesReceived = 0;
+  numFailedConnects = 0;
   waitedForInitial = 0.0;
   waitedForKeys = 0.0;
   waitedForDocs = 0.0;
@@ -180,6 +190,8 @@ ReplicationMetricsFeature::InitialSyncStats& ReplicationMetricsFeature::InitialS
   numDocsRequested += other.numDocsRequested;
   numDocsInserted += other.numDocsInserted;
   numDocsRemoved += other.numDocsRemoved;
+  numSyncBytesReceived += other.numSyncBytesReceived;
+  numFailedConnects += other.numFailedConnects;
   waitedForInitial += other.waitedForInitial;
   waitedForKeys += other.waitedForKeys;
   waitedForDocs += other.waitedForDocs;
@@ -204,6 +216,7 @@ void ReplicationMetricsFeature::TailingSyncStats::publish() {
   feature._numTailingProcessedDocuments += numProcessedDocuments;
   feature._numTailingProcessedRemovals += numProcessedRemovals;
   feature._numTailingBytesReceived += numTailingBytesReceived;
+  feature._numFailedConnects += numFailedConnects;
   feature._waitedForTailing += static_cast<uint64_t>(waitedForTailing * 1000);
   feature._waitedForTailingApply += static_cast<uint64_t>(waitedForTailingApply * 1000);
 
@@ -217,6 +230,7 @@ void ReplicationMetricsFeature::TailingSyncStats::reset() noexcept {
   numProcessedDocuments = 0;
   numProcessedRemovals = 0;
   numTailingBytesReceived = 0;
+  numFailedConnects = 0;
   waitedForTailing = 0;
   waitedForTailingApply = 0;
 }
@@ -228,6 +242,7 @@ ReplicationMetricsFeature::TailingSyncStats& ReplicationMetricsFeature::TailingS
   numProcessedDocuments += other.numProcessedDocuments;
   numProcessedRemovals += other.numProcessedRemovals;
   numTailingBytesReceived += other.numTailingBytesReceived;
+  numFailedConnects += other.numFailedConnects;
   waitedForTailing += other.waitedForTailing;
   waitedForTailingApply += other.waitedForTailingApply;
   

@@ -300,8 +300,8 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
       return res;
     }
 
-    arangodb::OperationResult result;
-    result = trx.insert(collectionName, oneFunctionDocument.slice(), opOptions);
+    arangodb::OperationResult result =
+        trx.insert(collectionName, oneFunctionDocument.slice(), opOptions);
 
     if (result.ok()) {
       VPackSlice oldSlice = result.slice().get(StaticStrings::Old);
