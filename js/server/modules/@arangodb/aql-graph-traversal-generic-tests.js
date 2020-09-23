@@ -290,7 +290,7 @@ const checkResIsValidKShortestPathListWeightFunc  = (getCost) => {
           print ("Traversal missed a shorter path");
         }
       }
-      assertTrue(allowedCost === cost);
+      assertEqual(allowedCost, cost);
       assertResIsContainedInPathList(allowedPaths, path);
     });
   };
@@ -1402,13 +1402,40 @@ function testOpenDiamondModeLabelVariableForwarding(testGraph, mode) {
   }
 }
 
-
 function testOpenDiamondShortestPath(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e IN OUTBOUND SHORTEST_PATH ${testGraph.vertex('A')} TO ${testGraph.vertex('F')}  
         GRAPH ${testGraph.name()} 
         RETURN v.key
+      `;
+
+  const allowedPaths = [
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  assertResIsContainedInPathList(allowedPaths, actualPath);
+}
+
+function testOpenDiamondShortestPathWT(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        LET paths = (
+          FOR v, e, p IN 0..100 OUTBOUND ${testGraph.vertex('A')}
+          GRAPH ${testGraph.name()}
+          PRUNE p.vertices[-1]._id == ${testGraph.vertex('F')}
+          OPTIONS {mode: "weighted", uniqueVertices: "global"}
+          FILTER p.vertices[-1]._id == ${testGraph.vertex('F')}
+          LIMIT 1
+          RETURN p
+        )
+        FOR p IN paths
+          FOR v IN p.vertices
+            RETURN v.key
       `;
 
   const allowedPaths = [
@@ -1441,17 +1468,85 @@ function testOpenDiamondShortestPathEnabledWeightCheck(testGraph) {
   assertResIsContainedInPathList(allowedPaths, actualPath);
 }
 
-function testOpenDiamondKShortestPathWithMultipleLimits(testGraph) {
+function testOpenDiamondShortestPathEnabledWeightCheckWT(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        LET paths = (
+          FOR v, e, p IN 0..100 OUTBOUND ${testGraph.vertex('A')}
+          GRAPH ${testGraph.name()}
+          PRUNE p.vertices[-1]._id == ${testGraph.vertex('F')}
+          OPTIONS {mode: "weighted", uniqueVertices: "global", weightAttribute: ${testGraph.weightAttribute()}}
+          FILTER p.vertices[-1]._id == ${testGraph.vertex('F')}
+          LIMIT 1
+          RETURN p
+        )
+        FOR p IN paths
+          FOR v IN p.vertices
+            RETURN v.key
+      `;
+
+  const allowedPaths = [
+    ["A", "C", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  assertResIsContainedInPathList(allowedPaths, actualPath);
+}
+
+function generateKShortestPathQuery(graph, from, to, limit) {
+  return aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${graph.vertex(from)} TO ${graph.vertex(to)}  
+        GRAPH ${graph.name()}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+}
+
+function generateKShortestPathQueryWithWeights(graph, from, to, limit) {
+  return aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${graph.vertex(from)} TO ${graph.vertex(to)}  
+        GRAPH ${graph.name()}
+        OPTIONS {weightAttribute: ${graph.weightAttribute()}}
+        LIMIT ${limit}
+        RETURN {vertices: p.vertices[*].key, weight: p.weight}
+      `;
+}
+
+function generateKShortestPathQueryWT(graph, from, to, limit) {
+  return aql`
+        FOR v, e, p IN 0..100 OUTBOUND ${graph.vertex(from)}  
+        GRAPH ${graph.name()}
+        PRUNE p.vertices[-1]._id == ${graph.vertex(to)}
+        OPTIONS {mode: "weighted", uniqueVertices: "path"}
+        FILTER p.vertices[-1]._id == ${graph.vertex(to)}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+}
+
+function generateKShortestPathQueryWithWeightsWT(graph, from, to, limit) {
+  return aql`
+        FOR v, e, p IN 0..100 OUTBOUND ${graph.vertex(from)}  
+        GRAPH ${graph.name()}
+        PRUNE p.vertices[-1]._id == ${graph.vertex(to)}
+        OPTIONS {mode: "weighted", uniqueVertices: "path", weightAttribute: ${graph.weightAttribute()}}
+        FILTER p.vertices[-1]._id == ${graph.vertex(to)}
+        LIMIT ${limit}
+        RETURN {vertices: p.vertices[*].key, weight: p.weights[-1]}
+      `;
+}
+
+const testOpenDiamondKShortestPathWithMultipleLimits = (testGraph) => testOpenDiamondKShortestPathWithMultipleLimitsGen(testGraph, generateKShortestPathQuery);
+const testOpenDiamondKShortestPathWithMultipleLimitsWT = (testGraph) => testOpenDiamondKShortestPathWithMultipleLimitsGen(testGraph, generateKShortestPathQueryWT);
+
+function testOpenDiamondKShortestPathWithMultipleLimitsGen(testGraph, generator) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const limits = [1, 2, 3, 4];
 
   _.each(limits, function (limit) {
-    const query = aql`
-        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('F')}  
-        GRAPH ${testGraph.name()}
-        LIMIT ${limit}
-        RETURN p.vertices[* RETURN CURRENT.key]
-      `;
+    const query = generator(testGraph, 'A', 'F', limit);
 
     const allowedPaths = [
       ["A", "B", "D", "F"],
@@ -1465,17 +1560,14 @@ function testOpenDiamondKShortestPathWithMultipleLimits(testGraph) {
   });
 }
 
-function testOpenDiamondKShortestPathEnabledWeightCheckLimit1(testGraph) {
+const testOpenDiamondKShortestPathEnabledWeightCheckLimit1 = (testGraph) => testOpenDiamondKShortestPathEnabledWeightCheckLimit1Gen(testGraph, generateKShortestPathQueryWithWeights);
+const testOpenDiamondKShortestPathEnabledWeightCheckLimit1WT = (testGraph) => testOpenDiamondKShortestPathEnabledWeightCheckLimit1Gen(testGraph, generateKShortestPathQueryWithWeightsWT);
+
+function testOpenDiamondKShortestPathEnabledWeightCheckLimit1Gen(testGraph, generator) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const limits = [1, 2, 3];
   _.each(limits, (limit) => {
-    const query = aql`
-        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('F')}
-        GRAPH ${testGraph.name()} 
-        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
-        LIMIT ${limit}
-        RETURN {vertices: p.vertices[*].key, weight: p.weight}
-      `;
+    const query = generator(testGraph, 'A', 'F', limit);
 
     const allowedPaths = [
       {vertices: ["A", "C", "D", "F"], weight: 3},
@@ -1889,17 +1981,15 @@ function testSmallCircleShortestPathEnabledWeightCheck(testGraph) {
   assertResIsContainedInPathList(allowedPaths, actualPath);
 }
 
-function testSmallCircleKShortestPathWithMultipleLimits(testGraph) {
+const testSmallCircleKShortestPathWithMultipleLimits = (testGraph) => testSmallCircleKShortestPathWithMultipleLimitsGen(testGraph, generateKShortestPathQuery);
+const testSmallCircleKShortestPathWithMultipleLimitsWT = (testGraph) => testSmallCircleKShortestPathWithMultipleLimitsGen(testGraph, generateKShortestPathQueryWT);
+
+function testSmallCircleKShortestPathWithMultipleLimitsGen(testGraph, generator) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const limits = [1, 2, 3, 4];
 
   _.each(limits, function (limit) {
-    const query = aql`
-        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('D')}  
-        GRAPH ${testGraph.name()}
-        LIMIT ${limit}
-        RETURN p.vertices[* RETURN CURRENT.key]
-      `;
+    const query = generator(testGraph, 'A', 'D', limit);
 
     const allowedPaths = [
       ["A", "B", "C", "D"]
@@ -1912,18 +2002,15 @@ function testSmallCircleKShortestPathWithMultipleLimits(testGraph) {
   });
 }
 
-function testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimits(testGraph) {
+const testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimits = (testGraph) => testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimitsGen(testGraph, generateKShortestPathQueryWithWeights);
+const testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimitsWT = (testGraph) => testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimitsGen(testGraph, generateKShortestPathQueryWithWeightsWT);
+
+function testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimitsGen(testGraph, generator) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const limits = [1, 2, 3, 4];
 
   _.each(limits, function (limit) {
-    const query = aql`
-        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('D')}  
-        GRAPH ${testGraph.name()}
-        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
-        LIMIT ${limit}
-        RETURN {vertices: p.vertices[*].key, weight: p.weight}
-      `;
+    const query = generator(testGraph, 'A', 'D', limit);
 
     const allowedPaths = [
       {vertices: ["A", "B", "C", "D"], weight: 3}
@@ -3100,15 +3187,13 @@ function testCompleteGraphShortestPath(testGraph) {
   assertResIsContainedInPathList(allowedPaths, actualPath);
 }
 
-function testCompleteGraphKShortestPathLimit1(testGraph) {
+const testCompleteGraphKShortestPathLimit1 = (testGraph) => testCompleteGraphKShortestPathLimit1Gen(testGraph, generateKShortestPathQuery);
+const testCompleteGraphKShortestPathLimit1WT = (testGraph) => testCompleteGraphKShortestPathLimit1Gen(testGraph, generateKShortestPathQueryWT);
+
+function testCompleteGraphKShortestPathLimit1Gen(testGraph, generator) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const limit = 1;
-  const query = aql`
-        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('C')}  
-        GRAPH ${testGraph.name()} 
-        LIMIT ${limit}
-        RETURN p.vertices[* RETURN CURRENT.key]
-      `;
+  const query = generator(testGraph, 'A', 'C', limit);
 
   const allowedPaths = [
     ["A", "C"]
@@ -3120,15 +3205,13 @@ function testCompleteGraphKShortestPathLimit1(testGraph) {
   checkResIsValidKShortestPathListNoWeights(allowedPaths, actualPath, limit);
 }
 
-function testCompleteGraphKShortestPathLimit3(testGraph) {
+const testCompleteGraphKShortestPathLimit3 = (testGraph) => testCompleteGraphKShortestPathLimit3Gen(testGraph, generateKShortestPathQuery);
+const testCompleteGraphKShortestPathLimit3WT = (testGraph) => testCompleteGraphKShortestPathLimit3Gen(testGraph, generateKShortestPathQueryWT);
+
+function testCompleteGraphKShortestPathLimit3Gen(testGraph, generator) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const limit = 3;
-  const query = aql`
-        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('C')}  
-        GRAPH ${testGraph.name()} 
-        LIMIT ${limit}
-        RETURN p.vertices[* RETURN CURRENT.key]
-      `;
+  const query = generator(testGraph, 'A', 'C', limit);
 
   const allowedPaths = [
     ["A", "C"], ["A", "B", "C"], ["A", "D", "C"], ["A", "E", "C"]
@@ -3159,18 +3242,15 @@ function testCompleteGraphShortestPathEnabledWeightCheck(testGraph) {
   assertResIsContainedInPathList(allowedPaths, actualPath);
 }
 
-function testCompleteGraphKShortestPathEnabledWeightCheckMultiLimit(testGraph) {
+const testCompleteGraphKShortestPathEnabledWeightCheckMultiLimit = (testGraph) => testCompleteGraphKShortestPathEnabledWeightCheckMultiLimitGen(testGraph, generateKShortestPathQueryWithWeights);
+const testCompleteGraphKShortestPathEnabledWeightCheckMultiLimitWT = (testGraph) => testCompleteGraphKShortestPathEnabledWeightCheckMultiLimitGen(testGraph, generateKShortestPathQueryWithWeightsWT);
+
+function testCompleteGraphKShortestPathEnabledWeightCheckMultiLimitGen(testGraph, generator) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const limits = [1, 2, 3];
 
   _.each(limits, (limit) => {
-    const query = aql`
-        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('C')}  
-        GRAPH ${testGraph.name()} 
-        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
-        LIMIT ${limit}
-        RETURN {vertices: p.vertices[*].key, weight: p.weight}
-      `;
+    const query = generator(testGraph, 'A', 'C', limit);
 
     const allowedPaths = [
       {vertices: ["A", "B", "C"], weight: 4},
@@ -3395,29 +3475,6 @@ function testEasyPathShortestPath(testGraph) {
   assertResIsContainedInPathList(allowedPaths, actualPath);
 }
 
-function testEasyPathKShortestPathMultipleLimits(testGraph) {
-  assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
-  const limits = [1, 2, 3, 4];
-
-  _.each(limits, function (limit) {
-    const query = aql`
-        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('J')}  
-        GRAPH ${testGraph.name()}
-        LIMIT ${limit}
-        RETURN p.vertices[* RETURN CURRENT.key]
-      `;
-
-    const allowedPaths = [
-      ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
-    ];
-
-    const res = db._query(query);
-    const actualPaths = res.toArray();
-
-    checkResIsValidKShortestPathListNoWeights(allowedPaths, actualPaths, limit);
-  });
-}
-
 function testEasyPathShortestPathEnabledWeightCheck(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
   const query = aql`
@@ -3437,18 +3494,36 @@ function testEasyPathShortestPathEnabledWeightCheck(testGraph) {
   assertResIsContainedInPathList(allowedPaths, actualPath);
 }
 
-function testEasyPathKShortestPathEnabledWeightCheckMultipleLimits(testGraph) {
+const testEasyPathKShortestPathMultipleLimits = (testGraph) => testEasyPathKShortestPathMultipleLimitsGen(testGraph, generateKShortestPathQuery);
+const testEasyPathKShortestPathMultipleLimitsWT = (testGraph) => testEasyPathKShortestPathMultipleLimitsGen(testGraph, generateKShortestPathQueryWT);
+
+function testEasyPathKShortestPathMultipleLimitsGen(testGraph, generate) {
   assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
   const limits = [1, 2, 3, 4];
 
   _.each(limits, function (limit) {
-    const query = aql`
-        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('J')}  
-        GRAPH ${testGraph.name()}
-        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
-        LIMIT ${limit}
-        RETURN {vertices: p.vertices[*].key, weight: p.weight}
-      `;
+    const query = generate(testGraph, 'A', 'J', limit);
+
+    const allowedPaths = [
+      ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+    ];
+
+    const res = db._query(query);
+    const actualPaths = res.toArray();
+
+    checkResIsValidKShortestPathListNoWeights(allowedPaths, actualPaths, limit);
+  });
+}
+
+const testEasyPathKShortestPathEnabledWeightCheckMultipleLimits = (testGraph) => testEasyPathKShortestPathEnabledWeightCheckMultipleLimitsGen(testGraph, generateKShortestPathQueryWithWeights);
+const testEasyPathKShortestPathEnabledWeightCheckMultipleLimitsWT = (testGraph) => testEasyPathKShortestPathEnabledWeightCheckMultipleLimitsGen(testGraph, generateKShortestPathQueryWithWeightsWT);
+
+function testEasyPathKShortestPathEnabledWeightCheckMultipleLimitsGen(testGraph, generator) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
+  const limits = [1, 2, 3, 4];
+
+  _.each(limits, function (limit) {
+    const query = generator(testGraph, 'A', 'J', limit);
 
     const allowedPaths = [
       { vertices: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"], weight: 45}
@@ -3938,17 +4013,15 @@ function testAdvancedPathShortestPath(testGraph) {
   assertResIsContainedInPathList(allowedPaths, actualPath);
 }
 
-function testAdvancedPathKShortestPathMultiLimit(testGraph) {
+const testAdvancedPathKShortestPathMultiLimit = (testGraph) => testAdvancedPathKShortestPathMultiLimitGen(testGraph, generateKShortestPathQuery);
+const testAdvancedPathKShortestPathMultiLimitWT = (testGraph) => testAdvancedPathKShortestPathMultiLimitGen(testGraph, generateKShortestPathQueryWT);
+
+function testAdvancedPathKShortestPathMultiLimitGen(testGraph, generator) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const limits = [1, 2, 3];
 
   _.each(limits, (limit) => {
-    const query = aql`
-        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('I')}  
-        GRAPH ${testGraph.name()}
-        LIMIT ${limit}
-        RETURN p.vertices[* RETURN CURRENT.key]
-      `;
+    const query = generator(testGraph, 'A', 'I', limit);
 
     const allowedPaths = [
       ["A", "D", "E", "H", "I"],
@@ -3982,18 +4055,15 @@ function testAdvancedPathShortestPathEnabledWeightCheck(testGraph) {
   assertResIsContainedInPathList(allowedPaths, actualPath);
 }
 
-function testAdvancedPathKShortestPathEnabledWeightCheckMultiLimit(testGraph) {
+const testAdvancedPathKShortestPathEnabledWeightCheckMultiLimit = (testGraph) => testAdvancedPathKShortestPathEnabledWeightCheckMultiLimitGen(testGraph, generateKShortestPathQueryWithWeights);
+const testAdvancedPathKShortestPathEnabledWeightCheckMultiLimitWT = (testGraph) => testAdvancedPathKShortestPathEnabledWeightCheckMultiLimitGen(testGraph, generateKShortestPathQueryWithWeightsWT);
+
+function testAdvancedPathKShortestPathEnabledWeightCheckMultiLimitGen(testGraph, generator) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const limits = [1, 2, 3];
 
   _.each(limits, (limit) => {
-    const query = aql`
-        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('I')}  
-        GRAPH ${testGraph.name()} 
-        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
-        LIMIT ${limit}
-        RETURN {vertices: p.vertices[*].key, weight: p.weight}
-      `;
+    const query = generator(testGraph, 'A', 'I', limit);
 
     const allowedPaths = [
       {vertices: ["A", "B", "C", "D", "E", "F", "G", "H", "I"], weight: 8},
@@ -4038,9 +4108,13 @@ const testsByGraph = {
     testOpenDiamondWeightedUniqueEdgesUniqueNoneVerticesGlobal,
     testOpenDiamondWeightedLabelVariableForwarding,
     testOpenDiamondShortestPath,
+    testOpenDiamondShortestPathWT,
     testOpenDiamondShortestPathEnabledWeightCheck,
+    testOpenDiamondShortestPathEnabledWeightCheckWT,
     testOpenDiamondKShortestPathWithMultipleLimits,
-    testOpenDiamondKShortestPathEnabledWeightCheckLimit1
+    testOpenDiamondKShortestPathWithMultipleLimitsWT,
+    testOpenDiamondKShortestPathEnabledWeightCheckLimit1,
+    testOpenDiamondKShortestPathEnabledWeightCheckLimit1WT
   },
   smallCircle: {
     testSmallCircleDfsUniqueVerticesPath,
@@ -4068,7 +4142,9 @@ const testsByGraph = {
     testSmallCircleShortestPath,
     testSmallCircleShortestPathEnabledWeightCheck,
     testSmallCircleKShortestPathWithMultipleLimits,
-    testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimits
+    testSmallCircleKShortestPathWithMultipleLimitsWT,
+    testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimits,
+    testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimitsWT
   },
   completeGraph: {
     testCompleteGraphDfsUniqueVerticesPathD1,
@@ -4117,15 +4193,20 @@ const testsByGraph = {
     testCompleteGraphShortestPath,
     testCompleteGraphShortestPathEnabledWeightCheck,
     testCompleteGraphKShortestPathLimit1,
+    testCompleteGraphKShortestPathLimit1WT,
     testCompleteGraphKShortestPathLimit3,
-    testCompleteGraphKShortestPathEnabledWeightCheckMultiLimit
+    testCompleteGraphKShortestPathLimit3WT,
+    testCompleteGraphKShortestPathEnabledWeightCheckMultiLimit,
+    testCompleteGraphKShortestPathEnabledWeightCheckMultiLimitWT
   },
   easyPath: {
     testEasyPathAllCombinations,
     testEasyPathShortestPath,
     testEasyPathShortestPathEnabledWeightCheck,
     testEasyPathKShortestPathMultipleLimits,
-    testEasyPathKShortestPathEnabledWeightCheckMultipleLimits
+    testEasyPathKShortestPathMultipleLimitsWT,
+    testEasyPathKShortestPathEnabledWeightCheckMultipleLimits,
+    testEasyPathKShortestPathEnabledWeightCheckMultipleLimitsWT
   },
   advancedPath: {
     testAdvancedPathDfsUniqueVerticesPath,
@@ -4153,7 +4234,9 @@ const testsByGraph = {
     testAdvancedPathShortestPath,
     testAdvancedPathShortestPathEnabledWeightCheck,
     testAdvancedPathKShortestPathMultiLimit,
-    testAdvancedPathKShortestPathEnabledWeightCheckMultiLimit
+    testAdvancedPathKShortestPathMultiLimitWT,
+    testAdvancedPathKShortestPathEnabledWeightCheckMultiLimit,
+    testAdvancedPathKShortestPathEnabledWeightCheckMultiLimitWT
   },
   largeBinTree: {
     testLargeBinTreeAllCombinations,
