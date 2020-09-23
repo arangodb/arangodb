@@ -1,6 +1,11 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Added scheduler thread creation/destruction metrics:
+
+  - `arangodb_scheduler_threads_started`: Number of scheduler threads started
+  - `arangodb_scheduler_threads_stopped`: Number of scheduler threads stopped
+
 * Added startup option `--query.max-runtime` to limit the maximum runtime of all
   AQL queries to a specified threshold value (in seconds). By default, the
   threshold is 0, meaning that the runtime of AQL queries is not limited.
