@@ -1,5 +1,9 @@
 devel
 -----
+
+* Fixed a possible crash during instantiation of an AQL graph traversal.
+  Reported in #12597.
+
 * Added new ArangoSearch "pipeline" analyzer type
 
 * Reduce the number of dropped followers when running larger (>= 128 MB)
