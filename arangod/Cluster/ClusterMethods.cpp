@@ -76,6 +76,7 @@
 #include "ClusterEngine/ClusterEngine.h"
 
 #include <velocypack/Buffer.h>
+#include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -123,49 +124,6 @@ T addFigures(VPackSlice const& v1, VPackSlice const& v2,
   }
 
   return value;
-}
-
-void recursiveAdd(VPackSlice const& value, VPackBuilder& builder) {
-  TRI_ASSERT(value.isObject());
-  TRI_ASSERT(builder.slice().isObject());
-  TRI_ASSERT(builder.isClosed());
-
-  VPackBuilder updated;
-
-  updated.openObject();
-
-  bool cacheInUse = Helper::getBooleanValue(value, "cacheInUse", false);
-  bool totalCacheInUse = cacheInUse || Helper::getBooleanValue(builder.slice(), "cacheInUse", false);
-  updated.add("cacheInUse", VPackValue(totalCacheInUse));
-
-  if (cacheInUse) {
-    updated.add("cacheLifeTimeHitRate", VPackValue(addFigures<double>(value, builder.slice(),
-                                                                      {"cacheLifeTimeHitRate"})));
-    updated.add("cacheWindowedHitRate", VPackValue(addFigures<double>(value, builder.slice(),
-                                                                      {"cacheWindowedHitRate"})));
-  }
-  updated.add("cacheSize", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                               {"cacheSize"})));
-  updated.add("cacheUsage", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                               {"cacheUsage"})));
-  updated.add("documentsSize", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                               {"documentsSize"})));
-
-  updated.add("indexes", VPackValue(VPackValueType::Object));
-  updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                     {"indexes", "count"})));
-  updated.add("size", VPackValue(addFigures<size_t>(value, builder.slice(),
-                                                    {"indexes", "size"})));
-  updated.close();
-
-  updated.close();
-
-  TRI_ASSERT(updated.slice().isObject());
-  TRI_ASSERT(updated.isClosed());
-
-  builder = VPackCollection::merge(builder.slice(), updated.slice(), true, false);
-  TRI_ASSERT(builder.slice().isObject());
-  TRI_ASSERT(builder.isClosed());
 }
 
 /// @brief begin a transaction on some leader shards
@@ -857,6 +815,116 @@ bool smartJoinAttributeChanged(LogicalCollection const& collection, VPackSlice c
   return !Helper::equal(n, o, false);
 }
 
+void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart, 
+                             VPackSlice value, VPackBuilder& builder) {
+  TRI_ASSERT(value.isObject());
+  TRI_ASSERT(builder.slice().isObject());
+  TRI_ASSERT(builder.isClosed());
+
+  VPackBuilder updated;
+
+  updated.openObject();
+
+  bool cacheInUse = Helper::getBooleanValue(value, "cacheInUse", false);
+  bool totalCacheInUse = cacheInUse || Helper::getBooleanValue(builder.slice(), "cacheInUse", false);
+  updated.add("cacheInUse", VPackValue(totalCacheInUse));
+
+  if (cacheInUse) {
+    updated.add("cacheLifeTimeHitRate", VPackValue(addFigures<double>(value, builder.slice(),
+                                                                      {"cacheLifeTimeHitRate"})));
+    updated.add("cacheWindowedHitRate", VPackValue(addFigures<double>(value, builder.slice(),
+                                                                      {"cacheWindowedHitRate"})));
+  }
+  updated.add("cacheSize", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                               {"cacheSize"})));
+  updated.add("cacheUsage", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                               {"cacheUsage"})));
+  updated.add("documentsSize", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                               {"documentsSize"})));
+
+  updated.add("indexes", VPackValue(VPackValueType::Object));
+  VPackSlice indexes = builder.slice().get("indexes");
+  if (isSmartEdgeCollectionPart || indexes.isObject()) {
+    // don't count indexes multiple times - all shards have the same indexes!
+    // in addition: don't count the indexes from the sub-collections of a smart
+    // edge collection multiple times!
+    updated.add("count", indexes.get("count"));
+  } else {
+    updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                       {"indexes", "count"})));
+  }
+  updated.add("size", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                    {"indexes", "size"})));
+  updated.close(); // "indexes"
+
+  if (details && value.hasKey("engine")) {
+    updated.add("engine", VPackValue(VPackValueType::Object));
+    if (isSmartEdgeCollectionPart) {
+      // don't count documents from the sub-collections of a smart edge collection
+      // multiple times
+      updated.add("documents", builder.slice().get(std::vector<std::string>{"engine", "documents"}));
+    } else {
+      updated.add("documents", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                             {"engine", "documents"})));
+    }
+    // merge indexes together
+    std::map<uint64_t, std::pair<VPackSlice, VPackSlice>> indexes;
+
+    updated.add("indexes", VPackValue(VPackValueType::Array));
+    VPackSlice rocksDBValues = value.get("engine");
+
+    if (!isSmartEdgeCollectionPart) {
+      for (auto const& it : VPackArrayIterator(rocksDBValues.get("indexes"))) {
+        VPackSlice idSlice = it.get("id");
+        if (!idSlice.isNumber()) {
+          continue;
+        }
+        indexes.emplace(idSlice.getNumber<uint64_t>(), std::make_pair(it, VPackSlice::noneSlice()));
+      }
+    }
+  
+    rocksDBValues = builder.slice().get("engine");
+    if (rocksDBValues.isObject()) {
+      for (auto const& it : VPackArrayIterator(rocksDBValues.get("indexes"))) {
+        VPackSlice idSlice = it.get("id");
+        if (!idSlice.isNumber()) {
+          continue;
+        }
+        auto idx = indexes.find(idSlice.getNumber<uint64_t>());
+        if (idx == indexes.end()) {
+          indexes.emplace(idSlice.getNumber<uint64_t>(), std::make_pair(it, VPackSlice::noneSlice()));
+        } else {
+          (*idx).second.second = it;
+        }
+      }
+    }
+
+    for (auto const& it : indexes) {
+      updated.openObject();
+      updated.add("type", it.second.first.get("type"));
+      updated.add("id", it.second.first.get("id"));
+      uint64_t count = it.second.first.get("count").getNumber<uint64_t>();
+      if (it.second.second.isObject()) {
+        count += it.second.second.get("count").getNumber<uint64_t>();
+      }
+      updated.add("count", VPackValue(count));
+      updated.close();
+    }
+
+    updated.close(); // "indexes" array
+    updated.close(); // "engine" object
+  }
+
+  updated.close();
+
+  TRI_ASSERT(updated.slice().isObject());
+  TRI_ASSERT(updated.isClosed());
+
+  builder = VPackCollection::merge(builder.slice(), updated.slice(), true, false);
+  TRI_ASSERT(builder.slice().isObject());
+  TRI_ASSERT(builder.isClosed());
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -976,7 +1044,8 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
 
 futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
                                                       std::string const& dbname,
-                                                      std::string const& collname) {
+                                                      std::string const& collname, 
+                                                      bool details) {
   // Set a few variables needed for our work:
   ClusterInfo& ci = feature.clusterInfo();
 
@@ -989,6 +1058,7 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
 
   network::RequestOptions reqOpts;
   reqOpts.database = dbname;
+  reqOpts.param("details", details ? "true" : "false");
   reqOpts.timeout = network::Timeout(300.0);
 
   // If we get here, the sharding attributes are not only _key, therefore
@@ -1007,14 +1077,14 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
     futures.emplace_back(std::move(future));
   }
 
-  auto cb = [](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
-    auto handler = [](Result& result, VPackBuilder& builder, ShardID&,
-                      VPackSlice answer) mutable -> void {
+  auto cb = [details](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
+    auto handler = [details](Result& result, VPackBuilder& builder, ShardID&,
+                             VPackSlice answer) mutable -> void {
       if (answer.isObject()) {
         VPackSlice figures = answer.get("figures");
         // add to the total
         if (figures.isObject()) {
-          recursiveAdd(figures, builder);
+          aggregateClusterFigures(details, false, figures, builder);
         }
       } else {
         // didn't get the expected response
@@ -1023,8 +1093,7 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
     };
     auto pre = [](Result&, VPackBuilder& builder) -> void {
       // initialize to empty object
-      builder.openObject();
-      builder.close();
+      builder.add(VPackSlice::emptyObjectSlice());
     };
     return handleResponsesFromAllShards(results, handler, pre);
   };
@@ -2569,7 +2638,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     }
   }
   return usableCollectionPointers;
-}  // namespace arangodb
+}  
 
 std::string const apiStr("/_admin/backup/");
 

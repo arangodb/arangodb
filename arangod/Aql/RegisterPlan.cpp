@@ -34,6 +34,7 @@
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/SubqueryEndExecutionNode.h"
+#include "Basics/Exceptions.h"
 #include "Containers/Enumerate.h"
 
 #include <velocypack/Builder.h>
@@ -47,6 +48,10 @@ using namespace arangodb::aql;
 // Requires RegisterPlan to be defined
 VarInfo::VarInfo(unsigned int depth, RegisterId registerId)
     : depth(depth), registerId(registerId) {
+  if (registerId >= RegisterPlan::MaxRegisterId) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT, 
+                                   std::string("too many registers (") + std::to_string(RegisterPlan::MaxRegisterId) + ") needed for AQL query");
+  }
   TRI_ASSERT(registerId < RegisterPlanT<ExecutionNode>::MaxRegisterId);
 }
 
