@@ -89,11 +89,10 @@ struct IResearchViewMeta;  // forward declaration
 struct Field {
   static void setPkValue(Field& field, LocalDocumentId::BaseType const& pk);
 
-  Field() = default;
-  Field(Field&& rhs);
-  Field& operator=(Field&& rhs);
-
-  irs::string_ref const& name() const noexcept { return _name; }
+  irs::string_ref const& name() const noexcept {
+    TRI_ASSERT(!_name.null());
+    return _name;
+  }
 
   irs::flags const& features() const {
     TRI_ASSERT(_features);

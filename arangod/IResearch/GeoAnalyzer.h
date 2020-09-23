@@ -100,6 +100,7 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
   S2RegionTermIndexer _indexer;
   std::string _latitude;
   std::string _longitude;
+  S2LatLng _point;
   bool _fromArray;
 };
 

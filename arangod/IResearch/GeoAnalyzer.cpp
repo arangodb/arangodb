@@ -390,30 +390,38 @@ bool GeoPointAnalyzer::parsePoint(VPackSlice json, S2LatLng& point) const {
 }
 
 bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
-  S2LatLng point;
-  if (!parsePoint(iresearch::slice(value), point)) {
+  if (!parsePoint(iresearch::slice(value), _point)) {
     return false;
   }
 
-  GeoAnalyzer::reset(_indexer.GetIndexTerms(point.ToPoint(), {}));
+  GeoAnalyzer::reset(_indexer.GetIndexTerms(_point.ToPoint(), {}));
   return true;
 }
 
 /*static*/ VPackSlice GeoPointAnalyzer::store(
     irs::token_stream const* ctx,
-    VPackSlice slice,
+    [[maybe_unused]] VPackSlice slice,
     VPackBuffer<uint8_t>& buf) {
+  TRI_ASSERT(ctx);
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* impl = dynamic_cast<GeoPointAnalyzer const*>(ctx);
+  TRI_ASSERT(impl);
+
+  {
+    S2LatLng point;
+    if (!impl->parsePoint(slice, point)) {
+      return VPackSlice::noneSlice();
+    }
+    TRI_ASSERT(point == impl->_point);
+  }
 #else
   auto* impl = static_cast<GeoPointAnalyzer const*>(ctx);
 #endif
-  TRI_ASSERT(impl);
 
-  S2LatLng point;
-  if (!impl->parsePoint(slice, point)) {
-    return VPackSlice::noneSlice();
-  }
+  // reuse already parsed point
+  auto& point = impl->_point;
+  TRI_ASSERT(point.is_valid());
 
   VPackBuilder array(buf);
   array.openArray();

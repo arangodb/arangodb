@@ -300,26 +300,6 @@ namespace iresearch {
   sstream.reset(field._value);
 }
 
-Field::Field(Field&& rhs)
-    : _features(rhs._features),
-      _analyzer(std::move(rhs._analyzer)),
-      _name(std::move(rhs._name)),
-      _storeValues(std::move(rhs._storeValues)) {
-  rhs._features = nullptr;
-}
-
-Field& Field::operator=(Field&& rhs) {
-  if (this != &rhs) {
-    _features = rhs._features;
-    _analyzer = std::move(rhs._analyzer);
-    _name = std::move(rhs._name);
-    _storeValues = std::move(rhs._storeValues);
-    rhs._features = nullptr;
-  }
-
-  return *this;
-}
-
 // ----------------------------------------------------------------------------
 // --SECTION--                                     FieldIterator implementation
 // ----------------------------------------------------------------------------
@@ -459,10 +439,9 @@ bool FieldIterator::setValue(VPackSlice const value,
   _value._features = &(pool->features());
 
   auto* storeFunc = pool->storeFunc();
-
-  if (storeFunc) {
-    _value._value = iresearch::ref<irs::byte_type>(storeFunc(analyzer.get(), value, _buffer));
-  }
+  _value._value = storeFunc
+    ? iresearch::ref<irs::byte_type>(storeFunc(analyzer.get(), value, _buffer))
+    : irs::bytes_ref::NIL;
 
   return true;
 }
