@@ -1,15 +1,13 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
-* fixed and extended LDAP log messages
+* Fixed and extended LDAP log messages.
 
-* added LDAP_OFF if referrals and restart are false
+* Added LDAP_OFF if referrals and restart are false.
 
-* if LDAP search fails, also retry (update to given number of retries)
+* If LDAP search fails, also retry (update to given number of retries).
 
 * Fixed inifinite reload of the login window after logout of an LDAP user.
-
-* Updated rclone to 1.53.0.
 
 * Add attributes `database` and `user` when tracking current and slow AQL
   queries.
