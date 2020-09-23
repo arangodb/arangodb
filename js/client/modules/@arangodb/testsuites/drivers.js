@@ -30,7 +30,7 @@ const functionsDocumentation = {
   'driver': 'generic driver test - requires driver adaptor script',
 };
 const optionsDocumentation = [
-  '   - `driversource`: directory of the arangodb-php driver',
+  '   - `driversource`: directory of the respective driver',
   '   - `driverScript`: script to invoke inside the driver',
   '   - `driverScriptInterpreter`: interpreter to invoke script whith',
   '   - `driverOptions`: additional arguments to pass via the commandline'
@@ -121,7 +121,6 @@ function driver (options) {
     }
     let start = Date();
     let status = true;
-    //const res = executeExternalAndWait('bash', args, false, [], options.driversource);
     const res = executeExternal(options.driverScriptInterpreter, args, true, [], options.driversource);
 
     let allBuff = '';
