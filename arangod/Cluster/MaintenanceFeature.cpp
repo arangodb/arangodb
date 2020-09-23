@@ -957,8 +957,8 @@ void MaintenanceFeature::proceed() {
 void MaintenanceFeature::addDirty(std::string const& database) {
   server().getFeature<ClusterFeature>().addDirty(database);
 }
-void MaintenanceFeature::addDirty(std::unordered_set<std::string> const& databases) {
-  server().getFeature<ClusterFeature>().addDirty(databases);
+void MaintenanceFeature::addDirty(std::unordered_set<std::string> const& databases, bool callNotify) {
+  server().getFeature<ClusterFeature>().addDirty(databases, callNotify);
 }
 
 std::unordered_set<std::string> MaintenanceFeature::pickRandomDirty(size_t n) {

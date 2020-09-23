@@ -71,7 +71,7 @@ arangodb::Result diffPlanLocal(
   uint64_t planIndex, std::unordered_set<std::string> dirty,
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature::errors_t& errors,
-  std::unordered_set<DatabaseID>& makeDirty,
+  std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
   std::vector<std::shared_ptr<ActionDescription>>& actions,
   MaintenanceFeature::ShardActionMap const& shardActionMap);
 
@@ -189,16 +189,15 @@ arangodb::Result reportInCurrent(
  * @param  local     Local snapshot
  * @param  serverId  My server's uuid
  * @param  feature   Maintenance feature
- *
- * @return           Success story (always ok)
  */
-arangodb::Result syncReplicatedShardsWithLeaders(
+void syncReplicatedShardsWithLeaders(
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
   std::unordered_set<std::string> const& dirty,
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& current,
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature,
-  MaintenanceFeature::ShardActionMap const& shardActionMap);
+  MaintenanceFeature::ShardActionMap const& shardActionMap,
+  std::unordered_set<std::string>& makeDirty);
 
 
 }  // namespace maintenance

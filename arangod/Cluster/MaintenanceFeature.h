@@ -330,7 +330,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
    * @brief mark and list dirty databases
    */
   void addDirty(std::string const& database);
-  void addDirty(std::unordered_set<std::string> const& databases);
+  void addDirty(std::unordered_set<std::string> const& databases, bool callNotify);
   std::unordered_set<std::string> dirty(
     std::unordered_set<std::string> const& = std::unordered_set<std::string>());
   /// @brief get n random db names

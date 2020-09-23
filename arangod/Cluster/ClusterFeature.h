@@ -97,7 +97,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
    * @brief Add databases to dirty list
    */
   void addDirty(std::string const& database);
-  void addDirty(std::unordered_set<std::string> const& databases);
+  void addDirty(std::unordered_set<std::string> const& databases, bool callNotify);
   void addDirty(std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& changeset);
   std::unordered_set<std::string> allDatabases() const;
 

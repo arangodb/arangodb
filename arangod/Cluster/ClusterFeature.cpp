@@ -781,7 +781,7 @@ void ClusterFeature::allocateMembers() {
   _allocated = true;
 }
 
-void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases) {
+void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, bool callNotify) {
   if (databases.size() > 0) {
     MUTEX_LOCKER(guard, _dirtyLock);
     for (auto const& database : databases) {
@@ -790,9 +790,12 @@ void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases) 
           << "adding " << database << " to dirty databases";
       }
     }
-    notify();
+    if (callNotify) {
+      notify();
+    }
   }
 }
+
 void ClusterFeature::addDirty(std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& databases) {
   if (databases.size() > 0) {
     MUTEX_LOCKER(guard, _dirtyLock);
