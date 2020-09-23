@@ -430,8 +430,9 @@ bool FieldIterator::setValue(VPackSlice const value,
     return false;
   }
 
-  // init stream
-  analyzer->reset(valueRef);
+  if (!analyzer->reset(valueRef)) {
+    return false;
+  }
 
   // set field properties
   _value._name = _nameBuffer;

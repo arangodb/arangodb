@@ -220,13 +220,10 @@ bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2LatLng& out) {
     return false;
   }
 
-  auto const latlng = S2LatLng::FromDegrees(lat, lng);
+  // FIXME Normalized()?
+  out = S2LatLng::FromDegrees(lat, lng).Normalized();
 
-  if (!latlng.is_valid()) {
-    return false;
-  }
-
-  return true;
+  return out.is_valid();
 }
 
 template<typename Analyzer>
@@ -421,7 +418,10 @@ bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
 
   // reuse already parsed point
   auto& point = impl->_point;
-  TRI_ASSERT(point.is_valid());
+
+  if (!point.is_valid()) {
+    return VPackSlice::noneSlice();
+  }
 
   VPackBuilder array(buf);
   array.openArray();

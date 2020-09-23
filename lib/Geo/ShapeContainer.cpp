@@ -56,13 +56,12 @@ using namespace arangodb;
 using namespace arangodb::geo;
 
 Result ShapeContainer::parseCoordinates(VPackSlice const& json, bool geoJson) {
-  TRI_ASSERT(_data == nullptr);
   if (!json.isArray() || json.length() < 2) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
   }
 
-  VPackSlice lat = json.at(geoJson ? 1 : 0);
-  VPackSlice lng = json.at(geoJson ? 0 : 1);
+  VPackSlice lat = json.at(size_t(geoJson));
+  VPackSlice lng = json.at(1 - size_t(geoJson));
   if (!lat.isNumber() || !lng.isNumber()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
   }
