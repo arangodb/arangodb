@@ -172,9 +172,12 @@ function StreamCursorSuite() {
 
     // Regression test, this led to an issue on shutdown
     testNotCleaningUp: function () {
-      let cursor = db._query("FOR x IN 1..10 RETURN x", {}, { batchSize: 2, count: true, stream: true });
+      let cursor = db._query("FOR x IN 1..10 RETURN x", {}, { batchSize: 2, count: true, stream: true, ttl: 3 });
       assertEqual(cursor.hasNext(), true);
-      assertEqual(cursor._hasMore, true);
+      if (cursor._hasMore) { // only exists in shell
+        assertEqual(cursor._hasMore, true);
+      }
+      require("internal").sleep(5);
     }
   };
 }
