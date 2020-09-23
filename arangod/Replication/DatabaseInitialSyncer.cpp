@@ -1309,6 +1309,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       physical->revisionTree(*trx);
   if (!treeLocal) {
     // local collection does not support syncing by revision, fall back to keys
+    guard.fire();
     return fetchCollectionSyncByKeys(coll, leaderColl, maxTick);
   }
   physical->removeRevisionTreeBlocker(blockerId);

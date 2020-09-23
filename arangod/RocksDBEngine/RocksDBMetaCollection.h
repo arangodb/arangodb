@@ -84,6 +84,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
                                                 bool force);
 
   Result rebuildRevisionTree() override;
+  void rebuildRevisionTree(std::unique_ptr<rocksdb::Iterator>& iter);
 
   void revisionTreeSummary(VPackBuilder& builder);
 
