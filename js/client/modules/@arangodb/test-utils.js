@@ -928,7 +928,7 @@ const parseRspecJson = function (testCase, res, totalDuration) {
   let status = (testCase.status === 'passed');
 
   if (res.hasOwnProperty(tName)) {
-    throw new Error(`duplicate testcase name in ${tName} ${JSON.stringify(testCase)}`)
+    throw new Error(`duplicate testcase name in ${tName} ${JSON.stringify(testCase)}`);
   }
   res[tName] = {
     status: status,
