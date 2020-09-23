@@ -254,7 +254,7 @@ EvalResult Prim_VarSet(Machine& ctx, VPackSlice const params, VPackBuilder& resu
 EvalResult Prim_Dict(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   VPackObjectBuilder ob(&result);
   for (auto&& pair : VPackArrayIterator(params)) {
-    if (pair.length() == 2) {
+    if (pair.isArray() && pair.length() == 2) {
       if (pair.at(0).isString()) {
         result.add(pair.at(0).stringRef(), pair.at(1));
         continue;
