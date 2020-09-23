@@ -1,6 +1,12 @@
 v3.6.7 (XXXX-XX-XX)
 -------------------
 
+* Fix undefined behavior when accessing the `/_admin/metrics` API to retrieve
+  metrics when the server statistics history bookkeeping was turned off via
+  `--server.statistics-history false`. The default value for this option is
+  `true`, so the effect is limited to installations which have changed the
+  default and are using the API.
+
 * Make the reboot tracker catch failed coordinators, too. Previously the reboot
   tracker was invoked only when a DB server failed or was restarted, and when a
   coordinator was restarted. Now it will also act if a coordinator just fails
