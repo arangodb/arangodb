@@ -472,6 +472,88 @@ namespace norm_vpack {
     norm_vpack_normalizer);
 } // namespace norm_vpack
 
+namespace calculation_vpack {
+  class CalculationAnalyzer final : public irs::analysis::analyzer{
+  public:
+
+    static arangodb::SystemDatabaseFeature* dbFeature;
+
+    static constexpr irs::string_ref type_name() noexcept {
+      return "calculation";
+    }
+
+    static bool normalize(const irs::string_ref& /*args*/, std::string& out) {
+      out.resize(VPackSlice::emptyObjectSlice().byteSize());
+      std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
+      return true;
+    }
+
+    static irs::analysis::analyzer::ptr make(irs::string_ref const& /*args*/) {
+      return std::make_shared<CalculationAnalyzer>(*dbFeature->use());
+    }
+
+    CalculationAnalyzer(TRI_vocbase_t& vocbase)
+      : irs::analysis::analyzer(irs::type<CalculationAnalyzer>::get()),
+        _ctx(_vocbase),
+        //_trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+        //  {}, {}, {}, arangodb::transaction::Options()),
+        _query(std::shared_ptr<arangodb::transaction::Context>(std::shared_ptr<int>(), &_ctx), arangodb::aql::QueryString("RETURN 'CALCULON'"),
+               std::shared_ptr<arangodb::velocypack::Builder>(), std::make_shared<arangodb::velocypack::Builder>()){
+      // TODO: check query somehow
+      // TODO: Forbid to use TOKENS inside query -> problems on recovery as analyzers are not available for querying!
+    }
+
+    virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+      if (type == irs::type<irs::increment>::id()) {
+        return &_inc;
+      }
+
+      return type == irs::type<irs::term_attribute>::id()
+        ? &_term
+        : nullptr;
+    }
+
+    virtual bool next() override {
+      if (_queryResult.ok() && _has_data) {
+        _has_data = false;
+        if (_queryResult.data->slice().isArray()) {
+          auto value = _queryResult.data->slice().at(0);
+          _str = value.copyString(); // TODO: maybe just process all with copyBinary?
+          _term.value = irs::ref_cast<irs::byte_type>(irs::string_ref(_str));
+          return true;
+        } else { // TODO: remove me!!!
+          _str = _queryResult.data->slice().typeName();
+          _term.value = irs::ref_cast<irs::byte_type>(irs::string_ref(_str));
+          return true;
+        }
+      }
+      return false;
+    }
+
+    virtual bool reset(irs::string_ref const&) noexcept override {
+      _query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      _query.execute(_queryResult);
+      _has_data = true;
+      return _queryResult.ok();
+    }
+
+  private:
+    irs::term_attribute _term;
+    irs::increment _inc;
+    arangodb::transaction::StandaloneContext _ctx;
+    arangodb::aql::Query _query;
+    //arangodb::transaction ::Methods _trx;
+    arangodb::aql::QueryResult _queryResult;
+    bool _has_data{ false };
+    std::string _str;
+  }; // CalculationAnalyzer
+
+  arangodb::SystemDatabaseFeature* CalculationAnalyzer::dbFeature;
+
+  REGISTER_ANALYZER_VPACK(CalculationAnalyzer, CalculationAnalyzer::make,
+                          CalculationAnalyzer::normalize);
+}
+
 arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressionContext*/,
                                     arangodb::transaction::Methods* trx,
                                     arangodb::aql::VPackFunctionParameters const& args) {
@@ -2639,6 +2721,8 @@ void IResearchAnalyzerFeature::prepare() {
 
   // load all static analyzers
   _analyzers = getStaticAnalyzers();
+  auto& dbFeature = server().getFeature<SystemDatabaseFeature>();
+  calculation_vpack::CalculationAnalyzer::dbFeature = &dbFeature;
 }
 
 Result IResearchAnalyzerFeature::removeFromCollection(irs::string_ref const& name, irs::string_ref const& vocbase) {
