@@ -1,5 +1,9 @@
 devel
 -----
+
+* Fixed a possible crash during instantiation of an AQL graph traversal.
+  Reported in #12597.
+
 * Added new ArangoSearch "pipeline" analyzer type
 
 * Reduce the number of dropped followers when running larger (>= 128 MB)
@@ -49,9 +53,6 @@ devel
 
 * Fixed slightly wrong log level for authentication and also added login event
   to the standard log.
-
-* Fixed issue #12597: Fixed a crash in AQL traversals when using a graph which
-  contained a non-existent edge collection.
 
 * Ensure that the argument to an AQL OPTIONS clause is always an object
   which does not contain any dynamic (run-time) values. Previously, this
