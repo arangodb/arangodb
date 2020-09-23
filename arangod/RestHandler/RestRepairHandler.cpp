@@ -30,6 +30,7 @@
 #include <valarray>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
@@ -106,7 +107,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
   }
 
   try {
-    //rest::ResponseCode responseCode = rest::ResponseCode::OK; TODO
+    rest::ResponseCode responseCode = rest::ResponseCode::OK;
 
     if (!server().hasFeature<ClusterFeature>()) {
       LOG_TOPIC("b57dc", ERR, arangodb::Logger::CLUSTER)
@@ -117,6 +118,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       return RestStatus::DONE;
     }
     ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
+    AgencyCache& agencyCache = server().getFeature<ClusterFeature>().agencyCache();
 
     auto waitForNewPlan = [&clusterInfo] {
       using namespace std::chrono_literals;
@@ -129,11 +131,9 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       generateError(res);
       return RestStatus::DONE;
     }
-    /* TODO
-    std::shared_ptr<VPackBuilder> planBuilder = clusterInfo.getPlan();
 
-    VPackSlice plan = planBuilder->slice();
-
+    auto [b,i] = agencyCache.get("arango/Plan");
+    VPackSlice plan = b->slice().get(std::vector<std::string>{AgencyCommHelper::path(),"Plan"});
     VPackSlice planCollections = plan.get("Collections");
 
     ResultT<VPackBufferPtr> healthResult = getFromAgency("Supervision/Health");
@@ -192,12 +192,12 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       errorOccurred = !allCollectionsSucceeded;
 
       response.close();
-      }
+    }
 
     response.close();
 
     generateResult(responseCode, response, errorOccurred);
-    */
+
     if (auto res = waitForNewPlan(); !res.ok()) {
       LOG_TOPIC("293c5", WARN, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::repairDistributeShardsLike: "
