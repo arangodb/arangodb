@@ -535,19 +535,24 @@ exports.checkAvailableVersions = function(version) {
   if (version === undefined) {
     version = internal.version;
   }
-
+  let isStable = true;
   if (version.match(/beta|alpha|preview|milestone|devel/) !== null) {
-    log(
-      "You are using a milestone/alpha/beta/preview version ('" +
-        version +
-        "') of ArangoDB"
-    );
+    isStable = false;
+    if (internal.quiet !== true) {
+      log(
+        "You are using a milestone/alpha/beta/preview version ('" +
+          version +
+          "') of ArangoDB"
+      );
+    }
+  } 
+
+  if (isServer && internal.isEnterprise()) {
+    // don't check for version updates in arangod in Enterprise Edition
     return;
   }
-  
-  if (require('@arangodb').isServer || internal.isEnterprise()) {
-    // don't check for version updates in the server
-    // nor in the enterprise version
+  if (!isServer && internal.isEnterprise() && isStable) {
+    // don't check for version updates in arangosh in stable Enterprise Edition
     return;
   }
   
