@@ -251,6 +251,7 @@ auto HashedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     while (_currentGroup != _allGroups.end() && !output.isFull()) {
       writeCurrentGroupToOutput(output);
       ++_currentGroup;
+      ++_returnedGroups;
       output.advanceRow();
     }
   }
@@ -383,8 +384,8 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
     return call.getLimit();
   }
   // We know how many groups we have left
-  return std::min<size_t>(call.getLimit(),
-                          std::distance(_currentGroup, _allGroups.end()));
+  TRI_ASSERT(_returnedGroups <= _allGroups.size());
+  return std::min<size_t>(call.getLimit(), _allGroups.size() - _returnedGroups);
 }
 
 const HashedCollectExecutor::Infos& HashedCollectExecutor::infos() const noexcept {
