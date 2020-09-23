@@ -181,7 +181,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   // we should approximately visit every database without being dirty once per hour.
   // That is why we divide by 720.
   auto moreDirt = mfeature.pickRandomDirty(
-    std::ceil(mfeature.lastNumberOfDatabases() / 720.));
+    static_cast<size_t>(std::ceil(static_cast<double>(mfeature.lastNumberOfDatabases()) / 720.)));
   auto dirty = mfeature.dirty();
   // Add `moreDirt` to `dirty` but remove from `moreDirt`, if already dirty anyway.
   // Then we can reasonably be surprised if we find anything in a database in `moreDirt`.
