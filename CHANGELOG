@@ -1,5 +1,12 @@
 devel
 -----
+
+* Use rclone built from v1.51.0 source with go1.15.2 instead of prebuilt
+  v1.53.0 release.
+
+* Fixed a possible crash during instantiation of an AQL graph traversal.
+  Reported in #12597.
+
 * Added new ArangoSearch "pipeline" analyzer type
 
 * Reduce the number of dropped followers when running larger (>= 128 MB)

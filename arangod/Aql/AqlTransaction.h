@@ -66,7 +66,7 @@ class AqlTransaction : public transaction::Methods {
 
  protected:
   /// @brief add a collection to the transaction
-  Result processCollection(aql::Collection*);
+  Result processCollection(aql::Collection&);
 };
 }  // namespace aql
 }  // namespace arangodb
