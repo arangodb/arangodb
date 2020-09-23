@@ -172,10 +172,8 @@ class KShortestPathsExecutor {
   auto doOutputPath(OutputAqlItemRow& output) -> void;
 
   /**
-   * @brief get the id of a input vertex
+   * @brief get the id of an input vertex
    */
-  [[nodiscard]] auto getVertexId(bool isTarget, arangodb::velocypack::Slice& id) -> bool;
-
   [[nodiscard]] auto getVertexId(InputVertex const& vertex, InputAqlItemRow& row,
                                  arangodb::velocypack::Builder& builder,
                                  arangodb::velocypack::Slice& id) -> bool;
