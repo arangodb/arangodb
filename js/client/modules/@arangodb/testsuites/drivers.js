@@ -30,7 +30,7 @@ const functionsDocumentation = {
   'driver': 'generic driver test - requires driver adaptor script',
 };
 const optionsDocumentation = [
-  '   - `driversource`: directory of the java driver',
+  '   - `driversource`: directory of the arangodb-php driver',
   '   - `driverScript`: script to invoke inside the driver',
   '   - `driverScriptInterpreter`: interpreter to invoke script whith',
   '   - `driverOptions`: additional arguments to pass via the commandline'
