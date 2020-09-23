@@ -51,18 +51,15 @@ class ClusterTraverserCache;
 
 namespace velocypack {
 class Builder;
+class HashedStringRef;
 }
 
 namespace traverser {
 struct TraverserOptions;
 }
 
-struct ClusterCommResult;
 class ClusterFeature;
 struct OperationOptions;
-
-/// @brief convert ClusterComm error into arango error code
-int handleGeneralCommErrors(arangodb::ClusterCommResult const* res);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a copy of all HTTP headers to forward
@@ -209,8 +206,8 @@ Result fetchEdgesFromEngines(
 void fetchVerticesFromEngines(
     transaction::Methods& trx,
     graph::ClusterTraverserCache& travCache,
-    std::unordered_set<arangodb::velocypack::StringRef>& vertexId,
-    std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& result,
+    std::unordered_set<arangodb::velocypack::HashedStringRef>& vertexId,
+    std::unordered_map<arangodb::velocypack::HashedStringRef, arangodb::velocypack::Slice>& result,
     bool forShortestPath);
 
 ////////////////////////////////////////////////////////////////////////////////

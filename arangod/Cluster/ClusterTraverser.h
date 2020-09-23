@@ -29,16 +29,11 @@
 #include "Graph/TraverserOptions.h"
 #include "VocBase/LogicalCollection.h"
 
-namespace arangodb {
-class CollectionNameResolver;
-namespace transaction {
-class Methods;
-}
+#include <velocypack/HashedStringRef.h>
 
+namespace arangodb {
 namespace traverser {
 class ClusterEdgeCursor;
-
-class PathEnumerator;
 
 class ClusterTraverser final : public Traverser {
   friend class ClusterEdgeCursor;
@@ -89,13 +84,13 @@ class ClusterTraverser final : public Traverser {
   /// @brief build the (single) path enumerator of this traverser
   void createEnumerator();
 
-  std::unordered_map<arangodb::velocypack::StringRef, VPackSlice> _vertices;
+  std::unordered_map<arangodb::velocypack::HashedStringRef, VPackSlice> _vertices;
 
-  std::string _dbname;
+  std::string const _dbname;
 
   std::unordered_map<ServerID, aql::EngineId> const* _engines;
 
-  std::unordered_set<arangodb::velocypack::StringRef> _verticesToFetch;
+  std::unordered_set<arangodb::velocypack::HashedStringRef> _verticesToFetch;
 };
 
 }  // namespace traverser

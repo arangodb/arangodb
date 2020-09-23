@@ -59,7 +59,7 @@ ClusterTraverser::ClusterTraverser(arangodb::traverser::TraverserOptions* opts,
 }
 
 void ClusterTraverser::setStartVertex(std::string const& vid) {
-  arangodb::velocypack::StringRef const s(vid);
+  arangodb::velocypack::HashedStringRef const s(vid);
 
   auto it = _vertices.find(s);
   if (it == _vertices.end()) {
@@ -73,15 +73,15 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     }
   }
 
-  if (!vertexMatchesConditions(s, 0)) {
+  if (!vertexMatchesConditions(s.stringRef(), 0)) {
     // Start vertex invalid
     _done = true;
     return;
   }
   
-  arangodb::velocypack::StringRef persId = traverserCache()->persistString(s);
-  _vertexGetter->reset(persId);
-  _enumerator->setStartVertex(persId);
+  arangodb::velocypack::HashedStringRef persId = traverserCache()->persistString(s);
+  _vertexGetter->reset(persId.stringRef());
+  _enumerator->setStartVertex(persId.stringRef());
   _done = false;
 }
 
@@ -95,7 +95,7 @@ void ClusterTraverser::clear() {
 bool ClusterTraverser::getVertex(VPackSlice edge, std::vector<arangodb::velocypack::StringRef>& result) {
   bool res = _vertexGetter->getVertex(edge, result);
   if (res) {
-    arangodb::velocypack::StringRef const& other = result.back();
+    arangodb::velocypack::HashedStringRef other(result.back());
     if (_vertices.find(other) == _vertices.end()) {
       // Vertex not yet cached. Prepare it.
       _verticesToFetch.emplace(other);
@@ -109,9 +109,10 @@ bool ClusterTraverser::getSingleVertex(arangodb::velocypack::Slice edge,
                                        uint64_t depth, arangodb::velocypack::StringRef& targetVertexId) {
   bool res = _vertexGetter->getSingleVertex(edge, sourceVertexId, depth, targetVertexId);
   if (res) {
-    if (_vertices.find(targetVertexId) == _vertices.end()) {
+    arangodb::velocypack::HashedStringRef other(targetVertexId);
+    if (_vertices.find(other) == _vertices.end()) {
       // Vertex not yet cached. Prepare it.
-      _verticesToFetch.emplace(targetVertexId);
+      _verticesToFetch.emplace(other);
     }
   }
   return res;
@@ -133,16 +134,16 @@ void ClusterTraverser::fetchVertices() {
 }
 
 aql::AqlValue ClusterTraverser::fetchVertexData(arangodb::velocypack::StringRef idString) {
-  // TRI_ASSERT(idString.isString());
-  auto cached = _vertices.find(idString);
+  arangodb::velocypack::HashedStringRef hashedIdString(idString);
+  auto cached = _vertices.find(hashedIdString);
   if (cached == _vertices.end()) {
     // Vertex not yet cached. Prepare for load.
     
     // we need to make sure the idString remains valid afterwards
-    idString = _opts->cache()->persistString(idString);
-    _verticesToFetch.emplace(idString);
+    hashedIdString = _opts->cache()->persistString(hashedIdString);
+    _verticesToFetch.emplace(hashedIdString);
     fetchVertices();
-    cached = _vertices.find(idString);
+    cached = _vertices.find(hashedIdString);
   }
   // Now all vertices are cached!!
   TRI_ASSERT(cached != _vertices.end());
@@ -155,12 +156,13 @@ aql::AqlValue ClusterTraverser::fetchVertexData(arangodb::velocypack::StringRef 
 //////////////////////////////////////////////////////////////////////////////
 
 void ClusterTraverser::addVertexToVelocyPack(arangodb::velocypack::StringRef vid, VPackBuilder& result) {
-  auto cached = _vertices.find(vid);
+  arangodb::velocypack::HashedStringRef hashedIdString(vid);
+  auto cached = _vertices.find(hashedIdString);
   if (cached == _vertices.end()) {
     // Vertex not yet cached. Prepare for load.
-    _verticesToFetch.emplace(vid);
+    _verticesToFetch.emplace(hashedIdString);
     fetchVertices();
-    cached = _vertices.find(vid);
+    cached = _vertices.find(hashedIdString);
   }
   // Now all vertices are cached!!
   TRI_ASSERT(cached != _vertices.end());
