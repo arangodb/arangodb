@@ -42,13 +42,13 @@ HashedStringRef::HashedStringRef(Slice slice) {
   VELOCYPACK_ASSERT(slice.isString());
   ValueLength l;
   _data = slice.getString(l);
-  _length = l;
+  _length = static_cast<uint32_t>(l);
   _hash = hash(_data, _length);
 }
 
 HashedStringRef::HashedStringRef(StringRef const& other) noexcept 
   : _data(other.data()),
-    _length(other.size()),
+    _length(static_cast<uint32_t>(other.size())),
     _hash(hash(_data, _length)) {}
   
 /// @brief create a HashedStringRef from a VPack slice of type String
@@ -56,7 +56,7 @@ HashedStringRef& HashedStringRef::operator=(Slice slice) {
   VELOCYPACK_ASSERT(slice.isString());
   ValueLength l;
   _data = slice.getString(l);
-  _length = l;
+  _length = static_cast<uint32_t>(l);
   _hash = hash(_data, _length);
   return *this;
 }
@@ -64,7 +64,7 @@ HashedStringRef& HashedStringRef::operator=(Slice slice) {
 /// @brief create a HashedStringRef from another StringRef
 HashedStringRef& HashedStringRef::operator=(StringRef const& other) noexcept {
   _data = other.data();
-  _length = other.size();
+  _length = static_cast<uint32_t>(other.size());
   _hash = hash(_data, _length);
   return *this;
 }
