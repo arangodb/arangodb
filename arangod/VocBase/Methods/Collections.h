@@ -126,9 +126,6 @@ struct Collections {
   static futures::Future<Result> warmup(TRI_vocbase_t& vocbase,
                                         LogicalCollection const& coll);
 
-  static futures::Future<Result> upgrade(TRI_vocbase_t& vocbase,
-                                         LogicalCollection const& coll);
-
   static futures::Future<OperationResult> revisionId(Context& ctxt,
                                                      OperationOptions const& options);
 

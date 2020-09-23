@@ -591,23 +591,6 @@ RestStatus RestCollectionHandler::handleCommandPut() {
           standardResponse();
         }));
 
-  } else if (sub == "upgrade") {
-    OperationOptions options(_context);
-    return waitForFuture(
-        methods::Collections::upgrade(_vocbase, *coll).thenValue([this, coll, options](Result&& res) {
-          if (res.fail()) {
-            generateTransactionError(coll->name(),
-                                     OperationResult(res, options), "");
-            return;
-          }
-
-          {
-            VPackObjectBuilder obj(&_builder, true);
-            obj->add("result", VPackValue(res.ok()));
-          }
-
-          standardResponse();
-        }));
   }
 
   res = handleExtraCommandPut(coll, sub, _builder);

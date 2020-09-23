@@ -55,7 +55,6 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              VPackSlice const& info)
     : PhysicalCollection(collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId)),
-      _tempObjectId(basics::VelocyPackHelper::stringUInt64(info, StaticStrings::TempObjectId)),
       _revisionTreeApplied(0),
       _revisionTreeCreationSeq(0),
       _revisionTreeSerializedSeq(0),
@@ -84,8 +83,6 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              PhysicalCollection const* physical)
     : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
       _objectId(static_cast<RocksDBMetaCollection const*>(physical)->_objectId.load()),
-      _tempObjectId(
-          static_cast<RocksDBMetaCollection const*>(physical)->_tempObjectId.load()),
       _revisionTreeApplied(0),
       _revisionTreeCreationSeq(0),
       _revisionTreeSerializedSeq(0),
@@ -622,35 +619,6 @@ Result RocksDBMetaCollection::bufferTruncate(rocksdb::SequenceNumber seq) {
     std::unique_lock<std::mutex> guard(_revisionBufferLock);
     _revisionTruncateBuffer.emplace(seq);
   });
-  return res;
-}
-
-Result RocksDBMetaCollection::setObjectIds(std::uint64_t plannedObjectId,
-                                           std::uint64_t plannedTempObjectId) {
-  Result res;
-  auto& server = _logicalCollection.vocbase().server();
-  auto& selector = server.getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-
-  if (plannedObjectId == _objectId.load() && plannedTempObjectId != _tempObjectId) {
-    // just temp id has changed
-    std::uint64_t oldId = (plannedTempObjectId == 0) ? _tempObjectId.load() : 0;
-    _tempObjectId.store(plannedTempObjectId);
-    if (oldId != 0) {  // need to clean up the old range
-      RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(oldId);
-      res = rocksutils::removeLargeRange(engine.db(), bounds, true, true);
-    }
-  } else if (plannedTempObjectId != _tempObjectId) {
-    TRI_ASSERT(plannedObjectId != _objectId.load());
-    TRI_ASSERT(plannedObjectId != 0);
-    TRI_ASSERT(plannedObjectId == _tempObjectId.load());
-    // swapping in new range
-    _tempObjectId.store(plannedTempObjectId);
-    _objectId.store(plannedObjectId);
-    engine.addCollectionMapping(_objectId, _logicalCollection.vocbase().id(),
-                                _logicalCollection.id());
-  }
-
   return res;
 }
 
