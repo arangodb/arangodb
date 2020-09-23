@@ -58,8 +58,7 @@ VstCommTask<T>::VstCommTask(GeneralServer& server, ConnectionInfo info,
     : GeneralCommTask<T>(server, std::move(info), std::move(so)),
       _writeLoopActive(false),
       _numProcessing(0),
-      _authToken("", false, 0),
-      _authenticated(!this->_auth->isActive()),
+      _authToken("", !this->_auth->isActive(), 0),
       _authMethod(rest::AuthenticationMethod::NONE),
       _vstVersion(v) {}
 
@@ -271,10 +270,10 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t
     // the handler will take ownership of this pointer
     auto req = std::make_unique<VstRequest>(this->_connectionInfo, std::move(buffer),
                                             /*payloadOffset*/ headerLength, messageId);
-    req->setAuthenticated(_authenticated);
+    req->setAuthenticated(_authToken.authenticated());
     req->setUser(_authToken.username());
     req->setAuthenticationMethod(_authMethod);
-    if (_authenticated && this->_auth->userManager() != nullptr) {
+    if (_authToken.authenticated() && this->_auth->userManager() != nullptr) {
       // if we don't call checkAuthentication we need to refresh
       this->_auth->userManager()->refreshUser(this->_authToken.username());
     }
@@ -283,7 +282,8 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t
     // Separate superuser traffic:
     // Note that currently, velocystream traffic will never come from
     // a forwarding, since we always forward with HTTP.
-    if (_authMethod != AuthenticationMethod::NONE && _authenticated &&
+    if (_authMethod != AuthenticationMethod::NONE &&
+        _authToken.authenticated() &&
         this->_authToken.username().empty()) {
       stat.SET_SUPERUSER();
     }
@@ -460,7 +460,6 @@ template <SocketType T>
 void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId) {
   std::string authString;
   std::string user = "";
-  _authenticated = false;
   _authMethod = AuthenticationMethod::NONE;
 
   std::string encryption = header.at(2).copyString();
@@ -477,9 +476,17 @@ void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId) {
   }
 
   _authToken = this->_auth->tokenCache().checkAuthentication(_authMethod, authString);
-  _authenticated = _authToken.authenticated();
+  
+  // Separate superuser traffic:
+  // Note that currently, velocystream traffic will never come from
+  // a forwarding, since we always forward with HTTP.
+  if (_authMethod != AuthenticationMethod::NONE &&
+      _authToken.authenticated() &&
+      _authToken.username().empty()) {
+    this->statistics(mId).SET_SUPERUSER();
+  }
 
-  if (_authenticated || !this->_auth->isActive()) {
+  if (_authToken.authenticated() || !this->_auth->isActive()) {
     // simon: drivers expect a response for their auth request
     this->sendErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, mId,
                             TRI_ERROR_NO_ERROR, "auth successful");
