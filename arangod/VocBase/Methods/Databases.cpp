@@ -46,8 +46,8 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
-#include "V8Server/v8-dispatcher.h"
 #include "V8Server/v8-user-structures.h"
+#include "VocBase/Methods/Tasks.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
 
@@ -420,7 +420,7 @@ arangodb::Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemV
           return Result(res);
         }
 
-        TRI_RemoveDatabaseTasksV8Dispatcher(dbName);
+        arangodb::Task::removeTasksForDatabase(dbName);
         // run the garbage collection in case the database held some objects
         // which can now be freed
         TRI_RunGarbageCollectionV8(isolate, 0.25);

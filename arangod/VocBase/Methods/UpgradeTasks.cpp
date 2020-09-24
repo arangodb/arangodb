@@ -33,6 +33,7 @@
 #include "ClusterEngine/ClusterEngine.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -139,6 +140,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   // the order of systemCollections is important. If we're in _system db, the
   // UsersCollection needs to be first, otherwise, the GraphsCollection must be first.
   std::vector<std::string> systemCollections;
+  systemCollections.reserve(10);
   std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
   Result res;
 
@@ -192,8 +194,10 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   systemCollections.push_back(StaticStrings::AppsCollection);
   systemCollections.push_back(StaticStrings::AppBundlesCollection);
   systemCollections.push_back(StaticStrings::FrontendCollection);
-  systemCollections.push_back(StaticStrings::ModulesCollection);
-  systemCollections.push_back(StaticStrings::FishbowlCollection);
+  if (vocbase.server().getFeature<arangodb::DatabaseFeature>().useOldSystemCollections()) {
+    systemCollections.push_back(StaticStrings::ModulesCollection);
+    systemCollections.push_back(StaticStrings::FishbowlCollection);
+  }
 
   TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
     VPackBuilder testOptions;
