@@ -562,18 +562,14 @@ EvalResult Prim_ListSet(Machine& ctx, VPackSlice const params, VPackBuilder& res
   return {};
 }
 
-EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  if (!params.isArray() && params.length() != 2) {
-    return EvalError("expected exactly two parameters");
-  }
-
-  auto&& [slice, key] = unpackTuple<VPackSlice, VPackSlice>(params);
+namespace {
+EvalResultT<VPackSlice> ReadAttribute(VPackSlice slice, VPackSlice key) {
   if (!slice.isObject()) {
-    return EvalError("expect second parameter to be an object");
+    return EvalError("expect first parameter to be an object");
   }
 
   if (key.isString()) {
-    result.add(slice.get(key.stringRef()));
+    return slice.get(key.stringRef());
   } else if (key.isArray()) {
     std::vector<VPackStringRef> path;
     for (auto&& pathStep : VPackArrayIterator(key)) {
@@ -583,10 +579,73 @@ EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& r
       path.emplace_back(pathStep.stringRef());
     }
 
-    result.add(slice.get(path));
+    return slice.get(path);
   } else {
     return EvalError("key is neither array nor string");
   }
+}
+}
+
+EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isArray() && params.length() != 2) {
+    return EvalError("expected exactly two parameters");
+  }
+
+  auto&& [slice, key] = unpackTuple<VPackSlice, VPackSlice>(params);
+  auto res = ReadAttribute(slice, key);
+  if (res.fail()) {
+    return res.error();
+  }
+
+  result.add(res.value());
+  return {};
+}
+
+EvalResult Prim_AttribRefOr(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isArray() && params.length() != 3) {
+    return EvalError("expected exactly two parameters");
+  }
+
+  auto&& [slice, key, defaultValue] = unpackTuple<VPackSlice, VPackSlice, VPackSlice>(params);
+  if (!slice.isObject()) {
+    return EvalError("expect second parameter to be an object");
+  }
+
+  auto res = ReadAttribute(slice, key);
+  if (res.fail()) {
+    return res.error();
+  }
+
+  VPackSlice resultValue = res.value();
+  if (resultValue.isNone()) {
+    resultValue = defaultValue;
+  }
+
+  result.add(resultValue);
+  return {};
+}
+
+EvalResult Prim_AttribRefX(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isArray() && params.length() != 3) {
+    return EvalError("expected exactly two parameters");
+  }
+
+  auto&& [slice, key, defaultValue] = unpackTuple<VPackSlice, VPackSlice, VPackSlice>(params);
+  if (!slice.isObject()) {
+    return EvalError("expect second parameter to be an object");
+  }
+
+  auto res = ReadAttribute(slice, key);
+  if (res.fail()) {
+    return res.error();
+  }
+
+  VPackSlice resultValue = res.value();
+  if (resultValue.isNone()) {
+    return EvalError("key " + key.toJson() + " not present");
+  }
+
+  result.add(resultValue);
   return {};
 }
 
@@ -1023,6 +1082,8 @@ void RegisterAllPrimitives(Machine& ctx) {
 
   // Access operators
   ctx.setFunction("attrib-ref", Prim_AttribRef);
+  ctx.setFunction("attrib-ref-or", Prim_AttribRefOr);
+  ctx.setFunction("attrib-ref-x", Prim_AttribRefX);
   ctx.setFunction("attrib-get", Prim_AttribRef);
   ctx.setFunction("attrib-set", Prim_AttribSet);
 
