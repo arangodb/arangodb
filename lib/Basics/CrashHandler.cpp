@@ -60,7 +60,8 @@
 #endif
 
 #ifdef __linux__
-#include <dlfcn.h>
+#include <sys/auxv.h>
+#include <elf.h>
 #endif
 
 namespace {
@@ -224,10 +225,11 @@ size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const
   }
 
   {
-    Dl_info dlinfo;
-    dladdr((void*)&buildLogMessage, &dlinfo);
+    // AT_PHDR points to the program header, which is located after the ELF header.
+    // This allows us to calculate the base address of the executable.
+    auto baseAddr = getauxval(AT_PHDR) - sizeof(Elf64_Ehdr);
     appendNullTerminatedString("\nimage base address: 0x", p);
-    unsigned char const* x = reinterpret_cast<unsigned char const*>(dlinfo.dli_fbase);
+    unsigned char const* x = reinterpret_cast<unsigned char const*>(baseAddr);
     unsigned char const* s = reinterpret_cast<unsigned char const*>(&x);
     appendHexValue(s, sizeof(unsigned char const*), p);
   }
