@@ -38,6 +38,7 @@
 #include "analysis/token_streams.hpp"
 #include "analysis/text_token_stemming_stream.hpp"
 #include "analysis/text_token_normalizing_stream.hpp"
+#include "analysis/pipeline_token_stream.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/object_pool.hpp"
 
@@ -427,9 +428,38 @@ namespace norm_vpack {
     norm_vpack_normalizer);
 } // namespace norm_vpack
 
-aql::AqlValue aqlFnTokens(aql::ExpressionContext* /*expressionContext*/,
-                          transaction::Methods* trx,
-                          aql::VPackFunctionParameters const& args) {
+namespace pipeline_vpack {
+// FIXME implement proper vpack parsing
+irs::analysis::analyzer::ptr pipeline_vpack_builder(irs::string_ref const& args) {
+  auto slice = arangodb::iresearch::slice<char>(args);
+  if (!slice.isNone()) {//cannot be created without properties
+    return irs::analysis::analyzers::get("pipeline", irs::type<irs::text_format::json>::get(),
+      slice.toString(),
+      false);
+  }
+  return nullptr;
+}
+
+bool pipeline_vpack_normalizer(const irs::string_ref& args, std::string& out) {
+  std::string tmp;
+  auto slice = arangodb::iresearch::slice<char>(args);
+  if (!slice.isNone() && //cannot be created without properties
+    irs::analysis::analyzers::normalize(tmp, "pipeline", irs::type<irs::text_format::json>::get(),
+      slice.toString(), false)) {
+    auto vpack = VPackParser::fromJson(tmp);
+    out.assign(vpack->slice().startAs<char>(), vpack->slice().byteSize());
+    return true;
+  }
+  return false;
+}
+
+REGISTER_ANALYZER_VPACK(irs::analysis::pipeline_token_stream, pipeline_vpack_builder,
+  pipeline_vpack_normalizer);
+} // namespace pipeline_vpack
+
+arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressionContext*/,
+                                    arangodb::transaction::Methods* trx,
+                                    arangodb::aql::VPackFunctionParameters const& args) {
   if (ADB_UNLIKELY(args.empty() || args.size() > 2)) {
     irs::string_ref const message =
         "invalid arguments count while computing result for function 'TOKENS'";
@@ -809,18 +839,16 @@ arangodb::Result visitAnalyzers(
 
       auto& response = f.get();
 
-      if (response.error == arangodb::fuerte::Error::Timeout) {
+      if (response.error == arangodb::fuerte::Error::RequestTimeout) {
         // timeout, try another coordinator
         res = arangodb::Result{ arangodb::network::fuerteToArangoErrorCode(response) };
         continue;
+      } else if (response.fail()) { // any other error abort
+        return { arangodb::network::fuerteToArangoErrorCode(response) };
       }
 
       if (response.response->statusCode() == arangodb::fuerte::StatusNotFound) {
         return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
-      }
-
-      if (response.error != arangodb::fuerte::Error::NoError) {
-        return { arangodb::network::fuerteToArangoErrorCode(response) };
       }
 
       std::vector<VPackSlice> slices = response.response->slices();

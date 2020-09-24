@@ -134,10 +134,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   void adjustNumberDocuments(transaction::Methods&, int64_t) override;
 
-  Result upgrade() override;
-  bool didPartialUpgrade() override;
-  Result cleanupAfterUpgrade() override;
-
  protected:
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
                 RevisionId expectedRev, ManagedDocumentResult& previous,
@@ -145,7 +141,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
  private:
   /// @brief return engine-specific figures
-  void figuresSpecific(velocypack::Builder&) override;
+  void figuresSpecific(bool details, velocypack::Builder&) override;
 
   // @brief return the primary index
   // WARNING: Make sure that this instance

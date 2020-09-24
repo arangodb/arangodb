@@ -1,6 +1,137 @@
 devel
 -----
 
+* Added startup option `--database.old-system-collections` to toggle automatic
+  creation of system collections `_modules` and `_fishbowl`, along with their
+  internal usage. These collections are useful only in very few case, so it
+  is normally not worth to create them in all databases.
+  The `_modules` collection is only used to register custom JavaScript modules,
+  for which there exists no API, and `_fishbowl` is used to store the temporary
+  list of Foxx apps retrieved from the Github Foxx store.
+  If the option value is `false` (which is the default from v3.8 onwards), the
+  two collections will not be created for any new database. The `_fishbowl`
+  collection will still be created dynamically when needed. If the option value
+  is `true`, the collections will be created regularly as before.
+  The option will also be introduced to v3.7, where it will have a default
+  value of `true`, meaning the collections will still be created there.
+
+  Any functionality related to the `_modules` system collection is deprecated
+  and will be removed in ArangoDB v3.9.
+
+  Two side effects of turning this option off (which is the default) are:
+  * there will no be iteration over all databases at server startup just to check
+    the contents of all `_modules` collections.
+  * less collections/shards will be around for deployments that create a large
+    number of databases.
+  Already existing `_modules` and `_fishbowl` system collections will not be
+  modified by this PR, even though they will likely be empty and unused.
+
+* Don't iterate over all databases as server startup in order to initialize the
+  routing information. This is not necessary, as the routing information is
+  global and not tied to a specific database.
+
+  Any functionality related to the `_modules` system collection is deprecated 
+  and will be removed in ArangoDB v3.9.
+
+* Use rclone built from v1.51.0 source with go1.15.2 instead of prebuilt
+  v1.53.0 release.
+
+* Fixed a possible crash during instantiation of an AQL graph traversal.
+  Reported in #12597.
+
+* Added new ArangoSearch "pipeline" analyzer type
+
+* Reduce the number of dropped followers when running larger (>= 128 MB)
+  write transactions.
+
+* Fixed a bug in AQL COLLECT with OPTIONS { "hash" } that lead to a quadratic
+  runtime in the number of output rows.
+
+* Make the reboot tracker catch failed coordinators, too. Previously the
+  reboot tracker was invoked only when a DB server failed or was restarted, 
+  and when a coordinator was restarted. Now it will also act if a coordinator
+  just fails (without restart).
+
+* Added scheduler thread creation/destruction metrics:
+
+  - `arangodb_scheduler_threads_started`: Number of scheduler threads started
+  - `arangodb_scheduler_threads_stopped`: Number of scheduler threads stopped
+
+* Added replication metrics `arangodb_replication_initial_sync_bytes_received`
+  for the number of bytes received during replication initial sync operations
+  and `arangodb_replication_tailing_bytes_received` for the number of bytes
+  received for replication tailing requests.
+  Also added `arangodb_replication_failed_connects` to track the number of
+  connection failures or non-OK response during replication.
+
+* Added metrics `rocksdb_free_inodes` and `rocksdb_total_inodes` to track the
+  number of free inodes and the total/maximum number of inodes for the file
+  system the RocksDB database directory is located in. These metrics will 
+  always be 0 on Windows.
+
+* Fixed inifinite reload of the login window after logout of an LDAP user.
+
+* Added startup option `--query.max-runtime` to limit the maximum runtime of
+  all AQL queries to a specified threshold value (in seconds). By default,
+  the threshold is 0, meaning that the runtime of AQL queries is not limited.
+  Setting it to any positive value will restrict the runtime of all AQL
+  queries unless it is overwritten in the per-query "maxRuntime" query option.
+  Please note that setting this option will affect *all* queries in all
+  databases, and also queries issues for administration and database-internal
+  purposes.
+  If a query exceeds the configured runtime, it will be killed on the next
+  occasion when the query checks its own status. Killing is best effort, 
+  so it is not guaranteed that a query will no longer than exactly the 
+  configured amount of time.
+
+* Updated rclone to 1.53.0.
+
+* Fixed slightly wrong log level for authentication and also added login event
+  to the standard log.
+
+* Ensure that the argument to an AQL OPTIONS clause is always an object
+  which does not contain any dynamic (run-time) values. Previously, this
+  was only enforced for traversal options and options for data-modification
+  queries. This change extends the check to all occurrences of OPTIONS.
+
+* Added `details` option to figures command of a collection:
+  `collection.figures(details)`
+
+  Setting `details` to `true` will return extended storage engine-specific 
+  details to the figures. The details are intended for debugging ArangoDB
+  itself and their format is subject to change. There is not much use in using
+  the details from a client application.
+  By default, `details` is set to `false`, so no details are returned and the
+  behavior is identical to previous versions of ArangoDB.
+
+* Enforce a maximum result register usage limit in AQL queries. In an AQL
+  query, every user-defined or internal (unnamed) variable will need a 
+  register to store results in.
+
+  AQL queries that use more result registers than allowed (currently 1000) 
+  will now abort deterministically during the planning stage with error 32 
+  (`resource limit exceeded`) and the error message 
+  "too many registers (1000) needed for AQL query".
+
+  Before this fix, an AQL query that used more than 1000 result registers
+  crashed the server when assertions were turned on, and the behavior was 
+  undefined when assertions were turned off.
+
+* Implement RebootTracker usage for AQL queries in case of coordinator
+  restarts or failures. This will clean up the rest of an AQL query
+  on dbservers more quickly and in particular release locks faster.
+
+* Serialize maintenance actions for each shard. This addresses lost document
+  problems found in chaos testing.
+
+* Fixed an issue with audit logging misreporting some document requests as 
+  internal instead of logging the proper request information
+
+* Add option `--rocksdb.max-write-buffer-size-to-maintain` with default of 0.
+  This configures how much memory RocksDB is allowed to use for immutable
+  flushed memtables/write-buffers. The default of 0 will usually be good
+  for all purposes and restores the 3.6 memory usage for write-buffers.
+
 * Updated arangosync to 0.7.10.
 
 * Make followers in active failover run a compaction after they process a
@@ -26,6 +157,10 @@ devel
     the mount, in bytes
   * `arangodb_rocksdb_total_disk_space`: provides the total disk space of
     the mount, in bytes
+
+* Fixed some cases where subqueries in PRUNE did not result in a parse error,
+  but either in an incomprehensible error (in 3.7), or undefined behaviour
+  during execution (pre 3.7).
 
 * Apply user-defined idle connection timeouts for HTTP/2 and VST connections.
   The timeout value for idle HTTP/2 and VST connections can now be configured 
@@ -325,7 +460,7 @@ as well as the identifiers:
 * Hard-code returned "planVersion" attribute of collections to a value of 1.
   Before 3.7, the most recent Plan version from the agency was returned inside
   "planVersion".
-  In 3.7, the attribute contained the Plan version that was in use when the 
+  In 3.7, the attribute contained the Plan version that was in use when the
   in-memory LogicalCollection object was last constructed. The object was
   always reconstructed in case the underlying Plan data for the collection
   changed or when a collection contained links to arangosearch views.
@@ -340,11 +475,11 @@ as well as the identifiers:
 
 * Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late materialzation
   after OneShard optimization
-  
+
 * Improve performance of many non-subquery AQL queries, by optimizing away
   some storage overhead for subquery context data.
 
-* Improve performance of internal cluster Plan and Current reload operations. 
+* Improve performance of internal cluster Plan and Current reload operations.
 
 * Fixed issue #12349: arangosh compact Arangoerror 404.
 
@@ -389,12 +524,12 @@ as well as the identifiers:
   RETURN 1
   ```
 
-* Revive faster out-of-range comparator for secondary index scans that do a full 
-  collection index scan for index types "hash", "skiplist", "persistent". 
+* Revive faster out-of-range comparator for secondary index scans that do a full
+  collection index scan for index types "hash", "skiplist", "persistent".
 
 * Fixed internal issue #733: Primary sort compression in views now used properly.
 
-* Errors with error code 1200 (Arango conflict) will now get the HTTP response 
+* Errors with error code 1200 (Arango conflict) will now get the HTTP response
   code 409 (Conflict) instead of 412 (Precondition failed), unless "if-match" header
   was used in `_api/document` or `_api/gharial`.
 

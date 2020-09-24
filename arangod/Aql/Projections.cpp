@@ -23,6 +23,7 @@
 
 #include "Aql/Projections.h"
 #include "Basics/debugging.h"
+#include "Indexes/Index.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 

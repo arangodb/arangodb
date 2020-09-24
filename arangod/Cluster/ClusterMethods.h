@@ -49,6 +49,10 @@ namespace graph {
 class ClusterTraverserCache;
 }
 
+namespace velocypack {
+class Builder;
+}
+
 namespace traverser {
 struct TraverserOptions;
 }
@@ -56,7 +60,6 @@ struct TraverserOptions;
 struct ClusterCommResult;
 class ClusterFeature;
 struct OperationOptions;
-class TransactionState;
 
 /// @brief convert ClusterComm error into arango error code
 int handleGeneralCommErrors(arangodb::ClusterCommResult const* res);
@@ -79,21 +82,29 @@ bool shardKeysChanged(LogicalCollection const& collection, VPackSlice const& old
 bool smartJoinAttributeChanged(LogicalCollection const& collection, VPackSlice const& oldValue,
                                VPackSlice const& newValue, bool isPatch);
 
+/// @brief aggregate the results of multiple figures responses (e.g. from 
+/// multiple shards or for a smart edge collection)
+void aggregateClusterFigures(bool details, 
+                             bool isSmartEdgeCollectionPart,
+                             arangodb::velocypack::Slice value, 
+                             arangodb::velocypack::Builder& builder);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature&,
                                                        std::string const& dbname,
-                                                       std::string const& collname);
+                                                       std::string const& collname,
+                                                       OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Warmup index caches on Shards
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<Result> warmupOnCoordinator(ClusterFeature&,
-                                            std::string const& dbname,
-                                            std::string const& cid);
+futures::Future<Result> warmupOnCoordinator(ClusterFeature&, std::string const& dbname,
+                                            std::string const& cid,
+                                            OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns figures for a sharded collection
@@ -101,14 +112,16 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature&,
 
 futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature&,
                                                       std::string const& dbname,
-                                                      std::string const& collname);
+                                                      std::string const& collname, bool details,
+                                                      OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
-                                                    std::string const& collname);
+                                                    std::string const& collname,
+                                                    OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the selectivity estimates from DBservers
@@ -213,8 +226,8 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Methods& trx,
-                                                                 std::string const& collname);
+futures::Future<OperationResult> truncateCollectionOnCoordinator(
+    transaction::Methods& trx, std::string const& collname, OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush Wal on all DBservers

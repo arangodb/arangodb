@@ -41,6 +41,7 @@ class TakeoverShardLeadership : public ActionBase {
   virtual ~TakeoverShardLeadership();
 
   virtual bool first() override final;
+  void setState(ActionState state) override final;
 };
 
 }  // namespace maintenance

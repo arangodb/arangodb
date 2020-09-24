@@ -28,6 +28,7 @@
 #include "Futures/Future.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -125,10 +126,8 @@ struct Collections {
   static futures::Future<Result> warmup(TRI_vocbase_t& vocbase,
                                         LogicalCollection const& coll);
 
-  static futures::Future<Result> upgrade(TRI_vocbase_t& vocbase,
-                                         LogicalCollection const& coll);
-
-  static futures::Future<OperationResult> revisionId(Context& ctxt);
+  static futures::Future<OperationResult> revisionId(Context& ctxt,
+                                                     OperationOptions const& options);
 
   typedef std::function<void(velocypack::Slice const&)> DocCallback;
   /// @brief Helper implementation similar to ArangoCollection.all() in v8

@@ -80,7 +80,7 @@ struct BuilderCookie : public arangodb::TransactionState::Cookie {
 RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const& wp)
     : RocksDBIndex(wp->id(), wp->collection(), wp->name(), wp->fields(),
                    wp->unique(), wp->sparse(), wp->columnFamily(),
-                   wp->objectId(), wp->tempObjectId(), /*useCache*/ false),
+                   wp->objectId(), /*useCache*/ false),
       _wrapped(wp) {
   TRI_ASSERT(_wrapped);
 }
@@ -102,7 +102,7 @@ void RocksDBBuilderIndex::toVelocyPack(VPackBuilder& builder,
 /// insert index elements into the specified write batch.
 Result RocksDBBuilderIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
-                                   arangodb::velocypack::Slice const& slice,
+                                   arangodb::velocypack::Slice const slice,
                                    OperationOptions& options) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* ctx = dynamic_cast<::BuilderCookie*>(trx.state()->cookie(this));
@@ -127,8 +127,7 @@ Result RocksDBBuilderIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
 /// remove index elements and put it in the specified write batch.
 Result RocksDBBuilderIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
-                                   arangodb::velocypack::Slice const& slice,
-                                   OperationMode mode) {
+                                   arangodb::velocypack::Slice const slice) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* ctx = dynamic_cast<::BuilderCookie*>(trx.state()->cookie(this));
 #else
@@ -342,8 +341,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
       case RocksDBLogType::TrackedDocumentRemove:
         if (_lastObjectID == _objectId) {
           auto pair = RocksDBLogValue::trackedDocument(blob);
-          tmpRes = _index.remove(_trx, _methods, pair.first, pair.second,
-                                 Index::OperationMode::normal);
+          tmpRes = _index.remove(_trx, _methods, pair.first, pair.second);
           numRemoved++;
         }
         break;

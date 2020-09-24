@@ -333,7 +333,7 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
   auto queryOptions = std::make_shared<VPackBuilder>();
   queryOptions->openObject();
   if (activateTracing) {
-    queryOptions->add("profile", VPackValue(aql::PROFILE_LEVEL_TRACE_2));
+    queryOptions->add("profile", VPackValue(int(aql::ProfileLevel::TraceTwo)));
   }
   queryOptions->close();
   if (queryString.empty()) {
@@ -401,7 +401,6 @@ MockClusterServer::MockClusterServer() : MockServer() {
 
   arangodb::network::ConnectionPool::Config config;
   config.numIOThreads = 1;
-  config.minOpenConnections = 1;
   config.maxOpenConnections = 8;
   config.verifyHosts = false;
   addFeature<arangodb::NetworkFeature>(true, config);
@@ -419,7 +418,6 @@ void MockClusterServer::startFeatures() {
   arangodb::network::ConnectionPool::Config poolConfig;
   poolConfig.clusterInfo = &getFeature<arangodb::ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
-  poolConfig.minOpenConnections = 1;
   poolConfig.maxOpenConnections = 3;
   poolConfig.verifyHosts = false;
 
@@ -508,7 +506,7 @@ TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
     maintenance::ActionDescription ad(
       {{std::string(maintenance::NAME), std::string(maintenance::CREATE_DATABASE)},
        {std::string(maintenance::DATABASE), std::string(name)}},
-      maintenance::HIGHER_PRIORITY);
+      maintenance::HIGHER_PRIORITY, false);
     auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
     maintenance::CreateDatabase cd(mf, ad);
     cd.first();  // Does the job
@@ -530,7 +528,7 @@ void MockDBServer::dropDatabase(std::string const& name) {
   maintenance::ActionDescription ad(
     {{std::string(maintenance::NAME), std::string(maintenance::DROP_DATABASE)},
      {std::string(maintenance::DATABASE), std::string(name)}},
-    maintenance::HIGHER_PRIORITY);
+    maintenance::HIGHER_PRIORITY, false);
   auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
   maintenance::DropDatabase dd(mf, ad);
   dd.first();  // Does the job

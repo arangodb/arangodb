@@ -1452,8 +1452,7 @@ void IResearchLink::setupMaintenance() {
 Result IResearchLink::insert(
     transaction::Methods& trx,
     LocalDocumentId const& documentId,
-    velocypack::Slice const& doc,
-    Index::OperationMode /*mode*/) {
+    velocypack::Slice const doc) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
@@ -1664,8 +1663,7 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
 Result IResearchLink::remove(
     transaction::Methods& trx,
     LocalDocumentId const& documentId,
-    velocypack::Slice const& /*doc*/,
-    Index::OperationMode /*mode*/) {
+    velocypack::Slice const /*doc*/) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 

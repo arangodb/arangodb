@@ -233,7 +233,6 @@ class StaticStrings {
   static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
   static std::string const SyncByRevision;
-  static std::string const TempObjectId;
   static std::string const UsesRevisionsAsDocumentIds;
   static std::string const Schema;
   static std::string const Version;
@@ -287,6 +286,7 @@ class StaticStrings {
   // generic attribute names
   static std::string const AttrCoordinator;
   static std::string const AttrCoordinatorRebootId;
+  static std::string const AttrCoordinatorId;
   static std::string const AttrIsBuilding;
 
   // misc strings

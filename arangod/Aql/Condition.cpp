@@ -36,8 +36,8 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
+#include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
@@ -562,7 +562,7 @@ std::unique_ptr<Condition> Condition::fromVPack(ExecutionPlan* plan, arangodb::v
 
   if (slice.isObject() && slice.length() != 0) {
     // note: the AST is responsible for freeing the AstNode later!
-    AstNode* node = new AstNode(plan->getAst(), slice);
+    AstNode* node = plan->getAst()->createNode(slice);
     condition->andCombine(node);
   }
 

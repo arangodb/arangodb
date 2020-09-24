@@ -731,7 +731,7 @@ RestStatus RestAgencyHandler::handleState() {
     _agent->readDB(body);
   }
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
-  generateResult(rest::ResponseCode::OK, body.slice(), ctx->getVPackOptionsForDump());
+  generateResult(rest::ResponseCode::OK, body.slice(), ctx->getVPackOptions());
   return RestStatus::DONE;
 }
 

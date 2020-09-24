@@ -892,7 +892,8 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   if (ServerState::instance()->isCoordinator()) {
     auto cid = std::to_string(coll.id().id());
     auto& feature = vocbase.server().getFeature<ClusterFeature>();
-    return warmupOnCoordinator(feature, vocbase.name(), cid);
+    OperationOptions options(exec);
+    return warmupOnCoordinator(feature, vocbase.name(), cid, options);
   }
 
   auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, false);
@@ -925,36 +926,13 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   return futures::makeFuture(res);
 }
 
-futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
-                                             LogicalCollection const& coll) {
-  ExecContext const& exec = ExecContext::current();  // disallow expensive ops
-  if (!exec.canUseCollection(coll.name(), auth::Level::RW)) {
-    return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
-  }
-
-  if (!ServerState::instance()->isSingleServer()) {
-    return futures::makeFuture(
-        Result(TRI_ERROR_NOT_IMPLEMENTED,
-               "collection upgrade in cluster not supported yet"));
-  }
-
-  Result res;
-  PhysicalCollection* physical = coll.getPhysical();
-  if (!physical) {
-    res.reset(TRI_ERROR_INTERNAL, "collection not found");
-    return futures::makeFuture(res);
-  }
-  res = physical->upgrade();
-
-  return futures::makeFuture(res);
-}
-
-futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
+futures::Future<OperationResult> Collections::revisionId(Context& ctxt,
+                                                         OperationOptions const& options) {
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = ctxt.coll()->vocbase().name();
     auto cid = std::to_string(ctxt.coll()->id().id());
     auto& feature = ctxt.coll()->vocbase().server().getFeature<ClusterFeature>();
-    return revisionOnCoordinator(feature, databaseName, cid);
+    return revisionOnCoordinator(feature, databaseName, cid, options);
   }
 
   RevisionId rid = ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true, true));
@@ -962,7 +940,7 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
   VPackBuilder builder;
   builder.add(VPackValue(rid.toString()));
 
-  return futures::makeFuture(OperationResult(Result(), builder.steal()));
+  return futures::makeFuture(OperationResult(Result(), builder.steal(), options));
 }
 
 /// @brief Helper implementation similar to ArangoCollection.all() in v8

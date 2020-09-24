@@ -59,7 +59,6 @@ arangodb::velocypack::CustomTypeHandler* transaction::SmartContext::orderCustomT
     _customTypeHandler =
         transaction::Context::createCustomTypeHandler(_vocbase, resolver());
     _options.customTypeHandler = _customTypeHandler.get();
-    _dumpOptions.customTypeHandler = _customTypeHandler.get();
   }
 
   TRI_ASSERT(_customTypeHandler != nullptr);

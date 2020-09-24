@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Indexes/IndexIterator.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IndexHelpers.h"
@@ -34,7 +35,6 @@
 #include "Pregel/WorkerConfig.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
