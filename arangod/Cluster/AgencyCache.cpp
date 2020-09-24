@@ -201,9 +201,6 @@ void AgencyCache::handleCallbacksNoLock(
                    r.compare(0, strlen(PLAN_COLLECTIONS), PLAN_COLLECTIONS) == 0) {
           auto tmp = r.substr(strlen(PLAN_COLLECTIONS));
           planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
-        } else if (r == std::string("Plan/Databases")) {
-          // !! Check documentation of the function before making changes here !!
-          planChanges = reInitPlan();
         } else if (rs > strlen(PLAN_DATABASES) &&         // Plan/Databases
                    r.compare(0, strlen(PLAN_DATABASES), PLAN_DATABASES) == 0) {
           auto tmp = r.substr(strlen(PLAN_DATABASES));
@@ -216,6 +213,11 @@ void AgencyCache::handleCallbacksNoLock(
                    r.compare(0, strlen(PLAN_ANALYZERS), PLAN_ANALYZERS)==0) {
           auto tmp = r.substr(strlen(PLAN_ANALYZERS));
           planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
+        } else if (r == "Plan/Databases" || r == "Plan/Collections" ||
+                   r == "Plan/Views" || r == "Plan/Analyzers" ||
+                   r == "Plan") {
+          // !! Check documentation of the function before making changes here !!
+          planChanges = reInitPlan();
         } else {
           planChanges.emplace();             // "" to indicate non database
         }
