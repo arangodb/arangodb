@@ -644,6 +644,9 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       auto plan = pit->second->slice()[0].get(       // plan collections
         std::vector<std::string>{AgencyCommHelper::path(), PLAN, COLLECTIONS, ldbname});
       if (ldbslice.isObject()) {
+        // Note that if `plan` is not an object, then `getShardMap` will simply return
+        // an empty object, which is fine for `handleLocalShard`, so we do not have
+        // to check anything else here.
         for (auto const& lcol : VPackObjectIterator(ldbslice)) {
           auto const& colname = lcol.key.copyString();
           auto const shardMap = getShardMap(plan);            // plan shards -> servers
