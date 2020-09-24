@@ -1,6 +1,9 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Added safeguards against using V8 internally in environments that have
+  JavaScript turned off via the `--javascript.enabled false` option.
+
 * Make scheduler propertly count down the number of working threads in case an
   exception happens in a worker thread.
 
