@@ -24,7 +24,6 @@
 
 #include "DatabaseFeature.h"
 
-#include "Agency/v8-agency.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
@@ -42,7 +41,6 @@
 #include "Basics/files.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/v8-cluster.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -63,8 +61,6 @@
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
 #include "V8Server/V8DealerFeature.h"
-#include "V8Server/v8-query.h"
-#include "V8Server/v8-vocbase.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -379,9 +375,6 @@ void DatabaseFeature::start() {
   if (!arangodb::ServerState::instance()->isRunningInCluster()) {
     enableDeadlockDetection();
   }
-
-  // update all v8 contexts
-  updateContexts();
 }
 
 // signal to all databases that active cursors can be wiped
@@ -1059,28 +1052,6 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t& vocba
     TRI_ASSERT(vocbase != nullptr);
     func(*vocbase);
   }
-}
-
-void DatabaseFeature::updateContexts() {
-  V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
-  if (!dealer.isEnabled()) {
-    return;
-  }
-
-  auto* vocbase = useDatabase(StaticStrings::SystemDatabase);
-  TRI_ASSERT(vocbase);
-
-  auto queryRegistry = QueryRegistryFeature::registry();
-  TRI_ASSERT(queryRegistry != nullptr);
-
-  dealer.defineContextUpdate(
-      [queryRegistry, vocbase](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t i) {
-        TRI_InitV8VocBridge(isolate, context, queryRegistry, *vocbase, i);
-        TRI_InitV8Queries(isolate, context);
-        TRI_InitV8Cluster(isolate, context);
-        TRI_InitV8Agency(isolate, context);
-      },
-      vocbase);
 }
 
 void DatabaseFeature::stopAppliers() {
