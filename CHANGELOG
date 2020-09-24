@@ -1,6 +1,12 @@
 devel
 -----
 
+* Make scheduler react and start new threads slightly faster in case a lot 
+  of new work arrives.
+
+* Make scheduler propertly count down the number of working threads in case
+  an exception happens in a worker thread.
+
 * Use rclone built from v1.51.0 source with go1.15.2 instead of prebuilt
   v1.53.0 release.
 
