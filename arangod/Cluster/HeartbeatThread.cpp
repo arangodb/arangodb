@@ -26,6 +26,7 @@
 #include <map>
 
 #include <Agency/AsyncAgencyComm.h>
+#include <Basics/application-exit.h>
 #include <date/date.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -87,6 +88,7 @@ class HeartbeatBackgroundJobThread : public Thread {
         _heartbeatThread(heartbeatThread),
         _stop(false),
         _sleeping(false),
+        _anotherRun(true),
         _backgroundJobsLaunched(0) {}
 
   ~HeartbeatBackgroundJobThread() { shutdown(); }
@@ -125,7 +127,10 @@ class HeartbeatBackgroundJobThread : public Thread {
           _sleeping.store(true, std::memory_order_release);
 
           while (true) {
-            _condition.wait(guard);
+
+            if(_condition.wait_for(guard, std::chrono::seconds(5)) == std::cv_status::timeout) {
+              _anotherRun = true;
+            }
 
             if (_stop) {
               return;
@@ -366,7 +371,6 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
                 << "Found greater Current/Version in agency.";
           }
         }
-        notify();
       }
     }
   }
@@ -388,60 +392,6 @@ void HeartbeatThread::runDBServer() {
     LOG_TOPIC("12cee", ERR, Logger::HEARTBEAT)
         << "Failed to start dedicated thread for maintenance";
   }
-
-  std::function<bool(VPackSlice const& result)> updatePlan = [=](VPackSlice const& result) {
-    if (!result.isNumber()) {
-      LOG_TOPIC("f0d86", ERR, Logger::HEARTBEAT)
-          << "Plan Version is not a number! " << result.toJson();
-      return false;
-    }
-
-    uint64_t version = result.getNumber<uint64_t>();
-    bool doSync = false;
-
-    {
-      MUTEX_LOCKER(mutexLocker, *_statusLock);
-      if (version > _desiredVersions->plan) {
-        _desiredVersions->plan = version;
-        LOG_TOPIC("7085e", DEBUG, Logger::HEARTBEAT)
-            << "Desired Plan Version is now " << _desiredVersions->plan;
-        doSync = true;
-      }
-    }
-
-    if (doSync) {
-      notify();
-    }
-
-    return true;
-  };
-
-  std::function<bool(VPackSlice const& result)> updateCurrent = [=](VPackSlice const& result) {
-    if (!result.isNumber()) {
-      LOG_TOPIC("e8f34", ERR, Logger::HEARTBEAT)
-          << "Plan Version is not a number! " << result.toJson();
-      return false;
-    }
-
-    uint64_t version = result.getNumber<uint64_t>();
-    bool doSync = false;
-
-    {
-      MUTEX_LOCKER(mutexLocker, *_statusLock);
-      if (version > _desiredVersions->current) {
-        _desiredVersions->current = version;
-        LOG_TOPIC("aff8c", DEBUG, Logger::HEARTBEAT)
-            << "Desired Current Version is now " << _desiredVersions->plan;
-        doSync = true;
-      }
-    }
-
-    if (doSync) {
-      notify();
-    }
-
-    return true;
-  };
 
   // The following helps to synchronize between a background read
   // operation run in a scheduler thread and a the heartbeat
@@ -494,8 +444,6 @@ void HeartbeatThread::runDBServer() {
       if (isStopping()) {
         break;
       }
-
-      notify();
 
       CONDITION_LOCKER(locker, _condition);
       auto remain = _interval - (std::chrono::steady_clock::now() - start);
@@ -1124,6 +1072,28 @@ bool HeartbeatThread::init() {
 }
 
 void HeartbeatThread::beginShutdown() {
+  // First shut down the maintenace thread:
+  if (_maintenanceThread != nullptr) {
+    _maintenanceThread->stop();
+
+    // Wait until maintenance thread has terminated:
+    size_t counter = 0;
+    auto start = std::chrono::steady_clock::now();
+    while (_maintenanceThread->isRunning()) {
+      if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
+        LOG_TOPIC("d8a5c", FATAL, Logger::CLUSTER)
+        << "exiting prematurely as we failed terminating the maintenance thread";
+        FATAL_ERROR_EXIT();
+      }
+      if (++counter % 50 == 0) {
+        LOG_TOPIC("acaaa", WARN, arangodb::Logger::CLUSTER)
+        << "waiting for maintenance thread to finish";
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+  }
+
+  // And now the heartbeat thread:
   CONDITION_LOCKER(guard, _condition);
 
   // set the shutdown state in parent class
@@ -1131,6 +1101,7 @@ void HeartbeatThread::beginShutdown() {
 
   // break _condition.wait() in runDBserver
   _condition.signal();
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1142,12 +1113,12 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
   MUTEX_LOCKER(mutexLocker, *_statusLock);
   if (result.success) {
     LOG_TOPIC("ce0db", DEBUG, Logger::HEARTBEAT)
-        << "Sync request successful. Now have Plan " << result.planVersion
-        << ", Current " << result.currentVersion;
+      << "Sync request successful. Now have Plan index " << result.planIndex
+      << ", Current index " << result.currentIndex;
     _currentVersions = AgencyVersions(result);
   } else {
     LOG_TOPIC("b72a6", ERR, Logger::HEARTBEAT)
-        << "Sync request failed: " << result.errorMessage;
+      << "Sync request failed: " << result.errorMessage;
   }
 }
 
