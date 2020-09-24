@@ -290,7 +290,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         << "DBServerAgencySync::phaseTwo";
 
     tmp = arangodb::maintenance::phaseTwo(
-      plan, current, dirty, local, serverId, mfeature, rb, currentShardLocks);
+      plan, current, currentIndex, dirty, local, serverId, mfeature, rb, currentShardLocks);
 
     LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";
@@ -349,15 +349,12 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         VPackSlice planSlice = report.get("Plan");
         VPackSlice currentSlice = report.get("Current");
         result = DBServerAgencySyncResult(
-          true,
-            planSlice.isObject() ? planSlice.get("Version").getNumber<uint64_t>() : 0,
-            currentSlice.isObject() ? currentSlice.get("Version").getNumber<uint64_t>() : 0,
-            planSlice.isObject() ? planSlice.get("Index").getNumber<uint64_t>() : 0,
-            currentSlice.isObject() ? currentSlice.get("Index").getNumber<uint64_t>() : 0);
+          true, planSlice.isObject() ? planSlice.get("Index").getNumber<uint64_t>() : 0,
+          currentSlice.isObject() ? currentSlice.get("Index").getNumber<uint64_t>() : 0);
       } else {
         // Report an error:
         result = DBServerAgencySyncResult(
-          false, "Error in phase 2: " + tmp.errorMessage(), 0, 0, 0, 0);
+          false, "Error in phase 2: " + tmp.errorMessage(), 0, 0);
       }
     } else {
       // This code should never run, it is only there to debug problems if

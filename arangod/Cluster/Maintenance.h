@@ -150,7 +150,7 @@ arangodb::Result phaseOne(
 arangodb::Result phaseTwo(
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& cur,
-  std::unordered_set<std::string> const& dirty,
+  uint64_t currentIndex, std::unordered_set<std::string> const& dirty,
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
   MaintenanceFeature::ShardActionMap const& shardActionMap);

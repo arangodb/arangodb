@@ -628,7 +628,6 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
   // this server, are in Plan and their database is present
 
   // Compare local to plan -----------------------------------------------------
-
   for (auto const& dbname : dirty) {  // each dirty database
     auto lit = local.find(dbname);
     if (lit == local.end()) {
@@ -686,15 +685,17 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
       auto const planit = plan.find(dbname);
 
-      if (planit == plan.end() ||                        // database gone
-          !planit->second->slice()[0].hasKey(std::vector<std::string>{ // collection gone
-              AgencyCommHelper::path(), PLAN, COLLECTIONS, dbname, colname})) {
+      std::vector<std::string> path{ 
+        AgencyCommHelper::path(), PLAN, COLLECTIONS, dbname, colname};
+      if (planit == plan.end() ||                        // db gone
+          !planit->second->slice()[0].hasKey(path)) { // collection gone
         for (auto& index : shard.second) {
           index.second.reset();
         }
       } else {
-        VPackSlice indexes = planit->second->slice()[0].get(std::vector<std::string>{
-            AgencyCommHelper::path(), PLAN, COLLECTIONS, dbname, colname, INDEXES});
+        path.push_back(INDEXES);
+        VPackSlice indexes = planit->second->slice()[0].get(path);
+        TRI_ASSERT(indexes.isArray());
         if (indexes.isArray()) {
           for (auto& p : shard.second) {
             std::string const& id = p.first;
@@ -898,14 +899,12 @@ arangodb::Result arangodb::maintenance::phaseOne(
     } catch (std::exception const& e) {
       LOG_TOPIC("55938", ERR, Logger::MAINTENANCE)
           << "Error executing plan: " << e.what() << ". " << __FILE__ << ":" << __LINE__;
-      // TODO: adjust result here?
     }
   }
 
   report.add(VPackValue(PLAN));
   {
     VPackObjectBuilder p(&report);
-    report.add("Version", VPackValue(0)/* TODO plan.get("Version")*/);
     report.add("Index", VPackValue(planIndex));
   }
 
@@ -1084,7 +1083,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       LOG_TOPIC("324e7", TRACE, Logger::MAINTENANCE)
         << "database " << dbName << " missing in local";
     } else {
-      // TODO assertions
       ldb = lit->second->slice();
     }
 
@@ -1094,7 +1092,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       LOG_TOPIC("427e3", TRACE, Logger::MAINTENANCE)
         << dbName << " missing in current";
     } else {
-      // TODO assertions
+      TRI_ASSERT(cit->second->slice().isArray());
+      TRI_ASSERT(cit->second->slice().length() == 1);
       cur = cit->second->slice()[0];
     }
 
@@ -1105,7 +1104,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       LOG_TOPIC("47e23", TRACE, Logger::MAINTENANCE)
         << dbName << " missing in plan";
     } else {
-      // TODO assertions
+      TRI_ASSERT(pit->second->slice().isArray());
+      TRI_ASSERT(pit->second->slice().length() == 1);
       pdb = pit->second->slice()[0];
       std::vector<std::string> ppath{
         AgencyCommHelper::path(), PLAN, COLLECTIONS, dbName};
@@ -1566,7 +1566,7 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
 arangodb::Result arangodb::maintenance::phaseTwo(
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& cur,
-  std::unordered_set<std::string> const& dirty,
+  uint64_t currentIndex, std::unordered_set<std::string> const& dirty,
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
   MaintenanceFeature::ShardActionMap const& shardActionMap) {
@@ -1592,9 +1592,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
         result = reportInCurrent(plan, dirty, cur, local, allErrors, serverId, report, shardStats);
       } catch (std::exception const& e) {
         LOG_TOPIC("c9a75", ERR, Logger::MAINTENANCE)
-            << "Error reporting in current: " << e.what() << ". " << __FILE__
-            << ":" << __LINE__;
-        // TODO: adjust result here?
+          << "Error reporting in current: " << e.what() << ". " << __FILE__ << ":" << __LINE__;
       }
     }
 
@@ -1608,9 +1606,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
         feature.addDirty(makeDirty, false);
       } catch (std::exception const& e) {
         LOG_TOPIC("7e286", ERR, Logger::MAINTENANCE)
-            << "Error scheduling shards: " << e.what() << ". " << __FILE__
-            << ":" << __LINE__;
-        // TODO: adjust result here?
+          << "Error scheduling shards: " << e.what() << ". " << __FILE__ << ":" << __LINE__;
       }
     }
   }
@@ -1618,8 +1614,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
   report.add(VPackValue("Current"));
   {
     VPackObjectBuilder p(&report);
-    report.add("Version", VPackValue(0)); //TODO
-    report.add("Index", VPackValue(0));
+    report.add("Index", VPackValue(currentIndex));
   }
 
   auto end = std::chrono::steady_clock::now();

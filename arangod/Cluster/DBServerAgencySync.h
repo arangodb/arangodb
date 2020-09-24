@@ -37,19 +37,17 @@ class HeartbeatThread;
 struct DBServerAgencySyncResult {
   bool success;
   std::string errorMessage;
-  uint64_t planVersion;
-  uint64_t currentVersion;
   uint64_t planIndex;
   uint64_t currentIndex;
 
   DBServerAgencySyncResult()
-    : success(false), planVersion(0), currentVersion(0), planIndex(0), currentIndex(0) {}
+    : success(false), planIndex(0), currentIndex(0) {}
 
-  DBServerAgencySyncResult(bool s, uint64_t p, uint64_t c, uint64_t pi, uint64_t ci)
-    : success(s), planVersion(p), currentVersion(c), planIndex(pi), currentIndex(ci) {}
+  DBServerAgencySyncResult(bool s, uint64_t pi, uint64_t ci)
+    : success(s), planIndex(pi), currentIndex(ci) {}
 
-  DBServerAgencySyncResult(bool s, std::string const& e, uint64_t p, uint64_t c, uint64_t pi, uint64_t ci)
-    : success(s), errorMessage(e), planVersion(p), currentVersion(c), planIndex(pi), currentIndex(ci) {}
+  DBServerAgencySyncResult(bool s, std::string const& e, uint64_t pi, uint64_t ci)
+    : success(s), errorMessage(e), planIndex(pi), currentIndex(ci) {}
 };
 
 class DBServerAgencySync {
