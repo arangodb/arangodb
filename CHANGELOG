@@ -1,6 +1,14 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed and extended LDAP log messages.
+
+* Added LDAP_OFF if referrals and restart are false.
+
+* If LDAP search fails, also retry (update to given number of retries).
+
+* Fixed inifinite reload of the login window after logout of an LDAP user.
+
 * Make the reboot tracker catch failed coordinators, too. Previously the reboot
   tracker was invoked only when a DB server failed or was restarted, and when a
   coordinator was restarted. Now it will also act if a coordinator just fails
@@ -65,8 +73,6 @@ v3.7.3 (XXXX-XX-XX)
 
 * Fixed an issue with audit logging misreporting some document requests as
   internal instead of logging the proper request information.
-
-* Fixed inifinite reload of the login window after logout of an LDAP user.
 
 * Add attributes `database` and `user` when tracking current and slow AQL
   queries.
