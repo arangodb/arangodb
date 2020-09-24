@@ -68,7 +68,7 @@ bool parseShape(VPackSlice slice, geo::ShapeContainer& shape, bool onlyPoint) {
 
 bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2LatLng& out) {
   if (!latSlice.isNumber() || !lngSlice.isNumber()) {
-    LOG_TOPIC("4579c", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("4579a", WARN, arangodb::iresearch::TOPIC)
       << "Failed to parse value as GEO POINT, error 'Invalid latitude/longitude pair type'.";
 
     return false;
