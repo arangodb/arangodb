@@ -526,7 +526,8 @@ exports.checkAvailableVersions = function(version) {
   var console = require('console');
   var log;
 
-  if (require('@arangodb').isServer) {
+  let isServer = require('@arangodb').isServer;
+  if (isServer) {
     log = console.info;
   } else {
     log = internal.print;
