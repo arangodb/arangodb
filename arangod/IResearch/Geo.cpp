@@ -85,9 +85,15 @@ bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2LatLng& out) {
   }
 
   // FIXME Normalized()?
-  out = S2LatLng::FromDegrees(lat, lng).Normalized();
+  out = S2LatLng::FromDegrees(lat, lng);
 
-  return out.is_valid();
+  if (!out.is_valid()) {
+    LOG_TOPIC("4279c", WARN, arangodb::iresearch::TOPIC)
+      << "Failed to parse value as GEO POINT, error 'Invalid latitude/longitude pair'.";
+    return false;
+  }
+
+  return true;
 }
 
 } // iresearch

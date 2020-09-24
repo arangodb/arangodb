@@ -342,6 +342,10 @@ Result getLatLong(
     size_t argIdx) {
   switch (value.type()) {
     case SCOPED_VALUE_TYPE_ARRAY: { // [lng, lat] is valid input
+      if (value.size() < 2) {
+        return error::failedToEvaluate(funcName, argIdx);
+      }
+
       auto const latValue = value.at(1);
       auto const lonValue = value.at(0);
 

@@ -44,7 +44,7 @@ template<typename T> class Buffer;
 namespace iresearch {
 
 class GeoAnalyzer
-  : public irs::frozen_attributes<3, irs::analysis::analyzer>,
+  : public irs::frozen_attributes<2, irs::analysis::analyzer>,
     private irs::util::noncopyable {
  public:
   virtual bool next() noexcept final;
@@ -141,8 +141,10 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
   Type _type;
 };
 
+// FIXME remove kludge
 inline bool isGeoAnalyzer(irs::string_ref const& type) noexcept {
-  return type.size() > 3 && irs::starts_with(type, "geo");
+  return type == GeoJSONAnalyzer::type_name()
+    || type == GeoPointAnalyzer::type_name();
 }
 
 } // iresearch
