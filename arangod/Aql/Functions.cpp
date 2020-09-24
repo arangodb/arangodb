@@ -5392,7 +5392,7 @@ AqlValue Functions::GeoDistance(ExpressionContext* expressionContext,
                                 transaction::Methods* trx,
                                 VPackFunctionParameters const& parameters) {
   TRI_ASSERT(trx);
-  static char const* AFN = "GEO_DISTANCE";
+  constexpr char const AFN[] = "GEO_DISTANCE";
   geo::ShapeContainer shape1, shape2;
 
   auto res = ::parseShape(*trx, extractFunctionParameterValue(parameters, 0), shape1);
@@ -5423,7 +5423,7 @@ AqlValue Functions::GeoInRange(ExpressionContext* ctx,
                                transaction::Methods* trx,
                                VPackFunctionParameters const& args) {
   TRI_ASSERT(trx);
-  static char const* AFN = "IN_GEO_RANGE";
+  constexpr char const AFN[] = "GEO_IN_RANGE";
 
   auto const argc = args.size();
 

@@ -45,10 +45,8 @@ bool parseShape(VPackSlice slice, geo::ShapeContainer& shape, bool onlyPoint) {
     } else {
       res = geo::geojson::parseRegion(slice, shape);
     }
-  } else if (slice.isArray()) {
-    if (slice.isArray() && slice.length() >= 2) {
-      res = shape.parseCoordinates(slice, /*geoJson*/ true);
-    }
+  } else if (slice.isArray() && slice.length() >= 2) {
+    res = shape.parseCoordinates(slice, /*geoJson*/ true);
   } else {
     LOG_TOPIC("4449c", WARN, arangodb::iresearch::TOPIC)
       << "Geo JSON or array of coordinates expected, got '"
