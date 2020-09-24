@@ -9,7 +9,7 @@ devel
   for which there exists no API, and `_fishbowl` is used to store the temporary
   list of Foxx apps retrieved from the Github Foxx store.
   If the option value is `false` (which is the default from v3.8 onwards), the
-  two collections will not be created for any new databaase. The `_fishbowl`
+  two collections will not be created for any new database. The `_fishbowl`
   collection will still be created dynamically when needed. If the option value
   is `true`, the collections will be created regularly as before.
   The option will also be introduced to v3.7, where it will have a default
