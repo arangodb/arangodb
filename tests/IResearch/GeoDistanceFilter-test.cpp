@@ -189,7 +189,6 @@ TEST(GeoDistanceFilterTest, boost) {
   }
 
   {
-    irs::boost_t boost = 1.5f;
     GeoDistanceFilter q;
     q.mutable_options()->origin = S2LatLng::FromDegrees(-41.69642, 77.91159).ToPoint();
     q.mutable_options()->range.min = 5000.;
@@ -199,7 +198,7 @@ TEST(GeoDistanceFilterTest, boost) {
     *q.mutable_field() = "field";
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(boost, prepared->boost());
+    ASSERT_EQ(irs::no_boost(), prepared->boost());
   }
 
   {
