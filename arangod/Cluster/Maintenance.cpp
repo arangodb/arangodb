@@ -685,7 +685,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
       auto const planit = plan.find(dbname);
 
-      std::vector<std::string> path{ 
+      std::vector<std::string> path{
         AgencyCommHelper::path(), PLAN, COLLECTIONS, dbname, colname};
       if (planit == plan.end() ||                        // db gone
           !planit->second->slice()[0].hasKey(path)) { // collection gone
