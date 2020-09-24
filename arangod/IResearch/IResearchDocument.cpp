@@ -445,12 +445,8 @@ bool FieldIterator::setValue(VPackSlice const value,
 
     if (!value.isNone()) {
       _value._value = iresearch::ref<irs::byte_type>(valueSlice);
-      _value._storeValues = ValueStorage::VALUE;
+      _value._storeValues = std::max(ValueStorage::VALUE, _value._storeValues);
     }
-  } else {
-    TRI_ASSERT(_value._value.null());
-    TRI_ASSERT(ValueStorage::NONE == _value._storeValues ||
-               ValueStorage::ID == _value._storeValues);
   }
 
   return true;
