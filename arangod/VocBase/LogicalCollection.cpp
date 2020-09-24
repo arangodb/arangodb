@@ -270,10 +270,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   // This has to be called AFTER _phyiscal and _logical are properly linked
   // together.
 
-  if (_physical->didPartialUpgrade()) {
-    _physical->cleanupAfterUpgrade();
-  }
-
   prepareIndexes(info.get("indexes"));
 }
 

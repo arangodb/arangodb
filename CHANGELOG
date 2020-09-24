@@ -1,9 +1,19 @@
 devel
 -----
+
+* Use rclone built from v1.51.0 source with go1.15.2 instead of prebuilt
+  v1.53.0 release.
+
+* Fixed a possible crash during instantiation of an AQL graph traversal.
+  Reported in #12597.
+
 * Added new ArangoSearch "pipeline" analyzer type
 
 * Reduce the number of dropped followers when running larger (>= 128 MB)
   write transactions.
+
+* Fixed a bug in AQL COLLECT with OPTIONS { "hash" } that lead to a quadratic
+  runtime in the number of output rows.
 
 * Make the reboot tracker catch failed coordinators, too. Previously the
   reboot tracker was invoked only when a DB server failed or was restarted, 
@@ -115,6 +125,10 @@ devel
     the mount, in bytes
   * `arangodb_rocksdb_total_disk_space`: provides the total disk space of
     the mount, in bytes
+
+* Fixed some cases where subqueries in PRUNE did not result in a parse error,
+  but either in an incomprehensible error (in 3.7), or undefined behaviour
+  during execution (pre 3.7).
 
 * Apply user-defined idle connection timeouts for HTTP/2 and VST connections.
   The timeout value for idle HTTP/2 and VST connections can now be configured 
