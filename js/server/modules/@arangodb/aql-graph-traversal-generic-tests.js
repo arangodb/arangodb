@@ -200,8 +200,7 @@ const checkResIsValidBfsOf = (expectedPaths, actualPaths) => {
  * Checks that the paths are increasing in length, and each vertex is the last
  * node of exactly one of the paths.
  *
- * TODO:
- *   It does not check that the path-prefixes are matching. E.g. for a graph
+ *   It does check that the path-prefixes are matching. E.g. for a graph
  *         B       E
  *       ↗   ↘   ↗
  *     A       D
@@ -209,34 +208,57 @@ const checkResIsValidBfsOf = (expectedPaths, actualPaths) => {
  *         C       F
  *   this method would regard
  *   [[a], [a, b], [a, c], [a, c, d], [a, c, d, e], [a, b, d, f]]
- *   as valid, while the last path would have to be [a, c, d, f] with respect to
+ *   as invalid, because the last path would have to be [a, c, d, f] with respect to
  *   the previous results.
  */
-const checkResIsValidGlobalBfsOf = (expectedVertices, actualPaths) => {
-  assertTrue(!_.isEmpty(actualPaths));
+const checkResIsValidGlobalBfsOfFunc = function(getVertices, getCost) {
+  return (expectedVertices, actualPaths) => {
+    assertTrue(!_.isEmpty(actualPaths));
+    const actualPathsVertices = actualPaths.map(getVertices);
 
-  const pathLengths = actualPaths.map(p => p.length);
-  const adjacentPairs = _.zip(pathLengths, _.tail(pathLengths));
-  adjacentPairs.pop(); // we don't want the last element, because the tail is shorter
-  assertTrue(adjacentPairs.every(([a, b]) => a <= b),
-    `Paths are not increasing in length: ${JSON.stringify(actualPaths)}`);
+    const pathCosts = actualPaths.map(getCost);
+    const adjacentPairs = _.zip(pathCosts, _.tail(pathCosts));
+    adjacentPairs.pop(); // we don't want the last element, because the tail is shorter
+    assertTrue(adjacentPairs.every(([a, b]) => a <= b),
+        `Paths are not increasing in length: ${JSON.stringify(actualPathsVertices)}`);
 
-  // sort vertices before comparing
-  const actualVertices = _.sortBy(actualPaths.map(p => p[p.length - 1]));
-  expectedVertices = _.sortBy(expectedVertices);
-  const missingVertices = _.difference(expectedVertices, actualVertices);
-  const spuriousVertices = _.difference(actualVertices, expectedVertices);
+    // sort vertices before comparing
+    const actualVertices = _.sortBy(actualPathsVertices.map(p => p[p.length - 1]));
+    expectedVertices = _.sortBy(expectedVertices);
+    const missingVertices = _.difference(expectedVertices, actualVertices);
+    const spuriousVertices = _.difference(actualVertices, expectedVertices);
 
-  const messages = [];
-  if (missingVertices.length > 0) {
-    messages.push('The following vertices are missing: ' + JSON.stringify(missingVertices));
-  }
-  if (spuriousVertices.length > 0) {
-    messages.push('The following vertices are wrong: ' + JSON.stringify(spuriousVertices));
-  }
+    const messages = [];
+    if (missingVertices.length > 0) {
+      messages.push('The following vertices are missing: ' + JSON.stringify(missingVertices));
+    }
+    if (spuriousVertices.length > 0) {
+      messages.push('The following vertices are wrong: ' + JSON.stringify(spuriousVertices));
+    }
 
-  assertEqual(expectedVertices, actualVertices, messages.join('; '));
-};
+    assertEqual(expectedVertices, actualVertices, messages.join('; '));
+
+    // check that all paths start at the same vertex
+    const startVertices = new Set(actualPathsVertices.map(p => p[0]));
+    assertTrue(startVertices.size === 1, "paths did not start at same vertex", startVertices);
+
+    // create a dict that contains maps a vertex to its predecessor
+    const vertexPairs = _.fromPairs(actualPathsVertices.filter(p => p.length > 1).map(p => p.slice(-2).reverse()));
+    // create moving windows of length 2 on all paths
+    const pathEdgeList = actualPathsVertices.filter(p => p.length > 1).map(p => {
+      const pairs = _.zip(p, _.tail(p));
+      pairs.pop();
+      return pairs;
+    });
+
+    // check that each path is a path in the dict
+    const badPaths = pathEdgeList.filter(p => !p.every(q => vertexPairs[q[1]] === q[0]));
+    assertTrue(badPaths.length === 0, "paths do not lie within a tree", badPaths);
+  };
+}
+
+const checkResIsValidGlobalBfsOf = checkResIsValidGlobalBfsOfFunc(_.identity, p => p.length);
+const checkResIsValidGlobalWSOf = checkResIsValidGlobalBfsOfFunc(p => p.path, p => p.weight);
 
 const assertResIsContainedInPathList = (allowedPaths, actualPath) => {
 
@@ -930,6 +952,18 @@ function testMetaBfsGlobalInvalid() {
     ["A", "B", "D"],
     ["A", "C", "D"],
     ["A", "B", "D", "F"],
+  ];
+  assertException(() => checkResIsValidGlobalBfsOf(expectedVertices, actualPaths));
+
+
+  expectedVertices = ["A", "B", "C", "D", "E", "F"];
+  actualPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "C", "D"],
+    ["A", "C", "D", "E"],
+    ["A", "B", "D", "F"]
   ];
   assertException(() => checkResIsValidGlobalBfsOf(expectedVertices, actualPaths));
 
