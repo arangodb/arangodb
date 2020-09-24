@@ -1282,6 +1282,11 @@ constexpr int TRI_ERROR_LDAP_NOT_ONE_USER_FOUND                                 
 /// LDAP found a user, but its not the desired one
 constexpr int TRI_ERROR_LDAP_USER_NOT_IDENTIFIED                                = 1808;
 
+/// 1809: ERROR_LDAP_OPERATIONS_ERROR
+/// "LDAP returned an operations error"
+/// LDAP returned an operations error
+constexpr int TRI_ERROR_LDAP_OPERATIONS_ERROR                                   = 1809;
+
 /// 1820: ERROR_LDAP_INVALID_MODE
 /// "invalid ldap mode"
 /// cant distinguish a valid mode for provided LDAP configuration
