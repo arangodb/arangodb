@@ -1,3 +1,10 @@
+v3.7.4 (XXXX-XX-XX)
+-------------------
+
+* Make scheduler propertly count down the number of working threads in case
+  an exception happens in a worker thread.
+
+
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
