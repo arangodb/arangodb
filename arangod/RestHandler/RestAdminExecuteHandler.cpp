@@ -52,7 +52,7 @@ RestAdminExecuteHandler::RestAdminExecuteHandler(application_features::Applicati
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAdminExecuteHandler::execute() {
-  if (!V8DealerFeature::DEALER || !V8DealerFeature::DEALER->isEnabled()) {
+  if (!server().isEnabled<V8DealerFeature>()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED, "JavaScript operations are disabled");
     return RestStatus::DONE;
   }
