@@ -1,6 +1,38 @@
 devel
 -----
 
+* Added startup option `--database.old-system-collections` to toggle automatic
+  creation of system collections `_modules` and `_fishbowl`, along with their
+  internal usage. These collections are useful only in very few case, so it
+  is normally not worth to create them in all databases.
+  The `_modules` collection is only used to register custom JavaScript modules,
+  for which there exists no API, and `_fishbowl` is used to store the temporary
+  list of Foxx apps retrieved from the Github Foxx store.
+  If the option value is `false` (which is the default from v3.8 onwards), the
+  two collections will not be created for any new databaase. The `_fishbowl`
+  collection will still be created dynamically when needed. If the option value
+  is `true`, the collections will be created regularly as before.
+  The option will also be introduced to v3.7, where it will have a default
+  value of `true`, meaning the collections will still be created there.
+
+  Any functionality related to the `_modules` system collection is deprecated
+  and will be removed in ArangoDB v3.9.
+
+  Two side effects of when this option is turned on are:
+  * there will no be iteration over all databases at server startup just to check
+    the contents of all `_modules` collections.
+  * less collections/shards will be around for deployments that create a large
+    number of databases.
+  Already existing `_modules` and `_fishbowl` system collections will not be
+  modified by this PR, even though they will likely be empty and unused.
+
+* Don't iterate over all databases as server startup in order to initialize the
+  routing information. This is not necessary, as the routing information is
+  global and not tied to a specific database.
+
+  Any functionality related to the `_modules` system collection is deprecated 
+  and will be removed in ArangoDB v3.9.
+
 * Use rclone built from v1.51.0 source with go1.15.2 instead of prebuilt
   v1.53.0 release.
 
