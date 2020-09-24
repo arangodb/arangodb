@@ -92,7 +92,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
 
   auto avoidServersSlice = info.get("avoidServers");
   if (avoidServersSlice.isArray()) {
-    for (const auto& i : VPackArrayIterator(avoidServersSlice)) {
+    for (VPackSlice i : VPackArrayIterator(avoidServersSlice)) {
       if (i.isString()) {
         _avoidServers.push_back(i.copyString());
       } else {
