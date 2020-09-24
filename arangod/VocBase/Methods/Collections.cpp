@@ -935,30 +935,6 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   return futures::makeFuture(res);
 }
 
-futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
-                                             LogicalCollection const& coll) {
-  ExecContext const& exec = ExecContext::current();  // disallow expensive ops
-  if (!exec.canUseCollection(coll.name(), auth::Level::RW)) {
-    return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
-  }
-
-  if (!ServerState::instance()->isSingleServer()) {
-    return futures::makeFuture(
-        Result(TRI_ERROR_NOT_IMPLEMENTED,
-               "collection upgrade in cluster not supported yet"));
-  }
-
-  Result res;
-  PhysicalCollection* physical = coll.getPhysical();
-  if (!physical) {
-    res.reset(TRI_ERROR_INTERNAL, "collection not found");
-    return futures::makeFuture(res);
-  }
-  res = physical->upgrade();
-
-  return futures::makeFuture(res);
-}
-
 futures::Future<OperationResult> Collections::revisionId(Context& ctxt,
                                                          OperationOptions const& options) {
   if (ServerState::instance()->isCoordinator()) {

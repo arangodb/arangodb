@@ -890,7 +890,18 @@ bool SynchronizeShard::first() {
         _result.reset(res);
         return false;
       }
-
+    } catch (basics::Exception const& e) {
+      // don't log errors for already dropped databases/collections
+      if (e.code() != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
+          e.code() != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+        std::stringstream error;
+        error << "synchronization of ";
+        AppendShardInformationToMessage(database, shard, planId, startTime, error);
+        error << " failed: " << e.what();
+        LOG_TOPIC("65d6f", ERR, Logger::MAINTENANCE) << error.str();
+      }
+      _result.reset(e.code(), e.what());
+      return false;
     } catch (std::exception const& e) {
       std::stringstream error;
       error << "synchronization of ";

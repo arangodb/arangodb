@@ -1871,6 +1871,10 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
 
   return arangodb::Result();
 }
+  
+uint64_t TransactionStateMock::numCommits() const {
+  return commitTransactionCount;
+}
 
 bool TransactionStateMock::hasFailedOperations() const {
   return false;  // assume no failed operations
