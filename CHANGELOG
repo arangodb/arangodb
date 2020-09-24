@@ -1,13 +1,10 @@
-v3.7.4 (XXXX-XX-XX)
--------------------
-
-* Turn off upgrade checks in arangod in alpha/beta/preview Enterprise builds, too.
-  Previously it was already turned off in arangod for Enterprise builds already, 
-  but only for stable releases and not preview releases.
-
-
 v3.7.3 (XXXX-XX-XX)
 -------------------
+
+* Turn off upgrade checks in arangod in alpha/beta/preview Enterprise builds,
+  too.
+  Previously it was already turned off in arangod for Enterprise builds already,
+  but only for stable releases and not preview releases.
 
 * Make the reboot tracker catch failed coordinators, too. Previously the reboot
   tracker was invoked only when a DB server failed or was restarted, and when a
