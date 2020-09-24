@@ -1354,23 +1354,25 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       }
     }
 
-    // Let's find database errors for databases which do not occur in Local
-    // but in Plan:
-    for (auto const& p : allErrors.databases) {
-      if (pdb.isObject() && cdb.isNone()) {
-        // Need to create an error entry:
-        report.add(VPackValue(CURRENT_DATABASES + dbName + "/" + serverId));
+  }
+
+  // Let's find database errors for databases which do not occur in Local
+  // but in Plan:
+  for (auto const& p : allErrors.databases) {
+    auto const& dbName = p.first;
+    if (dirty.find(dbName) != dirty.end()) {
+      // Need to create an error entry:
+      report.add(VPackValue(CURRENT_DATABASES + dbName + "/" + serverId));
+      {
+        VPackObjectBuilder o(&report);
+        report.add(OP, VP_SET);
+        report.add(VPackValue("payload"));
         {
-          VPackObjectBuilder o(&report);
-          report.add(OP, VP_SET);
-          report.add(VPackValue("payload"));
-          {
-            VPackObjectBuilder pp(&report);
-            VPackSlice errs(static_cast<uint8_t const*>(p.second->data()));
-            report.add(StaticStrings::Error, errs.get(StaticStrings::Error));
-            report.add(StaticStrings::ErrorNum, errs.get(StaticStrings::ErrorNum));
-            report.add(StaticStrings::ErrorMessage, errs.get(StaticStrings::ErrorMessage));
-          }
+          VPackObjectBuilder pp(&report);
+          VPackSlice errs(static_cast<uint8_t const*>(p.second->data()));
+          report.add(StaticStrings::Error, errs.get(StaticStrings::Error));
+          report.add(StaticStrings::ErrorNum, errs.get(StaticStrings::ErrorNum));
+          report.add(StaticStrings::ErrorMessage, errs.get(StaticStrings::ErrorMessage));
         }
       }
     }
