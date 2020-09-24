@@ -1,6 +1,9 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Make scheduler propertly count down the number of working threads in case an
+  exception happens in a worker thread.
+
 * Turn off upgrade checks in arangod in alpha/beta/preview Enterprise builds,
   too.
   Previously it was already turned off in arangod for Enterprise builds already,
