@@ -637,10 +637,10 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     auto type = data.get(StaticStrings::DataSourceType);
 
     if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
-      return std::make_shared<VirtualSmartEdgeCollection>(vocbase, data);
-    }
-    return std::make_shared<SmartVertexCollection>(vocbase, data);
-  }
+      return std::make_shared<VirtualSmartEdgeCollection>(vocbase, data, planVersion); 
+    } 
+    return std::make_shared<SmartVertexCollection>(vocbase, data, planVersion); 
+  } 
 #endif
   return std::make_shared<LogicalCollection>(vocbase, data, true, planVersion);
 }
@@ -1258,7 +1258,6 @@ void ClusterInfo::loadPlan() {
   _lpTotal += static_cast<uint64_t>(diff);
   _lpTimer.count(diff);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about current databases
