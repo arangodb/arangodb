@@ -1179,8 +1179,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       return false;
     }
 
-    OperationOptions opOptions(ExecContext::current());
-
     // loop over all database names we got and create a local database
     // instance if not yet present:
 
@@ -1189,7 +1187,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         continue;
       }
 
-      arangodb::CreateDatabaseInfo info(_server, opOptions);
+      arangodb::CreateDatabaseInfo info(_server, ExecContext::current());
       TRI_ASSERT(options.value.get("name").isString());
       // when loading we allow system database names
       auto infoResult = info.load(options.value, VPackSlice::emptyArraySlice());
@@ -1209,7 +1207,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
         // create a local database object...
         Result res = databaseFeature.createDatabase(std::move(info), vocbase);
-        events::CreateDatabase(dbName, OperationResult(res, opOptions));
+        events::CreateDatabase(dbName, res, ExecContext::current());
 
         if (res.fail()) {
           LOG_TOPIC("ca877", ERR, arangodb::Logger::HEARTBEAT)
@@ -1244,7 +1242,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
           db->release();
         }
         Result res = databaseFeature.dropDatabase(id, true);
-        events::DropDatabase(dbName, OperationResult(res, opOptions));
+        events::DropDatabase(dbName, res, ExecContext::current());
       }
     }
 

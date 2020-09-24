@@ -106,11 +106,10 @@ RestStatus RestDatabaseHandler::getDatabases() {
 // / @brief was docuBlock JSF_get_api_database_create
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestDatabaseHandler::createDatabase() {
-  OperationOptions opOptions(_context);
   if (!_vocbase.isSystem()) {
     generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
                   TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    events::CreateDatabase("", OperationResult(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE, opOptions));
+    events::CreateDatabase("", Result(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE), _context);
     return RestStatus::DONE;
   }
 
@@ -119,13 +118,13 @@ RestStatus RestDatabaseHandler::createDatabase() {
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!suffixes.empty() || !parseSuccess) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-    events::CreateDatabase("", OperationResult(TRI_ERROR_BAD_PARAMETER, opOptions));
+    events::CreateDatabase("", Result(TRI_ERROR_BAD_PARAMETER), _context);
     return RestStatus::DONE;
   }
   VPackSlice nameVal = body.get("name");
   if (!nameVal.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-    events::CreateDatabase("", OperationResult(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID, opOptions));
+    events::CreateDatabase("", Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID), _context);
     return RestStatus::DONE;
   }
   std::string dbName = nameVal.copyString();
@@ -133,7 +132,7 @@ RestStatus RestDatabaseHandler::createDatabase() {
   VPackSlice options = body.get("options");
   VPackSlice users = body.get("users");
 
-  Result res = methods::Databases::create(server(), dbName, users, options, opOptions);
+  Result res = methods::Databases::create(server(), _context, dbName, users, options);
   if (res.ok()) {
     generateOk(rest::ResponseCode::CREATED, VPackSlice::trueSlice());
   } else {
@@ -151,22 +150,21 @@ RestStatus RestDatabaseHandler::createDatabase() {
 // / @brief was docuBlock JSF_get_api_database_delete
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestDatabaseHandler::deleteDatabase() {
-  OperationOptions opOptions(_context);
   if (!_vocbase.isSystem()) {
     generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
                   TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    events::DropDatabase("", OperationResult(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE, opOptions));
+    events::DropDatabase("", Result(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE), _context);
     return RestStatus::DONE;
   }
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-    events::DropDatabase("", OperationResult(TRI_ERROR_HTTP_BAD_PARAMETER, opOptions));
+    events::DropDatabase("", Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
     return RestStatus::DONE;
   }
 
   std::string const& dbName = suffixes[0];
-  Result res = methods::Databases::drop(&_vocbase, dbName, opOptions);
+  Result res = methods::Databases::drop(_context, &_vocbase, dbName);
 
   if (res.ok()) {
     generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());

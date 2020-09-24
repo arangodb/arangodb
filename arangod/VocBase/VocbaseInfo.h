@@ -70,7 +70,7 @@ struct DBUser {
 
 class CreateDatabaseInfo {
  public:
-  CreateDatabaseInfo(application_features::ApplicationServer&, OperationOptions const&);
+  CreateDatabaseInfo(application_features::ApplicationServer&, ExecContext const&);
   Result load(std::string const& name, uint64_t id);
 
   Result load(uint64_t id, VPackSlice const& options,
@@ -135,7 +135,7 @@ class CreateDatabaseInfo {
 
  private:
   application_features::ApplicationServer& _server;
-  OperationOptions _options;
+  ExecContext const& _context;
 
   std::uint64_t _id = 0;
   std::string _name = "";

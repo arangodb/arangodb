@@ -1207,7 +1207,6 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   auto newLists = new DatabasesLists(*oldLists);
 
   ServerState::RoleEnum role = arangodb::ServerState::instance()->getRole();
-  OperationOptions opOptions(ExecContext::current());
 
   try {
     for (VPackSlice it : VPackArrayIterator(databases)) {
@@ -1233,7 +1232,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       // open the database and scan collections in it
 
       // try to open this database
-      arangodb::CreateDatabaseInfo info(server(), opOptions);
+      arangodb::CreateDatabaseInfo info(server(), ExecContext::current());
       auto res = info.load(it, VPackSlice::emptyArraySlice());
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);

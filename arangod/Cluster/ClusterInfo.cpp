@@ -777,7 +777,6 @@ void ClusterInfo::loadPlan() {
 
     std::string name;
 
-    OperationOptions opOptions(ExecContext::current());
     for (auto const& database : velocypack::ObjectIterator(planDatabasesSlice, true)) {
       name = database.key.copyString();
 
@@ -792,7 +791,7 @@ void ClusterInfo::loadPlan() {
           // database does not yet exist, create it now
 
           // create a local database object...
-          arangodb::CreateDatabaseInfo info(_server, opOptions);
+          arangodb::CreateDatabaseInfo info(_server, ExecContext::current());
           Result res = info.load(database.value, VPackSlice::emptyArraySlice());
           if (res.fail()) {
             LOG_TOPIC("94357", ERR, arangodb::Logger::AGENCY)
@@ -801,7 +800,7 @@ void ClusterInfo::loadPlan() {
           } else {
             std::string dbName = info.getName();
             res = databaseFeature.createDatabase(std::move(info), vocbase);
-            events::CreateDatabase(dbName, OperationResult(res, opOptions));
+            events::CreateDatabase(dbName, res, ExecContext::current());
 
             if (res.fail()) {
               LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)
@@ -1978,9 +1977,7 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
 
     if (!res.successful()) {
       if (tries == 1) {
-        OperationOptions opOptions(ExecContext::current());
-        events::CreateDatabase(database.getName(),
-                               OperationResult(res.errorCode(), opOptions));
+        events::CreateDatabase(database.getName(), res.asResult(), ExecContext::current());
       }
       if (tries >= 5) {
         nextTimeout = 5.0;

@@ -49,11 +49,10 @@ struct Databases {
                                        std::string const& user = "");
   static arangodb::Result info(TRI_vocbase_t* vocbase, VPackBuilder& result);
   static arangodb::Result create(application_features::ApplicationServer& server,
-                                 std::string const& dbName,
-                                 VPackSlice const& users, VPackSlice const& options,
-                                 OperationOptions const& opOptions);
-  static arangodb::Result drop(TRI_vocbase_t* systemVocbase, std::string const& dbName,
-                               OperationOptions const& opOptions);
+                                 ExecContext const& context, std::string const& dbName,
+                                 VPackSlice const& users, VPackSlice const& options);
+  static arangodb::Result drop(ExecContext const& context, TRI_vocbase_t* systemVocbase,
+                               std::string const& dbName);
 
  private:
   /// @brief will retry for at most <timeout> seconds

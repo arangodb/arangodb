@@ -73,9 +73,8 @@ bool CreateDatabase::first() {
 
     // Assertion in constructor makes sure that we have DATABASE.
     auto& server = _feature.server();
-    OperationOptions opOptions(ExecContext::current());
-    _result = Databases::create(server, _description.get(DATABASE), users,
-                                properties(), opOptions);
+    _result = Databases::create(server, ExecContext::current(),
+                                _description.get(DATABASE), users, properties());
     if (!_result.ok() && _result.errorNumber() != TRI_ERROR_ARANGO_DUPLICATE_NAME) {
       LOG_TOPIC("5fb67", ERR, Logger::MAINTENANCE)
           << "CreateDatabase: failed to create database " << database << ": " << _result;

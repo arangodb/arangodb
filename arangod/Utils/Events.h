@@ -52,8 +52,8 @@ void PropertyUpdateCollection(std::string const& db, std::string const& collecti
                               OperationResult const&);
 void TruncateCollection(std::string const& db, std::string const& name,
                         OperationResult const& result);
-void CreateDatabase(std::string const& name, OperationResult const& result);
-void DropDatabase(std::string const& name, OperationResult const& result);
+void CreateDatabase(std::string const& name, Result const& result, ExecContext const& context);
+void DropDatabase(std::string const& name, Result const& result, ExecContext const& context);
 void CreateIndex(std::string const& db, std::string const& col, VPackSlice const&, int result);
 void DropIndex(std::string const& db, std::string const& col,
                std::string const& idx, int result);

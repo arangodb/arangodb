@@ -317,7 +317,6 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   auto& sysDbFeature =
       _state.applier._server.getFeature<arangodb::SystemDatabaseFeature>();
 
-  OperationOptions opOptions(ExecContext::current());
   if (type == REPLICATION_DATABASE_CREATE) {
     VPackSlice const data = slice.get("data");
 
@@ -337,7 +336,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
 
       auto system = sysDbFeature.use();
       TRI_ASSERT(system.get());
-      auto res = methods::Databases::drop(system.get(), name, opOptions);
+      auto res = methods::Databases::drop(ExecContext::current(), system.get(), name);
 
       if (res.fail()) {
         LOG_TOPIC("e8595", ERR, Logger::REPLICATION) << res.errorMessage();
@@ -346,8 +345,9 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     }
 
     VPackSlice users = VPackSlice::emptyArraySlice();
-    Result res = methods::Databases::create(_state.applier._server, name, users,
-                                            VPackSlice::emptyObjectSlice(), opOptions);
+    Result res =
+        methods::Databases::create(_state.applier._server, ExecContext::current(),
+                                   name, users, VPackSlice::emptyObjectSlice());
 
     return res;
   } else if (type == REPLICATION_DATABASE_DROP) {
@@ -363,7 +363,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
       _state.vocbases.erase(std::to_string(vocbase->id()));
       _state.vocbases.erase(name);
 
-      auto res = methods::Databases::drop(system.get(), name, opOptions);
+      auto res = methods::Databases::drop(ExecContext::current(), system.get(), name);
 
       if (res.fail()) {
         LOG_TOPIC("21b6a", ERR, Logger::REPLICATION) << res.errorMessage();
