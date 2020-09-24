@@ -18,7 +18,7 @@ devel
   Any functionality related to the `_modules` system collection is deprecated
   and will be removed in ArangoDB v3.9.
 
-  Two side effects of when this option is turned on are:
+  Two side effects of turning this option off (which is the default) are:
   * there will no be iteration over all databases at server startup just to check
     the contents of all `_modules` collections.
   * less collections/shards will be around for deployments that create a large
