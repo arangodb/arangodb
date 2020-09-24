@@ -1,12 +1,8 @@
-v3.7.4 (XXXX-XX-XX)
+v3.7.3 (XXXX-XX-XX)
 -------------------
 
 * Added safeguards against using V8 internally in environments that have
   JavaScript turned off via the `--javascript.enabled false` option.
-
-
-v3.7.3 (XXXX-XX-XX)
--------------------
 
 * Make the reboot tracker catch failed coordinators, too. Previously the reboot
   tracker was invoked only when a DB server failed or was restarted, and when a
