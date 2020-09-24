@@ -42,7 +42,6 @@ class TimeZoneFeature final : public application_features::ApplicationFeature {
   explicit TimeZoneFeature(application_features::ApplicationServer& server);
   ~TimeZoneFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
 
