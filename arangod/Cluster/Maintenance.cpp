@@ -629,8 +629,6 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
   // Compare local to plan -----------------------------------------------------
 
-  // TODO: getShardMaps still needed?
-
   for (auto const& dbname : dirty) {  // each dirty database
     auto lit = local.find(dbname);
     if (lit == local.end()) {
