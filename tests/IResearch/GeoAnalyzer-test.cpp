@@ -20,3 +20,9 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "gtest/gtest.h"
+
+#include "s2/s2point_region.h"
+#include "s2/s2polygon.h"
+
+#include "IResearch/GeoAnalyzer.h"
