@@ -587,7 +587,7 @@ EvalResultT<VPackSlice> ReadAttribute(VPackSlice slice, VPackSlice key) {
 }
 
 EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  if (!params.isArray() && params.length() != 2) {
+  if (!params.isArray() || params.length() != 2) {
     return EvalError("expected exactly two parameters");
   }
 
@@ -602,7 +602,7 @@ EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& r
 }
 
 EvalResult Prim_AttribRefOr(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  if (!params.isArray() && params.length() != 3) {
+  if (!params.isArray() || params.length() != 3) {
     return EvalError("expected exactly two parameters");
   }
 
@@ -625,12 +625,12 @@ EvalResult Prim_AttribRefOr(Machine& ctx, VPackSlice const params, VPackBuilder&
   return {};
 }
 
-EvalResult Prim_AttribRefX(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  if (!params.isArray() && params.length() != 3) {
+EvalResult Prim_AttribRefOrFail(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isArray() || params.length() != 2) {
     return EvalError("expected exactly two parameters");
   }
 
-  auto&& [slice, key, defaultValue] = unpackTuple<VPackSlice, VPackSlice, VPackSlice>(params);
+  auto&& [slice, key] = unpackTuple<VPackSlice, VPackSlice>(params);
   if (!slice.isObject()) {
     return EvalError("expect second parameter to be an object");
   }
@@ -1083,7 +1083,7 @@ void RegisterAllPrimitives(Machine& ctx) {
   // Access operators
   ctx.setFunction("attrib-ref", Prim_AttribRef);
   ctx.setFunction("attrib-ref-or", Prim_AttribRefOr);
-  ctx.setFunction("attrib-ref-x", Prim_AttribRefX);
+  ctx.setFunction("attrib-ref-or-fail", Prim_AttribRefOrFail);
   ctx.setFunction("attrib-get", Prim_AttribRef);
   ctx.setFunction("attrib-set", Prim_AttribSet);
 
