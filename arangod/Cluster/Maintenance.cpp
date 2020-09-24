@@ -1136,9 +1136,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         }
       }
 
-
-
-      for (auto const& shard : VPackObjectIterator(lit->second->slice(), true)) {
+      for (auto const& shard : VPackObjectIterator(ldb, true)) {
         auto const shName = shard.key.copyString();
         auto const shSlice = shard.value;
         auto const colName = shSlice.get(StaticStrings::DataSourcePlanId).copyString();
@@ -1436,9 +1434,6 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
   std::string const& serverId, MaintenanceFeature& feature,
   MaintenanceFeature::ShardActionMap const& shardActionMap,
   std::unordered_set<std::string>& makeDirty) {
-
-  //auto pdbs = plan.get(COLLECTIONS);
-  //auto cdbs = current.get(COLLECTIONS);
 
   for (auto const& dbname : dirty) {
 
