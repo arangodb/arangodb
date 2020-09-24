@@ -693,20 +693,21 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
           index.second.reset();
         }
       } else {
-        // TODO secure?
         VPackSlice indexes = planit->second->slice()[0].get(std::vector<std::string>{
             AgencyCommHelper::path(), PLAN, COLLECTIONS, dbname, colname, INDEXES});
-        for (auto& p : shard.second) {
-          std::string const& id = p.first;
-          bool found = false;
-          for (auto const& ind : VPackArrayIterator(indexes)) {
-            if (ind.get(ID).copyString() == id) {
-              found = true;
-              break;
+        if (indexes.isArray()) {
+          for (auto& p : shard.second) {
+            std::string const& id = p.first;
+            bool found = false;
+            for (auto const& ind : VPackArrayIterator(indexes)) {
+              if (ind.get(ID).copyString() == id) {
+                found = true;
+                break;
+              }
             }
-          }
-          if (!found) {
-            p.second.reset();
+            if (!found) {
+              p.second.reset();
+            }
           }
         }
       }
