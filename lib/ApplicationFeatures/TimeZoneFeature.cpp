@@ -59,8 +59,7 @@ TimeZoneFeature::TimeZoneFeature(application_features::ApplicationServer& server
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
-TimeZoneFeature::~TimeZoneFeature() {
-}
+TimeZoneFeature::~TimeZoneFeature() = default;
 
 TimeZoneFeature* TimeZoneFeature::instance() { return Instance; }
 
