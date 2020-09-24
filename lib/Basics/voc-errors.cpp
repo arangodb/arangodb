@@ -242,6 +242,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_LDAP_FOUND_NO_OBJECTS, "LDAP didn't found any objects");
   REG_ERROR(ERROR_LDAP_NOT_ONE_USER_FOUND, "LDAP found zero ore more than one user");
   REG_ERROR(ERROR_LDAP_USER_NOT_IDENTIFIED, "LDAP found a user, but its not the desired one");
+  REG_ERROR(ERROR_LDAP_OPERATIONS_ERROR, "LDAP returned an operations error");
   REG_ERROR(ERROR_LDAP_INVALID_MODE, "invalid ldap mode");
   REG_ERROR(ERROR_TASK_INVALID_ID, "invalid task id");
   REG_ERROR(ERROR_TASK_DUPLICATE_ID, "duplicate task id");
