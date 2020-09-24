@@ -211,7 +211,6 @@ namespace iresearch {
 GeoAnalyzer::GeoAnalyzer(const irs::type_info& type)
   : attributes{{
       { irs::type<irs::increment>::id(), &_inc       },
-      { irs::type<irs::offset>::id(), &_offset       },
       { irs::type<irs::term_attribute>::id(), &_term }},
       type
     } {
