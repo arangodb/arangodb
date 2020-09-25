@@ -132,6 +132,7 @@ struct DebugInformation {
 /* The Pregel Algorithm */
 struct VertexAccumulatorOptions {
   std::string resultField;
+  std::size_t parallelism;
   AccumulatorsDeclaration vertexAccumulators;
   AccumulatorsDeclaration globalAccumulators;
   CustomAccumulatorDefinitions customAccumulators;

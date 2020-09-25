@@ -213,6 +213,7 @@ using debug_information_deserializer = utilities::constructing_deserializer<Debu
 /* Algorithm */
 
 constexpr const char resultField[] = "resultField";
+constexpr const char parallelism[] = "parallelism";
 constexpr const char vertexAccumulators[] = "vertexAccumulators";
 constexpr const char globalAccumulators[] = "globalAccumulators";
 constexpr const char customAccumulators[] = "customAccumulators";
@@ -234,6 +235,7 @@ using phases_deserializer = non_empty_array_deserializer<algorithm_phase_deseria
 
 using vertex_accumulator_options_plan = parameter_list<
     factory_deserialized_parameter<resultField, values::value_deserializer<std::string>, false>,
+    factory_simple_parameter<parallelism, size_t, false>,
     factory_deserialized_parameter<vertexAccumulators, accumulators_map_deserializer, false>,
     factory_deserialized_parameter<globalAccumulators, accumulators_map_deserializer, false>,
     factory_deserialized_parameter<customAccumulators, custom_accumulators_map_deserializer, false>,
