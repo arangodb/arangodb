@@ -1,6 +1,9 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed a bug in AQL COLLECT with OPTIONS { "hash" } that lead to a quadratic
+  runtime in the number of output rows.
+
 * Added startup option `--database.old-system-collections` to toggle automatic
   creation of system collections `_modules` and `_fishbowl`, along with their
   internal usage. These collections are useful only in very few cases, so it
