@@ -190,10 +190,10 @@ bool Iterator::next() noexcept {
   }
 
   // whether or not we're in the context of array or object
-  VPackValueLength const isArray = VPackValueType::Array != _value.type;
+  VPackValueLength const isObject = VPackValueType::Array != _value.type;
 
   _value.key = VPackSlice(_begin);
-  _value.value = VPackSlice(_begin + isArray * _value.key.byteSize());
+  _value.value = VPackSlice(_begin + isObject * _value.key.byteSize());
 
   _begin = _value.value.start() + _value.value.byteSize();
   ++_value.pos;
