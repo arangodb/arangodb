@@ -123,11 +123,13 @@ Result GraphManager::createCollection(std::string const& name, TRI_col_type_e co
       VPackCollection::merge(options, helper.slice(), false, true);
 
   std::shared_ptr<LogicalCollection> coll;
+  OperationOptions opOptions(ExecContext::current());
   auto res = arangodb::methods::Collections::create(  // create collection
       vocbase,                                        // collection vocbase
-      name,                                           // collection name
-      colType,                                        // collection type
-      mergedBuilder.slice(),                          // collection properties
+      opOptions,
+      name,                   // collection name
+      colType,                // collection type
+      mergedBuilder.slice(),  // collection properties
       waitForSync, true, false, coll);
 
   return res;
@@ -612,8 +614,9 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
   }
 
   std::vector<std::shared_ptr<LogicalCollection>> created;
-  return methods::Collections::create(
-      vocbase, collectionsToCreate, waitForSync, true, false, nullptr, created);
+  OperationOptions opOptions(ExecContext::current());
+  return methods::Collections::create(vocbase, opOptions, collectionsToCreate,
+                                      waitForSync, true, false, nullptr, created);
 }
 
 bool GraphManager::onlySatellitesUsed(Graph const* graph) const {

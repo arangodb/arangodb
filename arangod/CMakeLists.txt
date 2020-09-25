@@ -85,11 +85,8 @@ target_compile_definitions(arango_iresearch
   PUBLIC "$<$<CONFIG:Debug>:IRESEARCH_DEBUG=1>"
 )
 
-if(MSVC)
-  set(IRESEARCH_TARGET_DEPENDENCY iresearch-static-scrt) # use static + staticCRT to match ArangoDB
-else()
-  set(IRESEARCH_TARGET_DEPENDENCY iresearch-static) # use static to match ArangoDB
-endif()
+set(IRESEARCH_TARGET_DEPENDENCY iresearch-static) # use static to match ArangoDB
+
 
 get_target_property(IRESEARCH_INCLUDE
   ${IRESEARCH_TARGET_DEPENDENCY} INCLUDE_DIRECTORIES)
@@ -538,6 +535,7 @@ set(LIB_ARANGO_AGENCY_SOURCES
 )
 
 set(LIB_ARANGO_V8SERVER_SOURCES
+  Cluster/v8-cluster.cpp
   Transaction/V8Context.cpp
   V8Server/FoxxQueuesFeature.cpp
   V8Server/V8Context.cpp
@@ -618,7 +616,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/SynchronizeShard.cpp
   Cluster/TakeoverShardLeadership.cpp
   Cluster/UpdateCollection.cpp
-  Cluster/v8-cluster.cpp
   FeaturePhases/AgencyFeaturePhase.cpp
   FeaturePhases/AqlFeaturePhase.cpp
   FeaturePhases/BasicFeaturePhaseServer.cpp

@@ -1421,7 +1421,8 @@ TEST_F(IResearchViewTest, test_drop_database) {
   StorageEngineMock::before = [&beforeCount]()->void { ++beforeCount; };
 
   TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
-  arangodb::CreateDatabaseInfo testDBInfo(server.server());
+  arangodb::CreateDatabaseInfo testDBInfo(server.server(),
+                                          arangodb::ExecContext::current());
   testDBInfo.load("testDatabase" TOSTRING(__LINE__), 3);
   ASSERT_TRUE(databaseFeature.createDatabase(std::move(testDBInfo), vocbase).ok());
   ASSERT_TRUE((nullptr != vocbase));
@@ -7398,7 +7399,8 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
   auto& databaseFeature = server.server().getFeature<arangodb::DatabaseFeature>();
 
   TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
-  arangodb::CreateDatabaseInfo testDBInfo(server.server());
+  arangodb::CreateDatabaseInfo testDBInfo(server.server(),
+                                          arangodb::ExecContext::current());
   testDBInfo.load("testDatabase" TOSTRING(__LINE__), 3);
   ASSERT_TRUE(databaseFeature.createDatabase(std::move(testDBInfo), vocbase).ok());
   ASSERT_NE(nullptr, vocbase);

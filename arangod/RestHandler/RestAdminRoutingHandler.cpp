@@ -36,6 +36,11 @@ RestAdminRoutingHandler::RestAdminRoutingHandler(application_features::Applicati
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAdminRoutingHandler::execute() {
+  if (!server().isEnabled<V8DealerFeature>()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED, "JavaScript operations are disabled");
+    return RestStatus::DONE;
+  }
+
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() == 1 && suffixes[0] == "reload") {
     reloadRouting();
