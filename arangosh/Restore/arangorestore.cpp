@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
     server.addFeature<RestoreFeature>(ret);
     server.addFeature<ShellColorsFeature>();
     server.addFeature<ShutdownFeature>(
-        std::vector<std::type_index>{std::type_index(typeid(RestoreFeature))});
+        std::vector<TypeInfo::TypeId>{Type<RestoreFeature>::id()});
     server.addFeature<SslFeature>();
     server.addFeature<TempFeature>("arangorestore");
     server.addFeature<VersionFeature>();

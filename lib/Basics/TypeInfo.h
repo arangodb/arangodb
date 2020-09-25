@@ -24,6 +24,8 @@
 #ifndef ARANGODB_BASICS_TYPEINFO_H
 #define ARANGODB_BASICS_TYPEINFO_H 1
 
+#include <string_view>
+
 namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,7 +44,7 @@ class TypeInfo {
   /// @brief default constructor produces invalid type identifier
   //////////////////////////////////////////////////////////////////////////////
   constexpr TypeInfo() noexcept
-    : TypeInfo(nullptr) {
+    : TypeInfo(nullptr, "") {
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -78,15 +80,19 @@ class TypeInfo {
   //////////////////////////////////////////////////////////////////////////////
   constexpr TypeId id() const noexcept { return id_; }
 
+
+  constexpr std::string_view name() const noexcept { return name_; }
+
  private:
   template<typename T>
   friend struct Type;
 
-  constexpr explicit TypeInfo(TypeId id) noexcept
-    : id_(id) {
+  constexpr explicit TypeInfo(TypeId id, std::string_view name) noexcept
+    : id_(id), name_(name) {
   }
 
   TypeId id_;
+  std::string_view name_;
   // FIXME we can store arbitrary info here
 }; // TypeInfo
 
@@ -102,7 +108,7 @@ struct Type {
   ///          type denoted by template parameter "T"
   //////////////////////////////////////////////////////////////////////////////
   static constexpr TypeInfo get() noexcept {
-    return TypeInfo{id()};
+    return TypeInfo{id(), ""};
   }
 
   //////////////////////////////////////////////////////////////////////////////

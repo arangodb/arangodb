@@ -486,8 +486,12 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
 
     std::string dependencies;
     if (!startsAfter.empty()) {
-      std::function<std::string(std::type_index)> cb =
-          [](std::type_index type) -> std::string { return type.name(); };
+      std::function<std::string(TypeInfo::TypeId)> cb =
+          [](TypeInfo::TypeId type) -> std::string {
+             //FIXME
+            //return type.name();
+            return "";
+          };
       dependencies = " - depends on: " + StringUtils::join(startsAfter, ", ", cb);
     }
     LOG_TOPIC("b2ad5", TRACE, Logger::STARTUP)

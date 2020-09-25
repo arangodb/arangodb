@@ -248,6 +248,7 @@ class ApplicationServer {
    // a non-existing feature
    template <typename AsType, typename std::enable_if<std::is_base_of<ApplicationFeature, AsType>::value, int>::type = 0>
    AsType& getFeature(TypeInfo::TypeId type) const {
+   // FIXME dynamic lookup
      auto* feature = _features[Feature<AsType>::Index].get();
      if (nullptr == feature) {
        // FIXME name for a feature!!!

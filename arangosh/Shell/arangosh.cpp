@@ -85,7 +85,7 @@ int main(int argc, char* argv[]) {
       server.addFeature<ShellColorsFeature>();
       server.addFeature<ShellFeature>(&ret);
       server.addFeature<ShutdownFeature>(
-          std::vector<std::type_index>{std::type_index(typeid(ShellFeature))});
+          std::vector<TypeInfo::TypeId>{Type<ShellFeature>::id()});
       server.addFeature<SslFeature>();
       server.addFeature<TempFeature>(name);
       server.addFeature<V8PlatformFeature>();

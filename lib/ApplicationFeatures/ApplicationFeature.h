@@ -26,7 +26,6 @@
 
 #include <memory>
 #include <string>
-#include <typeindex>
 #include <unordered_set>
 #include <vector>
 

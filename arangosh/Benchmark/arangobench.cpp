@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
     server.addFeature<RandomFeature>();
     server.addFeature<ShellColorsFeature>();
     server.addFeature<ShutdownFeature>(
-        std::vector<std::type_index>{std::type_index(typeid(BenchFeature))});
+        std::vector<TypeInfo::TypeId>{Type<BenchFeature>::id()});
     server.addFeature<SslFeature>();
     server.addFeature<TempFeature>("arangobench");
     server.addFeature<VersionFeature>();

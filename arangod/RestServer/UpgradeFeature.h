@@ -42,7 +42,7 @@ namespace arangodb {
 class UpgradeFeature final : public application_features::ApplicationFeature {
  public:
   UpgradeFeature(application_features::ApplicationServer& server, int* result,
-                 std::vector<std::type_index> const& nonServerFeatures);
+                 std::vector<TypeInfo::TypeId> const& nonServerFeatures);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -61,7 +61,7 @@ class UpgradeFeature final : public application_features::ApplicationFeature {
   bool _upgradeCheck;
 
   int* _result;
-  std::vector<std::type_index> _nonServerFeatures;
+  std::vector<TypeInfo::TypeId> _nonServerFeatures;
   std::vector<methods::Upgrade::Task> _tasks;
 };
 

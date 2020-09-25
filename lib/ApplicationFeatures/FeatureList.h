@@ -275,7 +275,14 @@ using FeatureList = TypeList<
   pregel::PregelFeature
 >;
 
-static constexpr ::frozen::map<TypeInfo::TypeId, size_t, FeatureList::Length> FeatureMap{FeatureList::toList()};
+struct TypeLess {
+  constexpr bool operator()(TypeInfo::TypeId lhs, TypeInfo::TypeId rhs) const noexcept {
+    // FIXME add proper type names!!!
+    return lhs().name() < rhs().name();
+  }
+};
+
+static constexpr ::frozen::map<TypeInfo::TypeId, size_t, FeatureList::Length, TypeLess> FeatureMap{FeatureList::toList()};
 
 template<typename T>
 class Feature {

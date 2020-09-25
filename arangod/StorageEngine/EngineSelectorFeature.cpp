@@ -23,6 +23,8 @@
 
 #include "EngineSelectorFeature.h"
 
+#include <typeindex>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -44,7 +46,7 @@ using namespace arangodb::options;
 
 namespace {
 struct EngineInfo {
-  std::type_index type;
+  arangodb::TypeInfo::TypeId type;
   // whether or not the engine is deprecated
   bool deprecated;
   // whether or not new deployments with this engine are allowed
@@ -55,7 +57,7 @@ std::unordered_map<std::string, EngineInfo> createEngineMap() {
   std::unordered_map<std::string, EngineInfo> map;
   // rocksdb is not deprecated and the engine of choice
   map.try_emplace(arangodb::RocksDBEngine::EngineName,
-                  EngineInfo{ std::type_index(typeid(arangodb::RocksDBEngine)), false, true });
+                  EngineInfo{ arangodb::Type<arangodb::RocksDBEngine>::id(), false, true });
   return map;
 }
 }

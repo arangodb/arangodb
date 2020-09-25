@@ -263,20 +263,21 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // - IResearchAnalyzer: analyzers are not needed by agency
   // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
 
-  std::vector<std::type_index> disabledFeatures(
-      {std::type_index(typeid(iresearch::IResearchFeature)),
-       std::type_index(typeid(iresearch::IResearchAnalyzerFeature)),
-       std::type_index(typeid(ActionFeature)),
-       std::type_index(typeid(ScriptFeature)), std::type_index(typeid(FoxxQueuesFeature)),
-       std::type_index(typeid(FrontendFeature))});
+  std::vector<TypeInfo::TypeId> disabledFeatures(
+      {Type<iresearch::IResearchFeature>::id(),
+       Type<iresearch::IResearchAnalyzerFeature>::id(),
+       Type<ActionFeature>::id(),
+       Type<ScriptFeature>::id(),
+       Type<FoxxQueuesFeature>::id(),
+       Type<FrontendFeature>::id()});
 
   if (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) {
     // specifying --console requires JavaScript, so we can only turn it off
     // if not specified
 
     // console mode inactive. so we can turn off V8
-    disabledFeatures.emplace_back(std::type_index(typeid(V8PlatformFeature)));
-    disabledFeatures.emplace_back(std::type_index(typeid(V8DealerFeature)));
+    disabledFeatures.emplace_back(Type<V8PlatformFeature>::id());
+    disabledFeatures.emplace_back(Type<V8DealerFeature>::id());
   }
 
   server().disableFeatures(disabledFeatures);

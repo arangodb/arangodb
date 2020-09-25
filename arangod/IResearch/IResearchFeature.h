@@ -25,6 +25,8 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_FEATURE_H
 #define ARANGOD_IRESEARCH__IRESEARCH_FEATURE_H 1
 
+#include <typeindex>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/voc-types.h"

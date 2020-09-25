@@ -35,13 +35,13 @@ using namespace arangodb::options;
 namespace arangodb {
 
 ShutdownFeature::ShutdownFeature(application_features::ApplicationServer& server,
-                                 std::vector<std::type_index> const& features)
+                                 std::vector<TypeInfo::TypeId> const& features)
     : ApplicationFeature(server, "Shutdown") {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 
   for (auto feature : features) {
-    if (feature != std::type_index(typeid(LoggerFeature))) {
+    if (feature != Type<LoggerFeature>::id()) {
       startsAfter(feature);
     }
   }

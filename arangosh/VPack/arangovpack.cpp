@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
     server.addFeature<RandomFeature>();
     server.addFeature<ShellColorsFeature>();
     server.addFeature<ShutdownFeature>(
-        std::vector<std::type_index>{std::type_index(typeid(VPackFeature))});
+        std::vector<TypeInfo::TypeId>{Type<VPackFeature>::id()});
     server.addFeature<VPackFeature>(&ret);
     server.addFeature<VersionFeature>();
 
