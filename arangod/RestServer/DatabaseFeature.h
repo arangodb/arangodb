@@ -88,6 +88,10 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   }
 #endif
 
+  TRI_vocbase_t& getExpressionVocbase() {
+    return *_expression_vocbase;
+  }
+
   /// @brief will be called when the recovery phase has run
   /// this will call the engine-specific recoveryDone() procedures
   /// and will execute engine-unspecific operations (such as starting
@@ -209,6 +213,9 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   // i am here for debugging only.
   static TRI_vocbase_t* CURRENT_VOCBASE;
 #endif
+
+  /// @brief dummy vocbase for evaluate calculation only queries
+  std::unique_ptr<TRI_vocbase_t> _expression_vocbase;
 };
 
 }  // namespace arangodb

@@ -56,7 +56,8 @@ QueryContext::QueryContext(TRI_vocbase_t& vocbase)
       _vocbase(vocbase),
       _execState(QueryExecutionState::ValueType::INVALID_STATE),
       _numRequests(0) {
-  if (!AqlFeature::lease()) {
+  if (_vocbase.id() != std::numeric_limits<uint64_t>::max() && // FIXME: find better way to check
+      AqlFeature::lease()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 }

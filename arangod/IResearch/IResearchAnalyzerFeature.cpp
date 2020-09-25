@@ -503,10 +503,24 @@ REGISTER_ANALYZER_VPACK(irs::analysis::pipeline_token_stream, pipeline_vpack_bui
 } // namespace pipeline_vpack
 
 namespace calculation_vpack {
-  class CalculationAnalyzer final : public irs::analysis::analyzer{
-  public:
 
-    static arangodb::SystemDatabaseFeature* dbFeature;
+  class CalculationAnalyzer final : public irs::analysis::analyzer{
+   public:
+    struct options_t {
+      /// @brief Query string to be executed for each document.
+      /// Field value is set with @param binded parameter.
+      std::string query_string;
+
+      /// @brief determines how processed members of array result:
+      /// if set to true all members are considered to be at position 0
+      /// if set to false each array members is set at positions serially
+      bool collapseArrayPositions{ false };
+
+      /// @brief do not emit empty token if query result is NULL
+      /// this could be used fo index filtering.
+      bool discardNulls{ true };
+    };
+    static arangodb::DatabaseFeature* DB_FEATURE; // FIXME: implement properly. Just needed for fake db creation!
 
     static constexpr irs::string_ref type_name() noexcept {
       return "calculation";
@@ -519,18 +533,11 @@ namespace calculation_vpack {
     }
 
     static irs::analysis::analyzer::ptr make(irs::string_ref const& /*args*/) {
-      return std::make_shared<CalculationAnalyzer>(*dbFeature->use());
+      return std::make_shared<CalculationAnalyzer>();
     }
 
-    CalculationAnalyzer(TRI_vocbase_t& vocbase)
-      : irs::analysis::analyzer(irs::type<CalculationAnalyzer>::get()),
-        _ctx(_vocbase),
-        //_trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-        //  {}, {}, {}, arangodb::transaction::Options()),
-        _query(std::shared_ptr<arangodb::transaction::Context>(std::shared_ptr<int>(), &_ctx), arangodb::aql::QueryString("RETURN 'CALCULON'"),
-               std::shared_ptr<arangodb::velocypack::Builder>(), std::make_shared<arangodb::velocypack::Builder>()){
-      // TODO: check query somehow
-      // TODO: Forbid to use TOKENS inside query -> problems on recovery as analyzers are not available for querying!
+    CalculationAnalyzer()
+      : irs::analysis::analyzer(irs::type<CalculationAnalyzer>::get()) {
     }
 
     virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
@@ -560,25 +567,39 @@ namespace calculation_vpack {
       return false;
     }
 
-    virtual bool reset(irs::string_ref const&) noexcept override {
-      _query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-      _query.execute(_queryResult);
+    virtual bool reset(irs::string_ref const& field) noexcept override {
+      // FIXME: For now it is only strings. So make VPACK and set parameter
+      // FIXME: use VPAck buffer and never reallocate between queries
+      auto vPackArgs = std::make_shared<arangodb::velocypack::Builder>();
+      {
+        VPackObjectBuilder o(vPackArgs.get());
+        vPackArgs->add("field", VPackValue(field));
+      }
+      // TODO: check query somehow
+      // TODO: Forbid to use TOKENS DOCUMENT FULLTEXT ,V8 related inside query -> problems on recovery as analyzers are not available for querying!
+      // TODO: Position calculation as parameter
+      // TODO: Filtering results
+
+      _query = std::make_unique<arangodb::aql::Query>(
+          std::make_shared<arangodb::transaction::StandaloneContext>(DB_FEATURE->getExpressionVocbase()),
+          arangodb::aql::QueryString("RETURN SOUNDEX(@field)"),
+          vPackArgs, nullptr);
+      _query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      _query->execute(_queryResult);
       _has_data = true;
       return _queryResult.ok();
     }
 
-  private:
+   private:
     irs::term_attribute _term;
     irs::increment _inc;
-    arangodb::transaction::StandaloneContext _ctx;
-    arangodb::aql::Query _query;
-    //arangodb::transaction ::Methods _trx;
     arangodb::aql::QueryResult _queryResult;
+    std::unique_ptr<arangodb::aql::Query> _query;
     bool _has_data{ false };
     std::string _str;
   }; // CalculationAnalyzer
 
-  arangodb::SystemDatabaseFeature* CalculationAnalyzer::dbFeature;
+  arangodb::DatabaseFeature* CalculationAnalyzer::DB_FEATURE;
 
   REGISTER_ANALYZER_VPACK(CalculationAnalyzer, CalculationAnalyzer::make,
                           CalculationAnalyzer::normalize);
@@ -2752,8 +2773,7 @@ void IResearchAnalyzerFeature::prepare() {
 
   // load all static analyzers
   _analyzers = getStaticAnalyzers();
-  auto& dbFeature = server().getFeature<SystemDatabaseFeature>();
-  calculation_vpack::CalculationAnalyzer::dbFeature = &dbFeature;
+  calculation_vpack::CalculationAnalyzer::DB_FEATURE = &server().getFeature<arangodb::DatabaseFeature>();
 }
 
 Result IResearchAnalyzerFeature::removeFromCollection(irs::string_ref const& name, irs::string_ref const& vocbase) {

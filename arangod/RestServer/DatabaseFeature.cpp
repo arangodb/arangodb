@@ -246,6 +246,14 @@ void DatabaseManagerThread::run() {
   }
 }
 
+namespace {
+  arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(application_features::ApplicationServer& server) {
+    arangodb::CreateDatabaseInfo info(server);
+    auto rv = info.load("_expression_vocbase", std::numeric_limits<uint64_t>::max());
+    return info;
+  }
+}
+
 DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Database"),
       _defaultWaitForSync(false),
@@ -255,7 +263,8 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _databasesLists(new DatabasesLists()),
       _isInitiallyEmpty(false),
       _checkVersion(false),
-      _upgrade(false) {
+      _upgrade(false),
+      _expression_vocbase(new TRI_vocbase_t(TRI_VOCBASE_TYPE_NORMAL, createExpressionVocbaseInfo(server))){
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
 
