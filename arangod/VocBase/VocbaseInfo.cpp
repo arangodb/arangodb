@@ -34,8 +34,10 @@
 
 namespace arangodb {
 
-CreateDatabaseInfo::CreateDatabaseInfo(application_features::ApplicationServer& server) : _server(server) {}
-  
+CreateDatabaseInfo::CreateDatabaseInfo(application_features::ApplicationServer& server,
+                                       ExecContext const& context)
+    : _server(server), _context(context) {}
+
 ShardingPrototype CreateDatabaseInfo::shardingPrototype() const { 
   if (_name != StaticStrings::SystemDatabase) {
     return ShardingPrototype::Graphs;
@@ -179,13 +181,13 @@ Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
   if (users.isNone() || users.isNull()) {
     return Result();
   } else if (!users.isArray()) {
-    events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
+    events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid users slice");
   }
 
   for (VPackSlice const& user : VPackArrayIterator(users)) {
     if (!user.isObject()) {
-      events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
+      events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
       return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
     }
 
@@ -200,7 +202,7 @@ Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
         name = slice.copyString();
         userSet = true;
       } else {
-        events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
+        events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
         return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
       }
     }
@@ -209,7 +211,7 @@ Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
     if (user.hasKey("passwd")) {
       VPackSlice passwd = user.get("passwd");
       if (!passwd.isString()) {
-        events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
+        events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
         return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
       }
       password = passwd.copyString();
@@ -244,7 +246,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
     return Result();
   }
   if (!options.isObject()) {
-    events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
+    events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid options slice");
   }
 

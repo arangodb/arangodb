@@ -68,7 +68,7 @@ TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(Trav
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn, arangodb::velocypack::Slice const& condition)
-    : EdgeConditionBuilder(new AstNode(tn->_plan->getAst(), condition)), _tn(tn) {}
+    : EdgeConditionBuilder(tn->_plan->getAst()->createNode(condition)), _tn(tn) {}
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn, TraversalEdgeConditionBuilder const* other)
@@ -225,22 +225,22 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 
   // Filter Condition Parts
   TRI_ASSERT(base.hasKey("fromCondition"));
-  _fromCondition = new AstNode(plan->getAst(), base.get("fromCondition"));
+  _fromCondition = plan->getAst()->createNode(base.get("fromCondition"));
 
   TRI_ASSERT(base.hasKey("toCondition"));
-  _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
+  _toCondition = plan->getAst()->createNode(base.get("toCondition"));
 
   list = base.get("globalEdgeConditions");
   if (list.isArray()) {
     for (auto const& cond : VPackArrayIterator(list)) {
-      _globalEdgeConditions.emplace_back(new AstNode(plan->getAst(), cond));
+      _globalEdgeConditions.emplace_back(plan->getAst()->createNode(cond));
     }
   }
 
   list = base.get("globalVertexConditions");
   if (list.isArray()) {
     for (auto const& cond : VPackArrayIterator(list)) {
-      _globalVertexConditions.emplace_back(new AstNode(plan->getAst(), cond));
+      _globalVertexConditions.emplace_back(plan->getAst()->createNode(cond));
     }
   }
 
@@ -249,7 +249,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
     for (auto const& cond : VPackObjectIterator(list)) {
       std::string key = cond.key.copyString();
       _vertexConditions.try_emplace(StringUtils::uint64(key),
-                                    new AstNode(plan->getAst(), cond.value));
+                                    plan->getAst()->createNode(cond.value));
     }
   }
 

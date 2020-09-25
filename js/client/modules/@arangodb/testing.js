@@ -75,6 +75,7 @@ let optionsDocumentation = [
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
   '   - `sleepBeforeStart` : sleep at tcpdump info - use this dump traffic or attach debugger',
+  '   - `sleepBeforeShutdown`: let the system rest before terminating it',
   '',
   '   - `storageEngine`: set to `rocksdb` - defaults to `rocksdb`',
   '',
@@ -227,6 +228,7 @@ const optionsDefaults = {
   'disableMonitor': false,
   'disableClusterMonitor': true,
   'sleepBeforeStart' : 0,
+  'sleepBeforeShutdown' : 0,
 };
 
 let globalStatus = true;

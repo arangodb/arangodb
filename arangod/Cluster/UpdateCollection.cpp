@@ -112,7 +112,8 @@ bool UpdateCollection::first() {
           followers->remove(s);
         }
       }
-      _result = Collections::updateProperties(*coll, props);
+      OperationOptions options(ExecContext::current());
+      _result = Collections::updateProperties(*coll, props, options);
 
       if (!_result.ok()) {
         LOG_TOPIC("c3733", ERR, Logger::MAINTENANCE)

@@ -2667,7 +2667,6 @@ arangodb::Result TRI_GetINodesInfo(std::string const& path,
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     return {TRI_errno(), TRI_last_error()};
   }
-  LOG_DEVEL << "INODES: " << stat.f_files;
   totalINodes = static_cast<uint64_t>(stat.f_files);
   freeINodes = static_cast<uint64_t>(stat.f_ffree);
 #endif
