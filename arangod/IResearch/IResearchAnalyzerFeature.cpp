@@ -558,8 +558,15 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressi
           value = arangodb::iresearch::getStringRef(current);
         }
 
-        if (!pool->accepts(valueType) || !analyzer->reset(value)) {
-          auto const message = "failure to reset arangosearch analyzer: ' "s +
+        if (!pool->accepts(valueType)) {
+          auto const message = "unexpected parameter type '"s + current.typeName() +
+            "' while computing result for function 'TOKENS'";
+          LOG_TOPIC("45a21", WARN, arangodb::iresearch::TOPIC) << message;
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
+        }
+
+        if (!analyzer->reset(value)) {
+          auto const message = "failure to reset arangosearch analyzer: '"s +
             static_cast<std::string>(name) +
             "' while computing result for function 'TOKENS'";
           LOG_TOPIC("45a2d", WARN, arangodb::iresearch::TOPIC) << message;
