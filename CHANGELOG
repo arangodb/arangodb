@@ -1,6 +1,9 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Use rclone built from v1.51.0 source with go1.15.2 instead of prebuilt
+  v1.51.0 release.
+
 * Fixed a bug in AQL COLLECT with OPTIONS { "hash" } that lead to a quadratic
   runtime in the number of output rows.
 
@@ -1479,7 +1482,7 @@ v3.7.0-alpha.1 (2020-02-19)
   would not be inserted. This is fixed by ignoring this inconsistency in
   the case of restore.
 
-* Updated rclone to 1.51.1.
+* Updated rclone to 1.51.0.
 
 * Fixed a memory leak in ModificationExecutors.
 
