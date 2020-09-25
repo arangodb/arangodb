@@ -1,6 +1,9 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed a possible crash during instantiation of an AQL graph traversal.
+  Reported in #12597.
+
 * Added safeguards against using V8 internally in environments that have
   JavaScript turned off via the `--javascript.enabled false` option.
 
