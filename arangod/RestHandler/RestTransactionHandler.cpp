@@ -267,9 +267,8 @@ void RestTransactionHandler::generateTransactionResult(rest::ResponseCode code,
 
 /// start a legacy JS transaction
 void RestTransactionHandler::executeJSTransaction() {
-  if (!V8DealerFeature::DEALER) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                  "JavaScript transactions are not available");
+  if (!V8DealerFeature::DEALER || !V8DealerFeature::DEALER->isEnabled()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED, "JavaScript operations are disabled");
     return;
   }
 

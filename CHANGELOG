@@ -32,6 +32,28 @@ v3.7.3 (XXXX-XX-XX)
   routing information. This is not necessary, as the routing information is
   global and not tied to a specific database.
 
+* Fixed a possible crash during instantiation of an AQL graph traversal.
+  Reported in #12597.
+
+* Added safeguards against using V8 internally in environments that have
+  JavaScript turned off via the `--javascript.enabled false` option.
+
+* Make scheduler propertly count down the number of working threads in case an
+  exception happens in a worker thread.
+
+* Turn off upgrade checks in arangod in alpha/beta/preview Enterprise builds,
+  too.
+  Previously it was already turned off in arangod for Enterprise builds already,
+  but only for stable releases and not preview releases.
+
+* Fixed and extended LDAP log messages.
+
+* Added LDAP_OFF if referrals and restart are false.
+
+* If LDAP search fails, also retry (update to given number of retries).
+
+* Fixed inifinite reload of the login window after logout of an LDAP user.
+
 * Make the reboot tracker catch failed coordinators, too. Previously the reboot
   tracker was invoked only when a DB server failed or was restarted, and when a
   coordinator was restarted. Now it will also act if a coordinator just fails
@@ -96,8 +118,6 @@ v3.7.3 (XXXX-XX-XX)
 
 * Fixed an issue with audit logging misreporting some document requests as
   internal instead of logging the proper request information.
-
-* Fixed inifinite reload of the login window after logout of an LDAP user.
 
 * Add attributes `database` and `user` when tracking current and slow AQL
   queries.

@@ -64,7 +64,7 @@ class Collections {
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   
-  void visit(std::function<bool(std::string const&, Collection*)> const& visitor) const;
+  void visit(std::function<bool(std::string const&, Collection&)> const& visitor) const;
 
  private:
   TRI_vocbase_t* _vocbase;

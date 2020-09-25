@@ -191,7 +191,7 @@ void EngineInfoContainerDBServerServerBased::injectVertexCollections(GraphNode* 
   auto const& vCols = graphNode->vertexColls();
   if (vCols.empty()) {
     auto& resolver = _query.resolver();
-    _query.collections().visit([&resolver, graphNode](std::string const& name, aql::Collection* collection) {
+    _query.collections().visit([&resolver, graphNode](std::string const& name, aql::Collection& collection) {
       // If resolver cannot resolve this collection
       // it has to be a view.
       if (resolver.getCollection(name)) {
