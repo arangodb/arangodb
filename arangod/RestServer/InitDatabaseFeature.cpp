@@ -62,7 +62,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 InitDatabaseFeature::InitDatabaseFeature(application_features::ApplicationServer& server,
-                                         std::vector<std::type_index> const& nonServerFeatures)
+                                         std::vector<TypeInfo::TypeId> const& nonServerFeatures)
     : ApplicationFeature(server, "InitDatabase"),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
@@ -99,7 +99,7 @@ void InitDatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> option
     // we can turn off all warnings about environment here, because they
     // wil show up on a regular start later anyway
     server().disableFeatures(
-        std::vector<std::type_index>{std::type_index(typeid(EnvironmentFeature))});
+        std::vector<TypeInfo::TypeId>{Type<EnvironmentFeature>::id()});
   }
 }
 

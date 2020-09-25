@@ -113,13 +113,13 @@ class ApplicationFeature {
   // whether the feature starts before another
   template <typename T>
   bool doesStartBefore() const {
-    return doesStartBefore(TypeInfo::TypeId(typeid(T)));
+    return doesStartBefore(Type<T>::id());
   }
 
   // whether the feature starts after another
   template <typename T>
   bool doesStartAfter() const {
-    return !doesStartBefore(TypeInfo::TypeId(typeid(T)));
+    return !doesStartBefore(Type<T>::id());
   }
 
   // add the feature's options to the global list of options. this method will

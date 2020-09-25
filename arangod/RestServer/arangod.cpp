@@ -228,7 +228,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<ShardingFeature>();
     server.addFeature<ShellColorsFeature>();
     server.addFeature<ShutdownFeature>(
-        std::vector<std::type_index>{std::type_index(typeid(ScriptFeature))});
+        std::vector<TypeInfo::TypeId>{Type<ScriptFeature>::id()});
     server.addFeature<SslFeature>();
     server.addFeature<StatisticsFeature>();
     server.addFeature<StorageEngineFeature>();

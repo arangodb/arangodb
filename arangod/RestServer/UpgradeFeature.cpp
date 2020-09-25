@@ -58,7 +58,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 UpgradeFeature::UpgradeFeature(application_features::ApplicationServer& server,
-                               int* result, std::vector<std::type_index> const& nonServerFeatures)
+                               int* result, std::vector<TypeInfo::TypeId> const& nonServerFeatures)
     : ApplicationFeature(server, "Upgrade"),
       _upgrade(false),
       _upgradeCheck(true),
@@ -137,18 +137,18 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // if we run the upgrade, we need to disable a few features that may get
   // in the way...
   if (ServerState::instance()->isCoordinator()) {
-    std::vector<std::type_index> otherFeaturesToDisable = {
-        std::type_index(typeid(DaemonFeature)),
-        std::type_index(typeid(GreetingsFeature)),
-        std::type_index(typeid(pregel::PregelFeature)),
-        std::type_index(typeid(SupervisorFeature))
+    std::vector<TypeInfo::TypeId> otherFeaturesToDisable = {
+        Type<DaemonFeature>::id(),
+        Type<GreetingsFeature>::id(),
+        Type<pregel::PregelFeature>::id(),
+        Type<SupervisorFeature>::id()
     };
     server().forceDisableFeatures(otherFeaturesToDisable);
   } else {
     server().forceDisableFeatures(_nonServerFeatures);
-    std::vector<std::type_index> otherFeaturesToDisable = {
-        std::type_index(typeid(BootstrapFeature)),
-        std::type_index(typeid(HttpEndpointProvider))
+    std::vector<TypeInfo::TypeId> otherFeaturesToDisable = {
+        Type<BootstrapFeature>::id(),
+        Type<HttpEndpointProvider>::id()
     };
     server().forceDisableFeatures(otherFeaturesToDisable);
   }

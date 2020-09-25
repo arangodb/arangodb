@@ -34,7 +34,7 @@ namespace arangodb {
 class CheckVersionFeature final : public application_features::ApplicationFeature {
  public:
   explicit CheckVersionFeature(application_features::ApplicationServer& server, int* result,
-                               std::vector<std::type_index> const& nonServerFeatures);
+                               std::vector<TypeInfo::TypeId> const& nonServerFeatures);
 
  private:
   bool _checkVersion;
@@ -48,7 +48,7 @@ class CheckVersionFeature final : public application_features::ApplicationFeatur
   void checkVersion();
 
   int* _result;
-  std::vector<std::type_index> _nonServerFeatures;
+  std::vector<TypeInfo::TypeId> _nonServerFeatures;
 };
 
 }  // namespace arangodb

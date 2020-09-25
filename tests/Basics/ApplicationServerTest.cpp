@@ -44,8 +44,8 @@ using namespace arangodb;
 class TestFeatureA : public application_features::ApplicationFeature {
  public:
   TestFeatureA(application_features::ApplicationServer& server,
-               std::string const& name, std::vector<std::type_index> const& startsAfter,
-               std::vector<std::type_index> const& startsBefore)
+               std::string const& name, std::vector<TypeInfo::TypeId> const& startsAfter,
+               std::vector<TypeInfo::TypeId> const& startsBefore)
       : ApplicationFeature(server, name) {
     for (auto const& it : startsAfter) {
       this->startsAfter(it);
@@ -59,8 +59,8 @@ class TestFeatureA : public application_features::ApplicationFeature {
 class TestFeatureB : public application_features::ApplicationFeature {
  public:
   TestFeatureB(application_features::ApplicationServer& server,
-               std::string const& name, std::vector<std::type_index> const& startsAfter,
-               std::vector<std::type_index> const& startsBefore)
+               std::string const& name, std::vector<TypeInfo::TypeId> const& startsAfter,
+               std::vector<TypeInfo::TypeId> const& startsBefore)
       : ApplicationFeature(server, name) {
     for (auto const& it : startsAfter) {
       this->startsAfter(it);
@@ -84,14 +84,13 @@ TEST(ApplicationServerTest, test_startsAfterValid) {
   server.registerFailCallback(callback);
 
   auto& feature1 =
-      server.addFeature<TestFeatureA>("feature1", std::vector<std::type_index>{},
-                                      std::vector<std::type_index>{});
+      server.addFeature<TestFeatureA>("feature1", std::vector<TypeInfo::TypeId>{},
+                                      std::vector<TypeInfo::TypeId>{});
 
   auto& feature2 =
       server.addFeature<TestFeatureB>("feature2",
-                                      std::vector<std::type_index>{
-                                          std::type_index(typeid(TestFeatureA))},
-                                      std::vector<std::type_index>{});
+                                      std::vector<TypeInfo::TypeId>{Type<TestFeatureA>::id()},
+                                      std::vector<TypeInfo::TypeId>{});
 
   server.setupDependencies(true);
 
@@ -119,13 +118,13 @@ TEST(ApplicationServerTest, test_startsAfterCyclic) {
   server.registerFailCallback(callback);
 
   server.addFeature<TestFeatureA>("feature1",
-                                  std::vector<std::type_index>{
-                                      std::type_index(typeid(TestFeatureB))},
-                                  std::vector<std::type_index>{});
+                                  std::vector<TypeInfo::TypeId>{
+                                      Type<TestFeatureB>::id()},
+                                  std::vector<TypeInfo::TypeId>{});
   server.addFeature<TestFeatureB>("feature2",
-                                  std::vector<std::type_index>{
-                                      std::type_index(typeid(TestFeatureA))},
-                                  std::vector<std::type_index>{});
+                                  std::vector<TypeInfo::TypeId>{
+                                      Type<TestFeatureA>::id()},
+                                  std::vector<TypeInfo::TypeId>{});
 
   try {
     server.setupDependencies(true);
@@ -148,12 +147,12 @@ TEST(ApplicationServerTest, test_startsBeforeCyclic) {
   application_features::ApplicationServer server(options, "path");
   server.registerFailCallback(callback);
 
-  server.addFeature<TestFeatureA>("feature1", std::vector<std::type_index>{},
-                                  std::vector<std::type_index>{
-                                      std::type_index(typeid(TestFeatureB))});
-  server.addFeature<TestFeatureB>("feature2", std::vector<std::type_index>{},
-                                  std::vector<std::type_index>{
-                                      std::type_index(typeid(TestFeatureA))});
+  server.addFeature<TestFeatureA>("feature1", std::vector<TypeInfo::TypeId>{},
+                                  std::vector<TypeInfo::TypeId>{
+                                      Type<TestFeatureB>::id()});
+  server.addFeature<TestFeatureB>("feature2", std::vector<TypeInfo::TypeId>{},
+                                  std::vector<TypeInfo::TypeId>{
+                                      Type<TestFeatureA>::id()});
 
   try {
     server.setupDependencies(true);
