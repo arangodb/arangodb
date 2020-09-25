@@ -846,7 +846,7 @@ void ClusterInfo::loadPlan() {
   //  },...
   //  }}
 
-  // Now the same for views: // TODO change
+  // Now the same for views:
   for (auto const& database : changeSet.dbs) {
 
     if (database.first.empty()) { // Rest of plan
