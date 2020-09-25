@@ -117,7 +117,7 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<arangodb::EngineSelectorFeature>(false);
   server.addFeature<arangodb::StorageEngineFeature>(false);
   server.addFeature<arangodb::SystemDatabaseFeature>(true);
-  server.addFeature<arangodb::InitDatabaseFeature>(true, std::vector<std::type_index>{});
+  server.addFeature<arangodb::InitDatabaseFeature>(true, std::vector<arangodb::TypeInfo::TypeId>{});
   server.addFeature<arangodb::ViewTypesFeature>(false);  // true ??
 
 #if USE_ENTERPRISE
@@ -396,7 +396,7 @@ MockClusterServer::MockClusterServer() : MockServer() {
 
   _server.getFeature<ClusterFeature>().allocateMembers();
 
-  addFeature<arangodb::UpgradeFeature>(false, &_dummy, std::vector<std::type_index>{});
+  addFeature<arangodb::UpgradeFeature>(false, &_dummy, std::vector<arangodb::TypeInfo::TypeId>{});
   addFeature<arangodb::ServerSecurityFeature>(false);
 
   arangodb::network::ConnectionPool::Config config;

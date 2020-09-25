@@ -194,7 +194,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
       "{ \"version\": 0, \"tasks\": {} }");
 
   // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<arangodb::TypeInfo::TypeId>{});
 
   auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
   feature.prepare();  // register iresearch view type
@@ -276,7 +276,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
       "{ \"version\": 0, \"tasks\": {} }");
 
   // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<arangodb::TypeInfo::TypeId>{});
 
   auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
   feature.prepare();  // register iresearch view type
@@ -858,7 +858,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   auto viewId = std::to_string(42);
 
   // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<arangodb::TypeInfo::TypeId>{});
 
   auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
   feature.prepare();  // register iresearch view type
@@ -1065,7 +1065,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   auto versionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"version\": 0, \"tasks\": {} }");
   // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<arangodb::TypeInfo::TypeId>{});
 
   auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
   feature.prepare();  // register iresearch view type
@@ -1143,7 +1143,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
       "{ \"version\": 0, \"tasks\": {} }");
 
   // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<arangodb::TypeInfo::TypeId>{});
 
   auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
   feature.prepare();  // register iresearch view type
