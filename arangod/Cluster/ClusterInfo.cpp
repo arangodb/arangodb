@@ -892,7 +892,7 @@ void ClusterInfo::loadPlan() {
 
       try {
         LogicalView::ptr view;
-        auto res = LogicalView::instantiate(view, *vocbase, viewPairSlice.value);
+        auto res = LogicalView::instantiate(view, *vocbase, viewPairSlice.value, changeSet.version);
 
         if (!res.ok() || !view) {
           LOG_TOPIC("b0d48", ERR, Logger::AGENCY)
