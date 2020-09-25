@@ -154,7 +154,7 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
   _query->prepareQuery(SerializationFormat::SHADOWROWS);
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
   _ctx = _query->newTrxContext();
-        
+  
   transaction::Methods trx(_ctx);
   TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
 

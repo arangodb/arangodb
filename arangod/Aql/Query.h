@@ -305,6 +305,9 @@ class Query : public QueryContext {
   /// @brief whether or not someone else has acquired a V8 context for us
   bool const _contextOwnedByExterior;
   
+  /// @brief set if we are inside a JS transaction
+  bool _embeddedQuery;
+  
   /// @brief was this query killed
   bool _queryKilled;
   

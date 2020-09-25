@@ -1710,14 +1710,6 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
       v8g->_inForcedCollect = false;
 
       TRI_GET_GLOBALS();
-
-      if (v8g != nullptr) {
-        if (v8g->_transactionContext != nullptr) {
-          delete static_cast<transaction::V8Context*>(v8g->_transactionContext);
-          v8g->_transactionContext = nullptr;
-        }
-        delete v8g;
-      }
     }
 
     localContext->Exit();
