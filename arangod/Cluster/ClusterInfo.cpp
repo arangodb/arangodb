@@ -686,8 +686,11 @@ void ClusterInfo::loadPlan() {
   // '_newPlannedViews' member instead of '_plannedViews'
 
   // set plan loader
-  _newPlannedViews = _plannedViews;   // Create a copy, since we might not visit all databases
-  _planLoader = std::this_thread::get_id();
+  {
+    READ_LOCKER(guard, _planProt.lock);
+    _newPlannedViews = _plannedViews;  // Create a copy, since we might not visit all databases
+    _planLoader = std::this_thread::get_id();
+  }
 
   // ensure we'll eventually reset plan loader
   auto resetLoader = scopeGuard([this, start]() {
