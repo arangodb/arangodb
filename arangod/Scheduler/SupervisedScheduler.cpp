@@ -367,7 +367,13 @@ void SupervisedScheduler::runWorker() {
       std::lock_guard<std::mutex> guard1(_mutex);
       id = _numWorkers++;  // increase the number of workers here, to obtain the id
       // copy shared_ptr with worker state
+      // obtaining the state from the end of the _workerStates list
+      // is (only) safe here because there is only one thread
+      // (SupervisedScheduler) that modifies _workerStates and
+      // that blocks until we (in this thread) have set the _ready
+      // flag on the state
       state = _workerStates.back();
+      TRI_ASSERT(!state->_ready);
     }
 
     state->_sleepTimeout_ms = 20 * (id + 1);
@@ -400,9 +406,15 @@ void SupervisedScheduler::runWorker() {
       state->_lastJobStarted = clock::now();
       state->_working = true;
       _nrWorking.fetch_add(1, std::memory_order_relaxed);
-      work->_handler();
-      state->_working = false;
-      _nrWorking.fetch_sub(1, std::memory_order_relaxed);
+      try {
+        work->_handler();
+        state->_working = false;
+        _nrWorking.fetch_sub(1, std::memory_order_relaxed);
+      } catch (...) {
+        state->_working = false;
+        _nrWorking.fetch_sub(1, std::memory_order_relaxed);
+        throw;
+      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("a235e", ERR, Logger::THREADS)
           << "scheduler loop caught exception: " << ex.what();

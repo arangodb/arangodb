@@ -254,7 +254,8 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _databasesLists(new DatabasesLists()),
       _isInitiallyEmpty(false),
       _checkVersion(false),
-      _upgrade(false) {
+      _upgrade(false),
+      _useOldSystemCollections(false) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -302,6 +303,15 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new AtomicBooleanParameter(&_throwCollectionNotLoadedError),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setDeprecatedIn(30700);
+  
+  options->addOption(
+      "--database.old-system-collections",
+      "create and use deprecated system collection (_modules, _fishbowl)",
+      new BooleanParameter(&_useOldSystemCollections),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30608)
+      .setIntroducedIn(30704)
+      .setDeprecatedIn(30800);
   
   // the following option was removed in 3.7
   options->addObsoleteOption("--database.maximal-journal-size",
