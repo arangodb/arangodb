@@ -2600,6 +2600,28 @@ function testCompleteGraphDfsUniqueVerticesUniqueEdgesNoneD2(testGraph) {
   checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
+function testCompleteGraphWeightedUniqueVerticesPathD1EnabledWeights(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR v, e, p IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueVertices: "path", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
+      `;
+
+  const expectedPaths = [
+    {path: ["A"], weight: 0},
+    {path: ["A", "E"], weight: 1},
+    {path: ["A", "B"], weight: 2},
+    {path: ["A", "D"], weight: 5},
+    {path: ["A", "C"], weight: 5},
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidWsOf(expectedPaths, actualPaths);
+}
+
 const testCompleteGraphBfsUniqueVerticesPathD1 = (testGraph) => testCompleteGraphModeUniqueVerticesPathD1(testGraph, "bfs");
 const testCompleteGraphWeightedUniqueVerticesPathD1 = (testGraph) => testCompleteGraphModeUniqueVerticesPathD1(testGraph, "weighted");
 
@@ -2623,6 +2645,43 @@ function testCompleteGraphModeUniqueVerticesPathD1(testGraph, mode) {
   const actualPaths = res.toArray();
 
   checkResIsValidBfsOf(expectedPaths, actualPaths);
+}
+
+function testCompleteGraphWeightedUniqueVerticesPathD2EnabledWeights(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR v, e, p IN 0..2 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueVertices: "path", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
+      `;
+
+  const expectedPaths = [
+    {path: ["A"], weight: 0},
+    {path: ["A", "E"], weight: 1},
+    {path: ["A", "B"], weight: 2},
+    {path: ["A", "E", "D"], weight: 2},
+    {path: ["A", "B", "C"], weight: 4},
+    {path: ["A", "C"], weight: 5},
+    {path: ["A", "D"], weight: 5},
+    {path: ["A", "E", "B"], weight: 6},
+    {path: ["A", "E", "C"], weight: 6},
+
+    {path: ["A", "C", "B"], weight: 6},
+    {path: ["A", "B", "D"], weight: 7},
+    {path: ["A", "B", "E"], weight: 7},
+    {path: ["A", "D", "C"], weight: 7},
+
+    {path: ["A", "D", "E"], weight: 7},
+    {path: ["A", "C", "D"], weight: 7},
+    {path: ["A", "D", "B"], weight: 10},
+    {path: ["A", "C", "E"], weight: 10},
+  ];
+
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidWsOf(expectedPaths, actualPaths);
 }
 
 const testCompleteGraphBfsUniqueVerticesPathD2 = (testGraph) => testCompleteGraphModeUniqueVerticesPathD2(testGraph, "bfs");
@@ -4505,7 +4564,9 @@ const testsByGraph = {
     testCompleteGraphKShortestPathLimit3,
     testCompleteGraphKShortestPathLimit3WT,
     testCompleteGraphKShortestPathEnabledWeightCheckMultiLimit,
-    testCompleteGraphKShortestPathEnabledWeightCheckMultiLimitWT
+    testCompleteGraphKShortestPathEnabledWeightCheckMultiLimitWT,
+    testCompleteGraphWeightedUniqueVerticesPathD1EnabledWeights,
+    testCompleteGraphWeightedUniqueVerticesPathD2EnabledWeights,
   },
   easyPath: {
     testEasyPathAllCombinations,
