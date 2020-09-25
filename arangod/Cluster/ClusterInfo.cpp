@@ -791,14 +791,16 @@ void ClusterInfo::loadPlan() {
           // database does not yet exist, create it now
 
           // create a local database object...
-          arangodb::CreateDatabaseInfo info(_server);
+          arangodb::CreateDatabaseInfo info(_server, ExecContext::current());
           Result res = info.load(database.value, VPackSlice::emptyArraySlice());
           if (res.fail()) {
             LOG_TOPIC("94357", ERR, arangodb::Logger::AGENCY)
                 << "validating data for local database '" << name
                 << "' failed: " << res.errorMessage();
           } else {
+            std::string dbName = info.getName();
             res = databaseFeature.createDatabase(std::move(info), vocbase);
+            events::CreateDatabase(dbName, res, ExecContext::current());
 
             if (res.fail()) {
               LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)
@@ -1975,7 +1977,7 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
 
     if (!res.successful()) {
       if (tries == 1) {
-        events::CreateDatabase(database.getName(), res.errorCode());
+        events::CreateDatabase(database.getName(), res.asResult(), ExecContext::current());
       }
       if (tries >= 5) {
         nextTimeout = 5.0;

@@ -470,14 +470,21 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
     if (!s.ok() && !s.IsNotFound()) {
       return rocksutils::convertStatus(s);
     } else if (s.IsNotFound()) {
-      LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
-          << "no revision tree found for collection with id '" << coll.id().id()
-          << "', rebuilding";
-      Result res = rcoll->rebuildRevisionTree();
-      if (res.fail()) {
-        LOG_TOPIC("ecdbd", WARN, Logger::ENGINES)
-            << "failed to rebuild revision tree for collection '"
-            << coll.id().id() << "'";
+      // no tree, check if collection is non-empty
+      auto bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
+      auto cmp = RocksDBColumnFamily::documents()->GetComparator();
+      std::unique_ptr<rocksdb::Iterator> it{
+          db->NewIterator(ro, RocksDBColumnFamily::documents())};
+      it->Seek(bounds.start());
+      if (it->Valid() && cmp->Compare(it->key(), bounds.end()) < 0) {
+        LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
+            << "no revision tree found for collection with id '"
+            << coll.id().id() << "', rebuilding";
+        rcoll->rebuildRevisionTree(it);
+      } else {
+        LOG_TOPIC("ecdbe", DEBUG, Logger::ENGINES)
+            << "no revision tree found for collection with id '"
+            << coll.id().id() << "', but collection appears empty";
       }
     } else {
       auto tree = containers::RevisionTree::fromBuffer(
@@ -494,12 +501,9 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
         LOG_TOPIC("dcd99", ERR, Logger::ENGINES)
             << "unsupported revision tree format in collection "
             << "with id '" << coll.id().id() << "', rebuilding";
-        Result res = rcoll->rebuildRevisionTree();
-        if (res.fail()) {
-          LOG_TOPIC("ecdbf", WARN, Logger::ENGINES)
-              << "failed to rebuild revision tree for collection '"
-              << coll.id().id() << "'";
-        }
+        std::unique_ptr<rocksdb::Iterator> it{
+            db->NewIterator(ro, RocksDBColumnFamily::documents())};
+        rcoll->rebuildRevisionTree(it);
       }
     }
   }
