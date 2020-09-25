@@ -391,8 +391,11 @@ void GeneralServerFeature::defineHandlers() {
                                     RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
                                     queryRegistry);
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::TASKS_PATH,
-                                    RestHandlerCreator<RestTasksHandler>::createNoData);
+  if (server().isEnabled<V8DealerFeature>()) {
+    // the tasks feature depends on V8. only enable it if JavaScript is enabled
+    _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::TASKS_PATH,
+                                      RestHandlerCreator<RestTasksHandler>::createNoData);
+  }
 
   _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
                                     RestHandlerCreator<RestUploadHandler>::createNoData);
@@ -414,6 +417,7 @@ void GeneralServerFeature::defineHandlers() {
                                     RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
 
   if (server().isEnabled<V8DealerFeature>()) {
+    // the AQL UDfs feature depends on V8. only enable it if JavaScript is enabled
     _handlerFactory->addPrefixHandler("/_api/aqlfunction",
                                       RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
   }
@@ -468,6 +472,7 @@ void GeneralServerFeature::defineHandlers() {
                               RestHandlerCreator<RestAuthReloadHandler>::createNoData);
 
   if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
+    // the /_admin/execute API depends on V8. only enable it if JavaScript is enabled
     _handlerFactory->addHandler("/_admin/execute",
                                 RestHandlerCreator<RestAdminExecuteHandler>::createNoData);
   }
@@ -522,6 +527,7 @@ void GeneralServerFeature::defineHandlers() {
                                     RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
 
   if (server().isEnabled<V8DealerFeature>()) {
+    // the routing feature depends on V8. only enable it if JavaScript is enabled
     _handlerFactory->addPrefixHandler("/_admin/routing",
                                       RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
   }

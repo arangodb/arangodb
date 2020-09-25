@@ -157,7 +157,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
  private:
   void stopAppliers();
-  void updateContexts();
 
   /// @brief create base app directory
   int createBaseApplicationDirectory(std::string const& appPath, std::string const& type);

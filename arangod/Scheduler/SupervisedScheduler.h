@@ -165,7 +165,9 @@ class SupervisedScheduler final : public Scheduler {
   void stopOneThread();
 
   bool cleanupAbandonedThreads();
-  void sortoutLongRunningThreads();
+  /// @brief returns whether or not a new thread was started by
+  /// the method
+  bool sortoutLongRunningThreads();
 
   // Check if we are allowed to pull from a queue with the given index
   // This is used to give priority to "FAST" and "MED" lanes accordingly.
