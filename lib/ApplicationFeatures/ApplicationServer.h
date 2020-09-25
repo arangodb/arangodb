@@ -29,11 +29,11 @@
 #include <memory>
 #include <string>
 #include <type_traits>
-#include <typeindex>
 #include <unordered_map>
 #include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/FeatureList.h"
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 
@@ -101,8 +101,6 @@ namespace application_features {
 // This destroys the features.
 
 class ApplicationServer {
-  using FeatureMap =
-      std::unordered_map<std::type_index, std::unique_ptr<ApplicationFeature>>;
   ApplicationServer(ApplicationServer const&) = delete;
   ApplicationServer& operator=(ApplicationServer const&) = delete;
 
@@ -227,46 +225,41 @@ class ApplicationServer {
              typename std::enable_if<std::is_base_of<As, Type>::value, int>::type = 0>
    As& addFeature(Args&&... args) {
      TRI_ASSERT(!hasFeature<As>());
-     std::pair<FeatureMap::iterator, bool> result =
-         _features.try_emplace(std::type_index(typeid(As)),
-                           std::make_unique<Type>(*this, std::forward<Args>(args)...));
-     TRI_ASSERT(result.second);
+     auto& feature = _features[Feature<Type>::Index];
+     feature = std::make_unique<Type>(*this, std::forward<Args>(args)...);
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-     auto obj = dynamic_cast<As*>(result.first->second.get());
+     auto obj = dynamic_cast<As*>(feature.get());
      TRI_ASSERT(obj != nullptr);
      return *obj;
 #else
-     return *static_cast<As*>(result.first->second.get());
+     return static_cast<As&>(*feature);
 #endif
-   }
-
-   // checks for the existence of a feature by type. will not throw when used
-   // for a non-existing feature
-   bool hasFeature(std::type_index type) const noexcept {
-     return (_features.find(type) != _features.end());
    }
 
    // checks for the existence of a feature. will not throw when used for
    // a non-existing feature
    template <typename Type, typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0>
    bool hasFeature() const noexcept {
-     return hasFeature(std::type_index(typeid(Type)));
+     return nullptr == _features[Feature<Type>::Index];
    }
 
    // returns a reference to a feature given the type. will throw when used for
    // a non-existing feature
    template <typename AsType, typename std::enable_if<std::is_base_of<ApplicationFeature, AsType>::value, int>::type = 0>
-   AsType& getFeature(std::type_index type) const {
-     auto it = _features.find(type);
-     if (it == _features.end()) {
-       throwFeatureNotFoundException(type.name());
+   AsType& getFeature(TypeInfo::TypeId type) const {
+     auto* feature = _features[Feature<AsType>::Index].get();
+     if (nullptr == feature) {
+       // FIXME name for a feature!!!
+       throwFeatureNotFoundException("HUY");
+       //throwFeatureNotFoundException(type.name());
      }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-     auto obj = dynamic_cast<AsType*>(it->second.get());
+     auto obj = dynamic_cast<AsType*>(feature);
      TRI_ASSERT(obj != nullptr);
      return *obj;
 #else
-     return *static_cast<AsType*>(it->second.get());
+     return static_cast<AsType&>(*feature);
 #endif
    }
 
@@ -276,17 +269,23 @@ class ApplicationServer {
              typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0,
              typename std::enable_if<std::is_base_of<Type, AsType>::value || std::is_base_of<AsType, Type>::value, int>::type = 0>
    AsType& getFeature() const {
-     auto it = _features.find(std::type_index(typeid(Type)));
-     if (it == _features.end()) {
+     auto* feature = _features[Feature<AsType>::Index].get();
+     if (nullptr == feature) {
        throwFeatureNotFoundException(typeid(Type).name());
      }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-     auto obj = dynamic_cast<AsType*>(it->second.get());
+     auto obj = dynamic_cast<AsType*>(feature);
      TRI_ASSERT(obj != nullptr);
      return *obj;
 #else
-     return *static_cast<AsType*>(it->second.get());
+     return static_cast<AsType&>(*feature);
 #endif
+   }
+
+   // checks for the existence of a feature by type. will not throw when used
+   // for a non-existing feature
+   bool hasFeature(TypeInfo::TypeId type) const noexcept {
+     return arangodb::hasFeature(type);
    }
 
    // returns the feature with the given name if known and enabled
@@ -302,8 +301,8 @@ class ApplicationServer {
      return feature;
    }
 
-   void disableFeatures(std::vector<std::type_index> const&);
-   void forceDisableFeatures(std::vector<std::type_index> const&);
+   void disableFeatures(std::vector<TypeInfo::TypeId> const&);
+   void forceDisableFeatures(std::vector<TypeInfo::TypeId> const&);
 
   private:
    // throws an exception that a requested feature was not found
@@ -312,7 +311,7 @@ class ApplicationServer {
    // throws an exception that a requested feature is not enabled
    [[noreturn]] static void throwFeatureNotEnabledException(char const*);
 
-   void disableFeatures(std::vector<std::type_index> const& types, bool force);
+   void disableFeatures(std::vector<TypeInfo::TypeId> const& types, bool force);
 
    // walks over all features and runs a callback function for them
    void apply(std::function<void(ApplicationFeature&)>, bool enabledOnly);
@@ -365,7 +364,7 @@ class ApplicationServer {
    std::shared_ptr<options::ProgramOptions> _options;
 
    // map of feature names to features
-   FeatureMap _features;
+   std::array<std::unique_ptr<ApplicationFeature>, FeatureList::Length> _features;
 
    // features order for prepare/start
    std::vector<std::reference_wrapper<ApplicationFeature>> _orderedFeatures;

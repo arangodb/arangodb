@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+#include "Basics/TypeInfo.h"
 
 namespace arangodb {
 namespace options {
@@ -98,7 +99,7 @@ class ApplicationFeature {
   }
 
   // names of features required to be enabled for this feature to be enabled
-  std::vector<std::type_index> const& requires() const { return _requires; }
+  std::vector<TypeInfo::TypeId> const& requires() const { return _requires; }
 
   // register whether the feature requires elevated privileges
   void requiresElevatedPrivileges(bool value) {
@@ -113,13 +114,13 @@ class ApplicationFeature {
   // whether the feature starts before another
   template <typename T>
   bool doesStartBefore() const {
-    return doesStartBefore(std::type_index(typeid(T)));
+    return doesStartBefore(TypeInfo::TypeId(typeid(T)));
   }
 
   // whether the feature starts after another
   template <typename T>
   bool doesStartAfter() const {
-    return !doesStartBefore(std::type_index(typeid(T)));
+    return !doesStartBefore(TypeInfo::TypeId(typeid(T)));
   }
 
   // add the feature's options to the global list of options. this method will
@@ -159,12 +160,12 @@ class ApplicationFeature {
   virtual void unprepare();
 
   // return startup dependencies for feature
-  std::unordered_set<std::type_index> const& startsAfter() const {
+  std::unordered_set<TypeInfo::TypeId> const& startsAfter() const {
     return _startsAfter;
   }
 
   // return startup dependencies for feature
-  std::unordered_set<std::type_index> const& startsBefore() const {
+  std::unordered_set<TypeInfo::TypeId> const& startsBefore() const {
     return _startsBefore;
   }
 
@@ -175,52 +176,58 @@ class ApplicationFeature {
   void setOptional(bool value) { _optional = value; }
 
   // note that this feature requires another to be present
-  void requires(std::type_index other) { _requires.emplace_back(other); }
+  void requires(TypeInfo::TypeId other) { _requires.emplace_back(other); }
 
   // register a start dependency upon another feature
   template <typename T>
   void startsAfter() {
-    startsAfter(std::type_index(typeid(T)));
+    startsAfter(Type<T>::id());
   }
 
   // register a start dependency upon another feature by typeid
-  void startsAfter(std::type_index type);
+  void startsAfter(TypeInfo::TypeId type);
 
   // register a start dependency upon another feature
   template <typename T>
   void startsBefore() {
-    startsBefore(std::type_index(typeid(T)));
+    startsBefore(Type<T>::id());
   }
 
-  void startsBefore(std::type_index type);
+  void startsBefore(TypeInfo::TypeId type);
 
   // determine all direct and indirect ancestors of a feature
-  std::unordered_set<std::type_index> ancestors() const;
+  std::unordered_set<TypeInfo::TypeId> ancestors() const;
 
   template <typename T>
   void onlyEnabledWith() {
-    _onlyEnabledWith.emplace(std::type_index(typeid(T)));
+    _onlyEnabledWith.emplace(Type<T>::id());
   }
 
   // return the list of other features that this feature depends on
-  std::unordered_set<std::type_index> const& onlyEnabledWith() const {
+  std::unordered_set<TypeInfo::TypeId> const& onlyEnabledWith() const {
     return _onlyEnabledWith;
+  }
+
+  TypeInfo::TypeId type() const noexcept {
+    return _type;
   }
 
  private:
   // whether the feature starts before another
-  bool doesStartBefore(std::type_index type) const;
+  bool doesStartBefore(TypeInfo::TypeId type) const;
 
   void addAncestorToAllInPath(
       std::vector<std::pair<size_t, std::reference_wrapper<ApplicationFeature>>>& path,
-      std::type_index ancestorType);
+      TypeInfo::TypeId ancestorType);
 
   // set a feature's state. this method should be called by the
   // application server only
   void state(State state) { _state = state; }
 
   // determine all direct and indirect ancestors of a feature
-  void determineAncestors(std::type_index as);
+  void determineAncestors(TypeInfo::TypeId as);
+
+  TypeInfo::TypeId _type;
 
   // pointer to application server
   ApplicationServer& _server;
@@ -230,19 +237,19 @@ class ApplicationFeature {
 
   // names of other features required to be enabled if this feature
   // is enabled
-  std::vector<std::type_index> _requires;
+  std::vector<TypeInfo::TypeId> _requires;
 
   // a list of start dependencies for the feature
-  std::unordered_set<std::type_index> _startsAfter;
+  std::unordered_set<TypeInfo::TypeId> _startsAfter;
 
   // a list of start dependencies for the feature
-  std::unordered_set<std::type_index> _startsBefore;
+  std::unordered_set<TypeInfo::TypeId> _startsBefore;
 
   // list of direct and indirect ancestors of the feature
-  std::unordered_set<std::type_index> _ancestors;
+  std::unordered_set<TypeInfo::TypeId> _ancestors;
 
   // enable this feature only if the following other features are enabled
-  std::unordered_set<std::type_index> _onlyEnabledWith;
+  std::unordered_set<TypeInfo::TypeId> _onlyEnabledWith;
 
   // state of feature
   State _state;

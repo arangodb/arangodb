@@ -90,27 +90,27 @@ void ApplicationFeature::stop() {}
 void ApplicationFeature::unprepare() {}
 
 // determine all direct and indirect ancestors of a feature
-std::unordered_set<std::type_index> ApplicationFeature::ancestors() const {
+std::unordered_set<TypeInfo::TypeId> ApplicationFeature::ancestors() const {
   TRI_ASSERT(_ancestorsDetermined);
   return _ancestors;
 }
 
-void ApplicationFeature::startsAfter(std::type_index type) {
+void ApplicationFeature::startsAfter(TypeInfo::TypeId type) {
   _startsAfter.emplace(type);
 }
 
-void ApplicationFeature::startsBefore(std::type_index type) {
+void ApplicationFeature::startsBefore(TypeInfo::TypeId type) {
   _startsBefore.emplace(type);
 }
 
-bool ApplicationFeature::doesStartBefore(std::type_index type) const {
+bool ApplicationFeature::doesStartBefore(TypeInfo::TypeId type) const {
   if (!_server.hasFeature(type)) {
     // no relationship if the feature doesn't exist
     return false;
   }
 
   auto otherAncestors = _server.getFeature<ApplicationFeature>(type).ancestors();
-  if (otherAncestors.find(std::type_index(typeid(*this))) != otherAncestors.end()) {
+  if (otherAncestors.find(_type) != otherAncestors.end()) {
     // we are an ancestor of the other feature
     return true;
   }
@@ -127,33 +127,35 @@ bool ApplicationFeature::doesStartBefore(std::type_index type) const {
 
 void ApplicationFeature::addAncestorToAllInPath(
     std::vector<std::pair<size_t, std::reference_wrapper<ApplicationFeature>>>& path,
-    std::type_index ancestorType) {
+    TypeInfo::TypeId ancestorType) {
   std::function<bool(std::pair<size_t, std::reference_wrapper<ApplicationFeature>>&)> typeMatch =
       [ancestorType](std::pair<size_t, std::reference_wrapper<ApplicationFeature>>& pair) -> bool {
     auto& feature = pair.second.get();
-    return std::type_index(typeid(feature)) == ancestorType;
+    return feature.type() == ancestorType;
   };
 
   if (std::find_if(path.begin(), path.end(), typeMatch) != path.end()) {
     // dependencies are cyclic
 
     // build type list to print out error
-    std::vector<std::type_index> pathTypes;
+    std::vector<TypeInfo::TypeId> pathTypes;
     for (std::pair<size_t, std::reference_wrapper<ApplicationFeature>>& pair : path) {
       auto& feature = pair.second.get();
-      pathTypes.emplace_back(std::type_index(typeid(feature)));
+      pathTypes.emplace_back(feature.type());
     }
     pathTypes.emplace_back(ancestorType);  // make sure we show the duplicate
 
+    // FIXME: ADD type_name!!!
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "HUY");
     // helper for string join
-    std::function<std::string(std::type_index)> cb = [](std::type_index type) -> std::string {
-      return boost::core::demangle(type.name());
-    };
+    //std::function<std::string(TypeInfo::TypeId)> cb = [](TypeInfo::TypeId type) -> std::string {
+    //  return boost::core::demangle(type.name());
+    //};
 
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "dependencies for feature '" + boost::core::demangle(pathTypes.begin()->name()) +
-            "' are cyclic: " + basics::StringUtils::join(pathTypes, " <= ", cb));
+    //THROW_ARANGO_EXCEPTION_MESSAGE(
+    //    TRI_ERROR_INTERNAL,
+    //    "dependencies for feature '" + boost::core::demangle(pathTypes.begin()->name()) +
+    //        "' are cyclic: " + basics::StringUtils::join(pathTypes, " <= ", cb));
   }
 
   // not cyclic, go ahead and add
@@ -164,16 +166,16 @@ void ApplicationFeature::addAncestorToAllInPath(
 }
 
 // determine all direct and indirect ancestors of a feature
-void ApplicationFeature::determineAncestors(std::type_index rootAsType) {
+void ApplicationFeature::determineAncestors(TypeInfo::TypeId rootAsType) {
   if (_ancestorsDetermined) {
     return;
   }
 
   std::vector<std::pair<size_t, std::reference_wrapper<ApplicationFeature>>> path;
-  std::vector<std::pair<size_t, std::type_index>> toProcess{{0, rootAsType}};
+  std::vector<std::pair<size_t, TypeInfo::TypeId>> toProcess{{0, rootAsType}};
   while (!toProcess.empty()) {
     size_t depth = toProcess.back().first;
-    std::type_index type = toProcess.back().second;
+    TypeInfo::TypeId type = toProcess.back().second;
     toProcess.pop_back();
 
     if (server().hasFeature(type)) {
@@ -182,12 +184,12 @@ void ApplicationFeature::determineAncestors(std::type_index rootAsType) {
       if (feature._ancestorsDetermined) {
         // short cut, just get the ancestors list and append add it everything
         // on the path
-        std::unordered_set<std::type_index> ancestors = feature._ancestors;
-        for (std::type_index ancestorType : ancestors) {
+        std::unordered_set<TypeInfo::TypeId> ancestors = feature._ancestors;
+        for (TypeInfo::TypeId ancestorType : ancestors) {
           addAncestorToAllInPath(path, ancestorType);
         }
       } else {
-        for (std::type_index ancestorType : feature.startsAfter()) {
+        for (TypeInfo::TypeId ancestorType : feature.startsAfter()) {
           addAncestorToAllInPath(path, ancestorType);
           toProcess.emplace_back(depth + 1, ancestorType);
         }

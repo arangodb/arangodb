@@ -147,21 +147,21 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     ApplicationServer server(options, SBIN_DIRECTORY);
     ServerState state(server);
 
-    std::vector<std::type_index> nonServerFeatures = {
-        std::type_index(typeid(ActionFeature)),
-        std::type_index(typeid(AgencyFeature)),
-        std::type_index(typeid(ClusterFeature)),
-        std::type_index(typeid(DaemonFeature)),
-        std::type_index(typeid(FoxxQueuesFeature)),
-        std::type_index(typeid(GeneralServerFeature)),
-        std::type_index(typeid(GreetingsFeature)),
-        std::type_index(typeid(HttpEndpointProvider)),
-        std::type_index(typeid(LogBufferFeature)),
-        std::type_index(typeid(pregel::PregelFeature)),
-        std::type_index(typeid(ServerFeature)),
-        std::type_index(typeid(SslServerFeature)),
-        std::type_index(typeid(StatisticsFeature)),
-        std::type_index(typeid(SupervisorFeature))};
+    std::vector<arangodb::TypeInfo::TypeId> nonServerFeatures = {
+        Type<ActionFeature>::id(),
+        Type<AgencyFeature>::id(),
+        Type<ClusterFeature>::id(),
+        Type<DaemonFeature>::id(),
+        Type<FoxxQueuesFeature>::id(),
+        Type<GeneralServerFeature>::id(),
+        Type<GreetingsFeature>::id(),
+        Type<HttpEndpointProvider>::id(),
+        Type<LogBufferFeature>::id(),
+        Type<pregel::PregelFeature>::id(),
+        Type<ServerFeature>::id(),
+        Type<SslServerFeature>::id(),
+        Type<StatisticsFeature>::id(),
+        Type<SupervisorFeature>::id()};
 
     int ret = EXIT_FAILURE;
 

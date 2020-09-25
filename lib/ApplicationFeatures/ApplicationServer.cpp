@@ -112,15 +112,15 @@ void ApplicationServer::throwFeatureNotEnabledException(char const* name) {
                                      "' is not enabled");
 }
 
-void ApplicationServer::disableFeatures(std::vector<std::type_index> const& types) {
+void ApplicationServer::disableFeatures(std::vector<TypeInfo::TypeId> const& types) {
   disableFeatures(types, false);
 }
 
-void ApplicationServer::forceDisableFeatures(std::vector<std::type_index> const& types) {
+void ApplicationServer::forceDisableFeatures(std::vector<TypeInfo::TypeId> const& types) {
   disableFeatures(types, true);
 }
 
-void ApplicationServer::disableFeatures(std::vector<std::type_index> const& types, bool force) {
+void ApplicationServer::disableFeatures(std::vector<TypeInfo::TypeId> const& types, bool force) {
   for (auto const& type : types) {
     if (hasFeature(type)) {
       auto& feature = getFeature<ApplicationFeature>(type);
@@ -281,8 +281,8 @@ VPackBuilder ApplicationServer::options(std::function<bool(std::string const&)> 
 void ApplicationServer::apply(std::function<void(ApplicationFeature&)> callback,
                               bool enabledOnly) {
   for (auto& it : _features) {
-    if (!enabledOnly || it.second->isEnabled()) {
-      callback(*it.second);
+    if (!enabledOnly || it->isEnabled()) {
+      callback(*it);
     }
   }
 }
@@ -339,12 +339,13 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
               << "{\n"
               << "  overlap = false;\n";
     for (auto& feature : _features) {
-      for (auto before : feature.second->startsAfter()) {
-        std::string depName = before.name();
+      for (auto before : feature->startsAfter()) {
+      //FIXME name!!!
+        std::string depName;// = before.name();
         if (hasFeature(before)) {
           depName = getFeature<ApplicationFeature>(before).name();
         }
-        std::cout << "  " << feature.second->name() << " -> " << depName << ";\n";
+        std::cout << "  " << feature->name() << " -> " << depName << ";\n";
       }
     }
     std::cout << "}\n";
@@ -411,22 +412,24 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
 
   // apply all "startsBefore" values
   for (auto& it : _features) {
-    auto& feature = *it.second;
+    auto& feature = *it;
     for (auto const& other : feature.startsBefore()) {
       if (!hasFeature(other)) {
         if (failOnMissing) {
-          fail("feature '" + feature.name() + "' depends on unknown feature '" +
-               other.name() + "'");
+          fail("feature '" + feature.name() + "' depends on unknown feature '");
+          //FIXME!!!
+         //  +
+         //      other.name() + "'");
         }
         continue;
       }
-      getFeature<ApplicationFeature>(other).startsAfter(std::type_index(typeid(feature)));
+      getFeature<ApplicationFeature>(other).startsAfter(feature.type());
     }
   }
 
   // calculate ancestors for all features
   for (auto& it : _features) {
-    it.second->determineAncestors(it.first);
+    it->determineAncestors(it->type());
   }
 
   // first check if a feature references an unknown other feature
@@ -436,7 +439,9 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
           for (auto& other : feature.requires()) {
             if (!hasFeature(other)) {
               fail("feature '" + feature.name() +
-                   "' depends on unknown feature '" + other.name() + "'");
+                   "' depends on unknown feature '");
+                   //FIXME!!!
+                   // + other.name() + "'");
             }
             if (!getFeature<ApplicationFeature>(other).isEnabled()) {
               fail("enabled feature '" + feature.name() +
@@ -452,15 +457,15 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
   // first insert all features, even the inactive ones
   std::vector<std::reference_wrapper<ApplicationFeature>> features;
   for (auto& it : _features) {
-    auto const& us = *it.second;
+    auto const& us = *it;
     auto insertPosition = features.end();
 
     for (size_t i = features.size(); i > 0; --i) {
       auto const& other = features[i - 1].get();
-      if (us.doesStartBefore(std::type_index(typeid(other)))) {
+      if (us.doesStartBefore(other.type())) {
         // we start before the other feature. so move ourselves up
         insertPosition = features.begin() + (i - 1);
-      } else if (other.doesStartBefore(std::type_index(typeid(us)))) {
+      } else if (other.doesStartBefore(us.type())) {
         // the other feature starts before us. so stop moving up
         break;
       } else {
@@ -470,7 +475,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
         }
       }
     }
-    features.insert(insertPosition, *it.second);
+    features.insert(insertPosition, *it);
   }
 
   LOG_TOPIC("0fafb", TRACE, Logger::STARTUP) << "ordered features:";
@@ -533,8 +538,9 @@ void ApplicationServer::disableDependentFeatures() {
         LOG_TOPIC("f70cc", TRACE, Logger::STARTUP)
             << "turning off feature '" << feature.name()
             << "' because it is enabled only in conjunction with non-existing "
-               "feature '"
-            << other.name() << "'";
+               "feature '";
+            // FIXME!!!
+            //<< other.name() << "'";
         feature.disable();
         break;
       }
