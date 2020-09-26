@@ -57,7 +57,8 @@ struct GeoFilterOptions {
   }
 
   size_t hash() const noexcept {
-    size_t hash = std::hash<decltype(type)>()(type);
+    using GeoFilterUnderlyingType = std::underlying_type_t<GeoFilterType>;
+    size_t hash = std::hash<GeoFilterUnderlyingType>()(static_cast<GeoFilterUnderlyingType>(type));
 
     auto* region = shape.region();
     TRI_ASSERT(region);
