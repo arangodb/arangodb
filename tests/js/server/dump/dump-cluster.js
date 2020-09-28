@@ -35,7 +35,7 @@ let analyzers = require("@arangodb/analyzers");
 const isEnterprise = internal.isEnterprise();
 const db = internal.db;
 const _ = require('lodash');
-const {assertEqual, assertNotEqual, assertTrue, assertFalse, 
+const {assertEqual, assertNotEqual, assertTrue, assertFalse,
        assertUndefined, assertTypeOf, assertNull, assertNotNull} = jsunity.jsUnity.assertions;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,7 +78,7 @@ function dumpTestSuite () {
 
       assertEqual(2, c.type()); // document
       assertTrue(p.waitForSync);
-      
+
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(0, c.count());
@@ -166,7 +166,7 @@ function dumpTestSuite () {
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
 
-      
+
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(9000, c.count());
@@ -385,7 +385,7 @@ function dumpTestSuite () {
       assertEqual(" ", analyzer.properties().delimiter);
       assertEqual(1, analyzer.features().length);
       assertEqual("frequency", analyzer.features()[0]);
-      
+
       assertNull(analyzers.analyzer("custom_dst"));
     },
   };
@@ -932,7 +932,7 @@ function dumpTestEnterpriseSuite () {
       assertEqual("test", db._jobs.document("test")._key);
       assertEqual("test", db._queues.document("test")._key);
     },
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test whether the test collection has been restored
 ////////////////////////////////////////////////////////////////////////////////
