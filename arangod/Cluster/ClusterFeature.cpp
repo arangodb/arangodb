@@ -780,3 +780,61 @@ void ClusterFeature::allocateMembers() {
     std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry);
   _allocated = true;
 }
+
+void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, bool callNotify) {
+  if (databases.size() > 0) {
+    MUTEX_LOCKER(guard, _dirtyLock);
+    for (auto const& database : databases) {
+      if (_dirtyDatabases.emplace(database).second) {
+        LOG_TOPIC("35b75", DEBUG, Logger::MAINTENANCE)
+          << "adding " << database << " to dirty databases";
+      }
+    }
+    if (callNotify) {
+      notify();
+    }
+  }
+}
+
+void ClusterFeature::addDirty(std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& databases) {
+  if (databases.size() > 0) {
+    MUTEX_LOCKER(guard, _dirtyLock);
+    for (auto const& database : databases) {
+      if (_dirtyDatabases.emplace(database.first).second) {
+        LOG_TOPIC("35b77", DEBUG, Logger::MAINTENANCE)
+          << "adding " << database << " to dirty databases";
+      }
+    }
+    notify();
+  }
+}
+
+void ClusterFeature::addDirty(std::string const& database) {
+  MUTEX_LOCKER(guard, _dirtyLock);
+  if (_dirtyDatabases.emplace(database).second) {
+    LOG_TOPIC("357b9", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databases";
+  }
+  notify();
+}
+
+std::unordered_set<std::string> ClusterFeature::dirty() {
+  MUTEX_LOCKER(guard, _dirtyLock);
+  std::unordered_set<std::string> ret;
+  ret.swap(_dirtyDatabases);
+  return ret;
+}
+
+bool ClusterFeature::isDirty(std::string const& dbName) const {
+  MUTEX_LOCKER(guard, _dirtyLock);
+  return _dirtyDatabases.find(dbName) != _dirtyDatabases.end();
+}
+
+std::unordered_set<std::string> ClusterFeature::allDatabases() const {
+  std::unordered_set<std::string> allDBNames;
+  auto const tmp = server().getFeature<DatabaseFeature>().getDatabaseNames();
+  allDBNames.reserve(tmp.size());
+  for (auto const& i : tmp) {
+    allDBNames.emplace(i);
+  }
+  return allDBNames;
+}
