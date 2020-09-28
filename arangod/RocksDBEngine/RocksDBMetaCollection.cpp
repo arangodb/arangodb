@@ -902,7 +902,7 @@ std::size_t RocksDBMetaCollection::revisionTreeDepth() const {
 
   if (bufferInserts > bufferRemovals) {
     std::size_t const count = treeCount + bufferInserts - bufferRemovals;
-    std::size_t targetDepth = 3;
+    std::size_t targetDepth = treeDepth;
     while (targetDepth < 6 &&
            count > 8 * containers::RevisionTree::nodeCountAtDepth(targetDepth)) {
       ++targetDepth;

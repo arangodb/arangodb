@@ -226,7 +226,7 @@ class MerkleTree {
    *
    * @param newDepth  Max depth to use for new tree
    */
-  std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> cloneWithDepth(std::size_t newDepth);
+  std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> cloneWithDepth(std::size_t newDepth) const;
 
   /**
    * @brief Find the ranges of keys over which two trees differ.

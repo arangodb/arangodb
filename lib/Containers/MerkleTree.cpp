@@ -463,12 +463,11 @@ std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> MerkleTree<BranchingBits
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
 std::unique_ptr<MerkleTree<BranchingBits, LockStripes>>
-MerkleTree<BranchingBits, LockStripes>::cloneWithDepth(std::size_t newDepth) {
+MerkleTree<BranchingBits, LockStripes>::cloneWithDepth(std::size_t newDepth) const {
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
 
   if (newDepth == meta().maxDepth) {
-    return std::unique_ptr<MerkleTree<BranchingBits, LockStripes>>(
-        new MerkleTree<BranchingBits, LockStripes>(*this));
+    return std::make_unique<MerkleTree<BranchingBits, LockStripes>>(*this);
   }
 
   if (newDepth < meta().maxDepth) {
