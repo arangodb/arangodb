@@ -512,7 +512,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "create a document and read it" do
+      it "create a document and check to read it" do
         cmd = "/_api/document?collection=#{@cid}"
         body = "{ \"Hallo\" : \"World\" }"
         doc = ArangoDB.post(cmd, :body => body)

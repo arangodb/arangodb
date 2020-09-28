@@ -192,7 +192,7 @@ void EngineInfoContainerDBServerServerBased::injectVertexCollections(GraphNode* 
   auto const& vCols = graphNode->vertexColls();
   if (vCols.empty()) {
     auto& resolver = _query.resolver();
-    _query.collections().visit([&resolver, graphNode](std::string const& name, aql::Collection* collection) {
+    _query.collections().visit([&resolver, graphNode](std::string const& name, aql::Collection& collection) {
       // If resolver cannot resolve this collection
       // it has to be a view.
       if (resolver.getCollection(name)) {
@@ -398,7 +398,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
                                          << server << " : " << response.toJson();
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
             "Unable to deploy query on all required "
-            "servers. This can happen during "
+            "servers: " + response.toJson() + ". This can happen during "
             "failover. Please check: " +
                 server};
   }
@@ -418,7 +418,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
   for (auto const& resEntry : VPackObjectIterator(snippets)) {
     if (!resEntry.value.isString()) {
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-              "Unable to deploy query on all required "
+              "Unable to deploy query snippets on all required "
               "servers. This can happen during "
               "failover. Please check: " +
                   server};
@@ -441,7 +441,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
   if (!travEngines.isNone()) {
     if (!travEngines.isArray()) {
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-              "Unable to deploy query on all required "
+              "Unable to deploy query traverser engines on all required "
               "servers. This can happen during "
               "failover. Please check: " +
                   server};

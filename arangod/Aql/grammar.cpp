@@ -290,7 +290,7 @@ void validateOptions(Parser* parser, AstNode const* node,
     parser->registerParseError(TRI_ERROR_QUERY_PARSE, "'OPTIONS' have to be an object", line, column);
   }
   if (!node->isConstant()) {
-    parser->registerParseError(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS, "'OPTIONS' have to be readable at query compile time", line, column);
+    parser->registerParseError(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS, "'OPTIONS' have to be known at query compile time", line, column);
   }
 }
 
@@ -4582,7 +4582,7 @@ yyreduce:
       auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), variableName.size(), node, false);
       parser->ast()->addOperation(subQuery);
 
-      (yyval.node) = parser->ast()->createNodeReference(variableName);
+      (yyval.node) = parser->ast()->createNodeSubqueryReference(variableName);
     }
 #line 4588 "Aql/grammar.cpp"
     break;

@@ -80,7 +80,7 @@ struct BuilderCookie : public arangodb::TransactionState::Cookie {
 RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const& wp)
     : RocksDBIndex(wp->id(), wp->collection(), wp->name(), wp->fields(),
                    wp->unique(), wp->sparse(), wp->columnFamily(),
-                   wp->objectId(), wp->tempObjectId(), /*useCache*/ false),
+                   wp->objectId(), /*useCache*/ false),
       _wrapped(wp) {
   TRI_ASSERT(_wrapped);
 }
