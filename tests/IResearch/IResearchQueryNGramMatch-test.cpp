@@ -609,8 +609,10 @@ TEST_F(IResearchQueryNGramMatchTest, test) {
       dbFeature.createDatabase(testDBInfo(server.server(), "testVocbase2"), vocbase2); 
       std::shared_ptr<arangodb::LogicalCollection> unused;
       ASSERT_NE(nullptr, vocbase2);
-      arangodb::methods::Collections::createSystem(*vocbase2, arangodb::tests::AnalyzerCollectionName,
-        false, unused);
+      arangodb::OperationOptions options(arangodb::ExecContext::current());
+      arangodb::methods::Collections::createSystem(*vocbase2, options,
+                                                   arangodb::tests::AnalyzerCollectionName,
+                                                   false, unused);
 
       auto res =
         analyzers.emplace(result, "testVocbase2::myngram", "ngram",

@@ -34,7 +34,6 @@
 #include "Pregel/PregelFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Tasks.h"
 
 #include <velocypack/Builder.h>

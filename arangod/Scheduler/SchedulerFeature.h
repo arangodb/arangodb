@@ -63,8 +63,6 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   void buildHangupHandler();
 
  private:
-  void initV8Stuff();
-  void deinitV8Stuff();
   void signalStuffInit();
   void signalStuffDeinit();
 

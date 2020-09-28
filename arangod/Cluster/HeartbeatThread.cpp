@@ -56,6 +56,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
+#include "Utils/Events.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -1157,7 +1158,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         continue;
       }
 
-      arangodb::CreateDatabaseInfo info(_server);
+      arangodb::CreateDatabaseInfo info(_server, ExecContext::current());
       TRI_ASSERT(options.value.get("name").isString());
       // when loading we allow system database names
       auto infoResult = info.load(options.value, VPackSlice::emptyArraySlice());
@@ -1177,6 +1178,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
         // create a local database object...
         Result res = databaseFeature.createDatabase(std::move(info), vocbase);
+        events::CreateDatabase(dbName, res, ExecContext::current());
 
         if (res.fail()) {
           LOG_TOPIC("ca877", ERR, arangodb::Logger::HEARTBEAT)
@@ -1204,7 +1206,14 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
       if (r == ids.end()) {
         // local database not found in the plan...
-        databaseFeature.dropDatabase(id, true);
+        TRI_vocbase_t* db = databaseFeature.useDatabase(id);
+        TRI_ASSERT(db);
+        std::string dbName = db ? db->name() : "n/a";
+        if (db) {
+          db->release();
+        }
+        Result res = databaseFeature.dropDatabase(id, true);
+        events::DropDatabase(dbName, res, ExecContext::current());
       }
     }
 
