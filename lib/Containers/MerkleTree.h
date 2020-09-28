@@ -263,7 +263,7 @@ class MerkleTree {
 
  protected:
   explicit MerkleTree(std::string_view buffer);
-  explicit MerkleTree(MerkleTree<BranchingBits, LockStripes>& other);
+  explicit MerkleTree(MerkleTree<BranchingBits, LockStripes> const& other);
 
   Meta& meta() const;
   Node& node(std::size_t index) const;

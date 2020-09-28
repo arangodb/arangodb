@@ -467,7 +467,8 @@ MerkleTree<BranchingBits, LockStripes>::cloneWithDepth(std::size_t newDepth) con
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
 
   if (newDepth == meta().maxDepth) {
-    return std::make_unique<MerkleTree<BranchingBits, LockStripes>>(*this);
+    return std::unique_ptr<MerkleTree<BranchingBits, LockStripes>>(
+        new MerkleTree<BranchingBits, LockStripes>(*this));
   }
 
   if (newDepth < meta().maxDepth) {
@@ -650,7 +651,7 @@ MerkleTree<BranchingBits, LockStripes>::MerkleTree(std::string_view buffer)
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
-MerkleTree<BranchingBits, LockStripes>::MerkleTree(MerkleTree<BranchingBits, LockStripes>& other)
+MerkleTree<BranchingBits, LockStripes>::MerkleTree(MerkleTree<BranchingBits, LockStripes> const& other)
     : _buffer(new uint8_t[allocationSize(other.meta().maxDepth)]) {
   new (&meta()) Meta{other.meta().rangeMin, other.meta().rangeMax, other.meta().maxDepth};
 
