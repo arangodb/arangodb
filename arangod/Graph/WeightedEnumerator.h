@@ -61,11 +61,12 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
           forwardVertexId(std::move(forwardVertexId)) {}
 
     bool operator<(NextEdge const& other) const {
+      if (accumWeight == other.accumWeight) {
+        return depth < other.depth;
+      }
       return accumWeight < other.accumWeight;
     }
-    bool operator>(NextEdge const& other) const {
-      return accumWeight > other.accumWeight;
-    }
+    bool operator>(NextEdge const& other) const { return other < *this; }
   };
 
   /// @brief schreier vector to store the visited vertices
