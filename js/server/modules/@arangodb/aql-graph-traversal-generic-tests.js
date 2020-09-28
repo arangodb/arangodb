@@ -4871,6 +4871,44 @@ const advancedPathBfsPaths = [
   ["A", "D", "E", "H", "I"],
 ];
 
+const advancedPathWeightedPaths = [
+  {path: ['A'], weight: 0},
+  {path: ['A', 'B'], weight: 1},
+  {path: ['A', 'B', 'C'], weight: 2},
+  {path: ['A', 'B', 'C', 'D'], weight: 3},
+  {path: ['A', 'B', 'C', 'D', 'E'], weight: 4},
+  {path: ['A', 'B', 'C', 'D', 'E', 'F'], weight: 5},
+  {path: ['A', 'B', 'C', 'D', 'E', 'F', 'G'], weight: 6},
+  {path: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], weight: 7},
+  {path: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'], weight: 8},
+  {path: ['A', 'D'], weight: 10},
+  {path: ['A', 'D', 'E'], weight: 11},
+  {path: ['A', 'D', 'E', 'F'], weight: 12},
+  {path: ['A', 'D', 'E', 'F', 'G'], weight: 13},
+  {path: ['A', 'B', 'C', 'D', 'E', 'H'], weight: 14},
+  {path: ['A', 'D', 'E', 'F', 'G', 'H'], weight: 14},
+  {path: ['A', 'B', 'C', 'D', 'E', 'H', 'I'], weight: 15},
+  {path: ['A', 'D', 'E', 'F', 'G', 'H', 'I'], weight: 15},
+  {path: ['A', 'D', 'E', 'H'], weight: 21},
+  {path: ['A', 'D', 'E', 'H', 'I'], weight: 22},
+];
+
+function testAdvancedPathWeightedUniqueVerticesPathEnabledWeights(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const query = aql`
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex("A")} GRAPH ${testGraph.name()} 
+    OPTIONS {mode: "weighted", uniqueVertices: "path", weightAttribute: ${testGraph.weightAttribute()}}
+    RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
+  `;
+
+  const expectedPaths = advancedPathWeightedPaths;
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidWsOf(expectedPaths, actualPaths);
+}
+
 const testAdvancedPathBfsUniqueVerticesPath = (testGraph) => testAdvancedPathModeUniqueVerticesPath(testGraph, "bfs");
 const testAdvancedPathWeightedUniqueVerticesPath = (testGraph) => testAdvancedPathModeUniqueVerticesPath(testGraph, "weighted");
 
@@ -4889,13 +4927,30 @@ function testAdvancedPathModeUniqueVerticesPath(testGraph, mode) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
+function testAdvancedPathWeightedUniqueVerticesNoneEnabledWeights(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const query = aql`
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex("A")} GRAPH ${testGraph.name()}
+    OPTIONS {mode: "weighted", uniqueVertices: "none", weightAttribute: ${testGraph.weightAttribute()}}
+    RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
+  `;
+
+  const expectedPaths = advancedPathWeightedPaths;
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidWsOf(expectedPaths, actualPaths);
+}
+
 const testAdvancedPathBfsUniqueVerticesNone = (testGraph) => testAdvancedPathModeUniqueVerticesNone(testGraph, "bfs");
 const testAdvancedPathWeightedUniqueVerticesNone = (testGraph) => testAdvancedPathModeUniqueVerticesNone(testGraph, "weighted");
 
 function testAdvancedPathModeUniqueVerticesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueVertices: "none"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+    OPTIONS {mode: ${mode}, uniqueVertices: "none"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -4905,6 +4960,22 @@ function testAdvancedPathModeUniqueVerticesNone(testGraph, mode) {
   const actualPaths = res.toArray();
 
   checkResIsValidBfsOf(expectedPaths, actualPaths);
+}
+
+function testAdvancedPathWeightedUniqueEdgesPathEnabledWeights(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const query = aql`
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+    OPTIONS {mode: "weighted", uniqueEdges: "path", weightAttribute: ${testGraph.weightAttribute()}}
+    RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
+  `;
+
+  const expectedPaths = advancedPathWeightedPaths;
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidWsOf(expectedPaths, actualPaths);
 }
 
 const testAdvancedPathBfsUniqueEdgesPath = (testGraph) => testAdvancedPathModeUniqueEdgesPath(testGraph, "bfs");
@@ -4925,6 +4996,22 @@ function testAdvancedPathModeUniqueEdgesPath(testGraph, mode) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
+function testAdvancedPathWeightedUniqueEdgesNoneEnabledWeights(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const query = aql`
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()}
+    OPTIONS {mode: "weighted", uniqueEdges: "none", weightAttribute: ${testGraph.weightAttribute()}}
+    RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
+  `;
+
+  const expectedPaths = advancedPathWeightedPaths;
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidWsOf(expectedPaths, actualPaths);
+}
+
 const testAdvancedPathBfsUniqueEdgesNone = (testGraph) => testAdvancedPathModeUniqueEdgesNone(testGraph, "bfs");
 const testAdvancedPathWeightedUniqueEdgesNone = (testGraph) => testAdvancedPathModeUniqueEdgesNone(testGraph, "weighted");
 
@@ -4943,13 +5030,30 @@ function testAdvancedPathModeUniqueEdgesNone(testGraph, mode) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
+function testAdvancedPathWeightedUniqueEdgesUniqueVerticesPathEnabledWeights(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const query = aql`
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+    OPTIONS {mode: "weighted", uniqueEdges: "path", uniqueVertices: "path", weightAttribute: ${testGraph.weightAttribute()}}
+    RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
+  `;
+
+  const expectedPaths = advancedPathWeightedPaths;
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidWsOf(expectedPaths, actualPaths);
+}
+
 const testAdvancedPathBfsUniqueEdgesUniqueVerticesPath = (testGraph) => testAdvancedPathModeUniqueEdgesUniqueVerticesPath(testGraph, "bfs");
 const testAdvancedPathWeightedUniqueEdgesUniqueVerticesPath = (testGraph) => testAdvancedPathModeUniqueEdgesUniqueVerticesPath(testGraph, "weighted");
 
 function testAdvancedPathModeUniqueEdgesUniqueVerticesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueEdges: "path", uniqueVertices: "path"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+    OPTIONS {mode: ${mode}, uniqueEdges: "path", uniqueVertices: "path"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -4959,6 +5063,22 @@ function testAdvancedPathModeUniqueEdgesUniqueVerticesPath(testGraph, mode) {
   const actualPaths = res.toArray();
 
   checkResIsValidBfsOf(expectedPaths, actualPaths);
+}
+
+function testAdvancedPathWeightedUniqueEdgesUniqueVerticesNoneEnabledWeights(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const query = aql`
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()}
+    OPTIONS {mode: "weighted", uniqueEdges: "none", uniqueVertices: "none", weightAttribute: ${testGraph.weightAttribute()}}
+    RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
+  `;
+
+  const expectedPaths = advancedPathWeightedPaths;
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidWsOf(expectedPaths, actualPaths);
 }
 
 const testAdvancedPathBfsUniqueEdgesUniqueVerticesNone = (testGraph) => testAdvancedPathModeUniqueEdgesUniqueVerticesNone(testGraph, "bfs");
@@ -4967,7 +5087,8 @@ const testAdvancedPathWeightedUniqueEdgesUniqueVerticesNone = (testGraph) => tes
 function testAdvancedPathModeUniqueEdgesUniqueVerticesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueEdges: "none", uniqueVertices: "none"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()}
+    OPTIONS {mode: ${mode}, uniqueEdges: "none", uniqueVertices: "none"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -4978,13 +5099,30 @@ function testAdvancedPathModeUniqueEdgesUniqueVerticesNone(testGraph, mode) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
+function testAdvancedPathWeightedUniqueEdgesUniquePathVerticesGlobalEnabledWeights(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const query = aql`
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+    OPTIONS {mode: "weighted", uniqueEdges: "path", uniqueVertices: "global", weightAttribute: ${testGraph.weightAttribute()}}
+    RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
+  `;
+
+  const expectedVertices = ["A", "B", "D", "C", "E", "F", "H", "G", "I"];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidGlobalWsOf(expectedVertices, actualPaths);
+}
+
 const testAdvancedPathBfsUniqueEdgesUniquePathVerticesGlobal = (testGraph) => testAdvancedPathModeUniqueEdgesUniquePathVerticesGlobal(testGraph, "bfs");
 const testAdvancedPathWeightedUniqueEdgesUniquePathVerticesGlobal = (testGraph) => testAdvancedPathModeUniqueEdgesUniquePathVerticesGlobal(testGraph, "weighted");
 
 function testAdvancedPathModeUniqueEdgesUniquePathVerticesGlobal(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueEdges: "path", uniqueVertices: "global"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+    OPTIONS {mode: ${mode}, uniqueEdges: "path", uniqueVertices: "global"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -4996,13 +5134,30 @@ function testAdvancedPathModeUniqueEdgesUniquePathVerticesGlobal(testGraph, mode
   checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
+function testAdvancedPathWeightedUniqueEdgesUniqueNoneVerticesGlobalEnabledWeights(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const query = aql`
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+    OPTIONS {mode: "weighted", uniqueEdges: "none", uniqueVertices: "global", weightAttribute: ${testGraph.weightAttribute()}}
+    RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
+  `;
+
+  const expectedVertices = ["A", "B", "D", "C", "E", "F", "H", "G", "I"];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidGlobalWsOf(expectedVertices, actualPaths);
+}
+
 const testAdvancedPathBfsUniqueEdgesUniqueNoneVerticesGlobal = (testGraph) => testAdvancedPathModeUniqueEdgesUniqueNoneVerticesGlobal(testGraph, "bfs");
 const testAdvancedPathWeightedUniqueEdgesUniqueNoneVerticesGlobal = (testGraph) => testAdvancedPathModeUniqueEdgesUniqueNoneVerticesGlobal(testGraph, "weighted");
 
 function testAdvancedPathModeUniqueEdgesUniqueNoneVerticesGlobal(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueEdges: "none", uniqueVertices: "global"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+    OPTIONS {mode: ${mode}, uniqueEdges: "none", uniqueVertices: "global"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -5268,6 +5423,7 @@ const testsByGraph = {
     testAdvancedPathBfsUniqueEdgesUniqueVerticesNone,
     testAdvancedPathBfsUniqueEdgesUniquePathVerticesGlobal,
     testAdvancedPathBfsUniqueEdgesUniqueNoneVerticesGlobal,
+
     testAdvancedPathWeightedUniqueVerticesPath,
     testAdvancedPathWeightedUniqueVerticesNone,
     testAdvancedPathWeightedUniqueEdgesPath,
@@ -5276,6 +5432,16 @@ const testsByGraph = {
     testAdvancedPathWeightedUniqueEdgesUniqueVerticesNone,
     testAdvancedPathWeightedUniqueEdgesUniquePathVerticesGlobal,
     testAdvancedPathWeightedUniqueEdgesUniqueNoneVerticesGlobal,
+
+    testAdvancedPathWeightedUniqueVerticesPathEnabledWeights,
+    testAdvancedPathWeightedUniqueVerticesNoneEnabledWeights,
+    testAdvancedPathWeightedUniqueEdgesPathEnabledWeights,
+    testAdvancedPathWeightedUniqueEdgesNoneEnabledWeights,
+    testAdvancedPathWeightedUniqueEdgesUniqueVerticesPathEnabledWeights,
+    testAdvancedPathWeightedUniqueEdgesUniqueVerticesNoneEnabledWeights,
+    testAdvancedPathWeightedUniqueEdgesUniquePathVerticesGlobalEnabledWeights,
+    testAdvancedPathWeightedUniqueEdgesUniqueNoneVerticesGlobalEnabledWeights,
+
     testAdvancedPathShortestPath,
     testAdvancedPathShortestPathEnabledWeightCheck,
     testAdvancedPathKShortestPathMultiLimit,
