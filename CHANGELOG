@@ -1,6 +1,9 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Fix a performance regression when a LIMIT is combined with a COLLECT WITH
+  COUNT INTO. Reported in ES-692.
+
 * Use rclone built from v1.51.0 source with go1.15.2 instead of prebuilt
   v1.51.0 release.
 
