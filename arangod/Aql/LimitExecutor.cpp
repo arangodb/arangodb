@@ -31,6 +31,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 
 #include <utility>
@@ -53,13 +54,14 @@ auto LimitExecutor::limitFulfilled() const noexcept -> bool {
 auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> AqlCall {
   auto upstreamCall = AqlCall{};
 
-  // Offsets can simply be added.
-  upstreamCall.offset = clientCall.getOffset() + remainingOffset();
+  auto const limitedClientOffset = std::min(clientCall.getOffset(), remainingLimit());
+
+  // Offsets must be added, but the client's offset is limited by our limit.
+  upstreamCall.offset = remainingOffset() + limitedClientOffset;
 
   // To get the limit for upstream, we must subtract the downstream offset from
   // our limit, and take the minimum of this and the downstream limit.
-  auto const localLimitMinusDownstreamOffset =
-      remainingLimit() - std::min(remainingLimit(), clientCall.getOffset());
+  auto const localLimitMinusDownstreamOffset = remainingLimit() - limitedClientOffset;
   auto const limit =
       std::min<AqlCall::Limit>(clientCall.getLimit(), localLimitMinusDownstreamOffset);
 
@@ -69,13 +71,38 @@ auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> Aq
                             clientCall.getLimit() < localLimitMinusDownstreamOffset;
 
   if (useSoftLimit) {
+    // fullCount may only be set with a hard limit
+    TRI_ASSERT(!clientCall.needsFullCount());
     upstreamCall.softLimit = limit;
     upstreamCall.fullCount = false;
-  } else {
+  } else if (!clientCall.needsFullCount()) {
     upstreamCall.hardLimit = limit;
-    // We need the fullCount either if we need to report it ourselfes.
-    // or if the clientCall needs to report it.
-    upstreamCall.fullCount = infos().isFullCountEnabled() || clientCall.fullCount;
+    // We need the fullCount if we need to report it ourselves.
+    upstreamCall.fullCount = infos().isFullCountEnabled();
+  } else {
+    TRI_ASSERT(clientCall.needsFullCount());
+    // If the client needs full count, we need to skip up to our limit upstream.
+    // Currently the execute API makes it impossible to skip after fetching rows,
+    // so we must throw if we encounter a client fullCount with a non-zero limit.
+
+    if (0 < limit) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "When fullCount is used, consecutive top-level LIMIT clauses are not "
+          "supported. Please either restrict yourself to a single top-level "
+          "LIMIT clause, or omit the query option fullCount.");
+    }
+
+    TRI_ASSERT(0 == limit);
+    // The request is a hard limit of 0 together with fullCount, so we always
+    // need to skip both our offset and our limit, regardless of the client's
+    // offset.
+    TRI_ASSERT(clientCall.getLimit() == 0);
+    upstreamCall.offset = upstreamCall.offset + remainingLimit();
+    upstreamCall.hardLimit = 0;
+    // We need to send fullCount upstream iff this is fullCount-enabled LIMIT
+    // block.
+    upstreamCall.fullCount = infos().isFullCountEnabled();
   }
 
   return upstreamCall;
