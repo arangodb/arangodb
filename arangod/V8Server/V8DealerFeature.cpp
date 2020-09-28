@@ -1707,6 +1707,8 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
       v8g->_inForcedCollect = true;
       TRI_RunGarbageCollectionV8(isolate, 30.0);
       v8g->_inForcedCollect = false;
+      
+      delete v8g;
     }
 
     localContext->Exit();
