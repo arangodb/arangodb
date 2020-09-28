@@ -198,6 +198,8 @@ QueryStreamCursor::~QueryStreamCursor() {
 
   _queryResults.clear();
   
+  cleanupStateCallback();
+  
   // Query destructor will cleanup plan and abort transaction
   _query.reset();
 }
@@ -451,5 +453,6 @@ void QueryStreamCursor::cleanupStateCallback() {
   transaction::Methods trx(_ctx);
   if (_stateChangeCb && trx.status() == transaction::Status::RUNNING) {
     trx.removeStatusChangeCallback(&_stateChangeCb);
+    _stateChangeCb = nullptr;
   }
 }
