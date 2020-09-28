@@ -3,9 +3,9 @@ devel
 
 * Data definition reconsiliation in cluster has been modified
   extensively to greatly accelerate the creation of 1000s of
-  databases through following means
-  - AgencyCache offers change sets API based on Raft index
-  - ClusterInfo caches are only updated using change sets
+  databases through following means:
+  - AgencyCache offers change sets API based on Raft index.
+  - ClusterInfo caches are only updated using change sets.
   - Maintenance uses local as well as agency change sets to limit
     the scope of every runtime to these change sets.
 
