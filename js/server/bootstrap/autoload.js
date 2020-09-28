@@ -37,6 +37,7 @@
   let db = internal.db;
 
   return {
+    // this functionality is deprecated and will be removed in 3.9
     startup: function () {
       const dbName = db._name();
       try {

@@ -1035,7 +1035,7 @@ function buildRouting (dbname) {
   // compute all routes
   var routes = [];
   var routing = arangodb.db._collection('_routing');
-  if (routing !== null) {
+  if (routing !== null && routing.count() > 0) {
     let i = routing.all();
 
     while (i.hasNext()) {
