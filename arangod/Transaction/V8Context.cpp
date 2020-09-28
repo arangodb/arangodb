@@ -81,8 +81,9 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
   }
   
   if (_v8g->_transactionContext != nullptr) {
-    auto* global = static_cast<transaction::V8Context*>(_v8g->_transactionContext);
-    _currentTransaction = global->_currentTransaction;
+    _currentTransaction = _v8g->_transactionContext->_currentTransaction;
+  } else if (_v8g->_transactionState) {
+    _currentTransaction = _v8g->_transactionState;
   }
   
   if (!_currentTransaction) {

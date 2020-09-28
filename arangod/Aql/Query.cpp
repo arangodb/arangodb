@@ -913,6 +913,18 @@ bool Query::isAsyncQuery() const noexcept {
 
 /// @brief enter a V8 context
 void Query::enterV8Context() {
+  auto registerCtx = [&] {
+    // register transaction in context
+    if (_transactionContext->isV8Context()) {
+      auto ctx = static_cast<arangodb::transaction::V8Context*>(_transactionContext.get());
+      ctx->enterV8Context();
+    } else {
+      v8::Isolate* isolate = v8::Isolate::GetCurrent();
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
+      v8g->_transactionState = _trx->stateShrdPtr();
+    }
+  };
+  
   if (!_contextOwnedByExterior) {
     if (_v8Context == nullptr) {
       if (V8DealerFeature::DEALER == nullptr) {
@@ -929,45 +941,39 @@ void Query::enterV8Context() {
             TRI_ERROR_RESOURCE_LIMIT,
             "unable to enter V8 context for query execution");
       }
-      // register transaction in context
-      auto ctx = static_cast<arangodb::transaction::V8Context*>(_transactionContext.get());
-      if (ctx != nullptr) {
-        ctx->enterV8Context();
-      }
+      registerCtx();
     }
     TRI_ASSERT(_v8Context != nullptr);
   } else {
-    // can only get here inside V8 context
     if (!_embeddedQuery) {  // may happen for stream trx
-      auto ctx = static_cast<arangodb::transaction::V8Context*>(_transactionContext.get());
-      if (ctx != nullptr) {
-        ctx->enterV8Context();
-      }
+      registerCtx();
     }
   }
 }
 
 /// @brief return a V8 context
 void Query::exitV8Context() {
-  
+  auto unregister = [&] {
+    if (_transactionContext->isV8Context()) {  // necessary for stream trx
+      auto ctx = static_cast<arangodb::transaction::V8Context*>(_transactionContext.get());
+      ctx->exitV8Context();
+    } else {
+      v8::Isolate* isolate = v8::Isolate::GetCurrent();
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
+      v8g->_transactionState = nullptr;
+    }
+  };
   if (!_contextOwnedByExterior) {
     if (_v8Context != nullptr) {
       // unregister transaction in context
-      auto ctx = static_cast<arangodb::transaction::V8Context*>(_transactionContext.get());
-      if (ctx != nullptr) {
-        ctx->exitV8Context();
-      }
+      unregister();
 
       TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
       V8DealerFeature::DEALER->exitContext(_v8Context);
       _v8Context = nullptr;
     }
   } else if (!_embeddedQuery) {
-    // can only get here inside V8 context
-    auto ctx = static_cast<arangodb::transaction::V8Context*>(_transactionContext.get());
-    if (ctx != nullptr) {  // necessary for stream trx
-      ctx->exitV8Context();
-    }
+    unregister();
   }
 }
 
