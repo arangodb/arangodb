@@ -750,6 +750,68 @@ function ahuacatlProfilerTestSuite () {
       profHelper.runDefaultChecks({query, genNodeList});
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test LimitBlock + CountCollectBlock
+/// This is a regression test for ES-692.
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitBlockWithCountCollectBlock : function () {
+      const query = `
+        FOR i IN 1..@rows
+          LIMIT @offset, @limit
+          COLLECT WITH COUNT INTO c
+          RETURN c
+      `;
+      const genNodeList = (rows) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        { type : EnumerateListBlock, calls : 1, items : limit(rows) },
+        { type : LimitBlock, calls : 1, items : limitMinusSkip(rows) },
+        { type : CountCollectBlock, calls : 1, items : 1 },
+        { type : ReturnBlock, calls : 1, items : 1 }
+      ];
+      const bind = rows => ({
+        rows,
+        // ~1/4 of rows:
+        offset: offset(rows),
+        // ~1/2 of rows:
+        limit: limitMinusSkip(rows),
+      });
+      profHelper.runDefaultChecks({query, bind, genNodeList});
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test LimitBlock with fullCount + CountCollectBlock
+/// This is a regression test for ES-692.
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitBlockWithCountCollectBlockAndFullCount : function () {
+      const query = `
+        FOR i IN 1..@rows
+          LIMIT @offset, @limit
+          COLLECT WITH COUNT INTO c
+          RETURN c
+      `;
+      const genNodeList = (rows) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        { type : EnumerateListBlock, calls : 1, items : rows },
+        { type : LimitBlock, calls : 1, items : limitMinusSkip(rows) },
+        { type : CountCollectBlock, calls : 1, items : 1 },
+        { type : ReturnBlock, calls : 1, items : 1 }
+      ];
+      const bind = rows => ({
+        rows,
+        // ~1/4 of rows:
+        offset: offset(rows),
+        // ~1/2 of rows:
+        limit: limitMinusSkip(rows),
+      });
+      const genStats = rows => ({
+        fullCount: rows
+      });
+      profHelper.runDefaultChecks({query, bind, genNodeList, genStats, options: {fullCount: true}});
+    },
 
 // TODO Every block must be tested separately. Here follows the list of blocks
 // (partly grouped due to the inheritance hierarchy). Intermediate blocks
