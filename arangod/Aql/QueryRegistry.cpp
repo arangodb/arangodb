@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryRegistry.h"
-#include <Cluster/CallbackGuard.h>
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ClusterQuery.h"
@@ -30,6 +29,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
+#include "Cluster/CallbackGuard.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "Logger/LogMacros.h"
