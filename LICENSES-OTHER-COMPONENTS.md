@@ -1,6 +1,7 @@
 - [Other Licenses](#other-licenses)
   * [C/C++ Libraries](#cc-libraries)
   * [Programs](#programs)
+  * [Data files](#data-files)
   * [JavaScript](#javascript)
     + [Node core modules](#node-core-modules)
     + [Bundled NPM modules](#bundled-npm-modules)
@@ -47,7 +48,7 @@ _Enterprise Edition only_
 
 * Name: date
 * Version: 3.0.0
-* Date: 2020-06-03 00:00:00Z
+* Date: 2020-06-03
 * Project Home: https://github.com/HowardHinnant/date
 * License: https://raw.githubusercontent.com/HowardHinnant/date/master/LICENSE.txt
 * License Name: MIT License
@@ -537,11 +538,33 @@ _Enterprise Edition only_
 
 * Name: flex
 * Version: 2.5.35
-* Date: 2008-02-26 00:00:00Z
+* Date: 2008-02-26
 * Project Home: https://github.com/westes/flex
 * License: https://raw.githubusercontent.com/westes/flex/master/COPYING
 * License Comment: free as-is license (BSD-2-Clause variant),
   only used to generate code, not part of the distribution
+
+## Data files
+
+#### IANA Time Zone Database (tzdata)
+
+Name: Time Zone Database
+Version: 2020a
+Date: 2020-04-23
+Project https://www.iana.org/time-zones
+License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/tzdata/LICENSE
+License Name: Public Domain
+License Id: -
+
+#### Unicode CLDR Project (windowsZones.xml)
+
+Name: Unicode CLDR Project
+Version: 37
+Date: 2020-09-04 15:01:52Z
+Project Home: https://github.com/unicode-org/cldr
+License: https://raw.githubusercontent.com/unicode-org/cldr/master/ICU-LICENSE
+License Name: ICU License
+License Id: ICU
 
 ## JavaScript
 
@@ -1741,15 +1764,6 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: MIT License
 License Id: MIT
 
-#### IANA Time Zone Database
-
-Name: Time Zone Database
-Version: 2020a
-Project https://www.iana.org/time-zones
-License: ftp://ftp.iana.org/tz/tzdb-2020a/LICENSE
-License Name: Public Domain
-License Id: -
-
 #### iconv-lite
 
 Name: iconv-lite
@@ -2910,15 +2924,6 @@ Project Home: https://github.com/jashkenas/underscore
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/underscore/LICENSE
 License Name: MIT License
 License Id: MIT
-
-#### Unicode CLDR Project (windowsZones.xml)
-
-Name: Unicode CLDR Project
-Version: 37
-Project Home: https://github.com/unicode-org/cldr
-License: https://raw.githubusercontent.com/unicode-org/cldr/master/ICU-LICENSE
-License Name: ICU License
-License Id: ICU
 
 #### uri-js
 
