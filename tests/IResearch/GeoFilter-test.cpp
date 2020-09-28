@@ -50,7 +50,7 @@ TEST(GeoFilterTest, options) {
   ASSERT_EQ(s2opts.marker(), opts.options.marker());
   ASSERT_EQ(s2opts.index_contains_points_only(), opts.options.index_contains_points_only());
   ASSERT_EQ(s2opts.optimize_for_space(), opts.options.optimize_for_space());
-  ASSERT_EQ(arangodb::iresearch::GeoFilterType::NEAR, opts.type);
+  ASSERT_EQ(arangodb::iresearch::GeoFilterType::NEARBY, opts.type);
 }
 
 TEST(GeoFilterTest, ctor) {
