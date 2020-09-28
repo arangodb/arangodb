@@ -81,6 +81,5 @@ bool DropDatabase::first() {
     return false;
   }
 
-  notify();
   return false;
 }

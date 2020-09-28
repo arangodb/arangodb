@@ -17,7 +17,7 @@ describe ArangoDB do
 
     context "dealing with general functions" do
 
-      it "fetches the server id" do
+      it "fetches the server id 1" do
         # fetch id
         cmd = api + "/server-id"
         doc = ArangoDB.log_get("#{prefix}-server-id", cmd)
@@ -48,7 +48,7 @@ describe ArangoDB do
 ## start
 ################################################################################
 
-      it "starts the applier" do
+      it "starts the applier 1" do
         cmd = api + "/applier-start"
         doc = ArangoDB.log_put("#{prefix}-applier-start", cmd, :body => "")
         doc.code.should eq(400) # because configuration is invalid
@@ -58,7 +58,7 @@ describe ArangoDB do
 ## stop
 ################################################################################
 
-      it "stops the applier" do
+      it "stops the applier 1" do
         cmd = api + "/applier-stop"
         doc = ArangoDB.log_put("#{prefix}-applier-start", cmd, :body => "")
         doc.code.should eq(200)
@@ -68,7 +68,7 @@ describe ArangoDB do
 ## properties
 ################################################################################
 
-      it "fetches the applier config" do
+      it "fetches the applier config 1" do
         cmd = api + "/applier-config"
         doc = ArangoDB.log_get("#{prefix}-applier-config", cmd, :body => "")
 
@@ -97,7 +97,7 @@ describe ArangoDB do
 ## set and fetch properties
 ################################################################################
 
-      it "sets and re-fetches the applier config" do
+      it "sets and re-fetches the applier config 1" do
         cmd = api + "/applier-config"
         body = '{ "endpoint" : "tcp://127.0.0.1:9999", "database" : "foo", "ignoreErrors" : 5, "requestTimeout" : 32.2, "connectTimeout" : 51.1, "maxConnectRetries" : 12345, "chunkSize" : 143423232, "autoStart" : true, "adaptivePolling" : false, "autoResync" : true, "includeSystem" : true, "requireFromPresent" : true, "verbose" : true, "connectionRetryWaitTime" : 22.12, "initialSyncMaxWaitTime" : 12.21, "idleMinWaitTime" : 1.4, "idleMaxWaitTime" : 7.3 }'
         doc = ArangoDB.log_put("#{prefix}-applier-config", cmd, :body => body)
@@ -201,7 +201,7 @@ describe ArangoDB do
 ## state
 ################################################################################
 
-      it "checks the state" do
+      it "checks the applier state 1" do
         # fetch state
         cmd = api + "/applier-state"
         doc = ArangoDB.log_get("#{prefix}-applier-state", cmd, :body => "")
@@ -254,7 +254,7 @@ describe ArangoDB do
 ## state
 ################################################################################
 
-      it "checks the state" do
+      it "checks the logger state" do
         # fetch state
         cmd = api + "/logger-state"
         doc = ArangoDB.log_get("#{prefix}-logger-state", cmd, :body => "")
@@ -322,7 +322,7 @@ describe ArangoDB do
 ## follow
 ################################################################################
 
-      it "fetches the empty follow log" do
+      it "fetches the empty follow log 1" do
         while 1
           cmd = api + "/logger-state"
           doc = ArangoDB.log_get("#{prefix}-follow-empty", cmd, :body => "")
@@ -353,7 +353,7 @@ describe ArangoDB do
         end
       end
 
-      it "fetches a create collection action from the follow log" do
+      it "fetches a create collection action from the follow log 1" do
         ArangoDB.drop_collection("UnitTestsReplication")
 
         sleep 5
@@ -415,7 +415,7 @@ describe ArangoDB do
 
       end
 
-      it "fetches some collection operations from the follow log" do
+      it "fetches some collection operations from the follow log 1" do
         ArangoDB.drop_collection("UnitTestsReplication")
 
         sleep 5
@@ -573,7 +573,7 @@ describe ArangoDB do
 ## inventory
 ################################################################################
 
-      it "checks the initial inventory" do
+      it "checks the initial inventory 1" do
         cmd = api + "/inventory?includeSystem=false&batchId=#{@batchId}"
         doc = ArangoDB.log_get("#{prefix}-inventory", cmd, :body => "")
 
@@ -596,7 +596,7 @@ describe ArangoDB do
         state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
       end
 
-      it "checks the initial inventory for non-system collections" do
+      it "checks the initial inventory for non-system collections 1" do
         cmd = api + "/inventory?includeSystem=false&batchId=#{@batchId}"
         doc = ArangoDB.log_get("#{prefix}-inventory-system", cmd, :body => "")
 
@@ -631,7 +631,7 @@ describe ArangoDB do
         systemCollections.should_not eq(0)
       end
 
-      it "checks the inventory after creating collections" do
+      it "checks the inventory after creating collections 1" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", true, 3)
 
@@ -694,7 +694,7 @@ describe ArangoDB do
         c['indexes'].should eq([ ])
       end
 
-      it "checks the inventory with indexes" do
+      it "checks the inventory with indexes 1" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", false)
 
@@ -795,7 +795,7 @@ describe ArangoDB do
 ## dump
 ################################################################################
 
-      it "checks the dump for an empty collection" do
+      it "checks the dump for an empty collection 1" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
 
         doc = ArangoDB.log_put("#{prefix}-deleted", "/_admin/wal/flush?waitForSync=true&waitForCollector=true", :body => "")
@@ -812,7 +812,7 @@ describe ArangoDB do
         doc.response.body.should eq(nil)
       end
 
-      it "checks the dump for a non-empty collection" do
+      it "checks the dump for a non-empty collection 1" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
 
         (0...100).each{|i|
@@ -858,7 +858,7 @@ describe ArangoDB do
         i.should eq(100)
       end
 
-      it "checks the dump for a non-empty collection, small chunkSize" do
+      it "checks the dump for a non-empty collection, small chunkSize 1" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
 
         (0...100).each{|i|
@@ -908,7 +908,7 @@ describe ArangoDB do
       end
 
 
-      it "checks the dump for an edge collection" do
+      it "checks the dump for an edge collection 1" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", false, 3)
 
@@ -963,7 +963,7 @@ describe ArangoDB do
         i.should eq(100)
       end
 
-      it "checks the dump for an edge collection, small chunkSize" do
+      it "checks the dump for an edge collection, small chunkSize 1" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", false, 3)
 
@@ -1018,7 +1018,7 @@ describe ArangoDB do
         i.should be < 100
       end
 
-      it "checks the dump for a collection with deleted documents" do
+      it "checks the dump for a collection with deleted documents 1" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
 
         doc = ArangoDB.log_put("#{prefix}-deleted", "/_admin/wal/flush?waitForSync=true&waitForCollector=true", :body => "")
@@ -1050,7 +1050,7 @@ describe ArangoDB do
         doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
       end
 
-      it "checks the dump for a truncated collection" do
+      it "checks the dump for a truncated collection 1" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
 
         (0...10).each{|i|
@@ -1081,7 +1081,7 @@ describe ArangoDB do
         doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
       end
 
-      it "checks the dump for a non-empty collection, 3.0 mode" do
+      it "checks the dump for a non-empty collection, 3.0 mode 1" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
 
         (0...100).each{|i|
@@ -1124,7 +1124,7 @@ describe ArangoDB do
         i.should eq(100)
       end
 
-      it "fetches incremental parts of a collection dump" do
+      it "fetches incremental parts of a collection dump 1" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
 
         (0...10).each{|i|
@@ -1195,7 +1195,7 @@ describe ArangoDB do
 
     context "dealing with general functions" do
 
-      it "fetches the server id" do
+      it "fetches the server id 2" do
         # fetch id
         cmd = api + "/server-id"
         doc = ArangoDB.log_get("#{prefix}-server-id", cmd)
@@ -1226,7 +1226,7 @@ describe ArangoDB do
 ## start
 ################################################################################
 
-      it "starts the applier" do
+      it "starts the applier 2" do
         cmd = api + "/applier-start"
         doc = ArangoDB.log_put("#{prefix}-applier-start", cmd, :body => "")
         doc.code.should eq(400) # because configuration is invalid
@@ -1236,7 +1236,7 @@ describe ArangoDB do
 ## stop
 ################################################################################
 
-      it "stops the applier" do
+      it "stops the applier 2" do
         cmd = api + "/applier-stop"
         doc = ArangoDB.log_put("#{prefix}-applier-start", cmd, :body => "")
         doc.code.should eq(200)
@@ -1246,7 +1246,7 @@ describe ArangoDB do
 ## properties
 ################################################################################
 
-      it "fetches the applier config" do
+      it "fetches the applier config 2" do
         cmd = api + "/applier-config"
         doc = ArangoDB.log_get("#{prefix}-applier-config", cmd, :body => "")
 
@@ -1275,7 +1275,7 @@ describe ArangoDB do
 ## set and fetch properties
 ################################################################################
 
-      it "sets and re-fetches the applier config" do
+      it "sets and re-fetches the applier config 2" do
         cmd = api + "/applier-config"
         body = '{ "endpoint" : "tcp://127.0.0.1:9999", "database" : "foo", "ignoreErrors" : 5, "requestTimeout" : 32.2, "connectTimeout" : 51.1, "maxConnectRetries" : 12345, "chunkSize" : 143423232, "autoStart" : true, "adaptivePolling" : false, "autoResync" : true, "includeSystem" : true, "requireFromPresent" : true, "verbose" : true, "connectionRetryWaitTime" : 22.12, "initialSyncMaxWaitTime" : 12.21, "idleMinWaitTime" : 1.4, "idleMaxWaitTime" : 7.3 }'
         doc = ArangoDB.log_put("#{prefix}-applier-config", cmd, :body => body)
@@ -1379,7 +1379,7 @@ describe ArangoDB do
 ## state
 ################################################################################
 
-      it "checks the state" do
+      it "checks the applier state again 2" do
         # fetch state
         cmd = api + "/applier-state"
         doc = ArangoDB.log_get("#{prefix}-applier-state", cmd, :body => "")
@@ -1419,7 +1419,7 @@ describe ArangoDB do
 ## logger
 ################################################################################
 
-    context "dealing with the logger" do
+    context "dealing with the logger 2" do
       before do
         ArangoDB.drop_collection("UnitTestsReplication")
       end
@@ -1458,7 +1458,7 @@ describe ArangoDB do
 ## follow
 ################################################################################
 
-      it "fetches the empty follow log" do
+      it "fetches the empty follow log 2" do
         while 1
           cmd = api + "/logger-state"
           doc = ArangoDB.log_get("#{prefix}-follow-empty", cmd, :body => "")
@@ -1489,7 +1489,7 @@ describe ArangoDB do
         end
       end
 
-      it "fetches a create collection action from the follow log" do
+      it "fetches a create collection action from the follow log 2" do
         ArangoDB.drop_collection("UnitTestsReplication", "UnitTestDB")
 
         sleep 5
@@ -1551,7 +1551,7 @@ describe ArangoDB do
 
       end
 
-      it "fetches some collection operations from the follow log" do
+      it "fetches some collection operations from the follow log 2" do
         ArangoDB.drop_collection("UnitTestsReplication", "UnitTestDB")
 
         sleep 5
@@ -1709,7 +1709,7 @@ describe ArangoDB do
 ## inventory
 ################################################################################
 
-      it "checks the initial inventory" do
+      it "checks the initial inventory 2" do
         cmd = api + "/inventory?includeSystem=false&batchId=#{@batchId}"
         doc = ArangoDB.log_get("#{prefix}-inventory", cmd, :body => "")
 
@@ -1732,7 +1732,7 @@ describe ArangoDB do
         state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
       end
 
-      it "checks the initial inventory for non-system collections" do
+      it "checks the initial inventory for non-system collections 2" do
         cmd = api + "/inventory?includeSystem=false&batchId=#{@batchId}"
         doc = ArangoDB.log_get("#{prefix}-inventory-system", cmd, :body => "")
 
@@ -1747,7 +1747,7 @@ describe ArangoDB do
         }
       end
 
-      it "checks the initial inventory for system collections" do
+      it "checks the initial inventory for system collections 2" do
         cmd = api + "/inventory?includeSystem=true&batchId=#{@batchId}"
         doc = ArangoDB.log_get("#{prefix}-inventory-system", cmd, :body => "")
 
@@ -1767,7 +1767,7 @@ describe ArangoDB do
         systemCollections.should_not eq(0)
       end
 
-      it "checks the inventory after creating collections" do
+      it "checks the inventory after creating collections 2" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false, 2, "UnitTestDB")
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", true, 3, "UnitTestDB")
 
@@ -1830,7 +1830,7 @@ describe ArangoDB do
         c['indexes'].should eq([ ])
       end
 
-      it "checks the inventory with indexes" do
+      it "checks the inventory with indexes 2" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false, 2, "UnitTestDB")
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", false, 2, "UnitTestDB")
 
@@ -1953,7 +1953,7 @@ describe ArangoDB do
 ## dump
 ################################################################################
 
-      it "checks the dump for an empty collection" do
+      it "checks the dump for an empty collection 2" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false, 2, "UnitTestDB")
 
         doc = ArangoDB.log_put("#{prefix}-deleted", "/_admin/wal/flush?waitForSync=true&waitForCollector=true", :body => "")
@@ -1970,7 +1970,7 @@ describe ArangoDB do
         doc.response.body.should eq(nil)
       end
 
-      it "checks the dump for a non-empty collection" do
+      it "checks the dump for a non-empty collection 2" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false, 2 , "UnitTestDB")
 
         (0...100).each{|i|
@@ -2016,7 +2016,7 @@ describe ArangoDB do
         i.should eq(100)
       end
 
-      it "checks the dump for a non-empty collection, small chunkSize" do
+      it "checks the dump for a non-empty collection, small chunkSize 2" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false, 2, "UnitTestDB")
 
         (0...100).each{|i|
@@ -2066,7 +2066,7 @@ describe ArangoDB do
       end
 
 
-      it "checks the dump for an edge collection" do
+      it "checks the dump for an edge collection 2" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false, 2, "UnitTestDB")
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", false, 3, "UnitTestDB")
 
@@ -2121,7 +2121,7 @@ describe ArangoDB do
         i.should eq(100)
       end
 
-      it "checks the dump for an edge collection, small chunkSize" do
+      it "checks the dump for an edge collection, small chunkSize 2" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false, 2, "UnitTestDB")
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", false, 3, "UnitTestDB")
 
@@ -2176,7 +2176,7 @@ describe ArangoDB do
         i.should be < 100
       end
 
-      it "checks the dump for a collection with deleted documents" do
+      it "checks the dump for a collection with deleted documents 2" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false, 2, "UnitTestDB")
 
         doc = ArangoDB.log_put("#{prefix}-deleted", "/_admin/wal/flush?waitForSync=true&waitForCollector=true", :body => "")
@@ -2208,7 +2208,7 @@ describe ArangoDB do
         doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
       end
 
-      it "checks the dump for a truncated collection" do
+      it "checks the dump for a truncated collection 2" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false, 2, "UnitTestDB")
 
         (0...10).each{|i|
@@ -2239,7 +2239,7 @@ describe ArangoDB do
         doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
       end
 
-      it "checks the dump for a non-empty collection, 3.0 mode" do
+      it "checks the dump for a non-empty collection, 3.0 mode 2" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false, 2, "UnitTestDB")
 
         (0...100).each{|i|
@@ -2282,7 +2282,7 @@ describe ArangoDB do
         i.should eq(100)
       end
 
-      it "fetches incremental parts of a collection dump" do
+      it "fetches incremental parts of a collection dump 2" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false, 2, "UnitTestDB")
 
         (0...10).each{|i|

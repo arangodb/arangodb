@@ -53,6 +53,9 @@ add_library(arango_iresearch
   IResearch/AqlHelper.cpp IResearch/AqlHelper.h
   IResearch/Containers.cpp IResearch/Containers.h
   IResearch/ExpressionFilter.cpp IResearch/ExpressionFilter.h
+  IResearch/Geo.cpp IResearch/Geo.h
+  IResearch/GeoAnalyzer.cpp IResearch/GeoAnalyzer.h
+  IResearch/GeoFilter.cpp IResearch/GeoFilter.h
   IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
   IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
   IResearch/IResearchCompression.cpp IResearch/IResearchCompression.h
@@ -60,6 +63,7 @@ add_library(arango_iresearch
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
   IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
   IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
+  IResearch/IResearchIdentityAnalyzer.cpp IResearch/IResearchIdentityAnalyzer.h
   IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
   IResearch/IResearchLink.cpp IResearch/IResearchLink.h
   IResearch/IResearchLinkCoordinator.cpp IResearch/IResearchLinkCoordinator.h
