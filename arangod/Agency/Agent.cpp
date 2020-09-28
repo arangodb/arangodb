@@ -899,6 +899,14 @@ futures::Future<query_t> Agent::poll(
 
   using namespace std::chrono;
 
+  // Please note that the AgencyCache on coordinators and dbservers depends
+  // crucially on the behaviour encoded here for correctness at start time.
+  // Namely, the AgencyCache must never present the rest of the system with
+  // an empty or outdated agency state after a startup, because this could
+  // lead to immediate deletion of data. Therefore, it is critical that this
+  // code here answers with a current snapshot of the readDB, whenever it is
+  // asked for updates since index 0!
+
   std::vector<log_t> logs;
   query_t builder;
   {
