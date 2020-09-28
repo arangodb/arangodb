@@ -187,7 +187,7 @@ class IRESEARCH_API Not: public filter {
   template<typename T>
   T& filter() {
     typedef typename std::enable_if <
-      std::is_base_of< iresearch::filter, T >::value, T
+      std::is_base_of<::iresearch::filter, T >::value, T
     >::type type;
 
     filter_ = type::make();
