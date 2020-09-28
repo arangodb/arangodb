@@ -338,14 +338,13 @@ void AgencyCache::run() {
                         std::lock_guard g(_storeLock);
                         _readDB.applyTransaction(i); // apply logs
                         _commitIndex = i.get("index").getNumber<uint64_t>();
-                      }
-                      std::unordered_set<std::string> pc, cc;
-                      {
-                        std::lock_guard g(_callbacksLock);
-                        handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
-                      }
-                      {
-                        std::lock_guard g(_storeLock);
+
+                        std::unordered_set<std::string> pc, cc;
+                        {
+                          std::lock_guard g(_callbacksLock);
+                          handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
+                        }
+
                         for (auto const& i : pc) {
                           _planChanges.emplace(_commitIndex, i);
                         }
