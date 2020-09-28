@@ -1,7 +1,15 @@
 devel
 -----
 
-* Make scheduler react and start new threads slightly faster in case a lot 
+* Data definition reconsiliation in cluster has been modified
+  extensively to greatly accelerate the creation of 1000s of
+  databases through following means
+  - AgencyCache offers change sets API based on Raft index
+  - ClusterInfo caches are only updated using change sets
+  - Maintenance uses local as well as agency change sets to limit
+    the scope of every runtime to these change sets.
+
+* Make scheduler react and start new threads slightly faster in case a lot
   of new work arrives.
 
 * Make scheduler propertly count down the number of working threads in case
@@ -36,7 +44,7 @@ devel
   routing information. This is not necessary, as the routing information is
   global and not tied to a specific database.
 
-  Any functionality related to the `_modules` system collection is deprecated 
+  Any functionality related to the `_modules` system collection is deprecated
   and will be removed in ArangoDB v3.9.
 
 * Use rclone built from v1.51.0 source with go1.15.2 instead of prebuilt
