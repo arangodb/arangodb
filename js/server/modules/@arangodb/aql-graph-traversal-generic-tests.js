@@ -192,7 +192,7 @@ const checkResIsValidStackBasedTraversalOfFunc = function (getVertices, getCost)
     expectedPaths = _.sortBy(expectedPaths, [p => getCost(p), p => getVertices(p).length, p => getVertices(p)]);
     assertEqual(expectedPaths, actualPaths, messages.join('; '));
     //assertTrue(_.isEqual(expectedPaths, actualPaths), messages.join('; '));
-  }
+  };
 };
 
 const checkResIsValidBfsOf = checkResIsValidStackBasedTraversalOfFunc(_.identity, p => p.length);
@@ -263,7 +263,7 @@ const checkResIsValidGlobalBfsOfFunc = function(getVertices, getCost) {
     const badPaths = pathEdgeList.filter(p => !p.every(q => vertexPairs[q[1]] === q[0]));
     assertTrue(badPaths.length === 0, "paths do not lie within a tree", badPaths);
   };
-}
+};
 
 const checkResIsValidGlobalBfsOf = checkResIsValidGlobalBfsOfFunc(_.identity, p => p.length);
 const checkResIsValidGlobalWsOf = checkResIsValidGlobalBfsOfFunc(p => p.path, p => p.weight);
@@ -4348,7 +4348,7 @@ function testLargeBinTreeAllCombinations(testGraph) {
     const actualPaths = res.toArray();
 
     try {
-      if (options.mode == "dfs") {
+      if (options.mode === "dfs") {
         checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
       } else {
         checkResIsValidBfsOf(expectedPaths, actualPaths);
