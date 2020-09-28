@@ -57,6 +57,7 @@
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchCommon.h"
+#include "IResearchCalculationAnalyzer.h"
 #include "IResearchLink.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
@@ -501,110 +502,6 @@ bool pipeline_vpack_normalizer(const irs::string_ref& args, std::string& out) {
 REGISTER_ANALYZER_VPACK(irs::analysis::pipeline_token_stream, pipeline_vpack_builder,
   pipeline_vpack_normalizer);
 } // namespace pipeline_vpack
-
-namespace calculation_vpack {
-
-  class CalculationAnalyzer final : public irs::analysis::analyzer{
-   public:
-    struct options_t {
-      /// @brief Query string to be executed for each document.
-      /// Field value is set with @param binded parameter.
-      std::string query_string;
-
-      /// @brief determines how processed members of array result:
-      /// if set to true all members are considered to be at position 0
-      /// if set to false each array members is set at positions serially
-      bool collapseArrayPositions{ false };
-
-      /// @brief do not emit empty token if query result is NULL
-      /// this could be used fo index filtering.
-      bool discardNulls{ true };
-    };
-    static arangodb::DatabaseFeature* DB_FEATURE; // FIXME: implement properly. Just needed for fake db creation!
-
-    static constexpr irs::string_ref type_name() noexcept {
-      return "calculation";
-    }
-
-    static bool normalize(const irs::string_ref& /*args*/, std::string& out) {
-      out.resize(VPackSlice::emptyObjectSlice().byteSize());
-      std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
-      return true;
-    }
-
-    static irs::analysis::analyzer::ptr make(irs::string_ref const& /*args*/) {
-      return std::make_shared<CalculationAnalyzer>();
-    }
-
-    CalculationAnalyzer()
-      : irs::analysis::analyzer(irs::type<CalculationAnalyzer>::get()) {
-    }
-
-    virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-      if (type == irs::type<irs::increment>::id()) {
-        return &_inc;
-      }
-
-      return type == irs::type<irs::term_attribute>::id()
-        ? &_term
-        : nullptr;
-    }
-
-    virtual bool next() override {
-      if (_queryResult.ok() && _has_data) {
-        _has_data = false;
-        if (_queryResult.data->slice().isArray()) {
-          auto value = _queryResult.data->slice().at(0);
-          _str = value.copyString(); // TODO: maybe just process all with copyBinary?
-          _term.value = irs::ref_cast<irs::byte_type>(irs::string_ref(_str));
-          return true;
-        } else { // TODO: remove me!!!
-          _str = _queryResult.data->slice().typeName();
-          _term.value = irs::ref_cast<irs::byte_type>(irs::string_ref(_str));
-          return true;
-        }
-      }
-      return false;
-    }
-
-    virtual bool reset(irs::string_ref const& field) noexcept override {
-      // FIXME: For now it is only strings. So make VPACK and set parameter
-      // FIXME: use VPAck buffer and never reallocate between queries
-      auto vPackArgs = std::make_shared<arangodb::velocypack::Builder>();
-      {
-        VPackObjectBuilder o(vPackArgs.get());
-        vPackArgs->add("field", VPackValue(field));
-      }
-      // TODO: check query somehow
-      // TODO: Forbid to use TOKENS DOCUMENT FULLTEXT ,V8 related inside query -> problems on recovery as analyzers are not available for querying!
-      // TODO: Position calculation as parameter
-      // TODO: Filtering results
-
-      _query = std::make_unique<arangodb::aql::Query>(
-          std::make_shared<arangodb::transaction::StandaloneContext>(DB_FEATURE->getExpressionVocbase()),
-          arangodb::aql::QueryString("RETURN SOUNDEX(@field)"),
-          vPackArgs, nullptr);
-      _query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-      _query->execute(_queryResult);
-      _has_data = true;
-      return _queryResult.ok();
-    }
-
-   private:
-    irs::term_attribute _term;
-    irs::increment _inc;
-    arangodb::aql::QueryResult _queryResult;
-    std::unique_ptr<arangodb::aql::Query> _query;
-    bool _has_data{ false };
-    std::string _str;
-  }; // CalculationAnalyzer
-
-  arangodb::DatabaseFeature* CalculationAnalyzer::DB_FEATURE;
-
-  REGISTER_ANALYZER_VPACK(CalculationAnalyzer, CalculationAnalyzer::make,
-                          CalculationAnalyzer::normalize);
-}
-
 
 arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressionContext*/,
                                     arangodb::transaction::Methods* trx,
