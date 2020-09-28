@@ -89,16 +89,14 @@ class TypeInfo {
   template<typename T>
   friend struct Type;
 
-  constexpr explicit TypeInfo(TypeId id, std::string_view name) noexcept
+  constexpr explicit TypeInfo(
+    TypeId id, std::string_view name) noexcept
     : _id(id), _name(name) {
   }
 
   TypeId _id;
   std::string_view _name;
 }; // TypeInfo
-
-template<typename T>
-struct TypeMeta;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class Type
