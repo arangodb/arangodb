@@ -945,7 +945,7 @@ void IResearchFeature::Async::stop(Thread* redelegate /*= nullptr*/) {
 }
 
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer& server)
-    : ApplicationFeature(server, IResearchFeature::name()),
+    : ApplicationFeature(server, Type<IResearchFeature>::id(), IResearchFeature::name()),
       _async(std::make_unique<Async>(*this)),
       _running(false),
       _threads(0),

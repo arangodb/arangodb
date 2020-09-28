@@ -63,7 +63,7 @@ bool findNotDoneActions(std::shared_ptr<maintenance::Action> const& action) {
 }  // namespace
 
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Maintenance"),
+    : ApplicationFeature(server, Type<MaintenanceFeature>::id(), "Maintenance"),
       _forceActivation(false),
       _resignLeadershipOnShutdown(false),
       _maintenanceThreadsMax((std::max)(static_cast<uint32_t>(minThreadLimit),

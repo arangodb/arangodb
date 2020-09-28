@@ -49,7 +49,7 @@ namespace arangodb {
 std::atomic<aql::QueryRegistry*> QueryRegistryFeature::QUERY_REGISTRY{nullptr};
 
 QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "QueryRegistry"),
+    : ApplicationFeature(server, Type<QueryRegistryFeature>::id(), "QueryRegistry"),
       _trackSlowQueries(true),
       _trackBindVars(true),
       _failOnWarning(aql::QueryOptions::defaultFailOnWarning),

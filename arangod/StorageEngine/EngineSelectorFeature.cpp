@@ -67,7 +67,7 @@ namespace arangodb {
 StorageEngine* EngineSelectorFeature::ENGINE = nullptr;
 
 EngineSelectorFeature::EngineSelectorFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "EngineSelector"), 
+    : ApplicationFeature(server, Type<EngineSelectorFeature>::id(), "EngineSelector"),
       _engine("auto"), 
       _selected(false),
       _allowDeprecatedDeployments(false) {

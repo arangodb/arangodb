@@ -578,7 +578,7 @@ DumpFeature::JobData::JobData(ManagedDirectory& dir, DumpFeature& feat,
     : directory{dir}, feature{feat}, options{opts}, maskings{maskings}, stats{stat}, collectionInfo{info}, batchId{batch}, cid{c}, name{n}, type{t} {}
 
 DumpFeature::DumpFeature(application_features::ApplicationServer& server, int& exitCode)
-    : ApplicationFeature(server, DumpFeature::featureName()),
+    : ApplicationFeature(server, Type<DumpFeature>::id(), DumpFeature::featureName()),
       _clientManager{server, Logger::DUMP},
       _clientTaskQueue{server, ::processJob, ::handleJobResult},
       _exitCode{exitCode} {

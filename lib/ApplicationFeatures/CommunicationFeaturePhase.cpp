@@ -27,7 +27,7 @@ namespace arangodb {
 namespace application_features {
 
 CommunicationFeaturePhase::CommunicationFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "CommunicationPhase") {
+    : ApplicationFeaturePhase(server, Type<CommunicationFeaturePhase>::id(), "CommunicationPhase") {
   setOptional(false);
 }
 

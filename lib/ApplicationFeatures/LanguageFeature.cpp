@@ -88,7 +88,7 @@ namespace arangodb {
 static LanguageFeature* Instance = nullptr;
 
 LanguageFeature::LanguageFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Language"),
+    : ApplicationFeature(server, Type<LanguageFeature>::id(), "Language"),
       _locale(),
       _binaryPath(server.getBinaryPath()),
       _icuDataPtr(nullptr) {

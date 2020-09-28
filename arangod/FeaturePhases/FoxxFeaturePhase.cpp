@@ -32,7 +32,7 @@ namespace arangodb {
 namespace application_features {
 
 FoxxFeaturePhase::FoxxFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "FoxxPhase") {
+    : ApplicationFeaturePhase(server, Type<FoxxFeaturePhase>::id(), "FoxxPhase") {
   setOptional(false);
   startsAfter<ServerFeaturePhase>();
 

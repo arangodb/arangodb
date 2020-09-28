@@ -107,7 +107,7 @@ static void HUPHandler(int) {
 }
 
 SupervisorFeature::SupervisorFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Supervisor"), _supervisor(false), _clientPid(0) {
+    : ApplicationFeature(server, Type<SupervisorFeature>::id(), "Supervisor"), _supervisor(false), _clientPid(0) {
   setOptional(true);
   startsAfter<GreetingsFeaturePhase>();
   startsAfter<DaemonFeature>();

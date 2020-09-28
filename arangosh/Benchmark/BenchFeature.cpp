@@ -70,7 +70,7 @@ BenchFeature* ARANGOBENCH;
 #include "Benchmark/test-cases.h"
 
 BenchFeature::BenchFeature(application_features::ApplicationServer& server, int* result)
-    : ApplicationFeature(server, "Bench"),
+    : ApplicationFeature(server, Type<BenchFeature>::id(), "Bench"),
       _async(false),
       _concurrency(1),
       _operations(1000),

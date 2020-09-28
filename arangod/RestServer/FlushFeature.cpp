@@ -51,7 +51,7 @@ namespace arangodb {
 std::atomic<bool> FlushFeature::_isRunning(false);
 
 FlushFeature::FlushFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Flush"),
+    : ApplicationFeature(server, Type<FlushFeature>::id(), "Flush"),
       _flushInterval(1000000),
       _stopped(false) {
   setOptional(true);

@@ -124,7 +124,7 @@ std::string getOrSetPreviousLanguage(arangodb::application_features::Application
 namespace arangodb {
 
 LanguageCheckFeature::LanguageCheckFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, ::FEATURE_NAME) {
+    : ApplicationFeature(server, Type<LanguageCheckFeature>::id(), ::FEATURE_NAME) {
   setOptional(false);
   startsAfter<DatabasePathFeature>();
   startsAfter<LanguageFeature>();

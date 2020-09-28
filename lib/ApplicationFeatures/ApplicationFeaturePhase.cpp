@@ -31,8 +31,9 @@ namespace arangodb {
 namespace application_features {
 
 ApplicationFeaturePhase::ApplicationFeaturePhase(ApplicationServer& server,
+                                                 TypeInfo::TypeId type,
                                                  std::string const& name)
-    : ApplicationFeature(server, name) {}
+    : ApplicationFeature(server, type, name) {}
 
 void ApplicationFeaturePhase::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   LOG_TOPIC("1463e", DEBUG, arangodb::Logger::STARTUP)

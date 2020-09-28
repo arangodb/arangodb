@@ -87,7 +87,7 @@ uint64_t defaultTotalWriteBufferSize() {
 }  // namespace
 
 RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "RocksDBOption"),
+    : application_features::ApplicationFeature(server, Type<RocksDBOptionFeature>::id(), "RocksDBOption"),
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),

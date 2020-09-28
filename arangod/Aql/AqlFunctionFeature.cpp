@@ -42,7 +42,7 @@ using FF = Function::Flags;
 AqlFunctionFeature* AqlFunctionFeature::AQLFUNCTIONS = nullptr;
 
 AqlFunctionFeature::AqlFunctionFeature(application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "AQLFunctions") {
+    : application_features::ApplicationFeature(server, Type<AqlFunctionFeature>::id(), "AQLFunctions") {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 

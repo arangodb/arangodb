@@ -49,7 +49,7 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
-  : ApplicationFeature(server, "Cluster") {
+  : ApplicationFeature(server, Type<ClusterFeature>::id(), "Cluster") {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();

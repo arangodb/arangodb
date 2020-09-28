@@ -1307,7 +1307,7 @@ RestoreFeature::JobData::JobData(ManagedDirectory& d, RestoreFeature& f,
     : directory{d}, feature{f}, options{o}, stats{s}, collection{c} {}
 
 RestoreFeature::RestoreFeature(application_features::ApplicationServer& server, int& exitCode)
-    : ApplicationFeature(server, RestoreFeature::featureName()),
+    : ApplicationFeature(server, Type<RestoreFeature>::id(), RestoreFeature::featureName()),
       _clientManager{server, Logger::RESTORE},
       _clientTaskQueue{server, ::processJob, ::handleJobResult},
       _exitCode{exitCode} {

@@ -47,7 +47,7 @@ namespace arangodb {
 const asio_ns::ssl::detail::openssl_init<true> SslFeature::sslBase{};
 
 SslFeature::SslFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Ssl") {
+    : ApplicationFeature(server, Type<SslFeature>::id(), "Ssl") {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }

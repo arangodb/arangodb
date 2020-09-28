@@ -51,7 +51,7 @@ using namespace arangodb::options;
 // -----------------------------------------------------------------------------
 
 MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
-  : ApplicationFeature(server, "Metrics"), _export(true) {
+  : ApplicationFeature(server, Type<MetricsFeature>::id(), "Metrics"), _export(true) {
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsBefore<GreetingsFeaturePhase>();

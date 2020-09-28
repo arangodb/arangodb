@@ -73,7 +73,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 DaemonFeature::DaemonFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Daemon") {
+    : ApplicationFeature(server, Type<DaemonFeature>::id(), "Daemon") {
   setOptional(true);
   startsAfter<GreetingsFeaturePhase>();
 

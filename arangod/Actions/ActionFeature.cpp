@@ -37,7 +37,7 @@ namespace arangodb {
 ActionFeature* ActionFeature::ACTION = nullptr;
 
 ActionFeature::ActionFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Action"), _allowUseDatabase(false) {
+    : ApplicationFeature(server, Type<ActionFeature>::id(), "Action"), _allowUseDatabase(false) {
   setOptional(true);
   startsAfter<ClusterFeaturePhase>();
 }

@@ -74,7 +74,7 @@ namespace arangodb {
 SupervisedScheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 SchedulerFeature::SchedulerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Scheduler"), 
+    : ApplicationFeature(server, Type<SchedulerFeature>::id(), "Scheduler"),
       _scheduler(nullptr) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();

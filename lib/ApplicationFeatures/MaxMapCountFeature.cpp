@@ -40,7 +40,7 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 MaxMapCountFeature::MaxMapCountFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "MaxMapCount") {
+    : ApplicationFeature(server, Type<MaxMapCountFeature>::id(), "MaxMapCount") {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }

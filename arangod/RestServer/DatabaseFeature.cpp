@@ -243,7 +243,7 @@ void DatabaseManagerThread::run() {
 }
 
 DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Database"),
+    : ApplicationFeature(server, Type<DatabaseFeature>::id(), "Database"),
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),

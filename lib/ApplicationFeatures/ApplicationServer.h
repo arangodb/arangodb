@@ -241,7 +241,7 @@ class ApplicationServer {
    // a non-existing feature
    template <typename Type, typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0>
    bool hasFeature() const noexcept {
-     return nullptr == _features[Feature<Type>::Index];
+     return nullptr != _features[Feature<Type>::Index];
    }
 
    // returns a reference to a feature given the type. will throw when used for

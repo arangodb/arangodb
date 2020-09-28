@@ -79,7 +79,7 @@ namespace arangodb {
 ReplicationFeature* ReplicationFeature::INSTANCE = nullptr;
 
 ReplicationFeature::ReplicationFeature(ApplicationServer& server)
-    : ApplicationFeature(server, "Replication"),
+    : ApplicationFeature(server, Type<ReplicationFeature>::id(), "Replication"),
       _connectTimeout(10.0),
       _requestTimeout(600.0),
       _forceConnectTimeout(false),

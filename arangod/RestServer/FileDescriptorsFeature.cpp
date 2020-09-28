@@ -45,7 +45,7 @@ namespace arangodb {
 uint64_t const FileDescriptorsFeature::RECOMMENDED = 8192;
 
 FileDescriptorsFeature::FileDescriptorsFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "FileDescriptors"), _descriptorsMinimum(0) {
+    : ApplicationFeature(server, Type<FileDescriptorsFeature>::id(), "FileDescriptors"), _descriptorsMinimum(0) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 }

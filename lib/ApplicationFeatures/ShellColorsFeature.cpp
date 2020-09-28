@@ -61,8 +61,9 @@ char const* ShellColorsFeature::SHELL_COLOR_BLINK = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_BRIGHT = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_RESET = NoColor;
 
+
 ShellColorsFeature::ShellColorsFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ShellColors"), _initialized(false) {
+    : ApplicationFeature(server, Type<ShellColorsFeature>::id(), "ShellColors"), _initialized(false) {
   setOptional(false);
 
   // it's admittedly a hack that we already call prepare here...

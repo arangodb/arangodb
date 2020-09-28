@@ -45,7 +45,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Console"),
+    : ApplicationFeature(server, Type<ConsoleFeature>::id(), "Console"),
       _operationMode(OperationMode::MODE_SERVER),
       _consoleThread(nullptr) {
   startsAfter<AgencyFeaturePhase>();

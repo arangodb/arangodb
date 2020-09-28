@@ -156,7 +156,7 @@ static void fatalCallback(char const* location, char const* message) {
 }  // namespace
 
 V8PlatformFeature::V8PlatformFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "V8Platform") {
+    : ApplicationFeature(server, Type<V8PlatformFeature>::id(), "V8Platform") {
   setOptional(true);
 }
 

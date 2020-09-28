@@ -44,7 +44,7 @@ using namespace arangodb::basics;
 namespace arangodb {
 
 ShardingFeature::ShardingFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Sharding") {
+    : ApplicationFeature(server, Type<ShardingFeature>::id(), "Sharding") {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 }

@@ -71,7 +71,7 @@ namespace arangodb {
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
 RocksDBRecoveryManager::RocksDBRecoveryManager(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, featureName()),
+    : ApplicationFeature(server, Type<RocksDBRecoveryManager>::id(), featureName()),
       _db(nullptr),
       _tick(0),
       _recoveryState(RecoveryState::BEFORE) {

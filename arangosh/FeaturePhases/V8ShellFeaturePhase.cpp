@@ -33,7 +33,7 @@ namespace arangodb {
 namespace application_features {
 
 V8ShellFeaturePhase::V8ShellFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "V8ShellPhase") {
+    : ApplicationFeaturePhase(server, Type<V8ShellFeaturePhase>::id(), "V8ShellPhase") {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 

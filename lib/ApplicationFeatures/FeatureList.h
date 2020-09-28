@@ -31,6 +31,7 @@
 #include "Basics/TypeInfo.h"
 
 #include <frozen/map.h>
+#include <frozen/unordered_map.h>
 
 namespace arangodb {
 
@@ -289,7 +290,7 @@ class Feature {
  private:
   static constexpr size_t FeatureIndex() noexcept {
     constexpr auto it = FeatureMap.find(Type<T>::id());
-    //static_assert(it != FeatureMap.end());
+    static_assert(it != FeatureMap.end());
     return it->second;
   }
 

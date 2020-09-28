@@ -50,7 +50,7 @@ namespace arangodb {
 AuthenticationFeature* AuthenticationFeature::INSTANCE = nullptr;
 
 AuthenticationFeature::AuthenticationFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Authentication"),
+    : ApplicationFeature(server, Type<AuthenticationFeature>::id(), "Authentication"),
       _userManager(nullptr),
       _authCache(nullptr),
       _authenticationUnixSockets(true),

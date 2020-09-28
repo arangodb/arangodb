@@ -32,7 +32,7 @@ namespace arangodb {
 namespace application_features {
 
 FinalFeaturePhase::FinalFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "FinalPhase") {
+    : ApplicationFeaturePhase(server, Type<FinalFeaturePhase>::id(), "FinalPhase") {
   setOptional(false);
   startsAfter<AgencyFeaturePhase>();
 

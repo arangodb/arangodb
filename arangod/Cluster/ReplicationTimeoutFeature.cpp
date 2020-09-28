@@ -36,7 +36,7 @@ double ReplicationTimeoutFeature::timeoutPer4k = 0.1;
 double ReplicationTimeoutFeature::lowerLimit = 30.0;  // longer than heartbeat timeout
 
 ReplicationTimeoutFeature::ReplicationTimeoutFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ReplicationTimeout") {
+    : ApplicationFeature(server, Type<ReplicationTimeoutFeature>::id(), "ReplicationTimeout") {
   setOptional(true);
   startsAfter<application_features::DatabaseFeaturePhase>();
 }

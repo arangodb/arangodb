@@ -65,7 +65,7 @@ constexpr double ttlValue = 1200.;
 namespace arangodb {
 
 ExportFeature::ExportFeature(application_features::ApplicationServer& server, int* result)
-    : ApplicationFeature(server, "Export"),
+    : ApplicationFeature(server, Type<ExportFeature>::id(), "Export"),
       _collections(),
       _graphName(),
       _xgmmlLabelAttribute("label"),

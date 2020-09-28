@@ -35,7 +35,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 FrontendFeature::FrontendFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Frontend"), _versionCheck(true) {
+    : ApplicationFeature(server, Type<FrontendFeature>::id(), "Frontend"), _versionCheck(true) {
   setOptional(true);
   startsAfter<ServerFeaturePhase>();
 }

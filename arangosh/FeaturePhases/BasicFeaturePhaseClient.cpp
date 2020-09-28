@@ -37,7 +37,7 @@ namespace arangodb {
 namespace application_features {
 
 BasicFeaturePhaseClient::BasicFeaturePhaseClient(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "BasicsPhase") {
+    : ApplicationFeaturePhase(server, Type<BasicFeaturePhaseClient>::id(), "BasicsPhase") {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 

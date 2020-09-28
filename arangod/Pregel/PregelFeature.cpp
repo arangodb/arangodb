@@ -221,7 +221,7 @@ uint64_t PregelFeature::createExecutionNumber() {
 }
 
 PregelFeature::PregelFeature(application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "Pregel") {
+    : application_features::ApplicationFeature(server, Type<PregelFeature>::id(), "Pregel") {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
 }

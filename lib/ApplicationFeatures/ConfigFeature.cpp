@@ -52,7 +52,7 @@ namespace arangodb {
 
 ConfigFeature::ConfigFeature(application_features::ApplicationServer& server,
                              std::string const& progname, std::string const& configFilename)
-    : ApplicationFeature(server, "Config"),
+    : ApplicationFeature(server, Type<ConfigFeature>::id(), "Config"),
       _file(configFilename),
       _checkConfiguration(false),
       _progname(progname) {

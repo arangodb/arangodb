@@ -36,7 +36,7 @@ namespace arangodb {
 
 ShutdownFeature::ShutdownFeature(application_features::ApplicationServer& server,
                                  std::vector<TypeInfo::TypeId> const& features)
-    : ApplicationFeature(server, "Shutdown") {
+    : ApplicationFeature(server, Type<ShutdownFeature>::id(), "Shutdown") {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 

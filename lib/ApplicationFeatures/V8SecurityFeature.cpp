@@ -169,7 +169,7 @@ checkAllowDenyResult checkAllowAndDenyList(std::string const& value,
 }  // namespace
 
 V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "V8Security"),
+    : ApplicationFeature(server, Type<V8SecurityFeature>::id(), "V8Security"),
       _hardenInternalModule(false),
       _allowProcessControl(false),
       _allowPortTesting(false) {

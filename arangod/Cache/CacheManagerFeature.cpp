@@ -52,7 +52,7 @@ Manager* CacheManagerFeature::MANAGER = nullptr;
 const uint64_t CacheManagerFeature::minRebalancingInterval = 500 * 1000;
 
 CacheManagerFeature::CacheManagerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "CacheManager"),
+    : ApplicationFeature(server, Type<CacheManagerFeature>::id(), "CacheManager"),
       _manager(nullptr),
       _rebalancer(nullptr),
       _cacheSize(

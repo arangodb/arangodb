@@ -35,7 +35,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 VersionFeature::VersionFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Version"), _printVersion(false) {
+    : ApplicationFeature(server, Type<VersionFeature>::id(), "Version"), _printVersion(false) {
   setOptional(false);
 
   startsAfter<ShellColorsFeature>();

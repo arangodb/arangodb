@@ -51,7 +51,7 @@ std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
 std::unordered_map<velocypack::StringRef, int> OptimizerRulesFeature::_ruleLookup;
 
 OptimizerRulesFeature::OptimizerRulesFeature(arangodb::application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "OptimizerRules"),
+    : application_features::ApplicationFeature(server, Type<OptimizerRulesFeature>::id(), "OptimizerRules"),
       _parallelizeGatherWrites(true) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();

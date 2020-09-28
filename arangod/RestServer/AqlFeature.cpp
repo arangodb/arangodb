@@ -50,7 +50,7 @@ static constexpr uint64_t readyBit = 0x8000000000000000ULL;
 namespace arangodb {
 
 AqlFeature::AqlFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Aql") {
+    : ApplicationFeature(server, Type<AqlFeature>::id(), "Aql") {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 

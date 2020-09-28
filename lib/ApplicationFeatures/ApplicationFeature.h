@@ -48,7 +48,7 @@ class ApplicationFeature {
   ApplicationFeature(ApplicationFeature const&) = delete;
   ApplicationFeature& operator=(ApplicationFeature const&) = delete;
 
-  ApplicationFeature(ApplicationServer& server, std::string const& name);
+  ApplicationFeature(ApplicationServer& server, TypeInfo::TypeId type, std::string const& name);
 
   virtual ~ApplicationFeature();
   

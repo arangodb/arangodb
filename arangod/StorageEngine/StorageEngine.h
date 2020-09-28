@@ -91,7 +91,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   StorageEngine(application_features::ApplicationServer& server,
                 std::string const& engineName, std::string const& featureName,
                 std::unique_ptr<IndexFactory>&& indexFactory)
-      : application_features::ApplicationFeature(server, featureName),
+      : application_features::ApplicationFeature(server, Type<StorageEngine>::id(), featureName),
         _indexFactory(std::move(indexFactory)),
         _typeName(engineName) {
     // each specific storage engine feature is optional. the storage engine

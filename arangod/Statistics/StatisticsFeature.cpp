@@ -141,7 +141,7 @@ class StatisticsThread final : public Thread {
 StatisticsFeature* StatisticsFeature::STATISTICS = nullptr;
 
 StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Statistics"),
+    : ApplicationFeature(server, Type<StatisticsFeature>::id(), "Statistics"),
       _statistics(true),
       _statisticsHistory(true),
       _statisticsHistoryTouched(false),

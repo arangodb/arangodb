@@ -126,7 +126,7 @@ rest::AsyncJobManager* GeneralServerFeature::JOB_MANAGER = nullptr;
 GeneralServerFeature* GeneralServerFeature::GENERAL_SERVER = nullptr;
 
 GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "GeneralServer"),
+    : ApplicationFeature(server, Type<GeneralServerFeature>::id(), "GeneralServer"),
       _allowMethodOverride(false),
       _proxyCheck(true),
       _numIoThreads(0) {

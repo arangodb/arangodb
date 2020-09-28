@@ -67,7 +67,7 @@ static char const* cookies[] = {
 }  // namespace
 
 FortuneFeature::FortuneFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Fortune"), _fortune(false) {
+    : ApplicationFeature(server, Type<FortuneFeature>::id(), "Fortune"), _fortune(false) {
   startsAfter<BootstrapFeature>();
 }
 

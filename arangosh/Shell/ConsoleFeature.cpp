@@ -70,7 +70,7 @@ static const int INTENSITY = FOREGROUND_INTENSITY | BACKGROUND_INTENSITY;
 namespace arangodb {
 
 ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Console"),
+    : ApplicationFeature(server, Type<ConsoleFeature>::id(), "Console"),
 #ifdef _WIN32
       _cygwinShell(false),
 #endif

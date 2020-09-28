@@ -33,7 +33,7 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 ServerSecurityFeature::ServerSecurityFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ServerSecurity"),
+    : ApplicationFeature(server, Type<ServerSecurityFeature>::id(), "ServerSecurity"),
       _enableFoxxApi(true),
       _enableFoxxStore(true),
       _hardenedRestApi(false) {

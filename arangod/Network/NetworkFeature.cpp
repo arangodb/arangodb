@@ -73,7 +73,7 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                network::ConnectionPool::Config config)
-    : ApplicationFeature(server, "Network"),
+    : ApplicationFeature(server, Type<NetworkFeature>::id(), "Network"),
       _maxOpenConnections(config.maxOpenConnections),
       _idleTtlMilli(config.idleConnectionMilli),
       _numIOThreads(config.numIOThreads),

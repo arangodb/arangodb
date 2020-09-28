@@ -54,7 +54,7 @@ namespace arangodb {
 CheckVersionFeature::CheckVersionFeature(application_features::ApplicationServer& server,
                                          int* result,
                                          std::vector<TypeInfo::TypeId> const& nonServerFeatures)
-    : ApplicationFeature(server, "CheckVersion"),
+    : ApplicationFeature(server, Type<DatabasePathFeature>::id(), "CheckVersion"),
       _checkVersion(false),
       _result(result),
       _nonServerFeatures(nonServerFeatures) {

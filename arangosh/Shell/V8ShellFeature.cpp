@@ -74,7 +74,7 @@ namespace arangodb {
 
 V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
                                std::string const& name)
-    : ApplicationFeature(server, "V8Shell"),
+    : ApplicationFeature(server, Type<V8ShellFeature>::id(), "V8Shell"),
       _startupDirectory("js"),
       _clientModule(DEFAULT_CLIENT_MODULE),
       _currentModuleDirectory(true),

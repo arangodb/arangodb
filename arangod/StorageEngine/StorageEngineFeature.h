@@ -36,7 +36,7 @@ namespace arangodb {
 class StorageEngineFeature : public application_features::ApplicationFeature {
  public:
   explicit StorageEngineFeature(application_features::ApplicationServer& server)
-      : application_features::ApplicationFeature(server, "StorageEngine") {
+      : application_features::ApplicationFeature(server, Type<StorageEngineFeature>::id(), "StorageEngine") {
     setOptional(false);
     startsAfter<application_features::BasicFeaturePhaseServer>();
   }

@@ -112,7 +112,7 @@ class V8GcThread : public Thread {
 }  // namespace
 
 V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "V8Dealer"),
+    : application_features::ApplicationFeature(server, Type<V8DealerFeature>::id(), "V8Dealer"),
       _gcFrequency(60.0),
       _gcInterval(2000),
       _maxContextAge(60.0),

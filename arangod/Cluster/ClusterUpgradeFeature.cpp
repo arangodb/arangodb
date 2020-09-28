@@ -48,7 +48,7 @@ static std::string const upgradeExecutedByKey = "ClusterUpgradeExecutedBy";
 }
 
 ClusterUpgradeFeature::ClusterUpgradeFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ClusterUpgrade"),
+    : ApplicationFeature(server, Type<ClusterUpgradeFeature>::id(), "ClusterUpgrade"),
       _upgradeMode("auto") {
   startsAfter<application_features::FinalFeaturePhase>();
 }

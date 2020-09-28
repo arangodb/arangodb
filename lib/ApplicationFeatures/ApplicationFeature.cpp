@@ -40,8 +40,9 @@ using namespace arangodb::options;
 namespace arangodb {
 namespace application_features {
 
-ApplicationFeature::ApplicationFeature(ApplicationServer& server, std::string const& name)
-    : _server(server),
+ApplicationFeature::ApplicationFeature(ApplicationServer& server, TypeInfo::TypeId type, std::string const& name)
+    : _type(type),
+      _server(server),
       _name(name),
       _state(State::UNINITIALIZED),
       _enabled(true),

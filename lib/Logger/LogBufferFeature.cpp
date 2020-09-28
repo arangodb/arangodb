@@ -183,7 +183,7 @@ class LogAppenderEventLog final : public LogAppender {
 #endif
 
 LogBufferFeature::LogBufferFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "LogBuffer"),
+    : ApplicationFeature(server, Type<LogBufferFeature>::id(), "LogBuffer"),
       _useInMemoryAppender(true) {
   setOptional(true);
   startsAfter<LoggerFeature>();
@@ -195,7 +195,7 @@ LogBufferFeature::LogBufferFeature(application_features::ApplicationServer& serv
                                  std::make_shared<LogAppenderEventLog>());
 #endif
 }
-  
+
 void LogBufferFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options
       ->addOption("--log.in-memory", "use in-memory log appender, which can be queried via API and web UI",

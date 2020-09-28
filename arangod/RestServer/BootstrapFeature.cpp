@@ -63,7 +63,7 @@ using namespace arangodb;
 using namespace arangodb::options;
 
 BootstrapFeature::BootstrapFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, ::FEATURE_NAME),
+    : ApplicationFeature(server, Type<BootstrapFeature>::id(), ::FEATURE_NAME),
       _isReady(false),
       _bark(false) {
   startsAfter<application_features::ServerFeaturePhase>();

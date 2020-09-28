@@ -1347,7 +1347,7 @@ irs::analysis::analyzer::ptr AnalyzerPool::get() const noexcept {
 }
 
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, IResearchAnalyzerFeature::name()) {
+    : ApplicationFeature(server, Type<IResearchAnalyzerFeature>::id(), IResearchAnalyzerFeature::name()) {
   setOptional(true);
   startsAfter<arangodb::application_features::V8FeaturePhase>();
   // used for registering IResearch analyzer functions

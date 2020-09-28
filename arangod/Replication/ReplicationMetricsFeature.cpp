@@ -32,7 +32,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 ReplicationMetricsFeature::ReplicationMetricsFeature(arangodb::application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ReplicationMetrics"),
+    : ApplicationFeature(server, Type<ReplicationMetricsFeature>::id(), "ReplicationMetrics"),
       _numDumpRequests(
         server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_dump_requests", 0, "Number of replication dump requests")),

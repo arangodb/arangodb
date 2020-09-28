@@ -51,14 +51,14 @@ class TypeInfo {
   /// @return true if type_info is valid, false - otherwise
   //////////////////////////////////////////////////////////////////////////////
   constexpr explicit operator bool() const noexcept {
-    return nullptr != id_;
+    return nullptr != _id;
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return true if current object is equal to a denoted by 'rhs'
   //////////////////////////////////////////////////////////////////////////////
   constexpr bool operator==(const TypeInfo& rhs) const noexcept {
-    return id_ == rhs.id_;
+    return _id == rhs._id;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -72,29 +72,33 @@ class TypeInfo {
   /// @return true if current object is less than to a denoted by 'rhs'
   //////////////////////////////////////////////////////////////////////////////
   constexpr bool operator<(const TypeInfo& rhs) const noexcept {
-    return id_ < rhs.id_;
+    return _name < rhs._name;
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return type identifier
   //////////////////////////////////////////////////////////////////////////////
-  constexpr TypeId id() const noexcept { return id_; }
+  constexpr TypeId id() const noexcept { return _id; }
 
-
-  constexpr std::string_view name() const noexcept { return name_; }
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return type name
+  //////////////////////////////////////////////////////////////////////////////
+  constexpr std::string_view name() const noexcept { return _name; }
 
  private:
   template<typename T>
   friend struct Type;
 
   constexpr explicit TypeInfo(TypeId id, std::string_view name) noexcept
-    : id_(id), name_(name) {
+    : _id(id), _name(name) {
   }
 
-  TypeId id_;
-  std::string_view name_;
-  // FIXME we can store arbitrary info here
+  TypeId _id;
+  std::string_view _name;
 }; // TypeInfo
+
+template<typename T>
+struct TypeMeta;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class Type

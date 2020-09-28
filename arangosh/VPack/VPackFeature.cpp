@@ -115,7 +115,7 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
 }  // namespace
 
 VPackFeature::VPackFeature(application_features::ApplicationServer& server, int* result)
-    : ApplicationFeature(server, "VPack"),
+    : ApplicationFeature(server, Type<VPackFeature>::id(), "VPack"),
       _result(result),
       _prettyPrint(true),
       _jsonInput(false),

@@ -35,7 +35,7 @@ namespace arangodb {
 namespace application_features {
 
 ServerFeaturePhase::ServerFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "ServerPhase") {
+    : ApplicationFeaturePhase(server, Type<ServerFeaturePhase>::id(), "ServerPhase") {
   setOptional(false);
   startsAfter<AqlFeaturePhase>();
 

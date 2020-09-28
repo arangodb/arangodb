@@ -51,7 +51,7 @@ using namespace arangodb::basics;
 namespace arangodb {
 
 EnvironmentFeature::EnvironmentFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Environment") {
+    : ApplicationFeature(server, Type<EnvironmentFeature>::id(), "Environment") {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 

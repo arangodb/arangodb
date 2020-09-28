@@ -400,10 +400,8 @@ class TtlThread final : public Thread {
 
 }
 
-TtlFeature::TtlFeature(
-    application_features::ApplicationServer& server
-)
-    : ApplicationFeature(server, "Ttl"), 
+TtlFeature::TtlFeature(application_features::ApplicationServer& server)
+    : ApplicationFeature(server, Type<TtlFeature>::id(), "Ttl"),
       _allowRunning(true),
       _active(true) {
   startsAfter<application_features::DatabaseFeaturePhase>();

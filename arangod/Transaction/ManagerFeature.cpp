@@ -74,7 +74,7 @@ namespace transaction {
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "TransactionManager"),
+    : ApplicationFeature(server, Type<ManagerFeature>::id(), "TransactionManager"),
       _workItem(nullptr),
       _gcfunc(),
       _streamingLockTimeout(8.0) {

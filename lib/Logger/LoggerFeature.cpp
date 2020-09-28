@@ -71,7 +71,7 @@ void LogHackWriter(char const* p) {
 namespace arangodb {
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, bool threaded)
-    : ApplicationFeature(server, "Logger"),
+    : ApplicationFeature(server, Type<LoggerFeature>::id(), "Logger"),
       _timeFormatString(LogTimeFormats::defaultFormatName()),
       _threaded(threaded) {
 
