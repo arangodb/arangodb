@@ -144,10 +144,12 @@ const checkResIsValidStackBasedTraversalOfFunc = function (getVertices, getCost)
 
     const actualPathVertices = actualPaths.map(getVertices);
 
-    const pathLengths = actualPaths.map(getCost);
+    const pathLengths = actualPaths.map(p => [getCost(p), getVertices(p).length]);
     const adjacentPairs = _.zip(pathLengths, _.tail(pathLengths));
     adjacentPairs.pop(); // we don't want the last element, because the tail is shorter
-    assertTrue(adjacentPairs.every(([a, b]) => a <= b),
+    // This asserts in addition to a.cost <= b.cost that if a.cost == b.cost we have a.length <= b.length
+    assertTrue(adjacentPairs.every(([[a_cost, a_length], [b_cost, b_length]]) =>
+            (a_cost === b_cost ? a_length <= b_length : a_cost <= b_cost)),
         `Paths are not increasing in length: ${JSON.stringify(actualPaths)}`);
 
     const actualPathsSet = new Map();
@@ -186,8 +188,8 @@ const checkResIsValidStackBasedTraversalOfFunc = function (getVertices, getCost)
       messages.push('The following paths are wrong: ' + spuriousPaths.map(([p, n]) => `${n}:${p}`).join());
     }
     // sort paths by length first
-    actualPaths = _.sortBy(actualPaths, [p => getCost(p), p => getVertices(p)]);
-    expectedPaths = _.sortBy(expectedPaths, [p => getCost(p), p => getVertices(p)]);
+    actualPaths = _.sortBy(actualPaths, [p => getCost(p), p => getVertices(p).length, p => getVertices(p)]);
+    expectedPaths = _.sortBy(expectedPaths, [p => getCost(p), p => getVertices(p).length, p => getVertices(p)]);
     assertEqual(expectedPaths, actualPaths, messages.join('; '));
     //assertTrue(_.isEqual(expectedPaths, actualPaths), messages.join('; '));
   }
