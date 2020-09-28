@@ -69,6 +69,16 @@ class ReadAllExecutionBlockTest : public AqlExecutorTestCase<false> {
        return RegisterInfos(RegIdSet{0}, RegIdSet{0}, 1, 1, {}, std::move(toKeepStack));
      }
 
+     auto buildDisablerRegisterInfos(size_t nestingLevel) -> RegisterInfos {
+       TRI_ASSERT(nestingLevel > 0);
+       RegIdSetStack toKeepStack{};
+       for (size_t i = 1; i < nestingLevel; ++i) {
+         toKeepStack.emplace_back(RegIdSet{0});
+       }
+       toKeepStack.emplace_back(RegIdSet{});
+       return RegisterInfos(RegIdSet{}, RegIdSet{}, 1, 1, {}, std::move(toKeepStack));
+     }
+
      auto buildSubqueryRegisterInfos(size_t nestingLevel) -> RegisterInfos {
        TRI_ASSERT(nestingLevel > 0);
        RegIdSetStack toKeepStack{};
@@ -176,8 +186,7 @@ class ReadAllExecutionBlockTest : public AqlExecutorTestCase<false> {
       return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
     };
 
-    SkipCall skip = [allowedToCall, numDataRows,
-                     val](AqlItemBlockInputRange& inputRange,
+    SkipCall skip = [](AqlItemBlockInputRange& inputRange,
                           AqlCall& call) -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
       // We can never ever call SKIP above a ReadAll
       TRI_ASSERT(false);
@@ -187,6 +196,38 @@ class ReadAllExecutionBlockTest : public AqlExecutorTestCase<false> {
     ResetCall reset = [val]() -> void { *val = 0; };
     LambdaSkipExecutorInfos executorInfos{produce, skip, reset};
     return {buildProducerRegisterInfos(nestingLevel), std::move(executorInfos),
+            ExecutionNode::ENUMERATE_COLLECTION};
+  }
+
+
+  auto generateDisabler(size_t nestingLevel)
+      -> std::tuple<RegisterInfos, LambdaExecutorInfos, ExecutionNode::NodeType> {
+    // NOTE: Not thread save, but no multithreading going on here!
+    auto allowedToCall = _isAllowedToCall;
+    ProduceCall produce =
+        [allowedToCall](AqlItemBlockInputRange& inputRange,
+              OutputAqlItemRow& output) -> std::tuple<ExecutorState, NoStats, AqlCall> {
+      ExecutorState state = ExecutorState::HASMORE;
+      InputAqlItemRow input{CreateInvalidInputRowHint{}};
+      if (*allowedToCall && inputRange.hasDataRow()) {
+        // Disable allowed to call on first seen row.
+        *allowedToCall = false;
+      }
+
+      while (inputRange.hasDataRow() && !output.isFull()) {
+        // This executor is passthrough. it has enough place to write.
+        TRI_ASSERT(!output.isFull());
+        std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+        TRI_ASSERT(input.isInitialized());
+        output.copyRow(input);
+      }
+
+      return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
+    };
+
+
+    LambdaExecutorInfos executorInfos{produce};
+    return {buildDisablerRegisterInfos(nestingLevel), std::move(executorInfos),
             ExecutionNode::ENUMERATE_COLLECTION};
   }
 
@@ -233,10 +274,12 @@ TEST_F(ReadAllExecutionBlockTest, should_pass_through_produced_data) {
   // We produce 2 Rows, on the Mainquery that we need to fetch all.
   auto [output, shadows] = expectedOutput({2});
   auto [reg1, exec1, type1] = generateProducer(2, 1);
+  auto [reg2, exec2, type2] = generateDisabler(1);
 
   makeExecutorTestHelper<1, 1>()
       .addConsumer<TestLambdaSkipExecutor>(std::move(reg1), std::move(exec1), type1)
       .addConsumer<ReadAllExecutionBlock>(ExecutionNode::READALL)
+      .addConsumer<TestLambdaExecutor>(std::move(reg2), std::move(exec2), type2)
       .setInputValue({{1}, {1}})
       .expectedStats(ExecutionStats{})
       .expectedState(ExecutionState::DONE)
@@ -246,14 +289,147 @@ TEST_F(ReadAllExecutionBlockTest, should_pass_through_produced_data) {
       .run();
 }
 
-/*
- * TODO add Tests
- *
- * 1) Add a new lambdaExecutor, that disables "allowToCall" on it's first seen data row
- * 2) Test mainQuery > batchSize
- * 3) Subquery nesting: all fits in one block
- * 4) Subquery nesting: 2 subqueries, each does not fit in single block
- * 5) Subquery nesting: Many subqueries, some of them fit in a single block but not all
- * 6) Three level subquery nesting, with some border crossing as 2 level.
- */
+TEST_F(ReadAllExecutionBlockTest, should_pass_through_produced_data_large_batch) {
+  // We produce 2 Rows, on the Mainquery that we need to fetch all.
+  auto [output, shadows] = expectedOutput({2047});
+  auto [reg1, exec1, type1] = generateProducer(2047, 1);
+  auto [reg2, exec2, type2] = generateDisabler(1);
 
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<TestLambdaSkipExecutor>(std::move(reg1), std::move(exec1), type1)
+      .addConsumer<ReadAllExecutionBlock>(ExecutionNode::READALL)
+      .addConsumer<TestLambdaExecutor>(std::move(reg2), std::move(exec2), type2)
+      .setInputValue({{1}, {1}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({}, output, shadows)
+      .expectSkipped(0)
+      .setCall(AqlCall{})
+      .run();
+}
+
+TEST_F(ReadAllExecutionBlockTest, one_subquery_one_block) {
+  auto [output, shadows] = expectedOutput({3, 5});
+  auto [reg1, exec1, type1] = generateProducer(3, 1);
+  auto [reg2, exec2, type2] = generateProducer(5, 2);
+  auto [reg3, exec3, type3] = generateDisabler(2);
+
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<TestLambdaSkipExecutor>(std::move(reg1), std::move(exec1), type1)
+      .addConsumer<TestLambdaSkipExecutor>(std::move(reg2), std::move(exec2), type2)
+      .addConsumer<ReadAllExecutionBlock>(ExecutionNode::READALL)
+      .addConsumer<TestLambdaExecutor>(std::move(reg3), std::move(exec3), type3)
+      .setInputValue({{1}, {1}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({}, output, shadows)
+      .expectSkipped(0)
+      .setCall(AqlCall{})
+      .run();
+}
+
+TEST_F(ReadAllExecutionBlockTest, one_subquery_each_over_a_block) {
+  auto [output, shadows] = expectedOutput({3, 1337});
+  auto [reg1, exec1, type1] = generateProducer(3, 1);
+  auto [reg2, exec2, type2] = generateProducer(1337, 2);
+  auto [reg3, exec3, type3] = generateDisabler(2);
+
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<TestLambdaSkipExecutor>(std::move(reg1), std::move(exec1), type1)
+      .addConsumer<TestLambdaSkipExecutor>(std::move(reg2), std::move(exec2), type2)
+      .addConsumer<ReadAllExecutionBlock>(ExecutionNode::READALL)
+      .addConsumer<TestLambdaExecutor>(std::move(reg3), std::move(exec3), type3)
+      .setInputValue({{1}, {1}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({}, output, shadows)
+      .expectSkipped(0)
+      .setCall(AqlCall{})
+      .run();
+}
+
+TEST_F(ReadAllExecutionBlockTest, one_subquery_many_blocks) {
+  auto [output, shadows] = expectedOutput({12, 137});
+  auto [reg1, exec1, type1] = generateProducer(12, 1);
+  auto [reg2, exec2, type2] = generateProducer(137, 2);
+  auto [reg3, exec3, type3] = generateDisabler(2);
+
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<TestLambdaSkipExecutor>(std::move(reg1), std::move(exec1), type1)
+      .addConsumer<TestLambdaSkipExecutor>(std::move(reg2), std::move(exec2), type2)
+      .addConsumer<ReadAllExecutionBlock>(ExecutionNode::READALL)
+      .addConsumer<TestLambdaExecutor>(std::move(reg3), std::move(exec3), type3)
+      .setInputValue({{1}, {1}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({}, output, shadows)
+      .expectSkipped(0)
+      .setCall(AqlCall{})
+      .run();
+}
+
+TEST_F(ReadAllExecutionBlockTest, two_subqueries_one_block) {
+  auto [output, shadows] = expectedOutput({3, 5, 2});
+  auto [reg1, exec1, type1] = generateProducer(3, 1);
+  auto [reg2, exec2, type2] = generateProducer(5, 2);
+  auto [reg3, exec3, type3] = generateProducer(2, 3);
+  auto [reg4, exec4, type4] = generateDisabler(3);
+
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<TestLambdaSkipExecutor>(std::move(reg1), std::move(exec1), type1)
+      .addConsumer<TestLambdaSkipExecutor>(std::move(reg2), std::move(exec2), type2)
+      .addConsumer<TestLambdaSkipExecutor>(std::move(reg3), std::move(exec3), type3)
+      .addConsumer<ReadAllExecutionBlock>(ExecutionNode::READALL)
+      .addConsumer<TestLambdaExecutor>(std::move(reg4), std::move(exec4), type4)
+      .setInputValue({{1}, {1}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({}, output, shadows)
+      .expectSkipped(0)
+      .setCall(AqlCall{})
+      .run();
+}
+
+TEST_F(ReadAllExecutionBlockTest, two_subqueries_each_over_one_block) {
+  auto [output, shadows] = expectedOutput({3, 5, 1337});
+  auto [reg1, exec1, type1] = generateProducer(3, 1);
+  auto [reg2, exec2, type2] = generateProducer(5, 2);
+  auto [reg3, exec3, type3] = generateProducer(2, 1337);
+  auto [reg4, exec4, type4] = generateDisabler(3);
+
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<TestLambdaSkipExecutor>(std::move(reg1), std::move(exec1), type1)
+      .addConsumer<TestLambdaSkipExecutor>(std::move(reg2), std::move(exec2), type2)
+      .addConsumer<TestLambdaSkipExecutor>(std::move(reg3), std::move(exec3), type3)
+      .addConsumer<ReadAllExecutionBlock>(ExecutionNode::READALL)
+      .addConsumer<TestLambdaExecutor>(std::move(reg4), std::move(exec4), type4)
+      .setInputValue({{1}, {1}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({}, output, shadows)
+      .expectSkipped(0)
+      .setCall(AqlCall{})
+      .run();
+}
+
+TEST_F(ReadAllExecutionBlockTest, two_subqueries_many_blocks) {
+  auto [output, shadows] = expectedOutput({12, 15, 7});
+  auto [reg1, exec1, type1] = generateProducer(12, 1);
+  auto [reg2, exec2, type2] = generateProducer(15, 2);
+  auto [reg3, exec3, type3] = generateProducer(7, 1337);
+  auto [reg4, exec4, type4] = generateDisabler(3);
+
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<TestLambdaSkipExecutor>(std::move(reg1), std::move(exec1), type1)
+      .addConsumer<TestLambdaSkipExecutor>(std::move(reg2), std::move(exec2), type2)
+      .addConsumer<TestLambdaSkipExecutor>(std::move(reg3), std::move(exec3), type3)
+      .addConsumer<ReadAllExecutionBlock>(ExecutionNode::READALL)
+      .addConsumer<TestLambdaExecutor>(std::move(reg4), std::move(exec4), type4)
+      .setInputValue({{1}, {1}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({}, output, shadows)
+      .expectSkipped(0)
+      .setCall(AqlCall{})
+      .run();
+}
