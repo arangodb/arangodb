@@ -25,6 +25,9 @@
 
 #include "Aql/ExecutionBlock.h"
 
+#include "Aql/SharedAqlItemBlockPtr.h"
+#include <deque>
+
 namespace arangodb {
 namespace aql {
 
@@ -57,6 +60,10 @@ ReadAllExecutionBlock(ExecutionEngine*, ExecutionNode const*);
 
 private:
   QueryContext const& _query;
+
+  SkipResult _skipped{};
+  
+  std::deque<SharedAqlItemBlockPtr> _blocks;
 };
 
 }  // namespace aql

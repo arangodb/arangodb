@@ -25,7 +25,6 @@
 #include "Aql/AqlCallStack.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/QueryContext.h"
-#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/Exceptions.h"
 
 using namespace arangodb::aql;
@@ -61,5 +60,35 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ReadAllExecutionBl
 
 auto ReadAllExecutionBlock::executeWithoutTrace(AqlCallStack stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
-  return {ExecutionState::DONE, SkipResult{}, nullptr};
+  // This block only works with a single dependency
+  TRI_ASSERT(_dependencies.size() == 1);
+
+  // Invariant can only work if all calls of the stack are fetchAll
+  TRI_ASSERT(stack.validateAllCallsAreFetchAll());
+
+
+  // This block fetches until the upstream returns done, before it returns anything
+  while (_upstreamState != ExecutionState::DONE) {
+    auto [state, skipResult, block] =  _dependencies.at(0)->execute(stack);
+    if (state == ExecutionState::WAITING) {
+      return {state, SkipResult{}, nullptr};
+    }
+    _upstreamState = state;
+    // We can never skip anything here.
+    TRI_ASSERT(skipResult.nothingSkipped());
+    _skipped = skipResult;
+    _blocks.emplace_back(std::move(block));
+  }
+  // We can never skip anything here.
+  TRI_ASSERT(_skipped.nothingSkipped());
+
+  if (!_blocks.empty()) {
+    auto block = _blocks.front();
+    _blocks.pop_front();
+    if (_blocks.empty()) {
+      return {ExecutionState::DONE, _skipped, std::move(block)};
+    }
+    return {ExecutionState::HASMORE, _skipped, std::move(block)};
+  }
+  return {ExecutionState::DONE, _skipped, nullptr};
 }
