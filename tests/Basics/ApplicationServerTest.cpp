@@ -46,7 +46,7 @@ class TestFeatureA : public application_features::ApplicationFeature {
   TestFeatureA(application_features::ApplicationServer& server,
                std::string const& name, std::vector<TypeInfo::TypeId> const& startsAfter,
                std::vector<TypeInfo::TypeId> const& startsBefore)
-      : ApplicationFeature(server, name) {
+      : ApplicationFeature(server, arangodb::Type<TestFeatureA>::id(), name) {
     for (auto const& it : startsAfter) {
       this->startsAfter(it);
     }
@@ -61,7 +61,7 @@ class TestFeatureB : public application_features::ApplicationFeature {
   TestFeatureB(application_features::ApplicationServer& server,
                std::string const& name, std::vector<TypeInfo::TypeId> const& startsAfter,
                std::vector<TypeInfo::TypeId> const& startsBefore)
-      : ApplicationFeature(server, name) {
+      : ApplicationFeature(server, arangodb::Type<TestFeatureB>::id(), name) {
     for (auto const& it : startsAfter) {
       this->startsAfter(it);
     }
