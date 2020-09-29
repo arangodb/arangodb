@@ -188,6 +188,9 @@ Upstream is: https://www.iana.org/time-zones (Data Only Distribution)
 Windows builds require windowsZones.xml from the Unicode CLDR project:
 https://github.com/unicode-org/cldr/blob/master/common/supplemental/windowsZones.xml
 
+invoke `Installation/fetch_tz_database.sh` to do this.
+Fix CMakeLists.txt with new zone files if neccessary.
+
 ## V8
 
 Javascript interpreter.
