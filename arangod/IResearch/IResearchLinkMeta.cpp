@@ -180,7 +180,6 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
       _analyzers = defaults._analyzers;
     } else {
       auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
-      auto& sysDatabase = server.getFeature<SystemDatabaseFeature>();
 
       auto field = slice.get(fieldName);
 
@@ -206,14 +205,8 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
         auto shortName = name;
 
         if (defaultVocbase) {
-          auto sysVocbase = sysDatabase.use();
-
-          if (sysVocbase) {
-            name = IResearchAnalyzerFeature::normalize(
-              name, *defaultVocbase, *sysVocbase);
-            shortName = IResearchAnalyzerFeature::normalize(
-              name, *defaultVocbase, *sysVocbase, false);
-          }
+          name = IResearchAnalyzerFeature::normalize(name, *defaultVocbase);
+          shortName = IResearchAnalyzerFeature::normalize(name, *defaultVocbase, false);
         }
 
         AnalyzerPool::ptr analyzer;
@@ -421,12 +414,6 @@ bool FieldMeta::json(arangodb::application_features::ApplicationServer& server,
       std::string name;
 
       if (defaultVocbase) {
-        auto sysVocbase = server.getFeature<SystemDatabaseFeature>().use();
-
-        if (!sysVocbase) {
-          return false;
-        }
-
         // @note: DBServerAgencySync::getLocalCollections(...) generates
         //        'forPersistence' definitions that are then compared in
         //        Maintenance.cpp:compareIndexes(...) via
@@ -436,12 +423,11 @@ bool FieldMeta::json(arangodb::application_features::ApplicationServer& server,
         //        hence must use 'expandVocbasePrefix==true' if
         //        'writeAnalyzerDefinition==true' for normalize
         //        for 'writeAnalyzerDefinition==false' must use
-        //        'expandVocbasePrefix==false' so that dump/restore an restore
+        //        'expandVocbasePrefix==false' so that dump/restore can restore
         //        definitions into differently named databases
         name = IResearchAnalyzerFeature::normalize( // normalize
           entry._pool->name(), // analyzer name
           *defaultVocbase, // active vocbase
-          *sysVocbase, // system vocbase
           false // expand vocbase prefix
         );
       } else {
@@ -664,15 +650,10 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
           }
 
           name = value.get(subFieldName).copyString();
-
           if (defaultVocbase) {
-            auto sysVocbase = sysDatabase.use();
-
-            if (sysVocbase) {
-              name = IResearchAnalyzerFeature::normalize( // normalize
-                name, *defaultVocbase, *sysVocbase, true// args
-              );
-            }
+            name = IResearchAnalyzerFeature::normalize(
+                name, *defaultVocbase, true
+            );
           }
         }
         irs::string_ref type;

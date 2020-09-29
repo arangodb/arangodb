@@ -101,14 +101,10 @@ void RestAnalyzerHandler::createAnalyzer( // create
     return;
   }
 
-  std::string nameBuf;
-  auto sysVocbase = server().hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? server().getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
-  if (sysVocbase) {
-    nameBuf = IResearchAnalyzerFeature::normalize(name, _vocbase, *sysVocbase); // normalize
-    name = nameBuf;
-  }
+  std::string nameBuf; // need this buf since normalize accepts string_ref
+  name = IResearchAnalyzerFeature::normalize(name, _vocbase);
+  name = nameBuf;
+
 
   irs::string_ref type;
   auto typeSlice = body.get(StaticStrings::AnalyzerTypeField);
@@ -291,12 +287,8 @@ arangodb::RestStatus RestAnalyzerHandler::execute() {
 
 void RestAnalyzerHandler::getAnalyzer(IResearchAnalyzerFeature& analyzers,
                                       std::string const& requestedName) {
-  auto sysVocbase = server().hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? server().getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
   auto normalizedName =
-      sysVocbase ? IResearchAnalyzerFeature::normalize(requestedName, _vocbase, *sysVocbase)
-                 : requestedName;
+      IResearchAnalyzerFeature::normalize(requestedName, _vocbase);
 
   // need to check if analyzer is from current database or from system database
   const auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(normalizedName);
@@ -409,12 +401,7 @@ void RestAnalyzerHandler::removeAnalyzer(
     return;
   }
 
-  auto sysVocbase = server().hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? server().getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
-  auto normalizedName =
-      sysVocbase ? IResearchAnalyzerFeature::normalize(name, _vocbase, *sysVocbase)
-                 : std::string(name);
+  auto normalizedName = IResearchAnalyzerFeature::normalize(name, _vocbase);
 
   if (!IResearchAnalyzerFeature::canUse(normalizedName, auth::Level::RW)) {
     generateError(arangodb::Result( 

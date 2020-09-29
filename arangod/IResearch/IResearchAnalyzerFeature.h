@@ -200,14 +200,12 @@ class IResearchAnalyzerFeature final
   //////////////////////////////////////////////////////////////////////////////
   /// @param name analyzer name
   /// @param activeVocbase fallback vocbase if not part of name
-  /// @param systemVocbase the system vocbase for use with empty prefix
   /// @param expandVocbasePrefix use full vocbase name as prefix for
   ///                            active/system v.s. EMPTY/'::'
   /// @return normalized analyzer name, i.e. with vocbase prefix
   //////////////////////////////////////////////////////////////////////////////
   static std::string normalize(irs::string_ref const& name,
                                TRI_vocbase_t const& activeVocbase,
-                               TRI_vocbase_t const& systemVocbase,
                                bool expandVocbasePrefix = true);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -314,13 +312,11 @@ class IResearchAnalyzerFeature final
   /// @brief find analyzer
   /// @param name analyzer name
   /// @param activeVocbase fallback vocbase if not part of name
-  /// @param systemVocbase the system vocbase for use with empty prefix
   /// @param onlyCached check only locally cached analyzers
   /// @return analyzer with the specified name or nullptr
   //////////////////////////////////////////////////////////////////////////////
   AnalyzerPool::ptr get(irs::string_ref const& name,
                         TRI_vocbase_t const& activeVocbase,
-                        TRI_vocbase_t const& systemVocbase,
                         arangodb::QueryAnalyzerRevisions const& revision,
                         bool onlyCached = false) const;
 

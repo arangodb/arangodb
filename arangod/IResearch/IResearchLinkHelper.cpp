@@ -63,30 +63,15 @@ arangodb::Result canUseAnalyzers( // validate
   arangodb::iresearch::IResearchLinkMeta const& meta, // metadata
   TRI_vocbase_t const& defaultVocbase // default vocbase
 ) {
-  auto& server = defaultVocbase.server();
-  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
-
   for (auto& pool: meta._analyzerDefinitions) {
     if (!pool) {
       continue; // skip invalid entries
     }
 
-    bool result;
-
-    if (sysVocbase) {
-      result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-          pool->name(), defaultVocbase, *sysVocbase // args
-        ), // analyzer
-        arangodb::auth::Level::RO // auth level
+    auto result = arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(pool->name(), defaultVocbase),
+        arangodb::auth::Level::RO
       );
-    } else {
-      result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
-        pool->name(), arangodb::auth::Level::RO // args
-      );
-    }
 
     if (!result) {
       return {

@@ -276,10 +276,6 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   auto& analyzers =
       v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto sysVocbase =
-      v8g->_server.hasFeature<arangodb::SystemDatabaseFeature>()
-          ? v8g->_server.getFeature<arangodb::SystemDatabaseFeature>().use()
-          : nullptr;
 
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName = 
@@ -302,14 +298,12 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  std::string nameBuf;
-
-  if (sysVocbase) {
-    nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-      name, vocbase, *sysVocbase // args
-    );
+  // we need this buf since normalize accepts string_ref
+  {
+    auto nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize(name, vocbase);
     name = nameBuf;
   }
+
 
   auto type = TRI_ObjectToString(isolate, args[1]);
 
@@ -424,20 +418,14 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   auto& analyzers =
       v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto sysVocbase =
-      v8g->_server.hasFeature<arangodb::SystemDatabaseFeature>()
-          ? v8g->_server.getFeature<arangodb::SystemDatabaseFeature>().use()
-          : nullptr;
 
   auto name = TRI_ObjectToString(isolate, args[0]);
-  std::string nameBuf;
-
-  if (sysVocbase) {
-    nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-      name, vocbase, *sysVocbase // args
-    );
+  // we need this buf since normalize accepts string_ref
+  {
+    auto nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize(name, vocbase);
     name = nameBuf;
-  };
+  }
+
 
   // ...........................................................................
   // end of parameter parsing
@@ -586,10 +574,6 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   auto& analyzers =
       v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto sysVocbase =
-      v8g->_server.hasFeature<arangodb::SystemDatabaseFeature>()
-          ? v8g->_server.getFeature<arangodb::SystemDatabaseFeature>().use()
-          : nullptr;
 
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName = 
@@ -610,10 +594,9 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
         .append("'.")
     );
   }
-
-  std::string nameBuf;
-  if (sysVocbase) {
-    nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize(name, vocbase, *sysVocbase);
+  // we need this buf since normalize accepts string_ref
+  {
+    auto nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize(name, vocbase);
     name = nameBuf;
   }
 
