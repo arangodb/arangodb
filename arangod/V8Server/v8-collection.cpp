@@ -1152,8 +1152,10 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
       VPackBuilder builder;
       TRI_V8ToVPack(isolate, builder, args[0], false);
       TRI_ASSERT(builder.isClosed());
+      OperationOptions options(ExecContext::current());
 
-      auto res = methods::Collections::updateProperties(*consoleColl, builder.slice());
+      auto res = methods::Collections::updateProperties(*consoleColl,
+                                                        builder.slice(), options);
       if (res.fail() && ServerState::instance()->isCoordinator()) {
         TRI_V8_THROW_EXCEPTION(res);
       }

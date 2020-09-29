@@ -30,6 +30,7 @@
 #include <valarray>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
@@ -117,6 +118,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       return RestStatus::DONE;
     }
     ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
+    AgencyCache& agencyCache = server().getFeature<ClusterFeature>().agencyCache();
 
     auto waitForNewPlan = [&clusterInfo] {
       using namespace std::chrono_literals;
@@ -129,10 +131,9 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       generateError(res);
       return RestStatus::DONE;
     }
-    std::shared_ptr<VPackBuilder> planBuilder = clusterInfo.getPlan();
 
-    VPackSlice plan = planBuilder->slice();
-
+    auto [b,i] = agencyCache.get("arango/Plan");
+    VPackSlice plan = b->slice().get(std::vector<std::string>{AgencyCommHelper::path(),"Plan"});
     VPackSlice planCollections = plan.get("Collections");
 
     ResultT<VPackBufferPtr> healthResult = getFromAgency("Supervision/Health");
@@ -364,10 +365,6 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
 
     AgencyCommResult result = comm.sendTransactionWithFailover(wtrx);
 
-    // THIS_WARNING
-    if (server().hasFeature<ClusterFeature>()) {
-      server().getFeature<ClusterFeature>().clusterInfo().getPlan();
-    }
     if (!result.successful()) {
       std::stringstream errMsg;
       errMsg << "Failed to send and execute operation. "
@@ -664,8 +661,6 @@ ResultT<bool> RestRepairHandler::checkReplicationFactor(DatabaseID const& databa
   }
   ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
 
-  // WARNING
-  clusterInfo.getPlan();
   std::shared_ptr<LogicalCollection> const collection =
       clusterInfo.getCollection(databaseId, collectionId);
   std::shared_ptr<ShardMap> const shardMap = collection->shardIds();

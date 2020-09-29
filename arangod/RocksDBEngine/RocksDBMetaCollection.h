@@ -83,6 +83,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
                                                 bool force);
 
   Result rebuildRevisionTree() override;
+  void rebuildRevisionTree(std::unique_ptr<rocksdb::Iterator>& iter);
 
   void revisionTreeSummary(VPackBuilder& builder);
 
@@ -121,6 +122,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
  private:
   int doLock(double timeout, AccessMode::Type mode);
+  bool haveBufferedOperations() const;
+  std::size_t revisionTreeDepth() const;
+  std::unique_ptr<containers::RevisionTree> allocateEmptyRevisionTree() const;
+  bool ensureRevisionTree();
 
  protected:
   RocksDBMetadata _meta;     /// collection metadata

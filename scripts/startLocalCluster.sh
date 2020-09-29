@@ -121,7 +121,7 @@ if [ ! -z "$INTERACTIVE_MODE" ] ; then
         echo "Starting one coordinator in terminal with --console"
     elif [ "$INTERACTIVE_MODE" == "R" ] ; then
         ARANGOD="rr ${BUILD}/bin/arangod"
-        CO_ARANGOD="$ARANGOD --console"
+        CO_ARANGOD="$ARANGOD"
         echo Running cluster in rr with --console.
     fi
 else

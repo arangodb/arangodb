@@ -336,15 +336,17 @@ void RestCollectionHandler::handleCommandPost() {
   std::string const& name = nameSlice.copyString();
   _builder.clear();
   std::shared_ptr<LogicalCollection> coll;
-  Result res = methods::Collections::create(
-      _vocbase,                  // collection vocbase
-      name,                      // colection name
-      type,                      // collection type
-      parameters,                // collection properties
-      waitForSyncReplication,    // replication wait flag
-      enforceReplicationFactor,  // replication factor flag
-      false,       // new Database?, here always false
-      coll);
+  OperationOptions options(_context);
+  Result res =
+      methods::Collections::create(_vocbase,  // collection vocbase
+                                   options,
+                                   name,        // colection name
+                                   type,        // collection type
+                                   parameters,  // collection properties
+                                   waitForSyncReplication,  // replication wait flag
+                                   enforceReplicationFactor,  // replication factor flag
+                                   false,  // new Database?, here always false
+                                   coll);
 
   if (res.ok()) {
     TRI_ASSERT(coll);
@@ -541,7 +543,8 @@ RestStatus RestCollectionHandler::handleCommandPut() {
                                      StaticStrings::CacheEnabled};
     VPackBuilder props = VPackCollection::keep(body, keep);
 
-    res = methods::Collections::updateProperties(*coll, props.slice());
+    OperationOptions options(_context);
+    res = methods::Collections::updateProperties(*coll, props.slice(), options);
     if (res.fail()) {
       generateError(res);
       return RestStatus::DONE;
