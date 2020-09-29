@@ -596,7 +596,6 @@ describe('Foxx service', () => {
 
   it('should retain obsolete config after update in development', () => {
     installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
-    arango.POST('/_api/foxx/development?mount=' + mount, '');
     arango.PATCH('/_api/foxx/configuration?mount=' + mount, {
       test1: 'test1',
       test2: 'test2'
@@ -609,7 +608,6 @@ describe('Foxx service', () => {
     `).next();
     expect(resp1).to.have.property('test1', 'test1');
     expect(resp1).to.have.property('test2', 'test2');
-    arango.POST('/_api/foxx/development?mount=' + mount, '');
     arango.PATCH('/_api/foxx/configuration?mount=' + mount, {});
     const resp2 = db._query(aql`
       FOR service IN _apps
@@ -622,7 +620,6 @@ describe('Foxx service', () => {
 
   it('should discard obsolete config after update in production', () => {
     installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false});
-    arango.DELETE('/_api/foxx/development?mount=' + mount, '');
     arango.PATCH('/_api/foxx/configuration?mount=' + mount, {
       test1: 'test1',
       test2: 'test2'
@@ -635,7 +632,6 @@ describe('Foxx service', () => {
     `).next();
     expect(resp1).to.have.property('test1', 'test1');
     expect(resp1).to.have.property('test2', 'test2');
-    arango.DELETE('/_api/foxx/development?mount=' + mount, '');
     arango.PATCH('/_api/foxx/configuration?mount=' + mount, {});
     const resp2 = db._query(aql`
       FOR service IN _apps
