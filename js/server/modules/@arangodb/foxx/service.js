@@ -198,6 +198,14 @@ module.exports =
       const names = replace ? configNames.concat(omittedNames) : configNames;
       const warnings = {};
 
+      if (!this.isDevelopment) {
+        for (const name of Object.keys(this._configuration)) {
+          if (!knownNames.includes(name) && !configNames.includes(name)) {
+            delete this._configuration[name];
+          }
+        }
+      }
+
       for (const name of names) {
         if (!knownNames.includes(name)) {
           warnings[name] = 'is not allowed';
