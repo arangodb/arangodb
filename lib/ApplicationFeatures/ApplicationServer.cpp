@@ -340,8 +340,7 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
               << "  overlap = false;\n";
     for (auto& feature : _features) {
       for (auto before : feature->startsAfter()) {
-      //FIXME name!!!
-        std::string depName;// = before.name();
+        std::string depName(before().name());
         if (hasFeature(before)) {
           depName = getFeature<ApplicationFeature>(before).name();
         }
@@ -416,10 +415,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
     for (auto const& other : feature.startsBefore()) {
       if (!hasFeature(other)) {
         if (failOnMissing) {
-          fail("feature '" + feature.name() + "' depends on unknown feature '");
-          //FIXME!!!
-         //  +
-         //      other.name() + "'");
+          fail("feature '" + feature.name() + "' depends on unknown feature '" + std::string(other().name()) + "'");
         }
         continue;
       }
@@ -439,9 +435,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
           for (auto& other : feature.requires()) {
             if (!hasFeature(other)) {
               fail("feature '" + feature.name() +
-                   "' depends on unknown feature '");
-                   //FIXME!!!
-                   // + other.name() + "'");
+                   "' depends on unknown feature '" + std::string(other().name()) + "'");
             }
             if (!getFeature<ApplicationFeature>(other).isEnabled()) {
               fail("enabled feature '" + feature.name() +
@@ -488,9 +482,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
     if (!startsAfter.empty()) {
       std::function<std::string(TypeInfo::TypeId)> cb =
           [](TypeInfo::TypeId type) -> std::string {
-             //FIXME
-            //return type.name();
-            return "";
+            return std::string(type().name());
           };
       dependencies = " - depends on: " + StringUtils::join(startsAfter, ", ", cb);
     }
@@ -542,9 +534,7 @@ void ApplicationServer::disableDependentFeatures() {
         LOG_TOPIC("f70cc", TRACE, Logger::STARTUP)
             << "turning off feature '" << feature.name()
             << "' because it is enabled only in conjunction with non-existing "
-               "feature '";
-            // FIXME!!!
-            //<< other.name() << "'";
+               "feature '" << other().name() << "'";
         feature.disable();
         break;
       }

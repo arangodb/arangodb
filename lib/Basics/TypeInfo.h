@@ -25,6 +25,8 @@
 #define ARANGODB_BASICS_TYPEINFO_H 1
 
 #include <string_view>
+#include <boost/type_index/ctti_type_index.hpp>
+#include <frozen/string.h>
 
 namespace arangodb {
 
@@ -44,7 +46,7 @@ class TypeInfo {
   /// @brief default constructor produces invalid type identifier
   //////////////////////////////////////////////////////////////////////////////
   constexpr TypeInfo() noexcept
-    : TypeInfo(nullptr, "") {
+    : TypeInfo(nullptr, 0, "") {
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -85,16 +87,22 @@ class TypeInfo {
   //////////////////////////////////////////////////////////////////////////////
   constexpr std::string_view name() const noexcept { return _name; }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return type hash
+  //////////////////////////////////////////////////////////////////////////////
+  constexpr size_t hash() const noexcept { return _hash; }
+
  private:
   template<typename T>
   friend struct Type;
 
   constexpr explicit TypeInfo(
-    TypeId id, std::string_view name) noexcept
-    : _id(id), _name(name) {
+    TypeId id, size_t hash, std::string_view name) noexcept
+    : _id(id), _hash(hash), _name(name) {
   }
 
   TypeId _id;
+  size_t _hash;
   std::string_view _name;
 }; // TypeInfo
 
@@ -110,7 +118,7 @@ struct Type {
   ///          type denoted by template parameter "T"
   //////////////////////////////////////////////////////////////////////////////
   static constexpr TypeInfo get() noexcept {
-    return TypeInfo{id(), ""};
+    return TypeInfo{id(), hash(), name()};
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -118,6 +126,21 @@ struct Type {
   //////////////////////////////////////////////////////////////////////////////
   static constexpr TypeInfo::TypeId id() noexcept {
     return &get;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns type name of a type denoted by template parameter "T"
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view name() noexcept {
+    return {boost::typeindex::ctti_type_index::type_id<T>().name()};
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns type hash a type denoted by template parameter "T"
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr size_t hash() noexcept {
+    return frozen::elsa<frozen::string>()(
+      frozen::string(name().data(), name().size()));
   }
 }; // Type
 

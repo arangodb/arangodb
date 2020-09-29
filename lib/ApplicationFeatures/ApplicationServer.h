@@ -225,7 +225,7 @@ class ApplicationServer {
              typename std::enable_if<std::is_base_of<As, Type>::value, int>::type = 0>
    As& addFeature(Args&&... args) {
      TRI_ASSERT(!hasFeature<As>());
-     auto& feature = _features[Feature<Type>::Index];
+     auto& feature = _features[application_features::getIndex<As>()];
      feature = std::make_unique<Type>(*this, std::forward<Args>(args)...);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -241,19 +241,22 @@ class ApplicationServer {
    // a non-existing feature
    template <typename Type, typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0>
    bool hasFeature() const noexcept {
-     return nullptr != _features[Feature<Type>::Index];
+     return nullptr != _features[application_features::getIndex<Type>()];
    }
 
    // returns a reference to a feature given the type. will throw when used for
    // a non-existing feature
    template <typename AsType, typename std::enable_if<std::is_base_of<ApplicationFeature, AsType>::value, int>::type = 0>
    AsType& getFeature(TypeInfo::TypeId type) const {
-   // FIXME dynamic lookup
-     auto* feature = _features[Feature<AsType>::Index].get();
+     auto const res = application_features::getIndex(type);
+
+     if (!res.second) {
+       throwFeatureNotFoundException(type().name().data());
+     }
+
+     auto* feature = _features[res.first].get();
      if (nullptr == feature) {
-       // FIXME name for a feature!!!
-       throwFeatureNotFoundException("HUY");
-       //throwFeatureNotFoundException(type.name());
+       throwFeatureNotFoundException(type().name().data());
      }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
      auto obj = dynamic_cast<AsType*>(feature);
@@ -270,9 +273,9 @@ class ApplicationServer {
              typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0,
              typename std::enable_if<std::is_base_of<Type, AsType>::value || std::is_base_of<AsType, Type>::value, int>::type = 0>
    AsType& getFeature() const {
-     auto* feature = _features[Feature<AsType>::Index].get();
+     auto* feature = _features[application_features::getIndex<Type>()].get();
      if (nullptr == feature) {
-       throwFeatureNotFoundException(typeid(Type).name());
+       throwFeatureNotFoundException(arangodb::Type<Type>::get().name().data());
      }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
      auto obj = dynamic_cast<AsType*>(feature);
@@ -286,7 +289,7 @@ class ApplicationServer {
    // checks for the existence of a feature by type. will not throw when used
    // for a non-existing feature
    bool hasFeature(TypeInfo::TypeId type) const noexcept {
-     return arangodb::hasFeature(type);
+     return application_features::hasFeature(type);
    }
 
    // returns the feature with the given name if known and enabled
@@ -297,7 +300,7 @@ class ApplicationServer {
    AsType& getEnabledFeature() const {
      AsType& feature = getFeature<Type, AsType>();
      if (!feature.isEnabled()) {
-       throwFeatureNotEnabledException(typeid(Type).name());
+       throwFeatureNotEnabledException(feature.name());
      }
      return feature;
    }

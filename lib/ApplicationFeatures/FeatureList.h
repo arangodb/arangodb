@@ -39,10 +39,6 @@ class TypeList {
  public:
   constexpr static auto Length = sizeof...(T);
 
-  static constexpr std::array<std::pair<TypeInfo::TypeId, size_t>, Length> toArray() {
-    return toArrayImpl(std::make_integer_sequence<size_t, Length>());
-  }
-
   static constexpr std::initializer_list<std::pair<TypeInfo::TypeId, size_t>> toList() {
     return toListImpl(std::make_integer_sequence<size_t, Length>());
   }
@@ -50,12 +46,6 @@ class TypeList {
  private:
   template<size_t... Idx>
   using Indices = std::integer_sequence<size_t, Length>;
-
-  template<size_t... Idx>
-  static constexpr std::array<std::pair<TypeInfo::TypeId, size_t>, Length> toArrayImpl(
-      std::integer_sequence<size_t, Idx...>) {
-    return { std::pair<TypeInfo::TypeId, size_t>{ Type<T>::id(), Idx }... };
-  }
 
   template<size_t... Idx>
   static constexpr std::initializer_list<std::pair<TypeInfo::TypeId, size_t>> toListImpl(
@@ -144,6 +134,15 @@ setupServerEE(server); // FIXME
 class SslServerFeature;
 #endif
 
+class V8ShellFeature;
+class BenchFeature;
+class ShellFeature;
+class RestoreFeature;
+class ExportFeature;
+class ImportFeature;
+class DumpFeature;
+class VPackFeature;
+
 namespace application_features {
 
 // the Phases
@@ -158,6 +157,9 @@ class FoxxFeaturePhase;
 class GreetingsFeaturePhase;
 class ServerFeaturePhase;
 class V8FeaturePhase;
+
+class V8ShellFeaturePhase;
+class BasicFeaturePhaseClient;
 
 } // application_features
 
@@ -272,35 +274,46 @@ using FeatureList = TypeList<
   transaction::ManagerFeature,
   aql::AqlFunctionFeature,
   aql::OptimizerRulesFeature,
-  pregel::PregelFeature
+  pregel::PregelFeature,
+  arangodb::V8ShellFeature,
+  application_features::V8ShellFeaturePhase,
+  application_features::BasicFeaturePhaseClient,
+  arangodb::BenchFeature,
+  arangodb::ShellFeature,
+  arangodb::RestoreFeature,
+  arangodb::ExportFeature,
+  arangodb::ImportFeature,
+  arangodb::DumpFeature,
+  arangodb::VPackFeature
 >;
 
-struct TypeLess {
+namespace application_features {
+
+struct TypeIdLess {
   constexpr bool operator()(TypeInfo::TypeId lhs, TypeInfo::TypeId rhs) const noexcept {
-    // FIXME add proper type names!!!
     return lhs().name() < rhs().name();
   }
 };
 
-static constexpr ::frozen::map<TypeInfo::TypeId, size_t, FeatureList::Length, TypeLess> FeatureMap{FeatureList::toList()};
+using FeatureMap = ::frozen::map<TypeInfo::TypeId, size_t, FeatureList::Length, TypeIdLess>;
 
+static constexpr FeatureMap FEATURE_MAP{FeatureList::toList()};
+
+constexpr std::pair<size_t, bool> getIndex(TypeInfo::TypeId type) noexcept {
+  auto it = FEATURE_MAP.find(type);
+  return it == FEATURE_MAP.end()
+    ? std::make_pair(FEATURE_MAP.size(), false)
+    : std::make_pair(it->second, true);
+}
 template<typename T>
-class Feature {
- private:
-  static constexpr size_t FeatureIndex() noexcept {
-    constexpr auto it = FeatureMap.find(Type<T>::id());
-    static_assert(it != FeatureMap.end());
-
-    return it->second;
-  }
-
- public:
-  static constexpr size_t Index = FeatureIndex();
-  static constexpr arangodb::TypeInfo TypeInfo = Type<T>::get();
-};
-
+constexpr size_t getIndex() noexcept {
+  constexpr auto res = getIndex(Type<T>::id());
+  static_assert(res.second, "Invalid application feature");
+  return res.first;
+}
 constexpr bool hasFeature(TypeInfo::TypeId type) noexcept {
-  return FeatureMap.end() != FeatureMap.find(type);
+  return getIndex(type).second;
+}
 }
 
 } // arangodb
