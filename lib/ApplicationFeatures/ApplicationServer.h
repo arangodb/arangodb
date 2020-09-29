@@ -300,7 +300,7 @@ class ApplicationServer {
    AsType& getEnabledFeature() const {
      AsType& feature = getFeature<Type, AsType>();
      if (!feature.isEnabled()) {
-       throwFeatureNotEnabledException(feature.name());
+       throwFeatureNotEnabledException(feature.name().data());
      }
      return feature;
    }

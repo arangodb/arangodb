@@ -55,10 +55,8 @@ class TypeList {
 };
 
 // the features
-#ifdef ARANGODB_HAVE_FORK
 class DaemonFeature;
 class SupervisorFeature;
-#endif
 class PrivilegeFeature;
 class V8SecurityFeature;
 class V8DealerFeature;
@@ -106,6 +104,7 @@ class ReplicationFeature;
 class ReplicationMetricsFeature;
 class ReplicationTimeoutFeature;
 class RocksDBOptionFeature;
+class RocksDBRecoveryManager;
 class SchedulerFeature;
 class ScriptFeature;
 class ServerFeature;
@@ -235,6 +234,7 @@ using FeatureList = TypeList<
   arangodb::ReplicationMetricsFeature,
   arangodb::ReplicationTimeoutFeature,
   arangodb::RocksDBOptionFeature,
+  arangodb::RocksDBRecoveryManager,
   arangodb::SchedulerFeature,
   arangodb::ScriptFeature,
   arangodb::ServerFeature,
@@ -255,10 +255,8 @@ using FeatureList = TypeList<
   arangodb::V8SecurityFeature,
   arangodb::VersionFeature,
   arangodb::ViewTypesFeature,
-#ifdef ARANGODB_HAVE_FORK
   arangodb::DaemonFeature,
   arangodb::SupervisorFeature,
-#endif
 #ifdef _WIN32
   arangodb::WindowsServiceFeature,
 #endif
