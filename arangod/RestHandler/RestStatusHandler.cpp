@@ -36,7 +36,7 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringBuffer.h"
-#include "Cluster/ClusterInfo.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
@@ -75,7 +75,7 @@ RestStatus RestStatusHandler::execute() {
 
 RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
   VPackBuilder result;
-  result.add(VPackValue(VPackValueType::Object));
+  result.openObject();
   result.add("server", VPackValue("arango"));
   result.add("version", VPackValue(ARANGODB_VERSION));
 
@@ -181,7 +181,7 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
 RestStatus RestStatusHandler::executeOverview() {
   VPackBuilder result;
 
-  result.add(VPackValue(VPackValueType::Object));
+  result.openObject();
   result.add("version", VPackValue(ARANGODB_VERSION));
   result.add("platform", VPackValue(TRI_PLATFORM));
 
@@ -205,12 +205,12 @@ RestStatus RestStatusHandler::executeOverview() {
     result.add("role", VPackValue(ServerState::roleToString(role)));
 
     if (role == ServerState::ROLE_COORDINATOR) {
-      ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
-      uint64_t planIndex = 0;
-      auto plan = ci.getPlan(planIndex, std::unordered_set<std::string>{std::string()});
+      AgencyCache& agencyCache = server().getFeature<ClusterFeature>().agencyCache();
+      auto [b, i] = agencyCache.get("arango/Plan");
+    
+      VPackSlice planSlice = b->slice().get(std::vector<std::string>{AgencyCommHelper::path(), "Plan"});
 
-      if (!plan.empty()) {
-        auto planSlice = plan.begin()->second->slice();
+      if (planSlice.isObject()) {
         if (planSlice.hasKey("Coordinators")) {
           auto coordinators =  planSlice.get("Coordinators");
           buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(coordinators).size()));
