@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed issue #12543: Unused Foxx service config can not be discarded.
+
 * Data definition reconsiliation in cluster has been modified
   extensively to greatly accelerate the creation of 1000s of
   databases through following means:
