@@ -327,7 +327,6 @@ index_t Agent::confirmed(std::string const& agentId) const {
 void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
   auto startTime = steady_clock::now();
 
-  LOG_DEVEL << index << " " << toLog;
   if (index == 0) {
     MUTEX_LOCKER(locker, _emptyAppendLock);
     auto n = steady_clock::now();
