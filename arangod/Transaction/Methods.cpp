@@ -1153,7 +1153,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     // Now replicate the good operations on all followers:
     return replicateOperations(collection.get(), followers, options, value,
                                TRI_VOC_DOCUMENT_OPERATION_INSERT, resDocs)
-    .thenValue([options, errs = std::move(errorCounter), resDocs](Result res) {
+    .thenValue([options, errs = std::move(errorCounter), resDocs](Result res) mutable {
       if (!res.ok()) {
         return OperationResult{std::move(res), options};
       }
@@ -1418,7 +1418,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     // Now replicate the good operations on all followers:
     return replicateOperations(collection.get(), followers, options, newValue,
                                operation, resDocs)
-    .thenValue([options, errs = std::move(errorCounter), resDocs](Result&& res) {
+    .thenValue([options, errs = std::move(errorCounter), resDocs](Result&& res) mutable {
       if (!res.ok()) {
         return OperationResult{std::move(res), options};
       }
@@ -1622,7 +1622,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     // Now replicate the good operations on all followers:
     return replicateOperations(collection.get(), followers, options, value,
                                TRI_VOC_DOCUMENT_OPERATION_REMOVE, resDocs)
-    .thenValue([options, errs = std::move(errorCounter), resDocs](Result res) {
+    .thenValue([options, errs = std::move(errorCounter), resDocs](Result res) mutable {
       if (!res.ok()) {
         return OperationResult{std::move(res), options};
       }
