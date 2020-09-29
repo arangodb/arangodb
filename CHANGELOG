@@ -1,3 +1,13 @@
+v3.7.4 (XXXX-XX-XX)
+-------------------
+
+* Fix REST handler GET /_admin/status when called with URL parameter value
+  `overview=true`. For generating the `hash` attribute in the response, the 
+  current Plan was retrieved and analyzed. Due to a change in the internal
+  Plan format the REST handler code failed to pick up the number of servers,
+  which resulted in the REST handler returning HTTP 500 in cluster mode.
+
+
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
