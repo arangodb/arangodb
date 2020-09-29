@@ -170,13 +170,14 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_ok) {
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset(new TestActionBasic(
+  action_base_ptr.reset(
+    new TestActionBasic(
       tf, ActionDescription(
-              std::map<std::string, std::string>{{"name", "TestActionBasic"},
-                                                 {"iterate_count", "0"}},
-              arangodb::maintenance::NORMAL_PRIORITY, false)));
+        std::map<std::string, std::string>{
+          {"name", "TestActionBasic"}, {"iterate_count", "0"}},
+        arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
-      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
+    tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
 
   ASSERT_TRUE(result.ok());
   ASSERT_TRUE(tf._recentAction->result().ok());

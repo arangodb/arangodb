@@ -153,10 +153,10 @@ bool CreateCollection::first() {
     }
 
     std::shared_ptr<LogicalCollection> col;
-    _result = Collections::create(
-        vocbase, shard, type, docket.slice(), waitForRepl,
-        enforceReplFact, false, col);
-    
+    OperationOptions options(ExecContext::current());
+    _result = Collections::create(vocbase, options, shard, type, docket.slice(),
+                                  waitForRepl, enforceReplFact, false, col);
+
     if (col) {
       LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)
           << "local collection " << database << "/" << shard
@@ -208,8 +208,6 @@ bool CreateCollection::first() {
 
   LOG_TOPIC("4562c", DEBUG, Logger::MAINTENANCE)
       << "Create collection done, notifying Maintenance";
-
-  notify();
 
   return false;
 }

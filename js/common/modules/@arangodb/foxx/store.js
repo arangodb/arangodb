@@ -135,6 +135,18 @@ var updateFishbowlFromZip = function (filename) {
 
   if (toSave.length > 0) {
     var fishbowl = getFishbowlStorage();
+    if (!fishbowl) {
+      // collection is not present. now create it
+      try {
+        fishbowl = db._create('_fishbowl', { isSystem: true, distributeShardsLike: '_graphs' });
+      } catch (err) {
+        try {
+          fishbowl = db._create('_fishbowl', { isSystem: true, distributeShardsLike: '_users' });
+        } catch (err) {
+          arangodb.printf("Unable to create _fishbowl collection for application results: %s\n", String(err));
+        }
+      }
+    }
 
     db._executeTransaction({
       collections: {
@@ -145,7 +157,7 @@ var updateFishbowlFromZip = function (filename) {
         c.truncate();
 
         params.services.forEach(function (service) {
-          c.save(service);
+          c.insert(service);
         });
       },
       params: {
@@ -165,42 +177,20 @@ var updateFishbowlFromZip = function (filename) {
 var searchJson = function (name) {
   var fishbowl = getFishbowlStorage();
 
-  if (fishbowl.count() === 0) {
+  if (!fishbowl || fishbowl.count() === 0) {
     arangodb.print("Repository is empty, please use 'update'");
 
     return [];
   }
 
-  var docs;
-
   if (name === undefined || (typeof name === 'string' && name.length === 0)) {
-    docs = fishbowl.toArray();
+    return fishbowl.toArray();
   } else {
     name = name.replace(/[^a-zA-Z0-9]/g, ' ');
 
-    // get results by looking in "description" attribute
-    docs = db._query('FOR doc IN @@collection FILTER CONTAINS(doc.description, @name) RETURN doc', { name, '@collection': fishbowl.name() }).toArray();
-
-    // build a hash of keys
-    var i;
-    var keys = { };
-
-    for (i = 0; i < docs.length; ++i) {
-      keys[docs[i]._key] = 1;
-    }
-
-    // get results by looking in "name" attribute
-    var docs2 = db._query('FOR doc IN @@collection FILTER CONTAINS(doc.name, @name) RETURN doc', { name, '@collection': fishbowl.name() }).toArray();
-
-    // merge the two result sets, avoiding duplicates
-    for (i = 0; i < docs2.length; ++i) {
-      if (!keys.hasOwnProperty(docs2[i]._key)) {
-        docs.push(docs2[i]);
-      }
-    }
+    // get results by looking in "description" and "name" attributes
+    return db._query('FOR doc IN @@collection FILTER CONTAINS(doc.description, @name) || CONTAINS(doc.name, @name) RETURN doc', { name, '@collection': fishbowl.name() }).toArray();
   }
-
-  return docs;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -267,34 +257,37 @@ function extractMaxVersion (matchEngine, versionDoc) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function availableJson (matchEngine) {
-  let fishbowl = getFishbowlStorage();
-  let cursor = fishbowl.all();
   let result = [];
 
-  while (cursor.hasNext()) {
-    let doc = cursor.next();
-    let latestVersion = extractMaxVersion(matchEngine, doc.versions);
+  let fishbowl = getFishbowlStorage();
+  if (fishbowl) {
+    let cursor = fishbowl.all();
 
-    if (latestVersion) {
-      let serverVersion = plainServerVersion();
-      let versionInfo = doc.versions[latestVersion];
-      let legacy = Boolean(
-        versionInfo.engines &&
-        versionInfo.engines.arangodb &&
-        !semver.satisfies(serverVersion, versionInfo.engines.arangodb)
-      );
-      let res = {
-        name: doc.name,
-        description: doc.description || '',
-        author: doc.author || '',
-        latestVersion,
-        legacy,
-        location: doc.versions[latestVersion].location,
-        license: doc.license,
-        categories: doc.keywords
-      };
+    while (cursor.hasNext()) {
+      let doc = cursor.next();
+      let latestVersion = extractMaxVersion(matchEngine, doc.versions);
 
-      result.push(res);
+      if (latestVersion) {
+        let serverVersion = plainServerVersion();
+        let versionInfo = doc.versions[latestVersion];
+        let legacy = Boolean(
+          versionInfo.engines &&
+          versionInfo.engines.arangodb &&
+          !semver.satisfies(serverVersion, versionInfo.engines.arangodb)
+        );
+        let res = {
+          name: doc.name,
+          description: doc.description || '',
+          author: doc.author || '',
+          latestVersion,
+          legacy,
+          location: doc.versions[latestVersion].location,
+          license: doc.license,
+          categories: doc.keywords
+        };
+
+        result.push(res);
+      }
     }
   }
 
@@ -378,13 +371,13 @@ var available = function (matchEngine) {
 var infoJson = function (name) {
   var fishbowl = getFishbowlStorage();
 
-  if (fishbowl.count() === 0) {
+  if (!fishbowl || fishbowl.count() === 0) {
     arangodb.print("Repository is empty, please use 'update'");
     return;
   }
 
   var desc = db._query(
-    'FOR u IN @@storage FILTER u.name == @name OR @name in u.aliases RETURN DISTINCT u',
+    'FOR u IN @@storage FILTER u.name == @name OR @name IN u.aliases RETURN DISTINCT u',
     { '@storage': fishbowl.name(), 'name': name }).toArray();
 
   if (desc.length === 0) {
