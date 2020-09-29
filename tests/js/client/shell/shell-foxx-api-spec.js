@@ -676,7 +676,7 @@ describe('Foxx service', () => {
       test1: 'test1',
       test2: 'test2'
     });
-    installFoxx(mount, {type: 'dir', buffer: confPath2}, "upgrade");
+    installFoxx(mount, {type: 'dir', buffer: confPath2, devmode: true}, "upgrade");
     const resp1 = db._query(aql`
       FOR service IN _apps
         FILTER service.mount == ${mount}
@@ -695,7 +695,7 @@ describe('Foxx service', () => {
   });
 
   it('should discard obsolete config after update in production', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false});
+    installFoxx(mount, {type: 'dir', buffer: confPath});
     arango.PATCH('/_api/foxx/configuration?mount=' + mount, {
       test1: 'test1',
       test2: 'test2'
