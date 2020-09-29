@@ -262,6 +262,7 @@ configRouter.patch((req, res) => {
   } else {
     if (warnings) {
       for (const key of Object.keys(warnings)) {
+        if (!values[key]) continue;
         values[key].warning = warnings[key];
       }
     }
@@ -282,6 +283,7 @@ configRouter.put((req, res) => {
   } else {
     if (warnings) {
       for (const key of Object.keys(warnings)) {
+        if (!values[key]) continue;
         values[key].warning = warnings[key];
       }
     }
@@ -311,6 +313,7 @@ depsRouter.patch((req, res) => {
   } else {
     if (warnings) {
       for (const key of Object.keys(warnings)) {
+        if (!values[key]) continue;
         values[key].warning = warnings[key];
       }
     }
@@ -331,6 +334,7 @@ depsRouter.put((req, res) => {
   } else {
     if (warnings) {
       for (const key of Object.keys(warnings)) {
+        if (!values[key]) continue;
         values[key].warning = warnings[key];
       }
     }
