@@ -647,7 +647,12 @@ void Constituent::run() {
         << "Setting role to follower  in term " << _term;
       _role = FOLLOWER;
     }
+
+    std::chrono::steady_clock::time_point constituentLoopStart;
+
     while (!this->isStopping()) {
+      constituentLoopStart = std::chrono::steady_clock::now();
+
       role_t role;
       {
         MUTEX_LOCKER(guard, _termVoteLock);
@@ -752,6 +757,8 @@ void Constituent::run() {
           }
         }
 
+        auto beforeWaitTime = std::chrono::steady_clock::now();
+
         // This is the smallest time until any of the followers need a
         // new empty heartbeat:
         uint64_t timeout = static_cast<uint64_t>(1000000.0 * nextWakeup);
@@ -759,6 +766,17 @@ void Constituent::run() {
           CONDITION_LOCKER(guardv, _cv);
           _cv.wait(timeout);
         }
+        auto afterWaitTime = std::chrono::steady_clock::now();
+        if (afterWaitTime - constituentLoopStart > std::chrono::seconds(1) * _agent->config().minPing() * _agent->config().timeoutMult()) {
+          LOG_TOPIC("aa123", WARN, Logger::AGENCY)
+            << "Constituent loop delayed: First part took "
+            << (beforeWaitTime - constituentLoopStart).count()
+            << ", second part took "
+            << (afterWaitTime - beforeWaitTime).count()
+            << ", which is together more than minPing="
+            << _agent->config().minPing() * _agent->config().timeoutMult();
+        }
+
       }
     }
   }
