@@ -32,6 +32,11 @@
 
 #include <frozen/map.h>
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+class TestFeatureA;
+class TestFeatureB;
+#endif
+
 namespace arangodb {
 
 template <typename... T>
@@ -283,6 +288,11 @@ using FeatureList = TypeList<
   arangodb::ImportFeature,
   arangodb::DumpFeature,
   arangodb::VPackFeature
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  ,
+  TestFeatureA,
+  TestFeatureB
+#endif
 >;
 
 namespace application_features {
