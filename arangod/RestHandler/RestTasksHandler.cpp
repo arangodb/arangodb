@@ -29,6 +29,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
@@ -50,6 +51,12 @@ RestTasksHandler::RestTasksHandler(application_features::ApplicationServer& serv
 RestStatus RestTasksHandler::execute() {
   if (!server().isEnabled<V8DealerFeature>()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED, "JavaScript operations are disabled");
+    return RestStatus::DONE;
+  }
+    
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+  if (!security.enableJavaScriptTasksApi()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED, "JavaScript tasks API is disabled");
     return RestStatus::DONE;
   }
 

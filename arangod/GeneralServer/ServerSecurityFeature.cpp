@@ -34,8 +34,12 @@ using namespace arangodb::options;
 
 ServerSecurityFeature::ServerSecurityFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ServerSecurity"),
+      _enableWebInterface(true),
       _enableFoxxApi(true),
       _enableFoxxStore(true),
+      _enableFoxxApps(true),
+      _enableJavaScriptTasksApi(true),
+      _enableJavaScriptTransactionsApi(true),
       _hardenedRestApi(false) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
@@ -48,6 +52,24 @@ void ServerSecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
                      "internals for non-admin users",
                      new BooleanParameter(&_hardenedRestApi))
                      .setIntroducedIn(30500);
+  
+  options->addOption("--server.web-interface",
+                     "enable admin web interface at /_admin/aardvark",
+                     new BooleanParameter(&_enableWebInterface))
+                     .setIntroducedIn(30704)
+                     .setIntroducedIn(30800);
+  
+  options->addOption("--server.tasks-api",
+                     "enable JavaScript tasks API /_api/tasks",
+                     new BooleanParameter(&_enableJavaScriptTasksApi))
+                     .setIntroducedIn(30704)
+                     .setIntroducedIn(30800);
+  
+  options->addOption("--server.transactions-api",
+                     "enable JavaScript transaction POST API /_api/transactions",
+                     new BooleanParameter(&_enableJavaScriptTransactionsApi))
+                     .setIntroducedIn(30704)
+                     .setIntroducedIn(30800);
 
   options->addSection("foxx", "Configure Foxx");
   options->addOption("--foxx.api", "enables Foxx management REST APIs",
@@ -57,6 +79,7 @@ void ServerSecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
                      arangodb::options::Flags::OnCoordinator,
                      arangodb::options::Flags::OnSingle))
                      .setIntroducedIn(30500);
+
   options->addOption("--foxx.store", "enables Foxx store in web interface",
                      new BooleanParameter(&_enableFoxxStore),
                      arangodb::options::makeFlags(
@@ -65,30 +88,47 @@ void ServerSecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
                      arangodb::options::Flags::OnSingle))
                      .setIntroducedIn(30500);
 
+  options->addOption("--foxx.apps", "enables the usage of user-defined Foxx apps",
+                     new BooleanParameter(&_enableFoxxApps),
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator,
+                     arangodb::options::Flags::OnSingle))
+                     .setIntroducedIn(30704)
+                     .setIntroducedIn(30800);
 }
 
-bool ServerSecurityFeature::isFoxxApiDisabled() const {
-  return !_enableFoxxApi;
-}
-
-bool ServerSecurityFeature::isFoxxStoreDisabled() const {
-  return !_enableFoxxStore || !_enableFoxxApi;
+bool ServerSecurityFeature::canAccessHardenedApi() const {
+  // also allow access if there is not authentication
+  // enabled or when the user is an administrator
+  return !isRestApiHardened() || ExecContext::current().isAdminUser();
 }
 
 bool ServerSecurityFeature::isRestApiHardened() const {
   return _hardenedRestApi;
 }
 
-bool ServerSecurityFeature::canAccessHardenedApi() const {
-  bool allowAccess = !isRestApiHardened();
+bool ServerSecurityFeature::enableWebInterface() const {
+  // the web interface usage can be configured independently of other Foxx apps!
+  return _enableWebInterface;
+}
 
-  if (!allowAccess) {
-    ExecContext const& exec = ExecContext::current();
-    if (exec.isAdminUser()) {
-      // also allow access if there is not authentication
-      // enabled or when the user is an administrator
-      allowAccess = true;
-    }
-  }
-  return allowAccess;
+bool ServerSecurityFeature::enableFoxxApi() const {
+  return _enableFoxxApi && _enableFoxxApps;
+}
+
+bool ServerSecurityFeature::enableFoxxStore() const {
+  return _enableFoxxStore && _enableFoxxApi && _enableFoxxApps;
+}
+
+bool ServerSecurityFeature::enableFoxxApps() const {
+  return _enableFoxxApps;
+}
+
+bool ServerSecurityFeature::enableJavaScriptTasksApi() const {
+  return _enableJavaScriptTasksApi;
+}
+
+bool ServerSecurityFeature::enableJavaScriptTransactionsApi() const {
+  return _enableJavaScriptTransactionsApi;
 }

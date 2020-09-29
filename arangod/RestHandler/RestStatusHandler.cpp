@@ -90,7 +90,7 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
   auto& serverFeature = server().getFeature<ServerFeature>();
   result.add("mode", VPackValue(serverFeature.operationModeString()));  // to be deprecated - 3.3 compat
   result.add("operationMode", VPackValue(serverFeature.operationModeString()));
-  result.add("foxxApi", VPackValue(!security.isFoxxApiDisabled()));
+  result.add("foxxApi", VPackValue(security.enableFoxxApi()));
 
   std::string host = ServerState::instance()->getHost();
 

@@ -680,6 +680,10 @@ void V8DealerFeature::unprepare() {
   DEALER = nullptr;
 }
 
+VersionedCache& V8DealerFeature::valueCache() {
+  return _valueCache;
+}
+
 bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
   bool result = true;
 

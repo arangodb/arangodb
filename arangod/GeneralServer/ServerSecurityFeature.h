@@ -34,14 +34,22 @@ class ServerSecurityFeature final : public application_features::ApplicationFeat
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  bool isRestApiHardened() const;
-  bool isFoxxApiDisabled() const;
-  bool isFoxxStoreDisabled() const;
   bool canAccessHardenedApi() const;
+  bool isRestApiHardened() const;
+  bool enableWebInterface() const;
+  bool enableFoxxApi() const;
+  bool enableFoxxStore() const;
+  bool enableFoxxApps() const;
+  bool enableJavaScriptTasksApi() const;
+  bool enableJavaScriptTransactionsApi() const;
 
  private:
+  bool _enableWebInterface;
   bool _enableFoxxApi;
   bool _enableFoxxStore;
+  bool _enableFoxxApps;
+  bool _enableJavaScriptTasksApi;
+  bool _enableJavaScriptTransactionsApi;
   bool _hardenedRestApi;
 };
 

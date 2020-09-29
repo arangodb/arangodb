@@ -47,6 +47,7 @@
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-user-structures.h"
+#include "VocBase/Methods/AqlUserFunctions.h"
 #include "VocBase/Methods/Tasks.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
@@ -311,6 +312,10 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
     events::CreateDatabase(dbName, res, exec);
     return res;
   }
+ 
+  // clear AQL user functions cache, just in case there are leftovers from a
+  // previous database with the same name
+  arangodb::flushAqlUserFunctions(server, dbName);
 
   if (ServerState::instance()->isCoordinator() /* REVIEW! && !localDatabase*/) {
     if (!createInfo.validId()) {
@@ -403,6 +408,8 @@ arangodb::Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemV
     events::DropDatabase(dbName, Result(TRI_ERROR_FORBIDDEN), exec);
     return TRI_ERROR_FORBIDDEN;
   }
+
+  arangodb::flushAqlUserFunctions(systemVocbase->server(), dbName);
 
   Result res;
   V8DealerFeature* dealer = V8DealerFeature::DEALER;

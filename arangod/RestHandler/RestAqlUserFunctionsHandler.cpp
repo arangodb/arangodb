@@ -142,7 +142,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     // internal get
     VPackBuilder arrayOfFunctions;
-    auto res = toArrayUserFunctions(_vocbase, functionNamespace, arrayOfFunctions);
+    auto res = toArrayUserFunctions(_vocbase, functionNamespace, arrayOfFunctions, false);
 
     // error handling
     if (res.ok()) {

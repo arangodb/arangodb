@@ -42,19 +42,10 @@
 
   // autoload all modules
   // this functionality is deprecated and will be removed in 3.9
-  if (options.hasOwnProperty("database.old-system-collections") &&
-      options["database.old-system-collections"]) {
+  if (global.USE_OLD_SYSTEM_COLLECTIONS) {
     // check and load all modules in all databases from _modules
     // this can be expensive, so it is guarded by a flag
     internal.loadStartup('server/bootstrap/autoload.js').startup();
-  }
-
-  // reload routing information
-  if (restServer) {
-    // the function name reloadRouting is misleading here, as it actually
-    // only initializes/clears the local routing map, but doesn't rebuild
-    // it.
-    require('@arangodb/actions').reloadRouting();
   }
 
   // This script is also used by agents. Coords use a different script.

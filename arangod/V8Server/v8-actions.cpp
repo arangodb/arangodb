@@ -55,6 +55,7 @@
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/VersionedCache.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -1697,13 +1698,155 @@ static void JS_DebugClearFailAt(v8::FunctionCallbackInfo<v8::Value> const& args)
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_GlobalCacheGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("GLOBAL_CACHE_GET(<key>)");
+  }
+  
+  TRI_GET_GLOBALS();
+  if (v8g->_vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
+
+  std::string const key = VersionedCache::buildKey(TRI_ObjectToString(isolate, args[0]), v8g->_vocbase->name());
+  
+  V8DealerFeature& dealer = v8g->_server.getFeature<V8DealerFeature>();
+  auto& cache = dealer.valueCache();
+  auto [result, version] = cache.get(key);
+ 
+  auto context = TRI_IGETC;
+  v8::Handle<v8::Array> pair = v8::Array::New(isolate, 2);
+
+  // cached value
+  if (result == nullptr || version == 0) {
+    version = 0;
+    pair->Set(context, 0, v8::Undefined(isolate)).FromMaybe(false);
+  } else {
+    pair->Set(context, 0, TRI_VPackToV8(isolate, result->slice())).FromMaybe(false);
+  }
+  
+  // version number, as a string, so it is safe to encode in JavaScript
+  pair->Set(context, 1, TRI_V8UInt64String(isolate, version)).FromMaybe(false);
+  TRI_V8_RETURN(pair);
+
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_GlobalCacheGetVersion(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("GLOBAL_CACHE_GET_VERSION(<key>)");
+  }
+  
+  TRI_GET_GLOBALS();
+  if (v8g->_vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
+
+  std::string const key = VersionedCache::buildKey(TRI_ObjectToString(isolate, args[0]), v8g->_vocbase->name());
+  
+  V8DealerFeature& dealer = v8g->_server.getFeature<V8DealerFeature>();
+  auto& cache = dealer.valueCache();
+  uint64_t version = cache.getVersion(key);
+ 
+  // version number, as a string, so it is safe to encode in JavaScript
+  TRI_V8_RETURN(TRI_V8UInt64String(isolate, version));
+
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_GlobalCacheSet(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 3) {
+    TRI_V8_THROW_EXCEPTION_USAGE("GLOBAL_CACHE_SET(<key>, <value>, <version>)");
+  }
+  
+  TRI_GET_GLOBALS();
+  if (v8g->_vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
+
+  std::string const key = VersionedCache::buildKey(TRI_ObjectToString(isolate, args[0]), v8g->_vocbase->name());
+  uint64_t const version = TRI_ObjectToUInt64(isolate, args[2], true);
+  auto value = std::make_shared<arangodb::velocypack::Builder>();
+  TRI_V8ToVPack(isolate, *value, args[1], false);
+
+  V8DealerFeature& dealer = v8g->_server.getFeature<V8DealerFeature>();
+  auto& cache = dealer.valueCache();
+  bool result = cache.set(key, std::move(value), version);
+  TRI_V8_RETURN_BOOL(result);
+
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_GlobalCacheRemove(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("GLOBAL_CACHE_REMOVE(<key>)");
+  }
+  
+  TRI_GET_GLOBALS();
+  if (v8g->_vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
+
+  std::string const key = VersionedCache::buildKey(TRI_ObjectToString(isolate, args[0]), v8g->_vocbase->name());
+  
+  V8DealerFeature& dealer = v8g->_server.getFeature<V8DealerFeature>();
+  auto& cache = dealer.valueCache();
+  cache.remove(key);
+ 
+  TRI_V8_RETURN_UNDEFINED();
+
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_GlobalCacheNewVersion(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("GLOBAL_CACHE_NEW_VERSION()");
+  }
+  
+  TRI_GET_GLOBALS();
+  V8DealerFeature& dealer = v8g->_server.getFeature<V8DealerFeature>();
+  auto& cache = dealer.valueCache();
+  uint64_t version = cache.bumpVersion();
+ 
+  // version number, as a string, so it is safe to encode in JavaScript
+  TRI_V8_RETURN(TRI_V8UInt64String(isolate, version));
+
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_IsWebInterfaceDisabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  TRI_GET_GLOBALS();
+  ServerSecurityFeature& security = v8g->_server.getFeature<ServerSecurityFeature>();
+  TRI_V8_RETURN_BOOL(!security.enableWebInterface());
+
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_IsFoxxApiDisabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
   TRI_GET_GLOBALS();
   ServerSecurityFeature& security = v8g->_server.getFeature<ServerSecurityFeature>();
-  TRI_V8_RETURN_BOOL(security.isFoxxApiDisabled());
+  TRI_V8_RETURN_BOOL(!security.enableFoxxApi());
 
   TRI_V8_TRY_CATCH_END
 }
@@ -1714,7 +1857,18 @@ static void JS_IsFoxxStoreDisabled(v8::FunctionCallbackInfo<v8::Value> const& ar
 
   TRI_GET_GLOBALS();
   ServerSecurityFeature& security = v8g->_server.getFeature<ServerSecurityFeature>();
-  TRI_V8_RETURN_BOOL(security.isFoxxStoreDisabled());
+  TRI_V8_RETURN_BOOL(!security.enableFoxxStore());
+
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_IsFoxxDisabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  TRI_GET_GLOBALS();
+  ServerSecurityFeature& security = v8g->_server.getFeature<ServerSecurityFeature>();
+  TRI_V8_RETURN_BOOL(!security.enableFoxxApps());
 
   TRI_V8_TRY_CATCH_END
 }
@@ -1758,9 +1912,24 @@ static void JS_RunInRestrictedContext(v8::FunctionCallbackInfo<v8::Value> const&
 
 void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
   TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "GLOBAL_CACHE_GET"), JS_GlobalCacheGet, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "GLOBAL_CACHE_GET_VERSION"), JS_GlobalCacheGetVersion, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "GLOBAL_CACHE_SET"), JS_GlobalCacheSet, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "GLOBAL_CACHE_REMOVE"), JS_GlobalCacheRemove, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "GLOBAL_CACHE_NEW_VERSION"), JS_GlobalCacheNewVersion, true);
+
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_IS_WEB_INTERFACE_DISABLED"), JS_IsWebInterfaceDisabled, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_API_DISABLED"), JS_IsFoxxApiDisabled, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_STORE_DISABLED"), JS_IsFoxxStoreDisabled, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_DISABLED"), JS_IsFoxxDisabled, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_RUN_IN_RESTRICTED_CONTEXT"), JS_RunInRestrictedContext, true);
 
@@ -1795,6 +1964,6 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
       ->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
-          v8::Number::New(isolate, foxxQueuesFeature.pollInterval()), v8::ReadOnly)
+          v8::Number::New(isolate, foxxQueuesFeature.pollInterval()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 }

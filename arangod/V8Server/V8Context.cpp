@@ -37,9 +37,6 @@ using namespace arangodb::basics;
 std::string const GlobalContextMethods::CodeReloadRouting =
     "require(\"@arangodb/actions\").reloadRouting();";
 
-std::string const GlobalContextMethods::CodeReloadAql =
-    "try { require(\"@arangodb/aql\").reload(); } catch (err) { }";
-
 V8Context::V8Context(size_t id, v8::Isolate* isolate)
     : _id(id),
       _isolate(isolate),

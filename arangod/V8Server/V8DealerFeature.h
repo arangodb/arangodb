@@ -31,6 +31,7 @@
 #include "Basics/ConditionVariable.h"
 #include "RestServer/MetricsFeature.h"
 #include "V8/JSLoader.h"
+#include "V8Server/VersionedCache.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -129,6 +130,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
   std::string const& appPath() const { return _appPath; }
 
+  VersionedCache& valueCache();
+
  private:
   uint64_t nextId() { return _nextId++; }
   void copyInstallationFiles();
@@ -166,6 +169,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   std::map<std::string, bool> _definedBooleans;
   std::map<std::string, double> _definedDoubles;
   std::map<std::string, std::string> _definedStrings;
+  
+  VersionedCache _valueCache;
 
   Counter& _contextsCreationTime;
   Counter& _contextsCreated;

@@ -49,32 +49,6 @@ var shallowCopy = require('@arangodb/util').shallowCopy;
 const MIME_DEFAULT = 'text/plain; charset=utf-8';
 
 //
-// @brief current routing tree
-//
-// The route tree contains the URL hierarchy. In order to find a handler for a
-// request, you can traverse this tree. You need to backtrack if you handler
-// issues a `next()`.
-//
-// In order to speed up URL matching and next-finding, the tree is converted in
-// to a flat list, such that the least-specific middleware method comes
-// first. Then all other middleware methods with increasing specificity
-// followed by the most-specific method. Then all other methods with decreasing
-// specificity.
-//
-// Note that the object first on an entry for each database.
-//
-//     {
-//       _system: {
-//         middleware: [ ... ],
-//         routes: [ ... ],
-//         ...
-//       }
-//     }
-//
-
-var RoutingTree = {};
-
-//
 // @brief current routing list
 //
 // The flattened routing tree. The methods `flattenRoutingTree` takes a routing
@@ -92,7 +66,7 @@ var RoutingTree = {};
 //     }
 //
 
-var RoutingList = {};
+let RoutingList = {};
 
 //
 // @brief all methods
@@ -1026,30 +1000,29 @@ function foxxRouting (req, res, options, next) {
 }
 
 //
-// @brief flushes cache and reload routing information
+// @brief rebuild routing information for current database
 //
 
-function buildRouting (dbname) {
+function buildRouting () {
   'use strict';
 
   // compute all routes
-  var routes = [];
-  var routing = arangodb.db._collection('_routing');
-  if (routing !== null && routing.count() > 0) {
-    let i = routing.all();
+  let routes = [];
+  if (global.USE_OLD_SYSTEM_COLLECTIONS) {
+    let routing = arangodb.db._collection('_routing');
+    if (routing !== null && routing.count() > 0) {
+      let i = routing.all();
 
-    while (i.hasNext()) {
-      var n = i.next();
-      var c = Object.assign({}, n);
+      while (i.hasNext()) {
+        var n = i.next();
+        var c = Object.assign({}, n);
 
-      c.name = '_routing.document("' + c._key + '")';
+        c.name = '_routing.document("' + c._key + '")';
 
-      routes.push(c);
+        routes.push(c);
+      }
     }
   }
-
-  // allow the collection to unload
-  routing = null;
 
   // install the Foxx routes
   var mountPoints = FoxxManager._mountPoints();
@@ -1065,10 +1038,31 @@ function buildRouting (dbname) {
   }
 
   // build the routing tree
-  RoutingTree[dbname] = buildRoutingTree(routes);
+  //
+  // The routing tree contains the URL hierarchy. In order to find a handler for a
+  // request, you can traverse this tree. You need to backtrack if your handler
+  // issues a `next()`.
+  //
+  // In order to speed up URL matching and next-finding, the tree is converted in
+  // to a flat list, such that the least-specific middleware method comes
+  // first. Then all other middleware methods with increasing specificity
+  // followed by the most-specific method. Then all other methods with decreasing
+  // specificity.
+  //
+  // Note that the object first on an entry for each database.
+  //
+  //     {
+  //       _system: {
+  //         middleware: [ ... ],
+  //         routes: [ ... ],
+  //         ...
+  //       }
+  //     }
+  //
+  let tree = buildRoutingTree(routes);
 
   // compute the flat routes
-  RoutingList[dbname] = flattenRoutingTree(RoutingTree[dbname]);
+  return flattenRoutingTree(tree);
 }
 
 //
@@ -1156,10 +1150,11 @@ function firstRouting (type, parts, routes, rawParts) {
 
 function routeRequest (req, res, routes) {
   if (routes === undefined) {
-    var dbname = arangodb.db._name();
+    let dbname = arangodb.db._name();
 
+    // lazily build routing information for current database only
     if (!RoutingList[dbname]) {
-      buildRouting(dbname);
+      RoutingList[dbname] = buildRouting(dbname);
     }
 
     routes = RoutingList[dbname];
@@ -1260,7 +1255,6 @@ function routeRequest (req, res, routes) {
 function reloadRouting () {
   'use strict';
 
-  RoutingTree = {};
   RoutingList = {};
   FoxxManager._resetCache();
 }
@@ -1274,24 +1268,21 @@ function startup () {
     return;
   }
 
-  var actionPath = fs.join(internal.startupPath, 'actions');
-  var actions = fs.listTree(actionPath);
-  var i;
+  const actionPath = fs.join(internal.startupPath, 'actions');
 
-  for (i = 0; i < actions.length; i++) {
-    var file = actions[i];
-    var full = fs.join(actionPath, file);
+  fs.listTree(actionPath).forEach(function(file) {
+    if (!file.match(/.*\.js$/)) {
+      return;
+    }
+
+    let full = fs.join(actionPath, file);
 
     if (full !== '' && fs.isFile(full)) {
-      if (file.match(/.*\.js$/)) {
-        var content = fs.read(full);
-
-        content = '(function () {\n' + content + '\n}());';
-
-        internal.executeScript(content, undefined, full);
-      }
+      let content = fs.read(full);
+      content = '(function () {\n' + content + '\n}());';
+      internal.executeScript(content, undefined, full);
     }
-  }
+  });
 }
 
 //
@@ -2041,7 +2032,6 @@ function stringifyRequest (req) {
 exports.startup = startup;
 
 // only for debugging
-exports.buildRouting = buildRouting;
 exports.buildRoutingTree = buildRoutingTree;
 exports.flattenRoutingTree = flattenRoutingTree;
 exports.nextRouting = nextRouting;
@@ -2053,8 +2043,6 @@ exports.firstRouting = function (method, parts, routes) {
 };
 
 // public functions
-exports.routingTree = () => RoutingTree;
-exports.routingList = () => RoutingList;
 exports.routeRequest = routeRequest;
 exports.defineHttp = defineHttp;
 exports.getErrorMessage = getErrorMessage;

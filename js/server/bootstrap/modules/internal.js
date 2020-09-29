@@ -181,6 +181,11 @@
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief expose configuration
   // //////////////////////////////////////////////////////////////////////////////
+  
+    if (global.SYS_IS_WEB_INTERFACE_DISABLED) {
+    exports.isWebInterfaceDisabled = global.SYS_IS_WEB_INTERFACE_DISABLED;
+    delete global.SYS_IS_WEB_INTERFACE_DISABLED;
+  }
 
   if (global.SYS_IS_FOXX_API_DISABLED) {
     exports.isFoxxApiDisabled = global.SYS_IS_FOXX_API_DISABLED;
@@ -190,6 +195,11 @@
   if (global.SYS_IS_FOXX_STORE_DISABLED) {
     exports.isFoxxStoreDisabled = global.SYS_IS_FOXX_STORE_DISABLED;
     delete global.SYS_IS_FOXX_STORE_DISABLED;
+  }
+  
+  if (global.SYS_IS_FOXX_DISABLED) {
+    exports.isFoxxDisabled = global.SYS_IS_FOXX_DISABLED;
+    delete global.SYS_IS_FOXX_DISABLED;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -207,6 +217,10 @@
 
   // autoload specific modules
   exports.autoloadModules = function () {
+    if (!global.USE_OLD_SYSTEM_COLLECTIONS) {
+      return;
+    }
+
     console.debug('autoloading actions');
 
     try {

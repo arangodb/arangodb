@@ -29,9 +29,11 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 namespace velocypack {
-
 class Builder;
 class Slice;
 
@@ -82,7 +84,15 @@ Result registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice userFuncti
 //    params
 // @return result object
 Result toArrayUserFunctions(TRI_vocbase_t& vocbase, std::string const& functionFilterPrefix,
-                            velocypack::Builder& result);
+                            velocypack::Builder& result, bool verbatim);
+
+// @brief repopulates the internal cache of AQL user functions for the 
+// database provided
+void reloadAqlUserFunctions(TRI_vocbase_t& vocbase);
+
+// @brief flushes the internal cache of AQL user functions for the 
+// database provided
+void flushAqlUserFunctions(arangodb::application_features::ApplicationServer&, std::string const& dbName);
 
 }  // namespace arangodb
 

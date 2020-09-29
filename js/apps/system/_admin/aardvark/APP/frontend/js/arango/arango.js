@@ -57,6 +57,8 @@
   };
 
   window.arangoHelper = {
+    // last fetch date of pending jobs
+    lastFetched: 0,
 
     alphabetColors: {
       a: 'rgb(0,0,180)',
@@ -800,6 +802,18 @@
     },
 
     getAardvarkJobs: function (callback) {
+      // issue this call at most every few seconds, in order to not
+      // cause unnecessary load
+      var now = Date.now();
+      if (now - this.lastFetched < 3 * 1000) {
+        // we called this API less than 3 seconds ago. pretend nothing
+        // has happened
+        callback(false, []);
+        return;
+      }
+      // last API call was longer ago or never happened
+      this.lastFetched = now;
+
       $.ajax({
         cache: false,
         type: 'GET',

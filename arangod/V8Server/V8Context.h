@@ -37,16 +37,12 @@ class GlobalContextMethods {
   enum class MethodType {
     UNKNOWN = 0,
     RELOAD_ROUTING,
-    RELOAD_AQL,
   };
 
  public:
   static MethodType type(std::string const& type) {
     if (type == "reloadRouting") {
       return MethodType::RELOAD_ROUTING;
-    }
-    if (type == "reloadAql") {
-      return MethodType::RELOAD_AQL;
     }
 
     return MethodType::UNKNOWN;
@@ -56,8 +52,6 @@ class GlobalContextMethods {
     switch (type) {
       case MethodType::RELOAD_ROUTING:
         return "reloadRouting";
-      case MethodType::RELOAD_AQL:
-        return "reloadAql";
       case MethodType::UNKNOWN:
       default:
         return "unknown";
@@ -68,8 +62,6 @@ class GlobalContextMethods {
     switch (type) {
       case MethodType::RELOAD_ROUTING:
         return CodeReloadRouting;
-      case MethodType::RELOAD_AQL:
-        return CodeReloadAql;
       case MethodType::UNKNOWN:
       default:
         return StaticStrings::Empty;
@@ -78,7 +70,6 @@ class GlobalContextMethods {
 
  public:
   static std::string const CodeReloadRouting;
-  static std::string const CodeReloadAql;
 };
 
 class V8Context {

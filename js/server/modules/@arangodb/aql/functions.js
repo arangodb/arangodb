@@ -28,43 +28,29 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock aqlFunctionsUnregister
 // //////////////////////////////////////////////////////////////////////////////
 
-var unregisterFunction = function (name) {
+exports.unregister = function (name) {
   'use strict';
-
-  if (UNREGISTER_AQL_USER_FUNCTION(name)) {
-    require('@arangodb/aql').reload();
-    return true;
-  } else {
-    return false;
-  }
+  return UNREGISTER_AQL_USER_FUNCTION(name) ? true : false;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock aqlFunctionsUnregisterGroup
 // //////////////////////////////////////////////////////////////////////////////
 
-var unregisterFunctionsGroup = function (group) {
+exports.unregisterGroup = function (group) {
   'use strict';
-  var deleted = UNREGISTER_AQL_USER_FUNCTION_GROUP(group);
-
-  if (deleted > 0) {
-    require('@arangodb/aql').reload();
-  }
-
-  return deleted;
+  return UNREGISTER_AQL_USER_FUNCTION_GROUP(group);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock aqlFunctionsRegister
 // //////////////////////////////////////////////////////////////////////////////
 
-var registerFunction = function (name, code, isDeterministic) {
+exports.register = function (name, code, isDeterministic) {
   'use strict';
   if (typeof isDeterministic !== 'boolean') {
    isDeterministic = false;
@@ -73,17 +59,11 @@ var registerFunction = function (name, code, isDeterministic) {
     code = String(code) + '\n';
   }
 
-  let result = REGISTER_AQL_USER_FUNCTION({
+  return REGISTER_AQL_USER_FUNCTION({
     name: name,
     code: code,
     isDeterministic: isDeterministic
   });
-  require('@arangodb/aql').reload();
-
-  return result;
 };
 
-exports.unregister = unregisterFunction;
-exports.unregisterGroup = unregisterFunctionsGroup;
-exports.register = registerFunction;
 exports.toArray = GET_AQL_USER_FUNCTIONS;

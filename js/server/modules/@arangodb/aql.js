@@ -30,8 +30,11 @@
 var INTERNAL = require('internal');
 var ArangoError = require('@arangodb').ArangoError;
 
-// / @brief user functions cache
-var UserFunctions = { };
+// / @brief return the cache key prefix 
+const CACHE_PREFIX = 'aqlfunctions';
+
+// / @brief context-local AQL user functions cache
+let UserFunctions = { };
 
 // / @brief throw a runtime exception
 function THROW (func, error, data, moreMessage) {
@@ -57,31 +60,33 @@ function THROW (func, error, data, moreMessage) {
   throw err;
 }
 
-// / @brief return a database-specific function prefix
-function DB_PREFIX () {
-  return INTERNAL.db._name();
-}
-
 // / @brief reset the user functions and reload them from the database
 function reloadUserFunctions () {
   'use strict';
 
-  var prefix = DB_PREFIX();
-  var c = INTERNAL.db._collection('_aqlfunctions');
+  let [functions, cachedVersion] = global.GLOBAL_CACHE_GET(CACHE_PREFIX);
+  if (!functions || !Array.isArray(functions)) {
+    let c = INTERNAL.db._collection('_aqlfunctions');
 
-  if (c === null) {
-    // collection not found. now reset all user functions
-    UserFunctions = { };
-    UserFunctions[prefix] = { };
-    return;
+    if (c) {
+      // store result under new version
+      cachedVersion = global.GLOBAL_CACHE_NEW_VERSION();
+      functions = c.toArray().map(function(doc) {
+        delete doc._rev;
+        delete doc._id;
+        return doc;
+      });
+  
+      global.GLOBAL_CACHE_SET(CACHE_PREFIX, functions, cachedVersion);
+    }
   }
 
-  var foundError = false;
-  var functions = { };
-
-  c.toArray().forEach(function (f) {
-    var key = f._key.replace(/:{1,}/g, '::');
-    var code;
+  let foundError = false;
+  let compiled = { };
+    
+  functions.forEach(function (f) {
+    let key = (f._key || f.name).replace(/:{1,}/g, '::');
+    let code;
 
     if (f.code.match(/^\(?function\s+\(/)) {
       code = f.code;
@@ -90,12 +95,12 @@ function reloadUserFunctions () {
     }
 
     try {
-      var res = INTERNAL.executeScript(code, undefined, '(user function ' + key + ')');
+      let res = INTERNAL.executeScript(code, undefined, '(user function ' + key + ')');
       if (typeof res !== 'function') {
         foundError = true;
       }
 
-      functions[key.toUpperCase()] = {
+      compiled[key.toUpperCase()] = {
         name: key,
         func: res,
         isDeterministic: f.isDeterministic || false
@@ -107,12 +112,7 @@ function reloadUserFunctions () {
     }
   });
 
-  // now reset the functions for all databases
-  // this ensures that functions of other databases will be reloaded next
-  // time (the reload does not necessarily need to be carried out in the
-  // database in which the function is registered)
-  UserFunctions = { };
-  UserFunctions[prefix] = functions;
+  UserFunctions[INTERNAL.db._name()] = { funcs: compiled, version: cachedVersion };
 
   if (foundError) {
     THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_INVALID_CODE);
@@ -162,24 +162,33 @@ function FIX_VALUE (value) {
 // / @brief call a user-defined function
 exports.FCALL_USER = function (name, parameters, func) {
   'use strict';
+  
+  const dbName = INTERNAL.db._name();
 
-  var prefix = DB_PREFIX(), reloaded = false;
-  if (!UserFunctions.hasOwnProperty(prefix)) {
-    reloadUserFunctions();
-    reloaded = true;
+  let functionObject;
+  if (UserFunctions.hasOwnProperty(dbName)) {
+    let precompiled = UserFunctions[dbName];
+    functionObject = precompiled.funcs[name];
+    if (functionObject) {
+      let cachedVersion  = global.GLOBAL_CACHE_GET_VERSION(CACHE_PREFIX);
+      if (cachedVersion !== precompiled.version) {
+        // what we have in our local UserFunctions cache is outdated
+        functionObject = undefined;
+      }
+    }
   }
 
-  if (!UserFunctions[prefix].hasOwnProperty(name) && !reloaded) {
-    // last chance
+  if (!functionObject) {
+    // rebuild UserFunctions object for current database
     reloadUserFunctions();
-  }
-
-  if (!UserFunctions[prefix].hasOwnProperty(name)) {
-    THROW(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
+    functionObject = UserFunctions[dbName].funcs[name];
+    if (!functionObject) {
+      THROW(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
+    }
   }
 
   try {
-    return FIX_VALUE(UserFunctions[prefix][name].func.apply({ name: name }, parameters));
+    return FIX_VALUE(functionObject.func.apply({ name }, parameters));
   } catch (err) {
     THROW(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, String(err.stack || String(err)));
     return null;
@@ -188,7 +197,7 @@ exports.FCALL_USER = function (name, parameters, func) {
 
 // / @brief passthru the argument
 // / this function is marked as non-deterministic so its argument withstands
-// / query optimisation. this function can be used for testing
+// / query optimization. this function can be used for testing
 exports.AQL_V8 = function (value) {
   'use strict';
   return value;

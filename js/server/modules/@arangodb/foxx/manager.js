@@ -47,10 +47,18 @@ const isZipBuffer = require('@arangodb/util').isZipBuffer;
 const codeFrame = require('@arangodb/util').codeFrame;
 const internal  = require('internal');
 
-const SYSTEM_SERVICE_MOUNTS = [
-  '/_admin/aardvark', // Admin interface.
-  '/_api/foxx' // Foxx management API.
-];
+let SYSTEM_SERVICE_MOUNTS = [];
+let BLOCKED_SYSTEM_SERVICE_MOUNTS = [];
+if (!internal.isWebInterfaceDisabled()) {
+  SYSTEM_SERVICE_MOUNTS.push('/_admin/aardvark'); // Admin interface.
+} else {
+  BLOCKED_SYSTEM_SERVICE_MOUNTS.push('/_admin/aardvark'); // Admin interface.
+}
+if (!internal.isFoxxApiDisabled()) {
+  SYSTEM_SERVICE_MOUNTS.push('/_api/foxx'); // Foxx management API.
+} else {
+  BLOCKED_SYSTEM_SERVICE_MOUNTS.push('/_api/foxx'); // Foxx management API.
+}
 
 const GLOBAL_SERVICE_MAP = new Map();
 
@@ -180,6 +188,9 @@ function parallelClusterRequests (requests) {
 // Startup and self-heal
 
 function selfHealAll (skipReloadRouting) {
+  if (internal.isFoxxDisabled()) {
+    return;
+  }
   const db = require('internal').db;
   const dbName = db._name();
   let modified = false;
@@ -210,6 +221,9 @@ function triggerSelfHeal () {
 }
 
 function selfHeal () {
+  if (internal.isFoxxDisabled()) {
+    return false;
+  }
   const dirname = FoxxService.rootBundlePath();
   if (!fs.exists(dirname)) {
     fs.makeDirectoryRecursive(dirname);
@@ -217,12 +231,10 @@ function selfHeal () {
 
   const serviceCollection = utils.getStorage();
   const bundleCollection = utils.getBundleStorage();
-  const serviceDefinitions = db._query(aql`
-    FOR doc IN ${serviceCollection}
+  const serviceDefinitions = db._query(aql`/*selfHeal*/ FOR doc IN ${serviceCollection}
     FILTER LEFT(doc.mount, 2) != "/_"
     LET bundleExists = DOCUMENT(${bundleCollection}, doc.checksum) != null
-    RETURN [doc.mount, doc.checksum, doc._rev, bundleExists]
-  `).toArray();
+    RETURN [doc.mount, doc.checksum, doc._rev, bundleExists]`).toArray();
 
   let modified = false;
   const knownBundlePaths = new Array(serviceDefinitions.length);
@@ -342,6 +354,9 @@ function startup () {
 }
 
 function commitLocalState (replace) {
+  if (internal.isFoxxDisabled()) {
+    return;
+  }
   let modified = false;
   const rootPath = FoxxService.rootPath();
   const collection = utils.getStorage();
@@ -425,21 +440,29 @@ function propagateSelfHeal () {
 
 function initLocalServiceMap () {
   const localServiceMap = new Map();
+  // initialize /_admin/aardvark and /_api/foxx
   for (const mount of SYSTEM_SERVICE_MOUNTS) {
     try {
-      const serviceDefinition = utils.getServiceDefinition(mount) || {mount};
+      const serviceDefinition = {mount};
       const service = FoxxService.create(serviceDefinition);
       localServiceMap.set(service.mount, service);
     } catch (e) {
       console.errorStack(e);
     }
   }
-  for (const serviceDefinition of utils.getStorage().all()) {
-    try {
-      const service = loadInstalledService(serviceDefinition);
-      localServiceMap.set(serviceDefinition.mount, service);
-    } catch (e) {
-      localServiceMap.set(serviceDefinition.mount, {error: e});
+
+  if (!internal.isFoxxDisabled()) {
+    for (const serviceDefinition of utils.getStorage().all()) {
+      try {
+        if (BLOCKED_SYSTEM_SERVICE_MOUNTS.indexOf(serviceDefinition.mount) !== -1) {
+          // web interface or Foxx API disabled
+          continue;
+        }
+        const service = loadInstalledService(serviceDefinition);
+        localServiceMap.set(serviceDefinition.mount, service);
+      } catch (e) {
+        localServiceMap.set(serviceDefinition.mount, {error: e});
+      }
     }
   }
   GLOBAL_SERVICE_MAP.set(db._name(), localServiceMap);
@@ -651,6 +674,10 @@ function _deleteServiceFromPath (mount, force) {
 // avoid a race condition with selfHeal() which could delete the files before
 // the service is saved to the database.
 function _install (tempService, tempBundlePath, options = {}) {
+  if (internal.isFoxxDisabled()) {
+    return;
+  }
+
   try {
     if (options.setup !== false) {
       try {
@@ -696,6 +723,10 @@ function _install (tempService, tempBundlePath, options = {}) {
 }
 
 function _uninstall (mount, options = {}) {
+  if (internal.isFoxxDisabled()) {
+    return;
+  }
+
   let service;
   try {
     service = getServiceInstance(mount);

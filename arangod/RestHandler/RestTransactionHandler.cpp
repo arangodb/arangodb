@@ -31,6 +31,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
@@ -269,6 +270,12 @@ void RestTransactionHandler::generateTransactionResult(rest::ResponseCode code,
 void RestTransactionHandler::executeJSTransaction() {
   if (!server().isEnabled<V8DealerFeature>()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED, "JavaScript operations are disabled");
+    return;
+  }
+  
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+  if (!security.enableJavaScriptTransactionsApi()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED, "JavaScript transactions API is disabled");
     return;
   }
 

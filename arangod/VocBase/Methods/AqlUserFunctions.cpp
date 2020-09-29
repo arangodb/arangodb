@@ -23,6 +23,7 @@
 
 #include "AqlUserFunctions.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/QueryString.h"
@@ -40,6 +41,7 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/VersionedCache.h"
 
 #include <v8.h>
 #include <velocypack/Builder.h>
@@ -58,19 +60,15 @@ std::regex const funcRegEx("[a-zA-Z0-9][a-zA-Z0-9_]*(::[a-zA-Z0-9_]+)+", std::re
 // we may filter less restrictive:
 std::regex const funcFilterRegEx("[a-zA-Z0-9_]+(::[a-zA-Z0-9_]*)*", std::regex::ECMAScript);
 
+// a prefix for the AQL user functions cache entries (followed by database name)
+std::string const cachePrefix("aqlfunctions");
+
 bool isValidFunctionName(std::string const& testName) {
   return std::regex_match(testName, funcRegEx);
 }
 
 bool isValidFunctionNameFilter(std::string const& testName) {
   return std::regex_match(testName, funcFilterRegEx);
-}
-
-void reloadAqlUserFunctions() {
-  if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->isEnabled()) {
-    std::string const def("reloadAql");
-    V8DealerFeature::DEALER->addGlobalContextMethod(def);
-  }
 }
 
 }  // namespace
@@ -106,7 +104,7 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase, std::string cons
   }
 
   if (res.ok()) {
-    reloadAqlUserFunctions();
+    reloadAqlUserFunctions(vocbase);
   } else if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
     return res.reset(TRI_ERROR_QUERY_FUNCTION_NOT_FOUND,
                   std::string("no AQL user function with name '") +
@@ -146,7 +144,7 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
 
   std::string aql(
       "FOR fn IN @@col FILTER UPPER(LEFT(fn.name, @fnLength)) == @ucName "
-      "REMOVE { _key: fn._key} in @@col RETURN 1");
+      "REMOVE { _key: fn._key } in @@col RETURN 1");
 
   {
     arangodb::aql::Query query(transaction::V8Context::CreateWhenRequired(vocbase, true),
@@ -170,7 +168,7 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
     deleteCount = static_cast<int>(countSlice.length());
   }
 
-  reloadAqlUserFunctions();
+  reloadAqlUserFunctions(vocbase);
   return Result();
 }
 
@@ -311,7 +309,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
   }
 
   if (res.ok()) {
-    reloadAqlUserFunctions();
+    reloadAqlUserFunctions(vocbase);
   }
 
   return res;
@@ -319,16 +317,15 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
 
 Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
                                       std::string const& functionFilterPrefix,
-                                      velocypack::Builder& result) {
+                                      velocypack::Builder& result,
+                                      bool verbatim) {
   std::string aql;
   auto binds = std::make_shared<VPackBuilder>();
 
   binds->openObject();
 
   if (!functionFilterPrefix.empty()) {
-    aql =
-        "FOR function IN @@col FILTER LEFT(function._key, @fnLength) == "
-        "@ucName RETURN function";
+    aql = "FOR function IN @@col FILTER LEFT(function._key, @fnLength) == @ucName";
 
     std::string uc(functionFilterPrefix);
     basics::StringUtils::toupperInPlace(uc);
@@ -340,8 +337,10 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
     binds->add("fnLength", VPackValue(uc.length()));
     binds->add("ucName", VPackValue(uc));
   } else {
-    aql = "FOR function IN @@col RETURN function";
+    aql = "FOR function IN @@col";
   }
+
+  aql += " RETURN UNSET(function, ['_rev', '_id'])";
 
   binds->add("@col", VPackValue(StaticStrings::AqlFunctionsCollection));
   binds->close();
@@ -364,18 +363,26 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
     return Result(TRI_ERROR_INTERNAL,
                   "bad query result for AQL user functions");
   }
+      
+  VPackBuilder oneFunction;
 
   result.openArray();
   std::string tmp;
   for (VPackSlice it : VPackArrayIterator(usersFunctionsSlice)) {
-    VPackSlice resolved;
-    resolved = it.resolveExternal();
+    VPackSlice resolved = it.resolveExternal();
 
     if (!resolved.isObject()) {
       return Result(TRI_ERROR_INTERNAL,
-                    "element that stores AQL user function is not an object");
+                    "document that stores AQL user function is not an object");
     }
 
+    if (verbatim) {
+      // return results without adjusting/reformatting them
+      result.add(resolved);
+      continue;
+    }
+
+    // return results with adjusting/reformatting them
     VPackSlice name, fn, dtm;
     bool isDeterministic = false;
     name = resolved.get("name");
@@ -391,7 +398,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
       ref = ref.substr(1, ref.length() - 2);
       tmp = basics::StringUtils::trim(ref.toString());
 
-      VPackBuilder oneFunction;
+      oneFunction.clear();
       oneFunction.openObject();
       oneFunction.add("name", name);
       oneFunction.add("code", VPackValue(tmp));
@@ -403,4 +410,44 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
   result.close();  // close Array
 
   return Result();
+}
+
+void arangodb::reloadAqlUserFunctions(TRI_vocbase_t& vocbase) {
+  if (!vocbase.server().isEnabled<arangodb::V8DealerFeature>()) {
+    return;
+  }
+  auto& dealer = vocbase.server().getFeature<arangodb::V8DealerFeature>();
+  auto& cache = dealer.valueCache();
+
+  // bump cache version number
+  uint64_t newVersion = cache.bumpVersion();
+
+  // query the new state of AQL functions
+  std::string const key = cache.buildKey(cachePrefix, vocbase.name());
+  auto builder = std::make_shared<arangodb::velocypack::Builder>();
+  Result res = arangodb::toArrayUserFunctions(vocbase, "", *builder, true);
+  if (res.ok()) {
+    // and store them in cache
+    cache.set(key, std::move(builder), newVersion);
+  } else {
+    // error during querying, better delete the cache entry...
+    // the functions will be reloaded eventually when accessed next
+    // from inside AQL
+    cache.remove(key);
+  }
+}
+
+void arangodb::flushAqlUserFunctions(arangodb::application_features::ApplicationServer& server, std::string const& dbName) {
+  if (!server.isEnabled<arangodb::V8DealerFeature>()) {
+    return;
+  }
+
+  auto& dealer = server.getFeature<arangodb::V8DealerFeature>();
+  auto& cache = dealer.valueCache();
+  
+  // for extra security, let's also bump the cache version number
+  cache.bumpVersion();
+  
+  std::string const key = cache.buildKey(cachePrefix, dbName);
+  cache.remove(key);
 }

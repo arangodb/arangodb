@@ -124,7 +124,7 @@ static void JS_GetAqlUserFunctions(v8::FunctionCallbackInfo<v8::Value> const& ar
     functionFilterPrefix = TRI_ObjectToString(isolate, args[0]);
   }
 
-  Result rv = toArrayUserFunctions(vocbase, functionFilterPrefix, result);
+  Result rv = toArrayUserFunctions(vocbase, functionFilterPrefix, result, false);
 
   if (rv.fail()) {
     TRI_V8_THROW_EXCEPTION(rv);

@@ -43,6 +43,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "GeneralServer/SslServerFeature.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "ProgramOptions/Parameters.h"
@@ -393,8 +394,12 @@ void GeneralServerFeature::defineHandlers() {
 
   if (server().isEnabled<V8DealerFeature>()) {
     // the tasks feature depends on V8. only enable it if JavaScript is enabled
-    _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::TASKS_PATH,
-                                      RestHandlerCreator<RestTasksHandler>::createNoData);
+  
+    ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+    if (security.enableJavaScriptTasksApi()) {
+      _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::TASKS_PATH,
+                                        RestHandlerCreator<RestTasksHandler>::createNoData);
+    }
   }
 
   _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,

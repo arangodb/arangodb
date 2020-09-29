@@ -543,6 +543,7 @@ set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/FoxxQueuesFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp
+  V8Server/VersionedCache.cpp
   V8Server/v8-actions.cpp
   V8Server/v8-analyzers.cpp
   V8Server/v8-collection-util.cpp
