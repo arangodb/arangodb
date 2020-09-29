@@ -898,12 +898,14 @@ std::size_t RocksDBMetaCollection::revisionTreeDepth() const {
     }
   }
 
-  std::size_t const treeDepth = _revisionTree ? _revisionTree->maxDepth() : 3;
+  constexpr std::size_t minDepth = 3;
+  constexpr std::size_t maxDepth = 6;
+  std::size_t const treeDepth = _revisionTree ? _revisionTree->maxDepth() : minDepth;
 
-  if (bufferInserts > bufferRemovals) {
+  if (treeDepth < maxDepth && bufferInserts > bufferRemovals) {
     std::size_t const count = treeCount + bufferInserts - bufferRemovals;
     std::size_t targetDepth = treeDepth;
-    while (targetDepth < 6 &&
+    while (targetDepth < maxDepth &&
            count > 8 * containers::RevisionTree::nodeCountAtDepth(targetDepth)) {
       ++targetDepth;
     }
