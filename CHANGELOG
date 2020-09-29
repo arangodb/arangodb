@@ -1,4 +1,4 @@
-v3.7.3 (XXXX-XX-XX)
+v3.7.4 (XXXX-XX-XX)
 -------------------
 
 * Data definition reconsiliation in cluster has been modified
@@ -9,7 +9,11 @@ v3.7.3 (XXXX-XX-XX)
   - Maintenance uses local as well as agency change sets to limit
     the scope of every runtime to these change sets.
 
+v3.7.3 (XXXX-XX-XX)
+-------------------
+
 * Make scheduler react and start new threads slightly faster in case a lot
+  of new work arrives.
 
 * Use rclone built from v1.51.0 source with go1.15.2 instead of prebuilt
   v1.51.0 release.
