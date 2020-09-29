@@ -25,6 +25,7 @@
 #include "Transactions.h"
 
 #include "Basics/ReadLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
@@ -363,6 +364,11 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   if (rv.fail()) {
     return rv;
   }
+  
+  ctx->enterV8Context();
+  auto guard = scopeGuard([&ctx] {
+    ctx->exitV8Context();
+  });
 
   try {
     v8::Handle<v8::Value> arguments = params;
