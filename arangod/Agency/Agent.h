@@ -443,6 +443,10 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   // protects _confirmed, _lastAcked and _earliestPackage:
   mutable arangodb::Mutex _tiLock;
 
+  /// @brief Facilitate quick note of followership on leaders
+  mutable arangodb::Mutex _emptyAppendLock;
+  std::unordered_map<std::string, SteadyTimePoint> _lastEmptyAcked;
+
   /// @brief RAFT consistency lock:
   ///   _spearhead
   ///

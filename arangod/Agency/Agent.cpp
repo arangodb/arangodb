@@ -327,6 +327,16 @@ index_t Agent::confirmed(std::string const& agentId) const {
 void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
   auto startTime = steady_clock::now();
 
+  LOG_DEVEL << index << " " << toLog;
+  if (index == 0) {
+    MUTEX_LOCKER(locker, _emptyAppendLock);
+    auto n = steady_clock::now();
+    if (_lastEmptyAcked[peerId] < n) {
+      _lastEmptyAcked[peerId] = n;
+    }
+    return;
+  }
+
   // only update the time stamps here:
   {
     MUTEX_LOCKER(tiLocker, _tiLock);
@@ -816,6 +826,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
   auto ac = std::make_shared<AgentCallback>(this, followerId, 0, 0);
 
   network::RequestOptions reqOpts;
+  reqOpts.skipScheduler = true;
   reqOpts.timeout = network::Timeout(3 * _config.minPing() * _config.timeoutMult());
   reqOpts.param("term", std::to_string(_constituent.term())).param("leaderId", id())
          .param("prevLogIndex", "0")
@@ -1045,14 +1056,14 @@ void Agent::load() {
 
 /// Still leading? Under MUTEX from ::read or ::write
 bool Agent::challengeLeadership() {
-  MUTEX_LOCKER(tiLocker, _tiLock);
+  MUTEX_LOCKER(tiLocker, _emptyAppendLock);
   size_t good = 0;
 
   std::string const myid = id();
 
-  for (auto const& i : _lastAckedIndex) {
+  for (auto const& i : _lastEmptyAcked) {
     if (i.first != myid) {  // do not count ourselves
-      duration<double> m = steady_clock::now() - i.second.first;
+      duration<double> m = steady_clock::now() - i.second;
       LOG_TOPIC("22f78", DEBUG, Logger::AGENCY)
           << "challengeLeadership: found "
              "_lastAcked["
@@ -1715,9 +1726,11 @@ void Agent::lead() {
     }
 
     MUTEX_LOCKER(tiLocker, _tiLock);
+    MUTEX_LOCKER(locker, _emptyAppendLock);
     for (auto& i : _lastAckedIndex) {
       if (i.first != id()) {
         i.second.second = commitIndex;
+        _lastEmptyAcked[i.first] = steady_clock::now();
       }
     }
   }
