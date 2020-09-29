@@ -28,6 +28,8 @@
 #include "date/date.h"
 #endif
 
+#include "velocypack/velocypack-aliases.h"
+
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/text_token_stream.hpp"
@@ -55,9 +57,11 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
-#include "IResearchAnalyzerFeature.h"
-#include "IResearchCommon.h"
-#include "IResearchLink.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/GeoAnalyzer.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchIdentityAnalyzer.h"
+#include "IResearch/IResearchLink.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -86,12 +90,17 @@
 namespace {
 
 using namespace std::literals::string_literals;
+using namespace arangodb;
+using namespace arangodb::iresearch;
 
 static char const ANALYZER_PREFIX_DELIM = ':'; // name prefix delimiter (2 chars)
 static size_t const ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024; // arbitrary value
 static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
 static std::string const FEATURE_NAME("ArangoSearchAnalyzer");
-static irs::string_ref constexpr IDENTITY_ANALYZER_NAME("identity");
+
+REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(GeoJSONAnalyzer, GeoJSONAnalyzer::make, GeoJSONAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(GeoPointAnalyzer, GeoPointAnalyzer::make, GeoPointAnalyzer::normalize);
 
 bool normalize(std::string& out,
                irs::string_ref const& type,
@@ -108,60 +117,6 @@ bool normalize(std::string& out,
     arangodb::iresearch::ref<char>(properties),
     false);
 }
-
-class IdentityAnalyzer final : public irs::analysis::analyzer {
- public:
-  static constexpr irs::string_ref type_name() noexcept {
-    return IDENTITY_ANALYZER_NAME;
-  }
-
-  static bool normalize(const irs::string_ref& /*args*/, std::string& out) {
-    out.resize(VPackSlice::emptyObjectSlice().byteSize());
-    std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
-    return true;
-  }
-
-  static irs::analysis::analyzer::ptr make(irs::string_ref const& /*args*/) {
-    return std::make_shared<IdentityAnalyzer>();
-  }
-
-  IdentityAnalyzer()
-    : irs::analysis::analyzer(irs::type<IdentityAnalyzer>::get()),
-      _empty(true) {
-  }
-
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    if (type == irs::type<irs::increment>::id()) {
-      return &_inc;
-    }
-
-    return type == irs::type<irs::term_attribute>::id()
-        ? &_term
-        : nullptr;
-  }
-
-  virtual bool next() noexcept override {
-    auto const empty = _empty;
-
-    _empty = true;
-
-    return !empty;
-  }
-
-  virtual bool reset(irs::string_ref const& data) noexcept override {
-    _empty = false;
-    _term.value = irs::ref_cast<irs::byte_type>(data);
-
-    return true;
-  }
-
- private:
-  irs::term_attribute _term;
-  irs::increment _inc;
-  bool _empty;
-}; // IdentityAnalyzer
-
-REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
 
 // Delimiter analyzer vpack routines ////////////////////////////
 namespace delimiter_vpack {
@@ -524,7 +479,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressi
   // identity now is default analyzer
   auto const name = args.size() > 1 ?
     arangodb::iresearch::getStringRef(args[1].slice()) :
-    iresearch::string_ref(arangodb::iresearch::IResearchAnalyzerFeature::identity()->name());
+    irs::string_ref(arangodb::iresearch::IResearchAnalyzerFeature::identity()->name());
 
   TRI_ASSERT(trx);
   auto& server = trx->vocbase().server();
@@ -545,9 +500,9 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressi
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
 
-  auto string_analyzer = pool->get();
+  auto analyzer = pool->get();
 
-  if (!string_analyzer) {
+  if (!analyzer) {
     auto const message = "failure to get arangosearch analyzer with name '"s +
                          static_cast<std::string>(name) +
                          "' while computing result for function 'TOKENS'";
@@ -555,9 +510,9 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressi
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
 
-  auto* string_token = irs::get<irs::term_attribute>(*string_analyzer);
+  auto* token = irs::get<irs::term_attribute>(*analyzer);
 
-  if (ADB_UNLIKELY(!string_token)) {
+  if (ADB_UNLIKELY(!token)) {
     auto const message =
         "failure to retrieve values from arangosearch analyzer name '"s +
         static_cast<std::string>(name) +
@@ -573,9 +528,9 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressi
   // to avoid copying Builder's default buffer when initializing AqlValue
   // create the buffer externally and pass ownership directly into AqlValue
   arangodb::velocypack::Buffer<uint8_t> buffer;
-  arangodb::velocypack::Builder builder(buffer);
+  VPackBuilder builder(buffer);
   builder.openArray();
-  std::vector<arangodb::velocypack::ArrayIterator> arrayIteratorStack;
+  std::vector<VPackArrayIterator> arrayIteratorStack;
   auto current = args[0].slice();
   do {
     // stack opening non-empty arrays
@@ -586,67 +541,85 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressi
     }
     // process current item
     switch (current.type()) {
-    case VPackValueType::String:
-      if (!string_analyzer->reset(arangodb::iresearch::getStringRef(current))) {
-        auto const message = "failure to reset arangosearch analyzer: ' "s +
-          static_cast<std::string>(name) +
-          "' while computing result for function 'TOKENS'";
-        LOG_TOPIC("45a2d", WARN, arangodb::iresearch::TOPIC) << message;
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
-      }
-      while (string_analyzer->next()) {
-        builder.add(
-          arangodb::iresearch::toValuePair(irs::ref_cast<char>(string_token->value)));
-      }
-      break;
-    case VPackValueType::Bool:
-      builder.add(
-        arangodb::iresearch::toValuePair(
-          arangodb::basics::StringUtils::encodeBase64(irs::ref_cast<char>(
-            irs::boolean_token_stream::value(current.getBoolean())))));
-      break;
-    case VPackValueType::Null:
-      builder.add(
-        arangodb::iresearch::toValuePair(
-          arangodb::basics::StringUtils::encodeBase64(
-          irs::ref_cast<char>(irs::null_token_stream::value_null()))));
-      break;
-    case VPackValueType::Array: // we get there only when empty array encountered
-      TRI_ASSERT(current.isEmptyArray());
-      // empty array in = empty array out
-      builder.openArray();
-      builder.close();
-      break;
-    default:
-      if (current.isNumber()) { // there are many "number" types. To adopt all current and future ones just
-                                // deal with them all here in generic way
-        if (!numeric_analyzer) {
-          numeric_analyzer = std::make_unique<irs::numeric_token_stream>();
-          numeric_token = irs::get<irs::term_attribute>(*numeric_analyzer);
-          if (ADB_UNLIKELY(!numeric_token)) {
-            auto const message =
-              "failure to retrieve values from arangosearch numeric analyzer "
-              "while computing result for function 'TOKENS'";
-            LOG_TOPIC("7d5df", WARN, arangodb::iresearch::TOPIC) << message;
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
-          }
+      case VPackValueType::Object:
+      case VPackValueType::String: {
+        irs::string_ref value;
+        AnalyzerValueType valueType{AnalyzerValueType::Undefined};
+        if (current.isObject()) {
+          valueType = AnalyzerValueType::Object;
+          value = arangodb::iresearch::ref<char>(current);
+        } else {
+          valueType = AnalyzerValueType::String;
+          value = arangodb::iresearch::getStringRef(current);
         }
-        // we read all numers as doubles because ArangoSearch indexes
-        // all numbers as doubles, so do we there, as out goal is to
-        // return same tokens as will be in index for this specific number
-        numeric_analyzer->reset(current.getNumber<double>());
-        while (numeric_analyzer->next()) {
+
+        if (!pool->accepts(valueType)) {
+          auto const message = "unexpected parameter type '"s + current.typeName() +
+            "' while computing result for function 'TOKENS'";
+          LOG_TOPIC("45a21", WARN, arangodb::iresearch::TOPIC) << message;
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
+        }
+
+        if (!analyzer->reset(value)) {
+          auto const message = "failure to reset arangosearch analyzer: '"s +
+            static_cast<std::string>(name) +
+            "' while computing result for function 'TOKENS'";
+          LOG_TOPIC("45a2d", WARN, arangodb::iresearch::TOPIC) << message;
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+        }
+        while (analyzer->next()) {
           builder.add(
-            arangodb::iresearch::toValuePair(
-              arangodb::basics::StringUtils::encodeBase64(
-                  irs::ref_cast<char>(numeric_token->value))));
+            arangodb::iresearch::toValuePair(irs::ref_cast<char>(token->value)));
         }
-      } else {
-        auto const message = "unexpected parameter type '"s + current.typeName() +
-          "' while computing result for function 'TOKENS'";
-        LOG_TOPIC("45a2e", WARN, arangodb::iresearch::TOPIC) << message;
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
-      }
+      } break;
+      case VPackValueType::Bool:
+        builder.add(
+          arangodb::iresearch::toValuePair(
+            basics::StringUtils::encodeBase64(irs::ref_cast<char>(
+              irs::boolean_token_stream::value(current.getBoolean())))));
+        break;
+      case VPackValueType::Null:
+        builder.add(
+          arangodb::iresearch::toValuePair(
+            basics::StringUtils::encodeBase64(
+            irs::ref_cast<char>(irs::null_token_stream::value_null()))));
+        break;
+      case VPackValueType::Array: // we get there only when empty array encountered
+        TRI_ASSERT(current.isEmptyArray());
+        // empty array in = empty array out
+        builder.openArray();
+        builder.close();
+        break;
+      default:
+        if (current.isNumber()) { // there are many "number" types. To adopt all current and future ones just
+                                  // deal with them all here in generic way
+          if (!numeric_analyzer) {
+            numeric_analyzer = std::make_unique<irs::numeric_token_stream>();
+            numeric_token = irs::get<irs::term_attribute>(*numeric_analyzer);
+            if (ADB_UNLIKELY(!numeric_token)) {
+              auto const message =
+                "failure to retrieve values from arangosearch numeric analyzer "
+                "while computing result for function 'TOKENS'";
+              LOG_TOPIC("7d5df", WARN, arangodb::iresearch::TOPIC) << message;
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+            }
+          }
+          // we read all numers as doubles because ArangoSearch indexes
+          // all numbers as doubles, so do we there, as out goal is to
+          // return same tokens as will be in index for this specific number
+          numeric_analyzer->reset(current.getNumber<double>());
+          while (numeric_analyzer->next()) {
+            builder.add(
+              arangodb::iresearch::toValuePair(
+                arangodb::basics::StringUtils::encodeBase64(
+                    irs::ref_cast<char>(numeric_token->value))));
+          }
+        } else {
+          auto const message = "unexpected parameter type '"s + current.typeName() +
+            "' while computing result for function 'TOKENS'";
+          LOG_TOPIC("45a2e", WARN, arangodb::iresearch::TOPIC) << message;
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
+        }
     }
     // de-stack all closing arrays
     while (!arrayIteratorStack.empty()) {
@@ -667,7 +640,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressi
 
   builder.close();
 
-  return arangodb::aql::AqlValue(std::move(buffer));
+  return aql::AqlValue(std::move(buffer));
 }
 
 void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
@@ -1121,6 +1094,28 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
     FATAL_ERROR_EXIT();
   }
 }
+
+// first - input type,
+// second - output type
+std::tuple<AnalyzerValueType, AnalyzerValueType, AnalyzerPool::StoreFunc>
+getAnalyzerMeta(irs::type_info::type_id type) noexcept {
+  if (type == irs::type<GeoJSONAnalyzer>::id()) {
+    return { AnalyzerValueType::Object, AnalyzerValueType::String, &GeoJSONAnalyzer::store };
+  } else if (type == irs::type<GeoPointAnalyzer>::id()) {
+    return { AnalyzerValueType::Object, AnalyzerValueType::String, &GeoPointAnalyzer::store };
+  }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  if ("iresearch-vpack-analyzer" == type().name()) {
+    return { AnalyzerValueType::Array | AnalyzerValueType::Object,
+             AnalyzerValueType::String,
+             nullptr };
+  }
+#endif
+
+  return { AnalyzerValueType::String, AnalyzerValueType::String, nullptr };
+}
+
 } // namespace
 
 namespace arangodb {
@@ -1207,6 +1202,8 @@ bool AnalyzerPool::operator==(AnalyzerPool const& rhs) const {
   // intentionally do not check revision! Revision does not affects analyzer functionality!
   return _name == rhs._name &&
       _type == rhs._type &&
+      _inputType == rhs._inputType &&
+      _returnType == rhs._returnType &&
       _features == rhs._features &&
       basics::VelocyPackHelper::equal(_properties, rhs._properties, true);
 }
@@ -1252,6 +1249,7 @@ bool AnalyzerPool::init(
         _type = irs::string_ref(_config.c_str() + _properties.byteSize() , type.size());
       }
 
+      std::tie(_inputType, _returnType, _storeFunc) = getAnalyzerMeta(instance->type());
       _features = features;  // store only requested features
       _revision = revision;
       return true;
@@ -2081,7 +2079,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
       {
         irs::flags const extraFeatures = {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()};
 
-        auto pool = std::make_shared<AnalyzerPool>(IDENTITY_ANALYZER_NAME);
+        auto pool = std::make_shared<AnalyzerPool>(IdentityAnalyzer::type_name());
 
 
         if (!pool || !pool->init(irs::type<IdentityAnalyzer>::name(),
@@ -2091,7 +2089,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
           LOG_TOPIC("26de1", WARN, iresearch::TOPIC)
               << "failure creating an arangosearch static analyzer instance "
                  "for name '"
-              << IDENTITY_ANALYZER_NAME << "'";
+              << IdentityAnalyzer::type_name() << "'";
 
           // this should never happen, treat as an assertion failure
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -2167,7 +2165,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     Identity() {
       // find the 'identity' analyzer pool in the static analyzers
       auto& staticAnalyzers = getStaticAnalyzers();
-      auto key = irs::make_hashed_ref(IDENTITY_ANALYZER_NAME, std::hash<irs::string_ref>());
+      auto key = irs::make_hashed_ref(IdentityAnalyzer::type_name(), std::hash<irs::string_ref>());
       auto itr = staticAnalyzers.find(key);
 
       if (itr != staticAnalyzers.end()) {

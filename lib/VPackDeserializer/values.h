@@ -54,6 +54,9 @@ template <const char V[]>
 struct string_value : detail::value_type<const char[]> {
   constexpr static auto value = V;
 };
+struct empty_string_value : detail::value_type<const char[]> {
+  constexpr static auto value = "";
+};
 
 template <typename V>
 struct is_string : std::false_type {};

@@ -19,38 +19,41 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_KLUDGE_H
-#define ARANGOD_IRESEARCH__IRESEARCH_KLUDGE_H 1
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief common place for all kludges and temporary workarounds required for
-///        integration if the IResearch library with ArangoDB
-///        NOTE1: all functionality in this file is not nesesarily optimal
-///        NOTE2: all functionality in this file is to be considered deprecated
-////////////////////////////////////////////////////////////////////////////////
-
-#include "IResearchLinkMeta.h"
+#include "IResearch/IResearchIdentityAnalyzer.h"
+#include "IResearch/IResearchVPackFormat.h"
 
 namespace arangodb {
 namespace iresearch {
-namespace kludge {
 
-void mangleType(std::string& name);
-void mangleAnalyzer(std::string& name);
+/*static*/ bool IdentityAnalyzer::normalize(
+    const irs::string_ref& /*args*/,
+    std::string& out) {
+  out.resize(VPackSlice::emptyObjectSlice().byteSize());
+  std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
+  return true;
+}
 
-void mangleNull(std::string& name);
-void mangleBool(std::string& name);
-void mangleNumeric(std::string& name);
+/*static*/ irs::analysis::analyzer::ptr IdentityAnalyzer::make(
+    irs::string_ref const& /*args*/) {
+  return std::make_shared<IdentityAnalyzer>();
+}
 
-void mangleField(
-  std::string& name,
-  iresearch::FieldMeta::Analyzer const& analyzer);
+IdentityAnalyzer::IdentityAnalyzer() noexcept
+  : irs::analysis::analyzer(irs::type<IdentityAnalyzer>::get()),
+    _empty(true) {
+}
 
-}  // namespace kludge
-}  // namespace iresearch
-}  // namespace arangodb
+irs::attribute* IdentityAnalyzer::get_mutable(irs::type_info::type_id type) noexcept {
+  if (type == irs::type<irs::increment>::id()) {
+    return &_inc;
+  }
 
-#endif
+  return type == irs::type<irs::term_attribute>::id()
+      ? &_term
+      : nullptr;
+}
+
+} // iresearch
+} // arangodb

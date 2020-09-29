@@ -326,6 +326,8 @@ struct Functions {
                           transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue Distance(arangodb::aql::ExpressionContext*,
                            transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue GeoInRange(arangodb::aql::ExpressionContext*,
+                             transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue GeoDistance(arangodb::aql::ExpressionContext*,
                               transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue GeoContains(arangodb::aql::ExpressionContext*,

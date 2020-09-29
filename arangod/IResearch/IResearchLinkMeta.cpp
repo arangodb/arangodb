@@ -94,10 +94,8 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 
 FieldMeta::Analyzer::Analyzer()
-  : _pool(IResearchAnalyzerFeature::identity()) {
-  if (_pool) {
-    _shortName = _pool->name(); // static analyzers are used verbatim
-  }
+  : _pool(IResearchAnalyzerFeature::identity()),
+    _shortName(_pool ? _pool->name() : arangodb::StaticStrings::Empty) {
 }
 
 // -----------------------------------------------------------------------------
@@ -110,13 +108,9 @@ FieldMeta::Analyzer::Analyzer()
   return meta;
 }
 
-FieldMeta::FieldMeta() {
-  Analyzer analyzer; // identity analyzer
-
-  // identity-only tokenization
-  if (analyzer) {
-    _analyzers.emplace_back(std::move(analyzer));
-  }
+FieldMeta::FieldMeta()
+  : _analyzers{Analyzer()}, // identity analyzer
+    _primitiveOffset{1} {
 }
 
 bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
@@ -178,6 +172,7 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
 
     if (!mask->_analyzers) {
       _analyzers = defaults._analyzers;
+      _primitiveOffset = defaults._primitiveOffset;
     } else {
       auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
 
@@ -248,6 +243,23 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
           _analyzers.emplace_back(analyzer, std::move(shortName));
         }
       }
+
+      auto* begin = _analyzers.data();
+      auto* end = _analyzers.data() + _analyzers.size();
+
+      std::sort(begin, end,
+                [](auto const& lhs, auto const& rhs) {
+        return lhs._pool->inputType() < rhs._pool->inputType();
+      });
+
+      // find offset of the first non-primitive analyzer
+      auto* primitiveEnd = std::find_if(
+        begin, end,
+        [](auto const& analyzer) noexcept {
+          return analyzer._pool->accepts(AnalyzerValueType::Array | AnalyzerValueType::Object);
+      });
+
+      _primitiveOffset = std::distance(begin, primitiveEnd);
     }
   }
 
