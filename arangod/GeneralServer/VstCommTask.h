@@ -104,6 +104,16 @@ class VstCommTask final : public GeneralCommTask<T> {
 
  private:
   std::map<uint64_t, Message> _messages;
+
+  // the queue is dynamically sized because we can't guarantee that
+  // only a fixed number of responses are active at the same time.
+  // the reason is that producing responses may happen faster than
+  // fetching responses from the queue. this is done by different threads
+  // and depends on thread scheduling, so it is somewhat random how
+  // fast producing and consuming happen.
+  // effectively the length of the queue is bounded by the fact that the
+  // scheduler queue length is also bounded, so that we will not see
+  // an endless growth of the queue in a single connection.
   boost::lockfree::queue<ResponseItem*> _writeQueue;
 
   std::atomic<bool> _writeLoopActive;  /// is writing
