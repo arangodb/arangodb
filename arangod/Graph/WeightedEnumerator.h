@@ -128,7 +128,7 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
   double weightEdge(arangodb::velocypack::Slice edge) const;
 
   bool expand();
-  bool expandVertex(size_t vertexIndex, size_t depth);
+  void expandVertex(size_t vertexIndex, size_t depth);
   bool expandEdge(NextEdge edge);
 
   static velocypack::StringRef getToVertex(velocypack::Slice edge, velocypack::StringRef from);

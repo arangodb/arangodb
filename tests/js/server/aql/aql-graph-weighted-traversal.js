@@ -8,9 +8,11 @@ const _ = require("underscore");
 
 /*
 
-  1 - 1 > 2 - 10 > 3 -> 5
-   \       /
-     4 -> 6
+  1 -> 2 - 10 -> 3 -> 5
+   \             |
+   1.5         0.5
+     \          |
+      4 - 2 -> 6
 
  */
 function WeightedTraveralsTestSuite() {

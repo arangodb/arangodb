@@ -72,11 +72,14 @@ bool WeightedEnumerator::expandEdge(NextEdge nextEdge) {
   return false;
 }
 
-bool WeightedEnumerator::expandVertex(size_t vertexIndex, size_t depth) {
+void WeightedEnumerator::expandVertex(size_t vertexIndex, size_t depth) {
   PathStep const& currentStep = _schreier[vertexIndex];
   VPackStringRef vertex = currentStep.currentVertexId;
   EdgeCursor* cursor = getCursor(vertex, depth);
-  bool didInsert = false;
+
+  if (depth >= _opts->maxDepth) {
+    return;
+  }
 
   cursor->readAll([&](graph::EdgeDocumentToken&& eid, VPackSlice e, size_t cursorIdx) -> void {
     // transform edge if required
@@ -100,15 +103,10 @@ bool WeightedEnumerator::expandVertex(size_t vertexIndex, size_t depth) {
 
     double forwardWeight = currentStep.accumWeight + weightEdge(e);
     VPackStringRef toVertex = _opts->cache()->persistString(getToVertex(e, vertex));
-
-    if (depth < _opts->maxDepth) {
-      _queue.emplace(vertexIndex, forwardWeight, depth + 1, std::move(eid), toVertex);
-    }
+    _queue.emplace(vertexIndex, forwardWeight, depth + 1, std::move(eid), toVertex);
   });
 
   incHttpRequests(cursor->httpRequests());
-
-  return didInsert;
 }
 
 bool WeightedEnumerator::expand() {

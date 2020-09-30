@@ -421,7 +421,7 @@ TraverserOptions::TraverserOptions(TraverserOptions const& other, bool const all
       uniqueEdges(other.uniqueEdges),
       mode(other.mode),
       weightAttribute(other.weightAttribute),
-      defaultWeight(1.0),
+      defaultWeight(other.defaultWeight),
       vertexCollections(other.vertexCollections),
       edgeCollections(other.edgeCollections) {
   if (!allowAlreadyBuiltCopy) {
@@ -446,7 +446,6 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("minDepth", VPackValue(minDepth));
   builder.add("maxDepth", VPackValue(maxDepth));
   builder.add("parallelism", VPackValue(_parallelism));
-  builder.add("bfs", VPackValue(mode == Mode::BFS));
   builder.add("neighbors", VPackValue(useNeighbors));
 
   switch (uniqueVertices) {
@@ -542,7 +541,6 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
   result.add("minDepth", VPackValue(minDepth));
   result.add("maxDepth", VPackValue(maxDepth));
   result.add("parallelism", VPackValue(_parallelism));
-  result.add("bfs", VPackValue(mode == Mode::BFS));
   result.add("neighbors", VPackValue(useNeighbors));
 
   result.add(VPackValue("uniqueVertices"));

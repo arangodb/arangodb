@@ -89,6 +89,7 @@ void SingleServerTraverser::createEnumerator() {
 
   switch (_opts->mode) {
     case TraverserOptions::Mode::DFS:
+      TRI_ASSERT(!_opts->useNeighbors);
       // normal, depth-first enumerator
       _enumerator = std::make_unique<DepthFirstEnumerator>(this, _opts);
       break;
@@ -102,6 +103,7 @@ void SingleServerTraverser::createEnumerator() {
       }
       break;
     case TraverserOptions::Mode::WEIGHTED:
+      TRI_ASSERT(!_opts->useNeighbors);
       _enumerator = std::make_unique<WeightedEnumerator>(this, _opts);
       break;
   }
