@@ -62,6 +62,8 @@ VstCommTask<T>::VstCommTask(GeneralServer& server, ConnectionInfo info,
       _authenticated(!this->_auth->isActive()),
       _authMethod(rest::AuthenticationMethod::NONE),
       _vstVersion(v) {
+  // arbitrary initial reserve value to save a few memory allocations
+  // in the most common cases.
   _writeQueue.reserve(32);
 }
 
