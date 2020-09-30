@@ -365,10 +365,14 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
     return rv;
   }
   
-  ctx->enterV8Context();
   auto guard = scopeGuard([&ctx] {
     ctx->exitV8Context();
   });
+  if (transaction::V8Context::isEmbedded()) { // do not enter context if already embedded
+    guard.cancel();
+  } else {
+    ctx->enterV8Context();
+  }
 
   try {
     v8::Handle<v8::Value> arguments = params;
