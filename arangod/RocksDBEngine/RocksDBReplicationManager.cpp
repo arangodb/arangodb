@@ -48,7 +48,7 @@ static constexpr size_t maxCollectCount = 32;
 /// @brief create a context repository
 ////////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationManager::RocksDBReplicationManager()
+RocksDBReplicationManager::RocksDBReplicationManager(RocksDBEngine& engine)
     : _lock(), _contexts(), _isShuttingDown(false) {
   _contexts.reserve(64);
 }
@@ -101,8 +101,9 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 //////////////////////////////////////////////////////////////////////////////
 
 RocksDBReplicationContext* RocksDBReplicationManager::createContext(
-    double ttl, SyncerId const syncerId, ServerId const clientId) {
-  auto context = std::make_unique<RocksDBReplicationContext>(ttl, syncerId, clientId);
+    RocksDBEngine& engine, double ttl, SyncerId const syncerId, ServerId const clientId) {
+  auto context =
+      std::make_unique<RocksDBReplicationContext>(engine, ttl, syncerId, clientId);
   TRI_ASSERT(context != nullptr);
   TRI_ASSERT(context->isUsed());
 

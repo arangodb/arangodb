@@ -1665,7 +1665,7 @@ Result IResearchAnalyzerFeature::emplace(
       return res;
     }
 
-    auto* engine = EngineSelectorFeature::ENGINE;
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     bool erase = itr.second; // an insertion took place
     auto cleanup = irs::make_finally([&erase, this, &itr]()->void {
       if (erase) {
@@ -1685,9 +1685,9 @@ Result IResearchAnalyzerFeature::emplace(
       }
 
       // persist only on coordinator and single-server while not in recovery
-      if ((!engine || !engine->inRecovery()) // do not persist during recovery
-          && (ServerState::instance()->isCoordinator() // coordinator
-              || ServerState::instance()->isSingleServer())) {// single-server
+      if ((!engine.inRecovery())  // do not persist during recovery
+          && (ServerState::instance()->isCoordinator()          // coordinator
+              || ServerState::instance()->isSingleServer())) {  // single-server
         res = storeAnalyzer(*pool);
       }
 
@@ -1747,8 +1747,8 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
       return cleanupResult;
     }
   }
-  auto* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine && !engine->inRecovery());
+  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+  TRI_ASSERT(!engine.inRecovery());
   if (!analyzerModificationTrx) {
     // no modification transaction. Just truncate
     auto ctx = transaction::StandaloneContext::Create(vocbase);
@@ -1851,8 +1851,8 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
 
-    auto* engine = EngineSelectorFeature::ENGINE;
-    TRI_ASSERT(engine && !engine->inRecovery());
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+    TRI_ASSERT(!engine.inRecovery());
     bool erase = true;
     std::vector<irs::hashed_string_ref> inserted;
     auto cleanup = irs::make_finally([&erase, &inserted, this]()->void {
@@ -1910,7 +1910,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
             "' type '" + std::string(type) +
             "' properties '" + properties.toString() + "'" };
         }
-        TRI_ASSERT(engine && !engine->inRecovery());
+        TRI_ASSERT(!engine.inRecovery());
         // persist only on coordinator and single-server while not in recovery
         if (ServerState::instance()->isCoordinator() // coordinator
           || ServerState::instance()->isSingleServer()) {// single-server
@@ -2193,10 +2193,10 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref cons
     }
 
     auto& dbFeature = server().getFeature<DatabaseFeature>();
-    auto* engine = EngineSelectorFeature::ENGINE;
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     auto* vocbase = dbFeature.lookupDatabase(database);
     if (!vocbase) {
-      if (engine && engine->inRecovery()) {
+      if (engine.inRecovery()) {
         return {}; // database might not have come up yet
       }
       return {
@@ -2361,13 +2361,13 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
     auto databaseKey = // database key used in '_lastLoad'
       irs::make_hashed_ref(database, std::hash<irs::string_ref>());
-    auto* engine = EngineSelectorFeature::ENGINE;
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     auto itr = _lastLoad.find(databaseKey); // find last update timestamp
 
     auto* vocbase = dbFeature.lookupDatabase(database);
 
     if (!vocbase) {
-      if (engine && engine->inRecovery()) {
+      if (engine.inRecovery()) {
         return {}; // database might not have come up yet
       }
       if (itr != _lastLoad.end()) {
@@ -2383,7 +2383,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
     AnalyzersRevision::Revision loadingRevision{getAnalyzersRevision(*vocbase, true)->getRevision()};
 
-    if (!engine || engine->inRecovery()) {
+    if (engine.inRecovery()) {
       // always load if inRecovery since collection contents might have changed
       // unless on db-server which does not store analyzer definitions in collections
       if (ServerState::instance()->isDBServer()) {
@@ -2819,10 +2819,10 @@ Result IResearchAnalyzerFeature::remove(
         "' while removing arangosearch analyzer '" + std::string(name)+ "'" };
     }
 
-    auto* engine = EngineSelectorFeature::ENGINE;
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
 
     // do not allow persistence while in recovery
-    if (engine && engine->inRecovery()) {
+    if (engine.inRecovery()) {
       return { TRI_ERROR_INTERNAL,
                "failure to remove arangosearch analyzer '" + std::string(name) +
                "' configuration while storage engine in recovery" };
@@ -2987,10 +2987,10 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
                pool.name() + "' configuration with 'null' type" };
     }
 
-    auto* engine = EngineSelectorFeature::ENGINE;
+    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
 
     // do not allow persistence while in recovery
-    if (engine && engine->inRecovery()) {
+    if (engine.inRecovery()) {
       return { TRI_ERROR_INTERNAL,
                "failure to persist arangosearch analyzer '" + pool.name() +
                "' configuration while storage engine in recovery" };

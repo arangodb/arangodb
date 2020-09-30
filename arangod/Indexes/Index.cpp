@@ -163,16 +163,13 @@ std::string defaultIndexName(VPackSlice const& slice) {
   if (type == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
     return arangodb::StaticStrings::IndexNamePrimary;
   } else if (type == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
-    if (arangodb::EngineSelectorFeature::isRocksDB()) {
-      auto fields = slice.get(arangodb::StaticStrings::IndexFields);
-      TRI_ASSERT(fields.isArray());
-      auto firstField = fields.at(0);
-      TRI_ASSERT(firstField.isString());
-      bool isFromIndex = firstField.isEqualString(arangodb::StaticStrings::FromString);
-      return isFromIndex ? arangodb::StaticStrings::IndexNameEdgeFrom
-                         : arangodb::StaticStrings::IndexNameEdgeTo;
-    }
-    return arangodb::StaticStrings::IndexNameEdge;
+    auto fields = slice.get(arangodb::StaticStrings::IndexFields);
+    TRI_ASSERT(fields.isArray());
+    auto firstField = fields.at(0);
+    TRI_ASSERT(firstField.isString());
+    bool isFromIndex = firstField.isEqualString(arangodb::StaticStrings::FromString);
+    return isFromIndex ? arangodb::StaticStrings::IndexNameEdgeFrom
+                       : arangodb::StaticStrings::IndexNameEdgeTo;
   }
 
   std::string idString = arangodb::basics::VelocyPackHelper::getStringValue(
@@ -475,7 +472,7 @@ bool Index::CompareIdentifiers(velocypack::Slice const& lhs, velocypack::Slice c
 
 /// @brief index comparator, used by the coordinator to detect if two index
 /// contents are the same
-bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
+bool Index::Compare(StorageEngine& engine, VPackSlice const& lhs, VPackSlice const& rhs) {
   auto lhsType = lhs.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(lhsType.isString());
 
@@ -484,9 +481,7 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
     return false;
   }
 
-  auto* engine = EngineSelectorFeature::ENGINE;
-
-  return engine && engine->indexFactory().factory(lhsType.copyString()).equal(lhs, rhs);
+  return engine.indexFactory().factory(lhsType.copyString()).equal(lhs, rhs);
 }
 
 /// @brief return a contextual string for logging

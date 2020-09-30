@@ -179,9 +179,9 @@ class FollowerInfo {
 
   bool allowedToWrite() {
     {
-      auto engine = arangodb::EngineSelectorFeature::ENGINE;
-      TRI_ASSERT(engine != nullptr);
-      if (engine->inRecovery()) {
+      auto& engine =
+          _docColl->vocbase().server().getFeature<EngineSelectorFeature>().engine();
+      if (engine.inRecovery()) {
         return true;
       }
       READ_LOCKER(readLocker, _canWriteLock);

@@ -71,7 +71,7 @@ class LogicalDataSourceTest : public ::testing::Test {
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   LogicalDataSourceTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(&engine);
 
     // setup required application features
     features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);  
@@ -90,7 +90,7 @@ class LogicalDataSourceTest : public ::testing::Test {
   }
 
   ~LogicalDataSourceTest() {
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {

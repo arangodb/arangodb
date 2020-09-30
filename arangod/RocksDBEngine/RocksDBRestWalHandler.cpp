@@ -141,7 +141,7 @@ void RocksDBRestWalHandler::flush() {
     res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector, maxWaitTime);
   } else {
     if (waitForSync) {
-      EngineSelectorFeature::ENGINE->flushWal();
+      server().getFeature<EngineSelectorFeature>().engine().flushWal();
     }
   }
 

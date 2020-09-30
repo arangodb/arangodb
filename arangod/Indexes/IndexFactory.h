@@ -168,7 +168,7 @@ class IndexFactory {
   static IndexId validateSlice(arangodb::velocypack::Slice info,
                                bool generateKey, bool isClusterConstructor);
 
- private:
+ protected:
   application_features::ApplicationServer& _server;
   std::unordered_map<std::string, IndexTypeFactory const*> _factories;
   std::unique_ptr<IndexTypeFactory> _invalid;

@@ -1144,7 +1144,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 
   // now we can fetch the complete chunk information from the leader
   try {
-    return EngineSelectorFeature::ENGINE->handleSyncKeys(*this, *coll, keysId.copyString());
+    return coll->vocbase().server().getFeature<EngineSelectorFeature>().engine().handleSyncKeys(
+        *this, *coll, keysId.copyString());
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {

@@ -287,7 +287,8 @@ class Index {
 
   /// @brief index comparator, used by the coordinator to detect if two index
   /// contents are the same
-  static bool Compare(velocypack::Slice const& lhs, velocypack::Slice const& rhs);
+  static bool Compare(StorageEngine&, velocypack::Slice const& lhs,
+                      velocypack::Slice const& rhs);
 
   /// @brief whether or not the index is persistent (storage on durable media)
   /// or not (RAM only)

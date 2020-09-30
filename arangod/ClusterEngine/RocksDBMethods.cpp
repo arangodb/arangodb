@@ -41,13 +41,15 @@ namespace rocksdb {
 /// @brief rotate the active journals for the collection on all DBServers
 ////////////////////////////////////////////////////////////////////////////////
 
-Result recalculateCountsOnAllDBServers(std::string const& dbname, std::string const& collname) {
-  ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
-  if (!ce->isRocksDB()) {
+Result recalculateCountsOnAllDBServers(application_features::ApplicationServer& server,
+                                       std::string const& dbname,
+                                       std::string const& collname) {
+  ClusterEngine& ce =
+      (server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>());
+  if (!ce.isRocksDB()) {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
 
-  auto& server = ce->server();
   // Set a few variables needed for our work:
   NetworkFeature const& nf = server.getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();

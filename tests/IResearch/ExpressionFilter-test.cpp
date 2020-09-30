@@ -257,7 +257,7 @@ struct IResearchExpressionFilterTest
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   IResearchExpressionFilterTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(&engine);
 
     arangodb::tests::init(true);
 
@@ -315,7 +315,7 @@ struct IResearchExpressionFilterTest
   ~IResearchExpressionFilterTest() {
     system.reset();  // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {

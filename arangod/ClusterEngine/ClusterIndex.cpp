@@ -210,7 +210,9 @@ bool ClusterIndex::hasCoveringIterator() const {
 
 bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
   // TODO implement faster version of this
-  return Index::Compare(_info.slice(), info);
+  auto& engine =
+      _collection.vocbase().server().getFeature<EngineSelectorFeature>().engine();
+  return Index::Compare(engine, _info.slice(), info);
 }
 
 Index::FilterCosts ClusterIndex::supportsFilterCondition(

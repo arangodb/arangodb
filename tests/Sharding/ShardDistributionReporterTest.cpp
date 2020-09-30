@@ -182,7 +182,7 @@ class ShardDistributionReporterTest
     aliases[dbserver1] = dbserver1short;
     aliases[dbserver2] = dbserver2short;
     aliases[dbserver3] = dbserver3short;
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
+    server.getFeature<EngineSelectorFeature>().setEngineTesting(&engine);
 
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
                           false);  // required for TRI_vocbase_t::dropCollection(...)

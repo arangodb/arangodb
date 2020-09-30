@@ -191,8 +191,8 @@ RestStatus RestStatusHandler::executeOverview() {
   result.add("license", VPackValue("community"));
 #endif
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  result.add("engine", VPackValue(engine->typeName()));
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  result.add("engine", VPackValue(engine.typeName()));
 
   StringBuffer buffer;
 

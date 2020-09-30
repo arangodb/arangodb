@@ -64,7 +64,7 @@ class FlushFeatureTest
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   FlushFeatureTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(&engine);
 
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),
                           false);  // required for ClusterFeature::prepare()
@@ -104,7 +104,7 @@ class FlushFeatureTest
       f.first.unprepare();
     }
 
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
   }
 };
 

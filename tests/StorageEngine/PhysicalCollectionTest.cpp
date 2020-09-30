@@ -62,7 +62,7 @@ class PhysicalCollectionTest
   std::vector<std::reference_wrapper<arangodb::application_features::ApplicationFeature>> features;
 
   PhysicalCollectionTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(&engine);
 
     // setup required application features
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>());  // required for VocbaseContext
@@ -80,7 +80,7 @@ class PhysicalCollectionTest
   }
 
   ~PhysicalCollectionTest() {
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
 
     for (auto& f : features) {
       f.get().unprepare();

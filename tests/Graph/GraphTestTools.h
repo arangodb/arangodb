@@ -74,7 +74,7 @@ struct GraphTestSetup
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   GraphTestSetup() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
+    server.getFeature<EngineSelectorFeature>().setEngineTesting(&engine);
     arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
     arangodb::ClusterEngine::Mocking = true;
     arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
@@ -111,7 +111,7 @@ struct GraphTestSetup
   ~GraphTestSetup() {
     system.reset();  // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+    server.getFeature<EngineSelectorFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {

@@ -52,6 +52,7 @@ class Snapshot;
 
 namespace arangodb {
 class LogicalCollection;
+class RocksDBEngine;
 
 namespace basics {
 class StringBuffer;
@@ -123,7 +124,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  RocksDBReplicationContext(double ttl, SyncerId syncerId, ServerId clientId);
+  RocksDBReplicationContext(RocksDBEngine&, double ttl, SyncerId syncerId, ServerId clientId);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const;  // batchId
@@ -229,6 +230,7 @@ class RocksDBReplicationContext {
   void releaseDumpIterator(CollectionIterator*);
 
  private:
+  RocksDBEngine& _engine;
   TRI_voc_tick_t const _id;  // batch id
   mutable Mutex _contextLock;
   SyncerId const _syncerId;
