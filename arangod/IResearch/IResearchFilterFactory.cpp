@@ -399,8 +399,8 @@ Result getAnalyzerByName(
   }
   auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
 
-  shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
-      analyzerId, ctx.trx->vocbase(), false);  // args
+  analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),	
+                                 ctx.trx->state()->analyzersRevision());
 
   if (!analyzer) {
     return {
@@ -409,6 +409,10 @@ Result getAnalyzerByName(
           .append(analyzerId.c_str(), analyzerId.size()).append("'")
     };
   }
+
+  shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
+    analyzerId, ctx.trx->vocbase(), false);
+
   return {};
 }
 
