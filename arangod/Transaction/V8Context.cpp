@@ -88,7 +88,6 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
   
   if (!_currentTransaction) {
     _currentTransaction = transaction::Context::createState(options);
-    enterV8Context();
     responsibleForCommit = true;
   } else {
     if (!isEmbeddable()) {
