@@ -918,7 +918,7 @@ elseif (CMAKE_COMPILER_IS_CLANG)
   set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
 
   if(APPLE AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "12.1")
-    # With the introduction of clang version 12.0.0 (clang-1200.0.32.2) the warning "range-loop-analysis" is now
+    # With the introduction of apple clang version 12.0.0 (clang-1200.0.32.2) the warning "range-loop-analysis" is now
     # enabled by default or changed analysis behaviour. The compiler now complains about "wrong" usage of
     # VPackObjectIterator and VPackArrayIterator - which is not the case.
     #
