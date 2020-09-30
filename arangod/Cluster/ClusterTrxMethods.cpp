@@ -310,6 +310,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
   }
 
   std::vector<Future<network::Response>> requests;
+  requests.reserve(leaders.size());
   for (ServerID const& leader : leaders) {
     if (state.knowsServer(leader)) {
       continue;  // already send a begin transaction there
