@@ -451,7 +451,7 @@ weekday::weekday(unsigned wd) NOEXCEPT
 CONSTCD11
 inline
 weekday::weekday(date::weekday wd) NOEXCEPT
-    : wd_(to_iso_encoding(static_cast<unsigned>(wd)))
+    : wd_(wd.iso_encoding())
     {}
 
 CONSTCD11
@@ -607,7 +607,10 @@ inline
 year
 year::min() NOEXCEPT
 {
-    using namespace std::chrono;
+    using std::chrono::seconds;
+    using std::chrono::minutes;
+    using std::chrono::hours;
+    using std::chrono::duration_cast;
     static_assert(sizeof(seconds)*CHAR_BIT >= 41, "seconds may overflow");
     static_assert(sizeof(hours)*CHAR_BIT >= 30, "hours may overflow");
     return sizeof(minutes)*CHAR_BIT < 34 ?
@@ -620,7 +623,10 @@ inline
 year
 year::max() NOEXCEPT
 {
-    using namespace std::chrono;
+    using std::chrono::seconds;
+    using std::chrono::minutes;
+    using std::chrono::hours;
+    using std::chrono::duration_cast;
     static_assert(sizeof(seconds)*CHAR_BIT >= 41, "seconds may overflow");
     static_assert(sizeof(hours)*CHAR_BIT >= 30, "hours may overflow");
     return sizeof(minutes)*CHAR_BIT < 34 ?
@@ -713,7 +719,7 @@ inline
 std::basic_ostream<CharT, Traits>&
 operator<<(std::basic_ostream<CharT, Traits>& os, const year& y)
 {
-    date::detail::save_stream<CharT, Traits> _(os);
+    date::detail::save_ostream<CharT, Traits> _(os);
     os.fill('0');
     os.flags(std::ios::dec | std::ios::internal);
     os.width(4 + (y < year{0}));
@@ -875,7 +881,7 @@ inline
 std::basic_ostream<CharT, Traits>&
 operator<<(std::basic_ostream<CharT, Traits>& os, const weeknum& wn)
 {
-    date::detail::save_stream<CharT, Traits> _(os);
+    date::detail::save_ostream<CharT, Traits> _(os);
     os << 'W';
     os.fill('0');
     os.flags(std::ios::dec | std::ios::right);
