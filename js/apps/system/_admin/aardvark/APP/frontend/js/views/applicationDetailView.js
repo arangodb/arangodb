@@ -192,7 +192,7 @@
             } else if (result) {
               info = (
                 '<p>Script results:</p>' +
-                '<pre>' + JSON.stringify(result, null, 2) + '</pre>'
+                '<pre>' + JSON.stringify(arangoHelper.escapeHtml(result), null, 2) + '</pre>'
               );
             } else {
               info = '<p>The script ran successfully.</p>';
