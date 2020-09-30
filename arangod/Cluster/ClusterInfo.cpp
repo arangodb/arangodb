@@ -4898,7 +4898,7 @@ void ClusterInfo::invalidateCurrentMappings() {
 /// @brief get current "Plan" structure
 //////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
+std::unordered_map<std::string, std::shared_ptr<VPackBuilder>>
 ClusterInfo::getPlan(uint64_t& index, std::unordered_set<std::string> const& dirty) {
   if (!_planProt.isValid) {
     loadPlan();
