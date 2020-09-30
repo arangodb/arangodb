@@ -135,7 +135,7 @@ class StoreAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
     return {};
   }
   auto update(VPackSlice v) -> greenspun::EvalResultT<UpdateResult> override {
-    this->set(std::move(v));
+    this->set(v);
     return UpdateResult::CHANGED;
   }
   auto clear() -> greenspun::EvalResult override {

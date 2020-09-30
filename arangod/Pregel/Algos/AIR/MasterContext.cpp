@@ -25,6 +25,7 @@
 #include <Logger/LogMacros.h>
 #include <Logger/Logger.h>
 #include <Pregel/Algos/AIR/Greenspun/Extractor.h>
+#include <Basics/ScopeGuard.h>
 
 #include "MasterContext.h"
 

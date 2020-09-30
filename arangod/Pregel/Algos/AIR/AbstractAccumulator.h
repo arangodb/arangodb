@@ -120,7 +120,12 @@ class Accumulator : public AccumulatorBase {
     } else if constexpr (std::is_arithmetic_v<T>) {
       this->set(s.getNumericValue<T>());
       return {};
+    } else if constexpr (std::is_same_v<VPackSlice, T>) {
+      return this->set(s);
+    } else if constexpr (std::is_same_v<std::string, T>) {
+      return this->set(s.copyString());
     } else {
+      static_assert(always_false_v<T>);
       return greenspun::EvalError("set by slice not implemented");
     }
   }
