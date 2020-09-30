@@ -599,7 +599,7 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
       }
     }
     catch (...) {
-      LOG_TOPIC("924dc", WARN, Logger::REQUESTS)
+      LOG_TOPIC("924dd", WARN, Logger::REQUESTS)
           << "was not able to queue response" << (void*)this;
       // we are overloaded close stream
       asio_ns::post(this->_protocol->context.io_context,
