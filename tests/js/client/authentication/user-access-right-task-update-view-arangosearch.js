@@ -58,60 +58,24 @@ const colLevel = helper.colLevel;
 
 const arango = require('internal').arango;
 for (let l of rightLevels) {
-    systemLevel[l] = new Set();
-    dbLevel[l] = new Set();
-    colLevel[l] = new Set();
+  systemLevel[l] = new Set();
+  dbLevel[l] = new Set();
+  colLevel[l] = new Set();
 }
 
-const wait = (keySpaceId, key) => {
-  for (let i = 0; i < 200; i++) {
-    if (getKey(keySpaceId, key)) {
-      break;
-    }
-    require('internal').wait(0.1);
-  }
-};
-
-const createKeySpace = (keySpaceId) => {
-    return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
-};
-
-const dropKeySpace = (keySpaceId) => {
-    executeJS(`global.KEYSPACE_DROP('${keySpaceId}');`);
-};
-
-const getKey = (keySpaceId, key) => {
-    return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
-};
-
-const setKey = (keySpaceId, name) => {
-    return executeJS(`global.KEY_SET('${keySpaceId}', '${name}', false);`);
-};
-
-const executeJS = (code) => {
-    let httpOptions = pu.makeAuthorizationHeaders({
-      username: 'root',
-      password: ''
-    });
-    httpOptions.method = 'POST';
-    httpOptions.timeout = 1800;
-    httpOptions.returnBodyOnError = true;
-    return download(arango.getEndpoint().replace('tcp', 'http') + `/_db/${dbName}/_admin/execute?returnAsJSON=true`,
-                    code, httpOptions);
-};
-
+let { wait, dropKeySpace, getKey, setKey } = require('@arangodb/testutils/client-utils.js');
 
 function hasIResearch (db) {
-    return !(db._views() === 0); // arangosearch views are not supported
+  return !(db._views() === 0); // arangosearch views are not supported
 }
 let name = "";
 function rootTestCollection (colName, switchBack = true) {
-    helper.switchUser('root', dbName);
-    let col = db._collection(colName);
-    if (switchBack) {
-        helper.switchUser(name, dbName);
-    }
-    return col !== null;
+  helper.switchUser('root', dbName);
+  let col = db._collection(colName);
+  if (switchBack) {
+    helper.switchUser(name, dbName);
+  }
+  return col !== null;
 };
 
 function rootCreateCollection (colName) {
@@ -237,7 +201,6 @@ function UserRightsManagement(name) {
     setUpAll: function() {
       helper.switchUser(name, dbName);
       db._useDatabase(dbName);
-      assertEqual(createKeySpace(keySpaceId), true, 'keySpace creation failed for user: ' + name);
       rootCreateCollection(testCol1Name);
       rootCreateCollection(testCol2Name);
       rootPrepareCollection(testCol1Name);
@@ -309,18 +272,18 @@ if (hasIResearch(db)) {
                       const db = require('@arangodb').db;
 
                       db._view('${testViewName}').rename('${testViewRename}');
-                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', true);
                     } catch (e) {
                       //FIXME: remove IF block after renaming will work in cluster
                       if (e.errorNum === 1470) {
-                        global.KEY_SET('${keySpaceId}', '${name}_no_cluster_rename', true);
-                        global.KEY_SET('${keySpaceId}', '${name}_status', true);
+                        global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_no_cluster_rename', true);
+                        global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', true);
                       } else {
-                        global.KEY_SET('${keySpaceId}', '${name}_no_cluster_rename', false);
-                        global.KEY_SET('${keySpaceId}', '${name}_status', false);
+                        global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_no_cluster_rename', false);
+                        global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', false);
                       }
                     } finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}', true);
                     }
                   })(params);`
           };
@@ -354,11 +317,11 @@ if (hasIResearch(db)) {
                     try {
                       const db = require('@arangodb').db;
                       db._view('${testViewName}').properties({ "cleanupIntervalStep": 1 }, true);
-                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', true);
                     } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', false);
                     }finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}', true);
                     }
                   })(params);`
           };
@@ -396,11 +359,11 @@ if (hasIResearch(db)) {
                     try {
                       const db = require('@arangodb').db;
                       db._view('${testViewName}').properties({ "cleanupIntervalStep": 1 }, false);
-                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', true);
                     } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', false);
                     }finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}', true);
                     }
                   })(params);`
           };
@@ -439,11 +402,11 @@ if (hasIResearch(db)) {
                     try {
                       const db = require('@arangodb').db;
                       db._view('${testViewName}').properties({}, false);
-                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', true);
                     } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', false);
                     }finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}', true);
                     }
                   })(params);`
           };
@@ -483,11 +446,11 @@ if (hasIResearch(db)) {
                     try {
                       const db = require('@arangodb').db;
                       db._view('${testViewName}').properties({ links: { ['${testCol1Name}']: { includeAllFields: true, analyzers: ['text_de','text_en'] } } }, true);
-                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', true);
                     } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', false);
                     }finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}', true);
                     }
                   })(params);`
           };

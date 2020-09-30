@@ -73,7 +73,6 @@
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-ttl.h"
 #include "V8Server/v8-user-functions.h"
-#include "V8Server/v8-user-structures.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/vocbase.h"
 
@@ -1508,7 +1507,6 @@ V8Context* V8DealerFeature::buildContext(TRI_vocbase_t* vocbase, size_t id) {
       }
 
       TRI_InitV8UserFunctions(isolate, localContext);
-      TRI_InitV8UserStructures(isolate, localContext);
       TRI_InitV8Buffer(isolate);
       TRI_InitV8Utils(isolate, localContext, _startupDirectory, modules);
       TRI_InitV8ServerUtils(isolate);

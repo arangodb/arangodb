@@ -44,6 +44,9 @@ class FoxxQueuesFeature final : public application_features::ApplicationFeature 
     return _pollInterval;
   }
 
+  /// @brief clears the per-database cache for Foxx queues processing
+  void clearCache(std::string const& dbName);
+
  private:
   double _pollInterval;
   bool _enabled;

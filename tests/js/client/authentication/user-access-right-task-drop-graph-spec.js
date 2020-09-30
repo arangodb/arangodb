@@ -60,41 +60,7 @@ for (let l of rightLevels) {
   colLevel[l] = new Set();
 }
 
-const wait = (keySpaceId, key) => {
-  for (let i = 0; i < 200; i++) {
-    if (getKey(keySpaceId, key)) break;
-    require('internal').wait(0.1);
-  }
-};
-
-const createKeySpace = (keySpaceId) => {
-  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
-};
-
-const setKeySpace = (keySpaceId, name) => {
-  return executeJS(`global.KEY_SET('${keySpaceId}', '${name}', false);`);
-};
-
-const dropKeySpace = (keySpaceId) => {
-  executeJS(`global.KEYSPACE_DROP('${keySpaceId}');`);
-};
-
-const getKey = (keySpaceId, key) => {
-  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
-};
-
-const executeJS = (code) => {
-  let httpOptions = pu.makeAuthorizationHeaders({
-    username: 'root',
-    password: ''
-  });
-  httpOptions.method = 'POST';
-  httpOptions.timeout = 1800;
-  httpOptions.returnBodyOnError = true;
-  return download(arango.getEndpoint().replace('tcp', 'http') + `/_db/${dbName}/_admin/execute?returnAsJSON=true`,
-    code,
-    httpOptions);
-};
+let { wait, dropKeySpace, getKey, setKey } = require('@arangodb/testutils/client-utils.js');
 
 helper.switchUser('root', '_system');
 helper.removeAllUsers();
@@ -127,7 +93,6 @@ describe('User Rights Management', () => {
         describe(`user ${name}`, () => {
           before(() => {
             helper.switchUser(name, dbName);
-            expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
           });
 
           after(() => {
@@ -216,7 +181,7 @@ describe('User Rights Management', () => {
 
               it('graph', () => {
                 expect(!rootTestGraph()).to.equal(false, 'Precondition failed, the graph still not exists');
-                setKeySpace(keySpaceId, name);
+                setKey(keySpaceId, name);
                 const taskId = 'task_create_graph_' + name;
                 const task = {
                   id: taskId,
@@ -225,7 +190,7 @@ describe('User Rights Management', () => {
                     try {
                       require('@arangodb/general-graph')._drop('${testGraphName}', true);
                     } finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}', true);
                     }
                   })(params);`
                 };
@@ -267,7 +232,7 @@ describe('User Rights Management', () => {
                 expect(rootTestGraph()).to.equal(true, 'Precondition failed, the graph still not exists');
                 expect(rootTestCollection(testEdgeColName)).to.equal(true, 'Precondition failed, the edge collection still not exists');
                 expect(rootTestCollection(testVertexColName)).to.equal(true, 'Precondition failed, the vertex collection still not exists');
-                setKeySpace(keySpaceId, name + '_specified_collection_access');
+                setKey(keySpaceId, name + '_specified_collection_access');
                 const taskId = 'task_create_graph_specified_collection_access' + name;
                 const task = {
                   id: taskId,
@@ -276,7 +241,7 @@ describe('User Rights Management', () => {
                     try {
                       require('@arangodb/general-graph')._drop('${testGraphName}', true);
                     } finally {
-                      global.KEY_SET('${keySpaceId}', '${name}_specified_collection_access', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_specified_collection_access', true);
                     }
                   })(params);`
                 };

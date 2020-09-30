@@ -56,41 +56,7 @@ for (let l of rightLevels) {
   colLevel[l] = new Set();
 }
 
-const wait = (keySpaceId, key) => {
-  for (let i = 0; i < 200; i++) {
-    if (getKey(keySpaceId, key)) break;
-    require('internal').wait(0.1);
-  }
-};
-
-const createKeySpace = (keySpaceId) => {
-  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
-};
-
-const dropKeySpace = (keySpaceId) => {
-  executeJS(`global.KEYSPACE_DROP('${keySpaceId}');`);
-};
-
-const getKey = (keySpaceId, key) => {
-  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
-};
-
-const setKey = (keySpaceId, name) => {
-  return executeJS(`global.KEY_SET('${keySpaceId}', '${name}', false);`);
-};
-
-const executeJS = (code) => {
-  let httpOptions = pu.makeAuthorizationHeaders({
-    username: 'root',
-    password: ''
-  });
-  httpOptions.method = 'POST';
-  httpOptions.timeout = 1800;
-  httpOptions.returnBodyOnError = true;
-  return download(arango.getEndpoint().replace('tcp', 'http') + '/_admin/execute?returnAsJSON=true',
-    code,
-    httpOptions);
-};
+let { waitSystem, dropKeySpaceSystem, getKeySystem, setKeySystem } = require('@arangodb/testutils/client-utils.js');
 
 helper.removeAllUsers();
 helper.generateAllUsers();
@@ -111,11 +77,10 @@ describe('User Rights Management', () => {
         describe(`user ${name}`, () => {
           before(() => {
             helper.switchUser(name);
-            expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
           });
 
           after(() => {
-            dropKeySpace(keySpaceId);
+            dropKeySpaceSystem(keySpaceId);
           });
 
           describe('administrate on server level', () => {
@@ -160,7 +125,7 @@ describe('User Rights Management', () => {
             });
 
             it('update a user', () => {
-              setKey(keySpaceId, name);
+              setKeySystem(keySpaceId, name);
               const taskId = 'task_drop_user_' + name;
               const task = {
                 id: taskId,
@@ -168,21 +133,21 @@ describe('User Rights Management', () => {
                 command: `(function (params) {
                   try {
                     require('@arangodb/users').grantDatabase('${testUser}', '_system', 'rw');
-                    global.KEY_SET('${keySpaceId}', '${name}_status', true);
+                    global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', true);
                   } catch (e) {
-                    global.KEY_SET('${keySpaceId}', '${name}_status', false);
+                    global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', false);
                   } finally {
-                    global.KEY_SET('${keySpaceId}', '${name}', true);
+                    global.GLOBAL_CACHE_SET('${keySpaceId}-${name}', true);
                   }
                 })(params);`
               };
               if (systemLevel['rw'].has(name)) {
                 tasks.register(task);
-                wait(keySpaceId, name);
+                waitSystem(keySpaceId, name);
                 if (systemLevel['rw'].has(name)) {
-                  expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} was not able to update a user with sufficient rights`);
+                  expect(getKeySystem(keySpaceId, `${name}_status`)).to.equal(true, `${name} was not able to update a user with sufficient rights`);
                 } else {
-                  expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} was able to update a user with insufficient rights.`);
+                  expect(getKeySystem(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} was able to update a user with insufficient rights.`);
                 }
               } else {
                 try {

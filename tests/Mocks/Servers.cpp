@@ -33,6 +33,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/files.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/AgencyCache.h"
@@ -514,7 +515,7 @@ TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
   agencyCreateDatabase(name);
   // Now we must run a maintenance action to create the database locally,
   // unless it is the system database, in which case this does not work:
-  if (name != "_system") {
+  if (name != StaticStrings::SystemDatabase) {
     maintenance::ActionDescription ad(
       {{std::string(maintenance::NAME), std::string(maintenance::CREATE_DATABASE)},
        {std::string(maintenance::DATABASE), std::string(name)}},
@@ -528,7 +529,7 @@ TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
   auto vocbase = databaseFeature.lookupDatabase(name);
   TRI_ASSERT(vocbase != nullptr);
   return vocbase;
-};
+}
 
 void MockDBServer::dropDatabase(std::string const& name) {
   agencyDropDatabase(name);

@@ -56,41 +56,7 @@ for (let l of rightLevels) {
   colLevel[l] = new Set();
 }
 
-const wait = (keySpaceId, key) => {
-  for (let i = 0; i < 200; i++) {
-    if (getKey(keySpaceId, key)) break;
-    require('internal').wait(0.1);
-  }
-};
-
-const createKeySpace = (keySpaceId) => {
-  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
-};
-
-const setKeySpace = (keySpaceId, name) => {
-  return executeJS(`global.KEY_SET('${keySpaceId}', '${name}', false);`);
-};
-
-const dropKeySpace = (keySpaceId) => {
-  executeJS(`global.KEYSPACE_DROP('${keySpaceId}');`);
-};
-
-const getKey = (keySpaceId, key) => {
-  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
-};
-
-const executeJS = (code) => {
-  let httpOptions = pu.makeAuthorizationHeaders({
-    username: 'root',
-    password: ''
-  });
-  httpOptions.method = 'POST';
-  httpOptions.timeout = 1800;
-  httpOptions.returnBodyOnError = true;
-  return download(arango.getEndpoint().replace('tcp', 'http') + `/_db/${dbName}/_admin/execute?returnAsJSON=true`,
-    code,
-    httpOptions);
-};
+let { wait, dropKeySpace, getKey, setKey } = require('@arangodb/testutils/client-utils.js');
 
 helper.switchUser('root', '_system');
 helper.removeAllUsers();
@@ -121,7 +87,6 @@ describe('User Rights Management', () => {
         describe(`user ${name}`, () => {
           before(() => {
             helper.switchUser(name, dbName);
-            expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
           });
 
           after(() => {
@@ -154,7 +119,7 @@ describe('User Rights Management', () => {
 
               it('by key', () => {
                 expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist');
-                setKeySpace(keySpaceId, name + '_update');
+                setKey(keySpaceId, name + '_update');
                 const taskIdUpdate = 'task_collection_level_update_by_key' + name;
                 const taskUpdate = {
                   id: taskIdUpdate,
@@ -163,15 +128,15 @@ describe('User Rights Management', () => {
                     try {
                       const db = require('@arangodb').db;
                       db._collection('${colName}').update('123', {foo: 'bar'});
-                      global.KEY_SET('${keySpaceId}', '${name}_update_status', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_update_status', true);
                     } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_update_status', false);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_update_status', false);
                     }finally {
-                      global.KEY_SET('${keySpaceId}', '${name}_update', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_update', true);
                     }
                   })(params);`
                 };
-                setKeySpace(keySpaceId, name + '_replace');
+                setKey(keySpaceId, name + '_replace');
                 const taskIdReplace = 'task_collection_level_replace_by_key' + name;
                 const taskReplace = {
                   id: taskIdReplace,
@@ -180,11 +145,11 @@ describe('User Rights Management', () => {
                     try {
                       const db = require('@arangodb').db;
                       db._collection('${colName}').replace('123', {foo: 'baz'});
-                      global.KEY_SET('${keySpaceId}', '${name}_replace_status', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_replace_status', true);
                     } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_replace_status', false);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_replace_status', false);
                     }finally {
-                      global.KEY_SET('${keySpaceId}', '${name}_replace', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_replace', true);
                     }
                   })(params);`
                 };
@@ -241,7 +206,7 @@ describe('User Rights Management', () => {
                 let q = `FOR x IN ${colName} UPDATE x WITH {foo: 'bar'} IN ${colName} RETURN NEW`;
                 let q2 = `FOR x IN ${colName} REPLACE x WITH {foo: 'baz'} IN ${colName} RETURN NEW`;
                 const taskIdUpdate = 'task_collection_level_update_by_aql' + name;
-                setKeySpace(keySpaceId, name + '_update');
+                setKey(keySpaceId, name + '_update');
                 const taskUpdate = {
                   id: taskIdUpdate,
                   name: taskIdUpdate,
@@ -249,16 +214,16 @@ describe('User Rights Management', () => {
                     try {
                       const db = require('@arangodb').db;
                       db._query("${q}");
-                      global.KEY_SET('${keySpaceId}', '${name}_update_status', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_update_status', true);
                     } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_update_status', false);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_update_status', false);
                     }finally {
-                      global.KEY_SET('${keySpaceId}', '${name}_update', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_update', true);
                     }
                   })(params);`
                 };
                 const taskIdReplace = 'task_collection_level_replace_by_aql' + name;
-                setKeySpace(keySpaceId, name + '_replace');
+                setKey(keySpaceId, name + '_replace');
                 const taskReplace = {
                   id: taskIdReplace,
                   name: taskIdReplace,
@@ -266,11 +231,11 @@ describe('User Rights Management', () => {
                     try {
                       const db = require('@arangodb').db;
                       db._query("${q2}");
-                      global.KEY_SET('${keySpaceId}', '${name}_replace_status', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_replace_status', true);
                     } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_replace_status', false);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_replace_status', false);
                     } finally {
-                      global.KEY_SET('${keySpaceId}', '${name}_replace', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_replace', true);
                     }
                   })(params);`
                 };

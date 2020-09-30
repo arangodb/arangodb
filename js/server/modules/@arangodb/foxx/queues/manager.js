@@ -160,8 +160,6 @@ const resetDeadJobs = function () {
         // Now the jobs are reset
         if (!isCluster) {
           queues._updateQueueDelay();
-        } else {
-          global.KEYSPACE_CREATE('queue-control', 1, true);
         }
         done = true;
       } catch(e) {
@@ -184,8 +182,10 @@ const resetDeadJobs = function () {
 };
 
 const resetDeadJobsOnFirstRun = function () {
-  const foxxmasterInitialized
-    = global.KEY_GET('queue-control', 'foxxmasterInitialized') || 0;
+  let [foxxmasterInitialized, cacheVersion] = global.GLOBAL_CACHE_GET('foxxmasterInitialized');
+  if (!foxxmasterInitialized) {
+    foxxmasterInitialized = 0;
+  }
   const foxxmasterSince = global.ArangoServerState.getFoxxmasterSince();
 
   if (foxxmasterSince <= 0) {
@@ -204,7 +204,8 @@ const resetDeadJobsOnFirstRun = function () {
   if (foxxmasterInitialized < foxxmasterSince) {
     // We've not run this (successfully) since we got to be Foxxmaster.
     resetDeadJobs();
-    global.KEY_SET('queue-control', 'foxxmasterInitialized', foxxmasterSince);
+    cacheVersion = global.GLOBAL_CACHE_NEW_VERSION();
+    global.GLOBAL_CACHE_SET('foxxmasterInitialized', foxxmasterSince, cacheVersion);
   }
 };
 
@@ -231,35 +232,25 @@ exports.manage = function () {
     global.ArangoServerState.setFoxxmasterQueueupdate(false);
   }
 
-  var initialDatabase = db._name();
-  var now = Date.now();
+  const initialDatabase = db._name();
 
-  // fetch list of databases from cache
-  var databases = global.KEY_GET('queue-control', 'databases') || [];
-  var expires = global.KEY_GET('queue-control', 'databases-expire') || 0;
-
-  if (expires < now || databases.length === 0) {
-    databases = db._databases();
-    global.KEY_SET('queue-control', 'databases', databases);
-    // make list of databases expire in 30 seconds from now
-    global.KEY_SET('queue-control', 'databases-expire', Date.now() + 30 * 1000);
-  }
-
-  databases.forEach(function (database) {
+  db._databases().forEach(function (database) {
     try {
       db._useDatabase(database);
-      global.KEYSPACE_CREATE('queue-control', 1, true);
-      var delayUntil = global.KEY_GET('queue-control', 'delayUntil') || 0;
-
+      let [delayUntil, cacheVersion] = global.GLOBAL_CACHE_GET('foxxqueues-delayUntil');
+      
       if (delayUntil === -1 || delayUntil > Date.now()) {
         return;
       }
 
-      var queues = db._collection('_queues');
-      var jobs = db._collection('_jobs');
+      let queues = db._collection('_queues');
+      let jobs = db._collection('_jobs');
 
       if (!queues || !jobs || !queues.count() || !jobs.count()) {
-        global.KEY_SET('queue-control', 'delayUntil', -1);
+        // collection(s) not present or empty. exclude this database from queue
+        // processing until this changes.
+        cacheVersion = global.GLOBAL_CACHE_NEW_VERSION();
+        global.GLOBAL_CACHE_SET('foxxqueues-delayUntil', -1, cacheVersion);
       } else {
         runInDatabase();
       }
@@ -296,7 +287,6 @@ exports.run = function () {
   queues.create('default');
 
   // wakeup/poll interval for Foxx queues
-  global.KEYSPACE_CREATE('queue-control', 1, true);
   if (!isCluster) {
     resetDeadJobs();
   }

@@ -44,9 +44,9 @@
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+#include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
-#include "V8Server/v8-user-structures.h"
 #include "VocBase/Methods/AqlUserFunctions.h"
 #include "VocBase/Methods/Tasks.h"
 #include "VocBase/Methods/Upgrade.h"
@@ -316,7 +316,12 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   // clear AQL user functions cache, just in case there are leftovers from a
   // previous database with the same name
   arangodb::flushAqlUserFunctions(server, dbName);
-
+  
+  if (server.hasFeature<FoxxQueuesFeature>() && server.isEnabled<FoxxQueuesFeature>()) {
+    // clear Foxx queues cache value
+    server.getFeature<FoxxQueuesFeature>().clearCache(dbName);
+  }
+  
   if (ServerState::instance()->isCoordinator() /* REVIEW! && !localDatabase*/) {
     if (!createInfo.validId()) {
       auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
@@ -348,8 +353,6 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
     try {
       auto& sysDbFeature = server.getFeature<arangodb::SystemDatabaseFeature>();
       auto database = sysDbFeature.use();
-
-      TRI_ExpireFoxxQueueDatabaseCache(database.get());
     } catch (...) {
     }
   }
@@ -411,6 +414,11 @@ arangodb::Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemV
 
   arangodb::flushAqlUserFunctions(systemVocbase->server(), dbName);
 
+  if (systemVocbase->server().hasFeature<FoxxQueuesFeature>() && systemVocbase->server().isEnabled<FoxxQueuesFeature>()) {
+    // clear foxx queues database cache
+    systemVocbase->server().getFeature<FoxxQueuesFeature>().clearCache(dbName);
+  }
+  
   Result res;
   V8DealerFeature* dealer = V8DealerFeature::DEALER;
   if (dealer != nullptr && dealer->isEnabled()) {

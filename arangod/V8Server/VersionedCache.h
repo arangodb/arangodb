@@ -55,8 +55,14 @@ class VersionedCache {
   /// @brief sets value for a given key in the cache. 
   bool set(std::string const& key, std::shared_ptr<arangodb::velocypack::Builder> value, uint64_t version);
   
-  /// @brief removes the key from the cache
+  /// @brief unconditionally sets value for a given key in the cache. 
+  void set(std::string const& key, std::shared_ptr<arangodb::velocypack::Builder> value);
+  
+  /// @brief unconditionally removes the key from the cache
   void remove(std::string const& key);
+
+  /// @brief removes all key from the cache with the given prefix.
+  void removePrefix(std::string const& prefix);
 
   /// @brief builds a key from two components
   static std::string buildKey(std::string const& prefix, std::string const& suffix);

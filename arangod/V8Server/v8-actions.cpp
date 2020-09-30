@@ -1764,8 +1764,8 @@ static void JS_GlobalCacheSet(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  if (args.Length() != 3) {
-    TRI_V8_THROW_EXCEPTION_USAGE("GLOBAL_CACHE_SET(<key>, <value>, <version>)");
+  if (args.Length() < 2 || args.Length() > 3) {
+    TRI_V8_THROW_EXCEPTION_USAGE("GLOBAL_CACHE_SET(<key>, <value> [, <version>])");
   }
   
   TRI_GET_GLOBALS();
@@ -1774,14 +1774,20 @@ static void JS_GlobalCacheSet(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const key = VersionedCache::buildKey(TRI_ObjectToString(isolate, args[0]), v8g->_vocbase->name());
-  uint64_t const version = TRI_ObjectToUInt64(isolate, args[2], true);
   auto value = std::make_shared<arangodb::velocypack::Builder>();
   TRI_V8ToVPack(isolate, *value, args[1], false);
 
   V8DealerFeature& dealer = v8g->_server.getFeature<V8DealerFeature>();
   auto& cache = dealer.valueCache();
-  bool result = cache.set(key, std::move(value), version);
-  TRI_V8_RETURN_BOOL(result);
+  
+  if (args.Length() > 2) {
+    uint64_t const version = TRI_ObjectToUInt64(isolate, args[2], true);
+    bool result = cache.set(key, std::move(value), version);
+    TRI_V8_RETURN_BOOL(result);
+  } else {
+    cache.set(key, std::move(value));
+    TRI_V8_RETURN_BOOL(true);
+  }
 
   TRI_V8_TRY_CATCH_END
 }
@@ -1804,6 +1810,30 @@ static void JS_GlobalCacheRemove(v8::FunctionCallbackInfo<v8::Value> const& args
   V8DealerFeature& dealer = v8g->_server.getFeature<V8DealerFeature>();
   auto& cache = dealer.valueCache();
   cache.remove(key);
+ 
+  TRI_V8_RETURN_UNDEFINED();
+
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_GlobalCacheRemovePrefix(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("GLOBAL_CACHE_REMOVE_PREFIX(<prefix>)");
+  }
+  
+  TRI_GET_GLOBALS();
+  if (v8g->_vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
+
+  std::string const prefix = VersionedCache::buildKey(TRI_ObjectToString(isolate, args[0]), v8g->_vocbase->name());
+  
+  V8DealerFeature& dealer = v8g->_server.getFeature<V8DealerFeature>();
+  auto& cache = dealer.valueCache();
+  cache.removePrefix(prefix);
  
   TRI_V8_RETURN_UNDEFINED();
 
@@ -1919,6 +1949,8 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
                                TRI_V8_ASCII_STRING(isolate, "GLOBAL_CACHE_SET"), JS_GlobalCacheSet, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "GLOBAL_CACHE_REMOVE"), JS_GlobalCacheRemove, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "GLOBAL_CACHE_REMOVE_PREFIX"), JS_GlobalCacheRemovePrefix, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "GLOBAL_CACHE_NEW_VERSION"), JS_GlobalCacheNewVersion, true);
 

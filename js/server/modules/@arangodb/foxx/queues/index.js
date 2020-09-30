@@ -73,8 +73,8 @@ function updateQueueDelay () {
     if (typeof delayUntil !== 'number') {
       delayUntil = -1;
     }
-    global.KEYSPACE_CREATE('queue-control', 1, true);
-    global.KEY_SET('queue-control', 'delayUntil', delayUntil);
+    let cacheVersion = global.GLOBAL_CACHE_NEW_VERSION();
+    global.GLOBAL_CACHE_SET('foxxqueues-delayUntil', delayUntil, cacheVersion);
   } catch (e) {}
 }
 

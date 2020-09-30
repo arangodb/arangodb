@@ -71,7 +71,6 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/VersionTracker.h"
-#include "V8Server/v8-user-structures.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
@@ -1641,8 +1640,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
     _type(type),
     _refCount(0),
     _isOwnAppsDirectory(true),
-    _deadlockDetector(false),
-    _userStructures(nullptr) {
+    _deadlockDetector(false) {
 
   TRI_ASSERT(_info.valid());
 
@@ -1654,16 +1652,10 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
   // init collections
   _collections.reserve(32);
   _deadCollections.reserve(32);
-
-  TRI_CreateUserStructuresVocBase(this);
 }
 
 /// @brief destroy a vocbase object
 TRI_vocbase_t::~TRI_vocbase_t() {
-  if (_userStructures != nullptr) {
-    TRI_FreeUserStructuresVocBase(this);
-  }
-
   // do a final cleanup of collections
   for (std::shared_ptr<arangodb::LogicalCollection>& coll : _collections) {
     try {  // simon: this status lock is terrible software design

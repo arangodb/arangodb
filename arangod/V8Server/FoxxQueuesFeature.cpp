@@ -23,8 +23,11 @@
 
 #include "FoxxQueuesFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "V8Server/V8DealerFeature.h"
+#include "V8Server/VersionedCache.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -67,6 +70,22 @@ void FoxxQueuesFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   if (_pollInterval < 0.1) {
     _pollInterval = 0.1;
   }
+}
+
+void FoxxQueuesFeature::clearCache(std::string const& dbName) {
+  if (!server().isEnabled<arangodb::V8DealerFeature>()) {
+    return;
+  }
+
+  auto& dealer = server().getFeature<arangodb::V8DealerFeature>();
+  auto& cache = dealer.valueCache();
+  
+  // for extra security, let's also bump the cache version number
+  cache.bumpVersion();
+ 
+  // cache key must correspond to cache key in js/server/modules/@arangodb/foxx/queues/*.js
+  std::string const key = cache.buildKey("foxxqueues-delayUntil", dbName);
+  cache.remove(key);
 }
 
 }  // namespace arangodb

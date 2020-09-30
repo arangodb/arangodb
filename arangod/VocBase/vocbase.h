@@ -162,9 +162,6 @@ struct TRI_vocbase_t {
                                                    // replication is assessing
                                                    // the state of the vocbase
 
-  // structures for user-defined volatile data
-  void* _userStructures;
-
  public:
   /// @brief checks if a database name is allowed
   /// returns true if the name is allowed and false otherwise

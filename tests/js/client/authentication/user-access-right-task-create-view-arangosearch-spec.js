@@ -59,41 +59,7 @@ for (let l of rightLevels) {
   colLevel[l] = new Set();
 }
 
-const wait = (keySpaceId, key) => {
-  for (let i = 0; i < 200; i++) {
-    if (getKey(keySpaceId, key)) break;
-    require('internal').wait(0.1);
-  }
-};
-
-const createKeySpace = (keySpaceId) => {
-  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
-};
-
-const dropKeySpace = (keySpaceId) => {
-  executeJS(`global.KEYSPACE_DROP('${keySpaceId}');`);
-};
-
-const getKey = (keySpaceId, key) => {
-  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
-};
-
-const setKey = (keySpaceId, name) => {
-  return executeJS(`global.KEY_SET('${keySpaceId}', '${name}', false);`);
-};
-
-const executeJS = (code) => {
-  let httpOptions = pu.makeAuthorizationHeaders({
-    username: 'root',
-    password: ''
-  });
-  httpOptions.method = 'POST';
-  httpOptions.timeout = 1800;
-  httpOptions.returnBodyOnError = true;
-  return download(arango.getEndpoint().replace('tcp', 'http') + `/_db/${dbName}/_admin/execute?returnAsJSON=true`,
-    code,
-    httpOptions);
-};
+let { wait, dropKeySpace, getKey, setKey } = require('@arangodb/testutils/client-utils.js');
 
 helper.switchUser('root', '_system');
 helper.removeAllUsers();
@@ -131,7 +97,6 @@ function hasIResearch (db) {
         describe(`user ${name}`, () => {
           before(() => {
             helper.switchUser(name, dbName);
-            expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
           });
 
           after(() => {
@@ -272,11 +237,11 @@ function hasIResearch (db) {
                     try {
                       const db = require('@arangodb').db;
                       db._createView('${testViewName}', '${testViewType}', {});
-                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', true);
                     } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', false);
                     } finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}', true);
                     }
                   })(params);`
                 };
@@ -315,11 +280,11 @@ function hasIResearch (db) {
                     try {
                       const db = require('@arangodb').db;
                       db._createView('${testViewName}', '${testViewType}', { cleanupIntervalStep: 20 });
-                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', true);
                     } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', false);
                     } finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}', true);
                     }
                   })(params);`
                 };
@@ -363,11 +328,11 @@ function hasIResearch (db) {
                     try {
                       const db = require('@arangodb').db;
                       var view = db._createView('${testViewName}', '${testViewType}', { links: { '${testColName}': { includeAllFields: true } } });
-                    global.KEY_SET('${keySpaceId}', '${name}_status', true);
+                    global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', true);
                     } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', false);
                     } finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}', true);
                     }
                   })(params);`
                 };
@@ -422,11 +387,11 @@ function hasIResearch (db) {
                         '${testColName}': { includeAllFields: true }, '${testColNameAnother}': { includeAllFields: true } 
                         }
                       });
-                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', true);
                     } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', false);
                     } finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}', true);
                     }
                   })(params);`
                 };
@@ -485,11 +450,11 @@ function hasIResearch (db) {
                         '${testColName}': { includeAllFields: true }, '${testColNameAnother}': { includeAllFields: true } 
                         }
                       });
-                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', true);
                     } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', false);
                     } finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}', true);
                     }
                   })(params);`
                 };
@@ -548,11 +513,11 @@ function hasIResearch (db) {
                         '${testColName}': { includeAllFields: true }, '${testColNameAnother}': { includeAllFields: true } 
                         }
                       });
-                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', true);
                     } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}_status', false);
                     } finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
+                      global.GLOBAL_CACHE_SET('${keySpaceId}-${name}', true);
                     }
                   })(params);`
                 };

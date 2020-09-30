@@ -43,53 +43,13 @@ const taskId = 'task_update_user_periodic';
 const arango = internal.arango;
 const taskPeriod = 0.3;
 
-const createKeySpace = (keySpaceId) => {
-  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
-};
-
-const dropKeySpace = (keySpaceId) => {
-  executeJS(`global.KEYSPACE_DROP('${keySpaceId}');`);
-};
-
-const setKey = (keySpaceId, key) => {
-  return executeJS(`global.KEY_SET('${keySpaceId}', '${key}', 0);`);
-};
-
-const getKey = (keySpaceId, key) => {
-  let res = executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body;
-  let num = Number(res);
-  if (isNaN(num)) {
-    console.error('KEY_GET response: ' + res);
-    return 0;
-  }
-  return num;
-};
-
-const executeJS = (code) => {
-  let username = 'root';
-  let password = '';
-
-  if (helper.isLdapEnabledExternal()) {
-    username = 'arangoadmin';
-    password = 'abc';
-  }
-  let httpOptions = pu.makeAuthorizationHeaders({
-    username: username,
-    password: password
-  });
-  httpOptions.method = 'POST';
-  httpOptions.timeout = 1800;
-  httpOptions.returnBodyOnError = true;
-  return download(arango.getEndpoint().replace('tcp', 'http') + '/_admin/execute?returnAsJSON=true',
-    code,
-    httpOptions);
-};
+let { dropKeySpaceSystem, getKeySystem, setKeySystem } = require('@arangodb/testutils/client-utils.js');
 
 const waitForTaskStart = () => {
   let i = 50;
   while (--i > 0) {
     internal.wait(0.1);
-    if (getKey(keySpaceId, 'bob') !== 0) {
+    if (getKeySystem(keySpaceId, 'bob') !== 0) {
       break;
     }
   }
@@ -101,7 +61,7 @@ const waitForTaskStop = () => {
   let last = 0;
   while (--i > 0) {
     internal.wait(taskPeriod);
-    let current = getKey(keySpaceId, 'bob');
+    let current = getKeySystem(keySpaceId, 'bob');
     expect(current).to.not.be.equal(0, 'Received invalid key');
     if (current === last) {
       break;
@@ -120,12 +80,11 @@ describe('User Rights Management', () => {
     users.grantCollection('bob', '_system', '*', 'rw');
 
     helper.switchUser('bob');
-    expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
   });
   after(() => {
     helper.switchUser('root', '_system');
     users.remove('bob');
-    dropKeySpace(keySpaceId);
+    dropKeySpaceSystem(keySpaceId);
     try {
       internal.print('Unregistering task');
       tasks.unregister(taskId);
@@ -134,14 +93,14 @@ describe('User Rights Management', () => {
 
   it('test cancelling periodic tasks', () => {
     helper.switchUser('bob');
-    setKey(keySpaceId, 'bob');
+    setKeySystem(keySpaceId, 'bob');
 
     tasks.register({
       id: taskId,
       name: taskId,
       period: taskPeriod,
       command: `(function (params) {
-      global.KEY_SET('${keySpaceId}', 'bob', require('internal').time());
+      global.GLOBAL_CACHE_SET('${keySpaceId}-bob', require('internal').time());
       })(params);`
     });
 

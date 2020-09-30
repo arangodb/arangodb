@@ -56,41 +56,7 @@ for (let l of rightLevels) {
   colLevel[l] = new Set();
 }
 
-const wait = (keySpaceId, key) => {
-  for (let i = 0; i < 200; i++) {
-    if (getKey(keySpaceId, key)) break;
-    require('internal').wait(0.1);
-  }
-};
-
-const createKeySpace = (keySpaceId) => {
-  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
-};
-
-const dropKeySpace = (keySpaceId) => {
-  executeJS(`global.KEYSPACE_DROP('${keySpaceId}');`);
-};
-
-const getKey = (keySpaceId, key) => {
-  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
-};
-
-const setKey = (keySpaceId, name) => {
-  return executeJS(`global.KEY_SET('${keySpaceId}', '${name}', false);`);
-};
-
-const executeJS = (code) => {
-  let httpOptions = pu.makeAuthorizationHeaders({
-    username: 'root',
-    password: ''
-  });
-  httpOptions.method = 'POST';
-  httpOptions.timeout = 1800;
-  httpOptions.returnBodyOnError = true;
-  return download(arango.getEndpoint().replace('tcp', 'http') + '/_admin/execute?returnAsJSON=true',
-    code,
-    httpOptions);
-};
+let { waitSystem, dropKeySpaceSystem, setKeySystem } = require('@arangodb/testutils/client-utils.js');
 
 helper.removeAllUsers();
 helper.generateAllUsers();
@@ -112,11 +78,10 @@ describe('User Rights Management', () => {
           before(() => {
             // What are defaults if unchanged?
             helper.switchUser(name);
-            expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
           });
 
           after(() => {
-            dropKeySpace(keySpaceId);
+            dropKeySpaceSystem(keySpaceId);
           });
 
           describe('administrate on server level', () => {
@@ -153,7 +118,7 @@ describe('User Rights Management', () => {
             });
 
             it('create a user', () => {
-              setKey(keySpaceId, name);
+              setKeySystem(keySpaceId, name);
               const taskId = 'task_create_user_' + name;
               const task = {
                 id: taskId,
@@ -162,13 +127,13 @@ describe('User Rights Management', () => {
                   try {
                     require('@arangodb/users').save('${testUser}', '', true);
                   } finally {
-                    global.KEY_SET('${keySpaceId}', '${name}', true);
+                    global.GLOBAL_CACHE_SET('${keySpaceId}-${name}', true);
                   }
                 })(params);`
               };
               if (systemLevel['rw'].has(name)) {
                 tasks.register(task);
-                wait(keySpaceId, name);
+                waitSystem(keySpaceId, name);
                 if (systemLevel['rw'].has(name)) {
                   expect(rootTestUser()).to.equal(true, 'User creation reported success, but User was not found afterwards.');
                 } else {

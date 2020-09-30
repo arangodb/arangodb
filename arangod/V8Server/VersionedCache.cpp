@@ -84,10 +84,33 @@ bool VersionedCache::set(std::string const& key, std::shared_ptr<arangodb::veloc
   // existing cache entry is newer than what we tried to insert
   return false;
 }
+
+void VersionedCache::set(std::string const& key, std::shared_ptr<arangodb::velocypack::Builder> value) {
+  WRITE_LOCKER(guard, _lock);
+
+  // unconditionally set cache entry
+  _keys[key] = { std::move(value), UINT64_MAX };
+}
   
 void VersionedCache::remove(std::string const& key) {
   WRITE_LOCKER(guard, _lock);
   _keys.erase(key);
+}
+
+void VersionedCache::removePrefix(std::string const& prefix) {
+  WRITE_LOCKER(guard, _lock);
+
+  auto it = _keys.begin();
+  while (it != _keys.end()) {
+    arangodb::velocypack::StringRef key((*it).first);
+    if (key.substr(0, prefix.size()) == prefix) {
+      // prefix match
+      it = _keys.erase(it);
+    } else {
+      // no match
+      ++it;
+    }
+  }
 }
   
 /// @brief builds a key from two components
