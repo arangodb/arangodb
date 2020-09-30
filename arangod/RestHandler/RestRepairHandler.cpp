@@ -132,8 +132,8 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       return RestStatus::DONE;
     }
 
-    auto [b,i] = agencyCache.get("arango/Plan");
-    VPackSlice plan = b->slice().get(std::vector<std::string>{AgencyCommHelper::path(),"Plan"});
+    auto [b, i] = agencyCache.get("arango/Plan");
+    VPackSlice plan = b->slice().get(std::vector<std::string>{AgencyCommHelper::path(), "Plan"});
     VPackSlice planCollections = plan.get("Collections");
 
     ResultT<VPackBufferPtr> healthResult = getFromAgency("Supervision/Health");
