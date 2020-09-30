@@ -33,6 +33,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Basics/StaticStrings.h"
+#include "Indexes/Index.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

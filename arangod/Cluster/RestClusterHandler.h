@@ -46,6 +46,9 @@ class RestClusterHandler : public arangodb::RestBaseHandler {
 
   /// _api/cluster/agency-cache
   void handleAgencyCache();
+
+  /// _api/cluster/cluster-info
+  void handleClusterInfo();
 };
 }  // namespace arangodb
 

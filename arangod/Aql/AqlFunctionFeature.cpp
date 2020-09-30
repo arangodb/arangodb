@@ -379,6 +379,11 @@ void AqlFunctionFeature::addGeoFunctions() {
   add({"GEO_AREA", ".|.",
     Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
     &Functions::GeoArea});
+
+  // (point0, point1, lower, upper[, includeLower = true, includeUpper = true, ellipsoid = "shpere"])
+  add({"GEO_IN_RANGE", ".,.,.,.|.,.,.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
+       &Functions::GeoInRange});
 }
 
 void AqlFunctionFeature::addGeometryConstructors() {

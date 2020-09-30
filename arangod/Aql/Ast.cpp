@@ -60,6 +60,11 @@ using namespace arangodb::aql;
 namespace {
 
 auto doNothingVisitor = [](AstNode const*) {};
+   
+[[noreturn]] void throwFormattedError(arangodb::aql::QueryContext& query, int code, char const* details) {
+  std::string msg = arangodb::aql::QueryWarnings::buildFormattedString(code, details);
+  query.warnings().registerError(code, msg.c_str());
+}
 
 /**
  * @brief Register the given datasource with the given accesstype in the query.
@@ -242,6 +247,11 @@ AstNode const* Ast::findExpansionSubNode(AstNode const* current) const {
     }
     current = current->getMember(1);
   }
+}
+
+/// @brief create a node from the velocypack slice
+AstNode* Ast::createNode(arangodb::velocypack::Slice slice) {
+  return _resources.registerNode(this, slice);
 }
 
 /// @brief create an AST passhthru node
@@ -658,8 +668,7 @@ AstNode* Ast::createNodeVariable(char const* name, size_t nameLength, bool isUse
   }
 
   if (isUserDefined && *name == '_') {
-    _query.warnings().registerError(TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name);
-    return nullptr;
+    ::throwFormattedError(_query, TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name);
   }
 
   if (_scopes.existsVariable(name, nameLength)) {
@@ -675,8 +684,7 @@ AstNode* Ast::createNodeVariable(char const* name, size_t nameLength, bool isUse
       return node;
     }
 
-    _query.warnings().registerError(TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
-    return nullptr;
+    ::throwFormattedError(_query, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
   }
 
   auto variable = _variables.createVariable(std::string(name, nameLength), isUserDefined);
@@ -1590,16 +1598,14 @@ void Ast::injectBindParameters(BindParameters& parameters,
 
         if (param.empty()) {
           // parameter name must not be empty
-          _query.warnings().registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
-          return nullptr;
+          ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         }
 
         auto const& it = p.find(param);
 
         if (it == p.end()) {
           // query uses a bind parameter that was not defined by the user
-          _query.warnings().registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
-          return nullptr;
+          ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         }
 
         // mark the bind parameter as being used
@@ -1630,7 +1636,7 @@ void Ast::injectBindParameters(BindParameters& parameters,
           if (!value.isString()) {
             // we can get here in case `WITH @col ...` when the value of @col
             // is not a string
-            _query.warnings().registerError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, param.c_str());
+            ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, param.c_str());
             // query will have been aborted here
           }
 
@@ -3913,12 +3919,7 @@ std::pair<std::string, bool> Ast::normalizeFunctionName(char const* name, size_t
 
 /// @brief create a node of the specified type
 AstNode* Ast::createNode(AstNodeType type) {
-  auto node = new AstNode(type);
-
-  // register the node so it gets freed automatically later
-  _resources.addNode(node);
-
-  return node;
+  return _resources.registerNode(type);
 }
 
 /// @brief validate the name of the given datasource

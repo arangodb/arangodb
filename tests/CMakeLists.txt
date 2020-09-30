@@ -153,6 +153,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/AttributeNameParserTest.cpp
   Basics/CompileTimeStrlenTest.cpp
   Basics/EndpointTest.cpp
+  Basics/FixedSizeAllocatorTest.cpp
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
   Basics/RandomTest.cpp
@@ -202,6 +203,9 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/Containers-test.cpp
   IResearch/ExpressionContextMock.cpp
   IResearch/ExpressionFilter-test.cpp
+  IResearch/GeoAnalyzer-test.cpp
+  IResearch/GeoFilter-test.cpp
+  IResearch/GeoDistanceFilter-test.cpp
   IResearch/IResearchAnalyzerFeature-test.cpp
   IResearch/IResearchComparer-test.cpp
   IResearch/IResearchDocument-test.cpp
@@ -246,6 +250,7 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchQueryTokens-test.cpp
   IResearch/IResearchQueryValue-test.cpp
   IResearch/IResearchQueryTraversal-test.cpp
+  IResearch/IResearchPrimaryKeyReuse-test.cpp
   IResearch/IResearchView-test.cpp
   IResearch/IResearchViewCoordinator-test.cpp
   IResearch/IResearchViewDBServer-test.cpp

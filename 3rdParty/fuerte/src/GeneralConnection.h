@@ -48,7 +48,7 @@ class GeneralConnection : public fuerte::Connection {
 
   virtual ~GeneralConnection() noexcept {
     _state.store(Connection::State::Closed);
-    terminateActivity(fuerte::Error::ConnectionClosed);
+    terminateActivity(fuerte::Error::ConnectionCanceled);
   }
 
   /// @brief connection state
@@ -382,6 +382,8 @@ struct MultiConnection : public GeneralConnection<ST, RT> {
   void setTimeout(bool setIOBegin) {
     const bool wasIdle = _streams.empty();
     if (wasIdle && !this->_config._useIdleTimeout) {
+      asio_ns::error_code ec;
+      this->_proto.timer.cancel(ec);
       return;
     }
 

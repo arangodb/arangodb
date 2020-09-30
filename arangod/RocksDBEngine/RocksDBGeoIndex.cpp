@@ -371,7 +371,7 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
 /// internal insert function, set batch or trx before calling
 Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                LocalDocumentId const& documentId,
-                               velocypack::Slice const& doc,
+                               velocypack::Slice const doc,
                                arangodb::OperationOptions& options) {
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
@@ -417,8 +417,7 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 /// internal remove function, set batch or trx before calling
 Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                LocalDocumentId const& documentId,
-                               velocypack::Slice const& doc,
-                               arangodb::Index::OperationMode mode) {
+                               velocypack::Slice const doc) {
   Result res;
 
   // covering and centroid of coordinate / polygon / ...

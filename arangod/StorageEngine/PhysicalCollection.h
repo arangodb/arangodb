@@ -122,7 +122,8 @@ class PhysicalCollection {
                        std::function<bool(arangodb::Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const;
 
   /// @brief return the figures for a collection
-  virtual futures::Future<OperationResult> figures(bool details);
+  virtual futures::Future<OperationResult> figures(bool details,
+                                                   OperationOptions const& options);
 
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
@@ -214,10 +215,6 @@ class PhysicalCollection {
   virtual void removeRevisionTreeBlocker(TransactionId transactionId);
 
   RevisionId newRevisionId() const;
-
-  virtual Result upgrade();
-  virtual bool didPartialUpgrade();
-  virtual Result cleanupAfterUpgrade();
 
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);

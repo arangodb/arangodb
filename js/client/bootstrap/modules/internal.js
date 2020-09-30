@@ -153,7 +153,10 @@
   // //////////////////////////////////////////////////////////////////////////////
 
   exports.reloadRouting = function () {
-    exports.arango.POST('/_admin/routing/reload', null);
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.POST('/_admin/routing/reload', null);
+    arangosh.checkRequestResult(requestResult);
+    return requestResult;
   };
 
   // //////////////////////////////////////////////////////////////////////////////

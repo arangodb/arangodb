@@ -111,7 +111,6 @@ class VstCommTask final : public GeneralCommTask<T> {
 
   /// Is the current user authenticated (not authorized)
   auth::TokenCache::Entry _authToken;
-  bool _authenticated;
   rest::AuthenticationMethod _authMethod;
   fuerte::vst::VSTVersion _vstVersion;
 };

@@ -429,7 +429,6 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& col
                    std::vector<std::vector<AttributeName>>({{AttributeName(attr, false)}}),
                    false, false, RocksDBColumnFamily::edge(),
                    basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
-                   basics::VelocyPackHelper::stringUInt64(info, StaticStrings::TempObjectId),
                    !ServerState::instance()->isCoordinator() && static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->useEdgeCache() /*useCache*/),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
@@ -480,7 +479,7 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
 
 Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                 LocalDocumentId const& documentId,
-                                velocypack::Slice const& doc, OperationOptions& options) {
+                                velocypack::Slice const doc, OperationOptions& options) {
   Result res;
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
@@ -516,7 +515,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 
 Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                 LocalDocumentId const& documentId,
-                                velocypack::Slice const& doc, Index::OperationMode mode) {
+                                velocypack::Slice const doc) {
   Result res;
 
   // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);

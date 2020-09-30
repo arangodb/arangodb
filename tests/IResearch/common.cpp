@@ -550,8 +550,8 @@ std::string mangleString(std::string name, std::string suffix) {
 }
 
 std::string mangleStringIdentity(std::string name) {
-  arangodb::iresearch::kludge::mangleStringField(name, arangodb::iresearch::FieldMeta::Analyzer()  // args
-  );
+  arangodb::iresearch::kludge::mangleField(
+    name, arangodb::iresearch::FieldMeta::Analyzer());
 
   return name;
 }
@@ -914,7 +914,7 @@ void assertFilterParseFail(TRI_vocbase_t& vocbase, std::string const& queryStrin
 }
 
 arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id) {
-  arangodb::CreateDatabaseInfo info(server);
+  arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
   auto rv = info.load(name, id);
   if (rv.fail()) {
     throw std::runtime_error(rv.errorMessage());

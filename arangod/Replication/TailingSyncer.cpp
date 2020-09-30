@@ -336,7 +336,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
 
       auto system = sysDbFeature.use();
       TRI_ASSERT(system.get());
-      auto res = methods::Databases::drop(system.get(), name);
+      auto res = methods::Databases::drop(ExecContext::current(), system.get(), name);
 
       if (res.fail()) {
         LOG_TOPIC("e8595", ERR, Logger::REPLICATION) << res.errorMessage();
@@ -345,8 +345,9 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     }
 
     VPackSlice users = VPackSlice::emptyArraySlice();
-    Result res = methods::Databases::create(_state.applier._server, name, users,
-                                            VPackSlice::emptyObjectSlice());
+    Result res =
+        methods::Databases::create(_state.applier._server, ExecContext::current(),
+                                   name, users, VPackSlice::emptyObjectSlice());
 
     return res;
   } else if (type == REPLICATION_DATABASE_DROP) {
@@ -362,7 +363,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
       _state.vocbases.erase(std::to_string(vocbase->id()));
       _state.vocbases.erase(name);
 
-      auto res = methods::Databases::drop(system.get(), name);
+      auto res = methods::Databases::drop(ExecContext::current(), system.get(), name);
 
       if (res.fail()) {
         LOG_TOPIC("21b6a", ERR, Logger::REPLICATION) << res.errorMessage();
@@ -842,12 +843,12 @@ Result TailingSyncer::truncateCollection(arangodb::velocypack::Slice const& slic
       return res;
     }
 
-    OperationResult opRes = trx.count(col->name(), transaction::CountType::Normal);
+    OperationOptions opts(ExecContext::current());
+    OperationResult opRes = trx.count(col->name(), transaction::CountType::Normal, opts);
     if (opRes.ok() && opRes.slice().isNumber()) {
       count = opRes.slice().getNumber<uint64_t>();
     }
 
-    OperationOptions opts;
     opts.isRestore = true;
     opRes = trx.truncate(col->name(), opts);
 
@@ -1268,6 +1269,7 @@ retry:
 
     if (res.is(TRI_ERROR_REPLICATION_NO_RESPONSE)) {
       // leader error. try again after a sleep period
+      ++_stats.numFailedConnects;
       connectRetries++;
       {
         WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);

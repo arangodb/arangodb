@@ -110,7 +110,7 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
         TRI_ERROR_BAD_PARAMETER,
         "Each lookup requires condition to be an object");
   }
-  indexCondition = new aql::AstNode(query.ast(), read);
+  indexCondition = query.ast()->createNode(read);
 }
 
 BaseOptions::LookupInfo::LookupInfo(LookupInfo const& other)
