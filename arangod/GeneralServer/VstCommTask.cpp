@@ -61,7 +61,9 @@ VstCommTask<T>::VstCommTask(GeneralServer& server, ConnectionInfo info,
       _authToken("", false, 0),
       _authenticated(!this->_auth->isActive()),
       _authMethod(rest::AuthenticationMethod::NONE),
-      _vstVersion(v) {}
+      _vstVersion(v) {
+  _writeQueue.reserve(32);
+}
 
 template <SocketType T>
 VstCommTask<T>::~VstCommTask() {
@@ -382,14 +384,21 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
   // this uses a fixed capacity queue, push might fail (unlikely, we limit max streams)
   unsigned retries = 512;
-  while (ADB_UNLIKELY(!_writeQueue.push(resItem.get()))) {
-    std::this_thread::yield();
-    if (--retries == 0) {
-      LOG_TOPIC("a3bfc", WARN, Logger::REQUESTS)
-          << "was not able to queue response this=" << (void*)this;
-      this->stop();  // stop is thread-safe
-      return;
+  try {
+    while (ADB_UNLIKELY(!_writeQueue.push(resItem.get()))) {
+      std::this_thread::yield();
+      if (--retries == 0) {
+        LOG_TOPIC("a3bfc", WARN, Logger::REQUESTS)
+            << "was not able to queue response this=" << (void*)this;
+        this->stop();  // stop is thread-safe
+        return;
+      }
     }
+  } catch (...) {
+    LOG_TOPIC("a3bfd", WARN, Logger::REQUESTS)
+        << "was not able to queue response this=" << (void*)this;
+    this->stop();  // stop is thread-safe
+    return;
   }
   resItem.release();
 

@@ -104,7 +104,7 @@ class VstCommTask final : public GeneralCommTask<T> {
 
  private:
   std::map<uint64_t, Message> _messages;
-  boost::lockfree::queue<ResponseItem*, boost::lockfree::capacity<32>> _writeQueue;
+  boost::lockfree::queue<ResponseItem*> _writeQueue;
 
   std::atomic<bool> _writeLoopActive;  /// is writing
   std::atomic<unsigned> _numProcessing;

@@ -113,7 +113,7 @@ class H2CommTask final : public GeneralCommTask<T> {
   velocypack::Buffer<uint8_t> _outbuffer;
 
   // no more than 64 streams allowed
-  boost::lockfree::queue<H2Response*, boost::lockfree::capacity<32>> _responses;
+  boost::lockfree::queue<H2Response*> _responses;
 
   std::map<int32_t, Stream> _streams;
 
