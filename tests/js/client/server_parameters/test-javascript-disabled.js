@@ -35,7 +35,6 @@ if (getOptions === true) {
 }
 let jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
-const cn = "UnitTestsCollection";
 let db = require('internal').db;
 
 function testSuite() {
