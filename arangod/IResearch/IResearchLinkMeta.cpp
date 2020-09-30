@@ -629,7 +629,6 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
     // load analyzer definitions if requested (used on cluster)
     // @note must load definitions before loading 'analyzers' to ensure presence
     if (readAnalyzerDefinition && mask->_analyzerDefinitions) {
-      auto& sysDatabase = server.getFeature<SystemDatabaseFeature>();
 
       auto field = slice.get(fieldName);
 

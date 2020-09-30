@@ -399,12 +399,6 @@ Result getAnalyzerByName(
   }
   auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
 
-==== BASE ====
-  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
-    ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-    : nullptr;
-==== BASE ====
-
   shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
       analyzerId, ctx.trx->vocbase(), false);  // args
 
