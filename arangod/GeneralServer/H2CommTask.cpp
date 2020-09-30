@@ -582,35 +582,24 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
   // this uses a fixed capacity queue, push might fail (unlikely, we limit max streams)
   unsigned retries = 512;
   try {
-    while (ADB_UNLIKELY(!_responses.push(tmp))) {
+    while (ADB_UNLIKELY(!_responses.push(tmp) && --retries > 0)) {
       std::this_thread::yield();
-      if (--retries == 0) {
-        LOG_TOPIC("924dc", WARN, Logger::REQUESTS)
-            << "was not able to queue response" << (void*)this;
-        // we are overloaded close stream
-        asio_ns::post(this->_protocol->context.io_context,
-                      [self(this->shared_from_this()), mid(res->messageId())] {
-                        auto& me = static_cast<H2CommTask<T>&>(*self);
-                        nghttp2_submit_rst_stream(me._session, NGHTTP2_FLAG_NONE,
-                                                  static_cast<int32_t>(mid),
-                                                  NGHTTP2_ENHANCE_YOUR_CALM);
-                      });
-        return;
-      }
     }
-    catch (...) {
-      LOG_TOPIC("924dd", WARN, Logger::REQUESTS)
-          << "was not able to queue response" << (void*)this;
-      // we are overloaded close stream
-      asio_ns::post(this->_protocol->context.io_context,
-                    [self(this->shared_from_this()), mid(res->messageId())] {
-                      auto& me = static_cast<H2CommTask<T>&>(*self);
-                      nghttp2_submit_rst_stream(me._session, NGHTTP2_FLAG_NONE,
-                                                static_cast<int32_t>(mid),
-                                                NGHTTP2_ENHANCE_YOUR_CALM);
-                    });
-      return;
-    }
+  } catch (...) {
+    retries = 0;
+  }
+  if (--retries == 0) {
+    LOG_TOPIC("924dc", WARN, Logger::REQUESTS)
+        << "was not able to queue response" << (void*)this;
+    // we are overloaded close stream
+    asio_ns::post(this->_protocol->context.io_context,
+                  [self(this->shared_from_this()), mid(res->messageId())] {
+                    auto& me = static_cast<H2CommTask<T>&>(*self);
+                    nghttp2_submit_rst_stream(me._session, NGHTTP2_FLAG_NONE,
+                                              static_cast<int32_t>(mid),
+                                              NGHTTP2_ENHANCE_YOUR_CALM);
+                  });
+    return;
   }
   res.release();
 

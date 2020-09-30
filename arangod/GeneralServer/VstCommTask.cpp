@@ -385,17 +385,15 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   // this uses a fixed capacity queue, push might fail (unlikely, we limit max streams)
   unsigned retries = 512;
   try {
-    while (ADB_UNLIKELY(!_writeQueue.push(resItem.get()))) {
+    while (ADB_UNLIKELY(!_writeQueue.push(resItem.get()) && --retries > 0)) {
       std::this_thread::yield();
-      if (--retries == 0) {
-        LOG_TOPIC("a3bfc", WARN, Logger::REQUESTS)
-            << "was not able to queue response this=" << (void*)this;
-        this->stop();  // stop is thread-safe
-        return;
-      }
+      --retries;
     }
   } catch (...) {
-    LOG_TOPIC("a3bfd", WARN, Logger::REQUESTS)
+    retries = 0;
+  }
+  if (retries == 0) {
+    LOG_TOPIC("a3bfc", WARN, Logger::REQUESTS)
         << "was not able to queue response this=" << (void*)this;
     this->stop();  // stop is thread-safe
     return;
