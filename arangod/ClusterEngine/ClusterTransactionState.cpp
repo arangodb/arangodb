@@ -87,10 +87,12 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   if (hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     TRI_ASSERT(isCoordinator());
 
+    size_t numShards = 0;
     std::vector<std::string> leaders;
-    allCollections([&leaders](TransactionCollection& c) {
+    allCollections([&](TransactionCollection& c) {
       if (c.accessType() == AccessMode::Type::EXCLUSIVE) {
         auto shardIds = c.collection()->shardIds();
+        numShards += shardIds->size();
         for (auto const& pair : *shardIds) {
           std::vector<arangodb::ShardID> const& servers = pair.second;
           if (!servers.empty()) {
@@ -101,7 +103,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
       return true; // continue
     });
 
-    if (!leaders.empty()) {
+    if (!leaders.empty() && numShards > 1) {
       res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders).get();
       if (res.fail()) { // something is wrong
         return res;
