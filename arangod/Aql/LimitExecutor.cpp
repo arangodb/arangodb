@@ -73,36 +73,35 @@ auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> Aq
   if (useSoftLimit) {
     // fullCount may only be set with a hard limit
     TRI_ASSERT(!clientCall.needsFullCount());
+
     upstreamCall.softLimit = limit;
     upstreamCall.fullCount = false;
-  } else if (!clientCall.needsFullCount()) {
-    upstreamCall.hardLimit = limit;
-    // We need the fullCount if we need to report it ourselves.
-    upstreamCall.fullCount = infos().isFullCountEnabled();
-  } else {
-    TRI_ASSERT(clientCall.needsFullCount());
-    // If the client needs full count, we need to skip up to our limit upstream.
-    // Currently the execute API makes it impossible to skip after fetching rows,
-    // so we must throw if we encounter a client fullCount with a non-zero limit.
-
-    if (0 < limit) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_NOT_IMPLEMENTED,
-          "When fullCount is used, consecutive top-level LIMIT clauses are not "
-          "supported. Please either restrict yourself to a single top-level "
-          "LIMIT clause, or omit the query option fullCount.");
-    }
-
-    TRI_ASSERT(0 == limit);
+  } else if (clientCall.needsFullCount() && 0 == clientCall.getLimit() && !_didProduceRows) {
     // The request is a hard limit of 0 together with fullCount, so we always
     // need to skip both our offset and our limit, regardless of the client's
     // offset.
-    TRI_ASSERT(clientCall.getLimit() == 0);
+    // If we ever got a client limit > 0 and thus produced rows, we may not send
+    // a non-zero offset, and thus must avoid this branch.
+    TRI_ASSERT(!useSoftLimit);
+    TRI_ASSERT(clientCall.hasHardLimit());
+
     upstreamCall.offset = upstreamCall.offset + remainingLimit();
     upstreamCall.hardLimit = 0;
     // We need to send fullCount upstream iff this is fullCount-enabled LIMIT
     // block.
     upstreamCall.fullCount = infos().isFullCountEnabled();
+  } else {
+    TRI_ASSERT(!useSoftLimit);
+    TRI_ASSERT(!clientCall.needsFullCount() || 0 < clientCall.getLimit() || _didProduceRows);
+
+    upstreamCall.hardLimit = limit;
+    // We need the fullCount if we need to report it ourselves.
+    // If the client needs full count, we need to skip up to our limit upstream.
+    // But currently the execute API does not allow limited skipping after
+    // fetching rows, so we must pass fullCount upstream, even if that's
+    // inefficient.
+    // This is going to be fixed in a later PR.
+    upstreamCall.fullCount = infos().isFullCountEnabled() || clientCall.needsFullCount();
   }
 
   return upstreamCall;
@@ -150,6 +149,7 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
         output.copyRow(inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{}).second);
         output.advanceRow();
         numRowsWritten++;
+        _didProduceRows = true;
       }
       _counter += numRowsWritten;
       if (infos().isFullCountEnabled()) {
