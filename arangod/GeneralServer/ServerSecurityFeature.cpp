@@ -59,13 +59,13 @@ void ServerSecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
                      .setIntroducedIn(30704)
                      .setIntroducedIn(30800);
   
-  options->addOption("--server.tasks-api",
+  options->addOption("--javascript.tasks-api",
                      "enable JavaScript tasks API /_api/tasks",
                      new BooleanParameter(&_enableJavaScriptTasksApi))
                      .setIntroducedIn(30704)
                      .setIntroducedIn(30800);
   
-  options->addOption("--server.transactions-api",
+  options->addOption("--javascript.transactions-api",
                      "enable JavaScript transaction POST API /_api/transactions",
                      new BooleanParameter(&_enableJavaScriptTransactionsApi))
                      .setIntroducedIn(30704)
