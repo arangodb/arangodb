@@ -138,7 +138,7 @@ bool CreateCollection::first() {
     VPackBuilder docket;
     {
       VPackObjectBuilder d(&docket);
-      for (auto const& i : VPackObjectIterator(props)) {
+      for (auto&& i : VPackObjectIterator(props)) {
         auto const& key = i.key.copyString();
         if (key == ID || key == NAME || key == GLOB_UID || key == OBJECT_ID) {
           if (key == GLOB_UID || key == OBJECT_ID) {

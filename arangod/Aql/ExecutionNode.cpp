@@ -197,7 +197,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements, ExecutionPlan* 
     if (path.isArray()) {
       // Get a list of strings out and add to the path:
       auto& element = elements.back();
-      for (auto const& it2 : VPackArrayIterator(path)) {
+      for (auto&& it2 : VPackArrayIterator(path)) {
         if (it2.isString()) {
           element.attributePath.push_back(it2.copyString());
         }

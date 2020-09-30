@@ -576,7 +576,7 @@ JOB_STATUS MoveShard::pendingLeader() {
         auto const tmp = _snapshot.hasAsArray(shardPath + "/servers");
         if (tmp.second) {
           bool found = false;
-          for (auto const& server : VPackArrayIterator(tmp.first)) {
+          for (auto&& server : VPackArrayIterator(tmp.first)) {
             if (server.isEqualString(_to)) {
               found = true;
               break;
@@ -648,7 +648,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                          size_t found = 0;
                          for (size_t i = 1; i < plan.length() - 1; ++i) {
                            VPackSlice p = plan[i];
-                           for (auto const& c : VPackArrayIterator(current)) {
+                           for (auto&& c : VPackArrayIterator(current)) {
                              if (arangodb::basics::VelocyPackHelper::equal(p, c, true)) {
                                ++found;
                                break;

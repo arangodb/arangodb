@@ -488,7 +488,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<PUSH>(VPackSlice const& slice) {
   {
     VPackArrayBuilder t(&tmp);
     if (this->slice().isArray() && !lifetimeExpired()) {
-      for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
+      for (auto&& old : VPackArrayIterator(this->slice())) tmp.add(old);
     }
     tmp.add(v);
   }
@@ -523,7 +523,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<ERASE>(VPackSlice const& slice) {
     if (this->slice().isArray() && !lifetimeExpired()) {
       if (haveVal) {
         VPackSlice valToErase = slice.get("val");
-        for (auto const& old : VPackArrayIterator(this->slice())) {
+        for (auto&& old : VPackArrayIterator(this->slice())) {
           if (!VelocyPackHelper::equal(old, valToErase, /*useUTF8*/ true)) {
             tmp.add(old);
           }
@@ -536,7 +536,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<ERASE>(VPackSlice const& slice) {
               "Erase with position out of range: ") + slice.toJson());
         }
         size_t n = 0;
-        for (const auto& old : VPackArrayIterator(this->slice())) {
+        for (const auto&& old : VPackArrayIterator(this->slice())) {
           if (n != pos) {
             tmp.add(old);
           }
@@ -568,7 +568,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<REPLACE>(VPackSlice const& slice) {
     VPackArrayBuilder t(&tmp);
     if (this->slice().isArray() && !lifetimeExpired()) {
       VPackSlice valToRepl = slice.get("val");
-      for (auto const& old : VPackArrayIterator(this->slice())) {
+      for (auto&& old : VPackArrayIterator(this->slice())) {
         if (VelocyPackHelper::equal(old, valToRepl, /*useUTF8*/ true)) {
           tmp.add(slice.get("new"));
         } else {
@@ -617,7 +617,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<PREPEND>(VPackSlice const& slice) {
     VPackArrayBuilder t(&tmp);
     tmp.add(slice.get("new"));
     if (this->slice().isArray() && !lifetimeExpired()) {
-      for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
+      for (auto&& old : VPackArrayIterator(this->slice())) tmp.add(old);
     }
   }
   *this = tmp.slice();
@@ -632,7 +632,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<SHIFT>(VPackSlice const& slice) {
     if (this->slice().isArray() && !lifetimeExpired()) {  // If a
       VPackArrayIterator it(this->slice());
       bool first = true;
-      for (auto const& old : it) {
+      for (auto&& old : it) {
         if (first) {
           first = false;
         } else {
@@ -682,7 +682,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<READ_UNLOCK>(VPackSlice const& slice
     {
       // isReadUnlockable ensured that `this->slice()` is always an array of strings
       VPackArrayBuilder arr(&newValue);
-      for (auto const& i : VPackArrayIterator(this->slice())) {
+      for (auto&& i : VPackArrayIterator(this->slice())) {
         if (!i.isEqualString(user.stringRef())) {
           newValue.add(i);
         }
@@ -744,7 +744,7 @@ bool Node::isReadLockable(const VPackStringRef& by) const {
   // empty object - when the node is created
   if (slice.isArray()) {
     // check if `by` is not in the array
-    for (auto const& i : VPackArrayIterator(slice)) {
+    for (auto&& i : VPackArrayIterator(slice)) {
       if (!i.isString() || i.isEqualString(VPackStringRef(by.data(), by.length()))) {
         return false;
       }
@@ -764,7 +764,7 @@ bool Node::isReadUnlockable(const VPackStringRef& by) const {
   // array of strings containing the value `by`
   if (slice.isArray()) {
     bool valid = false;
-    for (auto const& i : VPackArrayIterator(slice)) {
+    for (auto&& i : VPackArrayIterator(slice)) {
       if (!i.isString()) {
         valid = false;
         break;
@@ -845,7 +845,7 @@ bool Node::applies(VPackSlice const& slice) {
   clear();
 
   if (slice.isObject()) {
-    for (auto const& i : VPackObjectIterator(slice)) {
+    for (auto&& i : VPackObjectIterator(slice)) {
       // note: no need to remove duplicate forward slashes here...
       //  if i.key contains duplicate forward slashes, then we will go
       //  into the  key.find('/')  case, and will be calling  operator()

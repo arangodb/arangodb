@@ -339,7 +339,7 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
         {AgencyCommHelper::path(), "Target", "FailedServers"}));
     if (failedServersSlice.isObject()) {
       std::vector<ServerID> failedServers = {};
-      for (auto const& server : VPackObjectIterator(failedServersSlice)) {
+      for (auto&& server : VPackObjectIterator(failedServersSlice)) {
         failedServers.push_back(server.key.copyString());
       }
       LOG_TOPIC("52626", DEBUG, Logger::HEARTBEAT)
@@ -612,7 +612,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
 
     if (failedServersSlice.isObject()) {
       std::vector<ServerID> failedServers = {};
-      for (auto const& server : VPackObjectIterator(failedServersSlice)) {
+      for (auto&& server : VPackObjectIterator(failedServersSlice)) {
         failedServers.push_back(server.key.copyString());
       }
       LOG_TOPIC("43332", DEBUG, Logger::HEARTBEAT)

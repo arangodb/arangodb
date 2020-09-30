@@ -875,7 +875,7 @@ void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
     VPackSlice rocksDBValues = value.get("engine");
 
     if (!isSmartEdgeCollectionPart) {
-      for (auto const& it : VPackArrayIterator(rocksDBValues.get("indexes"))) {
+      for (auto&& it : VPackArrayIterator(rocksDBValues.get("indexes"))) {
         VPackSlice idSlice = it.get("id");
         if (!idSlice.isNumber()) {
           continue;
@@ -886,7 +886,7 @@ void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
   
     rocksDBValues = builder.slice().get("engine");
     if (rocksDBValues.isObject()) {
-      for (auto const& it : VPackArrayIterator(rocksDBValues.get("indexes"))) {
+      for (auto&& it : VPackArrayIterator(rocksDBValues.get("indexes"))) {
         VPackSlice idSlice = it.get("id");
         if (!idSlice.isNumber()) {
           continue;

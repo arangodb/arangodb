@@ -882,7 +882,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
 
   try {
     // collect snapshots from all requested links
-    for (auto const cid : *collections) {
+    for (auto&& cid : *collections) {
       auto itr = _links.find(cid);
       auto* link = itr != _links.end() && itr->second
                        ? itr->second->get()

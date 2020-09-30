@@ -184,7 +184,7 @@ void Graph::parseEdgeDefinitions(VPackSlice edgeDefs) {
         "'edgeDefinitions' are not an array in the graph definition");
   }
 
-  for (auto const& def : VPackArrayIterator(edgeDefs)) {
+  for (auto&& def : VPackArrayIterator(edgeDefs)) {
     auto edgeDefRes = addEdgeDefinition(def);
     if (edgeDefRes.fail()) {
       THROW_ARANGO_EXCEPTION(std::move(edgeDefRes).result());
@@ -198,7 +198,7 @@ void Graph::insertOrphanCollections(VPackSlice const arr) {
         TRI_ERROR_GRAPH_INVALID_GRAPH,
         "'orphanCollections' are not an array in the graph definition");
   }
-  for (auto const& c : VPackArrayIterator(arr)) {
+  for (auto&& c : VPackArrayIterator(arr)) {
     THROW_ARANGO_EXCEPTION_IF_FAIL(validateOrphanCollection(c));
     addOrphanCollection(c.copyString());
   }

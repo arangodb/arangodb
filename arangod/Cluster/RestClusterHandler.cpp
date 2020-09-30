@@ -208,7 +208,7 @@ void RestClusterHandler::handleCommandEndpoints() {
     }
 
     // {"serverId" : {"Status" : "GOOD", ...}}
-    for (VPackObjectIterator::ObjectPair const& pair : VPackObjectIterator(healthMap)) {
+    for (auto&& pair : VPackObjectIterator(healthMap)) {
       TRI_ASSERT(pair.key.isString() && pair.value.isObject());
       if (pair.key.compareString(leaderId) != 0) {
         VPackSlice status = pair.value.get("Status");

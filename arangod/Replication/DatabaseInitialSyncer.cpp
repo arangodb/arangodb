@@ -1838,7 +1838,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
                            " index(es) for " + collectionMsg);
 
       try {
-        for (auto const& idxDef : VPackArrayIterator(indexes)) {
+        for (auto&& idxDef : VPackArrayIterator(indexes)) {
           if (idxDef.isObject()) {
             VPackSlice const type = idxDef.get(StaticStrings::IndexType);
             if (type.isString()) {

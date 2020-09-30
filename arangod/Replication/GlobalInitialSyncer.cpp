@@ -156,7 +156,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
 
   try {
     // actually sync the database
-    for (auto const& dbEntry : VPackObjectIterator(databases)) {
+    for (auto&& dbEntry : VPackObjectIterator(databases)) {
       if (_state.applier._server.isStopping()) {
         return Result(TRI_ERROR_SHUTTING_DOWN);
       } else if (isAborted()) {
@@ -223,7 +223,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDataba
   DatabaseFeature::DATABASE->enumerateDatabases(
       [&](TRI_vocbase_t& vocbase) -> void { existingDBs.insert(vocbase.name()); });
 
-  for (auto const& database : VPackObjectIterator(leaderDatabases)) {
+  for (auto&& database : VPackObjectIterator(leaderDatabases)) {
     VPackSlice it = database.value;
 
     if (!it.isObject()) {
@@ -264,7 +264,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDataba
       // database already exists. now check which collections should survive
       std::unordered_set<std::string> survivingCollections;
 
-      for (auto const& coll : VPackArrayIterator(collections)) {
+      for (auto&& coll : VPackArrayIterator(collections)) {
         if (!coll.isObject() || !coll.hasKey("parameters")) {
           continue;  // somehow invalid
         }

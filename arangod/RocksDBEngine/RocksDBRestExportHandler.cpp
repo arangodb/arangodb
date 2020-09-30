@@ -170,7 +170,7 @@ VPackBuilder RocksDBRestExportHandler::buildQueryOptions(std::string const& cnam
     if (fields.length() > 0) {
       // "restrict"."fields"
       int i = 0;
-      for (auto const& name : VPackArrayIterator(fields)) {
+      for (auto&& name : VPackArrayIterator(fields)) {
         if (name.isString()) {
           std::string varName = std::string("var").append(std::to_string(i++));
           query.append(", @").append(varName);

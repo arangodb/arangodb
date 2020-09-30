@@ -110,7 +110,7 @@ void getQueries(TRI_vocbase_t& vocbase, std::vector<aql::QueryEntryCopy> const& 
           auto slice = resp.response->slice();
           // copy results from other coordinators
           if (slice.isArray()) {
-            for (auto const& entry : VPackArrayIterator(slice)) {
+            for (auto&& entry : VPackArrayIterator(slice)) {
               out.add(entry);
             }
           }

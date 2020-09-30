@@ -146,7 +146,7 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
   if (traverserSlice.isArray()) {
     // used to be RestAqlHandler::registerTraverserEngines
     answerBuilder.add("traverserEngines", VPackValue(VPackValueType::Array));
-    for (auto const& te : VPackArrayIterator(traverserSlice)) {
+    for (auto&& te : VPackArrayIterator(traverserSlice)) {
 
       auto engine = traverser::BaseEngine::BuildEngine(_vocbase, *this, te);
       answerBuilder.add(VPackValue(engine->engineId()));

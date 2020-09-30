@@ -838,7 +838,7 @@ bool sortNumberList(transaction::Methods* trx, AqlValue const& values,
 
   VPackArrayIterator it(slice);
   result.reserve(it.size());
-  for (auto const& element : it) {
+  for (auto&& element : it) {
     if (!element.isNull()) {
       if (!element.isNumber()) {
         return false;
@@ -859,7 +859,7 @@ void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
                  bool recursive, VPackBuilder& result) {
   TRI_ASSERT(value.isObject());
   VPackObjectBuilder b(&result);  // Close the object after this function
-  for (auto const& entry : VPackObjectIterator(value, false)) {
+  for (auto&& entry : VPackObjectIterator(value, false)) {
     TRI_ASSERT(entry.key.isString());
     std::string key = entry.key.copyString();
     if ((names.find(key) == names.end()) == unset) {
@@ -1001,7 +1001,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext, transaction::Meth
 void flattenList(VPackSlice const& array, size_t maxDepth, size_t curDepth,
                  VPackBuilder& result) {
   TRI_ASSERT(result.isOpenArray());
-  for (auto const& tmp : VPackArrayIterator(array)) {
+  for (auto&& tmp : VPackArrayIterator(array)) {
     if (tmp.isArray() && curDepth < maxDepth) {
       ::flattenList(tmp, maxDepth, curDepth + 1, result);
     } else {
@@ -1252,7 +1252,7 @@ static Result parseGeoPolygon(VPackSlice polygon, VPackBuilder& b) {
   for (VPackSlice v : VPackArrayIterator(polygon)) {
     if (v.isArray() && v.length() > 2) {
       b.openArray();
-      for (auto const& coord : VPackArrayIterator(v)) {
+      for (auto&& coord : VPackArrayIterator(v)) {
         if (coord.isNumber()) {
           b.add(VPackValue(coord.getNumber<double>()));
         } else if (coord.isArray()) {
@@ -1261,7 +1261,7 @@ static Result parseGeoPolygon(VPackSlice polygon, VPackBuilder& b) {
                           "a Position needs at least two numeric values");
           } else {
             b.openArray();
-            for (auto const& innercord : VPackArrayIterator(coord)) {
+            for (auto&& innercord : VPackArrayIterator(coord)) {
               if (innercord.isNumber()) {
                 b.add(VPackValue(innercord.getNumber<double>()));  // TODO
               } else if (innercord.isArray() && innercord.length() == 2) {
@@ -1290,7 +1290,7 @@ static Result parseGeoPolygon(VPackSlice polygon, VPackBuilder& b) {
     } else if (v.isArray() && v.length() == 2) {
       if (polygon.length() > 2) {
         b.openArray();
-        for (auto const& innercord : VPackArrayIterator(v)) {
+        for (auto&& innercord : VPackArrayIterator(v)) {
           if (innercord.isNumber()) {
             b.add(VPackValue(innercord.getNumber<double>()));
           } else if (innercord.isArray() && innercord.length() == 2) {
@@ -4364,7 +4364,7 @@ AqlValue Functions::Values(ExpressionContext* expressionContext, transaction::Me
   VPackSlice slice = materializer.slice(value, false);
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
-  for (auto const& entry : VPackObjectIterator(slice, true)) {
+  for (auto&& entry : VPackObjectIterator(slice, true)) {
     if (!entry.key.isString()) {
       // somehow invalid
       continue;
@@ -5725,7 +5725,7 @@ AqlValue Functions::GeoMultiPoint(ExpressionContext* expressionContext,
   for (VPackSlice v : VPackArrayIterator(s)) {
     if (v.isArray()) {
       builder->openArray();
-      for (auto const& coord : VPackArrayIterator(v)) {
+      for (auto&& coord : VPackArrayIterator(v)) {
         if (coord.isNumber()) {
           builder->add(VPackValue(coord.getNumber<double>()));
         } else {
@@ -5835,7 +5835,7 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
   builder->add("type", VPackValue("MultiPolygon"));
   builder->add("coordinates", VPackValue(VPackValueType::Array));
 
-  for (auto const& arrayOfPolygons : VPackArrayIterator(s)) {
+  for (auto&& arrayOfPolygons : VPackArrayIterator(s)) {
     if (!arrayOfPolygons.isArray()) {
       registerWarning(
           expressionContext, "GEO_MULTIPOLYGON",
@@ -5895,7 +5895,7 @@ AqlValue Functions::GeoLinestring(ExpressionContext* expressionContext,
   for (VPackSlice v : VPackArrayIterator(s)) {
     if (v.isArray()) {
       builder->openArray();
-      for (auto const& coord : VPackArrayIterator(v)) {
+      for (auto&& coord : VPackArrayIterator(v)) {
         if (coord.isNumber()) {
           builder->add(VPackValue(coord.getNumber<double>()));
         } else {
@@ -5957,10 +5957,10 @@ AqlValue Functions::GeoMultiLinestring(ExpressionContext* expressionContext,
     if (v.isArray()) {
       if (v.length() > 1) {
         builder->openArray();
-        for (auto const& inner : VPackArrayIterator(v)) {
+        for (auto&& inner : VPackArrayIterator(v)) {
           if (inner.isArray()) {
             builder->openArray();
-            for (auto const& coord : VPackArrayIterator(inner)) {
+            for (auto&& coord : VPackArrayIterator(inner)) {
               if (coord.isNumber()) {
                 builder->add(VPackValue(coord.getNumber<double>()));
               } else {
@@ -6320,7 +6320,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext, transaction::
       AqlValueMaterializer materializer(trx);
       VPackSlice idSlice = materializer.slice(id, false);
       builder->openArray();
-      for (auto const& next : VPackArrayIterator(idSlice)) {
+      for (auto&& next : VPackArrayIterator(idSlice)) {
         if (next.isString()) {
           std::string identifier = next.copyString();
           std::string colName;
@@ -6357,7 +6357,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext, transaction::
 
     AqlValueMaterializer materializer(trx);
     VPackSlice idSlice = materializer.slice(id, false);
-    for (auto const& next : VPackArrayIterator(idSlice)) {
+    for (auto&& next : VPackArrayIterator(idSlice)) {
       if (next.isString()) {
         std::string identifier(next.copyString());
         ::getDocumentByIdentifier(trx, collectionName, identifier, true,
@@ -6412,7 +6412,7 @@ AqlValue Functions::Matches(ExpressionContext* expressionContext, transaction::M
   bool foundMatch;
   int32_t idx = -1;
 
-  for (auto const& example : VPackArrayIterator(examples)) {
+  for (auto&& example : VPackArrayIterator(examples)) {
     idx++;
 
     if (!example.isObject()) {

@@ -109,7 +109,7 @@ static VPackBuilder compareIndexes(
   VPackBuilder builder;
   {
     VPackArrayBuilder a(&builder);
-    for (auto const& pindex : VPackArrayIterator(plan)) {
+    for (auto&& pindex : VPackArrayIterator(plan)) {
       // Skip primary and edge indexes
       VPackStringRef ptype = pindex.get(StaticStrings::IndexType).stringRef();
       if (ptype == PRIMARY || ptype == EDGE) {
@@ -124,7 +124,7 @@ static VPackBuilder compareIndexes(
       // See, if we already have an index with the id given in the Plan:
       bool found = false;
       if (local.isArray()) {
-        for (auto const& lindex : VPackArrayIterator(local)) {
+        for (auto&& lindex : VPackArrayIterator(local)) {
           // Skip primary and edge indexes
           VPackStringRef ltype = lindex.get(StaticStrings::IndexType).stringRef();
           if (ltype == PRIMARY || ltype == EDGE) {
@@ -254,10 +254,10 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
             // which does not occur in the plan, but is in the followers
             // at an index > 0:
             std::unordered_set<std::string> followersToDrop;
-            for (auto const& q : VPackArrayIterator(inSyncFollowers)) {
+            for (auto&& q : VPackArrayIterator(inSyncFollowers)) {
               followersToDrop.insert(q.copyString());
             }
-            for (auto const& p : VPackArrayIterator(planServers)) {
+            for (auto&& p : VPackArrayIterator(planServers)) {
               if (p.isString()) {
                 followersToDrop.erase(p.copyString());
               }
@@ -452,7 +452,7 @@ void handleLocalShard(
   // We only drop indexes, when collection is not being dropped already
   if (cprops.hasKey(INDEXES)) {
     if (cprops.get(INDEXES).isArray()) {
-      for (auto const& index : VPackArrayIterator(cprops.get(INDEXES))) {
+      for (auto&& index : VPackArrayIterator(cprops.get(INDEXES))) {
         VPackStringRef type = index.get(StaticStrings::IndexType).stringRef();
         if (type != PRIMARY && type != EDGE) {
           std::string const id = index.get(ID).copyString();
@@ -596,13 +596,13 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       try {
         auto const& ldb = lit->second->slice();
         if (ldb.isObject() && pdb.isObject()) {
-          for (auto const& pcol : VPackObjectIterator(pdb, true)) { // each plan collection
+          for (auto&& pcol : VPackObjectIterator(pdb, true)) { // each plan collection
             auto const& cprops = pcol.value;
             // for each shard
-            for (auto const& shard : VPackObjectIterator(cprops.get(SHARDS))) { // each shard
+            for (auto&& shard : VPackObjectIterator(cprops.get(SHARDS))) { // each shard
 
               if (shard.value.isArray()) {
-                for (auto const& dbs : VPackArrayIterator(shard.value)) { //each dbserver with shard
+                for (auto&& dbs : VPackArrayIterator(shard.value)) { //each dbserver with shard
                   // We only care for shards, where we find us as "serverId" or "_serverId"
                   if (dbs.isEqualString(serverId) || dbs.isEqualString(UNDERSCORE + serverId)) {
                     // at this point a shard is in plan, we have the db for it
@@ -644,7 +644,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
         // Note that if `plan` is not an object, then `getShardMap` will simply return
         // an empty object, which is fine for `handleLocalShard`, so we do not have
         // to check anything else here.
-        for (auto const& lcol : VPackObjectIterator(ldbslice)) {
+        for (auto&& lcol : VPackObjectIterator(ldbslice)) {
           auto const& colname = lcol.key.copyString();
           auto const shardMap = getShardMap(plan);            // plan shards -> servers
           handleLocalShard(ldbname, colname, lcol.value, shardMap.slice(),
@@ -700,7 +700,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
           for (auto& p : shard.second) {
             std::string const& id = p.first;
             bool found = false;
-            for (auto const& ind : VPackArrayIterator(indexes)) {
+            for (auto&& ind : VPackArrayIterator(indexes)) {
               if (ind.get(ID).copyString() == id) {
                 found = true;
                 break;
@@ -968,7 +968,7 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
           std::unordered_set<std::string> indexesDone;
           // First the indexes as they are in Local, potentially replaced
           // by an error:
-          for (auto const& index : VPackArrayIterator(info.get(INDEXES))) {
+          for (auto&& index : VPackArrayIterator(info.get(INDEXES))) {
             std::string id = index.get(ID).copyString();
             indexesDone.insert(id);
             if (it1 != allErrors.indexes.end()) {
@@ -1014,7 +1014,7 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
 }
 
 bool equivalent(VPackSlice const& local, VPackSlice const& current) {
-  for (auto const& i : VPackObjectIterator(local, true)) {
+  for (auto&& i : VPackObjectIterator(local, true)) {
     if (!VPackNormalizedCompare::equals(i.value, current.get(i.key.stringRef()))) {
       return false;
     }
@@ -1136,7 +1136,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         }
       }
 
-      for (auto const& shard : VPackObjectIterator(ldb, true)) {
+      for (auto&& shard : VPackObjectIterator(ldb, true)) {
         auto const shName = shard.key.copyString();
         auto const shSlice = shard.value;
         auto const colName = shSlice.get(StaticStrings::DataSourcePlanId).copyString();
@@ -1257,7 +1257,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
                   VPackArrayBuilder a(&ns);
                   if (s.isArray()) {
                     bool front = true;
-                    for (auto const& i : VPackArrayIterator(s)) {
+                    for (auto&& i : VPackArrayIterator(s)) {
                       ns.add(VPackValue((!front) ? i.copyString()
                                         : UNDERSCORE + i.copyString()));
                       front = false;
@@ -1328,10 +1328,10 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
     // UpdateCurrentForCollections (Current/Collections/Collection)
     if (curcolls.isObject()) {
-      for (auto const& collection : VPackObjectIterator(curcolls)) {
+      for (auto&& collection : VPackObjectIterator(curcolls)) {
         auto const colName = collection.key.copyString();
 
-        for (auto const& shard : VPackObjectIterator(collection.value)) {
+        for (auto&& shard : VPackObjectIterator(collection.value)) {
           auto const shName = shard.key.copyString();
 
           // Shard in current and has servers
@@ -1481,7 +1481,7 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
     }
 
 
-    for (auto const& pcol : VPackObjectIterator(pdb)) {
+    for (auto&& pcol : VPackObjectIterator(pdb)) {
       VPackStringRef const colname = pcol.key.stringRef();
 
       VPackSlice const cdbcol = cdb.get(colname);
@@ -1489,7 +1489,7 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         continue;
       }
 
-      for (auto const& pshrd : VPackObjectIterator(pcol.value.get(SHARDS))) {
+      for (auto&& pshrd : VPackObjectIterator(pcol.value.get(SHARDS))) {
         VPackStringRef const shname = pshrd.key.stringRef();
 
         // First check if the shard is locked:

@@ -794,14 +794,14 @@ bool Supervision::earlyBird() const {
   VPackSlice serverStates = serverStatesB.slice();
 
   // every db server in plan accounted for in transient store?
-  for (auto const& server : VPackObjectIterator(dbservers)) {
+  for (auto&& server : VPackObjectIterator(dbservers)) {
     auto serverId = server.key.copyString();
     if (!serverStates.hasKey(serverId)) {
       return false;
     }
   }
   // every db server in plan accounted for in transient store?
-  for (auto const& server : VPackObjectIterator(coordinators)) {
+  for (auto&& server : VPackObjectIterator(coordinators)) {
     auto serverId = server.key.copyString();
     if (!serverStates.hasKey(serverId)) {
       return false;
@@ -1268,7 +1268,7 @@ std::unordered_map<ServerID, std::string> deletionCandidates(Node const& snapsho
             Slice const servers = (*shard.second).getArray();
             if (servers.length() > 0) {
               try {
-                for (auto const& server : VPackArrayIterator(servers)) {
+                for (auto&& server : VPackArrayIterator(servers)) {
                   if (serverList.find(server.copyString()) != serverList.end()) {
                     serverList.erase(server.copyString());
                   }
@@ -2076,7 +2076,7 @@ void Supervision::readyOrphanedIndexCreations() {
         if (collection.has("indexes")) {
           indexes = collection("indexes").getArray();
           if (indexes.length() > 0) {
-            for (auto const& planIndex : VPackArrayIterator(indexes)) {
+            for (auto&& planIndex : VPackArrayIterator(indexes)) {
               if (planIndex.hasKey(StaticStrings::IndexIsBuilding) &&
                   collection.has("shards")) {
                 auto const& planId = planIndex.get("id");
@@ -2094,7 +2094,7 @@ void Supervision::readyOrphanedIndexCreations() {
                     if (currentDBs.has(colPath + shname + "/indexes")) {
                       auto const& curIndexes =
                           currentDBs(colPath + shname + "/indexes").slice();
-                      for (auto const& curIndex : VPackArrayIterator(curIndexes)) {
+                      for (auto&& curIndex : VPackArrayIterator(curIndexes)) {
                         auto const& curId = curIndex.get("id");
                         if (basics::VelocyPackHelper::equal(planId, curId, false)) {
                           ++nIndexes;
@@ -2127,11 +2127,11 @@ void Supervision::readyOrphanedIndexCreations() {
                 }
                 envelope->add(VPackValue(_agencyPrefix + planColPrefix + colPath + "indexes"));
                 VPackArrayBuilder value(envelope.get());
-                for (auto const& planIndex : VPackArrayIterator(indexes)) {
+                for (auto&& planIndex : VPackArrayIterator(indexes)) {
                   if (built.find(planIndex.get("id").copyString()) != built.end()) {
                     {
                       VPackObjectBuilder props(envelope.get());
-                      for (auto const& prop : VPackObjectIterator(planIndex)) {
+                      for (auto&& prop : VPackObjectIterator(planIndex)) {
                         auto const& key = prop.key.copyString();
                         if (key != StaticStrings::IndexIsBuilding) {
                           envelope->add(key, prop.value);
@@ -2228,7 +2228,7 @@ void Supervision::enforceReplication() {
           {
             VPackArrayBuilder guard(&onlyFollowers);
             bool first = true;
-            for (auto const& pp : VPackArrayIterator(shard.slice())) {
+            for (auto&& pp : VPackArrayIterator(shard.slice())) {
               if (!first) {
                 onlyFollowers.add(pp);
               }

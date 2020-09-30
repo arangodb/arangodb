@@ -38,7 +38,7 @@ ParseResult<Collection> Collection::parse(Maskings* maskings, VPackSlice const& 
   std::string type = "";
   std::vector<AttributeMasking> attributes;
 
-  for (auto const& entry : VPackObjectIterator(def, false)) {
+  for (auto&& entry : VPackObjectIterator(def, false)) {
     std::string key = entry.key.copyString();
 
     if (key == "type") {
@@ -56,7 +56,7 @@ ParseResult<Collection> Collection::parse(Maskings* maskings, VPackSlice const& 
             "expecting an array for collection maskings");
       }
 
-      for (auto const& mask : VPackArrayIterator(entry.value)) {
+      for (auto&& mask : VPackArrayIterator(entry.value)) {
         ParseResult<AttributeMasking> am = AttributeMasking::parse(maskings, mask);
 
         if (am.status != ParseResult<AttributeMasking>::VALID) {

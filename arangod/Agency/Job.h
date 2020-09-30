@@ -243,13 +243,13 @@ inline arangodb::consensus::write_ret_t singleWriteTransaction(AgentInterface* _
       VPackArrayBuilder onePair(envelope.get());
       {
         VPackObjectBuilder mutationPart(envelope.get());
-        for (auto const& pair : VPackObjectIterator(trx[0])) {
+        for (auto&& pair : VPackObjectIterator(trx[0])) {
           envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
         }
       }
       if (trx.length() > 1) {
         VPackObjectBuilder preconditionPart(envelope.get());
-        for (auto const& pair : VPackObjectIterator(trx[1])) {
+        for (auto&& pair : VPackObjectIterator(trx[1])) {
           envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
         }
       }
@@ -277,25 +277,25 @@ inline arangodb::consensus::trans_ret_t generalTransaction(AgentInterface* _agen
   try {
     {
       VPackArrayBuilder listOfTrxs(envelope.get());
-      for (auto const& singleTrans : VPackArrayIterator(trx)) {
+      for (auto&& singleTrans : VPackArrayIterator(trx)) {
         TRI_ASSERT(singleTrans.isArray() && singleTrans.length() > 0);
         if (singleTrans[0].isObject()) {
           VPackArrayBuilder onePair(envelope.get());
           {
             VPackObjectBuilder mutationPart(envelope.get());
-            for (auto const& pair : VPackObjectIterator(singleTrans[0])) {
+            for (auto&& pair : VPackObjectIterator(singleTrans[0])) {
               envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
             }
           }
           if (singleTrans.length() > 1) {
             VPackObjectBuilder preconditionPart(envelope.get());
-            for (auto const& pair : VPackObjectIterator(singleTrans[1])) {
+            for (auto&& pair : VPackObjectIterator(singleTrans[1])) {
               envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
             }
           }
         } else if (singleTrans[0].isString()) {
           VPackArrayBuilder reads(envelope.get());
-          for (auto const& path : VPackArrayIterator(singleTrans)) {
+          for (auto&& path : VPackArrayIterator(singleTrans)) {
             envelope->add(VPackValue("/" + Job::agencyPrefix + path.copyString()));
           }
         }
@@ -328,13 +328,13 @@ inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
       VPackArrayBuilder onePair(envelope.get());
       {
         VPackObjectBuilder mutationPart(envelope.get());
-        for (auto const& pair : VPackObjectIterator(trx[0])) {
+        for (auto&& pair : VPackObjectIterator(trx[0])) {
           envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
         }
       }
       if (trx.length() > 1) {
         VPackObjectBuilder preconditionPart(envelope.get());
-        for (auto const& pair : VPackObjectIterator(trx[1])) {
+        for (auto&& pair : VPackObjectIterator(trx[1])) {
           envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
         }
       }

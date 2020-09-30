@@ -172,7 +172,7 @@ bool State::persistConf(index_t index, term_t term, uint64_t millis,
   if (config.get("id").copyString() != myId) {
     {
       VPackObjectBuilder b(&builder);
-      for (auto const& i : VPackObjectIterator(config)) {
+      for (auto&& i : VPackObjectIterator(config)) {
         auto key = i.key.copyString();
         if (key == "endpoint") {
           builder.add(key, VPackValue(_agent->endpoint()));
@@ -253,7 +253,7 @@ std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
 
   TRI_ASSERT(!_log.empty());  // log must never be empty
 
-  for (auto const& i : VPackArrayIterator(slice)) {
+  for (auto&& i : VPackArrayIterator(slice)) {
     if (!i.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(30000,
                                      "Transaction syntax is [{<operations>}, "
@@ -695,13 +695,13 @@ VPackBuilder State::slices(index_t start, index_t end) const {
       try { //{ "a" : {"op":"set", "ttl":20, ...}}
         auto slice = VPackSlice(_log.at(i).entry->data());
         VPackObjectBuilder o(&slices);
-        for (auto const& oper : VPackObjectIterator(slice)) {
+        for (auto&& oper : VPackObjectIterator(slice)) {
           slices.add(VPackValue(oper.key.copyString()));
 
           if (oper.value.isObject() && oper.value.hasKey("op") &&
               oper.value.get("op").isEqualString("set") && oper.value.hasKey("ttl")) {
             VPackObjectBuilder oo(&slices);
-            for (auto const& i : VPackObjectIterator(oper.value)) {
+            for (auto&& i : VPackObjectIterator(oper.value)) {
               slices.add(i.key.copyString(), i.value);
             }
             slices.add("epoch_millis", VPackValue(_log.at(i).timestamp.count()));
@@ -1073,7 +1073,7 @@ bool State::loadRemaining() {
     // snapshot that was loaded or to 0 if there is no snapshot.
     index_t lastIndex = _cur;
 
-    for (auto const& i : VPackArrayIterator(result)) {
+    for (auto&& i : VPackArrayIterator(result)) {
       buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
 
       auto ii = i.resolveExternals();
@@ -1503,7 +1503,7 @@ std::vector<index_t> State::inquire(query_t const& query) const {
   size_t pos = 0;
 
   MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
-  for (auto const& i : VPackArrayIterator(query->slice())) {
+  for (auto&& i : VPackArrayIterator(query->slice())) {
     if (!i.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           210002, std::string("ClientIds must be strings. On position ") +
@@ -1590,7 +1590,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
     VPackBuilder b;
     {
       VPackArrayBuilder bb(&b);
-      for (auto const& i : VPackArrayIterator(result)) {
+      for (auto&& i : VPackArrayIterator(result)) {
         buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
 
         auto ii = i.resolveExternals();
@@ -1662,7 +1662,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   auto copyWithoutId = [&](VPackSlice slice, VPackBuilder& builder) {
     // Need to remove custom attribute in _id:
     { VPackObjectBuilder guard(&builder);
-      for (auto const& p : VPackObjectIterator(slice)) {
+      for (auto&& p : VPackObjectIterator(slice)) {
         if (p.key.copyString() != "_id") {
           builder.add(p.key);
           builder.add(p.value);

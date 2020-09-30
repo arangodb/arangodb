@@ -599,7 +599,7 @@ void Constituent::run() {
     VPackSlice result = queryResult.data->slice();
 
     if (result.isArray()) {
-      for (auto const& i : VPackArrayIterator(result)) {
+      for (auto&& i : VPackArrayIterator(result)) {
         auto ii = i.resolveExternals();
         try {
           MUTEX_LOCKER(locker, _termVoteLock);

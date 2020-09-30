@@ -57,7 +57,7 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
   std::vector<RowIndex> result;
   if (!empty()) {
     result.reserve(size());
-    for (auto const& [index, block] : enumerate(_blocks)) {
+    for (auto&& [index, block] : enumerate(_blocks)) {
       // Default case, 0 -> end
       size_t startRow = 0;
       // We know block size is <= DefaultBatchSize (1000) so it should easily fit into 32bit...

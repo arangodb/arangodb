@@ -136,7 +136,7 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
     }
     std::vector<AqlCall> res;
     res.reserve(slice.length());
-    for (auto const& c : VPackArrayIterator(slice)) {
+    for (auto&& c : VPackArrayIterator(slice)) {
       auto maybeAqlCall = AqlCall::fromVelocyPack(c);
       if (ADB_UNLIKELY(maybeAqlCall.fail())) {
         auto message = std::string{"When deserializing AqlCallList: entry "};
@@ -299,7 +299,7 @@ bool arangodb::aql::operator==(AqlCallList const& left, AqlCallList const& right
   if (!(left._defaultCall == right._defaultCall)) {
     return false;
   }
-  for (auto const& [index, call] : enumerate(left._specificCalls)) {
+  for (auto&& [index, call] : enumerate(left._specificCalls)) {
     if (!(call == right._specificCalls[index])) {
       return false;
     }
@@ -309,7 +309,7 @@ bool arangodb::aql::operator==(AqlCallList const& left, AqlCallList const& right
 
 auto arangodb::aql::operator<<(std::ostream& out, AqlCallList const& list) -> std::ostream& {
   out << "{specific: [ ";
-  for (auto const& [index, call] : enumerate(list._specificCalls)) {
+  for (auto&& [index, call] : enumerate(list._specificCalls)) {
     if (index > 0) {
       out << ", ";
     }

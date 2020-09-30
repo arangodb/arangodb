@@ -1179,7 +1179,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
     _tiLock.assertNotLockedByCurrentThread();
     MUTEX_LOCKER(ioLocker, _ioLock);
 
-    for (const auto& query : VPackArrayIterator(qs)) {
+    for (auto&& query : VPackArrayIterator(qs)) {
       // Check that we are actually still the leader:
       if (!leading()) {
         return trans_ret_t(false, NO_LEADER);
@@ -1245,7 +1245,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
     MUTEX_LOCKER(transientLocker, _transientLock);
 
     // Read and writes
-    for (const auto& query : VPackArrayIterator(queries->slice())) {
+    for (const auto&& query : VPackArrayIterator(queries->slice())) {
       if (query[0].isObject()) {
         ret->add(VPackValue(_transient.applyTransaction(query).successful()));
       } else if (query[0].isString()) {
@@ -2208,7 +2208,7 @@ void Agent::trashStoreCallback(std::string const& url, VPackSlice slice) {
 
   // body consists of object holding keys index, term and the observed keys
   // we'll remove observation on every key and according observer url
-  for (auto const& i : VPackObjectIterator(slice)) {
+  for (auto&& i : VPackObjectIterator(slice)) {
     if (!i.key.isEqualString("term") && !i.key.isEqualString("index")) {
       MUTEX_LOCKER(lock, _cbtLock);
       _callbackTrashBin[i.key.copyString()].emplace(url);
@@ -2320,7 +2320,7 @@ query_t Agent::buildDB(arangodb::consensus::index_t index) {
 void Agent::addTrxsOngoing(Slice trxs) {
   try {
     MUTEX_LOCKER(guard, _trxsLock);
-    for (auto const& trx : VPackArrayIterator(trxs)) {
+    for (auto&& trx : VPackArrayIterator(trxs)) {
       if (trx.isArray() && trx.length() == 3 && trx[0].isObject() && trx[2].isString()) {
         // only those are interesting:
         _ongoingTrxs.insert(trx[2].copyString());
@@ -2333,7 +2333,7 @@ void Agent::addTrxsOngoing(Slice trxs) {
 void Agent::removeTrxsOngoing(Slice trxs) {
   try {
     MUTEX_LOCKER(guard, _trxsLock);
-    for (auto const& trx : VPackArrayIterator(trxs)) {
+    for (auto&& trx : VPackArrayIterator(trxs)) {
       if (trx.isArray() && trx.length() == 3 && trx[0].isObject() && trx[2].isString()) {
         // only those are interesting:
         _ongoingTrxs.erase(trx[2].copyString());

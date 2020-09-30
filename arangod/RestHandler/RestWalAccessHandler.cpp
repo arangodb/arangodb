@@ -143,7 +143,7 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
       return false;
     }
 
-    for (auto const& id : VPackArrayIterator(slice)) {
+    for (auto&& id : VPackArrayIterator(slice)) {
       if (!id.isString()) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                       "invalid body value. expecting array of ids");

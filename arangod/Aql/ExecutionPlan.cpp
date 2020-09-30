@@ -384,7 +384,7 @@ void ExecutionPlan::getCollectionsFromVelocyPack(aql::Collections& colls, VPackS
        "json node \"collections\" not found or not an array");
   }
 
-  for (auto const& collection : VPackArrayIterator(collectionsSlice)) {
+  for (auto&& collection : VPackArrayIterator(collectionsSlice)) {
     colls.add(
         basics::VelocyPackHelper::checkAndGetStringValue(collection, "name"),
         AccessMode::fromString(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
@@ -2401,7 +2401,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
     // now re-link the dependencies
     VPackSlice dependencies = it.get("dependencies");
     if (dependencies.isArray()) {
-      for (auto const& it2 : VPackArrayIterator(dependencies)) {
+      for (auto&& it2 : VPackArrayIterator(dependencies)) {
         if (it2.isNumber()) {
           auto depId =
               ExecutionNodeId{it2.getNumericValue<ExecutionNodeId::BaseType>()};

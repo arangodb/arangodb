@@ -215,7 +215,7 @@ void RestAqlHandler::setupClusterQuery() {
   // Build the collection information
   VPackBuilder collectionBuilder;
   collectionBuilder.openArray();
-  for (auto const& lockInf : VPackObjectIterator(lockInfoSlice)) {
+  for (auto&& lockInf : VPackObjectIterator(lockInfoSlice)) {
     if (!lockInf.value.isArray()) {
       LOG_TOPIC("1dc00", ERR, arangodb::Logger::AQL)
           << "Invalid VelocyPack: \"lockInfo." << lockInf.key.copyString()

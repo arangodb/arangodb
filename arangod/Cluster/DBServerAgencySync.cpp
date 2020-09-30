@@ -313,7 +313,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         if (!agency.isEmptyObject()) {
           std::vector<AgencyOperation> operations;
           std::vector<AgencyPrecondition> preconditions;
-          for (auto const& ao : VPackObjectIterator(agency)) {
+          for (auto&& ao : VPackObjectIterator(agency)) {
             auto const key = ao.key.copyString();
             auto const op = ao.value.get("op").copyString();
 

@@ -52,11 +52,11 @@ struct VertexSumAggregator : public IAggregator {
   };
 
   void parseAggregate(VPackSlice const& slice) override {
-    for (auto const& pair : VPackObjectIterator(slice)) {
+    for (auto&& pair : VPackObjectIterator(slice)) {
       PregelShard shard = std::stoi(pair.key.copyString());
       std::string key;
       VPackValueLength i = 0;
-      for (VPackSlice const& val : VPackArrayIterator(pair.value)) {
+      for (VPackSlice const&& val : VPackArrayIterator(pair.value)) {
         if (i % 2 == 0) {
           key = val.copyString();
         } else {
@@ -70,11 +70,11 @@ struct VertexSumAggregator : public IAggregator {
   void const* getAggregatedValue() const override { return &_entries; };
 
   void setAggregatedValue(VPackSlice const& slice) override {
-    for (auto const& pair : VPackObjectIterator(slice)) {
+    for (auto&& pair : VPackObjectIterator(slice)) {
       PregelShard shard = std::stoi(pair.key.copyString());
       std::string key;
       VPackValueLength i = 0;
-      for (VPackSlice const& val : VPackArrayIterator(pair.value)) {
+      for (VPackSlice const&& val : VPackArrayIterator(pair.value)) {
         if (i % 2 == 0) {
           key = val.copyString();
         } else {

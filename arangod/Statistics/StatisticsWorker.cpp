@@ -347,7 +347,7 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
          clientBytesReceivedPerSecond = 0, clientAvgTotalTime = 0,
          clientAvgRequestTime = 0, clientAvgQueueTime = 0, clientAvgIoTime = 0;
 
-  for (auto const& vs : VPackArrayIterator(result)) {
+  for (auto&& vs : VPackArrayIterator(result)) {
     VPackSlice const values = vs.resolveExternals();
 
     if (!values.isObject()) {

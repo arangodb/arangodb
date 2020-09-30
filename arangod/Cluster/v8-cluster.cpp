@@ -276,8 +276,8 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // return just the value for each key
 
-  for (auto const& a : VPackArrayIterator(result.slice())) {
-    for (auto const& o : VPackObjectIterator(a)) {
+  for (auto&& a : VPackArrayIterator(result.slice())) {
+    for (auto&& o : VPackObjectIterator(a)) {
       std::string const key = o.key.copyString();
       VPackSlice const slice = o.value;
 
@@ -675,7 +675,7 @@ static void JS_GetCollectionInfoClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
   VPackSlice shards = info.get("shards");
   TRI_ASSERT(shards.isObject());
   v8::Handle<v8::Object> shardShorts = v8::Object::New(isolate);
-  for (auto const& p : VPackObjectIterator(shards)) {
+  for (auto&& p : VPackObjectIterator(shards)) {
     TRI_ASSERT(p.value.isArray());
     v8::Handle<v8::Array> shorts = v8::Array::New(isolate);
     uint32_t pos = 0;

@@ -153,7 +153,7 @@ bool Job::finish(std::string const& server, std::string const& shard,
         addRemoveJobFromSomewhere(finished, "Pending", _jobId);
 
         if (operations.length() > 0) {
-          for (auto const& oper : VPackObjectIterator(operations)) {
+          for (auto&& oper : VPackObjectIterator(operations)) {
             finished.add(oper.key.copyString(), oper.value);
           }
         }
@@ -170,7 +170,7 @@ bool Job::finish(std::string const& server, std::string const& shard,
 
       if (preconditions.isObject() && preconditions.length() > 0) {  // preconditions --
         VPackObjectBuilder precguard(&finished);
-        for (auto const& prec : VPackObjectIterator(preconditions)) {
+        for (auto&& prec : VPackObjectIterator(preconditions)) {
           finished.add(prec.key.copyString(), prec.value);
         }
       }  // -- preconditions
@@ -239,7 +239,7 @@ std::string Job::randomIdleAvailableServer(Node const& snap,
 std::string Job::randomIdleAvailableServer(Node const& snap, Slice const& exclude) {
   std::vector<std::string> ev;
   if (exclude.isArray()) {
-    for (const auto& s : VPackArrayIterator(exclude)) {
+    for (const auto&& s : VPackArrayIterator(exclude)) {
       if (s.isString()) {
         ev.push_back(s.copyString());
       }
@@ -505,7 +505,7 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
     // Guaranteed by if above
     TRI_ASSERT(serverList.isArray());
 
-    for (const auto& server : VPackArrayIterator(serverList)) {
+    for (const auto&& server : VPackArrayIterator(serverList)) {
       auto id = server.copyString();
       if (id == serverToAvoid) {
         // Skip current leader for which we are seeking a replacement
@@ -525,7 +525,7 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
       // check if it is also part of the plan...because if not the soon to be
       // leader will drop the collection
       bool found = false;
-      for (const auto& plannedServer :
+      for (const auto&& plannedServer :
            VPackArrayIterator(snap.hasAsArray(plannedShardPath).first)) {
         if (plannedServer.isEqualString(server.stringRef())) {
           found = true;
@@ -658,7 +658,7 @@ void Job::addPutJobIntoSomewhere(Builder& trx, std::string const& where,
       trx.add("timeFinished",
               VPackValue(timepointToString(std::chrono::system_clock::now())));
     }
-    for (auto const& obj : VPackObjectIterator(job)) {
+    for (auto&& obj : VPackObjectIterator(job)) {
       trx.add(obj.key.copyString(), obj.value);
     }
     if (!reason.empty()) {

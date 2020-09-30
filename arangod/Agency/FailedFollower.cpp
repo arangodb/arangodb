@@ -203,7 +203,7 @@ bool FailedFollower::start(bool& aborts) {
   Builder ns;
   {
     VPackArrayBuilder servers(&ns);
-    for (auto const& i : VPackArrayIterator(planned)) {
+    for (auto&& i : VPackArrayIterator(planned)) {
       auto s = i.copyString();
       ns.add(VPackValue((s != _from) ? s : _to));
     }
@@ -231,7 +231,7 @@ bool FailedFollower::start(bool& aborts) {
           job.add("timeFinished",  // same same :)
                   VPackValue(timepointToString(system_clock::now())));
           job.add("toServer", VPackValue(_to));  // toServer
-          for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
+          for (auto&& obj : VPackObjectIterator(todo.slice()[0])) {
             job.add(obj.key.copyString(), obj.value);
           }
         }

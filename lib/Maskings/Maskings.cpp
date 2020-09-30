@@ -96,7 +96,7 @@ ParseResult<Maskings> Maskings::parse(VPackSlice const& def) {
                                  "expecting an object for masking definition");
   }
 
-  for (auto const& entry : VPackObjectIterator(def, false)) {
+  for (auto&& entry : VPackObjectIterator(def, false)) {
     std::string key = entry.key.copyString();
 
     if (key == "*") {
@@ -258,7 +258,7 @@ void Maskings::addMaskedArray(Collection& collection, VPackBuilder& builder,
 
 void Maskings::addMaskedObject(Collection& collection, VPackBuilder& builder,
                                std::vector<std::string>& path, VPackSlice const& data) {
-  for (auto const& entry : VPackObjectIterator(data, false)) {
+  for (auto&& entry : VPackObjectIterator(data, false)) {
     std::string key = entry.key.copyString();
     VPackSlice const& value = entry.value;
 
@@ -305,7 +305,7 @@ void Maskings::addMasked(Collection& collection, basics::StringBuffer& data,
   {
     VPackObjectBuilder ob(&builder);
 
-    for (auto const& entry : VPackObjectIterator(slice, false)) {
+    for (auto&& entry : VPackObjectIterator(slice, false)) {
       velocypack::StringRef key = entry.key.stringRef();
 
       if (key.equals(dataStrRef)) {

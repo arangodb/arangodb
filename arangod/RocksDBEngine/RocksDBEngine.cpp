@@ -2028,7 +2028,7 @@ bool RocksDBEngine::systemDatabaseExists() {
   velocypack::Builder builder;
   getDatabases(builder);
 
-  for (auto const& item : velocypack::ArrayIterator(builder.slice())) {
+  for (auto&& item : velocypack::ArrayIterator(builder.slice())) {
     TRI_ASSERT(item.isObject());
     TRI_ASSERT(item.get(StaticStrings::DatabaseName).isString());
     if (item.get(StaticStrings::DatabaseName)
@@ -2160,7 +2160,7 @@ void RocksDBEngine::getStatistics(std::string& result) const {
   getStatistics(stats);
   VPackSlice sslice = stats.slice();
   TRI_ASSERT(sslice.isObject());
-  for (auto const& a : VPackObjectIterator(sslice)) {
+  for (auto&& a : VPackObjectIterator(sslice)) {
     if (a.value.isNumber()) {
       std::string name = a.key.copyString();
       std::replace(name.begin(), name.end(), '.', '_');

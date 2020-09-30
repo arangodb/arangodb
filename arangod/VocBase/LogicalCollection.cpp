@@ -660,7 +660,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   {
     VPackObjectBuilder guard(&result);
 
-    for (auto const& p : VPackObjectIterator(params.slice())) {
+    for (auto&& p : VPackObjectIterator(params.slice())) {
       result.add(p.key);
       result.add(p.value);
     }

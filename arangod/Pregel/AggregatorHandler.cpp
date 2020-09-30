@@ -80,7 +80,7 @@ void AggregatorHandler::aggregateValues(AggregatorHandler const& workerValues) {
 void AggregatorHandler::aggregateValues(VPackSlice const& workerValues) {
   VPackSlice values = workerValues.get(Utils::aggregatorValuesKey);
   if (values.isObject()) {
-    for (auto const& keyValue : VPackObjectIterator(values)) {
+    for (auto&& keyValue : VPackObjectIterator(values)) {
       AggregatorID name = keyValue.key.copyString();
       IAggregator* agg = getAggregator(name);
       if (agg) {
@@ -93,7 +93,7 @@ void AggregatorHandler::aggregateValues(VPackSlice const& workerValues) {
 void AggregatorHandler::setAggregatedValues(VPackSlice const& workerValues) {
   VPackSlice values = workerValues.get(Utils::aggregatorValuesKey);
   if (values.isObject()) {
-    for (auto const& keyValue : VPackObjectIterator(values)) {
+    for (auto&& keyValue : VPackObjectIterator(values)) {
       AggregatorID name = keyValue.key.copyString();
       IAggregator* agg = getAggregator(name);
       if (agg) {

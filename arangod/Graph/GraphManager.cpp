@@ -925,7 +925,7 @@ Result GraphManager::pushCollectionIfMayBeDropped(std::string const& colName,
     // check edge definitions
     VPackSlice edgeDefinitions = graph.get(StaticStrings::GraphEdgeDefinitions);
     if (edgeDefinitions.isArray()) {
-      for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
+      for (auto&& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
         // edge collection
         if (edgeDefinition.get("collection").stringRef() == colName) {
           collectionUnused = false;

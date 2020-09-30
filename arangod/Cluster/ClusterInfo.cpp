@@ -884,7 +884,7 @@ void ClusterInfo::loadPlan() {
       continue;
     }
 
-    for (auto const& viewPairSlice : velocypack::ObjectIterator(viewsSlice, true)) {
+    for (auto&& viewPairSlice : velocypack::ObjectIterator(viewsSlice, true)) {
       auto const& viewSlice = viewPairSlice.value;
 
       if (!viewSlice.isObject()) {
@@ -1101,7 +1101,7 @@ void ClusterInfo::loadPlan() {
     // for the same database
     AllCollections::const_iterator existingCollections = _plannedCollections.find(databaseName);
 
-    for (auto const& collectionPairSlice : velocypack::ObjectIterator(collectionsSlice)) {
+    for (auto&& collectionPairSlice : velocypack::ObjectIterator(collectionsSlice)) {
       auto const& collectionSlice = collectionPairSlice.value;
 
       if (!collectionSlice.isObject()) {
@@ -1356,7 +1356,7 @@ void ClusterInfo::loadCurrent() {
 
     std::unordered_map<ServerID, velocypack::Slice> serverList;
     if (databaseSlice.isObject()) {
-      for (auto const& serverSlicePair : VPackObjectIterator(databaseSlice)) {
+      for (auto&& serverSlicePair : VPackObjectIterator(databaseSlice)) {
         serverList.try_emplace(serverSlicePair.key.copyString(), serverSlicePair.value);
       }
     }
@@ -1386,13 +1386,13 @@ void ClusterInfo::loadCurrent() {
 
     DatabaseCollectionsCurrent databaseCollections;
 
-    for (auto const& collectionSlice : VPackObjectIterator(databaseSlice)) {
+    for (auto&& collectionSlice : VPackObjectIterator(databaseSlice)) {
       std::string collectionName = collectionSlice.key.copyString();
 
       auto collectionDataCurrent =
         std::make_shared<CollectionInfoCurrent>(changeSet.version);
 
-      for (auto const& shardSlice : velocypack::ObjectIterator(collectionSlice.value)) {
+      for (auto&& shardSlice : velocypack::ObjectIterator(collectionSlice.value)) {
         std::string shardID = shardSlice.key.copyString();
 
         collectionDataCurrent->add(shardID, shardSlice.value);
@@ -2278,7 +2278,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       ShardID shardID = pair.key.copyString();
       std::vector<ServerID> serverIds;
 
-      for (auto const& serv : VPackArrayIterator(pair.value)) {
+      for (auto&& serv : VPackArrayIterator(pair.value)) {
         auto const sid = serv.copyString();
         serverIds.emplace_back(sid);
         allServers.emplace(sid);
@@ -2308,7 +2308,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       if (result.isObject() && result.length() == (size_t)info.numberOfShards) {
         std::string tmpError = "";
 
-        for (auto const& p : VPackObjectIterator(result)) {
+        for (auto&& p : VPackObjectIterator(result)) {
           if (arangodb::basics::VelocyPackHelper::getBooleanValue(p.value,
                                                                   StaticStrings::Error, false)) {
             tmpError += " shardID:" + p.key.copyString() + ":";
@@ -2365,7 +2365,7 @@ Result ClusterInfo::createCollectionsCoordinator(
             if (!servers.isArray()) {
               return true;
             }
-            for (auto const& server : VPackArrayIterator(servers)) {
+            for (auto&& server : VPackArrayIterator(servers)) {
               if (!server.isString()) {
                 return true;
               }
@@ -3487,7 +3487,7 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
   VPackBuilder builder;
   try {
     VPackObjectBuilder b(&builder);
-    for (auto const& entry : VPackObjectIterator(col)) {
+    for (auto&& entry : VPackObjectIterator(col)) {
       std::string key = entry.key.copyString();
       if (key != "status") {
         builder.add(key, entry.value);
@@ -3633,7 +3633,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   }
 
   VPackSlice indexes = collectionFromPlan.indexes();
-  for (auto const& other : VPackArrayIterator(indexes)) {
+  for (auto&& other : VPackArrayIterator(indexes)) {
     TRI_ASSERT(other.isObject());
     if (true == arangodb::Index::Compare(slice, other)) {
       {  // found an existing index... Copy over all elements in slice.
@@ -3670,7 +3670,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
     }
 
     size_t found = 0;
-    for (auto const& shard : VPackObjectIterator(result)) {
+    for (auto&& shard : VPackObjectIterator(result)) {
       VPackSlice const slice = shard.value;
       if (slice.hasKey("indexes")) {
         VPackSlice const indexes = slice.get("indexes");
@@ -3717,7 +3717,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   {
     VPackObjectBuilder ob(&newIndexBuilder);
     // Add the new index ignoring "id"
-    for (auto const& e : VPackObjectIterator(slice)) {
+    for (auto&& e : VPackObjectIterator(slice)) {
       TRI_ASSERT(e.key.isString());
       std::string const& key = e.key.copyString();
       if (key != StaticStrings::IndexId && key != StaticStrings::IndexIsBuilding) {
@@ -3840,7 +3840,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         VPackBuilder finishedPlanIndex;
         {
           VPackObjectBuilder o(&finishedPlanIndex);
-          for (auto const& entry : VPackObjectIterator(newIndexBuilder.slice())) {
+          for (auto&& entry : VPackObjectIterator(newIndexBuilder.slice())) {
             auto const key = entry.key.copyString();
             if (key != StaticStrings::IndexIsBuilding &&
                 key != "isNewlyCreated") {
@@ -4072,7 +4072,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
     if (shards.size() == numberOfShards) {
       bool found = false;
-      for (auto const& shard : shards) {
+      for (auto&& shard : shards) {
         VPackSlice const indexes = shard.value.get("indexes");
 
         if (indexes.isArray()) {
@@ -4221,7 +4221,7 @@ void ClusterInfo::loadServers() {
 
     std::unordered_set<ServerID> serverIds;
 
-    for (auto const& res : VPackObjectIterator(serversRegistered)) {
+    for (auto&& res : VPackObjectIterator(serversRegistered)) {
       velocypack::Slice slice = res.value;
 
       if (slice.isObject() && slice.hasKey("endpoint")) {
@@ -4472,7 +4472,7 @@ void ClusterInfo::loadCurrentCoordinators() {
     if (currentCoordinators.isObject()) {
       decltype(_coordinators) newCoordinators;
 
-      for (auto const& coordinator : VPackObjectIterator(currentCoordinators)) {
+      for (auto&& coordinator : VPackObjectIterator(currentCoordinators)) {
         newCoordinators.try_emplace(coordinator.key.copyString(), coordinator.value.copyString());
       }
 
@@ -4520,7 +4520,7 @@ void ClusterInfo::loadCurrentMappings() {
     if (mappings.isObject()) {
       decltype(_coordinatorIdMap) newCoordinatorIdMap;
 
-      for (auto const& mapping : VPackObjectIterator(mappings)) {
+      for (auto&& mapping : VPackObjectIterator(mappings)) {
         auto mapObject = mapping.value;
         if (mapObject.isObject()) {
           ServerID fullId = mapping.key.copyString();
@@ -4607,10 +4607,10 @@ void ClusterInfo::loadCurrentDBServers() {
   if (currentDBServers.isObject() && failedDBServers.isObject()) {
     decltype(_DBServers) newDBServers;
 
-    for (auto const& dbserver : VPackObjectIterator(currentDBServers)) {
+    for (auto&& dbserver : VPackObjectIterator(currentDBServers)) {
       bool found = false;
       if (failedDBServers.isObject()) {
-        for (auto const& failedServer : VPackObjectIterator(failedDBServers)) {
+        for (auto&& failedServer : VPackObjectIterator(failedDBServers)) {
           if (basics::VelocyPackHelper::equal(dbserver.key, failedServer.key, false)) {
             found = true;
             break;
@@ -4623,7 +4623,7 @@ void ClusterInfo::loadCurrentDBServers() {
 
       if (cleanedDBServers.isArray()) {
         found = false;
-        for (auto const& cleanedServer : VPackArrayIterator(cleanedDBServers)) {
+        for (auto&& cleanedServer : VPackArrayIterator(cleanedDBServers)) {
           if (basics::VelocyPackHelper::equal(dbserver.key, cleanedServer, false)) {
             found = true;
             break;
@@ -4636,7 +4636,7 @@ void ClusterInfo::loadCurrentDBServers() {
 
       if (toBeCleanedDBServers.isArray()) {
         found = false;
-        for (auto const& toBeCleanedServer : VPackArrayIterator(toBeCleanedDBServers)) {
+        for (auto&& toBeCleanedServer : VPackArrayIterator(toBeCleanedDBServers)) {
           if (basics::VelocyPackHelper::equal(dbserver.key, toBeCleanedServer, false)) {
             found = true;
             break;

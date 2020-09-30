@@ -185,7 +185,7 @@ Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid users slice");
   }
 
-  for (VPackSlice const& user : VPackArrayIterator(users)) {
+  for (VPackSlice&& user : VPackArrayIterator(users)) {
     if (!user.isObject()) {
       events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
       return Result(TRI_ERROR_HTTP_BAD_PARAMETER);

@@ -467,7 +467,7 @@ void RocksDBIndexFactory::prepareIndexes(
 
         b.openObject();
 
-        for (auto const& f : VPackObjectIterator(v)) {
+        for (auto&& f : VPackObjectIterator(v)) {
           if (arangodb::velocypack::StringRef(f.key) == StaticStrings::IndexId) {
             last = IndexId{last.id() + 1};
             b.add(StaticStrings::IndexId, VPackValue(std::to_string(last.id())));

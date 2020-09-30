@@ -232,21 +232,21 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 
   list = base.get("globalEdgeConditions");
   if (list.isArray()) {
-    for (auto const& cond : VPackArrayIterator(list)) {
+    for (auto&& cond : VPackArrayIterator(list)) {
       _globalEdgeConditions.emplace_back(plan->getAst()->createNode(cond));
     }
   }
 
   list = base.get("globalVertexConditions");
   if (list.isArray()) {
-    for (auto const& cond : VPackArrayIterator(list)) {
+    for (auto&& cond : VPackArrayIterator(list)) {
       _globalVertexConditions.emplace_back(plan->getAst()->createNode(cond));
     }
   }
 
   list = base.get("vertexConditions");
   if (list.isObject()) {
-    for (auto const& cond : VPackObjectIterator(list)) {
+    for (auto&& cond : VPackObjectIterator(list)) {
       std::string key = cond.key.copyString();
       _vertexConditions.try_emplace(StringUtils::uint64(key),
                                     plan->getAst()->createNode(cond.value));
@@ -255,7 +255,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 
   list = base.get("edgeConditions");
   if (list.isObject()) {
-    for (auto const& cond : VPackObjectIterator(list)) {
+    for (auto&& cond : VPackObjectIterator(list)) {
       std::string key = cond.key.copyString();
       auto ecbuilder = std::make_unique<TraversalEdgeConditionBuilder>(this, cond.value);
       _edgeConditions.try_emplace(StringUtils::uint64(key), std::move(ecbuilder));
@@ -268,7 +268,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
     TRI_ASSERT(base.hasKey("pruneVariables"));
     list = base.get("pruneVariables");
     TRI_ASSERT(list.isArray());
-    for (auto const& varinfo : VPackArrayIterator(list)) {
+    for (auto&& varinfo : VPackArrayIterator(list)) {
       _pruneVariables.emplace(plan->getAst()->variables()->createVariable(varinfo));
     }
   }

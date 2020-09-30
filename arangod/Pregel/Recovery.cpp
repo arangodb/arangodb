@@ -102,7 +102,7 @@ int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
     LOG_TOPIC("68f55", INFO, Logger::PREGEL) << "Server Status: " << serversRegistered.toJson();
 
     if (serversRegistered.isObject()) {
-      for (auto const& res : VPackObjectIterator(serversRegistered)) {
+      for (auto&& res : VPackObjectIterator(serversRegistered)) {
         VPackSlice serverId = res.key;
         VPackSlice slice = res.value;
         if (slice.isObject() && slice.hasKey("Status")) {

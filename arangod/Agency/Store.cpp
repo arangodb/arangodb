@@ -134,10 +134,10 @@ std::vector<apply_ret_t> Store::applyTransactions(query_t const& query,
 
   if (query->slice().isArray()) {
     try {
-      for (auto const& i : VPackArrayIterator(query->slice())) {
+      for (auto&& i : VPackArrayIterator(query->slice())) {
         if (!wmode.privileged()) {
           bool found = false;
-          for (auto const& o : VPackObjectIterator(i[0])) {
+          for (auto&& o : VPackObjectIterator(i[0])) {
             size_t pos = o.key.copyString().find(RECONFIGURE);
             if (pos != std::string::npos && (pos == 0 || pos == 1)) {
               found = true;
@@ -274,7 +274,7 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
     while (queriesIterator.valid()) {
       VPackSlice const& i = queriesIterator.value();
 
-      for (auto const& j : VPackObjectIterator(i)) {
+      for (auto&& j : VPackObjectIterator(i)) {
         if (j.value.isObject() && j.value.hasKey("op")) {
           std::string oper = j.value.get("op").copyString();
           if (!(oper == "observe" || oper == "unobserve")) {
@@ -408,7 +408,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
 
   _storeLock.assertLockedByCurrentThread();
 
-  for (auto const& precond : VPackObjectIterator(slice)) {  // Preconditions
+  for (auto&& precond : VPackObjectIterator(slice)) {  // Preconditions
 
     std::string key = precond.key.copyString();
     std::vector<std::string> pv = split(key);
@@ -422,7 +422,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
     }
 
     if (precond.value.isObject()) {
-      for (auto const& op : VPackObjectIterator(precond.value)) {
+      for (auto&& op : VPackObjectIterator(precond.value)) {
         std::string const& oper = op.key.copyString();
         if (oper == "old") {  // old
           if (*node != op.value) {
@@ -473,7 +473,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (found) {
             if (node->slice().isArray()) {
               bool found = false;
-              for (auto const& i : VPackArrayIterator(node->slice())) {
+              for (auto&& i : VPackArrayIterator(node->slice())) {
                 if (basics::VelocyPackHelper::equal(i, op.value, false)) {
                   found = true;
                   break;
@@ -495,7 +495,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           }
           if (node->slice().isArray()) {
             bool found = false;
-            for (auto const& i : VPackArrayIterator(node->slice())) {
+            for (auto&& i : VPackArrayIterator(node->slice())) {
               if (basics::VelocyPackHelper::equal(i, op.value, false)) {
                 found = true;
                 break;
@@ -528,7 +528,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           // contained in the node array.
           if (found && op.value.isString() && node->slice().isArray()) {
             bool isValid = false;
-            for (auto const& i : VPackArrayIterator(node->slice())) {
+            for (auto&& i : VPackArrayIterator(node->slice())) {
               if (!i.isString()) {
                 isValid = false;
                 break;  // invalid, only strings allowed
@@ -643,7 +643,7 @@ std::vector<bool> Store::read(query_t const& queries, query_t& result) const {
   std::vector<bool> success;
   if (queries->slice().isArray()) {
     VPackArrayBuilder r(result.get());
-    for (auto const& query : VPackArrayIterator(queries->slice())) {
+    for (auto&& query : VPackArrayIterator(queries->slice())) {
       success.push_back(read(query, *result));
     }
   } else {
@@ -663,7 +663,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   }
   
   std::vector<std::string> query_strs;
-  for (auto const& sub_query : VPackArrayIterator(query)) {
+  for (auto&& sub_query : VPackArrayIterator(query)) {
     query_strs.emplace_back(sub_query.copyString());
     showHidden |= (query_strs.back().find("/.") != std::string::npos);
   }
@@ -936,7 +936,7 @@ Store& Store::operator=(VPackSlice const& s) {
 
     if (s.hasKey("version")) {
       TRI_ASSERT(slice[1].isObject());
-      for (auto const& entry : VPackObjectIterator(slice[1])) {
+      for (auto&& entry : VPackObjectIterator(slice[1])) {
         if (entry.value.isNumber()) {
           auto const& key = entry.key.copyString();
           if (_node.has(key)) {

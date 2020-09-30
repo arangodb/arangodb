@@ -165,7 +165,7 @@ bool AddFollower::start(bool&) {
   {
     VPackArrayBuilder guard(&onlyFollowers);
     bool first = true;
-    for (auto const& pp : VPackArrayIterator(planned)) {
+    for (auto&& pp : VPackArrayIterator(planned)) {
       if (!first) {
         onlyFollowers.add(pp);
       }

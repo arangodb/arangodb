@@ -342,7 +342,7 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
         << "allowed_paths may not be empty";
       return auth::TokenCache::Entry::Unauthenticated();
     }
-    for (auto const& path : VPackArrayIterator(paths)) {
+    for (auto&& path : VPackArrayIterator(paths)) {
       if (!path.isString()) {
         LOG_TOPIC("89891", TRACE, arangodb::Logger::AUTHENTICATION)
           << "allowed_paths may only contain strings";

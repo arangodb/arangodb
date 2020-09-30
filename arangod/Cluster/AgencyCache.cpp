@@ -157,7 +157,7 @@ void AgencyCache::handleCallbacksNoLock(
   // Collect and normalize keys
   std::vector<std::string> keys;
   keys.reserve(slice.length());
-  for (auto const& i : VPackObjectIterator(slice)) {
+  for (auto&& i : VPackObjectIterator(slice)) {
     VPackValueLength l;
     char const* p = i.key.getString(l);
     keys.emplace_back(Store::normalize(p, l));
@@ -333,7 +333,7 @@ void AgencyCache::run() {
                     TRI_ASSERT(rs.get("log").isArray());
                     LOG_TOPIC("4579e", TRACE, Logger::CLUSTER) <<
                       "Applying to cache " << rs.get("log").toJson();
-                    for (auto const& i : VPackArrayIterator(rs.get("log"))) {
+                    for (auto&& i : VPackArrayIterator(rs.get("log"))) {
                       {
                         std::lock_guard g(_storeLock);
                         _readDB.applyTransaction(i); // apply logs

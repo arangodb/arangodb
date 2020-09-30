@@ -231,7 +231,7 @@ bool FailedLeader::start(bool& aborts) {
 
   // New plan vector excluding _to and _from
   std::vector<std::string> planv;
-  for (auto const& i : VPackArrayIterator(planned)) {
+  for (auto&& i : VPackArrayIterator(planned)) {
     auto s = i.copyString();
     if (s != _from && s != _to) {
       planv.push_back(s);
@@ -262,7 +262,7 @@ bool FailedLeader::start(bool& aborts) {
           pending.add("timeStarted",  // start
                       VPackValue(timepointToString(system_clock::now())));
           pending.add("toServer", VPackValue(_to));  // toServer
-          for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
+          for (auto&& obj : VPackObjectIterator(todo.slice()[0])) {
             pending.add(obj.key.copyString(), obj.value);
           }
         }
@@ -275,7 +275,7 @@ bool FailedLeader::start(bool& aborts) {
           // We prefer servers in sync and want to put them early in the new Plan
           // (behind the leader). This helps so that RemoveFollower prefers others
           // to remove.
-          for (auto const& i : VPackArrayIterator(current)) {
+          for (auto&& i : VPackArrayIterator(current)) {
             std::string s = i.copyString();
             if (s.size() > 0 && s[0] == '_') {
               s = s.substr(1);

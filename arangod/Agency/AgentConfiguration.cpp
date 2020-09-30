@@ -295,7 +295,7 @@ bool config_t::addGossipPeer(std::string const& endpoint) {
 config_t::upsert_t config_t::upsertPool(VPackSlice const& otherPool,
                                         std::string const& otherId) {
   WRITE_LOCKER(lock, _lock);
-  for (auto const& entry : VPackObjectIterator(otherPool)) {
+  for (auto&& entry : VPackObjectIterator(otherPool)) {
     auto const id = entry.key.copyString();
     auto const endpoint = entry.value.copyString();
     if (_pool.find(id) == _pool.end()) {
@@ -396,7 +396,7 @@ void config_t::update(query_t const& message) {
   VPackSlice slice = message->slice();
   std::unordered_map<std::string, std::string> pool;
   bool changed = false;
-  for (auto const& p : VPackObjectIterator(slice.get(poolStr))) {
+  for (auto&& p : VPackObjectIterator(slice.get(poolStr))) {
     auto const& id = p.key.copyString();
     if (id != _id) {
       pool[id] = p.value.copyString();
@@ -405,7 +405,7 @@ void config_t::update(query_t const& message) {
     }
   }
   std::vector<std::string> active;
-  for (auto const& a : VPackArrayIterator(slice.get(activeStr))) {
+  for (auto&& a : VPackArrayIterator(slice.get(activeStr))) {
     active.push_back(a.copyString());
   }
   double minPing = slice.get(minPingStr).getNumber<double>();
@@ -563,7 +563,7 @@ bool config_t::merge(VPackSlice const& conf) {
   ss << "Agent pool: ";
   if (conf.hasKey(poolStr)) {  // Persistence only
     LOG_TOPIC("fc6ad", DEBUG, Logger::AGENCY) << "Found agent pool in persistence:";
-    for (auto const& peer : VPackObjectIterator(conf.get(poolStr))) {
+    for (auto&& peer : VPackObjectIterator(conf.get(poolStr))) {
       auto const& id = peer.key.copyString();
       if (id != _id) {
         _pool[id] = peer.value.copyString();
@@ -581,7 +581,7 @@ bool config_t::merge(VPackSlice const& conf) {
   ss.clear();
   ss << "Active agents: ";
   if (conf.hasKey(activeStr)) {  // Persistence only?
-    for (auto const& a : VPackArrayIterator(conf.get(activeStr))) {
+    for (auto&& a : VPackArrayIterator(conf.get(activeStr))) {
       _active.push_back(a.copyString());
       ss << a.copyString() << " ";
     }

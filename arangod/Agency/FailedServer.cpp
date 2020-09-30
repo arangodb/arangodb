@@ -95,7 +95,7 @@ bool FailedServer::start(bool& aborts) {
       _snapshot.hasAsSlice(blockedServersPrefix + _server);
   if (auto const& s = dbserverLock.first; dbserverLock.second) {
     if (s.isArray()) {
-      for (auto const& m : VPackArrayIterator(s)) {
+      for (auto&& m : VPackArrayIterator(s)) {
         if (m.isString()) {
           if (!abortJob(m)) {
             return false;
@@ -230,7 +230,7 @@ bool FailedServer::start(bool& aborts) {
         VPackObjectBuilder ts(transactions.get());
         transactions->add("timeStarted",
                           VPackValue(timepointToString(system_clock::now())));
-        for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
+        for (auto&& obj : VPackObjectIterator(todo.slice()[0])) {
           transactions->add(obj.key.copyString(), obj.value);
         }
       }

@@ -123,7 +123,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
 
   // Add all Vertex shards to the transaction
   TRI_ASSERT(vertexSlice.isObject());
-  for (auto const& collection : VPackObjectIterator(vertexSlice)) {
+  for (auto&& collection : VPackObjectIterator(vertexSlice)) {
     std::vector<std::string> shards;
     TRI_ASSERT(collection.value.isArray());
     for (VPackSlice const shard : VPackArrayIterator(collection.value)) {
@@ -347,7 +347,7 @@ aql::VariableGenerator const* BaseTraverserEngine::variables() const {
 void BaseTraverserEngine::injectVariables(VPackSlice variableSlice) {
   if (variableSlice.isArray()) {
     _opts->clearVariableValues();
-    for (auto const& pair : VPackArrayIterator(variableSlice)) {
+    for (auto&& pair : VPackArrayIterator(variableSlice)) {
       if ((!pair.isArray()) || pair.length() != 2) {
         // Invalid communication. Skip
         TRI_ASSERT(false);

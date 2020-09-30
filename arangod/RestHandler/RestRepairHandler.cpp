@@ -222,9 +222,9 @@ bool RestRepairHandler::repairAllCollections(
 
   std::unordered_map<CollectionID, DatabaseID> databaseByDataSourceId;
 
-  for (auto const& dbIt : VPackObjectIterator(planCollections)) {
+  for (auto&& dbIt : VPackObjectIterator(planCollections)) {
     DatabaseID database = dbIt.key.copyString();
-    for (auto const& colIt : VPackObjectIterator(dbIt.value)) {
+    for (auto&& colIt : VPackObjectIterator(dbIt.value)) {
       CollectionID collectionId = colIt.key.copyString();
       databaseByDataSourceId[collectionId] = database;
     }
@@ -531,9 +531,9 @@ ResultT<JobStatus> RestRepairHandler::getJobStatusFromAgency(std::string const& 
 
 ResultT<std::string> RestRepairHandler::getDbAndCollectionName(VPackSlice const planCollections,
                                                                CollectionID const& collectionID) {
-  for (auto const& db : VPackObjectIterator{planCollections}) {
+  for (auto&& db : VPackObjectIterator{planCollections}) {
     std::string dbName = db.key.copyString();
-    for (auto const& collection : VPackObjectIterator{db.value}) {
+    for (auto&& collection : VPackObjectIterator{db.value}) {
       std::string currentDataSourceId = collection.key.copyString();
       if (currentDataSourceId == collectionID) {
         return dbName + "/" + collection.value.get("name").copyString();

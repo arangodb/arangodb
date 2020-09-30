@@ -91,7 +91,7 @@ Result Indexes::getIndex(LogicalCollection const* collection, VPackSlice const& 
   Result res =
       Indexes::getAll(collection, Index::makeFlags(), /*withHidden*/ true, tmp, trx);
   if (res.ok()) {
-    for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
+    for (VPackSlice&& index : VPackArrayIterator(tmp.slice())) {
       if (index.get(StaticStrings::IndexId).compareString(id) == 0 ||
           index.get(StaticStrings::IndexName).compareString(name) == 0) {
         out.add(index);
@@ -139,7 +139,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     });
 
     tmp.openArray();
-    for (VPackSlice const& s : VPackArrayIterator(tmpInner.slice())) {
+    for (VPackSlice&& s : VPackArrayIterator(tmpInner.slice())) {
       auto id = arangodb::velocypack::StringRef(s.get(StaticStrings::IndexId));
       auto found = std::find_if(estimates.begin(), estimates.end(),
                                 [&id](std::pair<std::string, double> const& v) {
@@ -202,7 +202,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
          cacheLifeTimeHitRate = 0, cacheWindowedHitRate = 0;
 
   VPackArrayBuilder a(&result);
-  for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
+  for (VPackSlice&& index : VPackArrayIterator(tmp.slice())) {
     std::string id = collection->name() + TRI_INDEX_HANDLE_SEPARATOR_CHR +
                      index.get(arangodb::StaticStrings::IndexId).copyString();
     VPackBuilder merge;

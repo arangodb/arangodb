@@ -67,11 +67,11 @@ struct agentConfigHealthResult {
 };
 
 void removePlanServers(std::unordered_set<std::string>& servers, VPackSlice plan) {
-  for (auto const& database : VPackObjectIterator(plan.get("Collections"))) {
-    for (auto const& collection : VPackObjectIterator(database.value)) {
+  for (auto&& database : VPackObjectIterator(plan.get("Collections"))) {
+    for (auto&& collection : VPackObjectIterator(database.value)) {
       VPackSlice shards = collection.value.get("shards");
-      for (auto const& shard : VPackObjectIterator(shards)) {
-        for (auto const& server : VPackArrayIterator(shard.value)) {
+      for (auto&& shard : VPackObjectIterator(shards)) {
+        for (auto&& server : VPackArrayIterator(shard.value)) {
           servers.erase(server.copyString());
           if (servers.empty()) {
             return;
@@ -83,10 +83,10 @@ void removePlanServers(std::unordered_set<std::string>& servers, VPackSlice plan
 }
 
 void removeCurrentServers(std::unordered_set<std::string>& servers, VPackSlice current) {
-  for (auto const& database : VPackObjectIterator(current.get("Collections"))) {
-    for (auto const& collection : VPackObjectIterator(database.value)) {
-      for (auto const& shard : VPackObjectIterator(collection.value)) {
-        for (auto const& server :
+  for (auto&& database : VPackObjectIterator(current.get("Collections"))) {
+    for (auto&& collection : VPackObjectIterator(database.value)) {
+      for (auto&& shard : VPackObjectIterator(collection.value)) {
+        for (auto&& server :
              VPackArrayIterator(shard.value.get("servers"))) {
           servers.erase(server.copyString());
           if (servers.empty()) {
@@ -174,7 +174,7 @@ void buildHealthResult(VPackBuilder& builder,
           continue;
         }
         agents[agent.name].leader = true;
-        for (const auto& agentIter : VPackObjectIterator(lastAcked)) {
+        for (auto&& agentIter : VPackObjectIterator(lastAcked)) {
           agents[agentIter.key.copyString()].lastAcked =
               agentIter.value.get("lastAckedTime").getDouble();
         }

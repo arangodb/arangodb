@@ -104,7 +104,7 @@ auth::UserManager::UserManager(application_features::ApplicationServer& server,
 static auth::UserMap ParseUsers(VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
   auth::UserMap result;
-  for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
+  for (auto&& authSlice : VPackArrayIterator(slice)) {
     VPackSlice s = authSlice.resolveExternal();
 
     if (s.hasKey("source") && s.get("source").isString() &&
@@ -380,7 +380,7 @@ VPackBuilder auth::UserManager::allUsers() {
   {
     VPackArrayBuilder a(&result);
     if (users && !users->isEmpty()) {
-      for (VPackSlice const& doc : VPackArrayIterator(users->slice())) {
+      for (auto&& doc : VPackArrayIterator(users->slice())) {
         ConvertLegacyFormat(doc, result);
       }
     }

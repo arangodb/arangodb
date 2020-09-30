@@ -157,7 +157,7 @@ void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const
     builder.add("collections", VPackValue(VPackValueType::Null));
   } else {
     VPackArrayBuilder arrayScope(&builder, "collections");
-    for (auto const cid : options.sources) {
+    for (auto&& cid : options.sources) {
       builder.add(VPackValue(cid.id()));
     }
   }
@@ -1233,7 +1233,7 @@ std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::co
 
   if (_options.restrictSources) {
     viewCollections.reserve(_options.sources.size());
-    for (auto const cid : _options.sources) {
+    for (auto&& cid : _options.sources) {
       visitor(cid);
     }
   } else {
@@ -1324,7 +1324,7 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
   };
 
   if (_options.restrictSources) {
-    for (auto const cid : _options.sources) {
+    for (auto&& cid : _options.sources) {
       visitor(cid);
     }
   } else {

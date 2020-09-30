@@ -266,7 +266,7 @@ bool RemoveFollower::start(bool&) {
     std::vector<ServerID> reversedPlannedServers{planned.length()};
     {
       auto rDbIt = reversedPlannedServers.rbegin();
-      for (auto const& vPackIt : VPackArrayIterator(planned)) {
+      for (auto&& vPackIt : VPackArrayIterator(planned)) {
         *rDbIt = vPackIt.copyString();
         rDbIt++;
       }

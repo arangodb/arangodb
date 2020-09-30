@@ -1919,7 +1919,7 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
         rebuilder.clear();
         rebuilder.openObject();
         rebuilder.add(StaticStrings::IndexType, VPackValue("geo"));
-        for (auto const& it : VPackObjectIterator(idxDef)) {
+        for (auto&& it : VPackObjectIterator(idxDef)) {
           if (!it.key.isEqualString(StaticStrings::IndexType)) {
             rebuilder.add(it.key);
             rebuilder.add(it.value);
@@ -2042,7 +2042,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
       rebuilder.clear();
       rebuilder.openObject();
       rebuilder.add(StaticStrings::IndexType, VPackValue("geo"));
-      for (auto const& it : VPackObjectIterator(idxDef)) {
+      for (auto&& it : VPackObjectIterator(idxDef)) {
         if (!it.key.isEqualString(StaticStrings::IndexType)) {
           rebuilder.add(it.key);
           rebuilder.add(it.value);
@@ -2060,7 +2060,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
           rebuilder.clear();
           rebuilder.openObject();
           rebuilder.add("minLength", VPackValue(1));
-          for (auto const& it : VPackObjectIterator(idxDef)) {
+          for (auto&& it : VPackObjectIterator(idxDef)) {
             if (!it.key.isEqualString("minLength")) {
               rebuilder.add(it.key);
               rebuilder.add(it.value);

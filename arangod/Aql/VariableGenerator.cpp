@@ -164,7 +164,7 @@ void VariableGenerator::fromVelocyPack(VPackSlice const slice) {
   auto len = allVariablesList.length();
   _variables.reserve(static_cast<size_t>(len));
 
-  for (auto const& var : VPackArrayIterator(allVariablesList)) {
+  for (auto&& var : VPackArrayIterator(allVariablesList)) {
     createVariable(var);
   }
 }

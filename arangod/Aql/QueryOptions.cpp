@@ -195,7 +195,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const slice) {
     }
     value = optimizer.get("rules");
     if (value.isArray()) {
-      for (auto const& rule : VPackArrayIterator(value)) {
+      for (auto&& rule : VPackArrayIterator(value)) {
         if (rule.isString()) {
           optimizerRules.emplace_back(rule.copyString());
         }

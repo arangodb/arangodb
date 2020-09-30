@@ -167,7 +167,7 @@ auth::User auth::User::newUser(std::string const& user,
 
 void auth::User::fromDocumentDatabases(auth::User& entry, VPackSlice const& databasesSlice,
                                        VPackSlice const& userSlice) {
-  for (auto const& obj : VPackObjectIterator(databasesSlice)) {
+  for (auto&& obj : VPackObjectIterator(databasesSlice)) {
     std::string const dbName = obj.key.copyString();
 
     if (obj.value.isObject()) {
@@ -188,7 +188,7 @@ void auth::User::fromDocumentDatabases(auth::User& entry, VPackSlice const& data
       VPackSlice collectionsSlice = obj.value.get("collections");
 
       if (collectionsSlice.isObject()) {
-        for (auto const& collection : VPackObjectIterator(collectionsSlice)) {
+        for (auto&& collection : VPackObjectIterator(collectionsSlice)) {
           std::string const cName = collection.key.copyString();
           auto const collPerSlice = collection.value.get("permissions");
 

@@ -1019,7 +1019,7 @@ bool RestImportHandler::checkKeys(VPackSlice const& keys) const {
     return false;
   }
 
-  for (VPackSlice const& key : VPackArrayIterator(keys)) {
+  for (auto&& key : VPackArrayIterator(keys)) {
     if (!key.isString()) {
       return false;
     }

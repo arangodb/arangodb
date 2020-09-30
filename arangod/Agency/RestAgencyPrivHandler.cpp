@@ -234,7 +234,7 @@ RestStatus RestAgencyPrivHandler::execute() {
             redirectRequest(slice.get("id").copyString());
             return RestStatus::DONE;
           }
-          for (auto const& obj : VPackObjectIterator(ret->slice())) {
+          for (auto&& obj : VPackObjectIterator(ret->slice())) {
             result.add(obj.key.copyString(), obj.value);
           }
         } catch (std::exception const& e) {

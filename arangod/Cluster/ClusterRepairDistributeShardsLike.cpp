@@ -38,12 +38,12 @@ using namespace arangodb::cluster_repairs;
 std::map<ShardID, DBServers, VersionSort> DistributeShardsLikeRepairer::readShards(Slice const& shards) {
   std::map<ShardID, DBServers, VersionSort> shardsById;
 
-  for (auto const& shardIterator : ObjectIterator(shards)) {
+  for (auto&& shardIterator : ObjectIterator(shards)) {
     ShardID const shardId = shardIterator.key.copyString();
 
     DBServers dbServers;
 
-    for (auto const& dbServerIterator : ArrayIterator(shardIterator.value)) {
+    for (auto&& dbServerIterator : ArrayIterator(shardIterator.value)) {
       ServerID const dbServerId = dbServerIterator.copyString();
       dbServers.emplace_back(std::move(dbServerId));
     }
@@ -57,7 +57,7 @@ std::map<ShardID, DBServers, VersionSort> DistributeShardsLikeRepairer::readShar
 DBServers DistributeShardsLikeRepairer::readDatabases(const Slice& supervisionHealth) {
   DBServers dbServers;
 
-  for (auto const& it : ObjectIterator(supervisionHealth)) {
+  for (auto&& it : ObjectIterator(supervisionHealth)) {
     ServerID const& serverId = it.key.copyString();
     if (serverId.substr(0, 5) == "PRMR-" && it.value.hasKey("Status") &&
         it.value.get("Status").copyString() == "GOOD") {
@@ -72,12 +72,12 @@ ResultT<std::map<CollectionID, struct cluster_repairs::Collection>>
 DistributeShardsLikeRepairer::readCollections(const Slice& collectionsByDatabase) {
   std::map<CollectionID, struct Collection> collections;
 
-  for (auto const& databaseIterator : ObjectIterator(collectionsByDatabase)) {
+  for (auto&& databaseIterator : ObjectIterator(collectionsByDatabase)) {
     DatabaseID const databaseId = databaseIterator.key.copyString();
 
     Slice const& collectionsSlice = databaseIterator.value;
 
-    for (auto const& collectionIterator : ObjectIterator(collectionsSlice)) {
+    for (auto&& collectionIterator : ObjectIterator(collectionsSlice)) {
       CollectionID const collectionId = collectionIterator.key.copyString();
       Slice const& collectionSlice = collectionIterator.value;
 
@@ -91,7 +91,7 @@ DistributeShardsLikeRepairer::readCollections(const Slice& collectionsByDatabase
       Slice shardsSlice;
       std::map<std::string, Slice> residualAttributes;
 
-      for (auto const& it : ObjectIterator(collectionSlice)) {
+      for (auto&& it : ObjectIterator(collectionSlice)) {
         std::string const& key = it.key.copyString();
         if (key == StaticStrings::DataSourceName) {
           collectionName = it.value.copyString();
@@ -194,7 +194,7 @@ std::vector<std::pair<CollectionID, Result>> DistributeShardsLikeRepairer::findC
       continue;
     }
 
-    for (auto const& zippedShardsIt :
+    for (auto&& zippedShardsIt :
          boost::combine(collection.shardsById, proto.shardsById)) {
       auto const& shardIt = zippedShardsIt.get<0>();
       auto const& protoShardIt = zippedShardsIt.get<1>();
@@ -402,7 +402,7 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixShard(
                   errorMessage.str());
   }
 
-  for (auto const& zipIt : boost::combine(serversOnlyOnProto, serversOnlyOnShard)) {
+  for (auto&& zipIt : boost::combine(serversOnlyOnProto, serversOnlyOnShard)) {
     auto const& protoServerIt = zipIt.get<0>();
     auto const& shardServerIt = zipIt.get<1>();
 
@@ -707,7 +707,7 @@ std::vector<cluster_repairs::ShardWithProtoAndDbServers> DistributeShardsLikeRep
     std::map<ShardID, DBServers, VersionSort> const& protoShardsById) {
   std::vector<ShardWithProtoAndDbServers> shards;
 
-  for (auto const& it : boost::combine(shardsById, protoShardsById)) {
+  for (auto&& it : boost::combine(shardsById, protoShardsById)) {
     auto const& shardIt = it.get<0>();
     auto const& protoShardIt = it.get<1>();
     ShardID const& shard = shardIt.first;
@@ -729,7 +729,7 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixAllShardsOf
     struct cluster_repairs::Collection const& proto, DBServers const& availableDbServers) {
   std::list<RepairOperation> shardRepairOperations;
 
-  for (auto const& zippedShardsIterator :
+  for (auto&& zippedShardsIterator :
        boost::combine(collection.shardsById, proto.shardsById)) {
     auto const& shardIterator = zippedShardsIterator.get<0>();
     auto const& protoShardIterator = zippedShardsIterator.get<1>();

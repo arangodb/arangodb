@@ -290,12 +290,12 @@ void Projections::toVelocyPack(arangodb::velocypack::Builder& b) const {
 
   VPackSlice p = slice.get(::projectionsKey);
   if (p.isArray()) {
-    for (auto const& it : arangodb::velocypack::ArrayIterator(p)) {
+    for (auto&& it : arangodb::velocypack::ArrayIterator(p)) {
       if (it.isString()) {
         projections.emplace_back(arangodb::aql::AttributeNamePath(it.copyString()));
       } else if (it.isArray()) {
         arangodb::aql::AttributeNamePath path;
-        for (auto const& it2 : arangodb::velocypack::ArrayIterator(it)) {
+        for (auto&& it2 : arangodb::velocypack::ArrayIterator(it)) {
           path.path.emplace_back(it2.copyString());
         }
         projections.emplace_back(std::move(path));
