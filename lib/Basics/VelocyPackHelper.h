@@ -93,35 +93,32 @@ namespace detail {
 template <class>
 inline constexpr bool always_false_v = false;
 template <typename... Ts, std::size_t... Is>
-auto unpackTuple(VPackArrayIterator& iter, std::index_sequence<Is...>) {
-  std::tuple<Ts...> result;
-  (
-      [&result](VPackSlice slice) {
+auto unpackTuple(VPackArrayIterator& iter, std::index_sequence<Is...>) -> std::tuple<Ts...> {
+  return {  // evaluation order is sequenced https://stackoverflow.com/questions/37254813/evaluation-order-of-elements-in-an-initializer-list
+      ([&](VPackSlice slice) {
         TRI_ASSERT(!slice.isNone());
-        auto& value = std::get<Is>(result);
         if constexpr (std::is_integral_v<Ts>) {
           TRI_ASSERT(slice.template isNumber<Ts>());
-          value = slice.template getNumericValue<Ts>();
+          return slice.template getNumericValue<Ts>();
         } else if constexpr (std::is_same_v<Ts, double>) {
           TRI_ASSERT(slice.isDouble());
-          value = slice.getDouble();
+          return slice.getDouble();
         } else if constexpr (std::is_same_v<Ts, std::string>) {
           TRI_ASSERT(slice.isString());
-          value = slice.copyString();
+          return slice.copyString();
         } else if constexpr (std::is_same_v<Ts, std::string_view>) {
           TRI_ASSERT(slice.isString());
-          value = slice.stringView();
+          return slice.stringView();
         } else if constexpr (std::is_same_v<Ts, VPackStringRef>) {
           TRI_ASSERT(slice.isString());
-          value = slice.stringRef();
+          return slice.stringRef();
         } else if constexpr (std::is_same_v<Ts, VPackSlice>) {
-          value = slice;
+          return slice;
         } else {
           static_assert(always_false_v<Ts>, "Unhandled value type requested");
         }
-      }(*(iter++)),
-      ...);
-  return result;
+      }(*(iter++)))
+      ...};
 }
 }
 
@@ -136,7 +133,7 @@ class VelocyPackHelper {
   static void disableAssemblerFunctions();
 
   static arangodb::velocypack::AttributeTranslator* getTranslator();
-  
+
   struct VPackHash {
     size_t operator()(arangodb::velocypack::Slice const&) const;
   };
@@ -207,7 +204,7 @@ class VelocyPackHelper {
   struct AttributeSorterUTF8 {
     bool operator()(std::string const& l, std::string const& r) const;
   };
-  
+
   struct AttributeSorterUTF8StringRef {
     bool operator()(arangodb::velocypack::StringRef const& l, arangodb::velocypack::StringRef const& r) const;
   };
@@ -313,7 +310,7 @@ class VelocyPackHelper {
     }
     return sub.getNumericValue<T>();
   }
-  
+
   /// @return string ref, or the defaultValue if slice is not a string
   static arangodb::velocypack::StringRef getStringRef(
       arangodb::velocypack::Slice slice,
@@ -394,7 +391,7 @@ class VelocyPackHelper {
                      arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults,
                      arangodb::velocypack::Slice const* lhsBase = nullptr,
                      arangodb::velocypack::Slice const* rhsBase = nullptr) ADB_WARN_UNUSED_RESULT;
-  
+
   /// @brief Compares two VelocyPack slices for equality
   /// returns true if the slices are equal, false otherwise
   static bool equal(arangodb::velocypack::Slice lhs,
@@ -433,7 +430,7 @@ class VelocyPackHelper {
       bool sanitizeExternals = true, bool sanitizeCustom = true);
 
   static uint64_t extractIdValue(VPackSlice const& slice);
-    
+
   static arangodb::velocypack::Options strictRequestValidationOptions;
   static arangodb::velocypack::Options looseRequestValidationOptions;
 

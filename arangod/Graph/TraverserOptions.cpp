@@ -110,11 +110,11 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
     } else if (tmp == "dfs") {
       mode = Mode::DFS;
     }
-  }
-
-  bool useBreadthFirst = VPackHelper::getBooleanValue(obj, "bfs", false);
-  if (useBreadthFirst) {
-    mode = Mode::BFS;
+  } else {
+    bool useBreadthFirst = VPackHelper::getBooleanValue(obj, "bfs", false);
+    if (useBreadthFirst) {
+      mode = Mode::BFS;
+    }
   }
 
   useNeighbors = VPackHelper::getBooleanValue(obj, "neighbors", false);
@@ -230,32 +230,34 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
   maxDepth = read.getNumber<uint64_t>();
 
   read = info.get("mode");
-  if (!read.isInteger()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The options require a mode");
-  }
-
-  size_t i = read.getNumber<size_t>();
-  switch (i) {
-    case 0:
-      mode = Mode::DFS;
-      break;
-    case 1:
-      mode = Mode::BFS;
-      break;
-    case 2:
-      mode = Mode::WEIGHTED;
-      break;
-    default:
+  if (!read.isNone()) {
+    if (!read.isNumber<size_t>()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "The options require a uniqueEdges");
-  }
+          "The options require a mode");
+    }
 
-  read = info.get("bfs");
-  if (read.isBoolean()) {
-    bool useBreadthFirst = read.getBool();
-    if (useBreadthFirst) {
-      mode = Mode::BFS;
+    size_t i = read.getNumber<size_t>();
+    switch (i) {
+      case 0:
+        mode = Mode::DFS;
+        break;
+      case 1:
+        mode = Mode::BFS;
+        break;
+      case 2:
+        mode = Mode::WEIGHTED;
+        break;
+      default:
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+            "Bad mode parameter value");
+    }
+  } else {
+    read = info.get("bfs");
+    if (read.isBoolean()) {
+      bool useBreadthFirst = read.getBool();
+      if (useBreadthFirst) {
+        mode = Mode::BFS;
+      }
     }
   }
 
@@ -270,7 +272,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "The options require a uniqueVertices");
   }
-  i = read.getNumber<size_t>();
+  size_t i = read.getNumber<size_t>();
   switch (i) {
     case 0:
       uniqueVertices = UniquenessLevel::NONE;
