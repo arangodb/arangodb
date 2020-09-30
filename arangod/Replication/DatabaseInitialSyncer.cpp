@@ -534,28 +534,27 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(transaction::Methods& tr
   }
 
   TRI_replication_operation_e type = REPLICATION_INVALID;
-  VPackSlice doc;
-
-  for (auto it : VPackObjectIterator(marker, true)) {
-    if (it.key.isEqualString(kTypeString)) {
-      if (it.value.isNumber()) {
-        type = static_cast<TRI_replication_operation_e>(it.value.getNumber<int>());
-      }
-    } else if (it.key.isEqualString(kDataString)) {
-      if (it.value.isObject()) {
-        doc = it.value;
-      }
-    }
-    if (type != REPLICATION_INVALID && doc.isObject()) {
-      break;
-    }
-  }
-
-  if (!doc.isObject()) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-  }
-  // key must not be empty, but doc can otherwise be empty
+  VPackSlice doc = marker;
   VPackSlice key = doc.get(StaticStrings::KeyString);
+
+  if (key.isString()) {
+    // input is just a document, without any {"type":2300,"data":{...}} envelope
+    type = REPLICATION_MARKER_DOCUMENT;
+  } else {
+    // input is wrapped in a {"type":2300,"data":{...}} envelope
+    VPackSlice s = marker.get(kTypeString);
+    if (s.isNumber()) {
+      type = static_cast<TRI_replication_operation_e>(s.getNumber<int>());
+    }
+    s = marker.get(kDataString);
+    if (!s.isObject()) {
+      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    }
+    doc = s;
+    key = doc.get(StaticStrings::KeyString);
+  }
+
+  // key must not be empty, but doc can otherwise be empty
   if (!key.isString() || key.getStringLength() == 0) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -754,10 +753,17 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
   TRI_ASSERT(_config.batch.id);  // should not be equal to 0
 
   // assemble base URL
+  // note: the "useEnvelope" URL parameter is sent to signal the leader that
+  // we don't need the dump data packaged in an extra {"type":2300,"data":{...}}
+  // envelope per document.
+  // older, incompatible leaders will simply ignore this parameter and will still
+  // send the documents inside these envelopes. that means when we receive the
+  // documents, we need to disambiguate the two different formats.
   std::string baseUrl =
       replutils::ReplicationUrl + "/dump?collection=" + urlEncode(leaderColl) +
       "&batchId=" + std::to_string(_config.batch.id) +
       "&includeSystem=" + std::string(_config.applier._includeSystem ? "true" : "false") +
+      "&useEnvelope=false" +
       "&serverId=" + _state.localServerIdString;
 
   if (maxTick > 0) {

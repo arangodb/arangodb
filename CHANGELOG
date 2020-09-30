@@ -1,6 +1,15 @@
 devel
 -----
 
+* Slightly speed up initial replication of collections/shards data by not
+  wrapping each document in a seperate `{"type":2300,"data":...}` envelope.
+  Stripping of the envelopes allows for slightly smaller data sizes when 
+  exchanging the documents, and thus can less to small savings in document
+  packing and unpacking as well as slightly reduce the number of required
+  HTTP requests. 
+  The non-wrapping of the documents is opt-in, so the existing dump API 
+  stays downwards-compatible.
+
 * Data definition reconsiliation in cluster has been modified
   extensively to greatly accelerate the creation of 1000s of
   databases through following means:
