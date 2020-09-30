@@ -70,7 +70,6 @@ function testSuite() {
           let result = arango.POST("/_admin/foxx/" + route, {});
           assertTrue(result.error);
           assertEqual(400, result.code);
-          assertEqual(3099, result.errorNum);
         });
       });
     },
@@ -86,8 +85,7 @@ function testSuite() {
         routes.forEach(function(route) {
           let result = arango.PUT("/_api/foxx/" + route, {});
           assertTrue(result.error);
-          assertEqual(403, result.code);
-          assertEqual(3099, result.errorNum);
+          assertEqual(404, result.code);
         });
       });
     },
@@ -103,8 +101,7 @@ function testSuite() {
         routes.forEach(function(route) {
           let result = arango.POST("/_api/foxx/" + route, {});
           assertTrue(result.error);
-          assertEqual(403, result.code);
-          assertEqual(3099, result.errorNum);
+          assertEqual(404, result.code);
         });
       });
     },
@@ -120,8 +117,7 @@ function testSuite() {
         routes.forEach(function(route) {
           let result = arango.GET("/_api/foxx/" + route);
           assertTrue(result.error);
-          assertEqual(403, result.code);
-          assertEqual(3099, result.errorNum);
+          assertEqual(404, result.code);
         });
       });
     },

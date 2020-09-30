@@ -28,7 +28,6 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-
 if (getOptions === true) {
   return {
     'server.authentication': 'true',

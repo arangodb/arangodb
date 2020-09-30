@@ -6,7 +6,6 @@ const internal = require('internal');
 const pu = require('@arangodb/process-utils');
 
 if (getOptions === true) {
-  let users = require("@arangodb/users");
   let testPath = fs.join(pu.TOP_DIR, internal.pathForTesting(''));
 
   return {

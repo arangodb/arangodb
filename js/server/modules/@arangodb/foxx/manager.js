@@ -486,6 +486,9 @@ function getServiceInstance (mount) {
   if (localServiceMap.has(mount)) {
     service = localServiceMap.get(mount);
   } else {
+    if (internal.isFoxxDisabled()) {
+      return null;
+    }
     service = reloadInstalledService(mount);
   }
   if (!service) {
@@ -504,6 +507,9 @@ function getServiceInstance (mount) {
 }
 
 function reloadInstalledService (mount, runSetup) {
+  if (internal.isFoxxDisabled()) {
+    return null;
+  }
   const serviceDefinition = utils.getServiceDefinition(mount);
   if (!serviceDefinition) {
     throw new ArangoError({
@@ -724,7 +730,7 @@ function _install (tempService, tempBundlePath, options = {}) {
 
 function _uninstall (mount, options = {}) {
   if (internal.isFoxxDisabled()) {
-    return;
+    return null;
   }
 
   let service;
@@ -1019,6 +1025,9 @@ function runTests (mount, options = {}) {
 }
 
 function enableDevelopmentMode (mount) {
+  if (internal.isFoxxDisabled()) {
+    return null;
+  }
   const service = getServiceInstance(mount);
   if (service.error) {
     throw service.error;
@@ -1031,6 +1040,9 @@ function enableDevelopmentMode (mount) {
 }
 
 function disableDevelopmentMode (mount) {
+  if (internal.isFoxxDisabled()) {
+    return null;
+  }
   const service = getServiceInstance(mount);
   if (service.error) {
     throw service.error;
@@ -1051,6 +1063,9 @@ function disableDevelopmentMode (mount) {
 }
 
 function setConfiguration (mount, options = {}) {
+  if (internal.isFoxxDisabled()) {
+    return undefined;
+  }
   const service = getServiceInstance(mount);
   if (service.error) {
     throw service.error;
@@ -1063,6 +1078,9 @@ function setConfiguration (mount, options = {}) {
 }
 
 function setDependencies (mount, options = {}) {
+  if (internal.isFoxxDisabled()) {
+    return undefined;
+  }
   const service = getServiceInstance(mount);
   if (service.error) {
     throw service.error;
