@@ -1,6 +1,8 @@
 devel
 -----
 
+* Stream transactions now have a maximum lock timeout of 30 seconds
+
 * Data definition reconsiliation in cluster has been modified
   extensively to greatly accelerate the creation of 1000s of
   databases through following means:
