@@ -70,8 +70,7 @@ arangodb::Result canUseAnalyzers( // validate
 
     auto result = arangodb::iresearch::IResearchAnalyzerFeature::canUse(
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(pool->name(), defaultVocbase),
-        arangodb::auth::Level::RO
-      );
+        arangodb::auth::Level::RO);
 
     if (!result) {
       return {
@@ -125,7 +124,6 @@ arangodb::Result createLink( // create link
         }
       }
     }
-
   } catch (arangodb::basics::Exception const& e) {
     return arangodb::Result(e.code(), e.what());
   }

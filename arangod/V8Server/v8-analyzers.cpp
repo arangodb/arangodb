@@ -278,10 +278,10 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
-  auto splittedAnalyzerName = 
+  auto splittedAnalyzerName =
     arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(nameFromArgs);
   if (!arangodb::iresearch::IResearchAnalyzerFeature::analyzerReachableFromDb(
-         splittedAnalyzerName.first, vocbase.name())) { 
+         splittedAnalyzerName.first, vocbase.name())) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_FORBIDDEN,
       "Database in analyzer name does not match current database");
@@ -298,7 +298,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  // we need this buf since normalize accepts string_ref
+  // we need this buf since name is string_ref
   auto nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize(name, vocbase);
   name = nameBuf;
 
@@ -320,7 +320,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
     }
   }
-  // properties at the end should be parsed into object 
+  // properties at the end should be parsed into object
   if (!propertiesSlice.isObject()) {
     TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
   }
@@ -417,7 +417,7 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
   auto name = TRI_ObjectToString(isolate, args[0]);
-  // we need this buf since normalize accepts string_ref
+  // we need this buf since name is string_ref
   auto nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize(name, vocbase);
   name = nameBuf;
 
@@ -437,7 +437,7 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
       errorMessage.append(" or system database");
     }
     errorMessage.append(" are available");
-    TRI_V8_THROW_EXCEPTION_MESSAGE( 
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_FORBIDDEN, // code
       errorMessage
     );
@@ -570,25 +570,25 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
-  auto splittedAnalyzerName = 
+  auto splittedAnalyzerName =
     arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(nameFromArgs);
   if (!arangodb::iresearch::IResearchAnalyzerFeature::analyzerReachableFromDb(
-           splittedAnalyzerName.first, vocbase.name())) { 
+           splittedAnalyzerName.first, vocbase.name())) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_FORBIDDEN,
       "Database in analyzer name does not match current database");
     return;
   }
   auto name = splittedAnalyzerName.second;
-  
+
   if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
       TRI_ERROR_BAD_PARAMETER,
-      std::string( "Invalid characters in analyzer name '").append(name)
+      std::string("Invalid characters in analyzer name '").append(name)
         .append("'.")
     );
   }
-  // we need this buf since normalize accepts string_ref
+  // we need this buf since name is string_ref
   auto nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize(name, vocbase);
   name = nameBuf;
 

@@ -101,7 +101,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
     return;
   }
 
-  // need this buf since normalize accepts string_ref
+  // we need this buf since name is string_ref
   auto nameBuf = IResearchAnalyzerFeature::normalize(name, _vocbase);
   name = nameBuf;
 

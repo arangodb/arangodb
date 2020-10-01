@@ -2115,7 +2115,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
       // register the text analyzers
       {
         // Note: ArangoDB strings coming from JavaScript user input are UTF-8 encoded
-        static irs::string_ref const locales[] = {
+        irs::string_ref const locales[] = {
           "de", "en", "es", "fi", "fr", "it",
           "nl", "no", "pt", "ru", "sv", "zh"
         };
