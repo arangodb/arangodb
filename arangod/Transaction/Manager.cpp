@@ -333,9 +333,9 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     }
   }
   
-  if (options.lockTimeout < 0.0) {
+  if (options.lockTimeout <= 0.0) {
     return res.reset(TRI_ERROR_BAD_PARAMETER,
-                     "<lockTimeout> needs to be positive");
+                     "<lockTimeout> needs to be greater zero");
   }
   options.lockTimeout = std::min(options.lockTimeout, Manager::maxLockTimeout);
 
