@@ -92,7 +92,5 @@ bool CreateDatabase::first() {
     _feature.storeDBError(database, _result);
   }
 
-  // notify always, either error or success
-  notify();
   return false;
 }

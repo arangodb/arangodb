@@ -79,6 +79,9 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
+  // @brief #databases last time we checked allDatabases
+  size_t lastNumberOfDatabases();
+
   // Is maintenance paused?
   bool isPaused() const;
 
@@ -142,6 +145,9 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   /// @brief Get shard locks, this copies the whole map of shard locks.
   ShardActionMap getShardLocks() const;
+
+  /// @brief check if a database is dirty
+  bool isDirty(std::string const& dbName) const;
 
  protected:
   std::shared_ptr<maintenance::Action> createAction(
@@ -320,6 +326,17 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
    */
   void delShardVersion(std::string const& shardId);
 
+  /**
+   * @brief mark and list dirty databases
+   */
+  void addDirty(std::string const& database);
+  void addDirty(std::unordered_set<std::string> const& databases, bool callNotify);
+  std::unordered_set<std::string> dirty(
+    std::unordered_set<std::string> const& = std::unordered_set<std::string>());
+  /// @brief get n random db names
+  std::unordered_set<std::string> pickRandomDirty (size_t n);
+
+
  protected:
   void initializeMetrics();
 
@@ -344,11 +361,20 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @return shared pointer to action object if exists, nullptr if not
   std::shared_ptr<maintenance::Action> findActionIdNoLock(uint64_t hash);
 
+  /// @brief collect all database names
+  std::unordered_set<std::string> allDatabases() const;
+
+  /// @brief refill local database list for future random checking
+  void refillToCheck();
+
  protected:
   /// @brief option for forcing this feature to always be enable - used by the catch tests
   bool _forceActivation;
-  
+
   bool _resignLeadershipOnShutdown;
+
+  /// @brief detect fresh start
+  bool _firstRun;
 
   /// @brief tunable option for thread pool size
   uint32_t _maintenanceThreadsMax;
@@ -444,6 +470,9 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   /// @brief mutex protecting _shardActionMap
   mutable std::mutex _shardActionMapMutex;
+
+  std::vector<std::string> _databasesToCheck;
+  size_t _lastNumberOfDatabases;
 
  public:
   std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _phase1_runtime_msec;

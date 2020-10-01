@@ -104,6 +104,5 @@ bool DropIndex::first() {
     return false;
   }
 
-  notify();
   return false;
 }
