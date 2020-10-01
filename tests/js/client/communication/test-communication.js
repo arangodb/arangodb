@@ -208,7 +208,7 @@ function CommunicationSuite () {
       }
 
       db._drop("UnitTestsExc");
-      c = db._create("UnitTestsExc");
+      c = db._create("UnitTestsExc", {numberOfShards: 4});
       c.save({_key: 'entityName', nextOID : 0});
     },
 
@@ -218,7 +218,7 @@ function CommunicationSuite () {
       db._drop("UnitTestsExc");
     },
 
-    testWorkInParallel: function () {
+    /*testWorkInParallel: function () {
       let tests = [
         [ 'simple-1', 'db._query("FOR doc IN _users RETURN doc");' ],
         [ 'simple-2', 'db._query("FOR doc IN _users RETURN doc");' ],
@@ -233,14 +233,15 @@ function CommunicationSuite () {
 
       // run the suite for 5 minutes
       runTests(tests, 5 * 60);
-    },
+    },*/
 
+    // four writers creating lock contention on the same shards / documents
     testStreamTrxInParallel: function() {
       let tests = [
         [ 'stream-trx-1', 'let t = db._createTransaction({ collections: { exclusive: "UnitTestsExc" } }); let tc = t.collection("UnitTestsExc"); let doc = tc.document("entityName"); tc.update(doc._key, {nextOID: doc.nextOID + 1}); t.commit();'],
-        [ 'stream-trx-2', 'let t = db._createTransaction({ collections: { exclusive: "UnitTestsExc" } }); let tc = t.collection("UnitTestsExc"); let doc = tc.document("entityName"); tc.update(doc._key, {nextOID: doc.nextOID + 1}); t.commit();'],
-        [ 'stream-trx-3', 'let t = db._createTransaction({ collections: { exclusive: "UnitTestsExc" } }); t.query(\'LET d = DOCUMENT("UnitTestsExc/entityName") UPDATE d WITH {nextOID: d.nextOID + 1} IN UnitTestsExc\'); t.commit();'],
-        [ 'stream-trx-4', 'let t = db._createTransaction({ collections: { exclusive: "UnitTestsExc" } }); t.query(\'LET d = DOCUMENT("UnitTestsExc/entityName") UPDATE d WITH {nextOID: d.nextOID + 1} IN UnitTestsExc\'); t.commit();']
+        [ 'stream-trx-2', 'let t = db._createTransaction({ collections: { exclusive: "UnitTestsExc" } }); t.query(\'LET d = DOCUMENT("UnitTestsExc/entityName") UPDATE d WITH {nextOID: d.nextOID + 1} IN UnitTestsExc\'); t.commit();'],
+        [ 'stream-trx-3', 'let t = db._createTransaction({ collections: { exclusive: "UnitTestsExc" } }); let tc = t.collection("UnitTestsExc"); for (i = 0; i < 50; i++) {tc.save({nextOID: 0})} t.commit();'],
+        [ 'stream-trx-4', 'let t = db._createTransaction({ collections: { exclusive: "UnitTestsExc" } }); t.query(\'FOR d IN UnitTestsExc UPDATE d WITH {nextOID: d.nextOID + 1} IN UnitTestsExc\'); t.commit();']
       ];
 
       // run the suite for 1 minutes
