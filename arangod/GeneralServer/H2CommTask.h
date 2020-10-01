@@ -34,10 +34,13 @@
 namespace arangodb {
 class HttpRequest;
 
+/// @brief maximum number of concurrent streams
+static constexpr uint32_t H2MaxConcurrentStreams = 32;
+
 namespace rest {
 
 struct H2Response;
-
+  
 template <SocketType T>
 class H2CommTask final : public GeneralCommTask<T> {
  public:
@@ -47,7 +50,7 @@ class H2CommTask final : public GeneralCommTask<T> {
   void start() override;
   /// @brief upgrade from  H1 connection, must not call start
   void upgradeHttp1(std::unique_ptr<HttpRequest> req);
-
+  
  protected:
   virtual bool readCallback(asio_ns::error_code ec) override;
   virtual void setIOTimeout() override;
@@ -112,16 +115,7 @@ class H2CommTask final : public GeneralCommTask<T> {
  private:
   velocypack::Buffer<uint8_t> _outbuffer;
 
-  // the queue is dynamically sized because we can't guarantee that
-  // only a fixed number of responses are active at the same time.
-  // the reason is that producing responses may happen faster than
-  // fetching responses from the queue. this is done by different threads
-  // and depends on thread scheduling, so it is somewhat random how
-  // fast producing and consuming happen.
-  // effectively the length of the queue is bounded by the fact that the
-  // scheduler queue length is also bounded, so that we will not see
-  // an endless growth of the queue in a single connection.
-  boost::lockfree::queue<H2Response*> _responses;
+  boost::lockfree::queue<H2Response*, boost::lockfree::capacity<H2MaxConcurrentStreams>> _responses;
 
   std::map<int32_t, Stream> _streams;
 

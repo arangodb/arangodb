@@ -208,7 +208,6 @@ H2CommTask<T>::H2CommTask(GeneralServer& server, ConnectionInfo info,
     : GeneralCommTask<T>(server, std::move(info), std::move(so)) {
   this->_connectionStatistics.SET_HTTP();
   initNgHttp2Session();
-  _responses.reserve(32);
 }
 
 template <SocketType T>
@@ -250,7 +249,7 @@ constexpr uint32_t window_size = (1 << 30) - 1;  // 1 GiB
 void submitConnectionPreface(nghttp2_session* session) {
   std::array<nghttp2_settings_entry, 4> iv;
   // 32 streams matches the queue capacity
-  iv[0] = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 32};
+  iv[0] = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, arangodb::H2MaxConcurrentStreams};
   // typically client is just a *sink* and just process data as
   // much as possible.  Use large window size by default.
   iv[1] = {NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, window_size};
@@ -590,7 +589,7 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
   }
   if (--retries == 0) {
     LOG_TOPIC("924dc", WARN, Logger::REQUESTS)
-        << "was not able to queue response" << (void*)this;
+        << "was not able to queue response this=" << (void*)this;
     // we are overloaded close stream
     asio_ns::post(this->_protocol->context.io_context,
                   [self(this->shared_from_this()), mid(res->messageId())] {
