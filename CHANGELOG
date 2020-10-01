@@ -1,6 +1,10 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue ES-664: SEARCH vs FILTER lookup performance.
+  Consolidation functionality for ArangoSearch view links was able to hit non-
+  mergable enormous amount of segments due to improper scheduling logic.
+
 * Fix REST handler GET /_admin/status when called with URL parameter value
   `overview=true`. For generating the `hash` attribute in the response, the
   current Plan was retrieved and analyzed. Due to a change in the internal Plan
