@@ -299,11 +299,8 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // we need this buf since normalize accepts string_ref
-  {
-    auto nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize(name, vocbase);
-    name = nameBuf;
-  }
-
+  auto nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize(name, vocbase);
+  name = nameBuf;
 
   auto type = TRI_ObjectToString(isolate, args[1]);
 
@@ -421,11 +418,8 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto name = TRI_ObjectToString(isolate, args[0]);
   // we need this buf since normalize accepts string_ref
-  {
-    auto nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize(name, vocbase);
-    name = nameBuf;
-  }
-
+  auto nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize(name, vocbase);
+  name = nameBuf;
 
   // ...........................................................................
   // end of parameter parsing
@@ -595,10 +589,8 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     );
   }
   // we need this buf since normalize accepts string_ref
-  {
-    auto nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize(name, vocbase);
-    name = nameBuf;
-  }
+  auto nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize(name, vocbase);
+  name = nameBuf;
 
   bool force = false;
 
