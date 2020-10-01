@@ -1,5 +1,9 @@
 devel
 -----
+
+* Fix a performance regression when a LIMIT is combined with a COLLECT WITH
+  COUNT INTO. Reported in ES-692.
+
 * Added new ArangoSearch "pipeline" analyzer type
 
 * Reduce the number of dropped followers when running larger (>= 128 MB)
