@@ -140,6 +140,7 @@ class LimitExecutor {
   InputAqlItemRow _lastRowToOutput;
   // Number of input lines seen
   size_t _counter = 0;
+  bool _didProduceRows = false;
 };
 
 }  // namespace aql
