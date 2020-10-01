@@ -1,3 +1,11 @@
+v3.6.8 (XXXX-XX-XX)
+-------------------
+
+* Fixed issue ES-664: SEARCH vs FILTER lookup performance.
+  Consolidation functionality for ArangoSearch view links was able to hit non-
+  mergable enormous amount of segments due to improper scheduling logic.
+
+
 v3.6.7 (2020-09-18)
 -------------------
 
