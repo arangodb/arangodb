@@ -218,7 +218,7 @@ function CommunicationSuite () {
       db._drop("UnitTestsExc");
     },
 
-    /*testWorkInParallel: function () {
+    testWorkInParallel: function () {
       let tests = [
         [ 'simple-1', 'db._query("FOR doc IN _users RETURN doc");' ],
         [ 'simple-2', 'db._query("FOR doc IN _users RETURN doc");' ],
@@ -233,7 +233,7 @@ function CommunicationSuite () {
 
       // run the suite for 5 minutes
       runTests(tests, 5 * 60);
-    },*/
+    },
 
     // four writers creating lock contention on the same shards / documents
     testStreamTrxInParallel: function() {
