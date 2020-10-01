@@ -2087,9 +2087,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_GET_GLOBALS();
 
   TRI_ASSERT(v8g->_transactionContext == nullptr);
-  v8g->_transactionContext = new transaction::V8Context(vocbase, true);
-  static_cast<transaction::V8Context*>(v8g->_transactionContext)->makeGlobal();
-
   // register the database
   v8g->_vocbase = &vocbase;
 
