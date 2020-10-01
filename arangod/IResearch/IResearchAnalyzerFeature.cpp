@@ -1855,7 +1855,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     if (!res.ok()) {
       return res;
     }
-    
+
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
 
