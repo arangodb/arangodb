@@ -246,8 +246,6 @@ function CommunicationSuite () {
 
       // run the suite for 1 minutes
       runTests(tests, 1 * 60);
-
-      print("Value of single-doc: ", db._document("UnitTestsExc/entityName").nextOID);
     },
     
   };
