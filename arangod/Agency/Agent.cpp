@@ -328,9 +328,23 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
   auto startTime = steady_clock::now();
 
   if (index == 0) {
+    // This is only the empty case (=heartbeat)
     MUTEX_LOCKER(locker, _emptyAppendLock);
     auto n = steady_clock::now();
-    if (_lastEmptyAcked[peerId] < n) {
+    auto lastTime = _lastEmptyAcked[peerId];
+    if (lastTime < n) {
+      std::chrono::duration<double> d = n - lastTime;
+      auto secsSince = d.count();
+      if (secsSince < 1.5e9 && peerId != id() &&
+          secsSince > _config.minPing() * _config.timeoutMult()) {
+        LOG_TOPIC("6fe73", WARN, Logger::AGENCY)
+            << "Last confirmation from peer " << peerId
+            << " was received more than minPing ago: " << secsSince;
+      }
+      LOG_TOPIC("9ee0c", DEBUG, Logger::AGENCY)
+          << "Setting _lastEmptyAcked[" << peerId << "] to time "
+          << std::chrono::duration_cast<std::chrono::microseconds>(n.time_since_epoch())
+                 .count();
       _lastEmptyAcked[peerId] = n;
     }
     return;
@@ -345,15 +359,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 
     TRI_ASSERT(_lastAckedIndex.find(peerId) != _lastAckedIndex.end());
     // Reference here, the entry will be updated.
-    auto& [lastTime, lastIndex] = _lastAckedIndex.at(peerId);
-    std::chrono::duration<double> d = t - lastTime;
-    auto secsSince = d.count();
-    if (secsSince < 1.5e9 && peerId != id() &&
-        secsSince > _config.minPing() * _config.timeoutMult()) {
-      LOG_TOPIC("6fe73", WARN, Logger::AGENCY)
-          << "Last confirmation from peer " << peerId
-          << " was received more than minPing ago: " << secsSince;
-    }
+    auto& [lastTime, lastIndex] = _lastAckedIndex[peerId];
     LOG_TOPIC("9ee0b", DEBUG, Logger::AGENCY)
         << "Setting _lastAcked[" << peerId << "] to time "
         << std::chrono::duration_cast<std::chrono::microseconds>(t.time_since_epoch())
