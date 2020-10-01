@@ -94,19 +94,23 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
       return true;
     });
     EXPECT_EQ(1, cids.size());
-    EXPECT_EQ(TRI_ERROR_NO_ERROR, arangodb::tests::executeQuery(
-                                      vocbase,
-                                      "FOR d IN testView SEARCH 1 == 1 "
-                                      "OPTIONS { waitForSync: true } RETURN d")
-                                      .result.errorNumber());  // commit
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1 "
+          "OPTIONS { waitForSync: true } RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(0, itr.size());
+    }
   }
 
   // insert initial document
   {
-      std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
-        VPackParser::fromJson(
-            "{ \"value\": true }")
-    };
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
+        VPackParser::fromJson("{ \"value\": true }")};
 
     arangodb::OperationOptions options;
     options.returnNew = true;
@@ -142,12 +146,17 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
       EXPECT_TRUE(trx.commit().ok());
     }
 
-    EXPECT_EQ(TRI_ERROR_NO_ERROR,
-              arangodb::tests::executeQuery(
-                  vocbase,
-                  "FOR d IN testView SEARCH d.value == true "
-                  "OPTIONS { waitForSync: true } RETURN d")
-                  .result.errorNumber());  // commit
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1 "
+          "OPTIONS { waitForSync: true } RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(0, itr.size());
+    }
 
     // reinsert with _rev and isRestore == true
     {
@@ -169,12 +178,17 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
       EXPECT_TRUE(trx.commit().ok());
     }
 
-    EXPECT_EQ(TRI_ERROR_NO_ERROR,
-              arangodb::tests::executeQuery(
-                  vocbase,
-                  "FOR d IN testView SEARCH d.value == true "
-                  "OPTIONS { waitForSync: true } RETURN d")
-                  .result.errorNumber());  // commit
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1 "
+          "OPTIONS { waitForSync: true } RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(1, itr.size());
+    }
   }
 }
 
@@ -219,11 +233,17 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       return true;
     });
     EXPECT_EQ(1, cids.size());
-    EXPECT_EQ(TRI_ERROR_NO_ERROR, arangodb::tests::executeQuery(
-                                      vocbase,
-                                      "FOR d IN testView SEARCH 1 == 1 "
-                                      "OPTIONS { waitForSync: true } RETURN d")
-                                      .result.errorNumber());  // commit
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1 "
+          "OPTIONS { waitForSync: true } RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(0, itr.size());
+    }
   }
 
   std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
@@ -265,12 +285,17 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       EXPECT_TRUE(trx.commit().ok());
     }
 
-    EXPECT_EQ(TRI_ERROR_NO_ERROR,
-              arangodb::tests::executeQuery(
-                  vocbase,
-                  "FOR d IN testView SEARCH d.value == true "
-                  "OPTIONS { waitForSync: true } RETURN d")
-                  .result.errorNumber());  // commit
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1 "
+          "OPTIONS { waitForSync: true } RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(0, itr.size());
+    }
 
     // insert some extra doc
     {
@@ -327,12 +352,17 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       EXPECT_TRUE(trx.commit().ok());
     }
 
-    EXPECT_EQ(TRI_ERROR_NO_ERROR,
-              arangodb::tests::executeQuery(
-                  vocbase,
-                  "FOR d IN testView SEARCH d.value == true "
-                  "OPTIONS { waitForSync: true } RETURN d")
-                  .result.errorNumber());  // commit
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1 "
+          "OPTIONS { waitForSync: true } RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(1, itr.size());
+    }
   }
 }
 
@@ -376,11 +406,17 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
       return true;
     });
     EXPECT_EQ(1, cids.size());
-    EXPECT_EQ(TRI_ERROR_NO_ERROR, arangodb::tests::executeQuery(
-                                      vocbase,
-                                      "FOR d IN testView SEARCH 1 == 1 "
-                                      "OPTIONS { waitForSync: true } RETURN d")
-                                      .result.errorNumber());  // commit
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1 "
+          "OPTIONS { waitForSync: true } RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(0, itr.size());
+    }
   }
 
   // insert initial document
@@ -429,11 +465,16 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
 
     EXPECT_TRUE(trx.commit().ok());
 
-    EXPECT_EQ(TRI_ERROR_NO_ERROR,
-              arangodb::tests::executeQuery(
-                  vocbase,
-                  "FOR d IN testView SEARCH d.value == true "
-                  "OPTIONS { waitForSync: true } RETURN d")
-                  .result.errorNumber());  // commit
+    {
+      auto result = arangodb::tests::executeQuery(
+          vocbase,
+          "FOR d IN testView SEARCH 1 == 1 "
+          "OPTIONS { waitForSync: true } RETURN d");
+      EXPECT_EQ(TRI_ERROR_NO_ERROR, result.result.errorNumber());  // commit
+      auto slice = result.data->slice();
+      EXPECT_TRUE(slice.isArray());
+      arangodb::velocypack::ArrayIterator itr(slice);
+      EXPECT_EQ(1, itr.size());
+    }
   }
 }
