@@ -1,6 +1,10 @@
 v3.7.2.2 (XXXX-XX-XX)
 ---------------------
 
+* Fixed issue ES-664: SEARCH vs FILTER lookup performance.
+  Consolidation functionality for ArangoSearch view links was able to hit non-
+  mergable enormous amount of segments due to improper scheduling logic.
+
 * Fix for issue BTS-183: added pending operations purging before ArangoSearch
   index truncation.
 
