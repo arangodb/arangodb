@@ -72,7 +72,6 @@ void RestAnalyzerHandler::createAnalyzer( // create
     return;
   }
 
-  irs::string_ref name;
   auto nameSlice = body.get(StaticStrings::AnalyzerNameField);
 
   if (!nameSlice.isString()) {
@@ -92,20 +91,16 @@ void RestAnalyzerHandler::createAnalyzer( // create
       return;
   }
 
-  name = splittedAnalyzerName.second;
-  if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(name.c_str(), name.size()))) {
+  if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(splittedAnalyzerName.second.c_str(),
+                                                                 splittedAnalyzerName.second.size()))) {
     generateError(arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      "invalid characters in analyzer name '" + static_cast<std::string>(name) + "'"
+      "invalid characters in analyzer name '" + static_cast<std::string>(splittedAnalyzerName.second) + "'"
     ));
     return;
   }
 
-  // we need this buf since name is string_ref
-  auto nameBuf = IResearchAnalyzerFeature::normalize(name, _vocbase);
-  name = nameBuf;
-
-
+  auto name = IResearchAnalyzerFeature::normalize(splittedAnalyzerName.second, _vocbase);
 
   irs::string_ref type;
   auto typeSlice = body.get(StaticStrings::AnalyzerTypeField);
