@@ -460,7 +460,6 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(arangodb::LogicalCollection& collection
               {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
           true, false, RocksDBColumnFamily::primary(),
           basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
-          basics::VelocyPackHelper::stringUInt64(info, StaticStrings::TempObjectId),
           static_cast<RocksDBCollection*>(collection.getPhysical())->cacheEnabled()),
       _coveredFields({{AttributeName(StaticStrings::KeyString, false)},
                       {AttributeName(StaticStrings::IdString, false)}}),

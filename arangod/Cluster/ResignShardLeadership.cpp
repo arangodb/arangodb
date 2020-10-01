@@ -135,7 +135,6 @@ bool ResignShardLeadership::first() {
     return false;
   }
 
-  notify();
   return false;
 }
 

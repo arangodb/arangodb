@@ -177,18 +177,6 @@ RevisionId PhysicalCollection::newRevisionId() const {
   return RevisionId::create();
 }
 
-Result PhysicalCollection::upgrade() {
-  return Result{TRI_ERROR_NOT_IMPLEMENTED,
-                "collection upgrade not supported on this type of collection"};
-}
-
-bool PhysicalCollection::didPartialUpgrade() { return false; }
-
-Result PhysicalCollection::cleanupAfterUpgrade() {
-  return Result{TRI_ERROR_NOT_IMPLEMENTED,
-                "collection upgrade not supported on this type of collection"};
-}
-
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
 Result PhysicalCollection::mergeObjectsForUpdate(

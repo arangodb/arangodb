@@ -232,7 +232,7 @@ describe ArangoDB do
       doc.parsed_response.should_not include(id)
     end
 
-    it "checks whether we can cancel an AQL query" do
+    it "checks whether we can cancel an AQL query 1" do
       cmd = "/_api/cursor"
       body = '{"query": "for x in 1..1000 let a = sleep(0.5) filter x == 1 return x"}'
       doc = ArangoDB.log_post("#{prefix}-create-cursor", cmd, :body => body, :headers => { "X-Arango-Async" => "store" })
@@ -256,7 +256,7 @@ describe ArangoDB do
       doc.code.should eq(410)
     end
 
-    it "checks whether we can cancel an AQL query" do
+    it "checks whether we can cancel an AQL query 2" do
       cmd = "/_api/cursor"
       body = '{"query": "for x in 1..10000 for y in 1..10000 let a = sleep(0.01) filter x == 1 && y == 1 return x"}'
       doc = ArangoDB.log_post("#{prefix}-create-cursor", cmd, :body => body, :headers => { "X-Arango-Async" => "store" })
@@ -280,7 +280,7 @@ describe ArangoDB do
       doc.code.should eq(410)
     end
 
-    it "checks whether we can cancel an AQL query" do
+    it "checks whether we can cancel an AQL query 3" do
       cmd = "/_api/cursor"
       body = '{"query": "for x in 1..10000 for y in 1..10000 let a = sleep(0.01) filter x == 1 && y == 1 return x"}'
       doc = ArangoDB.log_post("#{prefix}-create-cursor", cmd, :body => body, :headers => { "X-Arango-Async" => "store" })

@@ -72,7 +72,9 @@ class IResearchQueryTest
     dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
+    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::methods::Collections::createSystem(*_vocbase, options,
+                                                 arangodb::tests::AnalyzerCollectionName,
                                                  false, unused);
     unused = nullptr;
 
@@ -97,7 +99,8 @@ class IResearchQueryTest
     EXPECT_TRUE(res.ok());
 
     auto sysVocbase = server.getFeature<arangodb::SystemDatabaseFeature>().use();
-    arangodb::methods::Collections::createSystem(*sysVocbase, arangodb::tests::AnalyzerCollectionName,
+    arangodb::methods::Collections::createSystem(*sysVocbase, options,
+                                                 arangodb::tests::AnalyzerCollectionName,
                                                  false, unused);
     unused = nullptr;
 
