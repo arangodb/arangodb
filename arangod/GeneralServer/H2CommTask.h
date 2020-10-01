@@ -34,10 +34,13 @@
 namespace arangodb {
 class HttpRequest;
 
+/// @brief maximum number of concurrent streams
+static constexpr uint32_t H2MaxConcurrentStreams = 32;
+
 namespace rest {
 
 struct H2Response;
-
+  
 template <SocketType T>
 class H2CommTask final : public GeneralCommTask<T> {
  public:
@@ -47,7 +50,7 @@ class H2CommTask final : public GeneralCommTask<T> {
   void start() override;
   /// @brief upgrade from  H1 connection, must not call start
   void upgradeHttp1(std::unique_ptr<HttpRequest> req);
-
+  
  protected:
   virtual bool readCallback(asio_ns::error_code ec) override;
   virtual void setIOTimeout() override;
@@ -112,8 +115,7 @@ class H2CommTask final : public GeneralCommTask<T> {
  private:
   velocypack::Buffer<uint8_t> _outbuffer;
 
-  // no more than 64 streams allowed
-  boost::lockfree::queue<H2Response*, boost::lockfree::capacity<32>> _responses;
+  boost::lockfree::queue<H2Response*, boost::lockfree::capacity<H2MaxConcurrentStreams>> _responses;
 
   std::map<int32_t, Stream> _streams;
 
