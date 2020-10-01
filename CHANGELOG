@@ -1,6 +1,10 @@
 v3.5.7 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue ES-664: SEARCH vs FILTER lookup performance.
+  Consolidation functionality for ArangoSearch view links was able to hit non-
+  mergable enormous amount of segments due to improper scheduling logic.
+
 * Use rclone built from v1.51.0 source with go1.15.2 instead of prebuilt
   v1.53.0 release.
 
