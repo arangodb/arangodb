@@ -165,6 +165,10 @@ class Constituent : public Thread {
   std::atomic<double> _lastHeartbeatSeen;
 
   role_t _role;           // My role
+  std::atomic<bool> _IamLeader;
+  // _IamLeader is modified iff _role is and indicates that it is LEADER:
+  // We use this to read off leadership without acquiring a lock.
+ 
   Agent* _agent;          // My boss
   std::string _votedFor;  // indicates whether or not we have voted for
                           // anybody in this term, we will always reset

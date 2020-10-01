@@ -253,11 +253,11 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
     ///  (_waitForCV's mutex stops writes to _commitIndex)
     CONDITION_LOCKER(guard, _waitForCV);
     if (leading()) {
-      if (lastCommitIndex != _commitIndex) {
+      if (lastCommitIndex != _commitIndex.load(std::memory_order_relaxed)) {
         // We restart the timeout computation if there has been progress:
         startTime = steady_clock::now();
       }
-      lastCommitIndex = _commitIndex;
+      lastCommitIndex = _commitIndex.load(std::memory_order_relaxed);
       if (lastCommitIndex >= index) {
         return Agent::raft_commit_t::OK;
       }
@@ -268,7 +268,8 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
     duration<double> d = steady_clock::now() - startTime;
 
     LOG_TOPIC("37e05", DEBUG, Logger::AGENCY)
-        << "waitFor: index: " << index << " _commitIndex: " << _commitIndex
+        << "waitFor: index: " << index
+        << " _commitIndex: " << _commitIndex.load(std::memory_order_relaxed)
         << " _lastCommitIndex: " << lastCommitIndex << " elapsedTime: " << d.count();
 
     if (d.count() >= timeout) {
@@ -298,7 +299,7 @@ bool Agent::isCommitted(index_t index) {
 
   CONDITION_LOCKER(guard, _waitForCV);
   if (leading()) {
-    return _commitIndex >= index;
+    return _commitIndex.load(std::memory_order_relaxed) >= index;
   } else {
     return false;
   }
@@ -424,7 +425,7 @@ void Agent::logsForTrigger() {
   auto builder = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder e(builder.get());
-    auto const logs = _state.get(_lowestPromise, _commitIndex);
+    auto const logs = _state.get(_lowestPromise, _commitIndex.load(std::memory_order_relaxed));
 
     TRI_ASSERT(!logs.empty());
     if (!logs.empty()) {
@@ -501,8 +502,8 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
           << " with term " << term;
       {
         WRITE_LOCKER(oLocker, _outputLock);
-        index_t const tmp = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
-        if (tmp > _commitIndex) {
+        index_t const tmp = std::max(_commitIndex.load(std::memory_order_relaxed), std::min(leaderCommitIndex, lastIndex));
+        if (tmp > _commitIndex.load(std::memory_order_relaxed)) {
           logsForTrigger();
         }
         _commitIndex = tmp;
@@ -530,8 +531,8 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
   {
     WRITE_LOCKER(oLocker, _outputLock);
     CONDITION_LOCKER(guard, _waitForCV);
-    index_t const tmp = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
-    if (tmp > _commitIndex) {
+    index_t const tmp = std::max(_commitIndex.load(std::memory_order_relaxed), std::min(leaderCommitIndex, lastIndex));
+    if (tmp > _commitIndex.load(std::memory_order_relaxed)) {
       logsForTrigger();
     }
     _commitIndex = tmp;
@@ -601,11 +602,7 @@ void Agent::sendAppendEntriesRPC() {
             << "Reading lastConfirmed took too long: " << lockTime.count();
       }
 
-      index_t commitIndex;
-      {
-        READ_LOCKER(oLocker, _outputLock);
-        commitIndex = _commitIndex;
-      }
+      index_t commitIndex = _commitIndex.load(std::memory_order_relaxed);
 
       // If the follower is behind our first log entry send last snapshot and
       // following logs. Else try to have the follower catch up in regular order.
@@ -808,19 +805,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
     return;
   }
 
-  index_t commitIndex;
-  {
-    READ_LOCKER(oLocker, _outputLock);
-    commitIndex = _commitIndex;
-  }
-
-  // Just check once more:
-  if (!leading()) {
-    LOG_TOPIC("99dc2", DEBUG, Logger::AGENCY)
-        << "Not sending empty appendEntriesRPC to follower " << followerId
-        << " because we are no longer leading.";
-    return;
-  }
+  index_t commitIndex = _commitIndex.load(std::memory_order_relaxed);
 
   auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
@@ -880,29 +865,32 @@ void Agent::advanceCommitIndex() {
   term_t t = _constituent.term();
   {
     WRITE_LOCKER(oLocker, _outputLock);
-    if (index > _commitIndex) {
+    if (index > _commitIndex.load(std::memory_order_relaxed)) {
 
       CONDITION_LOCKER(guard, _waitForCV);
       LOG_TOPIC("e24a9", TRACE, Logger::AGENCY)
-          << "Critical mass for commiting " << _commitIndex + 1 << " through "
+          << "Critical mass for commiting "
+          << _commitIndex.load(std::memory_order_relaxed) + 1 << " through "
           << index << " to read db";
       // Change _readDB and _commitIndex atomically together:
       _readDB.applyLogEntries(_state.slices(/* inform others by callbacks */
-                                            _commitIndex + 1, index),
-                              _commitIndex, t, true);
+                                            _commitIndex.load(std::memory_order_relaxed) + 1, index),
+                              _commitIndex.load(std::memory_order_relaxed), t, true);
+
+      LOG_TOPIC("e24aa", DEBUG, Logger::AGENCY)
+          << "Critical mass for commiting "
+          << _commitIndex.load(std::memory_order_relaxed) + 1 << " through "
+          << index << " to read db, done";
 
       _commitIndex = index;
       _local_index = index;
 
-      LOG_TOPIC("e24aa", DEBUG, Logger::AGENCY)
-          << "Critical mass for commiting " << _commitIndex + 1 << " through "
-          << index << " to read db, done";
       // Wake up write rest handlers:
       _waitForCV.broadcast();
 
       logsForTrigger();
 
-      if (_commitIndex >= _state.nextCompactionAfter()) {
+      if (_commitIndex.load(std::memory_order_relaxed) >= _state.nextCompactionAfter()) {
         _compactor.wakeUp();
       }
 
@@ -933,17 +921,18 @@ futures::Future<query_t> Agent::poll(
       VPackObjectBuilder r(builder.get());
       builder->add(VPackValue("result"));
       VPackObjectBuilder r2(builder.get());
-      builder->add("commitIndex", VPackValue(_commitIndex));
+      builder->add("commitIndex", VPackValue(_commitIndex.load(std::memory_order_relaxed)));
       builder->add("firstIndex", VPackValue(0));
       builder->add(VPackValue("readDB"));
       _readDB.get("", *builder, true);
-    } else if (index <= _commitIndex) {   // deliver immediately all logs since index
+    } else if (index <= _commitIndex.load(std::memory_order_relaxed)) {
+      // deliver immediately all logs since index
       builder = std::make_shared<VPackBuilder>();
       VPackObjectBuilder r(builder.get());
       builder->add(VPackValue("result"));
       VPackObjectBuilder r2(builder.get());
-      logs = _state.get(index, _commitIndex);
-      builder->add("commitIndex", VPackValue(_commitIndex));
+      logs = _state.get(index, _commitIndex.load(std::memory_order_relaxed));
+      builder->add("commitIndex", VPackValue(_commitIndex.load(std::memory_order_relaxed)));
       builder->add("firstIndex", VPackValue(logs.front().index));
       builder->add(VPackValue("log"));
       VPackArrayBuilder ls(builder.get());
@@ -1467,11 +1456,7 @@ read_ret_t Agent::read(query_t const& query) {
 
 // trigger all polls, who have timed out with empty result
 void Agent::clearExpiredPolls() {
-  index_t commitIndex = 0;
-  {
-    READ_LOCKER(oLocker, _outputLock);
-    commitIndex = _commitIndex;
-  }
+  index_t commitIndex = _commitIndex.load(std::memory_order_relaxed);
   auto empty = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder obj(empty.get());
@@ -1586,7 +1571,8 @@ void Agent::run() {
       bool commenceService = false;
       {
         READ_LOCKER(oLocker, _outputLock);
-        if (leading() && getPrepareLeadership() == 2 && _commitIndex == _state.lastIndex()) {
+        if (leading() && getPrepareLeadership() == 2 &&
+            _commitIndex.load(std::memory_order_relaxed) == _state.lastIndex()) {
           commenceService = true;
         }
       }
@@ -1724,11 +1710,7 @@ void Agent::lead() {
     // We cannot start sendAppendentries before first log index.
     // Any missing indices before _commitIndex were compacted.
     // DO NOT EDIT without understanding the consequences for sendAppendEntries!
-    index_t commitIndex;
-    {
-      READ_LOCKER(oLocker, _outputLock);
-      commitIndex = _commitIndex;
-    }
+    index_t commitIndex = _commitIndex.load(std::memory_order_relaxed);
 
     MUTEX_LOCKER(tiLocker, _tiLock);
     MUTEX_LOCKER(locker, _emptyAppendLock);
@@ -1864,11 +1846,12 @@ void Agent::rebuildDBs() {
   // Apply logs from last applied index to leader's commit index
   LOG_TOPIC("b12cb", DEBUG, Logger::AGENCY)
       << "Rebuilding key-value stores from index " << lastCompactionIndex
-      << " to " << _commitIndex << " " << _state;
+      << " to " << _commitIndex.load(std::memory_order_relaxed) << " " << _state;
 
   {
-    auto logs = _state.slices(lastCompactionIndex + 1, _commitIndex);
-    _readDB.applyLogEntries(logs, _commitIndex, term, false /* do not send callbacks */);
+    auto logs = _state.slices(lastCompactionIndex + 1, _commitIndex.load(std::memory_order_relaxed));
+    _readDB.applyLogEntries(logs, _commitIndex.load(std::memory_order_relaxed),
+                            term, false /* do not send callbacks */);
   }
   _spearhead = _readDB;
 
@@ -1883,11 +1866,7 @@ void Agent::compact() {
   // space well before _commitIndex anyway. Apart from this, the compaction
   // code runs on the followers as well where we do not have a _readDB
   // anyway.
-  index_t commitIndex;
-  {
-    READ_LOCKER(guard, _outputLock);
-    commitIndex = _commitIndex;
-  }
+  index_t commitIndex = _commitIndex.load(std::memory_order_relaxed);
 
   using namespace std::chrono;
   using clock = std::chrono::high_resolution_clock;
@@ -1910,8 +1889,7 @@ void Agent::compact() {
 
 /// Last commit index
 arangodb::consensus::index_t Agent::lastCommitted() const {
-  READ_LOCKER(oLocker, _outputLock);
-  return _commitIndex;
+  return _commitIndex.load(std::memory_order_relaxed);
 }
 
 /// Last log entry
@@ -1928,7 +1906,7 @@ Store const& Agent::readDB() const { return _readDB; }
 arangodb::consensus::index_t Agent::readDB(Node& node) const {
   READ_LOCKER(oLocker, _outputLock);
   node = _readDB.get();
-  return _commitIndex;
+  return _commitIndex.load(std::memory_order_relaxed);
 }
 
 /// Get readdb
@@ -1940,7 +1918,7 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
   { 
     READ_LOCKER(oLocker, _outputLock);
 
-    commitIndex = _commitIndex;
+    commitIndex = _commitIndex.load(std::memory_order_relaxed);
     // commit index
     builder.add("index", VPackValue(commitIndex));
     builder.add("term", VPackValue(term()));
@@ -1997,7 +1975,7 @@ void Agent::setPersistedState(VPackSlice const& compaction) {
     _readDB = compaction;
     _commitIndex =
         arangodb::basics::StringUtils::uint64(compaction.get("_key").copyString());
-    _local_index = _commitIndex;
+    _local_index = _commitIndex.load(std::memory_order_relaxed);
     _waitForCV.broadcast();
   } catch (std::exception const& e) {
     LOG_TOPIC("70844", ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
@@ -2309,10 +2287,10 @@ query_t Agent::buildDB(arangodb::consensus::index_t index) {
 
   {
     READ_LOCKER(oLocker, _outputLock);
-    if (index > _commitIndex) {
+    if (index > _commitIndex.load(std::memory_order_relaxed)) {
       LOG_TOPIC("88754", INFO, Logger::AGENCY)
-          << "Cannot snapshot beyond leaderCommitIndex: " << _commitIndex;
-      index = _commitIndex;
+          << "Cannot snapshot beyond leaderCommitIndex: " << _commitIndex.load(std::memory_order_relaxed);
+      index = _commitIndex.load(std::memory_order_relaxed);
     } else if (index < oldIndex) {
       LOG_TOPIC("cb67b", INFO, Logger::AGENCY)
           << "Cannot snapshot before last compaction index: " << oldIndex;
