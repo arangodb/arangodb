@@ -562,15 +562,11 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(_isReplace) /*(needed by upsert)*/,
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
-  if (arangodb::ServerState::instance()->isCoordinator() || !_options.readCompleteInput) {
+
     return std::make_unique<SingleRowUpsertExecutionBlock>(&engine, this,
                                                            std::move(registerInfos),
                                                            std::move(executorInfos));
-  } else {
-    return std::make_unique<AllRowsUpsertExecutionBlock>(&engine, this,
-                                                         std::move(registerInfos),
-                                                         std::move(executorInfos));
-  }
+
 }
 
 /// @brief clone ExecutionNode recursively
