@@ -753,6 +753,7 @@ function ahuacatlProfilerTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test LimitBlock + CountCollectBlock
 /// This is a regression test for ES-692.
+/// Introduced and fixed in https://github.com/arangodb/arangodb/pull/12719.
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitBlockWithCountCollectBlock : function () {
@@ -783,6 +784,7 @@ function ahuacatlProfilerTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test LimitBlock with fullCount + CountCollectBlock
 /// This is a regression test for ES-692.
+/// Introduced and fixed in https://github.com/arangodb/arangodb/pull/12719.
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitBlockWithCountCollectBlockAndFullCount : function () {
@@ -809,6 +811,59 @@ function ahuacatlProfilerTestSuite () {
       });
       const genStats = rows => ({
         fullCount: rows
+      });
+      profHelper.runDefaultChecks({query, bind, genNodeList, genStats, options: {fullCount: true}});
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test two adjacent LimitBlocks with fullCount.
+/// NOTE That this is currently suboptimal! Currently, fullCount is passed
+/// through the upper limit block, forcing upstream blocks to iterate everything.
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitBlockWithLimitAndFullCount : function () {
+      const query = `
+        FOR i IN 1..@rows
+          LIMIT @upperOffset, @upperLimit
+          LIMIT @lowerOffset, @lowerLimit
+          RETURN i
+      `;
+
+      // The lower limit works with the rows passing through the upper limit,
+      // so rows are divided roughly like this:
+      // |                                rows                           |
+      // | upperOffset |               upperLimit             |
+      // |             | lowerOffset | lowerLimit |
+      const upperOffset = rows => offset(rows);
+      const upperLimit = rows => limitMinusSkip(rows);
+      const lowerOffset = rows => offset(limitMinusSkip(rows));
+      const lowerLimit = rows => limitMinusSkip(limitMinusSkip(rows));
+      const batches = rows => Math.ceil(rows / defaultBatchSize);
+
+      const genNodeList = (rows) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        // NOTE: `items: rows` should *really* be upperOffset(rows) + upperLimit(rows).
+        //       That still needs to be implemented.
+        { type : EnumerateListBlock, calls : batches(lowerLimit(rows)), items : rows },
+        { type : LimitBlock, calls : batches(lowerLimit(rows)), items : upperLimit(rows) },
+        { type : LimitBlock, calls : batches(lowerLimit(rows)), items : lowerLimit(rows) },
+        { type : ReturnBlock, calls : batches(lowerLimit(rows)), items : lowerLimit(rows) }
+      ];
+
+      const bind = rows => ({
+        rows,
+        // ~1/4 of rows:
+        upperOffset: upperOffset(rows),
+        // ~1/2 of rows:
+        upperLimit: upperLimit(rows),
+        // ~1/8 of rows:
+        lowerOffset: lowerOffset(rows),
+        // ~1/4 of rows:
+        lowerLimit: lowerLimit(rows),
+      });
+      const genStats = rows => ({
+        fullCount: Math.min(rows, upperLimit(rows)),
       });
       profHelper.runDefaultChecks({query, bind, genNodeList, genStats, options: {fullCount: true}});
     },
