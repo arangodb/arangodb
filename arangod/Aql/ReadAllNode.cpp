@@ -23,6 +23,8 @@
 
 #include "Aql/ReadAllNode.h"
 
+#include "Aql/ReadAllExecutionBlock.h"
+
 using namespace arangodb::aql;
 
 ReadAllNode::ReadAllNode(ExecutionPlan* plan, ExecutionNodeId id)
@@ -37,9 +39,7 @@ ExecutionNode::NodeType ReadAllNode::getType() const { return READALL; }
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ReadAllNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-
-  TRI_ASSERT(false);
-  return nullptr;
+  return std::make_unique<ReadAllExecutionBlock>(&engine, this,  createRegisterInfos({}, {}));
 }
 
 /// @brief toVelocyPack, for ReadAllNode

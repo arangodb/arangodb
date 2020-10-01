@@ -29,8 +29,11 @@
 
 using namespace arangodb::aql;
 
-ReadAllExecutionBlock::ReadAllExecutionBlock(ExecutionEngine* engine, ExecutionNode const* en)
-    : ExecutionBlock(engine, en), _query(engine->getQuery()) {}
+ReadAllExecutionBlock::ReadAllExecutionBlock(ExecutionEngine* engine,
+                                             ExecutionNode const* en, RegisterInfos registerInfos)
+    : ExecutionBlock(engine, en),
+      _query(engine->getQuery()),
+      _clientBlockData(*engine, en, registerInfos) {}
 
 ReadAllExecutionBlock::~ReadAllExecutionBlock() = default;
 
@@ -66,29 +69,24 @@ auto ReadAllExecutionBlock::executeWithoutTrace(AqlCallStack stack)
   // Invariant can only work if all calls of the stack are fetchAll
   TRI_ASSERT(stack.validateAllCallsAreFetchAll());
 
-
   // This block fetches until the upstream returns done, before it returns anything
   while (_upstreamState != ExecutionState::DONE) {
-    auto [state, skipResult, block] =  _dependencies.at(0)->execute(stack);
+    auto [state, skipResult, block] =
+        _dependencies.at(0)->execute(stack.createEquivalentFetchAllShadowRowsStack());
     if (state == ExecutionState::WAITING) {
       return {state, SkipResult{}, nullptr};
     }
     _upstreamState = state;
     // We can never skip anything here.
     TRI_ASSERT(skipResult.nothingSkipped());
-    _skipped = skipResult;
-    _blocks.emplace_back(std::move(block));
+    _clientBlockData.addBlock(block, skipResult);
   }
+  // We need to have at least the skip information once, otherwise we call here although we returned done.
+  TRI_ASSERT(_clientBlockData.hasDataFor(stack.peek()));
   // We can never skip anything here.
-  TRI_ASSERT(_skipped.nothingSkipped());
-
-  if (!_blocks.empty()) {
-    auto block = _blocks.front();
-    _blocks.pop_front();
-    if (_blocks.empty()) {
-      return {ExecutionState::DONE, _skipped, std::move(block)};
-    }
-    return {ExecutionState::HASMORE, _skipped, std::move(block)};
+  if (_clientBlockData.hasDataFor(stack.peek())) {
+    return _clientBlockData.execute(stack, _upstreamState);
   }
-  return {ExecutionState::DONE, _skipped, nullptr};
+  // Just emergency bailout.
+  return {ExecutionState::DONE, SkipResult{}, nullptr};
 }

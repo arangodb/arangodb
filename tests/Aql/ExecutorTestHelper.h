@@ -274,9 +274,9 @@ struct ExecutorTestHelper {
    * @return ExecutorTestHelper&
    */
   template <typename E, typename std::enable_if<std::is_base_of<ExecutionBlock, E>::value>::type* = nullptr>
-  auto addConsumer(ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
+  auto addConsumer(RegisterInfos registerInfos, ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
       -> ExecutorTestHelper& {
-    _pipeline.addConsumer(createExecBlock<E>(nodeType));
+    _pipeline.addConsumer(createExecBlock<E>(std::move(registerInfos), nodeType));
     return *this;
   }
 
@@ -386,12 +386,12 @@ struct ExecutorTestHelper {
   }
 
   template <typename E, typename std::enable_if<std::is_base_of<ExecutionBlock, E>::value>::type* = nullptr>
-  auto createExecBlock(ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
+  auto createExecBlock(RegisterInfos registerInfos, ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
       -> ExecBlock {
     auto& testeeNode = _execNodes.emplace_back(
         std::make_unique<MockTypedNode>(_query.plan(),
                                         ExecutionNodeId{_execNodes.size()}, nodeType));
-    return std::make_unique<E>(_query.rootEngine(), testeeNode.get());
+    return std::make_unique<E>(_query.rootEngine(), testeeNode.get(), std::move(registerInfos));
   }
 
   auto generateInputRanges(AqlItemBlockManager& itemBlockManager)

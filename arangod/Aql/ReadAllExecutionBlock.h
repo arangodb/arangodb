@@ -26,6 +26,8 @@
 #include "Aql/ExecutionBlock.h"
 
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Aql/ScatterExecutor.h"
+
 #include <deque>
 
 namespace arangodb {
@@ -35,7 +37,7 @@ class QueryContext;
 
 class ReadAllExecutionBlock : public ExecutionBlock {
 public:
-ReadAllExecutionBlock(ExecutionEngine*, ExecutionNode const*);
+ReadAllExecutionBlock(ExecutionEngine*, ExecutionNode const*, RegisterInfos registerInfos);
 
 ~ReadAllExecutionBlock();
 
@@ -62,6 +64,8 @@ private:
   QueryContext const& _query;
 
   SkipResult _skipped{};
+
+  ScatterExecutor::ClientBlockData _clientBlockData;
   
   std::deque<SharedAqlItemBlockPtr> _blocks;
 };

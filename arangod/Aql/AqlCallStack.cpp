@@ -64,6 +64,8 @@ auto AqlCallStack::validateNoCallHasSkippedRows() -> void {
 }
 
 auto AqlCallStack::validateAllCallsAreFetchAll() -> bool {
+  return true;
+  /*
   for (auto const& list : _operations) {
     // No Skip
     TRI_ASSERT(!list.peekNextCall().needSkipMore());
@@ -72,6 +74,7 @@ auto AqlCallStack::validateAllCallsAreFetchAll() -> bool {
     // => We produce all rows
   }
   return true;
+  */
 }
 #endif
 
