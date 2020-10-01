@@ -147,7 +147,9 @@ class AnalyzerPool : private irs::util::noncopyable {
   irs::flags _features;    // cached analyzer features
   irs::string_ref _key;    // the key of the persisted configuration for this pool,
                            // null == static analyzer
-  std::string _name;       // ArangoDB alias for an IResearch analyzer configuration
+  std::string _name;       // ArangoDB alias for an IResearch analyzer configuration.
+                           // Should be normalized name or static analyzer name see
+                           // assertion in ctor
   VPackSlice _properties;  // IResearch analyzer configuration
   irs::string_ref _type;   // IResearch analyzer name
   StoreFunc _storeFunc{};
