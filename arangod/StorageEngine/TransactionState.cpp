@@ -123,12 +123,9 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
 
   // upgrade transaction type if required
   if (_status == transaction::Status::CREATED) {
-    if (AccessMode::isWriteOrExclusive(accessType) &&
-        !AccessMode::isWriteOrExclusive(_type)) {
-      // if one collection is written to, the whole transaction becomes a
-      // write-transaction
-      _type = AccessMode::Type::WRITE;
-    }
+    // if one collection is written to, the whole transaction becomes a
+    // write-transaction
+    _type = std::max(_type, accessType);
   }
 
   // check if we already got this collection in the _collections vector

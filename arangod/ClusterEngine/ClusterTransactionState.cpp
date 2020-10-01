@@ -84,26 +84,25 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
   setRegistered();
   
-  if (hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+  if (AccessMode::isExclusive(this->_type) &&
+      hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     TRI_ASSERT(isCoordinator());
 
     size_t numShards = 0;
     std::vector<std::string> leaders;
     allCollections([&](TransactionCollection& c) {
-      if (c.accessType() == AccessMode::Type::EXCLUSIVE) {
-        auto shardIds = c.collection()->shardIds();
-        numShards += shardIds->size();
-        for (auto const& pair : *shardIds) {
-          std::vector<arangodb::ShardID> const& servers = pair.second;
-          if (!servers.empty()) {
-            leaders.push_back(servers[0]);
-          }
+      auto shardIds = c.collection()->shardIds();
+      numShards += shardIds->size();
+      for (auto const& pair : *shardIds) {
+        std::vector<arangodb::ShardID> const& servers = pair.second;
+        if (!servers.empty()) {
+          leaders.push_back(servers[0]);
         }
       }
       return true; // continue
     });
 
-    if (!leaders.empty() && numShards > 1) {
+    if (numShards > 1 && !leaders.empty()) {
       res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders).get();
       if (res.fail()) { // something is wrong
         return res;
