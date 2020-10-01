@@ -84,15 +84,16 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
   setRegistered();
   
+  // simon: deadlock-mitiagtion, still unsafe in general
+  // we have to include write-level transactions too for correctness
+  // however this would make lazy-locking obsolete for stream-transactions
   if (AccessMode::isExclusive(this->_type) &&
       hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     TRI_ASSERT(isCoordinator());
 
-    size_t numShards = 0;
     std::vector<std::string> leaders;
     allCollections([&](TransactionCollection& c) {
       auto shardIds = c.collection()->shardIds();
-      numShards += shardIds->size();
       for (auto const& pair : *shardIds) {
         std::vector<arangodb::ShardID> const& servers = pair.second;
         if (!servers.empty()) {
@@ -102,7 +103,9 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
       return true; // continue
     });
 
-    if (numShards > 1 && !leaders.empty()) {
+    // if there is only one server we may defer the lazy locking
+    // until the first actual operation (should save one request)
+    if (leaders.size() > 1) {
       res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders).get();
       if (res.fail()) { // something is wrong
         return res;

@@ -248,6 +248,7 @@ std::vector<ServerID> ShardLocking::getRelevantServers() {
                    TRI_ASSERT(!item.first.empty());
                    return item.first;
                  });
+  std::sort(result.begin(), result.end());
   return result;
 }
 

@@ -206,11 +206,16 @@ function CommunicationSuite () {
           docs = [];
         }
       }
+
+      db._drop("UnitTestsExc");
+      c = db._create("UnitTestsExc");
+      c.save({_key: 'entityName', nextOID : 0});
     },
 
     tearDown: function () {
       db._drop(cn);
       db._drop("UnitTestsTemp");
+      db._drop("UnitTestsExc");
     },
 
     testWorkInParallel: function () {
@@ -228,6 +233,20 @@ function CommunicationSuite () {
 
       // run the suite for 5 minutes
       runTests(tests, 5 * 60);
+    },
+
+    testStreamTrxInParallel: function() {
+      let tests = [
+        [ 'stream-trx-1', 'let t = db._createTransaction({ collections: { exclusive: "UnitTestsExc" } }); let tc = t.collection("UnitTestsExc"); let doc = tc.document("entityName"); tc.update(doc._key, {nextOID: doc.nextOID + 1}); t.commit();'],
+        [ 'stream-trx-2', 'let t = db._createTransaction({ collections: { exclusive: "UnitTestsExc" } }); let tc = t.collection("UnitTestsExc"); let doc = tc.document("entityName"); tc.update(doc._key, {nextOID: doc.nextOID + 1}); t.commit();'],
+        [ 'stream-trx-3', 'let t = db._createTransaction({ collections: { exclusive: "UnitTestsExc" } }); t.query(\'LET d = DOCUMENT("UnitTestsExc/entityName") UPDATE d WITH {nextOID: d.nextOID + 1} IN UnitTestsExc\'); t.commit();'],
+        [ 'stream-trx-4', 'let t = db._createTransaction({ collections: { exclusive: "UnitTestsExc" } }); t.query(\'LET d = DOCUMENT("UnitTestsExc/entityName") UPDATE d WITH {nextOID: d.nextOID + 1} IN UnitTestsExc\'); t.commit();']
+      ];
+
+      // run the suite for 1 minutes
+      runTests(tests, 1 * 60);
+
+      print("Value of single-doc: ", db._document("UnitTestsExc/entityName").nextOID);
     },
     
   };

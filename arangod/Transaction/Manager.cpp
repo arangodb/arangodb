@@ -257,11 +257,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   // extract the properties from the object
   transaction::Options options;
   options.fromVelocyPack(trxOpts);
-  if (options.lockTimeout < 0.0) {
-    return res.reset(TRI_ERROR_BAD_PARAMETER,
-                     "<lockTimeout> needs to be positive");
-  }
-
+  
   auto fillColls = [](VPackSlice const& slice, std::vector<std::string>& cols) {
     if (slice.isNone()) {  // ignore nonexistent keys
       return true;
@@ -336,6 +332,12 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
                        " already used, (before creating)");
     }
   }
+  
+  if (options.lockTimeout < 0.0) {
+    return res.reset(TRI_ERROR_BAD_PARAMETER,
+                     "<lockTimeout> needs to be positive");
+  }
+  options.lockTimeout = std::min(options.lockTimeout, Manager::maxLockTimeout);
 
   // enforce size limit per DBServer
   if (ServerState::instance()->isDBServer() && tid.isFollowerTransactionId()) {
@@ -345,7 +347,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     // network transport etc.
     if (options.maxTransactionSize != UINT64_MAX) {
       uint64_t adjust = options.maxTransactionSize / 10;
-      if (adjust < UINT64_MAX - options.maxTransactionSize) {
+      if (adjust < UINT64_MAX - options.maxTransactionSize) { // prevent overflow
         // now the transaction on the follower should be able to grow to at least the
         // size of the transaction on the leader.
         options.maxTransactionSize += adjust;

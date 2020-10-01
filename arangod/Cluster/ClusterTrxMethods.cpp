@@ -299,6 +299,33 @@ namespace arangodb {
 namespace ClusterTrxMethods {
 using namespace arangodb::futures;
 
+// start el-cheapo transaction on each DBServer in a serial manner back to front
+Future<Result> beginTransactionOnLeadersSerial(TransactionState& state,
+                                               std::shared_ptr<std::vector<ServerID>>&& leaders) {
+  TRI_ASSERT(!leaders->empty());
+  
+  ServerID const& leader = leaders->back();
+  if (state.knowsServer(leader)) { // skip this server
+    leaders->pop_back();
+    if (leaders->empty()) {
+      return Result();
+    }
+    return beginTransactionOnLeadersSerial(state, std::move(leaders));  // already send a begin transaction there
+  }
+  state.addKnownServer(leader);
+
+  return ::beginTransactionRequest(state, leader)
+  .thenValue([leaders, &state](network::Response&& resp) mutable -> Future<Result> {
+    const TransactionId tid = state.id().child();
+    auto res = ::checkTransactionResult(tid, transaction::Status::RUNNING, resp);
+    if (res.fail() || leaders->size() == 1) { // locking failed or we are done
+      return makeFuture(res);
+    }
+    leaders->pop_back();
+    return beginTransactionOnLeadersSerial(state, std::move(leaders));
+  });
+}
+
 /// @brief begin a transaction on all leaders
 Future<Result> beginTransactionOnLeaders(TransactionState& state,
                                          std::vector<ServerID> const& leaders) {
@@ -307,34 +334,22 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
   Result res;
   if (leaders.empty()) {
     return res;
-  }
-
-  std::vector<Future<network::Response>> requests;
-  requests.reserve(leaders.size());
-  for (ServerID const& leader : leaders) {
+  } else if (leaders.size() == 1) { // shortcut
+    ServerID const& leader = leaders.back();
     if (state.knowsServer(leader)) {
-      continue;  // already send a begin transaction there
+      return res;  // already send a begin transaction there
     }
     state.addKnownServer(leader);
-    requests.emplace_back(::beginTransactionRequest(state, leader));
+    
+    const TransactionId tid = state.id().child();
+    return ::beginTransactionRequest(state, leader)
+    .thenValue([tid](network::Response&& resp) {
+      return ::checkTransactionResult(tid, transaction::Status::RUNNING, resp);
+    });
   }
-
-  if (requests.empty()) {
-    return res;
-  }
-
-  const TransactionId tid = state.id().child();
-  return futures::collectAll(requests).thenValue(
-      [=](std::vector<Try<network::Response>>&& responses) -> Result {
-        for (Try<arangodb::network::Response> const& tryRes : responses) {
-          network::Response const& resp = tryRes.get();  // throws exceptions upwards
-          Result res = ::checkTransactionResult(tid, transaction::Status::RUNNING, resp);
-          if (res.fail()) {  // remove follower from all collections
-            return res;
-          }
-        }
-        return Result();  // all good
-      });
+  auto servers = std::make_shared<std::vector<ServerID>>(leaders);
+  std::sort(servers->begin(), servers->end(), std::greater<ServerID>());
+  return beginTransactionOnLeadersSerial(state, std::move(servers));
 }
 
 /// @brief commit a transaction on a subordinate
