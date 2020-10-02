@@ -1,0 +1,8 @@
+#!/bin/sh
+
+#update db
+/usr/sbin/arangod --uid arangodb --gid arangodb --pid-file /var/run/arangodb3/arangod.pid --server.rest-server false --database.auto-upgrade true
+
+rv=$?
+. /usr/share/arangodb3/arangodb-helper
+ar_exit_by_num $rv
