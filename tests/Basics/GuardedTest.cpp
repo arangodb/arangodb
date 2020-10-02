@@ -29,8 +29,7 @@
 
 using namespace arangodb;
 
-namespace arangodb {
-namespace tests {
+namespace arangodb::tests {
 
 template <typename Mutex>
 class GuardedTest : public ::testing::Test {
@@ -69,5 +68,4 @@ using TestedMutexes = ::testing::Types<std::mutex, arangodb::Mutex>;
 
 INSTANTIATE_TYPED_TEST_CASE_P(GuardedTestInstantiation, GuardedTest, TestedMutexes);
 
-}  // namespace tests
-}  // namespace arangodb
+}  // namespace arangodb::tests

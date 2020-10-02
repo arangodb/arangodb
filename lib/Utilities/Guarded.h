@@ -32,14 +32,16 @@ namespace arangodb {
 
 class Mutex;
 
+// TODO should callbacks be passed as const& rather than by value?
+
 template <class T, class M = Mutex>
 class MutexGuard {
  public:
   explicit MutexGuard(T& value, M& mutex);
   ~MutexGuard();
 
-  T& get() noexcept;
-  T const& get() const noexcept;
+  auto get() noexcept -> T&;
+  auto get() const noexcept -> T const&;
 
  private:
   T& _value;
@@ -57,12 +59,12 @@ MutexGuard<T, M>::~MutexGuard() {
 }
 
 template <class T, class M>
-T& MutexGuard<T, M>::get() noexcept {
+auto MutexGuard<T, M>::get() noexcept -> T& {
   return _value;
 }
 
 template <class T, class M>
-T const& MutexGuard<T, M>::get() const noexcept {
+auto MutexGuard<T, M>::get() const noexcept -> T const& {
   return _value;
 }
 
@@ -76,20 +78,20 @@ class Guarded {
   ~Guarded() = default;
   Guarded(Guarded const&) = delete;
   Guarded(Guarded&&) = delete;
-  Guarded& operator=(Guarded const&) = delete;
-  Guarded& operator=(Guarded&&) = delete;
+  auto operator=(Guarded const&) -> Guarded& = delete;
+  auto operator=(Guarded&&) -> Guarded& = delete;
 
   // TODO with C++17, these could be noexcept depending on callback being noexcept
   template <class F>
-  std::result_of_t<F(T&)> doUnderLock(F callback);
+  auto doUnderLock(F callback) -> std::result_of_t<F(T&)>;
   template <class F>
-  std::result_of_t<F(T const&)> doUnderLock(F callback);
+  auto doUnderLock(F callback) -> std::result_of_t<F(T const&)>;
 
   // template <class F>
   // decltype(F(false)) tryUnderLock(F callback);
   // TODO add more types of "do under lock"?
 
-  MutexGuard<T, M> getLockedGuard();
+  auto getLockedGuard() -> MutexGuard<T, M>;
   // TODO add more types of "get guard" (like try or eventual)
 
  private:
@@ -106,7 +108,7 @@ Guarded<T, M>::Guarded(Args... args) : _value{args...}, _mutex{} {}
 
 template <class T, class M>
 template <class F>
-std::result_of_t<F(T&)> Guarded<T, M>::doUnderLock(F callback) {
+auto Guarded<T, M>::doUnderLock(F callback) -> std::result_of_t<F(T&)> {
   MUTEX_LOCKER(guard, _mutex);
 
   return callback(_value);
@@ -114,7 +116,7 @@ std::result_of_t<F(T&)> Guarded<T, M>::doUnderLock(F callback) {
 
 template <class T, class M>
 template <class F>
-std::result_of_t<F(T const&)> Guarded<T, M>::doUnderLock(F callback) {
+auto Guarded<T, M>::doUnderLock(F callback) -> std::result_of_t<F(T const&)> {
   MUTEX_LOCKER(guard, _mutex);
 
   return callback(_value);
@@ -129,7 +131,7 @@ std::result_of_t<F(T const&)> Guarded<T, M>::doUnderLock(F callback) {
 // }
 
 template <class T, class M>
-MutexGuard<T, M> Guarded<T, M>::getLockedGuard() {
+auto Guarded<T, M>::getLockedGuard() -> MutexGuard<T, M> {
   return MutexGuard<T, M>(_value, _mutex);
 }
 
