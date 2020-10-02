@@ -490,7 +490,7 @@ void Constituent::callElection() {
             maxTermReceived->compare_exchange_strong(expectedT, receivedT);
           } else {
             // Check result and counts
-            if (slc.get("voteGranted").getBool()) {  // majority in favour?
+            if (slc.get("voteGranted").getBool()) {  // majority in favor?
               yea->fetch_add(1);
               // Vote is counted as yea
               return;
