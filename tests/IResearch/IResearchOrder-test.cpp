@@ -220,11 +220,13 @@ class IResearchOrderTest
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   IResearchOrderTest() : engine(server), server(nullptr, nullptr) {
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(&engine);
 
     arangodb::tests::init();
 
     // setup required application features
+    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    selector.setEngineTesting(&engine);
+    features.emplace_back(selector, false);
     features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);

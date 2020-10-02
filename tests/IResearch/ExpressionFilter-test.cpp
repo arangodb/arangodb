@@ -257,8 +257,6 @@ struct IResearchExpressionFilterTest
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   IResearchExpressionFilterTest() : engine(server), server(nullptr, nullptr) {
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(&engine);
-
     arangodb::tests::init(true);
 
     // setup required application features
@@ -266,6 +264,8 @@ struct IResearchExpressionFilterTest
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::EngineSelectorFeature>(), false);
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(&engine);
     features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,

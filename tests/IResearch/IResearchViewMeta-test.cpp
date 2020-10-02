@@ -47,7 +47,8 @@ class IResearchViewMetaTest : public ::testing::Test {
   arangodb::application_features::ApplicationServer server;
 
   IResearchViewMetaTest() : engine(server), server(nullptr, nullptr) {
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(&engine);
+    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    selector.setEngineTesting(&engine);
   }
 
   ~IResearchViewMetaTest() {

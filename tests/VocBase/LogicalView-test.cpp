@@ -109,8 +109,9 @@ class LogicalViewTest
   ViewFactory viewFactory;
 
   LogicalViewTest() : engine(server), server(nullptr, nullptr) {
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(&engine);
-
+    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    features.emplace_back(selector, false);
+    selector.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), false);  // required for ExecContext
     features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);  
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t

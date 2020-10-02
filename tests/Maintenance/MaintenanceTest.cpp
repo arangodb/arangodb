@@ -516,16 +516,16 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}},
-        engine(as),
-        origStorageEngine(&as.getFeature<EngineSelectorFeature>().engine()) {
+        engine(as) {
     as.addFeature<arangodb::MetricsFeature>();
     as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
+    auto& selector = as.addFeature<arangodb::EngineSelectorFeature>();
 
-    as.getFeature<EngineSelectorFeature>().setEngineTesting(&engine);
+    selector.setEngineTesting(&engine);
   }
 
   ~MaintenanceTestActionPhaseOne() {
-    as.getFeature<EngineSelectorFeature>().setEngineTesting(nullptr);
+    as.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
   }
 
   auto dbName() const -> std::string {
