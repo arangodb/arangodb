@@ -88,12 +88,12 @@ void SingleServerTraverser::createEnumerator() {
   TRI_ASSERT(_enumerator == nullptr);
 
   switch (_opts->mode) {
-    case TraverserOptions::Mode::DFS:
+    case TraverserOptions::Order::DFS:
       TRI_ASSERT(!_opts->useNeighbors);
       // normal, depth-first enumerator
       _enumerator = std::make_unique<DepthFirstEnumerator>(this, _opts);
       break;
-    case TraverserOptions::Mode::BFS:
+    case TraverserOptions::Order::BFS:
       if (_opts->useNeighbors) {
         // optimized neighbors enumerator
         _enumerator = std::make_unique<NeighborsEnumerator>(this, _opts);
@@ -102,7 +102,7 @@ void SingleServerTraverser::createEnumerator() {
         _enumerator = std::make_unique<BreadthFirstEnumerator>(this, _opts);
       }
       break;
-    case TraverserOptions::Mode::WEIGHTED:
+    case TraverserOptions::Order::WEIGHTED:
       TRI_ASSERT(!_opts->useNeighbors);
       _enumerator = std::make_unique<WeightedEnumerator>(this, _opts);
       break;

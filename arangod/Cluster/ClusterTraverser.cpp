@@ -210,15 +210,15 @@ void ClusterTraverser::destroyEngines() {
 void ClusterTraverser::createEnumerator() {
   TRI_ASSERT(_enumerator == nullptr);
   switch (_opts->mode) {
-    case TraverserOptions::Mode::DFS:
+    case TraverserOptions::Order::DFS:
       // normal, depth-first enumerator
       _enumerator = std::make_unique<DepthFirstEnumerator>(this, _opts);
       break;
-    case TraverserOptions::Mode::BFS:
+    case TraverserOptions::Order::BFS:
       // default breadth-first enumerator
       _enumerator = std::make_unique<BreadthFirstEnumerator>(this, _opts);
       break;
-    case TraverserOptions::Mode::WEIGHTED:
+    case TraverserOptions::Order::WEIGHTED:
       _enumerator = std::make_unique<WeightedEnumerator>(this, _opts);
       break;
   }

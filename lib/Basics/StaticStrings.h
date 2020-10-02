@@ -269,6 +269,10 @@ class StaticStrings {
   static std::string const GraphQueryGlobal;
   static std::string const GraphQueryNone;
   static std::string const GraphQueryWeights;
+  static std::string const GraphQueryOrder;
+  static std::string const GraphQueryOrderBFS;
+  static std::string const GraphQueryOrderDFS;
+  static std::string const GraphQueryOrderWeighted;
 
   // Replication
   static std::string const ReplicationSoftLockOnly;

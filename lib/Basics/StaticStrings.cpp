@@ -285,6 +285,10 @@ std::string const StaticStrings::GraphQueryPath("path");
 std::string const StaticStrings::GraphQueryGlobal("global");
 std::string const StaticStrings::GraphQueryNone("none");
 std::string const StaticStrings::GraphQueryWeights("weights");
+std::string const StaticStrings::GraphQueryOrder("order");
+std::string const StaticStrings::GraphQueryOrderBFS("bfs");
+std::string const StaticStrings::GraphQueryOrderDFS("dfs");
+std::string const StaticStrings::GraphQueryOrderWeighted("weighted");
 
 // rest query parameter
 std::string const StaticStrings::GraphDropCollections("dropCollections");

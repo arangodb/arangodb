@@ -73,7 +73,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query)
       useNeighbors(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH),
-      mode(Mode::DFS),
+      mode(Order::DFS),
       defaultWeight(1.0) {}
 
 TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
@@ -86,7 +86,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
       useNeighbors(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH),
-      mode(Mode::DFS),
+      mode(Order::DFS),
       defaultWeight(1.0) {
   TRI_ASSERT(obj.isObject());
 
@@ -101,19 +101,19 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
   _parallelism = VPackHelper::getNumericValue<size_t>(obj, "parallelism", 1);
   TRI_ASSERT(minDepth <= maxDepth);
 
-  std::string tmp = VPackHelper::getStringValue(obj, "mode", "");
+  std::string tmp = VPackHelper::getStringValue(obj, StaticStrings::GraphQueryOrder, "");
   if (!tmp.empty()) {
-    if (tmp == "bfs") {
-      mode = Mode::BFS;
-    } else if (tmp == "weighted") {
-      mode = Mode::WEIGHTED;
-    } else if (tmp == "dfs") {
-      mode = Mode::DFS;
+    if (tmp == StaticStrings::GraphQueryOrderBFS) {
+      mode = Order::BFS;
+    } else if (tmp == StaticStrings::GraphQueryOrderWeighted) {
+      mode = Order::WEIGHTED;
+    } else if (tmp == StaticStrings::GraphQueryOrderBFS) {
+      mode = Order::DFS;
     }
   } else {
     bool useBreadthFirst = VPackHelper::getBooleanValue(obj, "bfs", false);
     if (useBreadthFirst) {
-      mode = Mode::BFS;
+      mode = Order::BFS;
     }
   }
 
@@ -125,7 +125,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
   if (tmp == "path") {
     uniqueVertices = TraverserOptions::UniquenessLevel::PATH;
   } else if (tmp == "global") {
-    if (mode != Mode::BFS && mode != Mode::WEIGHTED) {
+    if (mode != Order::BFS && mode != Order::WEIGHTED) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "uniqueVertices: 'global' is only "
                                      "supported, with mode: bfs|weighted due to "
@@ -206,7 +206,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
       useNeighbors(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH),
-      mode(Mode::DFS) {
+      mode(Order::DFS) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice type = info.get("type");
@@ -229,23 +229,23 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
   }
   maxDepth = read.getNumber<uint64_t>();
 
-  read = info.get("mode");
+  read = info.get(StaticStrings::GraphQueryOrder);
   if (!read.isNone()) {
     if (!read.isNumber<size_t>()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-          "The options require a mode");
+          "The options require a order");
     }
 
     size_t i = read.getNumber<size_t>();
     switch (i) {
       case 0:
-        mode = Mode::DFS;
+        mode = Order::DFS;
         break;
       case 1:
-        mode = Mode::BFS;
+        mode = Order::BFS;
         break;
       case 2:
-        mode = Mode::WEIGHTED;
+        mode = Order::WEIGHTED;
         break;
       default:
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -256,7 +256,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
     if (read.isBoolean()) {
       bool useBreadthFirst = read.getBool();
       if (useBreadthFirst) {
-        mode = Mode::BFS;
+        mode = Order::BFS;
       }
     }
   }
@@ -475,14 +475,14 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   }
 
   switch (mode) {
-    case TraverserOptions::Mode::DFS:
-      builder.add("mode", VPackValue("dfs"));
+    case TraverserOptions::Order::DFS:
+      builder.add(StaticStrings::GraphQueryOrder, VPackValue(StaticStrings::GraphQueryOrderDFS));
       break;
-    case TraverserOptions::Mode::BFS:
-      builder.add("mode", VPackValue("bfs"));
+    case TraverserOptions::Order::BFS:
+      builder.add(StaticStrings::GraphQueryOrder, VPackValue(StaticStrings::GraphQueryOrderBFS));
       break;
-    case TraverserOptions::Mode::WEIGHTED:
-      builder.add("mode", VPackValue("weighted"));
+    case TraverserOptions::Order::WEIGHTED:
+      builder.add(StaticStrings::GraphQueryOrder, VPackValue(StaticStrings::GraphQueryOrderWeighted));
       break;
   }
 
@@ -571,15 +571,15 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
       break;
   }
 
-  result.add(VPackValue("mode"));
+  result.add(VPackValue(StaticStrings::GraphQueryOrder));
   switch (mode) {
-    case Mode::DFS:
+    case Order::DFS:
       result.add(VPackValue(0));
       break;
-    case Mode::BFS:
+    case Order::BFS:
       result.add(VPackValue(1));
       break;
-    case Mode::WEIGHTED:
+    case Order::WEIGHTED:
       result.add(VPackValue(2));
       break;
   }
@@ -827,7 +827,7 @@ void TraverserOptions::activatePrune(std::vector<aql::Variable const*> vars,
 }
 
 double TraverserOptions::weightEdge(VPackSlice edge) const {
-  TRI_ASSERT(mode == Mode::WEIGHTED);
+  TRI_ASSERT(mode == Order::WEIGHTED);
   return arangodb::basics::VelocyPackHelper::getNumericValue<double>(edge, weightAttribute,
                                                                      defaultWeight);
 }

@@ -63,7 +63,7 @@ struct TraverserOptions : public graph::BaseOptions {
 
  public:
   enum UniquenessLevel { NONE, PATH, GLOBAL };
-  enum class Mode { DFS, BFS, WEIGHTED };
+  enum class Order { DFS, BFS, WEIGHTED };
 
  protected:
   std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
@@ -91,7 +91,7 @@ struct TraverserOptions : public graph::BaseOptions {
 
   UniquenessLevel uniqueEdges;
 
-  Mode mode;
+  Order mode;
 
   std::string weightAttribute;
 
@@ -166,9 +166,9 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool usesPrune() const { return _pruneExpression != nullptr; }
 
-  bool isUseBreadthFirst() const { return mode == Mode::BFS; }
+  bool isUseBreadthFirst() const { return mode == Order::BFS; }
 
-  bool isUniqueGlobalVerticesAllowed() const { return mode == Mode::BFS || mode == Mode::WEIGHTED; }
+  bool isUniqueGlobalVerticesAllowed() const { return mode == Order::BFS || mode == Order::WEIGHTED; }
 
   double weightEdge(VPackSlice edge) const;
 

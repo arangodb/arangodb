@@ -201,8 +201,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
 
         if (name == "bfs") {
           options->mode = value->isTrue()
-                              ? arangodb::traverser::TraverserOptions::Mode::BFS
-                              : arangodb::traverser::TraverserOptions::Mode::DFS;
+                              ? arangodb::traverser::TraverserOptions::Order::BFS
+                              : arangodb::traverser::TraverserOptions::Order::DFS;
           hasBFS = true;
         } else if (name == "uniqueVertices" && value->isStringValue()) {
           if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryPath)) {
@@ -228,17 +228,17 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
           parseGraphCollectionRestriction(options->edgeCollections, value);
         } else if (name == "vertexCollections") {
           parseGraphCollectionRestriction(options->vertexCollections, value);
-        } else if (name == "mode" && !hasBFS) {
+        } else if (name == StaticStrings::GraphQueryOrder && !hasBFS) {
           // dfs is the default
-          if (value->stringEqualsCaseInsensitive("bfs")) {
-            options->mode = traverser::TraverserOptions::Mode::BFS;
-          } else if (value->stringEqualsCaseInsensitive("weighted")) {
-            options->mode = traverser::TraverserOptions::Mode::WEIGHTED;
-          } else if (value->stringEqualsCaseInsensitive("dfs")) {
-            options->mode = traverser::TraverserOptions::Mode::DFS;
+          if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryOrderBFS)) {
+            options->mode = traverser::TraverserOptions::Order::BFS;
+          } else if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryOrderWeighted)) {
+            options->mode = traverser::TraverserOptions::Order::WEIGHTED;
+          } else if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryOrderDFS)) {
+            options->mode = traverser::TraverserOptions::Order::DFS;
           } else {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                           "mode: unknown mode");
+                                           "order: unknown order");
           }
         } else if (name == "defaultWeight" && value->isNumericValue()) {
           options->defaultWeight = value->getDoubleValue();

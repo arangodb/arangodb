@@ -59,7 +59,7 @@ function WeightedTraveralsTestSuite() {
     testSimpleTraversal : function () {
       const query = `
         FOR v, e, p IN 1..10 OUTBOUND "${vName}/1" GRAPH "${graphName}"
-          OPTIONS {mode: "weighted", weightAttribute: "weight"}
+          OPTIONS {order: "weighted", weightAttribute: "weight"}
           LIMIT 3
           RETURN {path: p.vertices[*]._key, weight: p.weights[-1]}
       `;
@@ -77,7 +77,7 @@ function WeightedTraveralsTestSuite() {
     testSimpleTraversalSingleEdge : function () {
       const query = `
         FOR v, e, p IN 1..1 OUTBOUND "${vName}/1" GRAPH "${graphName}"
-          OPTIONS {mode: "weighted", weightAttribute: "weight"}
+          OPTIONS {order: "weighted", weightAttribute: "weight"}
           LIMIT 3
           RETURN {path: p.vertices[*]._key, weight: p.weights[-1]}
       `;
@@ -97,7 +97,7 @@ function WeightedTraveralsTestSuite() {
       const query = `
         FOR v, e, p IN 0..10 OUTBOUND "${vName}/1" GRAPH "${graphName}"
           PRUNE v._id == "${target}"
-          OPTIONS {mode: "weighted", weightAttribute: "weight", uniqueVertices: "global"}
+          OPTIONS {order: "weighted", weightAttribute: "weight", uniqueVertices: "global"}
           FILTER v._id == "${target}"
           LIMIT 1
           RETURN {path: p.vertices[*]._key, weight: p.weights[-1]}
@@ -117,7 +117,7 @@ function WeightedTraveralsTestSuite() {
       const query = `
         FOR v, e, p IN 1..10 OUTBOUND "${vName}/1" GRAPH "${graphName}"
           PRUNE v._id == "${target}"
-          OPTIONS {mode: "weighted", weightAttribute: "weight", uniqueVertices: "global"}
+          OPTIONS {order: "weighted", weightAttribute: "weight", uniqueVertices: "global"}
           FILTER p.vertices[*].value ALL > 0
           FILTER v._id == "${target}"
           LIMIT 1
@@ -138,7 +138,7 @@ function WeightedTraveralsTestSuite() {
       const query = `
         FOR v, e, p IN 1..10 OUTBOUND "${vName}/1" GRAPH "${graphName}"
           PRUNE v._id == "${target}"
-          OPTIONS {mode: "weighted", weightAttribute: "weight", uniqueVertices: "global"}
+          OPTIONS {order: "weighted", weightAttribute: "weight", uniqueVertices: "global"}
           FILTER p.edges[*].weight ALL >= 1
           FILTER v._id == "${target}"
           LIMIT 1
@@ -159,7 +159,7 @@ function WeightedTraveralsTestSuite() {
       const query = `
         FOR v, e, p IN 1..10 OUTBOUND "${vName}/1" GRAPH "${graphName}"
           PRUNE v._id == "${target}"
-          OPTIONS {mode: "weighted", weightAttribute: "weight", uniqueVertices: "path"}
+          OPTIONS {order: "weighted", weightAttribute: "weight", uniqueVertices: "path"}
           FILTER v._id == "${target}"
           LIMIT 3
           RETURN {path: p.vertices[*]._key, weight: p.weights[-1]}

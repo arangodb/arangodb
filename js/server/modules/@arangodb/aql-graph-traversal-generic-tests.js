@@ -1054,7 +1054,7 @@ function generateKShortestPathQueryWT(graph, from, to, limit) {
         FOR v, e, p IN 0..100 OUTBOUND ${graph.vertex(from)}  
         GRAPH ${graph.name()}
         PRUNE p.vertices[-1]._id == ${graph.vertex(to)}
-        OPTIONS {mode: "weighted", uniqueVertices: "path"}
+        OPTIONS {order: "weighted", uniqueVertices: "path"}
         FILTER p.vertices[-1]._id == ${graph.vertex(to)}
         LIMIT ${limit}
         RETURN p.vertices[* RETURN CURRENT.key]
@@ -1066,7 +1066,7 @@ function generateKShortestPathQueryWithWeightsWT(graph, from, to, limit) {
         FOR v, e, p IN 0..100 OUTBOUND ${graph.vertex(from)}  
         GRAPH ${graph.name()}
         PRUNE p.vertices[-1]._id == ${graph.vertex(to)}
-        OPTIONS {mode: "weighted", uniqueVertices: "path", weightAttribute: ${graph.weightAttribute()}}
+        OPTIONS {order: "weighted", uniqueVertices: "path", weightAttribute: ${graph.weightAttribute()}}
         FILTER p.vertices[-1]._id == ${graph.vertex(to)}
         LIMIT ${limit}
         RETURN {vertices: p.vertices[*].key, weight: p.weights[-1]}
@@ -1280,7 +1280,7 @@ function testOpenDiamondWeightedUniqueVerticesPathEnabledWeights(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueVertices: "path", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -1309,7 +1309,7 @@ function testOpenDiamondModeUniqueVerticesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", mode: ${mode}}
+        OPTIONS {uniqueVertices: "path", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1335,7 +1335,7 @@ function testOpenDiamondWeightedUniqueVerticesNoneEnabledWeights(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueVertices: "none", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -1364,7 +1364,7 @@ function testOpenDiamondModeUniqueVerticesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", mode: ${mode}}
+        OPTIONS {uniqueVertices: "none", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1390,7 +1390,7 @@ function testOpenDiamondWeightedUniqueVerticesGlobalEnabledWeights(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "global", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueVertices: "global", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -1410,7 +1410,7 @@ function testOpenDiamondModeUniqueVerticesGlobal(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "global", mode: ${mode}}
+        OPTIONS {uniqueVertices: "global", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1426,7 +1426,7 @@ function testOpenDiamondWeightedUniqueEdgesPathEnableWeights(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueEdges: "path", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -1455,7 +1455,7 @@ function testOpenDiamondParamUniqueEdgesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", mode: ${mode}}
+        OPTIONS {uniqueEdges: "path", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1481,7 +1481,7 @@ function testOpenDiamondWeightedUniqueEdgesNoneEnableWeights(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueEdges: "none", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -1510,7 +1510,7 @@ function testOpenDiamondModeUniqueEdgesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", mode: ${mode}}
+        OPTIONS {uniqueEdges: "none", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1536,7 +1536,7 @@ function testOpenDiamondWeightedUniqueEdgesUniqueVerticesPathEnableWeights(testG
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", uniqueVertices: "path", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueEdges: "path", uniqueVertices: "path", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -1565,7 +1565,7 @@ function testOpenDiamondModeUniqueEdgesUniqueVerticesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", uniqueVertices: "path", mode: ${mode}}
+        OPTIONS {uniqueEdges: "path", uniqueVertices: "path", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1591,7 +1591,7 @@ function testOpenDiamondWeightedUniqueEdgesUniqueVerticesNoneEnableWeights(testG
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", uniqueVertices: "none", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueEdges: "path", uniqueVertices: "none", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -1620,7 +1620,7 @@ function testOpenDiamondModeUniqueEdgesUniqueVerticesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", uniqueVertices: "none", mode: ${mode}}
+        OPTIONS {uniqueEdges: "none", uniqueVertices: "none", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1646,7 +1646,7 @@ function testOpenDiamondWeightedUniqueEdgesUniquePathVerticesGlobalEnableWeights
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", uniqueVertices: "global", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueEdges: "path", uniqueVertices: "global", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -1666,7 +1666,7 @@ function testOpenDiamondModeUniqueEdgesUniquePathVerticesGlobal(testGraph, mode)
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", uniqueVertices: "global", mode: ${mode}}
+        OPTIONS {uniqueEdges: "path", uniqueVertices: "global", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1682,7 +1682,7 @@ function testOpenDiamondWeightedUniqueEdgesUniqueNoneVerticesGlobalEnableWeights
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", uniqueVertices: "global", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueEdges: "none", uniqueVertices: "global", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -1702,7 +1702,7 @@ function testOpenDiamondModeUniqueEdgesUniqueNoneVerticesGlobal(testGraph, mode)
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", uniqueVertices: "global", mode: ${mode}}
+        OPTIONS {uniqueEdges: "none", uniqueVertices: "global", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -1725,7 +1725,7 @@ function testOpenDiamondModeLabelVariableForwarding(testGraph, mode) {
     const query = `
         LET label = NOOPT(100)
         FOR v, e, p IN 0..3 OUTBOUND "${testGraph.vertex('A')}"
-          GRAPH "${testGraph.name()}" OPTIONS { mode: @mode }
+          GRAPH "${testGraph.name()}" OPTIONS { order: @mode }
           FILTER p.edges[0].distance != label
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
@@ -1772,7 +1772,7 @@ function testOpenDiamondShortestPathWT(testGraph) {
           FOR v, e, p IN 0..100 OUTBOUND ${testGraph.vertex('A')}
           GRAPH ${testGraph.name()}
           PRUNE p.vertices[-1]._id == ${testGraph.vertex('F')}
-          OPTIONS {mode: "weighted", uniqueVertices: "global"}
+          OPTIONS {order: "weighted", uniqueVertices: "global"}
           FILTER p.vertices[-1]._id == ${testGraph.vertex('F')}
           LIMIT 1
           RETURN p
@@ -1819,7 +1819,7 @@ function testOpenDiamondShortestPathEnabledWeightCheckWT(testGraph) {
           FOR v, e, p IN 0..100 OUTBOUND ${testGraph.vertex('A')}
           GRAPH ${testGraph.name()}
           PRUNE p.vertices[-1]._id == ${testGraph.vertex('F')}
-          OPTIONS {mode: "weighted", uniqueVertices: "global", weightAttribute: ${testGraph.weightAttribute()}}
+          OPTIONS {order: "weighted", uniqueVertices: "global", weightAttribute: ${testGraph.weightAttribute()}}
           FILTER p.vertices[-1]._id == ${testGraph.vertex('F')}
           LIMIT 1
           RETURN p
@@ -2056,7 +2056,7 @@ function testSmallCircleModeUniqueVerticesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", mode: ${mode}}
+        OPTIONS {uniqueVertices: "path", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2080,7 +2080,7 @@ function testSmallCircleModeUniqueVerticesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", mode: ${mode}}
+        OPTIONS {uniqueVertices: "none", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2105,7 +2105,7 @@ function testSmallCircleModeUniqueEdgesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", mode: ${mode}}
+        OPTIONS {uniqueEdges: "path", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2130,7 +2130,7 @@ function testSmallCircleModeUniqueEdgesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", mode: ${mode}}
+        OPTIONS {uniqueEdges: "none", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2160,7 +2160,7 @@ function testSmallCircleModeUniqueVerticesUniqueEdgesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", uniqueEdges: "path", mode: ${mode}}
+        OPTIONS {uniqueVertices: "path", uniqueEdges: "path", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2184,7 +2184,7 @@ function testSmallCircleModeUniqueVerticesUniqueEdgesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", uniqueEdges: "none", mode: ${mode}}
+        OPTIONS {uniqueVertices: "none", uniqueEdges: "none", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2214,7 +2214,7 @@ function testSmallCircleModeUniqueEdgesPathUniqueVerticesGlobal(testGraph, mode)
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "global", uniqueEdges: "path", mode: ${mode}}
+        OPTIONS {uniqueVertices: "global", uniqueEdges: "path", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2233,7 +2233,7 @@ function testSmallCircleModeUniqueEdgesNoneUniqueVerticesGlobal(testGraph, mode)
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "global", uniqueEdges: "none", mode: ${mode}}
+        OPTIONS {uniqueVertices: "global", uniqueEdges: "none", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2606,7 +2606,7 @@ function testCompleteGraphWeightedUniqueVerticesPathD1EnabledWeights(testGraph) 
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueVertices: "path", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -2631,7 +2631,7 @@ function testCompleteGraphModeUniqueVerticesPathD1(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", mode: ${mode}}
+        OPTIONS {uniqueVertices: "path", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2653,7 +2653,7 @@ function testCompleteGraphWeightedUniqueVerticesPathD2EnabledWeights(testGraph) 
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..2 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueVertices: "path", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -2693,7 +2693,7 @@ function testCompleteGraphModeUniqueVerticesPathD2(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..2 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", mode: ${mode}}
+        OPTIONS {uniqueVertices: "path", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2727,7 +2727,7 @@ function testCompleteGraphWeightedUniqueVerticesPathD3EnabledWeights(testGraph) 
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueVertices: "path", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -2788,7 +2788,7 @@ function testCompleteGraphModeUniqueVerticesPathD3(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", mode: ${mode}}
+        OPTIONS {uniqueVertices: "path", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2846,7 +2846,7 @@ function testCompleteGraphWeightedUniqueVerticesNoneD1EnabledWeights(testGraph) 
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueVertices: "none", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -2871,7 +2871,7 @@ function testCompleteGraphModeUniqueVerticesNoneD1(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", mode: ${mode}}
+        OPTIONS {uniqueVertices: "none", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2893,7 +2893,7 @@ function testCompleteGraphWeightedUniqueVerticesNoneD2EnabledWeights(testGraph) 
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..2 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueVertices: "none", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -2934,7 +2934,7 @@ function testCompleteGraphModeUniqueVerticesNoneD2(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..2 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", mode: ${mode}}
+        OPTIONS {uniqueVertices: "none", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -2972,7 +2972,7 @@ function testCompleteGraphWeightedUniqueVerticesNoneD3EnabledWeights(testGraph) 
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueVertices: "none", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -3073,7 +3073,7 @@ function testCompleteGraphModeUniqueVerticesNoneD3(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", mode: ${mode}}
+        OPTIONS {uniqueVertices: "none", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -3192,7 +3192,7 @@ function testCompleteGraphWeightedUniqueEdgesPathD1EnabledWeights(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueEdges: "path", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -3217,7 +3217,7 @@ function testCompleteGraphModeUniqueEdgesPathD1(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", mode: ${mode}}
+        OPTIONS {uniqueEdges: "path", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -3239,7 +3239,7 @@ function testCompleteGraphWeightedUniqueEdgesPathD2EnabledWeights(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..2 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueEdges: "path", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -3281,7 +3281,7 @@ function testCompleteGraphModeUniqueEdgesPathD2(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..2 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", mode: ${mode}}
+        OPTIONS {uniqueEdges: "path", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -3323,7 +3323,7 @@ function testCompleteGraphWeightedUniqueEdgesPathD3EnabledWeights(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueEdges: "path", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -3423,7 +3423,7 @@ function testCompleteGraphModeUniqueEdgesPathD3(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "path", mode: ${mode}}
+        OPTIONS {uniqueEdges: "path", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -3541,7 +3541,7 @@ function testCompleteGraphWeightedUniqueEdgesNoneD1EnabledWeights(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueEdges: "none", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -3566,7 +3566,7 @@ function testCompleteGraphModeUniqueEdgesNoneD1(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", mode: ${mode}}
+        OPTIONS {uniqueEdges: "none", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -3588,7 +3588,7 @@ function testCompleteGraphWeightedUniqueEdgesNoneD2EnabledWeights(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..2 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueEdges: "none", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -3630,7 +3630,7 @@ function testCompleteGraphModeUniqueEdgesNoneD2(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..2 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", mode: ${mode}}
+        OPTIONS {uniqueEdges: "none", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -3672,7 +3672,7 @@ function testCompleteGraphWeightedUniqueVerticesUniqueEdgesPathD3EnabledWeights(
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", uniqueEdges: "path", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueVertices: "path", uniqueEdges: "path", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -3733,7 +3733,7 @@ function testCompleteGraphModeUniqueVerticesUniqueEdgesPathD3(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "path", uniqueEdges: "path", mode: ${mode}}
+        OPTIONS {uniqueVertices: "path", uniqueEdges: "path", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -3808,7 +3808,7 @@ function testCompleteGraphWeightedUniqueEdgesNoneD3EnabledWeights(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", uniqueVertices: "none", mode: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
+        OPTIONS {uniqueEdges: "none", uniqueVertices: "none", order: "weighted", weightAttribute: ${testGraph.weightAttribute()}}
         RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
       `;
 
@@ -3913,7 +3913,7 @@ function testCompleteGraphModeUniqueVerticesUniqueEdgesNoneD3(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", uniqueEdges: "none", mode: ${mode}}
+        OPTIONS {uniqueVertices: "none", uniqueEdges: "none", order: ${mode}}
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
@@ -4036,7 +4036,7 @@ function testCompleteGraphWeightedUniqueEdgesPathUniqueVerticesGlobalD1EnabledWe
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
     FOR v, e, p IN 1..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-    OPTIONS {mode: "weighted", uniqueEdges: "path", uniqueVertices: "global", weightAttribute: ${testGraph.weightAttribute()}}
+    OPTIONS {order: "weighted", uniqueEdges: "path", uniqueVertices: "global", weightAttribute: ${testGraph.weightAttribute()}}
     RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
   `;
 
@@ -4055,7 +4055,7 @@ function testCompleteGraphModeUniqueEdgesPathUniqueVerticesGlobalD1(testGraph, m
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
     FOR v, e, p IN 1..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-    OPTIONS {mode: ${mode}, uniqueEdges: "path", uniqueVertices: "global"}
+    OPTIONS {order: ${mode}, uniqueEdges: "path", uniqueVertices: "global"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -4071,7 +4071,7 @@ function testCompleteGraphWeightedUniqueEdgesPathUniqueVerticesGlobalD3EnabledWe
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
     FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-    OPTIONS {mode: "weighted", uniqueEdges: "path", uniqueVertices: "global", weightAttribute: ${testGraph.weightAttribute()}}
+    OPTIONS {order: "weighted", uniqueEdges: "path", uniqueVertices: "global", weightAttribute: ${testGraph.weightAttribute()}}
     RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
   `;
 
@@ -4090,7 +4090,7 @@ function testCompleteGraphModeUniqueEdgesPathUniqueVerticesGlobalD3(testGraph, m
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
     FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()}
-    OPTIONS {mode: ${mode}, uniqueEdges: "path", uniqueVertices: "global"}
+    OPTIONS {order: ${mode}, uniqueEdges: "path", uniqueVertices: "global"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -4108,7 +4108,7 @@ const testCompleteGraphWeightedUniqueEdgesNoneUniqueVerticesGlobalD3 = (testGrap
 function testCompleteGraphModeUniqueEdgesNoneUniqueVerticesGlobalD3(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
-    FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueEdges: "none", uniqueVertices: "global"}
+    FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {order: ${mode}, uniqueEdges: "none", uniqueVertices: "global"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -4124,7 +4124,7 @@ function testCompleteGraphWeightedUniqueEdgesPathUniqueVerticesGlobalD10EnabledW
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
     FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-    OPTIONS {mode: "weighted", uniqueEdges: "path", uniqueVertices: "global", weightAttribute: ${testGraph.weightAttribute()}}
+    OPTIONS {order: "weighted", uniqueEdges: "path", uniqueVertices: "global", weightAttribute: ${testGraph.weightAttribute()}}
     RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
   `;
 
@@ -4143,7 +4143,7 @@ function testCompleteGraphModeUniqueEdgesPathUniqueVerticesGlobalD10(testGraph, 
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
     FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()}
-    OPTIONS {mode: ${mode}, uniqueEdges: "path", uniqueVertices: "global"}
+    OPTIONS {order: ${mode}, uniqueEdges: "path", uniqueVertices: "global"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -4159,7 +4159,7 @@ function testCompleteGraphWeightedUniqueEdgesNoneUniqueVerticesGlobalD10EnabledW
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
     FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-    OPTIONS {mode: "weighted", uniqueEdges: "none", uniqueVertices: "global", weightAttribute: ${testGraph.weightAttribute()}}
+    OPTIONS {order: "weighted", uniqueEdges: "none", uniqueVertices: "global", weightAttribute: ${testGraph.weightAttribute()}}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -4178,7 +4178,7 @@ function testCompleteGraphModeUniqueEdgesNoneUniqueVerticesGlobalD10(testGraph, 
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
     FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-    OPTIONS {mode: ${mode}, uniqueEdges: "none", uniqueVertices: "global"}
+    OPTIONS {order: ${mode}, uniqueEdges: "none", uniqueVertices: "global"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -4321,22 +4321,22 @@ function testLargeBinTreeAllCombinations(testGraph) {
   const expectedPaths = getExpectedBinTreePaths();
 
   const optionsList = [
-    {mode: "dfs", uniqueEdges: "none", uniqueVertices: "none"},
-    {mode: "dfs", uniqueEdges: "path", uniqueVertices: "none"},
-    {mode: "dfs", uniqueEdges: "none", uniqueVertices: "path"},
-    {mode: "dfs", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
-    {mode: "bfs", uniqueEdges: "none", uniqueVertices: "none"},
-    {mode: "bfs", uniqueEdges: "path", uniqueVertices: "none"},
-    {mode: "bfs", uniqueEdges: "none", uniqueVertices: "path"},
-    {mode: "bfs", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
-    {mode: "bfs", uniqueEdges: "none", uniqueVertices: "global"},
-    {mode: "bfs", uniqueEdges: "path", uniqueVertices: "global"}, // same as above
-    {mode: "weighted", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
-    {mode: "weighted", uniqueEdges: "none", uniqueVertices: "none"},
-    {mode: "weighted", uniqueEdges: "path", uniqueVertices: "none"},
-    {mode: "weighted", uniqueEdges: "none", uniqueVertices: "path"},
-    {mode: "weighted", uniqueEdges: "none", uniqueVertices: "global"},
-    {mode: "weighted", uniqueEdges: "path", uniqueVertices: "global"}, // same as above
+    {order: "dfs", uniqueEdges: "none", uniqueVertices: "none"},
+    {order: "dfs", uniqueEdges: "path", uniqueVertices: "none"},
+    {order: "dfs", uniqueEdges: "none", uniqueVertices: "path"},
+    {order: "dfs", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
+    {order: "bfs", uniqueEdges: "none", uniqueVertices: "none"},
+    {order: "bfs", uniqueEdges: "path", uniqueVertices: "none"},
+    {order: "bfs", uniqueEdges: "none", uniqueVertices: "path"},
+    {order: "bfs", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
+    {order: "bfs", uniqueEdges: "none", uniqueVertices: "global"},
+    {order: "bfs", uniqueEdges: "path", uniqueVertices: "global"}, // same as above
+    {order: "weighted", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
+    {order: "weighted", uniqueEdges: "none", uniqueVertices: "none"},
+    {order: "weighted", uniqueEdges: "path", uniqueVertices: "none"},
+    {order: "weighted", uniqueEdges: "none", uniqueVertices: "path"},
+    {order: "weighted", uniqueEdges: "none", uniqueVertices: "global"},
+    {order: "weighted", uniqueEdges: "path", uniqueVertices: "global"}, // same as above
   ];
 
   for (const options of optionsList) {
@@ -4431,22 +4431,22 @@ function testEasyPathAllCombinations(testGraph) {
   const expectedPaths = treeToPaths(easyPathAsTree);
 
   const optionsList = [
-    {mode: "dfs", uniqueEdges: "none", uniqueVertices: "none"},
-    {mode: "dfs", uniqueEdges: "path", uniqueVertices: "none"},
-    {mode: "dfs", uniqueEdges: "none", uniqueVertices: "path"},
-    {mode: "dfs", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
-    {mode: "bfs", uniqueEdges: "none", uniqueVertices: "none"},
-    {mode: "bfs", uniqueEdges: "path", uniqueVertices: "none"},
-    {mode: "bfs", uniqueEdges: "none", uniqueVertices: "path"},
-    {mode: "bfs", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
-    {mode: "bfs", uniqueEdges: "none", uniqueVertices: "global"},
-    {mode: "bfs", uniqueEdges: "path", uniqueVertices: "global"}, // same as above
-    {mode: "weighted", uniqueEdges: "none", uniqueVertices: "none"},
-    {mode: "weighted", uniqueEdges: "path", uniqueVertices: "none"},
-    {mode: "weighted", uniqueEdges: "none", uniqueVertices: "path"},
-    {mode: "weighted", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
-    {mode: "weighted", uniqueEdges: "none", uniqueVertices: "global"},
-    {mode: "weighted", uniqueEdges: "path", uniqueVertices: "global"}, // same as above
+    {order: "dfs", uniqueEdges: "none", uniqueVertices: "none"},
+    {order: "dfs", uniqueEdges: "path", uniqueVertices: "none"},
+    {order: "dfs", uniqueEdges: "none", uniqueVertices: "path"},
+    {order: "dfs", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
+    {order: "bfs", uniqueEdges: "none", uniqueVertices: "none"},
+    {order: "bfs", uniqueEdges: "path", uniqueVertices: "none"},
+    {order: "bfs", uniqueEdges: "none", uniqueVertices: "path"},
+    {order: "bfs", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
+    {order: "bfs", uniqueEdges: "none", uniqueVertices: "global"},
+    {order: "bfs", uniqueEdges: "path", uniqueVertices: "global"}, // same as above
+    {order: "weighted", uniqueEdges: "none", uniqueVertices: "none"},
+    {order: "weighted", uniqueEdges: "path", uniqueVertices: "none"},
+    {order: "weighted", uniqueEdges: "none", uniqueVertices: "path"},
+    {order: "weighted", uniqueEdges: "path", uniqueVertices: "path"}, // same as above
+    {order: "weighted", uniqueEdges: "none", uniqueVertices: "global"},
+    {order: "weighted", uniqueEdges: "path", uniqueVertices: "global"}, // same as above
   ];
 
   for (const options of optionsList) {
@@ -4899,7 +4899,7 @@ function testAdvancedPathWeightedUniqueVerticesPathEnabledWeights(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
     FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex("A")} GRAPH ${testGraph.name()} 
-    OPTIONS {mode: "weighted", uniqueVertices: "path", weightAttribute: ${testGraph.weightAttribute()}}
+    OPTIONS {order: "weighted", uniqueVertices: "path", weightAttribute: ${testGraph.weightAttribute()}}
     RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
   `;
 
@@ -4917,7 +4917,7 @@ const testAdvancedPathWeightedUniqueVerticesPath = (testGraph) => testAdvancedPa
 function testAdvancedPathModeUniqueVerticesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex("A")} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueVertices: "path"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex("A")} GRAPH ${testGraph.name()} OPTIONS {order: ${mode}, uniqueVertices: "path"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -4933,7 +4933,7 @@ function testAdvancedPathWeightedUniqueVerticesNoneEnabledWeights(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
     FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex("A")} GRAPH ${testGraph.name()}
-    OPTIONS {mode: "weighted", uniqueVertices: "none", weightAttribute: ${testGraph.weightAttribute()}}
+    OPTIONS {order: "weighted", uniqueVertices: "none", weightAttribute: ${testGraph.weightAttribute()}}
     RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
   `;
 
@@ -4952,7 +4952,7 @@ function testAdvancedPathModeUniqueVerticesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
     FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-    OPTIONS {mode: ${mode}, uniqueVertices: "none"}
+    OPTIONS {order: ${mode}, uniqueVertices: "none"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -4968,7 +4968,7 @@ function testAdvancedPathWeightedUniqueEdgesPathEnabledWeights(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
     FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-    OPTIONS {mode: "weighted", uniqueEdges: "path", weightAttribute: ${testGraph.weightAttribute()}}
+    OPTIONS {order: "weighted", uniqueEdges: "path", weightAttribute: ${testGraph.weightAttribute()}}
     RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
   `;
 
@@ -4986,7 +4986,7 @@ const testAdvancedPathWeightedUniqueEdgesPath = (testGraph) => testAdvancedPathM
 function testAdvancedPathModeUniqueEdgesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueEdges: "path"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {order: ${mode}, uniqueEdges: "path"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -5002,7 +5002,7 @@ function testAdvancedPathWeightedUniqueEdgesNoneEnabledWeights(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
     FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()}
-    OPTIONS {mode: "weighted", uniqueEdges: "none", weightAttribute: ${testGraph.weightAttribute()}}
+    OPTIONS {order: "weighted", uniqueEdges: "none", weightAttribute: ${testGraph.weightAttribute()}}
     RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
   `;
 
@@ -5020,7 +5020,7 @@ const testAdvancedPathWeightedUniqueEdgesNone = (testGraph) => testAdvancedPathM
 function testAdvancedPathModeUniqueEdgesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
-    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {mode: ${mode}, uniqueEdges: "none"}
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {order: ${mode}, uniqueEdges: "none"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -5036,7 +5036,7 @@ function testAdvancedPathWeightedUniqueEdgesUniqueVerticesPathEnabledWeights(tes
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
     FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-    OPTIONS {mode: "weighted", uniqueEdges: "path", uniqueVertices: "path", weightAttribute: ${testGraph.weightAttribute()}}
+    OPTIONS {order: "weighted", uniqueEdges: "path", uniqueVertices: "path", weightAttribute: ${testGraph.weightAttribute()}}
     RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
   `;
 
@@ -5055,7 +5055,7 @@ function testAdvancedPathModeUniqueEdgesUniqueVerticesPath(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
     FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-    OPTIONS {mode: ${mode}, uniqueEdges: "path", uniqueVertices: "path"}
+    OPTIONS {order: ${mode}, uniqueEdges: "path", uniqueVertices: "path"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -5071,7 +5071,7 @@ function testAdvancedPathWeightedUniqueEdgesUniqueVerticesNoneEnabledWeights(tes
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
     FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()}
-    OPTIONS {mode: "weighted", uniqueEdges: "none", uniqueVertices: "none", weightAttribute: ${testGraph.weightAttribute()}}
+    OPTIONS {order: "weighted", uniqueEdges: "none", uniqueVertices: "none", weightAttribute: ${testGraph.weightAttribute()}}
     RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
   `;
 
@@ -5090,7 +5090,7 @@ function testAdvancedPathModeUniqueEdgesUniqueVerticesNone(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
     FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()}
-    OPTIONS {mode: ${mode}, uniqueEdges: "none", uniqueVertices: "none"}
+    OPTIONS {order: ${mode}, uniqueEdges: "none", uniqueVertices: "none"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -5105,7 +5105,7 @@ function testAdvancedPathWeightedUniqueEdgesUniquePathVerticesGlobalEnabledWeigh
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
     FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-    OPTIONS {mode: "weighted", uniqueEdges: "path", uniqueVertices: "global", weightAttribute: ${testGraph.weightAttribute()}}
+    OPTIONS {order: "weighted", uniqueEdges: "path", uniqueVertices: "global", weightAttribute: ${testGraph.weightAttribute()}}
     RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
   `;
 
@@ -5124,7 +5124,7 @@ function testAdvancedPathModeUniqueEdgesUniquePathVerticesGlobal(testGraph, mode
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
     FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-    OPTIONS {mode: ${mode}, uniqueEdges: "path", uniqueVertices: "global"}
+    OPTIONS {order: ${mode}, uniqueEdges: "path", uniqueVertices: "global"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
@@ -5140,7 +5140,7 @@ function testAdvancedPathWeightedUniqueEdgesUniqueNoneVerticesGlobalEnabledWeigh
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
     FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-    OPTIONS {mode: "weighted", uniqueEdges: "none", uniqueVertices: "global", weightAttribute: ${testGraph.weightAttribute()}}
+    OPTIONS {order: "weighted", uniqueEdges: "none", uniqueVertices: "global", weightAttribute: ${testGraph.weightAttribute()}}
     RETURN {path: p.vertices[*].key, weight: p.weights[-1]}
   `;
 
@@ -5159,7 +5159,7 @@ function testAdvancedPathModeUniqueEdgesUniqueNoneVerticesGlobal(testGraph, mode
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
     FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-    OPTIONS {mode: ${mode}, uniqueEdges: "none", uniqueVertices: "global"}
+    OPTIONS {order: ${mode}, uniqueEdges: "none", uniqueVertices: "global"}
     RETURN p.vertices[* RETURN CURRENT.key]
   `;
 
