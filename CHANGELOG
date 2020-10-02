@@ -1,6 +1,10 @@
 v3.6.8 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue ES-664: SEARCH vs FILTER lookup performance.
+  Consolidation functionality for ArangoSearch view links was able to hit non-
+  mergable enormous amount of segments due to improper scheduling logic.
+
 * Make scheduler propertly count down the number of working threads in case an
   exception happens in a worker thread.
 
