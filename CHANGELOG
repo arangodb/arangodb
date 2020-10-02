@@ -1,3 +1,12 @@
+v3.6.7.1 (2020-10-03)
+---------------------
+
+* Fixed a bug in handling of followers which refuse to replicate operations.
+  In the case that the follower has simply been dropped in the meantime, we now
+  avoid an error reported by the shard leader.
+
+
+
 v3.6.7 (2020-09-18)
 -------------------
 
