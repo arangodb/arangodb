@@ -84,7 +84,7 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
-
+#include "frozen/map.h"
 #include <Containers/HashSet.h>
 
 namespace {
@@ -98,10 +98,11 @@ static size_t const ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024; // arbitrary val
 static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
 static std::string const FEATURE_NAME("ArangoSearchAnalyzer");
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-static std::unordered_set<std::string> const STATIC_ANALYZERS_NAMES{ "identity", "text_de", "text_en", "text_es",
-                                                                    "text_fi", "text_fr", "text_it", "text_nl",
-                                                                    "text_no", "text_pt", "text_ru", "text_sv",
-                                                                    "text_zh" };
+static constexpr frozen::map<irs::string_ref, irs::string_ref, 13> const STATIC_ANALYZERS_NAMES {
+  {irs::type<IdentityAnalyzer>::name(), irs::type<IdentityAnalyzer>::name()},
+  {"text_de", "de"}, {"text_en", "en"}, {"text_es", "es"}, {"text_fi", "fi"},
+  {"text_fr", "fr"}, {"text_it", "it"}, {"text_nl", "nl"}, {"text_no", "no"},
+  {"text_pt", "pt"}, {"text_ru", "ru"}, {"text_sv", "sv"}, {"text_zh", "zh"} };
 #endif
 
 REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
@@ -2092,7 +2093,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 
         auto pool = std::make_shared<AnalyzerPool>(IdentityAnalyzer::type_name());
 
-
+        static_assert(STATIC_ANALYZERS_NAMES.begin()->first == irs::type<IdentityAnalyzer>::name(), "Identity analyzer is misplaced");
         if (!pool || !pool->init(irs::type<IdentityAnalyzer>::name(),
                                  VPackSlice::emptyObjectSlice(),
                                  AnalyzersRevision::MIN,
@@ -2115,10 +2116,6 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
       // register the text analyzers
       {
         // Note: ArangoDB strings coming from JavaScript user input are UTF-8 encoded
-        irs::string_ref const locales[] = {
-          "de", "en", "es", "fi", "fr", "it",
-          "nl", "no", "pt", "ru", "sv", "zh"
-        };
         irs::flags const extraFeatures = {
           irs::type<irs::frequency>::get(),
           irs::type<irs::norm>::get(),
@@ -2127,30 +2124,24 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 
         irs::string_ref const type("text");
 
-        std::string name;
         VPackBuilder properties;
-        for (auto const& locale : locales) {
-          // "text_<locale>"
-          {
-            name = "text_";
-            name.append(locale.c_str(), locale.size());
-          }
-
+        auto staticName = STATIC_ANALYZERS_NAMES.cbegin();
+        for (++staticName; staticName != STATIC_ANALYZERS_NAMES.cend(); ++staticName) {
           // { locale: "<locale>.UTF-8", stopwords: [] }
           {
             properties.clear();
             VPackObjectBuilder rootScope(&properties);
-            properties.add("locale", VPackValue(std::string(locale) + ".UTF-8"));
+            properties.add("locale", VPackValue(std::string(staticName->second) + ".UTF-8"));
             VPackArrayBuilder stopwordsArrayScope(&properties, "stopwords");
           }
 
-          auto pool = std::make_shared<AnalyzerPool>(name);
+          auto pool = std::make_shared<AnalyzerPool>(staticName->first);
 
           if (!pool->init(type, properties.slice(), AnalyzersRevision::MIN, extraFeatures)) {
             LOG_TOPIC("e25f5", WARN, iresearch::TOPIC)
                 << "failure creating an arangosearch static analyzer instance "
                    "for name '"
-                << name << "'";
+                << std::string(staticName->first) << "'";
 
             // this should never happen, treat as an assertion failure
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to create arangosearch static analyzer instance");

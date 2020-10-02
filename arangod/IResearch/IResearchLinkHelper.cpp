@@ -599,8 +599,8 @@ namespace iresearch {
   IResearchLinkMeta lhsMeta;
   IResearchLinkMeta rhsMeta;
 
-  return lhsMeta.init(server, lhs, true, errorField)  // left side meta valid (for db-server analyzer validation should have already apssed on coordinator)
-         && rhsMeta.init(server, rhs, true, errorField)  // right side meta valid (for db-server analyzer validation should have already apssed on coordinator)
+  return lhsMeta.init(server, lhs, true, errorField)  // left side meta valid (for db-server analyzer validation should have already passed on coordinator)
+         && rhsMeta.init(server, rhs, true, errorField)  // right side meta valid (for db-server analyzer validation should have already passed on coordinator)
          && lhsMeta == rhsMeta;  // left meta equal right meta
 }
 
