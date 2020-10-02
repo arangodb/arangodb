@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added metrics `arangodb_agency_callback_registered counter` for tracking the
+  total number of agency callbacks that were registered.
+
 * Fixed a bug in handling of followers which refuse to replicate operations.
   In the case that the follower has simply been dropped in the meantime, we now
   avoid an error reported by the shard leader.
