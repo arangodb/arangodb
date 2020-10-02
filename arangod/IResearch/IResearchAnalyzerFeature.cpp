@@ -2125,8 +2125,8 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
         irs::string_ref const type("text");
 
         VPackBuilder properties;
-        auto staticName = STATIC_ANALYZERS_NAMES.cbegin();
-        for (++staticName; staticName != STATIC_ANALYZERS_NAMES.cend(); ++staticName) {
+        static_assert(STATIC_ANALYZERS_NAMES.size() > 1, "Static analyzer count too low");
+        for (auto staticName = (STATIC_ANALYZERS_NAMES.cbegin()+1); staticName != STATIC_ANALYZERS_NAMES.cend(); ++staticName) {
           // { locale: "<locale>.UTF-8", stopwords: [] }
           {
             properties.clear();
