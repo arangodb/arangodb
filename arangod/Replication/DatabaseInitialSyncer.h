@@ -93,13 +93,13 @@ class DatabaseInitialSyncer final : public InitialSyncer {
                         ReplicationApplierConfiguration const& configuration);
 
   /// @brief run method, performs a full synchronization
-  Result run(bool incremental) override {
-    return runWithInventory(incremental, velocypack::Slice::noneSlice());
+  Result run(bool incremental, char const* context = nullptr) override {
+    return runWithInventory(incremental, velocypack::Slice::noneSlice(), context);
   }
 
   /// @brief run method, performs a full synchronization with the
   ///        given list of collections.
-  Result runWithInventory(bool incremental, velocypack::Slice collections);
+  Result runWithInventory(bool incremental, velocypack::Slice collections, char const* context = nullptr);
 
   TRI_vocbase_t* resolveVocbase(velocypack::Slice const& slice) override {
     return &_config.vocbase;
