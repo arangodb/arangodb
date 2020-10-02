@@ -366,7 +366,7 @@ void AqlItemBlock::shrink(size_t numRows) {
     return;
   }
 
-  if (numRows > _numRows) {
+  if (ADB_UNLIKELY(numRows > _numRows)) {
     // cannot use shrink() to increase the size of the block
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "cannot use shrink() to increase block");
@@ -1118,6 +1118,7 @@ AqlValue AqlItemBlock::stealAndEraseValue(size_t index, RegisterId varNr) {
 RegisterCount AqlItemBlock::numRegisters() const noexcept { return _numRegisters; }
 
 size_t AqlItemBlock::numRows() const noexcept { return _numRows; }
+size_t AqlItemBlock::numEffectiveRows() const noexcept { return _numEffectiveRows; }
 
 std::tuple<size_t, size_t> AqlItemBlock::getRelevantRange() const {
   // NOTE:

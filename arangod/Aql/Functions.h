@@ -209,6 +209,10 @@ struct Functions {
                                   transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue DateTrunc(arangodb::aql::ExpressionContext*,
                             transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue DateUtcToLocal(arangodb::aql::ExpressionContext*,
+                            transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue DateLocalToUtc(arangodb::aql::ExpressionContext*,
+                            transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue DateAdd(arangodb::aql::ExpressionContext*,
                           transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue DateSubtract(arangodb::aql::ExpressionContext*,
@@ -326,6 +330,8 @@ struct Functions {
                           transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue Distance(arangodb::aql::ExpressionContext*,
                            transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue GeoInRange(arangodb::aql::ExpressionContext*,
+                             transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue GeoDistance(arangodb::aql::ExpressionContext*,
                               transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue GeoContains(arangodb::aql::ExpressionContext*,

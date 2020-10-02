@@ -69,13 +69,21 @@ class MerkleTree {
   static constexpr std::size_t MetaSize =
       (CacheLineSize * ((sizeof(Meta) + (CacheLineSize - 1)) / CacheLineSize));
 
-  static constexpr std::size_t nodeCountAtDepth(std::size_t maxDepth);
   static constexpr std::size_t nodeCountUpToDepth(std::size_t maxDepth);
   static constexpr std::size_t allocationSize(std::size_t maxDepth);
   static constexpr std::uint64_t log2ceil(std::uint64_t n);
   static constexpr std::uint64_t minimumFactorFor(std::uint64_t current, std::uint64_t target);
 
  public:
+  /**
+   * @brief Calculates the number of nodes at the given depth
+   *
+   * @param maxDepth The same depth value used for the calculation
+   */
+  static constexpr std::size_t nodeCountAtDepth(std::size_t maxDepth) {
+    return static_cast<std::size_t>(1) << (BranchingBits * maxDepth);
+  }
+
   /**
    * @brief Chooses the default range width for a tree of a given depth.
    *
@@ -208,12 +216,24 @@ class MerkleTree {
   std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> clone();
 
   /**
+   * @brief Clone the tree with the given depth
+   *
+   * Will return a new copy of the tree, with the specified depth. If the new
+   * depth is the same as the old, this is equivalent to clone(). If the new
+   * depth is less than the old depth, this simply truncates the tree. If the
+   * new depth is greater than the old depth, then the rangeMax will also be
+   * increased.
+   *
+   * @param newDepth  Max depth to use for new tree
+   */
+  std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> cloneWithDepth(std::size_t newDepth) const;
+
+  /**
    * @brief Find the ranges of keys over which two trees differ.
    *
    * @param other The other tree to compare
    * @return  Vector of (inclusive) ranges of keys over which trees differ
-   * @throws std::invalid_argument  If trees do not have different depth or
-   *                                rangeMin
+   * @throws std::invalid_argument  If trees different rangeMin
    */
   std::vector<std::pair<std::uint64_t, std::uint64_t>> diff(MerkleTree<BranchingBits, LockStripes>& other);
 
@@ -243,7 +263,7 @@ class MerkleTree {
 
  protected:
   explicit MerkleTree(std::string_view buffer);
-  explicit MerkleTree(MerkleTree<BranchingBits, LockStripes>& other);
+  explicit MerkleTree(MerkleTree<BranchingBits, LockStripes> const& other);
 
   Meta& meta() const;
   Node& node(std::size_t index) const;

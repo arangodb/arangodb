@@ -28,6 +28,7 @@
 #include <vector>
 
 #include <s2/s2point.h>
+#include <s2/s2latlng.h>
 
 #include "Basics/Result.h"
 
@@ -71,13 +72,18 @@ class ShapeContainer final {
   ShapeContainer(S2Region* ptr, Type tt) : _data(ptr), _type(tt) {}*/
   ~ShapeContainer();
 
+  ShapeContainer& operator=(ShapeContainer&&) noexcept;
+
  public:
   /// Parses a coordinate pair
   Result parseCoordinates(velocypack::Slice const& json, bool geoJson);
 
   void reset(std::unique_ptr<S2Region> ptr, Type tt) noexcept;
   void reset(S2Region* ptr, Type tt) noexcept;
-  void resetCoordinates(double lat, double lon);
+  void resetCoordinates(S2LatLng ll);
+  void resetCoordinates(double lat, double lon) {
+    resetCoordinates(S2LatLng::FromDegrees(lat, lon));
+  }
 
   Type type() const { return _type; }
   inline bool empty() const { return _type == Type::EMPTY; }

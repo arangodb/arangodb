@@ -917,6 +917,18 @@ elseif (CMAKE_COMPILER_IS_CLANG)
 
   set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
 
+  if(DARWIN AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "12.1")
+    # With the introduction of apple clang version 12.0.0 (clang-1200.0.32.2) the warning "range-loop-analysis" is now
+    # enabled by default or changed analysis behaviour. The compiler now complains about "wrong" usage of
+    # VPackObjectIterator and VPackArrayIterator - which is not the case.
+    #
+    # See example here: https://github.com/arangodb/arangodb/pull/12730
+    #
+    # Since we're stopping compilation on Apple in any warning case, we need to temporary disable that warning and
+    # check upcoming versions if the compiler behaviour will be fixed.
+    set(BASE_FLAGS "${BASE_FLAGS} -Wno-range-loop-analysis")
+  endif()
+
   set(CMAKE_C_FLAGS                "-g"                             CACHE INTERNAL "default C compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C debug flags")
   set(CMAKE_C_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C minimal size flags")

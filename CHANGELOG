@@ -5,6 +5,21 @@ devel
   paths by increasing weights. The cost of an edge can be read from an
   attribute which can be specified using `weightAttribute` option.
 
+* Fix a performance regression when a LIMIT is combined with a COLLECT WITH
+  COUNT INTO. Reported in ES-692.
+
+* Fixed issue ES-664: SEARCH vs FILTER lookup performance.
+  Consolidation functionality for ArangoSearch view links was able to hit non-
+  mergable enormous amount of segments due to improper scheduling logic.
+
+* Data definition reconsiliation in cluster has been modified
+  extensively to greatly accelerate the creation of 1000s of
+  databases through following means:
+  - AgencyCache offers change sets API based on Raft index.
+  - ClusterInfo caches are only updated using change sets.
+  - Maintenance uses local as well as agency change sets to limit
+    the scope of every runtime to these change sets.
+
 * Make scheduler react and start new threads slightly faster in case a lot
   of new work arrives.
 

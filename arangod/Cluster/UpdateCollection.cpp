@@ -142,8 +142,6 @@ bool UpdateCollection::first() {
                              _description.get(SERVER_ID), _result);
   }
 
-  notify();
-
   return false;
 }
 void UpdateCollection::setState(ActionState state) {
