@@ -97,7 +97,7 @@ static char const ANALYZER_PREFIX_DELIM = ':'; // name prefix delimiter (2 chars
 static size_t const ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024; // arbitrary value
 static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
 static std::string const FEATURE_NAME("ArangoSearchAnalyzer");
-static constexpr frozen::map<irs::string_ref, irs::string_ref, 13> const STATIC_ANALYZERS_NAMES {
+static constexpr frozen::map<irs::string_ref, irs::string_ref, 13> STATIC_ANALYZERS_NAMES {
   {irs::type<IdentityAnalyzer>::name(), irs::type<IdentityAnalyzer>::name()},
   {"text_de", "de"}, {"text_en", "en"}, {"text_es", "es"}, {"text_fi", "fi"},
   {"text_fr", "fr"}, {"text_it", "it"}, {"text_nl", "nl"}, {"text_no", "no"},
@@ -1199,13 +1199,13 @@ AnalyzerPool::Builder::make(
 AnalyzerPool::AnalyzerPool(irs::string_ref const& name)
   : _cache(DEFAULT_POOL_SIZE),
     _name(name) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // validation for name - should  be only normalized or static!
-  auto splitted = IResearchAnalyzerFeature::splitAnalyzerName(_name);
-  if (splitted.first.empty()) {
-    TRI_ASSERT(STATIC_ANALYZERS_NAMES.find(name) != STATIC_ANALYZERS_NAMES.end()); // This should be static analyzer
-  }
-#endif
+//#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+//  // validation for name - should  be only normalized or static!
+//  auto splitted = IResearchAnalyzerFeature::splitAnalyzerName(_name);
+//  if (splitted.first.empty()) {
+//    TRI_ASSERT(STATIC_ANALYZERS_NAMES.find(name) != STATIC_ANALYZERS_NAMES.end()); // This should be static analyzer
+//  }
+//#endif
 }
 
 bool AnalyzerPool::operator==(AnalyzerPool const& rhs) const {
