@@ -1,6 +1,11 @@
 v3.6.8 (XXXX-XX-XX)
 -------------------
 
+* Add database and shard name to several shard-related log messages.
+
+* Display shard names of a collection in the web interface when in the details
+  view of the collection.
+
 * Fixed issue ES-664: SEARCH vs FILTER lookup performance.
   Consolidation functionality for ArangoSearch view links was able to hit non-
   mergable enormous amount of segments due to improper scheduling logic.
