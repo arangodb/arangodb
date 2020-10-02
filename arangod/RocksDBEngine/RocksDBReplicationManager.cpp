@@ -411,15 +411,6 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
 
   return (!found.empty());
 }
-  
-//////////////////////////////////////////////////////////////////////////////
-/// @brief returns how many replication contexts are currently active
-//////////////////////////////////////////////////////////////////////////////
-
-size_t RocksDBReplicationManager::activeContexts() {
-  MUTEX_LOCKER(mutexLocker, _lock);
-  return _contexts.size();
-}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief tell the replication manager that a shutdown is in progress
