@@ -176,10 +176,6 @@ class AqlCallStack {
    */
   auto requestLessDataThan(AqlCallStack const& other) const noexcept -> bool;
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto validateAllCallsAreFetchAll() -> bool;
-#endif
-
  private:
   explicit AqlCallStack(std::vector<AqlCallList>&& operations);
 

@@ -62,20 +62,6 @@ auto AqlCallStack::validateNoCallHasSkippedRows() -> void {
     TRI_ASSERT(list.peekNextCall().getSkipCount() == 0);
   }
 }
-
-auto AqlCallStack::validateAllCallsAreFetchAll() -> bool {
-  return true;
-  /*
-  for (auto const& list : _operations) {
-    // No Skip
-    TRI_ASSERT(!list.peekNextCall().needSkipMore());
-    // No Limit
-    TRI_ASSERT(!list.peekNextCall().hasLimit());
-    // => We produce all rows
-  }
-  return true;
-  */
-}
 #endif
 
 auto AqlCallStack::popCall() -> AqlCallList {

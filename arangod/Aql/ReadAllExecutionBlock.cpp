@@ -66,9 +66,6 @@ auto ReadAllExecutionBlock::executeWithoutTrace(AqlCallStack stack)
   // This block only works with a single dependency
   TRI_ASSERT(_dependencies.size() == 1);
 
-  // Invariant can only work if all calls of the stack are fetchAll
-  TRI_ASSERT(stack.validateAllCallsAreFetchAll());
-
   // This block fetches until the upstream returns done, before it returns anything
   while (_upstreamState != ExecutionState::DONE) {
     auto [state, skipResult, block] =
