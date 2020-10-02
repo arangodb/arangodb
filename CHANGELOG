@@ -2,8 +2,16 @@ v3.6.8 (xxxx-xx-xx)
 -------------------
 
 * Fixed a bug in handling of followers which refuse to replicate operations.
-  In the case that the follower has simply been dropped in the meantime,
-  we now avoid an error reported by the shard leader.
+  In the case that the follower has simply been dropped in the meantime, we now
+  avoid an error reported by the shard leader.
+
+* Make scheduler propertly count down the number of working threads in case an
+  exception happens in a worker thread.
+
+* Turn off upgrade checks in arangod in alpha/beta/preview Enterprise builds,
+  too.
+  Previously it was already turned off in arangod for Enterprise builds already,
+  but only for stable releases and not preview releases.
 
 
 v3.6.7 (2020-09-18)
