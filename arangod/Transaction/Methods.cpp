@@ -964,7 +964,7 @@ static double chooseTimeout(size_t count, size_t totalBytes) {
   // Really big documents need additional adjustment. Using total size
   // of all messages to handle worst case scenario of constrained resource
   // processing all
-  timeout += (totalBytes / 4096) * ReplicationTimeoutFeature::timeoutPer4k;
+  timeout += (totalBytes / 4096.0) * ReplicationTimeoutFeature::timeoutPer4k;
 
   if (timeout < ReplicationTimeoutFeature::lowerLimit) {
     return ReplicationTimeoutFeature::lowerLimit * ReplicationTimeoutFeature::timeoutFactor;
@@ -992,6 +992,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
+      // This indicates that we believe to be the leader.
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
@@ -2317,7 +2318,8 @@ Future<Result> Methods::replicateOperations(
           resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
           replicationWorked = !found;
         }
-        didRefuse = didRefuse || resp.response->statusCode() == fuerte::StatusNotAcceptable;
+        auto r = resp.combinedResult();
+        didRefuse = didRefuse || r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION;
       }
 
       if (!replicationWorked) {
