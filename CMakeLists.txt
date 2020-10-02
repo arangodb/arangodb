@@ -1391,4 +1391,4 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 # endif ()
 
 add_custom_target(arangodb
-        DEPENDS arangod arangosh arangodump arangoexport arangobackup arangoimport arangorestore)
+        DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore)
