@@ -5,6 +5,8 @@ v3.6.7.1 (2020-10-03)
   In the case that the follower has simply been dropped in the meantime, we now
   avoid an error reported by the shard leader.
 
+* Make scheduler properly count down the number of working threads in case
+  an exception happens in a worker thread.
 
 
 v3.6.7 (2020-09-18)
