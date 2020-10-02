@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed a bug in handling of followers which refuse to replicate operations.
+  In the case that the follower has simply been dropped in the meantime, we now
+  avoid an error reported by the shard leader.
+
 * Added weighted traversal. Use `mode: "weighted"` as option to enumerate
   paths by increasing weights. The cost of an edge can be read from an
   attribute which can be specified using `weightAttribute` option.
