@@ -992,8 +992,8 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
   }
 
   // merge with local transactions
-  iterateManagedTrx([&builder](TransactionId tid, ManagedTrx const& trx) {
-    if (::authorized(trx.user)) {
+  iterateManagedTrx([&builder, &database](TransactionId tid, ManagedTrx const& trx) {
+    if (::authorized(trx.user) && trx.state.vocbase().name() == database) {
       builder.openObject(true);
       builder.add("id", VPackValue(std::to_string(tid.id())));
       builder.add("state", VPackValue(transaction::statusString(trx.state->status())));
