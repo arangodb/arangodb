@@ -1466,7 +1466,7 @@ static double chooseTimeout(size_t count, size_t totalBytes) {
   // Really big documents need additional adjustment. Using total size
   // of all messages to handle worst case scenario of constrained resource
   // processing all
-  timeout += (totalBytes / 4096) * ReplicationTimeoutFeature::timeoutPer4k;
+  timeout += (totalBytes / 4096.0) * ReplicationTimeoutFeature::timeoutPer4k;
 
   if (timeout < ReplicationTimeoutFeature::lowerLimit) {
     return ReplicationTimeoutFeature::lowerLimit * ReplicationTimeoutFeature::timeoutFactor;
@@ -1556,6 +1556,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
+      // This indicates that we believe to be the leader.
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
@@ -3255,9 +3256,14 @@ Future<Result> Methods::replicateOperations(
   // this operation to succeed, since the new leader is now responsible.
   // In case (2) we at least have to drop the follower such that it
   // resyncs and we can be sure that it is in sync again.
-  // Therefore, we drop the follower here (just in case), and refuse to
-  // return with a refusal error (note that we use the follower version,
-  // since we have lost leadership):
+  // We have some hint from the error message of the follower. If it is
+  // TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, we have reason
+  // to believe that the follower is now the new leader and we assume
+  // case (1).
+  // If the error is TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION,
+  // we continue with the operation, since most likely, the follower was
+  // simply dropped in the meantime.
+  // In any case, we drop the follower here (just in case).
   auto cb = [=](std::vector<futures::Try<network::Response>>&& responses) -> Result {
 
     bool didRefuse = false;
@@ -3276,7 +3282,8 @@ Future<Result> Methods::replicateOperations(
           std::string val = resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
           replicationWorked = !found;
         }
-        didRefuse = didRefuse || resp.response->statusCode() == fuerte::StatusNotAcceptable;
+        auto r = resp.combinedResult();
+        didRefuse = didRefuse || r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION;
       }
 
       if (!replicationWorked) {
