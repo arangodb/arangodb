@@ -3287,12 +3287,15 @@ Future<Result> Methods::replicateOperations(
           _state->removeKnownServer(deadFollower);
           LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
               << "synchronous replication: dropping follower "
-              << deadFollower << " for shard " << collection->name();
+              << deadFollower << " for shard " << collection->name()
+              << " in database " << collection->vocbase().name() 
+              << ", message: " << resp.combinedResult().errorMessage();
         } else {
           LOG_TOPIC("db473", ERR, Logger::REPLICATION)
               << "synchronous replication: could not drop follower "
-              << deadFollower << " for shard " << collection->name() << ": "
-              << res.errorMessage();
+              << deadFollower << " for shard " << collection->name() 
+              << " in database " << collection->vocbase().name() 
+              << ": " << res.errorMessage();
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
         }
       }
