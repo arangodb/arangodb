@@ -55,6 +55,7 @@
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/Range.h"
+#include "Aql/ReadAllNode.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathNode.h"
@@ -356,6 +357,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new AsyncNode(plan, slice);
     case MUTEX:
       return new MutexNode(plan, slice);
+    case READALL:
+      return new ReadAllNode(plan, slice);
     default: {
       // should not reach this point
       TRI_ASSERT(false);

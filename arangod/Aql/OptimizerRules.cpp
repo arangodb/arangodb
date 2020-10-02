@@ -4662,6 +4662,7 @@ void arangodb::aql::distributeFilterCalcToClusterRule(Optimizer* opt,
         case EN::SHORTEST_PATH:
         case EN::SUBQUERY:
         case EN::ENUMERATE_IRESEARCH_VIEW:
+        case EN::READALL:
           // do break
           stopSearching = true;
           break;
