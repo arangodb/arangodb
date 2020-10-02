@@ -880,6 +880,12 @@ std::map<std::string, std::vector<std::string>> statStrings{
   {"httpReqsTotal",
    {"arangodb_http_request_statistics_total_requests", "gauge",
     "Total number of HTTP requests\n"}},
+  {"httpReqsSuperuser",
+   {"arangodb_http_request_statistics_superuser_requests", "gauge",
+    "Total number of HTTP requests executed by superuser/JWT\n"}},
+  {"httpReqsUser",
+   {"arangodb_http_request_statistics_user_requests", "gauge",
+    "Total number of HTTP requests executed by clients\n"}},
   {"httpReqsAsync",
    {"arangodb_http_request_statistics_async_requests", "gauge",
     "Number of asynchronously executed HTTP requests\n"}},
@@ -951,13 +957,15 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
 
   StatisticsCounter httpConnections;
   StatisticsCounter totalRequests;
+  StatisticsCounter totalRequestsSuperuser;
+  StatisticsCounter totalRequestsUser;
   std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
   StatisticsCounter asyncRequests;
   StatisticsDistribution connectionTime;
 
-  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                             asyncRequests, connectionTime);
-
+  ConnectionStatistics::fill(httpConnections, totalRequests, totalRequestsSuperuser, totalRequestsUser,
+                             methodRequests, asyncRequests, connectionTime);
+  
   StatisticsDistribution totalTime;
   StatisticsDistribution requestTime;
   StatisticsDistribution queueTime;
@@ -965,8 +973,8 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
   StatisticsDistribution bytesSent;
   StatisticsDistribution bytesReceived;
 
-  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
-
+  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::USER);
+  
   // processStatistics()
   appendMetric(result, std::to_string(info._minorPageFaults), "minorPageFaults");
   appendMetric(result, std::to_string(info._majorPageFaults), "majorPageFaults");
@@ -1028,6 +1036,8 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
   appendMetric(result, std::to_string(methodRequests[(int)RequestType::PUT]._count), "httpReqsPut");
   appendMetric(result, std::to_string(methodRequests[(int)RequestType::ILLEGAL]._count), "httpReqsOther");
   appendMetric(result, std::to_string(totalRequests._count), "httpReqsTotal");
+  appendMetric(result, std::to_string(totalRequestsSuperuser._count), "httpReqsSuperuser");
+  appendMetric(result, std::to_string(totalRequestsUser._count), "httpReqsUser");
 
   V8DealerFeature::Statistics v8Counters{};
   if (_server.hasFeature<V8DealerFeature>()) {
@@ -1057,12 +1067,14 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
 
   StatisticsCounter httpConnections;
   StatisticsCounter totalRequests;
+  StatisticsCounter totalRequestsSuperuser;
+  StatisticsCounter totalRequestsUser;
   std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
   StatisticsCounter asyncRequests;
   StatisticsDistribution connectionTime;
 
-  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                             asyncRequests, connectionTime);
+  ConnectionStatistics::fill(httpConnections, totalRequests, totalRequestsSuperuser, totalRequestsUser,
+                             methodRequests, asyncRequests, connectionTime);
 
   StatisticsDistribution totalTime;
   StatisticsDistribution requestTime;
@@ -1131,6 +1143,8 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   // _httpStatistics()
   builder.add("http", VPackValue(VPackValueType::Object));
   builder.add("requestsTotal", VPackValue(totalRequests._count));
+  builder.add("requestsSuperuser", VPackValue(totalRequestsSuperuser._count));
+  builder.add("requestsUser", VPackValue(totalRequestsUser._count));
   builder.add("requestsAsync", VPackValue(asyncRequests._count));
   builder.add("requestsGet",
               VPackValue(methodRequests[(int)rest::RequestType::GET]._count));

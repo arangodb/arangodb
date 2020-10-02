@@ -70,7 +70,10 @@ ConnectionStatistics* ConnectionStatistics::acquire() {
 }
 
 void ConnectionStatistics::fill(
-    StatisticsCounter& httpConnections, StatisticsCounter& totalRequests,
+    StatisticsCounter& httpConnections, 
+    StatisticsCounter& totalRequests,
+    StatisticsCounter& totalRequestsSuperuser,
+    StatisticsCounter& totalRequestsUser,
     std::array<StatisticsCounter, MethodRequestsStatisticsSize>& methodRequests,
     StatisticsCounter& asyncRequests, StatisticsDistribution& connectionTime) {
   if (!StatisticsFeature::enabled()) {
@@ -80,6 +83,8 @@ void ConnectionStatistics::fill(
 
   httpConnections = TRI_HttpConnectionsStatistics;
   totalRequests = TRI_TotalRequestsStatistics;
+  totalRequestsSuperuser = TRI_TotalRequestsStatisticsSuperuser;
+  totalRequestsUser = TRI_TotalRequestsStatisticsUser;
   {
     MUTEX_LOCKER(locker, TRI_RequestsStatisticsMutex);
     methodRequests = TRI_MethodRequestsStatistics;

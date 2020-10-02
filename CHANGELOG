@@ -1,10 +1,19 @@
 v3.6.8 (xxxx-xx-xx)
 -------------------
 
-* Add database and shard name to several shard-related log messages.
+* Add database, shard name and error information to several shard-related log 
+  messages.
 
 * Display shard names of a collection in the web interface when in the details
   view of the collection.
+
+* Added HTTP requests metrics for tracking the number of superuser and normal
+  user requests separately:
+
+  - `arangodb_http_request_statistics_superuser_requests`: Total number of HTTP
+    requests executed by superuser/JWT
+  - `arangodb_http_request_statistics_user_requests`: Total number of HTTP 
+    requests executed by clients
 
 * Fixed issue ES-664: SEARCH vs FILTER lookup performance.
   Consolidation functionality for ArangoSearch view links was able to hit non-
