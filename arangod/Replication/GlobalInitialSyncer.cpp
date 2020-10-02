@@ -65,9 +65,9 @@ GlobalInitialSyncer::~GlobalInitialSyncer() {
 
 /// @brief run method, performs a full synchronization
 /// public method, catches exceptions
-Result GlobalInitialSyncer::run(bool incremental) {
+Result GlobalInitialSyncer::run(bool incremental, char const* context) {
   try {
-    return runInternal(incremental);
+    return runInternal(incremental, context);
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(),
                   std::string("initial synchronization for database '") +
@@ -85,7 +85,7 @@ Result GlobalInitialSyncer::run(bool incremental) {
 
 /// @brief run method, performs a full synchronization
 /// internal method, may throw exceptions
-Result GlobalInitialSyncer::runInternal(bool incremental) {
+Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
   if (!_state.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   } else if (_state.applier._server.isStopping()) {
@@ -95,7 +95,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
   setAborted(false);
 
   LOG_TOPIC("23d92", DEBUG, Logger::REPLICATION) << "client: getting master state";
-  Result r = _state.master.getState(_state.connection, _state.isChildSyncer);
+  Result r = _state.master.getState(_state.connection, _state.isChildSyncer, context);
   if (r.fail()) {
     return r;
   }

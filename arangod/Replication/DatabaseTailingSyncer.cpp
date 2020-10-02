@@ -91,7 +91,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
 
   setAborted(false);
   // fetch master state just once
-  Result r = _state.master.getState(_state.connection, _state.isChildSyncer);
+  Result r = _state.master.getState(_state.connection, _state.isChildSyncer, nullptr);
   if (r.fail()) {
     return r;
   }

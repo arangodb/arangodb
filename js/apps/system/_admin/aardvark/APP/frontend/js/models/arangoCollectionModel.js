@@ -31,6 +31,21 @@
         }
       });
     },
+    getShards: function (callback) {
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/shards?details=true'),
+        contentType: 'application/json',
+        processData: false,
+        success: function (data) {
+          callback(false, data);
+        },
+        error: function () {
+          callback(true);
+        }
+      });
+    },
     getFigures: function (callback) {
       $.ajax({
         type: 'GET',
@@ -45,6 +60,28 @@
           callback(true);
         }
       });
+    },
+    getFiguresCombined: function (callback, isCluster) {
+      var self = this;
+      var shardsCallback = function (error, data) {
+        if (error) {
+          callback(true);
+        } else {
+          var figures = data;
+          if (isCluster) {
+            self.getShards(function (error, data) {
+              if (error) {
+                callback(true);
+              } else {
+                callback(false, Object.assign(figures, { shards: data.shards }));
+              }
+            });
+          } else {
+            callback(false, figures);
+          }
+        }
+      };
+      this.getFigures(shardsCallback);
     },
     getRevision: function (callback, figures) {
       $.ajax({
