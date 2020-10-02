@@ -4348,7 +4348,7 @@ function testLargeBinTreeAllCombinations(testGraph) {
     const actualPaths = res.toArray();
 
     try {
-      if (options.mode === "dfs") {
+      if (options.order === "dfs") {
         checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
       } else {
         checkResIsValidBfsOf(expectedPaths, actualPaths);
