@@ -93,8 +93,7 @@ constexpr int TRI_EXIT_ICU_INITIALIZATION_FAILED                                
 /// 27: EXIT_TZDATA_INITIALIZATION_FAILED
 /// failed to locate tzdata
 /// Will be returned if tzdata is not found
-constexpr int TRI_EXIT_TZDATA_INITIALIZATION_FAILED                                = 27;
-
+constexpr int TRI_EXIT_TZDATA_INITIALIZATION_FAILED                             = 27;
 
 
 /// register all exit codes for ArangoDB
