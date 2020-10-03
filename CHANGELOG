@@ -1,3 +1,10 @@
+v3.7.4 (XXXX-XX-XX)
+-------------------
+
+* Print image base address and CPU context (if available) in crash handler 
+  messages.
+
+
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
