@@ -1065,14 +1065,11 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
     }
 
     for (auto& f : futures) {
-      network::Response& resp = f.get();
+      network::Response const& resp = f.get();
       
-      if (resp.response && resp.response->statusCode() != fuerte::StatusOK) {
-        auto slices = resp.response->slices();
-        if (!slices.empty()) {
-          VPackSlice slice = slices[0];
-          res.reset(network::resultFromBody(slice, TRI_ERROR_FAILED));
-        }
+      if (resp.statusCode() != fuerte::StatusOK) {
+        VPackSlice slice = resp.slice();
+        res.reset(network::resultFromBody(slice, TRI_ERROR_FAILED));
       }
     }
   }
