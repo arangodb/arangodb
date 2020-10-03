@@ -149,6 +149,15 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result getInventory(arangodb::velocypack::Builder& builder);
 
  private:
+  enum class FormatHint {
+    // format must still be detected. this is used on the first call
+    AutoDetect,
+    // enveloped format. all documents are wrapped into a {"type":2300,"data":{...}} envelope
+    Envelope,
+    // raw documents, i.e. no envelope
+    NoEnvelope,
+  };
+
   /// @brief order a new chunk from the /dump API
   void fetchDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
                       std::string const& baseUrl, arangodb::LogicalCollection* coll,
@@ -164,7 +173,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   /// @brief handle a single dump marker
   // TODO worker-safety
   Result parseCollectionDumpMarker(transaction::Methods&, arangodb::LogicalCollection*,
-                                   arangodb::velocypack::Slice const&);
+                                   arangodb::velocypack::Slice, FormatHint& hint);
 
   /// @brief apply the data from a collection dump
   // TODO worker-safety
