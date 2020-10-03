@@ -437,7 +437,7 @@ void CrashHandler::crash(char const* context) {
 }
 
 /// @brief logs an assertion failure and crashes the program
-void CrashHandler::assertionFailure(char const* file, int line, char const* context) {
+void CrashHandler::assertionFailure(char const* file, int line, char const* func, char const* context) {
   // assemble an "assertion failured in file:line: message" string
   char buffer[4096];
   memset(&buffer[0], 0, sizeof(buffer));
@@ -447,6 +447,11 @@ void CrashHandler::assertionFailure(char const* file, int line, char const* cont
   appendNullTerminatedString((file == nullptr ? "unknown file" : file), 128, p);
   appendNullTerminatedString(":", p);
   p += arangodb::basics::StringUtils::itoa(uint64_t(line), p);
+  if (func != nullptr) {
+    appendNullTerminatedString(" [", p);
+    appendNullTerminatedString(func, p);
+    appendNullTerminatedString("]", p);
+  }
   appendNullTerminatedString(": ", p);
   appendNullTerminatedString(context, 256, p);
 
