@@ -1704,7 +1704,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto context = TRI_IGETC;
 
   if (args.Length() < 1 || args.Length() > 3) {
-    events::CreateDatabase("", TRI_ERROR_BAD_PARAMETER);
+    events::CreateDatabase("", Result(TRI_ERROR_BAD_PARAMETER), ExecContext::current());
     TRI_V8_THROW_EXCEPTION_USAGE(
         "db._createDatabase(<name>, <options>, <users>)");
   }
@@ -1714,7 +1714,8 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(!vocbase.isDangling());
 
   if (!vocbase.isSystem()) {
-    events::CreateDatabase("", TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    events::CreateDatabase("", Result(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
+                           ExecContext::current());
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
@@ -1734,7 +1735,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Value> user = ar->Get(context, i).FromMaybe(v8::Local<v8::Value>());
 
       if (!user->IsObject()) {
-        events::CreateDatabase("", TRI_ERROR_BAD_PARAMETER);
+        events::CreateDatabase("", Result(TRI_ERROR_BAD_PARAMETER), ExecContext::current());
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "user is not an object");
       }
@@ -1744,8 +1745,8 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const dbName = TRI_ObjectToString(isolate, args[0]);
-  Result res = methods::Databases::create(vocbase.server(), dbName,
-                                          users.slice(), options.slice());
+  Result res = methods::Databases::create(vocbase.server(), ExecContext::current(),
+                                          dbName, users.slice(), options.slice());
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1764,19 +1765,20 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
-    events::DropDatabase("", TRI_ERROR_BAD_PARAMETER);
+    events::DropDatabase("", Result(TRI_ERROR_BAD_PARAMETER), ExecContext::current());
     TRI_V8_THROW_EXCEPTION_USAGE("db._dropDatabase(<name>)");
   }
 
   auto& vocbase = GetContextVocBase(isolate);
 
   if (!vocbase.isSystem()) {
-    events::DropDatabase("", TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    events::DropDatabase("", Result(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
+                         ExecContext::current());
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
   std::string const name = TRI_ObjectToString(isolate, args[0]);
-  auto res = methods::Databases::drop(&vocbase, name);
+  auto res = methods::Databases::drop(ExecContext::current(), &vocbase, name);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -2078,9 +2080,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_GET_GLOBALS();
 
   TRI_ASSERT(v8g->_transactionContext == nullptr);
-  v8g->_transactionContext = new transaction::V8Context(vocbase, true);
-  static_cast<transaction::V8Context*>(v8g->_transactionContext)->makeGlobal();
-
   // register the database
   v8g->_vocbase = &vocbase;
 

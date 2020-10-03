@@ -52,7 +52,7 @@ describe ArangoDB do
         doc.parsed_response['result'].should eq(true)
       end
 
-      it "create a user and validate" do
+      it "create a user and validate 1" do
         body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\" }"
         doc = ArangoDB.log_post("#{prefix}-validate", api, :body => body)
 
@@ -65,7 +65,7 @@ describe ArangoDB do
         doc.parsed_response['result'].should eq(true)
       end
       
-      it "create a user and validate" do
+      it "create a user and validate 2" do
         body = "{ \"user\" : \"users-1\", \"passwd\" : \"derhansgehtInDENWALD\" }"
         doc = ArangoDB.log_post("#{prefix}-validate", api, :body => body)
 
@@ -93,7 +93,7 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(1703)
       end
       
-      it "create a user and validate, invalid password" do
+      it "create a user and validate, invalid password 1" do
         body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\" }"
         doc = ArangoDB.log_post("#{prefix}-validate", api, :body => body)
 
@@ -108,7 +108,7 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(1703)
       end
       
-      it "create a user and validate, invalid password" do
+      it "create a user and validate, invalid password 2" do
         body = "{ \"user\" : \"users-1\", \"passwd\" : \"fox\" }"
         doc = ArangoDB.log_post("#{prefix}-validate", api, :body => body)
 

@@ -270,10 +270,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   // This has to be called AFTER _phyiscal and _logical are properly linked
   // together.
 
-  if (_physical->didPartialUpgrade()) {
-    _physical->cleanupAfterUpgrade();
-  }
-
   prepareIndexes(info.get("indexes"));
 }
 
@@ -383,6 +379,12 @@ int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
   return getResponsibleShard(slice, docComplete, shardID, usesDefaultShardKeys);
 }
 
+int LogicalCollection::getResponsibleShard(std::string_view key, std::string& shardID) {
+  bool usesDefaultShardKeys;
+  return getResponsibleShard(VPackSlice::emptyObjectSlice(), false, shardID, usesDefaultShardKeys,
+                             VPackStringRef(key.data(), key.size()));
+}
+
 int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
                                            bool docComplete, std::string& shardID,
                                            bool& usesDefaultShardKeys,
@@ -474,6 +476,8 @@ RevisionId LogicalCollection::revision(transaction::Methods* trx) const {
 }
 
 bool LogicalCollection::usesRevisionsAsDocumentIds() const {
+  // TODO: switch off for now to lower memory consumption:
+  // return false;
   return _usesRevisionsAsDocumentIds.load();
 }
 

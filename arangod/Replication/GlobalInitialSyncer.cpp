@@ -244,7 +244,8 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDataba
 
     if (vocbase == nullptr) {
       // database is missing. we need to create it now
-      Result r = methods::Databases::create(_state.applier._server, dbName,
+      Result r = methods::Databases::create(_state.applier._server,
+                                            ExecContext::current(), dbName,
                                             VPackSlice::emptyArraySlice(),
                                             VPackSlice::emptyObjectSlice());
       if (r.fail()) {
@@ -320,7 +321,8 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDataba
     _state.vocbases.erase(dbname);  // make sure to release the db first
 
     auto r = _state.applier._server.hasFeature<arangodb::SystemDatabaseFeature>()
-                 ? methods::Databases::drop(_state.applier._server
+                 ? methods::Databases::drop(ExecContext::current(),
+                                            _state.applier._server
                                                 .getFeature<arangodb::SystemDatabaseFeature>()
                                                 .use()
                                                 .get(),

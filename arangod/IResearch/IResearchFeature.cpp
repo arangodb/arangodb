@@ -257,7 +257,7 @@ class IResearchLogTopic final : public arangodb::LogTopic {
 
   static void log_appender(void* context, const char* function, const char* file, int line,
                            irs::logger::level_t level, const char* message,
-                           size_t message_len); 
+                           size_t message_len);
   static void setIResearchLogLevel(arangodb::LogLevel level) {
     if (level == arangodb::LogLevel::DEFAULT) {
       level = DEFAULT_LEVEL;
@@ -615,7 +615,7 @@ void IResearchLogTopic::log_appender(void* context, const char* function, const 
                                      size_t message_len) {
   auto const arangoLevel = static_cast<arangodb::LogLevel>(level + 1);
   std::string msg = LIBIRESEARCH.displayName();
-  msg.append(message, message_len); 
+  msg.append(message, message_len);
   arangodb::Logger::log("9afd3", function, file, line, arangoLevel, LIBIRESEARCH.id(), msg);
 }
 
@@ -629,6 +629,9 @@ bool isFilter(arangodb::aql::Function const& func) noexcept {
          func.implementation == &contextFunc ||
          func.implementation == &minMatchFunc ||
          func.implementation == &startsWithFunc ||
+         func.implementation == &aql::Functions::GeoContains ||
+         func.implementation == &aql::Functions::GeoInRange ||
+         func.implementation == &aql::Functions::GeoIntersects ||
          func.implementation == &aql::Functions::LevenshteinMatch ||
          func.implementation == &aql::Functions::Like ||
          func.implementation == &aql::Functions::NgramMatch ||
@@ -763,7 +766,7 @@ void IResearchFeature::Async::Thread::run() {
         _cond.wait_until(lock, timeout);  // wait for timeout or notify
       }
 
-      onlyPending = !_wasNotified && pendingStart < _tasks.size();  // process all tasks if a notification was raised
+      onlyPending = !_wasNotified; // process all tasks if a notification was raised
       _wasNotified = false;  // ignore notification since woke up
 
       if (_terminate->load()) {  // check again after sleep
@@ -797,6 +800,8 @@ void IResearchFeature::Async::Thread::run() {
       _next->_cond.notify_all();  // notify thread about a new task (thread may
                                   // be sleeping indefinitely)
     }
+
+    onlyPending &= (pendingStart < _tasks.size());
 
     for (size_t i = onlyPending ? pendingStart : 0,
                 count = _tasks.size();  // optimization to skip previously run
