@@ -262,7 +262,8 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _databasesLists(new DatabasesLists()),
       _isInitiallyEmpty(false),
       _checkVersion(false),
-      _upgrade(false) {
+      _upgrade(false),
+      _useOldSystemCollections(true) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -308,6 +309,12 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "load collections even if datafiles may contain errors",
                      new BooleanParameter(&_ignoreDatafileErrors),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+
+  options->addOption("--database.old-system-collections",
+                     "create and use deprecated system collection (_modules, _fishbowl)",
+                     new BooleanParameter(&_useOldSystemCollections),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30608);
 
   options->addOption(
       "--database.throw-collection-not-loaded-error",

@@ -1146,21 +1146,16 @@ static void JS_getFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> cons
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_clearFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("setFoxxmasterQueueupdate(bool)");
-  }
-
-  bool queueUpdate = TRI_ObjectToBoolean(isolate, args[0]);
-  ServerState::instance()->setFoxxmasterQueueupdate(queueUpdate);
+  ServerState::instance()->clearFoxxmasterQueueupdate();
 
   if (AgencyCommManager::isEnabled()) {
     AgencyComm comm;
     std::string key = "Current/FoxxmasterQueueupdate";
-    VPackSlice val = queueUpdate ? VPackSlice::trueSlice() : VPackSlice::falseSlice();
+    VPackSlice val = VPackSlice::falseSlice();
     AgencyCommResult result = comm.setValue(key, val, 0.0);
     if (result.successful()) {
       result = comm.increment("Current/Version");
@@ -2035,8 +2030,8 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        TRI_V8_ASCII_STRING(isolate, "getFoxxmasterQueueupdate"),
                        JS_getFoxxmasterQueueupdate);
   TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING(isolate, "setFoxxmasterQueueupdate"),
-                       JS_setFoxxmasterQueueupdate);
+                       TRI_V8_ASCII_STRING(isolate, "clearFoxxmasterQueueupdate"),
+                       JS_clearFoxxmasterQueueupdate);
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "getFoxxmasterSince"),
                        JS_GetFoxxmasterSince);

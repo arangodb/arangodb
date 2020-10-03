@@ -2175,21 +2175,21 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "DEFAULT_REPLICATION_FACTOR"),
                           v8::Number::New(isolate,
-                                          vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor()), v8::ReadOnly)
+                                          vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   context->Global()
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "MIN_REPLICATION_FACTOR"),
                           v8::Number::New(isolate,
-                                          vocbase.server().getFeature<ClusterFeature>().minReplicationFactor()), v8::ReadOnly)
+                                          vocbase.server().getFeature<ClusterFeature>().minReplicationFactor()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   context->Global()
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "MAX_REPLICATION_FACTOR"),
                           v8::Number::New(isolate,
-                                          vocbase.server().getFeature<ClusterFeature>().maxReplicationFactor()), v8::ReadOnly)
+                                          vocbase.server().getFeature<ClusterFeature>().maxReplicationFactor()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   // max number of shards
@@ -2197,7 +2197,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "MAX_NUMBER_OF_SHARDS"),
                           v8::Number::New(isolate,
-                                          vocbase.server().getFeature<ClusterFeature>().maxNumberOfShards()), v8::ReadOnly)
+                                          vocbase.server().getFeature<ClusterFeature>().maxNumberOfShards()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
   
   // max number of shards
@@ -2205,8 +2205,17 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "FORCE_ONE_SHARD"),
                           v8::Boolean::New(isolate,
-                                          vocbase.server().getFeature<ClusterFeature>().forceOneShard()), v8::ReadOnly)
+                                          vocbase.server().getFeature<ClusterFeature>().forceOneShard()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
+  
+  // use old system collections
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "USE_OLD_SYSTEM_COLLECTIONS"),
+                          v8::Boolean::New(isolate,
+                                          vocbase.server().getFeature<DatabaseFeature>().useOldSystemCollections()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
+      .FromMaybe(false);  // ignore result
+
 
   // a thread-global variable that will is supposed to contain the AQL module
   // do not remove this, otherwise AQL queries will break

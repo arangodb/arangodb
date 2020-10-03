@@ -230,24 +230,12 @@ exports.manage = function () {
       foxxQueues._updateQueueDelay();
     }
     // do not call again immediately
-    global.ArangoServerState.setFoxxmasterQueueupdate(false);
+    global.ArangoServerState.clearFoxxmasterQueueupdate();
   }
 
   var initialDatabase = db._name();
-  var now = Date.now();
 
-  // fetch list of databases from cache
-  var databases = global.KEY_GET('queue-control', 'databases') || [];
-  var expires = global.KEY_GET('queue-control', 'databases-expire') || 0;
-
-  if (expires < now || databases.length === 0) {
-    databases = db._databases();
-    global.KEY_SET('queue-control', 'databases', databases);
-    // make list of databases expire in 30 seconds from now
-    global.KEY_SET('queue-control', 'databases-expire', Date.now() + 30 * 1000);
-  }
-
-  databases.forEach(function (database) {
+  db._databases().forEach(function (database) {
     try {
       db._useDatabase(database);
       global.KEYSPACE_CREATE('queue-control', 1, true);
@@ -269,7 +257,7 @@ exports.manage = function () {
       // it is possible that the underlying database is deleted while we are in here.
       // this is not an error
       if (e.errorNum !== errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code) {
-        warn("An exception occurred while setting up foxx queue handling in database '"
+        warn("An exception occurred during foxx queue handling in database '"
               + database + "' "
               + e.message + " "
               + JSON.stringify(e));

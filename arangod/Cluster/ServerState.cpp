@@ -984,37 +984,48 @@ bool ServerState::checkCoordinatorState(StateEnum state) {
 }
 
 bool ServerState::isFoxxmaster() const {
+  READ_LOCKER(readLocker, _foxxmasterLock);
   return /*!isRunningInCluster() ||*/ _foxxmaster == getId();
 }
 
-std::string const& ServerState::getFoxxmaster() { return _foxxmaster; }
+std::string ServerState::getFoxxmaster() const { 
+  READ_LOCKER(readLocker, _foxxmasterLock);
+  return _foxxmaster; 
+}
 
 void ServerState::setFoxxmaster(std::string const& foxxmaster) {
+  WRITE_LOCKER(writeLocker, _foxxmasterLock);
+
   if (_foxxmaster != foxxmaster) {
-    setFoxxmasterQueueupdate(true);
     _foxxmaster = foxxmaster;
+    _foxxmasterQueueupdate = true;
 
     // We're the new foxxmaster, set this once.
-    if (isFoxxmaster()) {
-      setFoxxmasterSinceNow();
+    if (_foxxmaster == getId()) {
+      _foxxmasterSince = TRI_HybridLogicalClock();
     }
   }
 }
 
+void ServerState::clearFoxxmasterQueueupdate() noexcept {
+  WRITE_LOCKER(writeLocker, _foxxmasterLock);
+  TRI_ASSERT(_foxxmasterQueueupdate);
+  _foxxmasterQueueupdate = false;
+}
+
+void ServerState::setFoxxmasterQueueupdate() noexcept {
+  WRITE_LOCKER(writeLocker, _foxxmasterLock);
+  _foxxmasterQueueupdate = true;
+}
+
 bool ServerState::getFoxxmasterQueueupdate() const noexcept {
+  READ_LOCKER(readLocker, _foxxmasterLock);
   return _foxxmasterQueueupdate;
 }
 
-void ServerState::setFoxxmasterQueueupdate(bool value) {
-  _foxxmasterQueueupdate = value;
-}
-
 TRI_voc_tick_t ServerState::getFoxxmasterSince() const noexcept {
+  READ_LOCKER(readLocker, _foxxmasterLock);
   return _foxxmasterSince;
-}
-
-void ServerState::setFoxxmasterSinceNow() {
-  ServerState::_foxxmasterSince = TRI_HybridLogicalClock();
 }
 
 std::ostream& operator<<(std::ostream& stream, arangodb::ServerState::RoleEnum role) {
