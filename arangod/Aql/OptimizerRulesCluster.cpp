@@ -347,13 +347,15 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
         bool foundKey = false;
         for (std::size_t i = 0; i < expr->numMembers(); i++) {
           auto* anode = expr->getMemberUnchecked(i);
-          if (anode->getString() == StaticStrings::KeyString) {
-            key = anode->getMember(0)->getString();
-            foundKey = true;
-          }
-          if (anode->getString() == StaticStrings::RevString) {
-            foundKey = false;  // decline if _rev is in the game
-            break;
+          if (anode->isStringValue()) {
+            if (anode->getString() == StaticStrings::KeyString) {
+              key = anode->getMember(0)->getString();
+              foundKey = true;
+            }
+            if (anode->getString() == StaticStrings::RevString) {
+              foundKey = false;  // decline if _rev is in the game
+              break;
+            }
           }
         }
         if (!foundKey) {
