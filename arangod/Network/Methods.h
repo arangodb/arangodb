@@ -43,7 +43,7 @@ class ConnectionPool;
 /// Response data structure
 struct Response {
   DestinationId destination;
-  fuerte::Error error;  /// connectivity error
+  fuerte::Error error = fuerte::Error::ConnectionCanceled;
   std::unique_ptr<arangodb::fuerte::Request> request;
   std::unique_ptr<arangodb::fuerte::Response> response;
 
