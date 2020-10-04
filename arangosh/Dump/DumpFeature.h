@@ -72,6 +72,7 @@ class DumpFeature : public application_features::ApplicationFeature {
     bool allDatabases{false};
     bool clusterMode{false};
     bool dumpData{true};
+    bool compactFormat{false};
     bool force{false};
     bool ignoreDistributeShardsLikeErrors{false};
     bool includeSystemCollections{false};

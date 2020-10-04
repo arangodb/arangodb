@@ -318,10 +318,12 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
     // we are in single-server mode, we already flushed the wal
     baseUrl += "&flush=false";
   }
+  if (jobData.options.compactFormat) {
+    baseUrl += "&useEnvelope=false";
+  }
   
   std::unordered_map<std::string, std::string> headers;
   headers.emplace(arangodb::StaticStrings::Accept, arangodb::StaticStrings::MimeTypeDump);
-
 
   while (true) {
     std::string url = baseUrl + "&from=" + itoa(fromTick) + "&chunkSize=" + itoa(chunkSize);
@@ -612,11 +614,17 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
   options->addOption("--batch-size",
                      "maximum size for individual data batches (in bytes)",
                      new UInt64Parameter(&_options.maxChunkSize));
+  
+  options->addOption("--compact-format",
+                     "use compact dump format (requires v3.8.0 or higher to restore)",
+                     new BooleanParameter(&_options.compactFormat))
+                     .setIntroducedIn(30800);
 
   options->addOption(
       "--threads",
-      "maximum number of collections to process in parallel. From v3.4.0",
-      new UInt32Parameter(&_options.threadCount));
+      "maximum number of collections to process in parallel",
+      new UInt32Parameter(&_options.threadCount))
+      .setIntroducedIn(30400);
 
   options->addOption("--dump-data", "dump collection data",
                      new BooleanParameter(&_options.dumpData));
