@@ -1156,6 +1156,7 @@ static void JS_clearFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> co
     AgencyComm comm;
     std::string key = "Current/FoxxmasterQueueupdate";
     VPackSlice val = VPackSlice::falseSlice();
+    // TODO: should we rather use CAS here?
     AgencyCommResult result = comm.setValue(key, val, 0.0);
     if (result.successful()) {
       result = comm.increment("Current/Version");
