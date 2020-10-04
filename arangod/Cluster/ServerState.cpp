@@ -87,6 +87,7 @@ ServerState::ServerState()
       _host(),
       _state(STATE_UNDEFINED),
       _initialized(false),
+      _foxxmasterSince(0),
       _foxxmasterQueueupdate(false) {
   setRole(ROLE_UNDEFINED);
 }
