@@ -1,5 +1,9 @@
-v3.6.8 (XXXX-XX-XX)
+v3.6.8 (xxxx-xx-xx)
 -------------------
+
+* Fixed a bug in handling of followers which refuse to replicate operations.
+  In the case that the follower has simply been dropped in the meantime, we now
+  avoid an error reported by the shard leader.
 
 * Fixed issue ES-664: SEARCH vs FILTER lookup performance.
   Consolidation functionality for ArangoSearch view links was able to hit non-
