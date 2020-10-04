@@ -1,4 +1,4 @@
-v3.6.8 (xxxx-xx-xx)
+v3.6.8 (XXXX-XX-XX)
 -------------------
 
 * Fixed a bug in handling of followers which refuse to replicate operations.
@@ -9,13 +9,21 @@ v3.6.8 (xxxx-xx-xx)
   Consolidation functionality for ArangoSearch view links was able to hit non-
   mergable enormous amount of segments due to improper scheduling logic.
 
-* Make scheduler propertly count down the number of working threads in case an
-  exception happens in a worker thread.
-
 * Turn off upgrade checks in arangod in alpha/beta/preview Enterprise builds,
   too.
   Previously it was already turned off in arangod for Enterprise builds already,
   but only for stable releases and not preview releases.
+
+
+v3.6.7.1 (2020-10-03)
+---------------------
+
+* Fixed a bug in handling of followers which refuse to replicate operations.
+  In the case that the follower has simply been dropped in the meantime, we now
+  avoid an error reported by the shard leader.
+
+* Make scheduler properly count down the number of working threads in case
+  an exception happens in a worker thread.
 
 
 v3.6.7 (2020-09-18)
