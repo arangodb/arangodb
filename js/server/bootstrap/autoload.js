@@ -39,6 +39,10 @@
   return {
     // this functionality is deprecated and will be removed in 3.9
     startup: function () {
+      if (!global.USE_OLD_SYSTEM_COLLECTIONS) {
+        return;
+      }
+
       const dbName = db._name();
       try {
         db._useDatabase('_system');
