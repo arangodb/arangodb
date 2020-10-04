@@ -260,7 +260,7 @@ function availableJson (matchEngine) {
   let result = [];
 
   let fishbowl = getFishbowlStorage();
-  if (fishbowl) {
+  if (fishbowl && fishbowl.count() > 0) {
     let cursor = fishbowl.all();
 
     while (cursor.hasNext()) {

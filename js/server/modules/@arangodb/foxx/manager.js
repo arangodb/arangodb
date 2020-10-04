@@ -52,6 +52,7 @@ const SYSTEM_SERVICE_MOUNTS = [
   '/_api/foxx' // Foxx management API.
 ];
 
+const INTERNAL_SERVICE_MAP = new Map();
 const GLOBAL_SERVICE_MAP = new Map();
 
 // Cluster helpers
@@ -217,12 +218,10 @@ function selfHeal () {
 
   const serviceCollection = utils.getStorage();
   const bundleCollection = utils.getBundleStorage();
-  const serviceDefinitions = db._query(aql`
-    FOR doc IN ${serviceCollection}
+  const serviceDefinitions = db._query(aql`/*selfHeal*/ FOR doc IN ${serviceCollection}
     FILTER LEFT(doc.mount, 2) != "/_"
     LET bundleExists = DOCUMENT(${bundleCollection}, doc.checksum) != null
-    RETURN [doc.mount, doc.checksum, doc._rev, bundleExists]
-  `).toArray();
+    RETURN [doc.mount, doc.checksum, doc._rev, bundleExists]`).toArray();
 
   let modified = false;
   const knownBundlePaths = new Array(serviceDefinitions.length);
@@ -337,8 +336,31 @@ function cleanupOrphanedServices (knownServicePaths, knownBundlePaths) {
 function startup () {
   if (global.ArangoServerState.role() === 'SINGLE') {
     commitLocalState(true);
+    // execute self-heal as part of startup process. this can take a while,
+    // but as all queries can run locally, it should always make progress
+    selfHealAll();
+  } else {
+    // in a cluster, move the initial self-heal job to a backup thread,
+    // so that we do not block on startup
+    try {
+      require('@arangodb/tasks').register({
+        id: 'self-heal',
+        isSystem: true,
+        offset: 3, // give it a bit of time
+        period: 5 * 60, // secs
+        command: function () {
+          const FoxxManager = require('@arangodb/foxx/manager');
+          FoxxManager.healAll();
+        }
+      });
+    } catch (ee) {
+      if (ee.errorNum !== errors.ERROR_TASK_DUPLICATE_ID.code) {
+        // a "duplicate task id" error is actually allowed here, because
+        // the bootstrap function may be called repeatedly by the BootstrapFeature
+        throw ee;
+      }
+    }
   }
-  selfHealAll();
 }
 
 function commitLocalState (replace) {
@@ -423,17 +445,34 @@ function propagateSelfHeal () {
 
 // GLOBAL_SERVICE_MAP manipulation
 
-function initLocalServiceMap () {
-  const localServiceMap = new Map();
+function initInternalServiceMap () {
+  let internalServiceMap = new Map();
+  // initialize /_admin/aardvark and /_api/foxx
   for (const mount of SYSTEM_SERVICE_MOUNTS) {
     try {
-      const serviceDefinition = utils.getServiceDefinition(mount) || {mount};
+      const serviceDefinition = {mount};
       const service = FoxxService.create(serviceDefinition);
-      localServiceMap.set(service.mount, service);
+      internalServiceMap.set(service.mount, service);
     } catch (e) {
       console.errorStack(e);
     }
   }
+  INTERNAL_SERVICE_MAP.set(db._name(), internalServiceMap);
+}
+
+function initLocalServiceMap () {
+  const localServiceMap = new Map();
+  
+  if (!INTERNAL_SERVICE_MAP.has(db._name())) {
+    // initialize /_admin/aardvark and /_api/foxx
+    initInternalServiceMap();
+  }
+
+  // copy internal services into map
+  for (let [mount, service] of INTERNAL_SERVICE_MAP.get(db._name())) {
+    localServiceMap.set(mount, service);
+  }
+
   for (const serviceDefinition of utils.getStorage().all()) {
     try {
       const service = loadInstalledService(serviceDefinition);
@@ -445,7 +484,15 @@ function initLocalServiceMap () {
   GLOBAL_SERVICE_MAP.set(db._name(), localServiceMap);
 }
 
-function ensureFoxxInitialized () {
+function ensureFoxxInitialized (internalOnly) {
+  if (internalOnly) {
+    if (!INTERNAL_SERVICE_MAP.has(db._name())) {
+      // initialize /_admin/aardvark and /_api/foxx
+      initInternalServiceMap();
+    }
+    return;
+  }
+
   if (!GLOBAL_SERVICE_MAP.has(db._name())) {
     initLocalServiceMap();
   }
@@ -457,12 +504,19 @@ function ensureServiceLoaded (mount) {
 }
 
 function getServiceInstance (mount) {
-  ensureFoxxInitialized();
-  const localServiceMap = GLOBAL_SERVICE_MAP.get(db._name());
+  let internalOnly = mount === '/_admin/aardvark';
+  ensureFoxxInitialized(internalOnly);
+
+  let localServiceMap;
+  if (internalOnly) {
+    localServiceMap = INTERNAL_SERVICE_MAP.get(db._name());
+  } else {
+    localServiceMap = GLOBAL_SERVICE_MAP.get(db._name());
+  }
   let service;
   if (localServiceMap.has(mount)) {
     service = localServiceMap.get(mount);
-  } else {
+  } else if (!internalOnly) {
     service = reloadInstalledService(mount);
   }
   if (!service) {
@@ -1055,8 +1109,11 @@ function requireService (mount) {
   return ensureServiceExecuted(service, true).exports;
 }
 
-function getMountPoints () {
-  ensureFoxxInitialized();
+function getMountPoints (internalOnly) {
+  ensureFoxxInitialized(internalOnly);
+  if (internalOnly) {
+    return Array.from(INTERNAL_SERVICE_MAP.get(db._name()).keys());
+  }
   return Array.from(GLOBAL_SERVICE_MAP.get(db._name()).keys());
 }
 

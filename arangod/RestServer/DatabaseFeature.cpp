@@ -255,7 +255,7 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _isInitiallyEmpty(false),
       _checkVersion(false),
       _upgrade(false),
-      _useOldSystemCollections(false) {
+      _useOldSystemCollections(true) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
 

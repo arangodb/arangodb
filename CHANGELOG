@@ -36,7 +36,7 @@ v3.7.3 (XXXX-XX-XX)
   The default value for the option is going to change to `false` in v3.8,
   meaning the collections will not be created anymore there by default.
 
-  Any functionality related to the `_modules` system collection is deprecate
+  Any functionality related to the `_modules` system collection is deprecated
   and will be removed in ArangoDB v3.9.
 
   Two side effects of turning this option off are:
@@ -47,7 +47,7 @@ v3.7.3 (XXXX-XX-XX)
   Already existing `_modules` and `_fishbowl` system collections will not be
   modified by this PR, even though they will likely be empty and unused.
 
-* Don't iterate over all databases as server startup in order to initialize the
+* Don't iterate over all databases at server startup in order to initialize the
   routing information. This is not necessary, as the routing information is
   global and not tied to a specific database.
 
