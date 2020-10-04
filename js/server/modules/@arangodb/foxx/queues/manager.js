@@ -233,7 +233,7 @@ exports.manage = function () {
     global.ArangoServerState.clearFoxxmasterQueueupdate();
   }
 
-  var initialDatabase = db._name();
+  let initialDatabase = db._name();
 
   db._databases().forEach(function (database) {
     try {
