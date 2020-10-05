@@ -363,10 +363,6 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
       output.advanceRow();
     }
 
-    // output.getClientCall().softLimit == 0) {
-    //    return {ExecutorState::HASMORE, NoStats{}, {}};
-    // }
-
     auto const callSet = requiresMoreInput(input, output.getClientCall());
     if (!callSet.empty()) {
       return {ExecutorState::HASMORE, NoStats{}, callSet};
