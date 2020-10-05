@@ -60,7 +60,7 @@ class UpsertTestCase {
     // as the single server will simply not set them
     this._multipleShards = this._isBitSet(7);
     this._shardKey = this._isBitSet(8);
-    this._satellite = this._isBitSet(9);
+    this._satellite = require("internal").isEnterprise() ? this._isBitSet(9) : false;
   }
 
   isValidCombination() {
