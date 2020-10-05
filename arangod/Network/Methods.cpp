@@ -234,7 +234,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         _startTime(std::chrono::steady_clock::now()),
         _endTime(_startTime + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
                                   options.timeout)) {
-    _tmp_req = prepareRequest(type, path, payload, _options, headers);
+    _tmp_req = prepareRequest(type, std::move(path), std::move(payload), _options, std::move(headers));
   }
 
   ~RequestsState() = default;
