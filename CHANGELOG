@@ -1,3 +1,16 @@
+v3.7.4 (XXXX-XX-XX)
+-------------------
+
+* Changed the server-side implementation of the following internal JavaScript 
+  APIs to no-ops:
+  * `internal.reloadAqlFunctions()`: this is a no-op function now
+  * `@arangodb/actions.buildRouting()`: this is a no-op function now
+  * `@arangodb/actions.routingTree`: will return an empty object
+  * `@arangodb/actions.routingList`: will return an empty object
+
+  All the above APIs were intended to be used for internal means only.
+
+
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
