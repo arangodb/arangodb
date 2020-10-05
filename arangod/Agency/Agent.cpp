@@ -384,38 +384,6 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
   }
 }
 
-void Agent::logsForTrigger() {
-  // Wake up poll rest handlers:
-  // Get everything from _lowestPromise
-  // Create one builder pass shared pointer to all rest handlers
-  // Every resthandler takes, what it needs.
-  // Delete all promises.
-  // Reset _lowestPromise.
-  std::lock_guard lck(_promLock);
-  auto builder = std::make_shared<VPackBuilder>();
-  {
-    VPackObjectBuilder e(builder.get());
-    auto const logs = _state.get(_lowestPromise, _commitIndex.load(std::memory_order_relaxed));
-
-    TRI_ASSERT(!logs.empty());
-    if (!logs.empty()) {
-      builder->add(VPackValue("result"));
-      VPackObjectBuilder e(builder.get());
-      builder->add("firstIndex", VPackValue(logs.front().index));
-      builder->add("commitIndex", VPackValue(logs.back().index));
-      builder->add(VPackValue("log"));
-      VPackArrayBuilder ls(builder.get());
-      for (auto const& i : logs) {
-        VPackObjectBuilder l(builder.get());
-        builder->add("index", VPackValue(i.index));
-        builder->add("query", VPackSlice(i.entry->data()));
-      }
-    }
-  }
-  triggerPollsNoLock(builder);
-  _lowestPromise = std::numeric_limits<index_t>::max();
-}
-
 /// Followers' append entries
 priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leaderId,
                                            index_t prevIndex, term_t prevTerm,
@@ -464,14 +432,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
       LOG_TOPIC("b0b19", DEBUG, Logger::AGENCY)
           << "Finished empty AppendEntriesRPC from " << leaderId
           << " with term " << term;
-      {
-        WRITE_LOCKER(oLocker, _outputLock);
-        index_t const tmp = std::max(_commitIndex.load(std::memory_order_relaxed), std::min(leaderCommitIndex, lastIndex));
-        if (tmp > _commitIndex.load(std::memory_order_relaxed)) {
-          logsForTrigger();
-        }
-        _commitIndex = tmp;
-      }
+      _commitIndex = std::max(_commitIndex.load(std::memory_order_relaxed), std::min(leaderCommitIndex, lastIndex));
       return priv_rpc_ret_t(true, t);
     } else {
       return priv_rpc_ret_t(false, t);
@@ -495,12 +456,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
   {
     WRITE_LOCKER(oLocker, _outputLock);
     CONDITION_LOCKER(guard, _waitForCV);
-    index_t const tmp = std::max(_commitIndex.load(std::memory_order_relaxed), std::min(leaderCommitIndex, lastIndex));
-    if (tmp > _commitIndex.load(std::memory_order_relaxed)) {
-      logsForTrigger();
-    }
-    _commitIndex = tmp;
-    _local_index = tmp;
+    _commitIndex = std::max(_commitIndex.load(std::memory_order_relaxed), std::min(leaderCommitIndex, lastIndex));
     _waitForCV.broadcast();
     if (leaderCommitIndex >= _state.nextCompactionAfter() &&
         payload[nqs - 1].get("index").getNumber<index_t>() >= _state.nextCompactionAfter()) {
@@ -851,12 +807,9 @@ void Agent::advanceCommitIndex() {
           << index << " to read db, done";
 
       _commitIndex = index;
-      _local_index = index;
 
       // Wake up write rest handlers:
       _waitForCV.broadcast();
-
-      logsForTrigger();
 
       if (_commitIndex >= _state.nextCompactionAfter()) {
         _compactor.wakeUp();
