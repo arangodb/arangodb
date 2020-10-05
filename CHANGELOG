@@ -1,6 +1,10 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed a bug in handling of followers which refuse to replicate operations.
+  In the case that the follower has simply been dropped in the meantime, we now
+  avoid an error reported by the shard leader.
+
 * Fix a performance regression when a LIMIT is combined with a COLLECT WITH
   COUNT INTO. Reported in ES-692.
 
