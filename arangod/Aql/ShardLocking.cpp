@@ -118,6 +118,14 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
             TRI_ERROR_INTERNAL, "unable to cast node to ModificationNode");
       }
       auto* col = modNode->collection();
+      // If we are in the UPSERT on Coordinator Case (snippetID == max),
+      // and have a Smart Edge collection, we need to lock the toCollection as well.
+      // This is not necessary for all other Nodes
+      // as they create this locking by having a second Modification node instead,
+      // which is distributed to the servers.
+      bool includeSmartWriteShards = baseNode->getType() == ExecutionNode::UPSERT &&
+                                     snippetId == std::numeric_limits<size_t>::max() &&
+                                     col->isSmart() && col->type() == TRI_COL_TYPE_EDGE;
 
       std::unordered_set<std::string> restrictedShard;
       if (modNode->isRestricted()) {
@@ -128,7 +136,8 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
       updateLocking(col,
                     modNode->getOptions().exclusive ? AccessMode::Type::EXCLUSIVE
                                                     : AccessMode::Type::WRITE,
-                    snippetId, restrictedShard, modNode->isUsedAsSatellite());
+                    snippetId, restrictedShard, modNode->isUsedAsSatellite(),
+                    includeSmartWriteShards);
       break;
     }
     default:
@@ -140,7 +149,8 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
 void ShardLocking::updateLocking(Collection const* col,
                                  AccessMode::Type const& accessType, size_t snippetId,
                                  std::unordered_set<std::string> const& restrictedShards,
-                                 bool usedAsSatellite) {
+                                 bool usedAsSatellite,
+                                 bool includeSmartWriteShards) {
   auto& info = _collectionLocking[col];
   // We need to upgrade the lock
   info.lockType = (std::max)(info.lockType, accessType);
@@ -149,7 +159,7 @@ void ShardLocking::updateLocking(Collection const* col,
   }
   if (info.allShards.empty()) {
     // Load shards only once per collection!
-    auto const shards = col->shardIds(_query.queryOptions().restrictToShards);
+    auto const shards = col->shardIds(_query.queryOptions().restrictToShards, includeSmartWriteShards);
     // What if we have an empty shard list here?
     if (shards->empty()) {
       LOG_TOPIC("0997e", WARN, arangodb::Logger::AQL)

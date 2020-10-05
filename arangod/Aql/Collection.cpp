@@ -135,11 +135,11 @@ std::string Collection::distributeShardsLike() const {
 }
 
 /// @brief returns the shard ids of a collection
-std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
+std::shared_ptr<std::vector<std::string>> Collection::shardIds(bool includeSmartWriteShards) const {
   auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
   auto coll = getCollection();
   if (coll->isSmart() && coll->type() == TRI_COL_TYPE_EDGE) {
-    auto names = coll->realNamesForRead();
+    auto names = includeSmartWriteShards ? coll->realNames() : coll->realNamesForRead();
     auto res = std::make_shared<std::vector<std::string>>();
     for (auto const& n : names) {
       auto collectionInfo = clusterInfo.getCollection(_vocbase->name(), n);
@@ -157,9 +157,9 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
 
 /// @brief returns the filtered list of shard ids of a collection
 std::shared_ptr<std::vector<std::string>> Collection::shardIds(
-    std::unordered_set<std::string> const& includedShards) const {
+    std::unordered_set<std::string> const& includedShards, bool includeSmartWriteShards) const {
   // use the simple method first
-  auto copy = shardIds();
+  auto copy = shardIds(includeSmartWriteShards);
 
   if (includedShards.empty()) {
     // no shards given => return them all!

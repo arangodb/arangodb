@@ -92,10 +92,11 @@ struct Collection {
   size_t responsibleServers(std::unordered_set<std::string>&) const;
 
   /// @brief returns the shard ids of a collection
-  std::shared_ptr<std::vector<std::string>> shardIds() const;
+  std::shared_ptr<std::vector<std::string>> shardIds(bool includeSmartWriteShards = false) const;
 
   /// @brief returns the filtered list of shard ids of a collection
-  std::shared_ptr<std::vector<std::string>> shardIds(std::unordered_set<std::string> const& includedShards) const;
+  std::shared_ptr<std::vector<std::string>> shardIds(std::unordered_set<std::string> const& includedShards,
+                                                     bool includeSmartWriteShards = false) const;
 
   /// @brief returns the shard keys of a collection
   /// if "normalize" is true, then the shard keys for a smart vertex collection
