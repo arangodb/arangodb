@@ -1,6 +1,8 @@
 devel
 -----
 
+* Optimization of empty append entries
+
 * Added metric `arangodb_agency_callback_registered counter` for tracking the
   total number of agency callbacks that were registered.
 
