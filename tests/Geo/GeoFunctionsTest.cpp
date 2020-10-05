@@ -81,6 +81,7 @@ class GeoEqualsTest : public ::testing::Test {
       fakeit::When(Method(contextMock, getVPackOptions)).AlwaysReturn(&velocypack::Options::Defaults);
       fakeit::When(Method(contextMock, leaseBuilder)).AlwaysDo([]() { return new arangodb::velocypack::Builder(); });
       fakeit::When(Method(contextMock, returnBuilder)).AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
+      fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& { return this->trx; });
     }
 
     ~GeoEqualsTest() {
@@ -102,13 +103,13 @@ TEST_F(GeoEqualsPointTest, checking_two_equal_points) {
   foo.close();
   paramsA.emplace_back(foo.slice().at(0));
   paramsA.emplace_back(foo.slice().at(1));
-  AqlValue pointA = Functions::GeoPoint(&expressionContext, &trx, paramsA);
+  AqlValue pointA = Functions::GeoPoint(&expressionContext, nullptr, paramsA);
 
   paramsC.emplace_back(pointA.clone());
   paramsC.emplace_back(pointA.clone());
   pointA.destroy();
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
@@ -121,7 +122,7 @@ TEST_F(GeoEqualsPointTest, checking_two_unequal_points) {
   foo.close();
   paramsA.emplace_back(foo.slice().at(0));
   paramsA.emplace_back(foo.slice().at(1));
-  AqlValue pointA = Functions::GeoPoint(&expressionContext, &trx, paramsA);
+  AqlValue pointA = Functions::GeoPoint(&expressionContext, nullptr, paramsA);
   paramsC.emplace_back(pointA.clone());
   pointA.destroy();
   
@@ -132,11 +133,11 @@ TEST_F(GeoEqualsPointTest, checking_two_unequal_points) {
   bar.close();
   paramsB.emplace_back(bar.slice().at(0));
   paramsB.emplace_back(bar.slice().at(1));
-  AqlValue pointB = Functions::GeoPoint(&expressionContext, &trx, paramsB);
+  AqlValue pointB = Functions::GeoPoint(&expressionContext, nullptr, paramsB);
   paramsC.emplace_back(pointB.clone());
   pointB.destroy();
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
@@ -155,12 +156,12 @@ TEST_F(GeoEqualsMultipointTest, checking_two_equal_multipoints) {
 
   paramsA.emplace_back(jsonA);
 
-  AqlValue resA = Functions::GeoMultiPoint(&expressionContext, &trx, paramsA);
+  AqlValue resA = Functions::GeoMultiPoint(&expressionContext, nullptr, paramsA);
   paramsC.emplace_back(resA.clone());
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
@@ -179,12 +180,12 @@ TEST_F(GeoEqualsMultipointTest, checking_two_unequal_multipoints) {
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  AqlValue resA = Functions::GeoMultiPoint(&expressionContext, &trx, paramsA);
+  AqlValue resA = Functions::GeoMultiPoint(&expressionContext, nullptr, paramsA);
   paramsC.emplace_back(resA);
-  AqlValue resB = Functions::GeoMultiPoint(&expressionContext, &trx, paramsB);
+  AqlValue resB = Functions::GeoMultiPoint(&expressionContext, nullptr, paramsB);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
@@ -204,12 +205,12 @@ TEST_F(GeoEqualsPolygonTest, checking_two_equal_polygons) {
 
   paramsA.emplace_back(jsonA);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, nullptr, paramsA);
   paramsC.emplace_back(resA.clone());
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   resC.destroy();
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
@@ -224,12 +225,12 @@ TEST_F(GeoEqualsPolygonTest, checking_two_equal_more_detailed_polygons) {
 
   paramsA.emplace_back(jsonA);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, nullptr, paramsA);
   paramsC.emplace_back(resA.clone());
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
@@ -248,12 +249,12 @@ TEST_F(GeoEqualsPolygonTest, checking_two_unequal_polygons) {
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, nullptr, paramsA);
   paramsC.emplace_back(resA);
-  AqlValue resB = Functions::GeoPolygon(&expressionContext, &trx, paramsB);
+  AqlValue resB = Functions::GeoPolygon(&expressionContext, nullptr, paramsB);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
@@ -267,12 +268,12 @@ TEST_F(GeoEqualsPolygonTest, checking_two_nested_equal_polygons) {
 
   paramsA.emplace_back(jsonA);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, nullptr, paramsA);
   paramsC.emplace_back(resA.clone());
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
@@ -291,12 +292,12 @@ TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_outer_loop_dif
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, nullptr, paramsA);
   paramsC.emplace_back(resA);
-  AqlValue resB = Functions::GeoPolygon(&expressionContext, &trx, paramsB);
+  AqlValue resB = Functions::GeoPolygon(&expressionContext, nullptr, paramsB);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
@@ -315,12 +316,12 @@ TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_inner_loop_dif
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, nullptr, paramsA);
   paramsC.emplace_back(resA);
-  AqlValue resB = Functions::GeoPolygon(&expressionContext, &trx, paramsB);
+  AqlValue resB = Functions::GeoPolygon(&expressionContext, nullptr, paramsB);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
@@ -339,12 +340,12 @@ TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_inner_and_oute
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, nullptr, paramsA);
   paramsC.emplace_back(resA);
-  AqlValue resB = Functions::GeoPolygon(&expressionContext, &trx, paramsB);
+  AqlValue resB = Functions::GeoPolygon(&expressionContext, nullptr, paramsB);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
@@ -367,11 +368,11 @@ TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_first_parameter) {
 
   paramsA.emplace_back(jsonA);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, nullptr, paramsA);
   paramsC.emplace_back(resA);
   paramsC.emplace_back(jsonB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isNull());
 }
 
@@ -393,11 +394,11 @@ TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_second_parameter) {
 
   paramsA.emplace_back(jsonA);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, nullptr, paramsA);
   paramsC.emplace_back(jsonB);
   paramsC.emplace_back(resA);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isNull());
 }
 } // geo_equals_polygon
@@ -414,13 +415,13 @@ TEST_F(GeoEqualsLinestringTest, checking_two_equal_linestrings) {
 
   paramsA.emplace_back(jsonA);
 
-  AqlValue resA = Functions::GeoLinestring(&expressionContext, &trx, paramsA);
+  AqlValue resA = Functions::GeoLinestring(&expressionContext, nullptr, paramsA);
 
   paramsC.emplace_back(resA.clone());
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
@@ -439,13 +440,13 @@ TEST_F(GeoEqualsLinestringTest, checking_two_unequal_linestrings) {
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  AqlValue resA = Functions::GeoLinestring(&expressionContext, &trx, paramsA);
-  AqlValue resB = Functions::GeoLinestring(&expressionContext, &trx, paramsB);
+  AqlValue resA = Functions::GeoLinestring(&expressionContext, nullptr, paramsA);
+  AqlValue resB = Functions::GeoLinestring(&expressionContext, nullptr, paramsB);
 
   paramsC.emplace_back(resA);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
@@ -464,12 +465,12 @@ TEST_F(GeoEqualsMultilinestringTest, checking_two_equal_multilinestrings) {
 
   paramsA.emplace_back(jsonA);
 
-  AqlValue resA = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsA);
+  AqlValue resA = Functions::GeoMultiLinestring(&expressionContext, nullptr, paramsA);
   paramsC.emplace_back(resA.clone());
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
@@ -488,13 +489,13 @@ TEST_F(GeoEqualsMultilinestringTest, checking_two_unequal_multilinestrings) {
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  AqlValue resA = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsA);
-  AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsB);
+  AqlValue resA = Functions::GeoMultiLinestring(&expressionContext, nullptr, paramsA);
+  AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, nullptr, paramsB);
 
   paramsC.emplace_back(resA);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
@@ -522,13 +523,13 @@ TEST_F(GeoEqualsMixedTypeTest, checking_polygon_with_multilinestring) {
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
-  AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsB);
+  AqlValue resA = Functions::GeoPolygon(&expressionContext, nullptr, paramsA);
+  AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, nullptr, paramsB);
 
   paramsC.emplace_back(resA);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
@@ -551,12 +552,12 @@ TEST_F(GeoEqualsMixedTypeTest, checking_multipoint_with_multilinestring) {
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  AqlValue resA = Functions::GeoMultiPoint(&expressionContext, &trx, paramsA);
+  AqlValue resA = Functions::GeoMultiPoint(&expressionContext, nullptr, paramsA);
   paramsC.emplace_back(resA);
-  AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsB);
+  AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, nullptr, paramsB);
   paramsC.emplace_back(resB);
 
-  AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
+  AqlValue resC = Functions::GeoEquals(&expressionContext, nullptr, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }

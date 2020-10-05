@@ -60,7 +60,9 @@ AqlValue evaluate(AqlValue const& lhs,
 
   fakeit::Mock<transaction::Methods> trxMock;
   fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysDo([&trxCtx](){ return &trxCtx; });
-  transaction::Methods& trx = trxMock.get();
+  fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& {
+    return trxMock.get();
+  });
 
   SmallVector<AqlValue>::allocator_type::arena_type arena;
   SmallVector<AqlValue> params{arena};
@@ -73,7 +75,7 @@ AqlValue evaluate(AqlValue const& lhs,
     params.emplace_back(VPackSlice::nullSlice()); // redundant argument
   }
 
-  AqlValue result = Functions::LevenshteinMatch(&expressionContext, &trx, params);
+  AqlValue result = Functions::LevenshteinMatch(&expressionContext, nullptr, params);
 
   // explicitly call cleanup on the mocked transaction context because
   // for whatever reason the context's dtor does not fire and thus we

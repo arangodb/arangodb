@@ -131,9 +131,6 @@ TEST(DateFunctionsTest, IS_DATESTRING) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
 
-  fakeit::Mock<transaction::Methods> trxMock;
-  transaction::Methods& trx = trxMock.get();
-
   std::vector<TestDate> testees = {
 #include "IS_DATESTRING.testcases"
   };
@@ -142,7 +139,7 @@ TEST(DateFunctionsTest, IS_DATESTRING) {
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{arena};
     testee.buildParams(params);
-    AqlValue res = Functions::IsDatestring(&expressionContext, &trx, params);
+    AqlValue res = Functions::IsDatestring(&expressionContext, nullptr, params);
     testee.validateResult(res);
 
     // Free input parameters
@@ -189,9 +186,6 @@ TEST(DateFunctionsTest, DATE_COMPARE) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
 
-  fakeit::Mock<transaction::Methods> trxMock;
-  transaction::Methods& trx = trxMock.get();
-
   std::vector<TestDate> testees = {
 #include "DATE_COMPARE.testcases"
   };
@@ -200,7 +194,7 @@ TEST(DateFunctionsTest, DATE_COMPARE) {
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{arena};
     testee.buildParams(params);
-    AqlValue res = Functions::DateCompare(&expressionContext, &trx, params);
+    AqlValue res = Functions::DateCompare(&expressionContext, nullptr, params);
     testee.validateResult(res);
     // Free input parameters
     for (auto& it : params) {
@@ -265,7 +259,7 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
         params.emplace_back(flagBuilder.slice());
         switchBuilder.add(VPackValue(true));
         params.emplace_back(switchBuilder.slice());
-        AqlValue res = Functions::DateDiff(&expressionContext, &trx, params);
+        AqlValue res = Functions::DateDiff(&expressionContext, nullptr, params);
         ASSERT_TRUE(res.isNumber());
         double out = res.toDouble();
         ASSERT_GE(out, expected - eps);
@@ -283,7 +277,7 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
         params.emplace_back(flagBuilder.slice());
         switchBuilder.add(VPackValue(false));
         params.emplace_back(switchBuilder.slice());
-        AqlValue res = Functions::DateDiff(&expressionContext, &trx, params);
+        AqlValue res = Functions::DateDiff(&expressionContext, nullptr, params);
         ASSERT_TRUE(res.isNumber());
         ASSERT_EQ(std::round(res.toDouble()), std::round(expected));
         for (auto& it : params) {
@@ -300,7 +294,7 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
         params.emplace_back(flagBuilder.slice());
         switchBuilder.add(VPackValue(true));
         params.emplace_back(switchBuilder.slice());
-        AqlValue res = Functions::DateDiff(&expressionContext, &trx, params);
+        AqlValue res = Functions::DateDiff(&expressionContext, nullptr, params);
         ASSERT_TRUE(res.isNumber());
         double out = res.toDouble();
         ASSERT_GE(out, -(expected + eps));
@@ -318,7 +312,7 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
         params.emplace_back(flagBuilder.slice());
         switchBuilder.add(VPackValue(false));
         params.emplace_back(switchBuilder.slice());
-        AqlValue res = Functions::DateDiff(&expressionContext, &trx, params);
+        AqlValue res = Functions::DateDiff(&expressionContext, nullptr, params);
         ASSERT_TRUE(res.isNumber());
         ASSERT_EQ(std::round(res.toDouble()), -std::round(expected));
         for (auto& it : params) {
@@ -445,9 +439,6 @@ TEST(DateFunctionsTest, DATE_SUBTRACT) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
 
-  fakeit::Mock<transaction::Methods> trxMock;
-  transaction::Methods& trx = trxMock.get();
-
   std::vector<TestDate> testees = {
 #include "DATE_SUBTRACT.testcases"
   };
@@ -456,7 +447,7 @@ TEST(DateFunctionsTest, DATE_SUBTRACT) {
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{arena};
     testee.buildParams(params);
-    AqlValue res = Functions::DateSubtract(&expressionContext, &trx, params);
+    AqlValue res = Functions::DateSubtract(&expressionContext, nullptr, params);
     testee.validateResult(res);
     res.destroy();
     // Free input parameters

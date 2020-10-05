@@ -62,13 +62,11 @@ class NgramSimilarityFunctionTest : public ::testing::Test {
       if (warnings) {
         warnings->insert(c);
       }});
-    fakeit::Mock<transaction::Context> trxCtxMock;
-    fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysDo([]() {
-      static VPackOptions options;
-      return &options;
-      });
     TRI_vocbase_t mockVocbase(TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto trx = server.createFakeTransaction();
+    fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& {
+      return *trx;
+    });
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{ arena };
     if (attribute) {
@@ -80,7 +78,7 @@ class NgramSimilarityFunctionTest : public ::testing::Test {
     if (ngram_size) {
       params.emplace_back(*ngram_size);
     }
-    return Functions::NgramSimilarity(&expressionContext, trx.get(), params);
+    return Functions::NgramSimilarity(&expressionContext, nullptr, params);
   }
 
   void assertNgramSimilarityFail(size_t line,

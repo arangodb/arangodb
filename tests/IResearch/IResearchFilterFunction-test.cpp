@@ -107,7 +107,7 @@ class IResearchFilterFunctionTest
         arangodb::aql::Function::makeFlags(
             // fake non-deterministic
             arangodb::aql::Function::Flags::CanRunOnDBServer),
-        [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+        [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const*,
            arangodb::aql::VPackFunctionParameters const& params) {
           TRI_ASSERT(!params.empty());
           return params[0];
@@ -120,7 +120,7 @@ class IResearchFilterFunctionTest
             // fake deterministic
             arangodb::aql::Function::Flags::Deterministic, arangodb::aql::Function::Flags::Cacheable,
             arangodb::aql::Function::Flags::CanRunOnDBServer),
-        [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+        [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const*,
            arangodb::aql::VPackFunctionParameters const& params) {
           TRI_ASSERT(!params.empty());
           return params[0];

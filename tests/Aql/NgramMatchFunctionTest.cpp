@@ -83,6 +83,9 @@ class NgramMatchFunctionTest : public ::testing::Test {
         warnings->insert(c);
       }});
     auto trx = server.createFakeTransaction();
+    fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& {
+      return *trx;
+    });
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{ arena };
     if (Attribute) {
@@ -97,7 +100,7 @@ class NgramMatchFunctionTest : public ::testing::Test {
     if (analyzer) {
       params.emplace_back(*analyzer);
     }
-    return Functions::NgramMatch(&expressionContext, trx.get(), params);
+    return Functions::NgramMatch(&expressionContext, nullptr, params);
   }
 
   void assertNgramMatchFail(size_t line,

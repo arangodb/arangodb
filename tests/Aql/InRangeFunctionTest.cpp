@@ -63,13 +63,12 @@ class InRangeFunctionTest : public ::testing::Test {
       if (warnings) {
         warnings->insert(c);
       }});
-    fakeit::Mock<transaction::Context> trxCtxMock;
-    fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysDo([]() {
-      static VPackOptions options;
-      return &options;
-      });
     TRI_vocbase_t mockVocbase(TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     auto trx = server.createFakeTransaction();
+    fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&trx]() -> transaction::Methods& {
+      return *trx;
+    });
+    
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{ arena };
     if (attribute) {
@@ -87,7 +86,7 @@ class InRangeFunctionTest : public ::testing::Test {
     if (includeUpper) {
       params.emplace_back(*includeUpper);
     }
-    return Functions::InRange(&expressionContext, trx.get(), params);
+    return Functions::InRange(&expressionContext, nullptr, params);
   }
 
   void assertInRangeFail(size_t line,

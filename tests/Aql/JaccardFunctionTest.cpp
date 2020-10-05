@@ -47,7 +47,7 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
   fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](int, char const*){ });
-
+  
   fakeit::Mock<transaction::Context> trxCtxMock;
   fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysDo([](){
     static VPackOptions options;
@@ -58,6 +58,10 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs) {
   fakeit::Mock<transaction::Methods> trxMock;
   fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&trxCtx);
   transaction::Methods& trx = trxMock.get();
+  
+  fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&trx]() -> transaction::Methods& {
+    return trx;
+  });
 
   SmallVector<AqlValue>::allocator_type::arena_type arena;
   SmallVector<AqlValue> params{arena};
@@ -65,7 +69,7 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs) {
   params.emplace_back(rhs);
   params.emplace_back(VPackSlice::nullSlice()); // redundant argument
 
-  return Functions::Jaccard(&expressionContext, &trx, params);
+  return Functions::Jaccard(&expressionContext, nullptr, params);
 }
 
 AqlValue evaluate(char const* lhs, char const* rhs) {
