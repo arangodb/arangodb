@@ -522,7 +522,6 @@ RestStatus RestAgencyHandler::handleRead() {
         return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE,
                              "No leader");
       } else {
-        TRI_ASSERT(ret.redirect != _agent->id());
         redirectRequest(ret.redirect);
       }
     }
