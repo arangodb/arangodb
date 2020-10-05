@@ -718,6 +718,7 @@ void Constituent::run() {
                 double diff = now - it->second;
                 if (diff >= interval) {
                   needed = true;
+                  nextWakeup = 0;
                 } else {
                   // diff < interval, so only needed again in interval-diff s
                   double waitOnly = interval - diff;
@@ -729,8 +730,17 @@ void Constituent::run() {
                 }
               }
             }
+            LOG_TOPIC("ddeea", DEBUG, Logger::AGENCY) << "Considering empty AppendEntriesRPC for follower "
+              << followerId << " needed: " << needed;
             if (needed) {
+              auto startTime = std::chrono::steady_clock::now();
               _agent->sendEmptyAppendEntriesRPC(followerId);
+              auto endTime = std::chrono::steady_clock::now();
+              if (endTime - startTime > std::chrono::milliseconds(100)) {
+                LOG_TOPIC("ddeeb", WARN, Logger::AGENCY)
+                  << "Call to sendEmptyAppendEntriesRPC took longer than 0.1 s: time needed: "
+                  << std::chrono::duration<double>(endTime - startTime).count();
+              }
             }
           }
         }
@@ -740,7 +750,7 @@ void Constituent::run() {
         // This is the smallest time until any of the followers need a
         // new empty heartbeat:
         uint64_t timeout = static_cast<uint64_t>(1000000.0 * nextWakeup);
-        {
+        if (timeout > 0) {
           CONDITION_LOCKER(guardv, _cv);
           _cv.wait(timeout);
         }
