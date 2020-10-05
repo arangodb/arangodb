@@ -41,6 +41,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/AgencyCallback.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
@@ -91,10 +92,10 @@ class CollectionWatcher {
     // Make sure we did not miss a callback
     _agencyCallback->refetchAndUpdate(true, false);
     return _present.load();
-  };
+  }
 
-private:
-  AgencyCallbackRegistry *_agencyCallbackRegistry;
+ private:
+  AgencyCallbackRegistry* _agencyCallbackRegistry;
   std::shared_ptr<AgencyCallback> _agencyCallback;
 
   // TODO: this does not really need to be atomic: We only write to it
