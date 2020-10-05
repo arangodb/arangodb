@@ -65,6 +65,7 @@ void Constituent::configure(Agent* agent) {
 
   if (size() == 1) {
     _role = LEADER;
+    _IamLeader = true;
     LOG_TOPIC("c396f", INFO, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
   }
 }
@@ -78,6 +79,7 @@ Constituent::Constituent(application_features::ApplicationServer& server)
       _leaderID(NO_LEADER),
       _lastHeartbeatSeen(0.0),
       _role(FOLLOWER),
+      _IamLeader(false),
       _agent(nullptr),
       _votedFor(NO_LEADER) {}
 
@@ -211,6 +213,7 @@ void Constituent::followNoLock(term_t t, std::string const& votedFor) {
     termNoLock(t, votedFor);
   }
   _role = FOLLOWER;
+  _IamLeader = false;
 
   LOG_TOPIC("f370f", INFO, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;
 
@@ -245,6 +248,7 @@ void Constituent::lead(term_t term) {
 
     // I'm the leader
     _role = LEADER;
+    _IamLeader = true;
 
     LOG_TOPIC("0d93b", INFO, Logger::AGENCY) << _id << ": leading in term " << _term;
     _leaderID = _id;
@@ -273,6 +277,7 @@ void Constituent::candidate() {
 
   if (_role != CANDIDATE) {
     _role = CANDIDATE;
+    _IamLeader = false;
     LOG_TOPIC("aefab", INFO, Logger::AGENCY) << _id << ": candidating in term " << _term;
 
     // Keep track of this election time:
@@ -283,8 +288,7 @@ void Constituent::candidate() {
 
 /// Leading?
 bool Constituent::leading() const {
-  MUTEX_LOCKER(guard, _termVoteLock);
-  return _role == LEADER;
+  return _IamLeader.load(std::memory_order_relaxed);
 }
 
 /// Following?
@@ -565,6 +569,7 @@ void Constituent::update(std::string const& leaderID, term_t t) {
         << "' in term " << _term;
     _leaderID = leaderID;
     _role = FOLLOWER;
+    _IamLeader = false;
   }
 }
 
@@ -647,8 +652,14 @@ void Constituent::run() {
                                          " in term "
                                       << _term;
       _role = FOLLOWER;
+      _IamLeader = false;
     }
+
+    std::chrono::steady_clock::time_point constituentLoopStart;
+
     while (!this->isStopping()) {
+      constituentLoopStart = std::chrono::steady_clock::now();
+
       role_t role;
       {
         MUTEX_LOCKER(guard, _termVoteLock);
@@ -753,6 +764,8 @@ void Constituent::run() {
           }
         }
 
+        auto beforeWaitTime = std::chrono::steady_clock::now();
+
         // This is the smallest time until any of the followers need a
         // new empty heartbeat:
         uint64_t timeout = static_cast<uint64_t>(1000000.0 * nextWakeup);
@@ -760,6 +773,17 @@ void Constituent::run() {
           CONDITION_LOCKER(guardv, _cv);
           _cv.wait(timeout);
         }
+        auto afterWaitTime = std::chrono::steady_clock::now();
+        if (afterWaitTime - constituentLoopStart > std::chrono::seconds(1) * _agent->config().minPing() * _agent->config().timeoutMult()) {
+          LOG_TOPIC("aa123", WARN, Logger::AGENCY)
+            << "Constituent loop delayed: First part took "
+            << (beforeWaitTime - constituentLoopStart).count()
+            << ", second part took "
+            << (afterWaitTime - beforeWaitTime).count()
+            << ", which is together more than minPing="
+            << _agent->config().minPing() * _agent->config().timeoutMult();
+        }
+
       }
     }
   }

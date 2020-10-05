@@ -230,11 +230,11 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
     ///  (_waitForCV's mutex stops writes to _commitIndex)
     CONDITION_LOCKER(guard, _waitForCV);
     if (leading()) {
-      if (lastCommitIndex != _commitIndex) {
+      if (lastCommitIndex != _commitIndex.load(std::memory_order_relaxed)) {
         // We restart the timeout computation if there has been progress:
         startTime = steady_clock::now();
       }
-      lastCommitIndex = _commitIndex;
+      lastCommitIndex = _commitIndex.load(std::memory_order_relaxed);
       if (lastCommitIndex >= index) {
         return Agent::raft_commit_t::OK;
       }
@@ -245,7 +245,8 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
     duration<double> d = steady_clock::now() - startTime;
 
     LOG_TOPIC("37e05", DEBUG, Logger::AGENCY)
-        << "waitFor: index: " << index << " _commitIndex: " << _commitIndex
+        << "waitFor: index: " << index
+        << " _commitIndex: " << _commitIndex.load(std::memory_order_relaxed)
         << " _lastCommitIndex: " << lastCommitIndex << " elapsedTime: " << d.count();
 
     if (d.count() >= timeout) {
@@ -275,7 +276,7 @@ bool Agent::isCommitted(index_t index) {
 
   CONDITION_LOCKER(guard, _waitForCV);
   if (leading()) {
-    return _commitIndex >= index;
+    return _commitIndex.load(std::memory_order_relaxed) >= index;
   } else {
     return false;
   }
@@ -297,6 +298,29 @@ index_t Agent::index() {
 void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
   auto startTime = steady_clock::now();
 
+  if (index == 0) {
+    // This is only the empty case (=heartbeat)
+    MUTEX_LOCKER(locker, _emptyAppendLock);
+    auto n = steady_clock::now();
+    auto lastTime = _lastEmptyAcked[peerId];
+    if (lastTime < n) {
+      std::chrono::duration<double> d = n - lastTime;
+      auto secsSince = d.count();
+      if (secsSince < 1.5e9 && peerId != id() &&
+          secsSince > _config.minPing() * _config.timeoutMult()) {
+        LOG_TOPIC("6fe73", WARN, Logger::AGENCY)
+            << "Last confirmation from peer " << peerId
+            << " was received more than minPing ago: " << secsSince;
+      }
+      LOG_TOPIC("9ee0c", DEBUG, Logger::AGENCY)
+          << "Setting _lastEmptyAcked[" << peerId << "] to time "
+          << std::chrono::duration_cast<std::chrono::microseconds>(n.time_since_epoch())
+                 .count();
+      _lastEmptyAcked[peerId] = n;
+    }
+    return;
+  }
+
   // only update the time stamps here:
   {
     MUTEX_LOCKER(tiLocker, _tiLock);
@@ -306,15 +330,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 
     TRI_ASSERT(_lastAckedIndex.find(peerId) != _lastAckedIndex.end());
     // Reference here, the entry will be updated.
-    auto& [lastTime, lastIndex] = _lastAckedIndex.at(peerId);
-    std::chrono::duration<double> d = t - lastTime;
-    auto secsSince = d.count();
-    if (secsSince < 1.5e9 && peerId != id() &&
-        secsSince > _config.minPing() * _config.timeoutMult()) {
-      LOG_TOPIC("6fe73", WARN, Logger::AGENCY)
-          << "Last confirmation from peer " << peerId
-          << " was received more than minPing ago: " << secsSince;
-    }
+    auto& [lastTime, lastIndex] = _lastAckedIndex[peerId];
     LOG_TOPIC("9ee0b", DEBUG, Logger::AGENCY)
         << "Setting _lastAcked[" << peerId << "] to time "
         << std::chrono::duration_cast<std::chrono::microseconds>(t.time_since_epoch())
@@ -368,6 +384,38 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
   }
 }
 
+void Agent::logsForTrigger() {
+  // Wake up poll rest handlers:
+  // Get everything from _lowestPromise
+  // Create one builder pass shared pointer to all rest handlers
+  // Every resthandler takes, what it needs.
+  // Delete all promises.
+  // Reset _lowestPromise.
+  std::lock_guard lck(_promLock);
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder e(builder.get());
+    auto const logs = _state.get(_lowestPromise, _commitIndex.load(std::memory_order_relaxed));
+
+    TRI_ASSERT(!logs.empty());
+    if (!logs.empty()) {
+      builder->add(VPackValue("result"));
+      VPackObjectBuilder e(builder.get());
+      builder->add("firstIndex", VPackValue(logs.front().index));
+      builder->add("commitIndex", VPackValue(logs.back().index));
+      builder->add(VPackValue("log"));
+      VPackArrayBuilder ls(builder.get());
+      for (auto const& i : logs) {
+        VPackObjectBuilder l(builder.get());
+        builder->add("index", VPackValue(i.index));
+        builder->add("query", VPackSlice(i.entry->data()));
+      }
+    }
+  }
+  triggerPollsNoLock(builder);
+  _lowestPromise = std::numeric_limits<index_t>::max();
+}
+
 /// Followers' append entries
 priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leaderId,
                                            index_t prevIndex, term_t prevTerm,
@@ -418,7 +466,11 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
           << " with term " << term;
       {
         WRITE_LOCKER(oLocker, _outputLock);
-        _commitIndex = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
+        index_t const tmp = std::max(_commitIndex.load(std::memory_order_relaxed), std::min(leaderCommitIndex, lastIndex));
+        if (tmp > _commitIndex.load(std::memory_order_relaxed)) {
+          logsForTrigger();
+        }
+        _commitIndex = tmp;
       }
       return priv_rpc_ret_t(true, t);
     } else {
@@ -443,7 +495,12 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
   {
     WRITE_LOCKER(oLocker, _outputLock);
     CONDITION_LOCKER(guard, _waitForCV);
-    _commitIndex = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
+    index_t const tmp = std::max(_commitIndex.load(std::memory_order_relaxed), std::min(leaderCommitIndex, lastIndex));
+    if (tmp > _commitIndex.load(std::memory_order_relaxed)) {
+      logsForTrigger();
+    }
+    _commitIndex = tmp;
+    _local_index = tmp;
     _waitForCV.broadcast();
     if (leaderCommitIndex >= _state.nextCompactionAfter() &&
         payload[nqs - 1].get("index").getNumber<index_t>() >= _state.nextCompactionAfter()) {
@@ -506,11 +563,7 @@ void Agent::sendAppendEntriesRPC() {
             << "Reading lastConfirmed took too long: " << lockTime.count();
       }
 
-      index_t commitIndex;
-      {
-        READ_LOCKER(oLocker, _outputLock);
-        commitIndex = _commitIndex;
-      }
+      index_t commitIndex = _commitIndex.load(std::memory_order_relaxed);
 
       // If the follower is behind our first log entry send last snapshot and
       // following logs. Else try to have the follower catch up in regular order.
@@ -707,11 +760,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
     return;
   }
 
-  index_t commitIndex;
-  {
-    READ_LOCKER(oLocker, _outputLock);
-    commitIndex = _commitIndex;
-  }
+  index_t commitIndex = _commitIndex.load(std::memory_order_relaxed);
 
   // RPC path
   std::stringstream path;
@@ -739,6 +788,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
   auto ac = std::make_shared<AgentCallback>(this, followerId, 0, 0);
 
   network::RequestOptions reqOpts;
+  reqOpts.skipScheduler = true;
   reqOpts.timeout = network::Timeout(3 * _config.minPing() * _config.timeoutMult());
 
   network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, path.str(),
@@ -782,22 +832,31 @@ void Agent::advanceCommitIndex() {
   term_t t = _constituent.term();
   {
     WRITE_LOCKER(oLocker, _outputLock);
-    if (index > _commitIndex) {
+    if (index > _commitIndex.load(std::memory_order_relaxed)) {
+
       CONDITION_LOCKER(guard, _waitForCV);
       LOG_TOPIC("e24a9", TRACE, Logger::AGENCY)
-          << "Critical mass for commiting " << _commitIndex + 1 << " through "
+          << "Critical mass for commiting "
+          << _commitIndex.load(std::memory_order_relaxed) + 1 << " through "
           << index << " to read db";
       // Change _readDB and _commitIndex atomically together:
       _readDB.applyLogEntries(_state.slices(/* inform others by callbacks */
-                                            _commitIndex + 1, index),
-                              _commitIndex, t, true);
+                                            _commitIndex.load(std::memory_order_relaxed) + 1, index),
+                              _commitIndex.load(std::memory_order_relaxed), t, true);
+
+
+      LOG_TOPIC("e24aa", DEBUG, Logger::AGENCY)
+          << "Critical mass for commiting "
+          << _commitIndex.load(std::memory_order_relaxed) + 1 << " through "
+          << index << " to read db, done";
 
       _commitIndex = index;
-      LOG_TOPIC("e24aa", DEBUG, Logger::AGENCY)
-          << "Critical mass for commiting " << _commitIndex + 1 << " through "
-          << index << " to read db, done";
-      // Wake up rest handlers:
+      _local_index = index;
+
+      // Wake up write rest handlers:
       _waitForCV.broadcast();
+
+      logsForTrigger();
 
       if (_commitIndex >= _state.nextCompactionAfter()) {
         _compactor.wakeUp();
@@ -890,14 +949,14 @@ void Agent::load() {
 
 /// Still leading? Under MUTEX from ::read or ::write
 bool Agent::challengeLeadership() {
-  MUTEX_LOCKER(tiLocker, _tiLock);
+  MUTEX_LOCKER(tiLocker, _emptyAppendLock);
   size_t good = 0;
 
   std::string const myid = id();
 
-  for (auto const& i : _lastAckedIndex) {
+  for (auto const& i : _lastEmptyAcked) {
     if (i.first != myid) {  // do not count ourselves
-      duration<double> m = steady_clock::now() - i.second.first;
+      duration<double> m = steady_clock::now() - i.second;
       LOG_TOPIC("22f78", DEBUG, Logger::AGENCY)
           << "challengeLeadership: found "
              "_lastAcked["
@@ -1354,7 +1413,8 @@ void Agent::run() {
       bool commenceService = false;
       {
         READ_LOCKER(oLocker, _outputLock);
-        if (leading() && getPrepareLeadership() == 2 && _commitIndex == _state.lastIndex()) {
+        if (leading() && getPrepareLeadership() == 2 &&
+            _commitIndex.load(std::memory_order_relaxed) == _state.lastIndex()) {
           commenceService = true;
         }
       }
@@ -1492,16 +1552,14 @@ void Agent::lead() {
     // We cannot start sendAppendentries before first log index.
     // Any missing indices before _commitIndex were compacted.
     // DO NOT EDIT without understanding the consequences for sendAppendEntries!
-    index_t commitIndex;
-    {
-      READ_LOCKER(oLocker, _outputLock);
-      commitIndex = _commitIndex;
-    }
+    index_t commitIndex = _commitIndex.load(std::memory_order_relaxed);
 
     MUTEX_LOCKER(tiLocker, _tiLock);
+    MUTEX_LOCKER(locker, _emptyAppendLock);
     for (auto& i : _lastAckedIndex) {
       if (i.first != id()) {
         i.second.second = commitIndex;
+        _lastEmptyAcked[i.first] = steady_clock::now();
       }
     }
   }
@@ -1629,11 +1687,12 @@ void Agent::rebuildDBs() {
   // Apply logs from last applied index to leader's commit index
   LOG_TOPIC("b12cb", DEBUG, Logger::AGENCY)
       << "Rebuilding key-value stores from index " << lastCompactionIndex
-      << " to " << _commitIndex << " " << _state;
+      << " to " << _commitIndex.load(std::memory_order_relaxed) << " " << _state;
 
   {
-    auto logs = _state.slices(lastCompactionIndex + 1, _commitIndex);
-    _readDB.applyLogEntries(logs, _commitIndex, term, false /* do not send callbacks */);
+    auto logs = _state.slices(lastCompactionIndex + 1, _commitIndex.load(std::memory_order_relaxed));
+    _readDB.applyLogEntries(logs, _commitIndex.load(std::memory_order_relaxed),
+                            term, false /* do not send callbacks */);
   }
   _spearhead = _readDB;
 
@@ -1648,11 +1707,7 @@ void Agent::compact() {
   // space well before _commitIndex anyway. Apart from this, the compaction
   // code runs on the followers as well where we do not have a _readDB
   // anyway.
-  index_t commitIndex;
-  {
-    READ_LOCKER(guard, _outputLock);
-    commitIndex = _commitIndex;
-  }
+  index_t commitIndex = _commitIndex.load(std::memory_order_relaxed);
 
   if (commitIndex >= _state.nextCompactionAfter()) {
     // This check needs to be here, because the compactor thread wakes us
@@ -1668,8 +1723,7 @@ void Agent::compact() {
 
 /// Last commit index
 arangodb::consensus::index_t Agent::lastCommitted() const {
-  READ_LOCKER(oLocker, _outputLock);
-  return _commitIndex;
+  return _commitIndex.load(std::memory_order_relaxed);
 }
 
 /// Last log entry
@@ -1686,7 +1740,7 @@ Store const& Agent::readDB() const { return _readDB; }
 arangodb::consensus::index_t Agent::readDB(Node& node) const {
   READ_LOCKER(oLocker, _outputLock);
   node = _readDB.get();
-  return _commitIndex;
+  return _commitIndex.load(std::memory_order_relaxed);
 }
 
 /// Get readdb
@@ -1697,7 +1751,7 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
 
   { READ_LOCKER(oLocker, _outputLock);
 
-    commitIndex = _commitIndex;
+    commitIndex = _commitIndex.load(std::memory_order_relaxed);
     // commit index
     builder.add("index", VPackValue(commitIndex));
     builder.add("term", VPackValue(term()));
@@ -2064,10 +2118,10 @@ query_t Agent::buildDB(arangodb::consensus::index_t index) {
 
   {
     READ_LOCKER(oLocker, _outputLock);
-    if (index > _commitIndex) {
+    if (index > _commitIndex.load(std::memory_order_relaxed)) {
       LOG_TOPIC("88754", INFO, Logger::AGENCY)
-          << "Cannot snapshot beyond leaderCommitIndex: " << _commitIndex;
-      index = _commitIndex;
+          << "Cannot snapshot beyond leaderCommitIndex: " << _commitIndex.load(std::memory_order_relaxed);
+      index = _commitIndex.load(std::memory_order_relaxed);
     } else if (index < oldIndex) {
       LOG_TOPIC("cb67b", INFO, Logger::AGENCY)
           << "Cannot snapshot before last compaction index: " << oldIndex;
