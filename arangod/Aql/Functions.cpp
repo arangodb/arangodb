@@ -4788,8 +4788,6 @@ AqlValue Functions::IpV4FromNumber(ExpressionContext* expressionContext, AstNode
                                    VPackFunctionParameters const& parameters) {
   static char const* AFN = "IPV4_FROM_NUMBER";
 
-  transaction::Methods* trx = &expressionContext->trx();
-  auto* vopts = &trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   if (!value.isNumber()) {
@@ -6152,10 +6150,10 @@ AqlValue Functions::GeoMultiLinestring(ExpressionContext* expressionContext,
     if (v.isArray()) {
       if (v.length() > 1) {
         builder->openArray();
-        for (auto const& inner : VPackArrayIterator(v)) {
+        for (VPackSlice const inner : VPackArrayIterator(v)) {
           if (inner.isArray()) {
             builder->openArray();
-            for (auto const& coord : VPackArrayIterator(inner)) {
+            for (VPackSlice const coord : VPackArrayIterator(inner)) {
               if (coord.isNumber()) {
                 builder->add(VPackValue(coord.getNumber<double>()));
               } else {
