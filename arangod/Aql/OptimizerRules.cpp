@@ -6072,7 +6072,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     // check if we can make use of the optimized neighbors enumerator
     if (!ServerState::instance()->isCoordinator()) {
       if (traversal->vertexOutVariable() != nullptr && traversal->edgeOutVariable() == nullptr &&
-          traversal->pathOutVariable() == nullptr && options->useBreadthFirst &&
+          traversal->pathOutVariable() == nullptr && options->isUseBreadthFirst() &&
           options->uniqueVertices == arangodb::traverser::TraverserOptions::GLOBAL &&
           !options->usesPrune() && !options->hasDepthLookupInfo()) {
         // this is possible in case *only* vertices are produced (no edges, no path),
