@@ -2059,7 +2059,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     TRI_vocbase_t const& activeVocbase,
     arangodb::QueryAnalyzerRevisions const& revision,
     bool onlyCached /*= false*/) const {
-  auto const normalizedName = normalize(name, activeVocbase, true);
+  auto const normalizedName = normalize(name, activeVocbase.name(), true);
 
   auto const split = splitAnalyzerName(normalizedName);
 
@@ -2589,7 +2589,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
 /*static*/ std::string IResearchAnalyzerFeature::normalize( // normalize name
     irs::string_ref const& name, // analyzer name
-    TRI_vocbase_t const& activeVocbase, // fallback vocbase if not part of name
+    irs::string_ref const& activeVocbase, // fallback vocbase if not part of name
     bool expandVocbasePrefix /*= true*/) { // use full vocbase name as prefix for active/system v.s. EMPTY/'::'
   auto& staticAnalyzers = getStaticAnalyzers();
 
@@ -2601,7 +2601,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
   if (expandVocbasePrefix) {
     if (split.first.null()) {
-      return normalizedAnalyzerName(activeVocbase.name(), split.second);
+      return normalizedAnalyzerName(activeVocbase, split.second);
     }
 
     if (split.first.empty()) {
@@ -2612,9 +2612,9 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     // normalize vocbase such that active vocbase takes precedence over system
     // vocbase i.e. prefer NIL over EMPTY
     // .........................................................................
-    if (arangodb::StaticStrings::SystemDatabase == activeVocbase.name() ||
+    if (arangodb::StaticStrings::SystemDatabase == activeVocbase ||
         split.first.null() ||
-        (split.first == activeVocbase.name())) { // active vocbase
+        (split.first == activeVocbase)) { // active vocbase
       return split.second;
     }
 

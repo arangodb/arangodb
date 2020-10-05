@@ -52,7 +52,8 @@ struct IndexTypeFactory {
   virtual bool equal(Index::IndexType type, velocypack::Slice const& lhs, velocypack::Slice const& rhs,
                      bool attributeOrderMatters) const;
 
-  virtual bool equal(velocypack::Slice const& lhs, velocypack::Slice const& rhs) const = 0;
+  virtual bool equal(velocypack::Slice const& lhs, velocypack::Slice const& rhs,
+                     std::string const& dbname) const = 0;
 
   /// @brief instantiate an Index definition
   virtual std::shared_ptr<Index> instantiate(LogicalCollection& collection,

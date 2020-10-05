@@ -298,7 +298,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  auto name = arangodb::iresearch::IResearchAnalyzerFeature::normalize(splittedAnalyzerName.second, vocbase);
+  auto name = arangodb::iresearch::IResearchAnalyzerFeature::normalize(splittedAnalyzerName.second, vocbase.name());
 
   auto type = TRI_ObjectToString(isolate, args[1]);
 
@@ -416,7 +416,7 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 
   auto name = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
-    TRI_ObjectToString(isolate, args[0]), vocbase);
+    TRI_ObjectToString(isolate, args[0]), vocbase.name());
 
   // ...........................................................................
   // end of parameter parsing
@@ -586,7 +586,8 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     );
   }
 
-  auto name = arangodb::iresearch::IResearchAnalyzerFeature::normalize(splittedAnalyzerName.second, vocbase);
+  auto name = arangodb::iresearch::IResearchAnalyzerFeature::normalize(splittedAnalyzerName.second,
+                                                                       vocbase.name());
   bool force = false;
 
   if (args.Length() > 1) {

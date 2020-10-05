@@ -112,8 +112,9 @@ IResearchLinkCoordinator::IndexFactory::IndexFactory(arangodb::application_featu
     : IndexTypeFactory(server) {}
 
 bool IResearchLinkCoordinator::IndexFactory::equal(arangodb::velocypack::Slice const& lhs,
-                                                   arangodb::velocypack::Slice const& rhs) const {
-  return arangodb::iresearch::IResearchLinkHelper::equal(_server, lhs, rhs);
+                                                   arangodb::velocypack::Slice const& rhs,
+                                                   std::string const& dbname) const {
+  return arangodb::iresearch::IResearchLinkHelper::equal(_server, lhs, rhs, dbname);
 }
 
 std::shared_ptr<arangodb::Index> IResearchLinkCoordinator::IndexFactory::instantiate(

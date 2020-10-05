@@ -100,7 +100,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
     return;
   }
 
-  auto name = IResearchAnalyzerFeature::normalize(splittedAnalyzerName.second, _vocbase);
+  auto name = IResearchAnalyzerFeature::normalize(splittedAnalyzerName.second, _vocbase.name());
 
   irs::string_ref type;
   auto typeSlice = body.get(StaticStrings::AnalyzerTypeField);
@@ -284,7 +284,7 @@ arangodb::RestStatus RestAnalyzerHandler::execute() {
 void RestAnalyzerHandler::getAnalyzer(IResearchAnalyzerFeature& analyzers,
                                       std::string const& requestedName) {
   auto normalizedName =
-      IResearchAnalyzerFeature::normalize(requestedName, _vocbase);
+      IResearchAnalyzerFeature::normalize(requestedName, _vocbase.name());
 
   // need to check if analyzer is from current database or from system database
   const auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(normalizedName);
@@ -397,7 +397,7 @@ void RestAnalyzerHandler::removeAnalyzer(
     return;
   }
 
-  auto normalizedName = IResearchAnalyzerFeature::normalize(name, _vocbase);
+  auto normalizedName = IResearchAnalyzerFeature::normalize(name, _vocbase.name());
 
   if (!IResearchAnalyzerFeature::canUse(normalizedName, auth::Level::RW)) {
     generateError(arangodb::Result( 

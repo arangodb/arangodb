@@ -35,6 +35,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
+#include "VocBase/vocbase.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearchLinkMeta.h"
 #include "Misc.h"
@@ -148,7 +149,7 @@ bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
 bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
                      velocypack::Slice const& slice,
                      std::string& errorField,
-                     TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
+                     irs::string_ref const defaultVocbase,
                      FieldMeta const& defaults /*= DEFAULT()*/,
                      Mask* mask /*= nullptr*/,
                      std::set<AnalyzerPool::ptr, AnalyzerComparer>* referencedAnalyzers /*= nullptr*/) {
@@ -197,9 +198,9 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
         auto name = value.copyString();
         auto shortName = name;
 
-        if (defaultVocbase) {
-          name = IResearchAnalyzerFeature::normalize(name, *defaultVocbase);
-          shortName = IResearchAnalyzerFeature::normalize(name, *defaultVocbase, false);
+        if (!defaultVocbase.null()) {
+          name = IResearchAnalyzerFeature::normalize(name, defaultVocbase);
+          shortName = IResearchAnalyzerFeature::normalize(name, defaultVocbase, false);
         }
 
         AnalyzerPool::ptr analyzer;
@@ -437,7 +438,7 @@ bool FieldMeta::json(arangodb::application_features::ApplicationServer& server,
         //        definitions into differently named databases
         name = IResearchAnalyzerFeature::normalize(
           entry._pool->name(),
-          *defaultVocbase,
+          defaultVocbase->name(),
           false);
       } else {
         name = entry._pool->name(); // verbatim (assume already normalized)
@@ -565,7 +566,7 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
                              arangodb::velocypack::Slice const& slice,
                              bool readAnalyzerDefinition,
                              std::string& errorField,
-                             TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
+                             irs::string_ref const defaultVocbase /*= irs::string_ref::NIL*/,
                              IResearchLinkMeta const& defaults /*= DEFAULT()*/,
                              Mask* mask /*= nullptr*/) {
   if (!slice.isObject()) {
@@ -656,8 +657,8 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
           }
 
           name = value.get(subFieldName).copyString();
-          if (defaultVocbase) {
-            name = IResearchAnalyzerFeature::normalize(name, *defaultVocbase, true);
+          if (!defaultVocbase.null()) {
+            name = IResearchAnalyzerFeature::normalize(name, defaultVocbase, true);
           }
         }
         irs::string_ref type;

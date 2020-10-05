@@ -228,7 +228,7 @@ class IResearchAnalyzerFeature final
   /// @return normalized analyzer name, i.e. with vocbase prefix
   //////////////////////////////////////////////////////////////////////////////
   static std::string normalize(irs::string_ref const& name,
-                               TRI_vocbase_t const& activeVocbase,
+                               irs::string_ref const& activeVocbase,
                                bool expandVocbasePrefix = true);
 
   //////////////////////////////////////////////////////////////////////////////

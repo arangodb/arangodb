@@ -411,7 +411,7 @@ Result getAnalyzerByName(
   }
 
   shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
-    analyzerId, ctx.trx->vocbase(), false);
+    analyzerId, ctx.trx->vocbase().name(), false);
 
   return {};
 }
@@ -2066,7 +2066,7 @@ Result fromFuncAnalyzer(
     }
 
     shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
-      analyzerId, ctx.trx->vocbase(), false);  // args
+      analyzerId, ctx.trx->vocbase().name(), false);  // args
 
   }
 
