@@ -1319,10 +1319,6 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
   return 0;
 }
 
-//int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
-//                      AqlValue const& right, bool compareUtf8) {
-//  return Compare(trx->transactionContextPtr()->getVPackOptions(), left, right, compareUtf8);
-//}
 
 AqlValue::AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept {
   TRI_ASSERT(docvec != nullptr);
