@@ -86,7 +86,7 @@ auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> Aq
     TRI_ASSERT(clientCall.hasHardLimit());
 
     upstreamCall.offset = upstreamCall.offset + remainingLimit();
-    upstreamCall.hardLimit = 0;
+    upstreamCall.hardLimit = std::size_t(0);
     // We need to send fullCount upstream iff this is fullCount-enabled LIMIT
     // block.
     upstreamCall.fullCount = infos().isFullCountEnabled();

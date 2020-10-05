@@ -109,7 +109,7 @@ class FollowerInfo {
   ///        before a failover to this server has happened
   ///        The second parameter may be nullptr. It is an additional list
   ///        of declared to be insync followers. If it is nullptr the follower
-  ///        list is initialised empty.
+  ///        list is initialized empty.
   ////////////////////////////////////////////////////////////////////////////////
 
   void takeOverLeadership(std::vector<ServerID> const& previousInsyncFollowers,
