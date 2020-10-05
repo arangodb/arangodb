@@ -39,7 +39,7 @@ class VPackStringBufferAdapter;
 
 namespace aql {
 
-class AstNode;
+struct AstNode;
 class ExpressionContext;
 
 typedef ::arangodb::containers::SmallVector<AqlValue> VPackFunctionParameters;
