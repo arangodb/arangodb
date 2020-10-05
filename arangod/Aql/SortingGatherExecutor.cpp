@@ -250,6 +250,16 @@ auto SortingGatherExecutor::requiresMoreInput(typename Fetcher::DataRange const&
                                               AqlCall const& clientCall) -> AqlCallSet {
   auto callSet = AqlCallSet{};
 
+  if (clientCall.hasSoftLimit()) {
+    // This is the case if we finished the current call. In some cases
+    // our dependency is consumed as well. If we do not exit here,
+    // we would create a call with softlimit = 0.
+    // The next call with softlimit != 0 will update the dependency.
+    if (clientCall.getOffset() == 0 && clientCall.getLimit() == 0) {
+      return callSet;
+    }
+  }
+
   if (_depToUpdate.has_value()) {
     auto const dependency = _depToUpdate.value();
     auto const& [state, row] = inputRange.peekDataRow(dependency);
@@ -352,6 +362,11 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
       output.copyRow(row);
       output.advanceRow();
     }
+
+    // output.getClientCall().softLimit == 0) {
+    //    return {ExecutorState::HASMORE, NoStats{}, {}};
+    // }
+
     auto const callSet = requiresMoreInput(input, output.getClientCall());
     if (!callSet.empty()) {
       return {ExecutorState::HASMORE, NoStats{}, callSet};
@@ -489,7 +504,7 @@ auto SortingGatherExecutor::limitReached() const noexcept -> bool {
         upstreamCall.softLimit = rowsLeftToWrite();
       }
 
-      // We need at least 1 to now violate API. It seems we have nothing to
+      // We need at least 1 to not violate API. It seems we have nothing to
       // produce and are called with a softLimit.
       TRI_ASSERT(0 < upstreamCall.softLimit);
     } else {
