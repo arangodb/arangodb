@@ -66,7 +66,6 @@ void Constituent::configure(Agent* agent) {
 
   if (size() == 1) {
     _role = LEADER;
-    _IamLeader = true;
     LOG_TOPIC("c396f", INFO, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
   }
 }
@@ -82,7 +81,6 @@ Constituent::Constituent(application_features::ApplicationServer& server)
       _leaderID(NO_LEADER),
       _lastHeartbeatSeen(0.0),
       _role(FOLLOWER),
-      _IamLeader(false),
       _agent(nullptr),
       _votedFor(NO_LEADER) {}
 
@@ -199,8 +197,7 @@ bool Constituent::logMatches(arangodb::consensus::index_t prevLogIndex,
 
 /// My role
 role_t Constituent::role() const {
-  MUTEX_LOCKER(guard, _termVoteLock);
-  return _role;
+  return _role.load(std::memory_order_relaxed);
 }
 
 /// Become follower in term
@@ -217,7 +214,6 @@ void Constituent::followNoLock(term_t t, std::string const& votedFor) {
     termNoLock(t, votedFor);
   }
   _role = FOLLOWER;
-  _IamLeader = false;
 
   LOG_TOPIC("f370f", INFO, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;
 
@@ -245,14 +241,13 @@ void Constituent::lead(term_t term) {
     }
 
     // if we already lead, ignore this request
-    if (_role == LEADER) {
+    if (_role.load(std::memory_order_relaxed) == LEADER) {
       TRI_ASSERT(_leaderID == _id);
       return;
     }
 
     // I'm the leader
     _role = LEADER;
-    _IamLeader = true;
 
     LOG_TOPIC("0d93b", INFO, Logger::AGENCY) << _id << ": leading in term " << _term;
     _leaderID = _id;
@@ -279,9 +274,8 @@ void Constituent::candidate() {
         << "Set _leaderID to NO_LEADER in Constituent::candidate";
   }
 
-  if (_role != CANDIDATE) {
+  if (_role.load(std::memory_order_relaxed) != CANDIDATE) {
     _role = CANDIDATE;
-    _IamLeader = false;
     LOG_TOPIC("aefab", INFO, Logger::AGENCY) << _id << ": candidating in term " << _term;
 
     // Keep track of this election time:
@@ -292,19 +286,17 @@ void Constituent::candidate() {
 
 /// Leading?
 bool Constituent::leading() const {
-  return _IamLeader.load(std::memory_order_relaxed);
+  return _role.load(std::memory_order_relaxed) == LEADER;
 }
 
 /// Following?
 bool Constituent::following() const {
-  MUTEX_LOCKER(guard, _termVoteLock);
-  return _role == FOLLOWER;
+  return _role.load(std::memory_order_relaxed) == FOLLOWER;
 }
 
 /// Running as candidate?
 bool Constituent::running() const {
-  MUTEX_LOCKER(guard, _termVoteLock);
-  return _role == CANDIDATE;
+  return _role.load(std::memory_order_relaxed) == CANDIDATE;
 }
 
 /// Get current leader's id
@@ -360,7 +352,7 @@ bool Constituent::checkLeader(term_t term, std::string const& id,
     }
 
     TRI_ASSERT(_leaderID != _id);
-    if (_role != FOLLOWER) {
+    if (_role.load(std::memory_order_relaxed) != FOLLOWER) {
       followNoLock(0);  // do not adjust _term or _votedFor
     }
   }
@@ -385,7 +377,7 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id,
       << ", prev-log-term: " << prevLogTerm << ") in (my) term " << _term;
 
   if (termOfPeer > _term) {
-    if (_role != FOLLOWER) {
+    if (_role.load(std::memory_order_relaxed) != FOLLOWER) {
       followNoLock(termOfPeer, NO_LEADER);
     } else {
       termNoLock(termOfPeer, NO_LEADER);
@@ -570,7 +562,6 @@ void Constituent::update(std::string const& leaderID, term_t t) {
         << "' in term " << _term;
     _leaderID = leaderID;
     _role = FOLLOWER;
-    _IamLeader = false;
   }
 }
 
@@ -651,7 +642,6 @@ void Constituent::run() {
       LOG_TOPIC("29175", INFO, Logger::AGENCY)
         << "Setting role to follower  in term " << _term;
       _role = FOLLOWER;
-      _IamLeader = false;
     }
 
     std::chrono::steady_clock::time_point constituentLoopStart;
@@ -659,11 +649,7 @@ void Constituent::run() {
     while (!this->isStopping()) {
       constituentLoopStart = std::chrono::steady_clock::now();
 
-      role_t role;
-      {
-        MUTEX_LOCKER(guard, _termVoteLock);
-        role = _role;
-      }
+      role_t role = _role.load(std::memory_order_relaxed);
 
       if (role == FOLLOWER) {
         static double const M = 1.0e6;
