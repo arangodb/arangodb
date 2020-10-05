@@ -23,7 +23,7 @@ Allow reading from undeclared collections.
 @RESTBODYPARAM{lockTimeout,integer,optional,int64}
 an optional numeric value that can be used to set a
 timeout for waiting on collection locks. If not specified, a default
-value will be used. The maximum value for stream transactions is 30 seconds.
+value will be used. The maximum value for stream transactions is 60 seconds.
 
 @RESTBODYPARAM{maxTransactionSize,integer,optional,int64}
 Transaction size limit in bytes. Honored by the RocksDB storage engine only.

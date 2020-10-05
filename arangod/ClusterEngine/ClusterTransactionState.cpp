@@ -84,7 +84,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
   setRegistered();
   
-  // simon: deadlock-mitiagtion, still unsafe in general
+  // simon: deadlock-mitigation, still unsafe in general
   // we have to include write-level transactions too for correctness
   // however this would make lazy-locking obsolete for stream-transactions
   if (AccessMode::isExclusive(this->_type) &&

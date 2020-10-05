@@ -102,6 +102,7 @@ class ShardLocking {
   // Only these servers need to be informed by the coordinator.
   // Note: As a side effec this will create the ShardMapping on the first call.
   // This function needs to be called before you can get any shardInformation below.
+  // Servers are sorted lexicographically for deterministic locking
   std::vector<ServerID> getRelevantServers();
 
   // The list of all collections used within this query.
