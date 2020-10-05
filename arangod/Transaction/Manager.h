@@ -204,8 +204,8 @@ class Manager final {
     return std::hash<TransactionId>()(tid) % numBuckets;
   }
 
-  Result updateTransaction(TransactionId tid, transaction::Status status, bool clearServers,
-                           std::string database = "" /* leave empty to operate across all databases */);
+  Result updateTransaction(TransactionId tid, transaction::Status status,
+                           bool clearServers, std::string const& database = "" /* leave empty to operate across all databases */);
 
   /// @brief calls the callback function for each managed transaction
   void iterateManagedTrx(std::function<void(TransactionId, ManagedTrx const&)> const&) const;

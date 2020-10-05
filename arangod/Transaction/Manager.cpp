@@ -661,7 +661,7 @@ Result Manager::abortManagedTrx(TransactionId tid, std::string const& database) 
 }
 
 Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
-                                  bool clearServers, std::string database) {
+                                  bool clearServers, std::string const& database) {
   TRI_ASSERT(status == transaction::Status::COMMITTED ||
              status == transaction::Status::ABORTED);
 
