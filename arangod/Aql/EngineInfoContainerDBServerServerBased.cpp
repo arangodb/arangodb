@@ -677,7 +677,7 @@ void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node, bool 
 // the DBServers. The GraphNode itself will retain on the coordinator.
 void EngineInfoContainerDBServerServerBased::addUpsertNode(UpsertNode* node) {
   // SnippetID does not matter on UpsertNodes
-  _shardLocking.addNode(node, 0, false);
+  _shardLocking.addNode(node, std::numeric_limits<size_t>::max(), false);
 }
 
 // Insert the Locking information into the message to be send to DBServers
