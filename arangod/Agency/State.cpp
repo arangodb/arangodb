@@ -334,7 +334,6 @@ void State::logEmplaceBackNoLock(log_t&& l) {
   try {
     _log_size += l.entry->byteSize();
     _log.emplace_back(std::forward<log_t>(l));  // log to RAM or die
-    // TODO: Fix up _log_size
   } catch (std::bad_alloc const&) {
     LOG_TOPIC("f5adc", FATAL, Logger::AGENCY)
       << "RAFT member fails to allocate volatile log entries!";
