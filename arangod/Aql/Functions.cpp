@@ -90,6 +90,7 @@
 
 #include <date/date.h>
 #include <date/iso_week.h>
+#include <date/tz.h>
 #include <s2/s2loop.h>
 
 #include <unicode/schriter.h>
@@ -273,7 +274,7 @@ AqlValue numberValue(double value, bool nullify) {
 /// @brief optimized version of datetime stringification
 /// string format is hard-coded to YYYY-MM-DDTHH:MM:SS.XXXZ
 AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
-                      tp_sys_clock_ms const& tp) {
+                      tp_sys_clock_ms const& tp, bool utc = true) {
   char formatted[24];
 
   year_month_day ymd{floor<days>(tp)};
@@ -320,7 +321,7 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
   formatted[22] = '0' + (millis % 10);
   formatted[23] = 'Z';
 
-  return AqlValue(&formatted[0], sizeof(formatted));
+  return AqlValue(&formatted[0], utc ? sizeof(formatted) : sizeof(formatted) - 1);
 }
 
 DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
@@ -3570,8 +3571,7 @@ AqlValue Functions::DateDayOfWeek(ExpressionContext* expressionContext,
   }
   weekday wd{floor<days>(tp)};
 
-  // Library has unsigned operator implemented
-  return AqlValue(AqlValueHintUInt(static_cast<uint64_t>(unsigned(wd))));
+  return AqlValue(AqlValueHintUInt(wd.c_encoding()));
 }
 
 /// @brief function DATE_YEAR
@@ -3826,6 +3826,68 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
   tp = tp_sys_clock_ms{sys_days(ymd) + ms};
 
   return ::timeAqlValue(expressionContext, AFN, tp);
+}
+
+/// @brief function DATE_UTCTOLOCAL
+AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext,
+                                   AstNode const*,
+                                   VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_UTCTOLOCAL";
+  using namespace std::chrono;
+  using namespace date;
+
+  tp_sys_clock_ms tp_utc;
+
+  if (!::parameterToTimePoint(expressionContext, parameters, tp_utc, AFN, 0)) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue const& timeZoneParam = extractFunctionParameterValue(parameters, 1);
+
+  if (!timeZoneParam.isString()) {  // timezone type must be string
+    registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  const std::string tz = timeZoneParam.slice().copyString();
+  const auto utc = floor<milliseconds>(tp_utc);
+  const auto zoned = make_zoned(tz, utc);
+  const auto tp_local = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
+
+  auto info = zoned.get_info();
+
+  return ::timeAqlValue(expressionContext, AFN, tp_local,info.offset.count() == 0 && info.save.count() == 0);
+}
+
+
+/// @brief function DATE_LOCALTOUTC
+AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext,
+                                   AstNode const*,
+                                   VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_LOCALTOUTC";
+  using namespace std::chrono;
+  using namespace date;
+
+  tp_sys_clock_ms tp_local;
+
+  if (!::parameterToTimePoint(expressionContext, parameters, tp_local, AFN, 0)) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue const& timeZoneParam = extractFunctionParameterValue(parameters, 1);
+
+  if (!timeZoneParam.isString()) {  // timezone type must be string
+    registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  const std::string tz = timeZoneParam.slice().copyString();
+
+  const auto local = local_time<milliseconds>{floor<milliseconds>(tp_local).time_since_epoch()};
+  const auto zoned = make_zoned(tz, local);
+  const auto tp_utc = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
+
+  return ::timeAqlValue(expressionContext, AFN, tp_utc);
 }
 
 /// @brief function DATE_ADD

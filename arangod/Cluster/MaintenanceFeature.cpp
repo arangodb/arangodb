@@ -267,7 +267,7 @@ void MaintenanceFeature::start() {
 void MaintenanceFeature::beginShutdown() {
   if (_resignLeadershipOnShutdown && ServerState::instance()->isDBServer()) {
     struct callback_data {
-      uint64_t _jobId;  // initialised before callback
+      uint64_t _jobId;  // initialized before callback
       bool _completed;  // populated by the callback
       std::mutex _mutex;  // mutex used by callback and loop to sync access to callback_data
       std::condition_variable _cv;  // signaled if callback has found something

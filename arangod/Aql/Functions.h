@@ -209,6 +209,10 @@ struct Functions {
                                   AstNode const*, VPackFunctionParameters const&);
   static AqlValue DateTrunc(arangodb::aql::ExpressionContext*,
                             AstNode const*, VPackFunctionParameters const&);
+  static AqlValue DateUtcToLocal(arangodb::aql::ExpressionContext*,
+                                 AstNode const*, VPackFunctionParameters const&);
+  static AqlValue DateLocalToUtc(arangodb::aql::ExpressionContext*,
+                                 AstNode const*, VPackFunctionParameters const&);
   static AqlValue DateAdd(arangodb::aql::ExpressionContext*,
                           AstNode const*, VPackFunctionParameters const&);
   static AqlValue DateSubtract(arangodb::aql::ExpressionContext*,

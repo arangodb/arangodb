@@ -21,6 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Graph/TraverserOptions.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -159,7 +160,6 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
-
   auto steps = direction->getMember(1);
 
   bool invalidDepth = false;
@@ -185,8 +185,11 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
                                    "invalid traversal depth");
   }
 
+  // WTF this is the 10th place the deals with parsing of options
+  // how do you even maintain that?
   if (optionsNode != nullptr && optionsNode->type == NODE_TYPE_OBJECT) {
     size_t n = optionsNode->numMembers();
+    bool hasBFS = false;
 
     for (size_t i = 0; i < n; ++i) {
       auto member = optionsNode->getMemberUnchecked(i);
@@ -197,7 +200,10 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
         TRI_ASSERT(value->isConstant());
 
         if (name == "bfs") {
-          options->useBreadthFirst = value->isTrue();
+          options->mode = value->isTrue()
+                              ? arangodb::traverser::TraverserOptions::Order::BFS
+                              : arangodb::traverser::TraverserOptions::Order::DFS;
+          hasBFS = true;
         } else if (name == "uniqueVertices" && value->isStringValue()) {
           if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryPath)) {
             options->uniqueVertices =
@@ -222,6 +228,22 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
           parseGraphCollectionRestriction(options->edgeCollections, value);
         } else if (name == "vertexCollections") {
           parseGraphCollectionRestriction(options->vertexCollections, value);
+        } else if (name == StaticStrings::GraphQueryOrder && !hasBFS) {
+          // dfs is the default
+          if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryOrderBFS)) {
+            options->mode = traverser::TraverserOptions::Order::BFS;
+          } else if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryOrderWeighted)) {
+            options->mode = traverser::TraverserOptions::Order::WEIGHTED;
+          } else if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryOrderDFS)) {
+            options->mode = traverser::TraverserOptions::Order::DFS;
+          } else {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                           "order: unknown order");
+          }
+        } else if (name == "defaultWeight" && value->isNumericValue()) {
+          options->defaultWeight = value->getDoubleValue();
+        } else if (name == "weightAttribute" && value->isStringValue()) {
+          options->weightAttribute = value->getString();
         } else if (name == "parallelism") {
           if (ast->canApplyParallelism()) {
             // parallelism is only used when there is no usage of V8 in the
@@ -234,10 +256,10 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
   }
 
   if (options->uniqueVertices == arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL &&
-      !options->useBreadthFirst) {
+      !(options->isUniqueGlobalVerticesAllowed())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "uniqueVertices: 'global' is only "
-                                   "supported, with bfs: true due to "
+                                   "supported, with mode: bfs|weighted due to "
                                    "otherwise unpredictable results.");
   }
 
@@ -328,7 +350,7 @@ ExecutionPlan::~ExecutionPlan() {
   _ast->query().resourceMonitor().decreaseMemoryUsage(_ids.size() * sizeof(ExecutionNode));
 #endif
 #endif
-  
+
   for (auto& x : _ids) {
     delete x.second;
   }
@@ -377,7 +399,7 @@ void ExecutionPlan::getCollectionsFromVelocyPack(aql::Collections& colls, VPackS
   if (slice.isObject()) {
     collectionsSlice = slice.get("collections");
   }
-  
+
   if (!collectionsSlice.isArray()) {
    THROW_ARANGO_EXCEPTION_MESSAGE(
        TRI_ERROR_INTERNAL,
@@ -877,10 +899,10 @@ ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) 
   TRI_ASSERT(node->plan() == this);
   TRI_ASSERT(node->id() > ExecutionNodeId{0});
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
-  
+
   // may throw
   _ast->query().resourceMonitor().increaseMemoryUsage(sizeof(ExecutionNode));
- 
+
   try {
     auto emplaced = _ids.try_emplace(node->id(), node.get()).second;  // take ownership
     TRI_ASSERT(emplaced);
@@ -902,7 +924,7 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   try {
     // may throw
     _ast->query().resourceMonitor().increaseMemoryUsage(sizeof(ExecutionNode));
-    
+
     auto [it, emplaced] = _ids.try_emplace(node->id(), node);
     if (!emplaced) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1133,7 +1155,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
 
   auto options =
       createTraversalOptions(getAst(), direction, node->getMember(4));
-  
+
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
   direction = direction->getMember(0);
@@ -2064,7 +2086,7 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         en = fromNodeLet(en, member);
         break;
       }
-      
+
       case NODE_TYPE_SORT: {
         en = fromNodeSort(en, member);
         break;
@@ -2442,7 +2464,7 @@ bool ExecutionPlan::fullCount() const noexcept {
                                  : ExecutionNode::castTo<LimitNode*>(_lastLimitNode);
   return lastLimitNode != nullptr && lastLimitNode->fullCount();
 }
-  
+
 /// @brief find all variables that are populated with data from collections
 void ExecutionPlan::findCollectionAccessVariables() {
   _ast->variables()->visit([this](Variable* variable) {
