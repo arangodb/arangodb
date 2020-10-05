@@ -1199,13 +1199,13 @@ AnalyzerPool::Builder::make(
 AnalyzerPool::AnalyzerPool(irs::string_ref const& name)
   : _cache(DEFAULT_POOL_SIZE),
     _name(name) {
-//#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-//  // validation for name - should  be only normalized or static!
-//  auto splitted = IResearchAnalyzerFeature::splitAnalyzerName(_name);
-//  if (splitted.first.empty()) {
-//    TRI_ASSERT(STATIC_ANALYZERS_NAMES.find(name) != STATIC_ANALYZERS_NAMES.end()); // This should be static analyzer
-//  }
-//#endif
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // validation for name - should  be only normalized or static!
+  auto splitted = IResearchAnalyzerFeature::splitAnalyzerName(_name);
+  if (splitted.first.empty()) {
+    TRI_ASSERT(STATIC_ANALYZERS_NAMES.find(name) != STATIC_ANALYZERS_NAMES.end()); // This should be static analyzer
+  }
+#endif
 }
 
 bool AnalyzerPool::operator==(AnalyzerPool const& rhs) const {
