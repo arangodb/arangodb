@@ -148,25 +148,27 @@ var updateFishbowlFromZip = function (filename) {
       }
     }
 
-    db._executeTransaction({
-      collections: {
-        exclusive: fishbowl.name()
-      },
-      action: function (params) {
-        var c = require('internal').db._collection(params.collection);
-        c.truncate();
+    if (fishbowl) {
+      db._executeTransaction({
+        collections: {
+          exclusive: fishbowl.name()
+        },
+        action: function (params) {
+          var c = require('internal').db._collection(params.collection);
+          c.truncate();
 
-        params.services.forEach(function (service) {
-          c.save(service);
-        });
-      },
-      params: {
-        services: toSave,
-        collection: fishbowl.name()
-      }
-    });
+          params.services.forEach(function (service) {
+            c.save(service);
+          });
+        },
+        params: {
+          services: toSave,
+          collection: fishbowl.name()
+        }
+      });
 
-    require('console').debug('Updated local Foxx repository with ' + toSave.length + ' service(s)');
+      require('console').debug('Updated local Foxx repository with ' + toSave.length + ' service(s)');
+    }
   }
 };
 
