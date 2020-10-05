@@ -48,19 +48,21 @@ class UpsertTestCase {
     this._largeLoop = this._isBitSet(2);
     this._uniqueIndex = this._isBitSet(3);
     this._inSubqueryLoop = this._isBitSet(4);
+    this._index = this._isBitSet(5);
+
     // TODO: Reactivate this, right now those tests
     // are red as they can read your own write.
+    // On reactivation increase the checks below by one
     this._updateOnly = false;
-    // this._updateOnly = this._isBitSet(5);
-    this._index = this._isBitSet(6);
+    // this._updateOnly = this._isBitSet(6);
 
 
     // Cluster only
     // Make sure those are the highest bits
     // as the single server will simply not set them
-    this._multipleShards = this._isBitSet(7);
-    this._shardKey = this._isBitSet(8);
-    this._satellite = this._isBitSet(9);
+    this._multipleShards = this._isBitSet(6);
+    this._shardKey = this._isBitSet(7);
+    this._satellite = this._isBitSet(8);
   }
 
   isValidCombination() {
@@ -309,10 +311,14 @@ function aqlUpsertCombinationSuite () {
     tearDown : clear
   };
   
-  let testFlags = 7;
+  // Todo increase to 7 to include updateOnly Tests again
+  let testFlags = 6;
   if (isCluster) {
     // Sharding Mechanism
-    testFlags += 3;
+    testFlags += 2;
+    if (require("internal").isEnterprise()) {
+      testFlags += 1;
+    }
   }
   const numTests = Math.pow(2, testFlags);
   for (let i = 0; i < numTests; ++i) {
