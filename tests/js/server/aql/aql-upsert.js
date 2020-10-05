@@ -60,9 +60,9 @@ class UpsertTestCase {
     // Cluster only
     // Make sure those are the highest bits
     // as the single server will simply not set them
-    this._multipleShards = this._isBitSet(6);
-    this._shardKey = this._isBitSet(7);
-    this._satellite = this._isBitSet(8);
+    this._multipleShards = this._isBitSet(7);
+    this._shardKey = this._isBitSet(8);
+    this._satellite = require("internal").isEnterprise() ? this._isBitSet(9) : false;
   }
 
   isValidCombination() {
@@ -138,9 +138,9 @@ class UpsertTestCase {
 
     const query = this._generateQuery();
     // Query will have side effects
-    db._query(query, {},  this._options());
+    db._query(query, {}, this._options());
     this._validateResult();
-    
+
 
   }
 
@@ -161,7 +161,7 @@ class UpsertTestCase {
       }
       db._create(cn, collectionOptions);
     }
-    
+
     if (this._uniqueIndex) {
       this._col().ensureUniqueConstraint("value");
     }
@@ -293,7 +293,7 @@ class UpsertTestCase {
 
 }
 
-function aqlUpsertCombinationSuite () {
+function aqlUpsertCombinationSuite() {
 
   const clear = () => {
     db._drop(cn);
@@ -302,15 +302,15 @@ function aqlUpsertCombinationSuite () {
   const testSuite = {
     // Every test will create the Collection
     // As the cluster test require special sharding
-    setUp : clear,
+    setUp: clear,
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : clear
+    tearDown: clear
   };
-  
+
   // Todo increase to 7 to include updateOnly Tests again
   let testFlags = 6;
   if (isCluster) {
@@ -329,7 +329,7 @@ function aqlUpsertCombinationSuite () {
       };
     }
 
-  }  
+  }
   return testSuite;
 }
 
