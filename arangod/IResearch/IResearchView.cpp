@@ -1017,7 +1017,7 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
               TRI_ERROR_FORBIDDEN,
               std::string("while updating arangosearch definition, error: "
                           "collection '") +
-                  collection->name() + "' not authorised for read access");
+                  collection->name() + "' not authorized for read access");
         }
       }
     }
