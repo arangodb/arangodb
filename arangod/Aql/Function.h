@@ -55,7 +55,10 @@ struct Function {
 
     /// @brief exclude the function from being evaluated during AST
     /// optimizations evaluation of function will only happen at query runtime
-    NoEval = 8
+    NoEval = 8,
+    
+    /// @brief is this function position dependent
+    NonMoveable = 16
   };
 
   /// @brief helper for building flags
