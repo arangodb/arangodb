@@ -1,6 +1,35 @@
 devel
 -----
 
+* Minor clean up of and less verbosity in agent callbacks. 
+
+* Speed up initial replication of collections/shards data by not wrapping 
+  each document in a seperate `{"type":2300,"data":...}` envelope. In 
+  addition, the follower side of the replication will request data from 
+  leaders in VelocyPack format if the leader is running at least version 
+  3.8.
+  Stripping the envelopes and using VelocyPack for transfer allows for 
+  smaller data sizes when exchanging the documents and faster processing, 
+  and thus can lead to time savings in document packing and unpacking as 
+  well as reduce the number of required HTTP requests. 
+
+* Add database, shard name and error information to several shard-related log 
+  messages.
+
+* Display shard names of a collection in the web interface when in the details
+  view of the collection.
+
+* Added HTTP requests metrics for tracking the number of superuser and normal
+  user requests separately:
+
+  - `arangodb_http_request_statistics_superuser_requests`: Total number of HTTP
+    requests executed by superuser/JWT
+  - `arangodb_http_request_statistics_user_requests`: Total number of HTTP
+    requests executed by clients
+
+* Added metric `arangodb_agency_callback_registered counter` for tracking the
+  total number of agency callbacks that were registered.
+
 * Fixed a bug in handling of followers which refuse to replicate operations.
   In the case that the follower has simply been dropped in the meantime, we now
   avoid an error reported by the shard leader.
