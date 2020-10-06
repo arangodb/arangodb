@@ -2385,8 +2385,7 @@ Future<Result> Methods::replicateOperations(
           LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
               << "synchronous replication: dropping follower "
               << deadFollower << " for shard " << collection->name()
-              << " in database " << collection->vocbase().name() 
-              << ": " << resp.combinedResult().errorMessage();
+              << " in database " << collection->vocbase().name();
         } else {
           LOG_TOPIC("db473", ERR, Logger::REPLICATION)
               << "synchronous replication: could not drop follower "
