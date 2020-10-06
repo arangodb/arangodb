@@ -199,6 +199,66 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
     EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
                              server.server(), rhs->slice(), lhs->slice(), irs::string_ref::NIL)));
   }
+
+  // test analyzers with definitions
+  {
+    auto lhs = arangodb::velocypack::Parser::fromJson(
+      "{ \"view\": \"a/\", \"includeAllFields\": false, \"analyzers\":[\"testAnalyzer\", \"mydb::testAnalyzer2\"]," 
+      "  \"analyzerDefinitions\":[ "
+      "    {\"name\":\"testAnalyzer\", \"type\":\"ngram\", \"properties\":{\"min\":2, \"max\":2, \"preserveOriginal\": false}}, "
+      "    {\"name\":\"testAnalyzer2\", \"type\":\"ngram\", \"properties\":{\"min\":3, \"max\":3, \"preserveOriginal\": false}} "
+      "  ]}");
+    auto rhs = arangodb::velocypack::Parser::fromJson(
+      "{ \"view\": \"a/bc\", \"includeAllFields\": false, \"analyzers\":[\"mydb::testAnalyzer\", \"testAnalyzer2\"], "
+      "  \"analyzerDefinitions\":[ "
+      "    {\"name\":\"testAnalyzer\", \"type\":\"ngram\", \"properties\":{\"min\":2, \"max\":2, \"preserveOriginal\": false}}, "
+      "    {\"name\":\"testAnalyzer2\", \"type\":\"ngram\", \"properties\":{\"min\":3, \"max\":3, \"preserveOriginal\": false}} "
+      "  ]}");
+    EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
+      server.server(), lhs->slice(), rhs->slice(), "mydb")));
+    EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
+      server.server(), rhs->slice(), lhs->slice(), "mydb")));
+  }
+
+  // test analyzers with definitions different order
+  {
+    auto lhs = arangodb::velocypack::Parser::fromJson(
+      "{ \"view\": \"a/\", \"includeAllFields\": false, \"analyzers\":[\"testAnalyzer\", \"mydb::testAnalyzer2\"]," 
+      "  \"analyzerDefinitions\":[ "
+      "    {\"name\":\"testAnalyzer\", \"type\":\"ngram\", \"properties\":{\"min\":2, \"max\":2, \"preserveOriginal\": false}}, "
+      "    {\"name\":\"testAnalyzer2\", \"type\":\"ngram\", \"properties\":{\"min\":3, \"max\":3, \"preserveOriginal\": false}} "
+      "  ]}");
+    auto rhs = arangodb::velocypack::Parser::fromJson(
+      "{ \"view\": \"a/bc\", \"includeAllFields\": false, \"analyzers\":[\"testAnalyzer2\", \"testAnalyzer\"], "
+      "  \"analyzerDefinitions\":[ "
+      "    {\"name\":\"testAnalyzer\", \"type\":\"ngram\", \"properties\":{\"min\":2, \"max\":2, \"preserveOriginal\": false}}, "
+      "    {\"name\":\"testAnalyzer2\", \"type\":\"ngram\", \"properties\":{\"min\":3, \"max\":3, \"preserveOriginal\": false}} "
+      "  ]}");
+    EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
+      server.server(), lhs->slice(), rhs->slice(), "mydb")));
+    EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
+      server.server(), rhs->slice(), lhs->slice(), "mydb")));
+  }
+
+  // test analyzers with different names
+  {
+    auto lhs = arangodb::velocypack::Parser::fromJson(
+      "{ \"view\": \"a/\", \"includeAllFields\": false, \"analyzers\":[\"testAnalyzer\", \"testAnalyzer2\"]," 
+      "  \"analyzerDefinitions\":[ "
+      "    {\"name\":\"testAnalyzer\", \"type\":\"ngram\", \"properties\":{\"min\":2, \"max\":2, \"preserveOriginal\": false}}, "
+      "    {\"name\":\"testAnalyzer2\", \"type\":\"ngram\", \"properties\":{\"min\":3, \"max\":3, \"preserveOriginal\": false}} "
+      "  ]}");
+    auto rhs = arangodb::velocypack::Parser::fromJson(
+      "{ \"view\": \"a/bc\", \"includeAllFields\": false, \"analyzers\":[\"testAnalyzer\", \"testAnalyzer3\"], "
+      "  \"analyzerDefinitions\":[ "
+      "    {\"name\":\"testAnalyzer\", \"type\":\"ngram\", \"properties\":{\"min\":2, \"max\":2, \"preserveOriginal\": false}}, "
+      "    {\"name\":\"testAnalyzer3\", \"type\":\"ngram\", \"properties\":{\"min\":3, \"max\":3, \"preserveOriginal\": false}} "
+      "  ]}");
+    EXPECT_FALSE((true == arangodb::iresearch::IResearchLinkHelper::equal(
+      server.server(), lhs->slice(), rhs->slice(), "mydb")));
+    EXPECT_FALSE((true == arangodb::iresearch::IResearchLinkHelper::equal(
+      server.server(), rhs->slice(), lhs->slice(), "mydb")));
+  }
 }
 
 TEST_F(IResearchLinkHelperTestSingle, test_validate_cross_db_analyzer) {
