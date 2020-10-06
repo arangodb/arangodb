@@ -846,10 +846,61 @@ describe ArangoDB do
           part = body.slice(0, position)
 
           doc = JSON.parse(part)
+          doc.should have_key("type")
+          doc.should have_key("data")
+          doc.should_not have_key("_key")
           doc['type'].should eq(2300)
           doc['data']['_key'].should match(/^test[0-9]+$/)
           doc["data"]["_rev"].should match(/^[a-zA-Z0-9_\-]+$/)
           doc['data'].should have_key("test")
+
+          body = body.slice(position + 1, body.length)
+          i = i + 1
+        end
+
+        i.should eq(100)
+      end
+      
+      it "checks the dump for a non-empty collection, no envelopes" do
+        cid = ArangoDB.create_collection("UnitTestsReplication", false)
+
+        (0...100).each{|i|
+          body = "{ \"_key\" : \"test" + i.to_s + "\", \"test\" : " + i.to_s + " }"
+          doc = ArangoDB.post("/_api/document?collection=UnitTestsReplication", :body => body)
+          doc.code.should eq(202)
+        }
+
+        ArangoDB.delete(api + "/batch/#{@batchId}", :body => "")
+        doc0 = ArangoDB.post(api + "/batch", :body => "{}")
+        @batchId = doc0.parsed_response["id"]
+        @batchId.should  match(/^\d+$/)
+
+        cmd = api + "/dump?collection=UnitTestsReplication&batchId=#{@batchId}&useEnvelope=false"
+        doc = ArangoDB.log_get("#{prefix}-dump-non-empty", cmd, :body => "", :format => :plain)
+
+        doc.code.should eq(200)
+
+        doc.headers["x-arango-replication-checkmore"].should eq("false")
+        doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
+        doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
+        doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
+
+        body = doc.response.body
+        i = 0
+        while 1
+          position = body.index("\n")
+
+          break if position == nil
+
+          part = body.slice(0, position)
+
+          doc = JSON.parse(part)
+          doc.should_not have_key("type")
+          doc.should_not have_key("data")
+          doc.should have_key("_key")
+          doc['_key'].should match(/^test[0-9]+$/)
+          doc["_rev"].should match(/^[a-zA-Z0-9_\-]+$/)
+          doc.should have_key("test")
 
           body = body.slice(position + 1, body.length)
           i = i + 1
