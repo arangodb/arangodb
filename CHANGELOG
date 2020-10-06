@@ -6,6 +6,8 @@ devel
   delayed by more than the configured value (in milliseconds). The intention
   is to get aware of severely delayed WAL sync operations.
 
+* Fix for BTS-191: Made transaction API database-aware.
+
 * Minor clean up of and less verbosity in agent callbacks. 
 
 * Speed up initial replication of collections/shards data by not wrapping 

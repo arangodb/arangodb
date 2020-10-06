@@ -52,7 +52,8 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
       : IndexTypeFactory(server), _type(type) {}
 
   bool equal(arangodb::velocypack::Slice const& lhs,
-             arangodb::velocypack::Slice const& rhs) const override {
+             arangodb::velocypack::Slice const& rhs,
+             std::string const& dbname) const override {
     auto* clusterEngine =
         static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE);
 
@@ -70,7 +71,7 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
           "cannot find storage engine while normalizing index"));
     }
 
-    return engine->indexFactory().factory(_type).equal(lhs, rhs);
+    return engine->indexFactory().factory(_type).equal(lhs, rhs, dbname);
   }
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
