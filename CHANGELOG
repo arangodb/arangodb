@@ -1,6 +1,16 @@
 devel
 -----
 
+* Speed up initial replication of collections/shards data by not wrapping 
+  each document in a seperate `{"type":2300,"data":...}` envelope. In 
+  addition, the follower side of the replication will request data from 
+  leaders in VelocyPack format if the leader is running at least version 
+  3.8.
+  Stripping the envelopes and using VelocyPack for transfer allows for 
+  smaller data sizes when exchanging the documents and faster processing, 
+  and thus can lead to time savings in document packing and unpacking as 
+  well as reduce the number of required HTTP requests. 
+
 * Add database, shard name and error information to several shard-related log 
   messages.
 
