@@ -51,15 +51,14 @@ AqlValue evaluate(AqlValue const& lhs,
   ExpressionContext& expressionContext = expressionContextMock.get();
   fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](int, char const*){ });
 
+  VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
-  fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysDo([](){
-    static VPackOptions options;
-    return &options;
-  });
+  fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysReturn(&options);
   transaction::Context& trxCtx = trxCtxMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysDo([&trxCtx](){ return &trxCtx; });
+  fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
   fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& {
     return trxMock.get();
   });

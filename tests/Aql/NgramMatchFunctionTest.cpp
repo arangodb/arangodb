@@ -83,9 +83,8 @@ class NgramMatchFunctionTest : public ::testing::Test {
         warnings->insert(c);
       }});
     auto trx = server.createFakeTransaction();
-    fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& {
-      return *trx;
-    });
+    fakeit::When(Method(expressionContextMock, trx)).AlwaysReturn(*trx);
+    fakeit::When(Method(expressionContextMock, vocbase)).AlwaysReturn(trx->vocbase());
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{ arena };
     if (Attribute) {

@@ -66,8 +66,10 @@ class GeoConstructorTest : public ::testing::Test {
         trx(trxMock.get()),
         context(contextMock.get()),
         params{arena} {
+    static VPackOptions options = velocypack::Options::Defaults;
     fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&context);
-    fakeit::When(Method(contextMock, getVPackOptions)).AlwaysReturn(&velocypack::Options::Defaults);
+    fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
+    fakeit::When(Method(contextMock, getVPackOptions)).AlwaysReturn(&options);
     fakeit::When(Method(contextMock, leaseBuilder)).AlwaysDo([]() { return new arangodb::velocypack::Builder(); });
     fakeit::When(Method(contextMock, returnBuilder)).AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
     fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& { return this->trx; });
@@ -528,7 +530,9 @@ TEST_F(GeoPointTest, checking_object_and_object) {
 }  // namespace geo_point
 
 namespace geo_multipoint {
-class GeoMultipointTest : public GeoConstructorTest {};
+struct GeoMultipointTest : public GeoConstructorTest {
+  GeoMultipointTest() : GeoConstructorTest() {}
+};
 
 TEST_F(GeoMultipointTest, checking_multipoint_with_2_positions) {
   char const* p = "[[1.0, 2.0], [3.0, 4.0]]";
@@ -1167,7 +1171,9 @@ TEST_F(GeoPolygonTest, checking_object_with_some_data) {
 }  // namespace geo_polygon
 
 namespace geo_linestring {
-class GeoLinestringTest : public GeoConstructorTest {};
+struct GeoLinestringTest : public GeoConstructorTest {
+  GeoLinestringTest() : GeoConstructorTest() {}
+};
 
 TEST_F(GeoLinestringTest, checking_polygon_with_2_positions) {
   char const* p = "[[1.0, 2.0], [3.0, 4.0]]";
@@ -1393,7 +1399,9 @@ TEST_F(GeoLinestringTest, checking_object) {
 }  // namespace geo_linestring
 
 namespace geo_multilinestring {
-class GeoMultilinestringTest : public GeoConstructorTest {};
+struct GeoMultilinestringTest : public GeoConstructorTest {
+  GeoMultilinestringTest() : GeoConstructorTest() {}
+};
 
 TEST_F(GeoMultilinestringTest, checking_multilinestrings_with_2x2_positions) {
   char const* p = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]] ]";
