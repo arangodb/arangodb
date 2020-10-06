@@ -112,8 +112,6 @@ void transaction::V8Context::enterV8Context() {
 
 void transaction::V8Context::exitV8Context() {
   TRI_ASSERT(_v8g != nullptr);
-  TRI_ASSERT(_v8g->_transactionContext == nullptr ||
-             _v8g->_transactionContext == this);
   _v8g->_transactionContext = nullptr;
 }
 
