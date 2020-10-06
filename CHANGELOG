@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix for BTS-191: Made transaction API database-aware.
+
 * Minor clean up of and less verbosity in agent callbacks. 
 
 * Speed up initial replication of collections/shards data by not wrapping 

@@ -123,8 +123,8 @@ void RestTransactionHandler::executeGetState() {
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
-  transaction::Status status = mgr->getManagedTrxStatus(tid);
-  
+  transaction::Status status = mgr->getManagedTrxStatus(tid, _vocbase.name());
+
   if (status == transaction::Status::UNDEFINED) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_TRANSACTION_NOT_FOUND);
   } else {
@@ -199,8 +199,8 @@ void RestTransactionHandler::executeCommit() {
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
-  
-  Result res = mgr->commitManagedTrx(tid);
+
+  Result res = mgr->commitManagedTrx(tid, _vocbase.name());
   if (res.fail()) {
     generateError(res);
   } else {
@@ -235,8 +235,8 @@ void RestTransactionHandler::executeAbort() {
                     "bad transaction ID");
       return;
     }
-  
-    Result res = mgr->abortManagedTrx(tid);
+
+    Result res = mgr->abortManagedTrx(tid, _vocbase.name());
 
     if (res.fail()) {
       generateError(res);
