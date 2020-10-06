@@ -74,7 +74,7 @@ class DatabaseTailingSyncer final : public TailingSyncer {
  protected:
   Result syncCollectionCatchupInternal(std::string const& collectionName,
                                        double timeout, bool hard,
-                                       TRI_voc_tick_t& until, bool& didTimeout);
+                                       TRI_voc_tick_t& until, bool& didTimeout, char const* context);
   /// @brief save the current applier state
   Result saveApplierState() override;
 
