@@ -1,6 +1,25 @@
 devel
 -----
 
+* Don't respond with misleading error in smart vertex collections.
+
+  When inserting a document with a non-conforming key pattern into
+  a smart vertex collection, the response error code and message are
+  1466 (ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY) and "must not specify _key
+  for this collection".
+  This is misleading, because it is actually allowed to specify a key
+  value for documents in such collection. However, there are some
+  restrictions for valid key values (e.g. the key must be a string and
+  contain the smart graph attribute value at the front, followed by a
+  colon.
+  If any of these restrictions are not met, the server currently
+  responds with "must not specify key for this collection", which is
+  misleading. This change rectifies it so that the server responds with
+  error 4003 (ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE)
+  and message "in smart vertex collections _key must be a string and
+  prefixed with the value of the smart graph attribute". This should
+  make it a lot easier to understand what the actual problem is.
+
 * Fix for BTS-191: Made transaction API database-aware.
 
 * Minor clean up of and less verbosity in agent callbacks. 
