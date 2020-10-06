@@ -1,6 +1,8 @@
 devel
 -----
 
+* Minor clean up of and less verbosity in agent callbacks. 
+
 * Speed up initial replication of collections/shards data by not wrapping 
   each document in a seperate `{"type":2300,"data":...}` envelope. In 
   addition, the follower side of the replication will request data from 
@@ -22,7 +24,7 @@ devel
 
   - `arangodb_http_request_statistics_superuser_requests`: Total number of HTTP
     requests executed by superuser/JWT
-  - `arangodb_http_request_statistics_user_requests`: Total number of HTTP 
+  - `arangodb_http_request_statistics_user_requests`: Total number of HTTP
     requests executed by clients
 
 * Added metric `arangodb_agency_callback_registered counter` for tracking the
