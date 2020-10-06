@@ -37,6 +37,16 @@ const coordinatorId = (
   : undefined
 );
 
+let ensureDefaultQueue = function () {
+  if (!global.KEY_GET('queue-control', 'default-queue')) {
+    try {
+      let queues = require('@arangodb/foxx/queues');
+      queues.create('default');
+      global.KEY_SET('queue-control', 'default-queue', 1);
+    } catch (err) {}
+  }
+};
+
 var runInDatabase = function () {
   var busy = false;
   db._executeTransaction({
@@ -211,6 +221,8 @@ const resetDeadJobsOnFirstRun = function () {
 };
 
 exports.manage = function () {
+  ensureDefaultQueue();
+
   if (!global.ArangoServerState.isFoxxmaster()) {
     return;
   }
@@ -221,16 +233,24 @@ exports.manage = function () {
       // we use this to signify a Leader change to this server
       foxxManager.healAll(true);
     }
-    // Reset jobs before updating the queue delay. Don't continue on errors,
-    // but retry later.
-    resetDeadJobsOnFirstRun();
-    if (isCluster) {
-      var foxxQueues = require('@arangodb/foxx/queues');
-
-      foxxQueues._updateQueueDelay();
-    }
     // do not call again immediately
-    global.ArangoServerState.clearFoxxmasterQueueupdate();
+    global.ArangoServerState.setFoxxmasterQueueupdate(false);
+
+    try {
+      // Reset jobs before updating the queue delay. Don't continue on errors,
+      // but retry later.
+      resetDeadJobsOnFirstRun();
+      if (isCluster) {
+        let foxxQueues = require('@arangodb/foxx/queues');
+        foxxQueues._updateQueueDelay();
+      }
+    } catch (err) {
+      // an error occurred. we need to reinstantiate the queue
+      // update, so in the next round the code for the queue update
+      // will be run
+      global.ArangoServerState.setFoxxmasterQueueupdate(true);
+      throw err;
+    }
   }
 
   let initialDatabase = db._name();
@@ -245,8 +265,8 @@ exports.manage = function () {
         return;
       }
 
-      var queues = db._collection('_queues');
-      var jobs = db._collection('_jobs');
+      let queues = db._collection('_queues');
+      let jobs = db._collection('_jobs');
 
       if (!queues || !jobs || !queues.count() || !jobs.count()) {
         global.KEY_SET('queue-control', 'delayUntil', -1);
@@ -282,16 +302,19 @@ exports.run = function () {
     return;
   }
 
-  let queues = require('@arangodb/foxx/queues');
-  queues.create('default');
+  // this function is called at server startup. we must not do
+  // anything expensive here, or anything that could block the
+  // startup procedure
 
   // wakeup/poll interval for Foxx queues
   global.KEYSPACE_CREATE('queue-control', 1, true);
   if (!isCluster) {
+    ensureDefaultQueue();
     resetDeadJobs();
   }
 
   if (tasks.register !== undefined) {
+    // move the actual foxx queue operations execution to a background task
     tasks.register({
       command: function () {
         require('@arangodb/foxx/queues/manager').manage();
