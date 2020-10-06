@@ -1729,6 +1729,9 @@ Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector,
   if (_syncThread) {
     // _syncThread may be a nullptr, in case automatic syncing is turned off
     res = _syncThread->syncWal();
+  } else {
+    // no syncThread...
+    res = RocksDBSyncThread::sync(_db->GetBaseDB());
   }
 
   if (res.ok() && waitForCollector) {
