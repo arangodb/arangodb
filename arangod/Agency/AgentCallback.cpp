@@ -55,6 +55,10 @@ bool AgentCallback::operator()(arangodb::network::Response const& r) {
         success = body.get("success").isTrue();
         otherTerm = body.get("term").getNumber<term_t>();
       } catch (std::exception const& e) {
+         // TODO: on shutdown, we can get expected errors message because we get
+         // {"error":true,"code":503,"errorMessage":"shutdown in progress"}
+         // which will trigger a VelocyPack error "Expecting type UInt" when trying
+         // to read the "term" attribue from the message.
         LOG_TOPIC("1b7bb", WARN, Logger::AGENCY) << "Bad callback message received: " << e.what();
         _agent->reportFailed(_slaveID, _toLog);
       }
@@ -63,7 +67,7 @@ bool AgentCallback::operator()(arangodb::network::Response const& r) {
       } else if (!success) {
         LOG_TOPIC("7cbce", DEBUG, Logger::CLUSTER)
             << "Got negative answer from follower, will retry later.";
-        // This reportFailed will reset _confirmed in Agent fot this follower
+        // This reportFailed will reset _confirmed in Agent for this follower
         _agent->reportFailed(_slaveID, _toLog, true);
       } else {
         Slice senderTimeStamp = body.get("senderTimeStamp");

@@ -1740,7 +1740,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
   auto status = _db->GetSortedWalFiles(files);
   if (!status.ok()) {
     LOG_TOPIC("078ef", INFO, Logger::ENGINES)
-        << "could not get WAL files " << status.ToString();
+        << "could not get WAL files: " << status.ToString();
     return;
   }
 
