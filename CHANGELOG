@@ -1,6 +1,20 @@
 devel
 -----
 
+* Add database, shard name and error information to several shard-related log 
+  messages.
+
+* Display shard names of a collection in the web interface when in the details
+  view of the collection.
+
+* Added HTTP requests metrics for tracking the number of superuser and normal
+  user requests separately:
+
+  - `arangodb_http_request_statistics_superuser_requests`: Total number of HTTP
+    requests executed by superuser/JWT
+  - `arangodb_http_request_statistics_user_requests`: Total number of HTTP 
+    requests executed by clients
+
 * Added metric `arangodb_agency_callback_registered counter` for tracking the
   total number of agency callbacks that were registered.
 
