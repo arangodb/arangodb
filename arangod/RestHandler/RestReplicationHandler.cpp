@@ -2456,7 +2456,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  const std::string followerId = followerIdSlice.copyString();
+  std::string const followerId = followerIdSlice.copyString();
   LOG_TOPIC("312cc", DEBUG, Logger::REPLICATION)
       << "Attempt to Add Follower: " << followerId << " to shard "
       << col->name() << " in database: " << _vocbase.name();
@@ -2537,10 +2537,11 @@ void RestReplicationHandler::handleCommandAddFollower() {
     LOG_TOPIC("94ebe", DEBUG, Logger::REPLICATION)
         << followerId << " is not yet in sync with " << _vocbase.name() << "/"
         << col->name();
-    const std::string checksum = checksumSlice.copyString();
+    std::string const checksum = checksumSlice.copyString();
     LOG_TOPIC("592ef", WARN, Logger::REPLICATION)
-        << "Cannot add follower, mismatching checksums. "
-        << "Expected: " << referenceChecksum.get() << " Actual: " << checksum;
+        << "Cannot add follower for shard " << shardSlice.copyString() 
+        << " in database " << _vocbase.name() << ", mismatching checksums. "
+        << "Expected: " << referenceChecksum.get() << ", actual: " << checksum;
     generateError(rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
                   "'checksum' is wrong. Expected: " + referenceChecksum.get() +
                       ". Actual: " + checksum);
