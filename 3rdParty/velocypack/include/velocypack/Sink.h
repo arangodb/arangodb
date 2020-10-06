@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library to build up VPack documents.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +20,6 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef VELOCYPACK_SINK_H
@@ -99,6 +97,24 @@ struct StringSinkImpl final : public Sink {
 };
 
 typedef StringSinkImpl<std::string> StringSink;
+
+struct StringLengthSink final : public Sink {
+  StringLengthSink() : length(0) {}
+
+  void push_back(char) override final { ++length; }
+
+  void append(std::string const& p) override final { length += p.size(); }
+
+  void append(char const* p) override final { length += strlen(p); }
+
+  void append(char const*, ValueLength len) override final {
+    length += len;
+  }
+
+  void reserve(ValueLength) override final {}
+
+  ValueLength length;
+};
 
 template <typename T>
 struct StreamSinkImpl final : public Sink {
