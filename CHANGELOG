@@ -1,7 +1,9 @@
 devel
 -----
 
-* Add database, shard name and error information to several shard-related log 
+* Minor clean up of and less verbosity in agent callbacks. 
+
+* Add database, shard name and error information to several shard-related log
   messages.
 
 * Display shard names of a collection in the web interface when in the details
@@ -12,7 +14,7 @@ devel
 
   - `arangodb_http_request_statistics_superuser_requests`: Total number of HTTP
     requests executed by superuser/JWT
-  - `arangodb_http_request_statistics_user_requests`: Total number of HTTP 
+  - `arangodb_http_request_statistics_user_requests`: Total number of HTTP
     requests executed by clients
 
 * Added metric `arangodb_agency_callback_registered counter` for tracking the
