@@ -34,7 +34,6 @@ var arangodb = require('@arangodb');
 var db = arangodb.db;
 var testHelper = require('@arangodb/test-helper').Helper;
 var analyzers = require("@arangodb/analyzers");
-var transaction = require("@arangodb/analyzers");
 let ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
 const isCluster = internal.isCluster();
 
