@@ -39,7 +39,8 @@ v3.6.8 (XXXX-XX-XX)
   * `@arangodb/actions.routingTree`: will return an empty object
   * `@arangodb/actions.routingList`: will return an empty object
 
-  All the above APIs were intended to be used for internal means only.
+  All the above APIs were intended to be used for internal means only. These
+  APIs are deprecated now and will be removed in ArangoDB v3.9.
 
 * Fixed a bug in handling of followers which refuse to replicate operations.
   In the case that the follower has simply been dropped in the meantime, we now
