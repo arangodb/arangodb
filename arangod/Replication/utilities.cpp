@@ -52,9 +52,12 @@ namespace {
 /// @brief handle the state response of the leader
 arangodb::Result handleLeaderStateResponse(arangodb::replutils::Connection& connection,
                                            arangodb::replutils::LeaderInfo& leader,
-                                           arangodb::velocypack::Slice const& slice) {
+                                           arangodb::velocypack::Slice const& slice,
+                                           char const* context) {
   using arangodb::Result;
   using arangodb::velocypack::Slice;
+
+  // note: context can be a nullptr
 
   std::string const endpointString = " from endpoint '" + leader.endpoint + "'";
 
@@ -161,7 +164,9 @@ arangodb::Result handleLeaderStateResponse(arangodb::replutils::Connection& conn
       << leader.serverId.id() << ", version " << leader.majorVersion << "."
       << leader.minorVersion << ", last log tick " << leader.lastLogTick
       << ", last uncommitted log tick " << leader.lastUncommittedLogTick
-      << ", engine " << leader.engine;
+      << ", engine " << leader.engine
+      << (context != nullptr ? ", context: " : "")
+      << (context != nullptr ? context : "");
 
   return Result();
 }
@@ -429,7 +434,7 @@ LeaderInfo::LeaderInfo(ReplicationApplierConfiguration const& applierConfig) {
 }
 
 /// @brief get leader state
-Result LeaderInfo::getState(replutils::Connection& connection, bool isChildSyncer) {
+Result LeaderInfo::getState(replutils::Connection& connection, bool isChildSyncer, char const* context) {
   if (isChildSyncer) {
     TRI_ASSERT(endpoint.empty());
     TRI_ASSERT(serverId.isSet());
@@ -477,7 +482,7 @@ Result LeaderInfo::getState(replutils::Connection& connection, bool isChildSynce
                       endpoint + ": invalid JSON");
   }
 
-  return ::handleLeaderStateResponse(connection, *this, slice);
+  return ::handleLeaderStateResponse(connection, *this, slice, context);
 }
 
 bool LeaderInfo::simulate32Client() const {

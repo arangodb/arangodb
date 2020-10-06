@@ -399,17 +399,8 @@ Result getAnalyzerByName(
   }
   auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
 
-  auto sysVocbase = server.hasFeature<SystemDatabaseFeature>()
-    ? server.getFeature<SystemDatabaseFeature>().use()
-    : nullptr;
-
-  if (sysVocbase) {
-    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase,
-                                   ctx.trx->state()->analyzersRevision());
-
-    shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
-      analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
-  }
+  analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),	
+                                 ctx.trx->state()->analyzersRevision());
 
   if (!analyzer) {
     return {
@@ -418,6 +409,10 @@ Result getAnalyzerByName(
           .append(analyzerId.c_str(), analyzerId.size()).append("'")
     };
   }
+
+  shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
+    analyzerId, ctx.trx->vocbase().name(), false);
+
   return {};
 }
 
@@ -2060,21 +2055,8 @@ Result fromFuncAnalyzer(
     }
 
     auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
-
-    shortName = analyzerId;
-
-    auto sysVocbase = server.hasFeature<SystemDatabaseFeature>()
-                          ? server.getFeature<SystemDatabaseFeature>().use()
-                          : nullptr;
-
-    if (sysVocbase) {
-      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase,
-                                     ctx.trx->state()->analyzersRevision());
-
-      shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
-          analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
-    }
-
+    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),
+                                   ctx.trx->state()->analyzersRevision());
     if (!analyzer) {
       return {
         TRI_ERROR_BAD_PARAMETER,
@@ -2082,6 +2064,10 @@ Result fromFuncAnalyzer(
             .append(analyzerId.c_str()).append("'")
       };
     }
+
+    shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
+      analyzerId, ctx.trx->vocbase().name(), false);  // args
+
   }
 
   FilterContext const subFilterContext(analyzerValue, filterCtx.boost); // override analyzer

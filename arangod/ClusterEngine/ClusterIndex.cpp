@@ -212,7 +212,7 @@ bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
   // TODO implement faster version of this
   auto& engine =
       _collection.vocbase().server().getFeature<EngineSelectorFeature>().engine();
-  return Index::Compare(engine, _info.slice(), info);
+  return Index::Compare(engine, _info.slice(), info, _collection.vocbase().name());
 }
 
 Index::FilterCosts ClusterIndex::supportsFilterCondition(

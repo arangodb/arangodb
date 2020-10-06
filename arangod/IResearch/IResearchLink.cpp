@@ -329,7 +329,6 @@ IResearchLink::IResearchLink(arangodb::IndexId iid, LogicalCollection& collectio
 
     prev.reset();
   };
-
 }
 
 IResearchLink::~IResearchLink() {
@@ -388,7 +387,7 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
 
   auto const lastCommittedTick = _lastCommittedTick;
   bool recoverCommittedTick = true;
-  
+
   auto lastCommittedTickGuard = irs::make_finally([lastCommittedTick, this, &recoverCommittedTick]()->void {
       if (recoverCommittedTick) {
         _lastCommittedTick = lastCommittedTick;
@@ -418,7 +417,6 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
     if (subscription) {
       subscription->tick(_lastCommittedTick);
     }
-
   } catch (std::exception const& e) {
     LOG_TOPIC("a3c57", ERR, iresearch::TOPIC)
         << "caught exception while truncating arangosearch link '" << id()
@@ -837,7 +835,7 @@ Result IResearchLink::init(
 
   // definition should already be normalized and analyzers created if required
   if (!meta.init(_collection.vocbase().server(), definition, true, error,
-                 &(_collection.vocbase()))) {
+                 _collection.vocbase().name())) {
     return {
       TRI_ERROR_BAD_PARAMETER,
       "error parsing view link parameters from json: " + error
@@ -1575,7 +1573,7 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
   std::string errorField;
 
   return other.init(_collection.vocbase().server(), slice, true, errorField,
-                    &(_collection.vocbase()))  // for db-server analyzer validation should have already apssed on coordinator (missing analyzer == no match)
+                    _collection.vocbase().name())  // for db-server analyzer validation should have already apssed on coordinator (missing analyzer == no match)
          && _meta == other;
 }
 

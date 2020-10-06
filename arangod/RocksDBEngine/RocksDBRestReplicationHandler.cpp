@@ -688,6 +688,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return;
   }
+  
+  bool const useEnvelope = _request->parsedValue("useEnvelope", true);
 
   uint64_t chunkSize = determineChunkSize();
   size_t reserve = std::max<size_t>(chunkSize, 8192);
@@ -698,9 +700,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     buffer.reserve(reserve);  // avoid reallocs
     
     auto trxCtx = transaction::StandaloneContext::Create(_vocbase);
-    
 
-    res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize);
+    res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize, useEnvelope);
     // generate the result
     if (res.fail()) {
       generateError(res.result());
@@ -724,7 +725,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     StringBuffer dump(reserve, false);
 
     // do the work!
-    res = ctx->dumpJson(_vocbase, cname, dump, determineChunkSize());
+    res = ctx->dumpJson(_vocbase, cname, dump, determineChunkSize(), useEnvelope);
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_BAD_PARAMETER)) {
