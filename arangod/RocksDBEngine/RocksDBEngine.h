@@ -205,7 +205,7 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief return a list of the currently open WAL files
   std::vector<std::string> currentWalFiles() const override;
 
-  Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) override;
+  Result flushWal(bool waitForSync, bool waitForCollector) override;
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& info,
@@ -456,6 +456,10 @@ class RocksDBEngine final : public StorageEngine {
   // WAL sync interval, specified in milliseconds by end user, but uses
   // microseconds internally
   uint64_t _syncInterval;
+  
+  // WAL sync delay threshold. Any WAL disk sync longer ago than this value
+  // will trigger a warning (in milliseconds)
+  uint64_t _syncDelayThreshold;
 
   // use write-throttling
   bool _useThrottle;

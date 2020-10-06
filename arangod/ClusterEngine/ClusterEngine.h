@@ -151,9 +151,10 @@ class ClusterEngine final : public StorageEngine {
     return std::vector<std::string>();
   }
 
-  Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) override {
-    return {TRI_ERROR_NO_ERROR};
+  Result flushWal(bool waitForSync, bool waitForCollector) override {
+    return {};
   }
+
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& info,
