@@ -218,6 +218,7 @@ function selfHeal () {
 
   const serviceCollection = utils.getStorage();
   const bundleCollection = utils.getBundleStorage();
+  // The selfHeal comment will be included in debug output if activated or in slow query logs, which helps us distinguish it of user-written queries.
   const serviceDefinitions = db._query(aql`/*selfHeal*/ FOR doc IN ${serviceCollection}
     FILTER LEFT(doc.mount, 2) != "/_"
     LET bundleExists = DOCUMENT(${bundleCollection}, doc.checksum) != null
