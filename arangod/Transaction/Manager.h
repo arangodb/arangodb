@@ -93,6 +93,7 @@ class Manager final {
     double expiryTime;  // time this expires
     std::shared_ptr<TransactionState> state;  /// Transaction, may be nullptr
     std::string user;         /// user owning the transaction
+    std::string db;           /// database in which the transaction operates
     /// cheap usage lock for _state
     mutable basics::ReadWriteSpinLock rwlock;
   };

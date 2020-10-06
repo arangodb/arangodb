@@ -4677,7 +4677,7 @@ function transactionDatabaseSuite() {
   };
 }
 
-/*jsunity.run(transactionRevisionsSuite);
+jsunity.run(transactionRevisionsSuite);
 jsunity.run(transactionRollbackSuite);
 jsunity.run(transactionInvocationSuite);
 jsunity.run(transactionCollectionsSuite);
@@ -4689,7 +4689,7 @@ jsunity.run(transactionTraversalSuite);
 jsunity.run(transactionAQLStreamSuite);
 jsunity.run(transactionTTLStreamSuite);
 jsunity.run(transactionIteratorSuite);
-jsunity.run(transactionOverlapSuite);*/
+jsunity.run(transactionOverlapSuite);
 jsunity.run(transactionDatabaseSuite);
 
 return jsunity.done();

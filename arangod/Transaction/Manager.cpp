@@ -144,8 +144,7 @@ uint64_t Manager::getActiveTransactionCount() {
   return idleTTLDBServer;
 }
 
-Manager::ManagedTrx::ManagedTrx(MetaType t, double ttl,
-                                std::shared_ptr<TransactionState> st)
+Manager::ManagedTrx::ManagedTrx(MetaType t, double ttl, std::shared_ptr<TransactionState> st)
     : type(t),
       intermediateCommits(false),
       finalStatus(Status::UNDEFINED),
@@ -153,6 +152,7 @@ Manager::ManagedTrx::ManagedTrx(MetaType t, double ttl,
       expiryTime(TRI_microtime() + Manager::ttlForType(t)),
       state(std::move(st)),
       user(::currentUser()),
+      db(state ? state->vocbase().name() : ""),
       rwlock() {}
 
 bool Manager::ManagedTrx::hasPerformedIntermediateCommits() const {
@@ -615,8 +615,8 @@ transaction::Status Manager::getManagedTrxStatus(TransactionId tid,
   READ_LOCKER(writeLocker, _transactions[bucket]._lock);
 
   auto it = _transactions[bucket]._managed.find(tid);
-  if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user) ||
-      it->second.state->vocbase().name() != database) {
+  if (it == _transactions[bucket]._managed.end() ||
+      !::authorized(it->second.user) || it->second.db != database) {
     return transaction::Status::UNDEFINED;
   }
 
@@ -679,7 +679,7 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
     if (it == buck._managed.end() || !::authorized(it->second.user) ||
-        (!database.empty() && it->second.state->vocbase().name() != database)) {
+        (!database.empty() && it->second.db != database)) {
       return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
                        std::string("transaction '") + std::to_string(tid.id()) +
                            "' not found");
@@ -997,7 +997,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
 
   // merge with local transactions
   iterateManagedTrx([&builder, &database](TransactionId tid, ManagedTrx const& trx) {
-    if (::authorized(trx.user) && trx.state->vocbase().name() == database) {
+    if (::authorized(trx.user) && trx.db == database) {
       builder.openObject(true);
       builder.add("id", VPackValue(std::to_string(tid.id())));
       builder.add("state", VPackValue(transaction::statusString(trx.state->status())));
