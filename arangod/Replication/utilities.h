@@ -135,7 +135,7 @@ struct LeaderInfo {
   explicit LeaderInfo(ReplicationApplierConfiguration const& applierConfig);
 
   /// @brief get leader state
-  Result getState(Connection& connection, bool isChildSyncer);
+  Result getState(Connection& connection, bool isChildSyncer, char const* context);
 
   /// we need to act like a 3.2 client
   bool simulate32Client() const;

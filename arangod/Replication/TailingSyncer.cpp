@@ -1265,7 +1265,7 @@ retry:
 
   while (true) {
     setProgress("fetching leader state information");
-    res = _state.leader.getState(_state.connection, _state.isChildSyncer);
+    res = _state.leader.getState(_state.connection, _state.isChildSyncer, nullptr);
 
     if (res.is(TRI_ERROR_REPLICATION_NO_RESPONSE)) {
       // leader error. try again after a sleep period

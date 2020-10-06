@@ -356,7 +356,8 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
 }
 
 /// @brief run method, performs a full synchronization
-Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbInventory) {
+Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbInventory,
+                                               char const* context) {
   if (!_config.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
@@ -376,7 +377,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
 
     Result r;
     if (!_config.isChild()) {
-      r = _config.leader.getState(_config.connection, _config.isChild());
+      r = _config.leader.getState(_config.connection, _config.isChild(), context);
 
       if (r.fail()) {
         return r;

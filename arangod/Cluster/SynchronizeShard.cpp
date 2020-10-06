@@ -509,7 +509,8 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   SyncerId syncerId{syncer->syncerId()};
 
   try {
-    Result r = syncer->run(configuration._incremental);
+    std::string const context = "synchronization of shard " + shard + " in database " + database;
+    Result r = syncer->run(configuration._incremental, context.c_str());
 
     if (r.fail()) {
       LOG_TOPIC("3efff", DEBUG, Logger::REPLICATION)
