@@ -1741,8 +1741,7 @@ std::vector<std::string> StorageEngineMock::currentWalFiles() const {
   return std::vector<std::string>();
 }
 
-arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForCollector,
-                                             bool writeShutdownFile) {
+arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForCollector) {
   TRI_ASSERT(false);
   return arangodb::Result();
 }

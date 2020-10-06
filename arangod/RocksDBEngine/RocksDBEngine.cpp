@@ -203,6 +203,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 #else
       _syncInterval(100),
 #endif
+      _syncDelayThreshold(5000),
       _useThrottle(true),
       _useReleasedTick(false),
       _debugLogging(false),
@@ -294,7 +295,18 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--rocksdb.sync-interval",
                      "interval for automatic, non-requested disk syncs (in "
                      "milliseconds, use 0 to turn automatic syncing off)",
-                     new UInt64Parameter(&_syncInterval));
+                     new UInt64Parameter(&_syncInterval),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer));
+  
+  options->addOption("--rocksdb.sync-delay-threshold",
+                     "threshold value for self-observation of WAL disk syncs. "
+                     "any WAL disk sync longer ago than this threshold will trigger "
+                     "a warning (in milliseconds, use 0 for no warnings)",
+                     new UInt64Parameter(&_syncDelayThreshold),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30800)
+                     .setIntroducedIn(30705)
+                     .setIntroducedIn(30608);
 
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
@@ -347,12 +359,28 @@ void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   validateEnterpriseOptions(options);
 #endif
 
-  if (_syncInterval > 0 && _syncInterval < minSyncInterval) {
-    // _syncInterval = 0 means turned off!
-    LOG_TOPIC("bbd68", FATAL, arangodb::Logger::CONFIG)
-        << "invalid value for --rocksdb.sync-interval. Please use a value "
-        << "of at least " << minSyncInterval;
-    FATAL_ERROR_EXIT();
+  if (_syncInterval > 0) {
+    if (_syncInterval < minSyncInterval) {
+      // _syncInterval = 0 means turned off!
+      LOG_TOPIC("bbd68", FATAL, arangodb::Logger::CONFIG)
+          << "invalid value for --rocksdb.sync-interval. Please use a value "
+          << "of at least " << minSyncInterval;
+      FATAL_ERROR_EXIT();
+    }
+    
+    if (_syncDelayThreshold > 0 && _syncDelayThreshold <= _syncInterval) {
+      if (!options->processingResult().touched("rocksdb.sync-interval") &&
+          options->processingResult().touched("rocksdb.sync-delay-threshold")) {
+        // user has not set --rocksdb.sync-interval, but set --rocksdb.sync-delay-threshold
+        LOG_TOPIC("c3f45", WARN, arangodb::Logger::CONFIG)
+            << "invalid value for --rocksdb.sync-delay-threshold. should be higher "
+            << "than the value of --rocksdb.sync-interval (" << _syncInterval << ")";
+      }
+      
+      _syncDelayThreshold = 10 * _syncInterval;
+      LOG_TOPIC("c0fa3", WARN, arangodb::Logger::CONFIG)
+          << "auto-adjusting value of --rocksdb.sync-delay-threshold to " << _syncDelayThreshold << " ms";
+    }
   }
 
 #ifdef _WIN32
@@ -810,7 +838,7 @@ void RocksDBEngine::start() {
              _useReleasedTick);
 
   if (_syncInterval > 0) {
-    _syncThread.reset(new RocksDBSyncThread(*this, std::chrono::milliseconds(_syncInterval)));
+    _syncThread.reset(new RocksDBSyncThread(*this, std::chrono::milliseconds(_syncInterval), std::chrono::milliseconds(_syncDelayThreshold)));
     if (!_syncThread->start()) {
       LOG_TOPIC("63919", FATAL, Logger::ENGINES)
           << "could not start rocksdb sync thread";
@@ -1680,25 +1708,28 @@ std::vector<std::string> RocksDBEngine::currentWalFiles() const {
   return names;
 }
 
-Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector,
-                               bool /*writeShutdownFile*/) {
+Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector) {
+  Result res;
+
   if (_syncThread) {
     // _syncThread may be a nullptr, in case automatic syncing is turned off
-    _syncThread->syncWal();
+    res = _syncThread->syncWal();
   }
 
-  if (waitForCollector) {
+  if (res.ok() && waitForCollector) {
     rocksdb::FlushOptions flushOptions;
     flushOptions.wait = waitForSync;
 
     for (auto cf : RocksDBColumnFamily::_allHandles) {
       rocksdb::Status status = _db->GetBaseDB()->Flush(flushOptions, cf);
       if (!status.ok()) {
-        return rocksutils::convertStatus(status);
+        res.reset(rocksutils::convertStatus(status));
+        break;
       }
     }
   }
-  return Result();
+
+  return res;
 }
 
 void RocksDBEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) {
