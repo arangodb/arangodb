@@ -77,8 +77,10 @@ class GeoEqualsTest : public ::testing::Test {
           paramsA{arena},
           paramsB{arena},
           paramsC{arena} {
+      static auto options = velocypack::Options::Defaults;
       fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&context);
-      fakeit::When(Method(contextMock, getVPackOptions)).AlwaysReturn(&velocypack::Options::Defaults);
+      fakeit::When(Method(contextMock, getVPackOptions)).AlwaysReturn(&options);
+      fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
       fakeit::When(Method(contextMock, leaseBuilder)).AlwaysDo([]() { return new arangodb::velocypack::Builder(); });
       fakeit::When(Method(contextMock, returnBuilder)).AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
       fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& { return this->trx; });
@@ -145,7 +147,9 @@ TEST_F(GeoEqualsPointTest, checking_two_unequal_points) {
 } // geo_equals_point
 
 namespace geo_equals_multipoint {
-class GeoEqualsMultipointTest : public GeoEqualsTest {};
+struct GeoEqualsMultipointTest : public GeoEqualsTest {
+  GeoEqualsMultipointTest() : GeoEqualsTest() {}
+};
 
 TEST_F(GeoEqualsMultipointTest, checking_two_equal_multipoints) {
   char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
@@ -404,7 +408,9 @@ TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_second_parameter) {
 } // geo_equals_polygon
 
 namespace geo_equals_linestring {
-class GeoEqualsLinestringTest : public GeoEqualsTest {};
+struct GeoEqualsLinestringTest : public GeoEqualsTest {
+  GeoEqualsLinestringTest() : GeoEqualsTest() {}
+};
 
 TEST_F(GeoEqualsLinestringTest, checking_two_equal_linestrings) {
   char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
@@ -454,7 +460,9 @@ TEST_F(GeoEqualsLinestringTest, checking_two_unequal_linestrings) {
 } // geo_equals_linestring
 
 namespace geo_equals_multilinestring {
-class GeoEqualsMultilinestringTest : public GeoEqualsTest {};
+struct GeoEqualsMultilinestringTest : public GeoEqualsTest {
+  GeoEqualsMultilinestringTest() : GeoEqualsTest() {}
+};
 
 TEST_F(GeoEqualsMultilinestringTest, checking_two_equal_multilinestrings) {
   char const* polyA = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]] ]";
@@ -503,7 +511,9 @@ TEST_F(GeoEqualsMultilinestringTest, checking_two_unequal_multilinestrings) {
 }  // geo_equals_multilinestring
 
 namespace geo_equals_mixings {
-class GeoEqualsMixedTypeTest : public GeoEqualsTest {};
+struct GeoEqualsMixedTypeTest : public GeoEqualsTest {
+  GeoEqualsMixedTypeTest() : GeoEqualsTest() {}
+};
 
 TEST_F(GeoEqualsMixedTypeTest, checking_polygon_with_multilinestring) {
   fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
