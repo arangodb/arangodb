@@ -86,12 +86,13 @@ Result DatabaseTailingSyncer::saveApplierState() {
 Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& collectionName,
                                                             double timeout, bool hard,
                                                             TRI_voc_tick_t& until,
-                                                            bool& didTimeout) {
+                                                            bool& didTimeout,
+                                                            char const* context) {
   didTimeout = false;
 
   setAborted(false);
   // fetch master state just once
-  Result r = _state.master.getState(_state.connection, _state.isChildSyncer, nullptr);
+  Result r = _state.master.getState(_state.connection, _state.isChildSyncer, context);
   if (r.fail()) {
     return r;
   }
@@ -140,8 +141,13 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
 
     if (response->getHttpReturnCode() == 204) {
       // HTTP 204 No content: this means we are done
+      TRI_ASSERT(r.ok());
+      if (hard) {
+        // now do a final sync-to-disk call. note that this can fail
+        r = EngineSelectorFeature::ENGINE->flushWal(/*waitForSync*/ true, /*waitForCollector*/ false, false);
+      }
       until = fromTick;
-      return Result();
+      return r;
     }
 
     bool found;
@@ -227,8 +233,13 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
 
     if (!checkMore) {
       // done!
+      TRI_ASSERT(r.ok());
+      if (hard) {
+        // now do a final sync-to-disk call. note that this can fail
+        r = EngineSelectorFeature::ENGINE->flushWal(/*waitForSync*/ true, /*waitForCollector*/ false, false);
+      }
       until = fromTick;
-      return Result();
+      return r;
     }
     LOG_TOPIC("2598f", DEBUG, Logger::REPLICATION) << "Fetching more data, fromTick: " << fromTick
                                           << ", lastScannedTick: " << lastScannedTick;

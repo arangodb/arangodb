@@ -1,6 +1,11 @@
 v3.6.8 (XXXX-XX-XX)
 -------------------
 
+* Added configuration option `--rocksdb.sync-delay-threshold`.
+  This option can be used to track if any RocksDB WAL sync operations is 
+  delayed by more than the configured value (in milliseconds). The intention
+  is to get aware of severely delayed WAL sync operations.
+
 * Add database, shard name and error information to several shard-related log
   messages.
 

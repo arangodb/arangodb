@@ -48,12 +48,12 @@ class DatabaseTailingSyncer final : public TailingSyncer {
 
   /// @brief finalize the synchronization of a collection by tailing the WAL
   /// and filtering on the collection name until no more data is available
-  Result syncCollectionFinalize(std::string const& collectionName) {
+  Result syncCollectionFinalize(std::string const& collectionName, char const* context) {
     TRI_voc_tick_t dummy = 0;
     bool dummyDidTimeout = false;
     double dummyTimeout = 300.0;
     return syncCollectionCatchupInternal(collectionName, dummyTimeout, true,
-                                         dummy, dummyDidTimeout);
+                                         dummy, dummyDidTimeout, context);
   }
 
   /// @brief catch up with changes in a leader shard by doing the same
@@ -67,8 +67,8 @@ class DatabaseTailingSyncer final : public TailingSyncer {
   /// `syncCollectionFinalize` to finish off the rest.
   /// Internally, both use `syncCollectionCatchupInternal`.
   Result syncCollectionCatchup(std::string const& collectionName, double timeout,
-                               TRI_voc_tick_t& until, bool& didTimeout) {
-    return syncCollectionCatchupInternal(collectionName, timeout, false, until, didTimeout);
+                               TRI_voc_tick_t& until, bool& didTimeout, char const* context) {
+    return syncCollectionCatchupInternal(collectionName, timeout, false, until, didTimeout, context);
   }
 
  protected:

@@ -47,6 +47,8 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Transaction/StandaloneContext.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -639,7 +641,8 @@ static arangodb::Result replicationSynchronizeCatchup(VPackSlice const& conf, do
 
   Result r;
   try {
-    r = syncer.syncCollectionCatchup(collection, timeout, tickReached, didTimeout);
+    std::string const context = "catching up delta changes for shard " + collection + " in database " + database;
+    r = syncer.syncCollectionCatchup(collection, timeout, tickReached, didTimeout, context.c_str());
   } catch (arangodb::basics::Exception const& ex) {
     r = Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -677,7 +680,8 @@ static arangodb::Result replicationSynchronizeFinalize(VPackSlice const& conf) {
 
   Result r;
   try {
-    r = syncer.syncCollectionFinalize(collection);
+    std::string const context = "final synchronization of shard " + collection + " in database " + database;
+    r = syncer.syncCollectionFinalize(collection, context.c_str());
   } catch (arangodb::basics::Exception const& ex) {
     r = Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -813,6 +817,14 @@ bool SynchronizeShard::first() {
              "'"
           << database << "/" << shard << "' for central '" << database << "/"
           << planId << "'";
+      // now do a final sync-to-disk call. note that this can fail
+      Result res = EngineSelectorFeature::ENGINE->flushWal(/*waitForSync*/ true, /*waitForCollector*/ false, false);
+      if (res.fail()) {
+        LOG_TOPIC("a49d1", INFO, Logger::MAINTENANCE) << res.errorMessage();
+        _result.reset(res);
+        return false;
+      }
+
       try {
         NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
         network::ConnectionPool* pool = nf.pool();
@@ -843,8 +855,6 @@ bool SynchronizeShard::first() {
       // fail. If it fails with an exception, it is caught, but this
       // should usually not happen. If it fails without an exception,
       // we log and use return.
-
-      Result res;  // used multiple times for intermediate results
 
       // First once without a read transaction:
 
@@ -945,8 +955,8 @@ bool SynchronizeShard::first() {
       lastTick = tickResult.get();
 
       // Now start a exclusive transaction to stop writes:
-      res = catchupWithExclusiveLock(ep, database, *collection, clientId, shard,
-                                     leader, syncerId, lastTick, builder);
+      Result res = catchupWithExclusiveLock(ep, database, *collection, clientId, shard,
+                                            leader, syncerId, lastTick, builder);
       if (!res.ok()) {
         LOG_TOPIC("be85f", INFO, Logger::MAINTENANCE) << res.errorMessage();
         _result.reset(res);
