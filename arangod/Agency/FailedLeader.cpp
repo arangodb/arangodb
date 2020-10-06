@@ -238,8 +238,24 @@ bool FailedLeader::start(bool& aborts) {
     }
   }
 
+  // Exclude servers in failoverCandidates for some clone and those in Plan:
+  auto failoverCands = Job::findAllFailoverCandidates(
+      _snapshot, _database, _collection, _shard);
+  std::vector<std::string> excludes;
+  for (const auto& s : VPackArrayIterator(planned)) {
+    if (s.isString()) {
+      std::string id = s.copyString();
+      if (failoverCands.find(id) == failoverCands.end()) {
+        excludes.push_back(s.copyString());
+      }
+    }
+  }
+  for (auto const& id : failoverCands) {
+    excludes.push_back(id);
+  }
+
   // Additional follower, if applicable
-  auto additionalFollower = randomIdleAvailableServer(_snapshot, planned);
+  auto additionalFollower = randomIdleAvailableServer(_snapshot, excludes);
   if (!additionalFollower.empty()) {
     planv.push_back(additionalFollower);
   }

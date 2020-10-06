@@ -204,6 +204,18 @@ bool AddFollower::start(bool&) {
     }
   }
 
+  // Exclude servers in failoverCandidates for some clone and those in Plan:
+  auto failoverCands = Job::findAllFailoverCandidates(
+      _snapshot, _database, _collection, _shard);
+  it = available.begin();
+  while (it != available.end()) {
+    if (failoverCands.find(*it) != failoverCands.end()) {
+      it = available.erase(it);
+    } else {
+      ++it;
+    }
+  }
+
   // Check that we have enough:
   if (available.size() < desiredReplFactor - actualReplFactor) {
     LOG_TOPIC("50086", DEBUG, Logger::SUPERVISION)

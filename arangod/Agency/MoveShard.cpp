@@ -298,6 +298,15 @@ bool MoveShard::start(bool&) {
     return false;
   }
 
+  if (!found) {   // not in Plan, then it must not be a failoverCandidate:
+    auto failoverCands = Job::findAllFailoverCandidates(
+        _snapshot, _database, _collection, _shard);
+    if (failoverCands.find(_to) != failoverCands.end()) {
+      finish("", "", false, "toServer must not be in failoverCandidates for shard or any of its distributeShardsLike colleagues");
+      return false;
+    }
+  }
+
   if (!_isLeader) {
     if (_remainsFollower) {
       finish("", "", false, "remainsFollower is invalid without isLeader");

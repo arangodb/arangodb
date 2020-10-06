@@ -166,8 +166,24 @@ bool FailedFollower::start(bool& aborts) {
     return false;
   }
 
-  // Get proper replacement
-  _to = randomIdleAvailableServer(_snapshot, planned);
+  // Exclude servers in failoverCandidates for some clone and those in Plan:
+  auto failoverCands = Job::findAllFailoverCandidates(
+      _snapshot, _database, _collection, _shard);
+  std::vector<std::string> excludes;
+  for (const auto& s : VPackArrayIterator(planned)) {
+    if (s.isString()) {
+      std::string id = s.copyString();
+      if (failoverCands.find(id) == failoverCands.end()) {
+        excludes.push_back(s.copyString());
+      }
+    }
+  }
+  for (auto const& id : failoverCands) {
+    excludes.push_back(id);
+  }
+
+  // Get proper replacement:
+  _to = randomIdleAvailableServer(_snapshot, excludes);
   if (_to.empty()) {
     finish("", _shard, false, "Did not find available alternative server");
     return false;
