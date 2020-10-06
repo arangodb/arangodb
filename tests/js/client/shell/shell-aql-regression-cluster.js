@@ -79,15 +79,15 @@ function ShellAqlRegressionSuite () {
       );
       const sortNode = plan.nodes[3];
       assertEqual('SortNode', sortNode.type);
-      assertEqual("constrained-heap", sortNode.strategy)
+      assertEqual("constrained-heap", sortNode.strategy);
       const gatherNode = plan.nodes[5];
       assertEqual('GatherNode', gatherNode.type);
-      assertEqual("undefined", gatherNode.parallelism)
+      assertEqual("undefined", gatherNode.parallelism);
       // It's important to check the limit, it's only in the constrained case
       assertEqual(10, gatherNode.limit);
       stmt.execute();
     },
-  }
+  };
 }
 
 jsunity.run(ShellAqlRegressionSuite);
