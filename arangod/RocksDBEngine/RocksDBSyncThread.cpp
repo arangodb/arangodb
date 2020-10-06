@@ -144,11 +144,10 @@ void RocksDBSyncThread::run() {
       }
 
       {
-        std::chrono::duration<double> diff = lastSyncTime - previousLastSyncTime;
-        if (_delayThreshold.count() > 0 && diff > _delayThreshold) {
+        if (_delayThreshold.count() > 0 && (lastSyncTime - previousLastSyncTime) > _delayThreshold) {
           LOG_TOPIC("5b708", INFO, Logger::ENGINES)
             << "last RocksDB WAL sync happened longer ago than configured threshold. "
-            << "last sync happened " << diff.count() << " ms ago, "
+            << "last sync happened " << (std::chrono::duration_cast<std::chrono::milliseconds>(lastSyncTime - previousLastSyncTime)).count() << " ms ago, "
             << "threshold value: " << _delayThreshold.count() << " ms";
         }
       }
