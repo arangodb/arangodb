@@ -72,7 +72,7 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
       << _databaseName;
 
   StorageEngine& engine =
-      configuration()._server.getFeature<EngineSelectorFeature>().engine();
+      _configuration._server.getFeature<EngineSelectorFeature>().engine();
   int res = engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
