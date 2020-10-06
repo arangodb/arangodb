@@ -51,13 +51,18 @@ bool AgentCallback::operator()(arangodb::network::Response const& r) {
       auto body = r.slice();
       bool success = false;
       term_t otherTerm = 0;
-      try {
+
+      if (body.hasKey("success") &&  body.get("success").isBoolean() &&
+          body.hasKey("term") && body.get("term").isNumber()) {
         success = body.get("success").isTrue();
         otherTerm = body.get("term").getNumber<term_t>();
-      } catch (std::exception const& e) {
-        LOG_TOPIC("1b7bb", WARN, Logger::AGENCY) << "Bad callback message received: " << e.what();
+      } else {
+        LOG_TOPIC("1b7bb", DEBUG, Logger::AGENCY)
+          << "Bad callback message received: " << body.toJson();
         _agent->reportFailed(_slaveID, _toLog);
+        return true;
       }
+
       if (otherTerm > _agent->term()) {
         _agent->resign(otherTerm);
       } else if (!success) {

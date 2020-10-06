@@ -267,7 +267,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
 // creating a new iterator if one does not exist for this collection
 RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
     TRI_vocbase_t& vocbase, std::string const& cname,
-    basics::StringBuffer& buff, uint64_t chunkSize) {
+    basics::StringBuffer& buff, uint64_t chunkSize, bool useEnvelope) {
   TRI_ASSERT(_users > 0);
   CollectionIterator* cIter{nullptr};
   auto guard = scopeGuard([&] { releaseDumpIterator(cIter); });
@@ -291,12 +291,17 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
   VPackDumper dumper(&adapter, &cIter->vpackOptions);
   TRI_ASSERT(cIter->iter && !cIter->sorted());
   while (cIter->hasMore() && buff.length() < chunkSize) {
-    buff.appendText("{\"type\":");
-    buff.appendInteger(REPLICATION_MARKER_DOCUMENT);  // set type
-    buff.appendText(",\"data\":");
+    if (useEnvelope) {
+      buff.appendText("{\"type\":");
+      buff.appendInteger(REPLICATION_MARKER_DOCUMENT);  // set type
+      buff.appendText(",\"data\":");
+    }
     // printing the data, note: we need the CustomTypeHandler here
     dumper.dump(velocypack::Slice(reinterpret_cast<uint8_t const*>(cIter->iter->value().data())));
-    buff.appendText("}\n");
+    if (useEnvelope) {
+      buff.appendChar('}');
+    }
+    buff.appendChar('\n');
     cIter->iter->Next();
   }
 
@@ -311,7 +316,7 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
 // creating a new iterator if one does not exist for this collection
 RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
     TRI_vocbase_t& vocbase, std::string const& cname,
-    VPackBuffer<uint8_t>& buffer, uint64_t chunkSize) {
+    VPackBuffer<uint8_t>& buffer, uint64_t chunkSize, bool useEnvelope) {
   TRI_ASSERT(_users > 0 && chunkSize > 0);
 
   CollectionIterator* cIter{nullptr};
@@ -335,11 +340,15 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
   VPackBuilder builder(buffer, &cIter->vpackOptions);
   TRI_ASSERT(cIter->iter && !cIter->sorted());
   while (cIter->hasMore() && buffer.length() < chunkSize) {
-    builder.openObject();
-    builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
-    builder.add(VPackValue("data"));
+    if (useEnvelope) {
+      builder.openObject();
+      builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
+      builder.add(VPackValue("data"));
+    }
     builder.add(velocypack::Slice(reinterpret_cast<uint8_t const*>(cIter->iter->value().data())));
-    builder.close();
+    if (useEnvelope) {
+      builder.close();
+    }
     cIter->iter->Next();
   }
 

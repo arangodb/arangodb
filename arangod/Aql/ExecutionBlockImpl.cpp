@@ -496,7 +496,7 @@ SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
 //           it produced any output.
 //           With the new architecture we should be able to just skip
 //           ahead on the input range, fetching new blocks when necessary
-// EXECUTOR: the executor has a specialised skipRowsRange method
+// EXECUTOR: the executor has a specialized skipRowsRange method
 //           that will be called to skip
 // SUBQUERY_START:
 // SUBQUERY_END:
