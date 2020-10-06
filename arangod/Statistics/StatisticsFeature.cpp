@@ -65,6 +65,8 @@ std::initializer_list<double> const RequestTimeDistributionCuts{0.01, 0.05, 0.1,
 Counter AsyncRequests;
 Counter HttpConnections;
 Counter TotalRequests;
+Counter TotalRequestsSuperuser;
+Counter TotalRequestsUser;
 MethodRequestCounters MethodRequests;
 Distribution ConnectionTimeDistribution(ConnectionTimeDistributionCuts);
 
@@ -74,10 +76,9 @@ RequestFigures::RequestFigures() :
   ioTimeDistribution(RequestTimeDistributionCuts),
   queueTimeDistribution(RequestTimeDistributionCuts),
   requestTimeDistribution(RequestTimeDistributionCuts),
-  totalTimeDistribution(RequestTimeDistributionCuts)
-{}
+  totalTimeDistribution(RequestTimeDistributionCuts) {}
 
-RequestFigures GeneralRequestFigures;
+RequestFigures SuperuserRequestFigures;
 RequestFigures UserRequestFigures;
 }  // namespace statistics
 }  // namespace arangodb
