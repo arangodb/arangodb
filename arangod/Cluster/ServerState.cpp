@@ -1008,15 +1008,9 @@ void ServerState::setFoxxmaster(std::string const& foxxmaster) {
   }
 }
 
-void ServerState::clearFoxxmasterQueueupdate() noexcept {
+void ServerState::setFoxxmasterQueueupdate(bool value) noexcept {
   WRITE_LOCKER(writeLocker, _foxxmasterLock);
-  TRI_ASSERT(_foxxmasterQueueupdate);
-  _foxxmasterQueueupdate = false;
-}
-
-void ServerState::setFoxxmasterQueueupdate() noexcept {
-  WRITE_LOCKER(writeLocker, _foxxmasterLock);
-  _foxxmasterQueueupdate = true;
+  _foxxmasterQueueupdate = value;
 }
 
 bool ServerState::getFoxxmasterQueueupdate() const noexcept {
