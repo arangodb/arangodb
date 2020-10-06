@@ -121,14 +121,13 @@ bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
     return false;  // values do not match
   }
 
-  auto itr = rhs._fields.begin();
+  auto const notFoundField = rhs._fields.end();
 
   for (auto& entry : _fields) {
-    if (itr.key() != entry.key() || itr.value() != entry.value()) {
-      return false;  // values do not match
+    auto rhsField = rhs._fields.find(entry.key());
+    if (rhsField == notFoundField || rhsField.value() != entry.value()) {
+      return false;
     }
-
-    ++itr;
   }
 
   if (_includeAllFields != rhs._includeAllFields) {

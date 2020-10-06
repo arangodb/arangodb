@@ -2193,6 +2193,28 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
+
+  // test analyzers with definitions and many fields
+  {
+    auto lhs = arangodb::velocypack::Parser::fromJson(
+      "{ \"view\": \"a/\", \"includeAllFields\": false, \"analyzers\":[\"testAnalyzer\", \"testAnalyzer2\"],"
+      "  \"fields\":{ \"owner\": {}, \"departments\": {}, \"id\": {}, \"permission\": {}, \"status\": {}, \"type\": {} },"
+      "  \"analyzerDefinitions\":[ "
+      "    {\"name\":\"testAnalyzer\", \"type\":\"ngram\", \"properties\":{\"min\":2, \"max\":2, \"preserveOriginal\": false}}, "
+      "    {\"name\":\"testAnalyzer2\", \"type\":\"ngram\", \"properties\":{\"min\":3, \"max\":3, \"preserveOriginal\": false}} "
+      "  ]}");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    ASSERT_TRUE(meta.init(server.server(), lhs->slice(), true, errorField, vocbase.name()));
+    arangodb::iresearch::IResearchLinkMeta meta2;
+    ASSERT_TRUE(meta2.init(server.server(), lhs->slice(), true, errorField, vocbase.name()));
+    ASSERT_EQ(meta, meta2);
+    arangodb::iresearch::IResearchLinkMeta meta_assigned;
+    meta_assigned = meta;
+    ASSERT_EQ(meta, meta_assigned);
+    arangodb::iresearch::IResearchLinkMeta meta_copied(meta);
+    ASSERT_EQ(meta_copied, meta);
+  }
 }
 
 // https://github.com/arangodb/backlog/issues/581
