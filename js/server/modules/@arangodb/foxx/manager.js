@@ -505,7 +505,7 @@ function ensureServiceLoaded (mount) {
 }
 
 function getServiceInstance (mount) {
-  let internalOnly = mount === '/_admin/aardvark';
+  let internalOnly = SYSTEM_SERVICE_MOUNTS.indexOf(mount) !== -1;
   ensureFoxxInitialized(internalOnly);
 
   let localServiceMap;
@@ -1151,6 +1151,7 @@ exports.installedServices = installedServices;
 // Exported internals
 // -------------------------------------------------
 
+exports.systemServiceMounts = SYSTEM_SERVICE_MOUNTS;
 exports.isFoxxmaster = isFoxxmaster;
 exports._reloadRouting = reloadRouting;
 exports.reloadInstalledService = reloadInstalledService;

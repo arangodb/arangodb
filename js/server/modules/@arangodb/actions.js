@@ -46,9 +46,7 @@ var arangodb = require('@arangodb');
 var FoxxManager = require('@arangodb/foxx/manager');
 var shallowCopy = require('@arangodb/util').shallowCopy;
 
-const AARDVARK_BASE = '/_admin/aardvark';
 const MIME_DEFAULT = 'text/plain; charset=utf-8';
-
 
 //
 // @brief current routing list
@@ -1157,10 +1155,15 @@ function firstRouting (type, parts, routes, rawParts) {
 function routeRequest (req, res, routes) {
   if (routes === undefined) {
     let internalRoute = false;
-    if (req.url.startsWith(AARDVARK_BASE) &&
-        (req.url.length === AARDVARK_BASE.length ||
-         req.url[AARDVARK_BASE.length] === '/')) {
-      internalRoute = true;
+    // systemServiceMounts contains the internal mount points, i.e.
+    // /_admin/aardvark and /_api/foxx
+    for (let mount of FoxxManager.systemServiceMounts) {
+      if (req.url.startsWith(mount) &&
+          (req.url.length === mount.length ||
+           req.url[mount.length] === '/')) {
+        internalRoute = true;
+        break;
+      }
     }
 
     const dbname = arangodb.db._name();
