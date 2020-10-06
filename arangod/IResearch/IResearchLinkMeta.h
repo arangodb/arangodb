@@ -137,7 +137,7 @@ struct FieldMeta {
   ////////////////////////////////////////////////////////////////////////////////
   bool init(velocypack::Slice const& slice,
             std::string& errorField,
-            TRI_vocbase_t const* defaultVocbase = nullptr,
+            irs::string_ref const defaultVocbase,
             FieldMeta const& defaults = DEFAULT(),
             Mask* mask = nullptr,
             std::set<AnalyzerPool::ptr, AnalyzerComparer>* analyzers = nullptr);
@@ -226,12 +226,14 @@ struct IResearchLinkMeta : public FieldMeta {
   /// @param defaults inherited defaults
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(velocypack::Slice const& slice,
-            bool readAnalyzerDefinition,
-            std::string& errorField,
-            TRI_vocbase_t const* defaultVocbase = nullptr,
-            FieldMeta const& defaults = DEFAULT(),
-            Mask* mask = nullptr);
+  bool init(
+      arangodb::application_features::ApplicationServer& server,
+      arangodb::velocypack::Slice const& slice,
+      bool readAnalyzerDefinition,
+      std::string& errorField,
+      irs::string_ref const defaultVocbase = irs::string_ref::NIL,
+      IResearchLinkMeta const& defaults = DEFAULT(),
+      Mask* mask = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLinkMeta object

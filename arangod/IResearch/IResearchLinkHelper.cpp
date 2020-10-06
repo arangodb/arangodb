@@ -60,30 +60,14 @@ arangodb::Result canUseAnalyzers( // validate
   arangodb::iresearch::IResearchLinkMeta const& meta, // metadata
   TRI_vocbase_t const& defaultVocbase // default vocbase
 ) {
-  auto& server = defaultVocbase.server();
-  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
-
   for (auto& pool: meta._analyzerDefinitions) {
     if (!pool) {
       continue; // skip invalid entries
     }
 
-    bool result;
-
-    if (sysVocbase) {
-      result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-          pool->name(), defaultVocbase, *sysVocbase // args
-        ), // analyzer
-        arangodb::auth::Level::RO // auth level
-      );
-    } else {
-      result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
-        pool->name(), arangodb::auth::Level::RO // args
-      );
-    }
+    auto result = arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(pool->name(), defaultVocbase.name()),
+        arangodb::auth::Level::RO);
 
     if (!result) {
       return {
@@ -137,7 +121,6 @@ arangodb::Result createLink( // create link
         }
       }
     }
-
   } catch (arangodb::basics::Exception const& e) {
     return arangodb::Result(e.code(), e.what());
   }
@@ -325,7 +308,8 @@ arangodb::Result modifyLinks( // modify links
     std::string error;
     arangodb::iresearch::IResearchLinkMeta linkMeta;
 
-    if (!linkMeta.init(namedJson.slice(), true, error, &view.vocbase())) { // validated and normalized with 'isCreation=true' above via normalize(...)
+    if (!linkMeta.init(view.vocbase().server(),
+                       namedJson.slice(), true, error, view.vocbase().name())) {  // validated and normalized with 'isCreation=true' above via normalize(...)
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string("error parsing link parameters from json for arangosearch view '") + view.name() + "' collection '" + collectionName + "' error '" + error + "'"
@@ -575,9 +559,11 @@ namespace iresearch {
   return emptySlice._slice;
 }
 
-/*static*/ bool IResearchLinkHelper::equal( // are link definitions equal
-    arangodb::velocypack::Slice const& lhs, // left hand side
-    arangodb::velocypack::Slice const& rhs // right hand side
+/*static*/ bool IResearchLinkHelper::equal(  // are link definitions equal
+    arangodb::application_features::ApplicationServer& server,
+    arangodb::velocypack::Slice const& lhs,  // left hand side
+    arangodb::velocypack::Slice const& rhs,   // right hand side
+    irs::string_ref const& dbname
 ) {
   if (!lhs.isObject() || !rhs.isObject()) {
     return false;
@@ -610,9 +596,9 @@ namespace iresearch {
   IResearchLinkMeta lhsMeta;
   IResearchLinkMeta rhsMeta;
 
-  return lhsMeta.init(lhs, true, errorField) // left side meta valid (for db-server analyzer validation should have already apssed on coordinator)
-         && rhsMeta.init(rhs, true, errorField) // right side meta valid (for db-server analyzer validation should have already apssed on coordinator)
-         && lhsMeta == rhsMeta; // left meta equal right meta
+  return lhsMeta.init(server, lhs, true, errorField, dbname)  // left side meta valid (for db-server analyzer validation should have already passed on coordinator)
+         && rhsMeta.init(server, rhs, true, errorField, dbname)  // right side meta valid (for db-server analyzer validation should have already passed on coordinator)
+         && lhsMeta == rhsMeta;  // left meta equal right meta
 }
 
 /*static*/ std::shared_ptr<IResearchLink> IResearchLinkHelper::find( // find link
@@ -678,7 +664,7 @@ namespace iresearch {
   //        IResearchLinkHelper::normalize(...) if creating via collection API
   //        ::modifyLinks(...) (via call to normalize(...) prior to getting
   //        superuser) if creating via IResearchLinkHelper API
-  if (!meta.init(definition, true, error, &vocbase)) {
+  if (!meta.init(vocbase.server(), definition, true, error, vocbase.name())) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("error parsing arangosearch link parameters from json: ") + error
@@ -785,7 +771,7 @@ namespace iresearch {
     std::string errorField;
 
     if (!linkDefinition.isNull()) { // have link definition
-      if (!meta.init(linkDefinition, true, errorField, &vocbase)) { // for db-server analyzer validation should have already applied on coordinator
+      if (!meta.init(vocbase.server(), linkDefinition, true, errorField, vocbase.name())) { // for db-server analyzer validation should have already applied on coordinator
         return arangodb::Result( // result
           TRI_ERROR_BAD_PARAMETER, // code
           errorField.empty()

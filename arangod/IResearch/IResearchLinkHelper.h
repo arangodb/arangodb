@@ -59,9 +59,11 @@ struct IResearchLinkHelper {
   /// @brief compare two link definitions for equivalience if used to create a
   ///        link instance
   //////////////////////////////////////////////////////////////////////////////
-  static bool equal( // equal definition
-    arangodb::velocypack::Slice const& lhs, // left hand side
-    arangodb::velocypack::Slice const& rhs // right hand side
+  static bool equal(  // equal definition
+      arangodb::application_features::ApplicationServer& server,
+      arangodb::velocypack::Slice const& lhs,  // left hand side
+      arangodb::velocypack::Slice const& rhs,   // right hand side
+      irs::string_ref const& dbname
   );
 
   //////////////////////////////////////////////////////////////////////////////
