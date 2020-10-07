@@ -457,7 +457,7 @@ function propagateSelfHeal () {
   }
 }
 
-// GLOBAL_SERVICE_MAP manipulation
+// INTERNAL_SERVICE_MAP manipulation
 
 function initInternalServiceMap () {
   const internalServiceMap = new Map();
@@ -474,6 +474,8 @@ function initInternalServiceMap () {
   // apply all changes at once
   INTERNAL_SERVICE_MAP = internalServiceMap;
 }
+
+// GLOBAL_SERVICE_MAP manipulation
 
 function initLocalServiceMap () {
   const localServiceMap = new Map();
