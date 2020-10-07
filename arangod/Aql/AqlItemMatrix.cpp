@@ -89,9 +89,7 @@ void AqlItemMatrix::clear() {
 
 RegisterCount AqlItemMatrix::getNumRegisters() const noexcept { return _nrRegs; }
 
-uint64_t AqlItemMatrix::size() const noexcept {
-  return _numDataRows;
-}
+uint64_t AqlItemMatrix::size() const noexcept { return _numDataRows; }
 
 void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
   // If we are stopped by shadow row, we first need to solve this blockage

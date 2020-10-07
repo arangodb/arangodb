@@ -113,12 +113,10 @@ bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
   if (_aqlItemMatrix == nullptr) {
     return false;
   }
-  return !hasShadowRow() && _aqlItemMatrix != nullptr && (
-        (_aqlItemMatrix->stoppedOnShadowRow())
-        || (_aqlItemMatrix->size() > 0 && _finalState == ExecutorState::DONE)
-      );
 
-  //return (!_shadowRow.isInitialized() && _aqlItemMatrix->size() != 0);
+  return !hasShadowRow() && _aqlItemMatrix != nullptr &&
+         ((_aqlItemMatrix->stoppedOnShadowRow()) ||
+          (_aqlItemMatrix->size() > 0 && _finalState == ExecutorState::DONE));
 }
 
 std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::nextShadowRow() {
