@@ -52,7 +52,10 @@ const SYSTEM_SERVICE_MOUNTS = [
   '/_api/foxx' // Foxx management API.
 ];
 
-const INTERNAL_SERVICE_MAP = new Map();
+// global (database-agnostic) map from { mount => service }
+let INTERNAL_SERVICE_MAP = new Map();
+
+// database-specific map from { db => { mount => service } }
 const GLOBAL_SERVICE_MAP = new Map();
 
 // Cluster helpers
@@ -227,7 +230,8 @@ function selfHeal () {
 
   const serviceCollection = utils.getStorage();
   const bundleCollection = utils.getBundleStorage();
-  // The selfHeal comment will be included in debug output if activated or in slow query logs, which helps us distinguish it of user-written queries.
+  // The selfHeal comment will be included in debug output if activated or in slow query logs, 
+  // which helps us distinguish it from user-written queries.
   const serviceDefinitions = db._query(aql`/*selfHeal*/ FOR doc IN ${serviceCollection}
     FILTER LEFT(doc.mount, 2) != "/_"
     LET bundleExists = DOCUMENT(${bundleCollection}, doc.checksum) != null
@@ -456,30 +460,32 @@ function propagateSelfHeal () {
 // GLOBAL_SERVICE_MAP manipulation
 
 function initInternalServiceMap () {
-  let internalServiceMap = new Map();
+  const internalServiceMap = new Map();
   // initialize /_admin/aardvark and /_api/foxx
   for (const mount of SYSTEM_SERVICE_MOUNTS) {
     try {
       const serviceDefinition = {mount};
       const service = FoxxService.create(serviceDefinition);
-      internalServiceMap.set(service.mount, service);
+      internalServiceMap.set(mount, service);
     } catch (e) {
       console.errorStack(e);
     }
   }
-  INTERNAL_SERVICE_MAP.set(db._name(), internalServiceMap);
+  // apply all changes at once
+  INTERNAL_SERVICE_MAP = internalServiceMap;
 }
 
 function initLocalServiceMap () {
   const localServiceMap = new Map();
   
-  if (!INTERNAL_SERVICE_MAP.has(db._name())) {
+  if (INTERNAL_SERVICE_MAP.size === 0) {
     // initialize /_admin/aardvark and /_api/foxx
+    // this will populate INTERNAL_SERVICE_MAP
     initInternalServiceMap();
   }
 
   // copy internal services into map
-  for (let [mount, service] of INTERNAL_SERVICE_MAP.get(db._name())) {
+  for (let [mount, service] in INTERNAL_SERVICE_MAP) {
     localServiceMap.set(mount, service);
   }
 
@@ -496,8 +502,9 @@ function initLocalServiceMap () {
 
 function ensureFoxxInitialized (internalOnly) {
   if (internalOnly) {
-    if (!INTERNAL_SERVICE_MAP.has(db._name())) {
+    if (INTERNAL_SERVICE_MAP.size === 0) {
       // initialize /_admin/aardvark and /_api/foxx
+      // this will populate INTERNAL_SERVICE_MAP
       initInternalServiceMap();
     }
     return;
@@ -519,7 +526,7 @@ function getServiceInstance (mount) {
 
   let localServiceMap;
   if (internalOnly) {
-    localServiceMap = INTERNAL_SERVICE_MAP.get(db._name());
+    localServiceMap = INTERNAL_SERVICE_MAP;
   } else {
     localServiceMap = GLOBAL_SERVICE_MAP.get(db._name());
   }
@@ -1122,7 +1129,7 @@ function requireService (mount) {
 function getMountPoints (internalOnly) {
   ensureFoxxInitialized(internalOnly);
   if (internalOnly) {
-    return Array.from(INTERNAL_SERVICE_MAP.get(db._name()).keys());
+    return Array.from(INTERNAL_SERVICE_MAP.keys());
   }
   return Array.from(GLOBAL_SERVICE_MAP.get(db._name()).keys());
 }
