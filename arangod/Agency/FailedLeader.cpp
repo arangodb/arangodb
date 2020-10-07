@@ -239,8 +239,9 @@ bool FailedLeader::start(bool& aborts) {
   }
 
   // Exclude servers in failoverCandidates for some clone and those in Plan:
+  auto shardsLikeMe = clones(_snapshot, _database, _collection, _shard);
   auto failoverCands = Job::findAllFailoverCandidates(
-      _snapshot, _database, _collection, _shard);
+      _snapshot, _database, shardsLikeMe);
   std::vector<std::string> excludes;
   for (const auto& s : VPackArrayIterator(planned)) {
     if (s.isString()) {
@@ -308,7 +309,7 @@ bool FailedLeader::start(bool& aborts) {
             ns.add(VPackValue(i));
           }
         }
-        for (auto const& clone : clones(_snapshot, _database, _collection, _shard)) {
+        for (auto const& clone : shardsLikeMe) {
           pending.add(planColPrefix + _database + "/" + clone.collection +
                           "/shards/" + clone.shard,
                       ns.slice());
@@ -325,13 +326,22 @@ bool FailedLeader::start(bool& aborts) {
         addPreconditionServerHealth(pending, _to, "GOOD");
         // Server list in plan still as before
         addPreconditionUnchanged(pending, planPath, planned);
-        // Server list in Current still as known
-        addPreconditionUnchanged(pending, curPath + "/servers", current);
-        // Failover candidates in Current still as known
-        auto const& failoverCandidates = _snapshot.hasAsSlice(curPath + "/failoverCandidates");
-        if (failoverCandidates.second) {
-          addPreconditionUnchanged(pending, curPath + "/failoverCandidates", failoverCandidates.first);
-        }
+        // Check that Current/servers and failoverCandidates are still as
+        // we inspected them:
+        doForAllShards(_snapshot, _database, shardsLikeMe,
+            [this, &pending](Slice plan, Slice current,
+                             std::string& planPath,
+                             std::string& curPath) {
+              addPreconditionUnchanged(pending, curPath, current);
+              // take off "servers" from curPath and add
+              // "failoverCandidates":
+              std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
+              foCandsPath += StaticStrings::FailoverCandidates;
+              auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+              if (foCands.second) {
+                addPreconditionUnchanged(pending, foCandsPath, foCands.first);
+              }
+            });
         // Destination server should not be blocked by another job
         addPreconditionServerNotBlocked(pending, _to);
         // Shard to be handled is block by another job

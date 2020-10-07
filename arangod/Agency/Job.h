@@ -164,8 +164,7 @@ struct Job {
   static std::unordered_set<std::string> findAllFailoverCandidates(
       Node const& snap,
       std::string const& db,
-      std::string const& col,
-      std::string const& shrd);
+      std::vector<Job::shard_t> const& shardsLikeMe);
 
   JOB_STATUS _status;
   Node const& _snapshot;

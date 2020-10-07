@@ -554,12 +554,11 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
 std::unordered_set<std::string> Job::findAllFailoverCandidates(
     Node const& snap,
     std::string const& db,
-    std::string const& col,
-    std::string const& shrd) {
+    std::vector<Job::shard_t> const& shardsLikeMe) {
+
   std::unordered_set<std::string> result;
 
-  auto cs = clones(snap, db, col, shrd);  // clones
-  for (const auto& clone : cs) {
+  for (const auto& clone : shardsLikeMe) {
     auto sharedPath = db + "/" + clone.collection + "/";
     auto currentFailoverCandidatesPath =
         curColPrefix + sharedPath + clone.shard + "/failoverCandidates";

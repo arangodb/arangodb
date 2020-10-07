@@ -167,8 +167,9 @@ bool FailedFollower::start(bool& aborts) {
   }
 
   // Exclude servers in failoverCandidates for some clone and those in Plan:
+  auto shardsLikeMe = clones(_snapshot, _database, _collection, _shard);
   auto failoverCands = Job::findAllFailoverCandidates(
-      _snapshot, _database, _collection, _shard);
+      _snapshot, _database, shardsLikeMe);
   std::vector<std::string> excludes;
   for (const auto& s : VPackArrayIterator(planned)) {
     if (s.isString()) {
@@ -258,7 +259,7 @@ bool FailedFollower::start(bool& aborts) {
         }
         addRemoveJobFromSomewhere(job, "ToDo", _jobId);
         // Plan change ------------
-        for (auto const& clone : clones(_snapshot, _database, _collection, _shard)) {
+        for (auto const& clone : shardsLikeMe) {
           job.add(planColPrefix + _database + "/" + clone.collection +
                       "/shards/" + clone.shard,
                   ns.slice());
@@ -275,7 +276,22 @@ bool FailedFollower::start(bool& aborts) {
           VPackObjectBuilder stillExists(&job);
           job.add("old", VPackValue("FAILED"));
         }
+        // Plan still as we see it:
         addPreconditionUnchanged(job, planPath, planned);
+        // Check that failoverCandidates are still as we inspected them:
+        doForAllShards(_snapshot, _database, shardsLikeMe,
+            [this, &job](Slice plan, Slice current,
+                             std::string& planPath,
+                             std::string& curPath) {
+              // take off "servers" from curPath and add
+              // "failoverCandidates":
+              std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
+              foCandsPath += StaticStrings::FailoverCandidates;
+              auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+              if (foCands.second) {
+                addPreconditionUnchanged(job, foCandsPath, foCands.first);
+              }
+            });
         // toServer not blocked
         addPreconditionServerNotBlocked(job, _to);
         // shard not blocked

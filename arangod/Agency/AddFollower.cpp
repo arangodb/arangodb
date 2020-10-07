@@ -205,8 +205,9 @@ bool AddFollower::start(bool&) {
   }
 
   // Exclude servers in failoverCandidates for some clone and those in Plan:
+  auto shardsLikeMe = clones(_snapshot, _database, _collection, _shard);
   auto failoverCands = Job::findAllFailoverCandidates(
-      _snapshot, _database, _collection, _shard);
+      _snapshot, _database, shardsLikeMe);
   it = available.begin();
   while (it != available.end()) {
     if (failoverCands.find(*it) != failoverCands.end()) {
@@ -237,8 +238,6 @@ bool AddFollower::start(bool&) {
   }
 
   // Now we can act, simply add all in chosen to all plans for all shards:
-  std::vector<Job::shard_t> shardsLikeMe =
-      clones(_snapshot, _database, _collection, _shard);
 
   // Copy todo to finished:
   Builder todo, trx;
@@ -303,6 +302,20 @@ bool AddFollower::start(bool&) {
       VPackObjectBuilder precondition(&trx);
       // --- Check that Planned servers are still as we expect
       addPreconditionUnchanged(trx, planPath, planned);
+      // Check that failoverCandidates are still as we inspected them:
+      doForAllShards(_snapshot, _database, shardsLikeMe,
+          [this, &trx](Slice plan, Slice current,
+                           std::string& planPath,
+                           std::string& curPath) {
+            // take off "servers" from curPath and add
+            // "failoverCandidates":
+            std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
+            foCandsPath += StaticStrings::FailoverCandidates;
+            auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+            if (foCands.second) {
+              addPreconditionUnchanged(trx, foCandsPath, foCands.first);
+            }
+          });
       addPreconditionShardNotBlocked(trx, _shard);
       for (auto const& srv : chosen) {
         addPreconditionServerHealth(trx, srv, "GOOD");

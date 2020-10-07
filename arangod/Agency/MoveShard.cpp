@@ -25,6 +25,7 @@
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterHelpers.h"
 
 using namespace arangodb;
@@ -298,9 +299,13 @@ bool MoveShard::start(bool&) {
     return false;
   }
 
+  // Compute group to move shards together:
+  std::vector<Job::shard_t> shardsLikeMe =
+      clones(_snapshot, _database, _collection, _shard);
+
   if (!found) {   // not in Plan, then it must not be a failoverCandidate:
     auto failoverCands = Job::findAllFailoverCandidates(
-        _snapshot, _database, _collection, _shard);
+        _snapshot, _database, shardsLikeMe);
     if (failoverCands.find(_to) != failoverCands.end()) {
       finish("", "", false, "toServer must not be in failoverCandidates for shard or any of its distributeShardsLike colleagues");
       return false;
@@ -318,10 +323,6 @@ bool MoveShard::start(bool&) {
       return false;
     }
   }
-
-  // Compute group to move shards together:
-  std::vector<Job::shard_t> shardsLikeMe =
-      clones(_snapshot, _database, _collection, _shard);
 
   // Copy todo to pending
   Builder todo, pending;
@@ -401,6 +402,20 @@ bool MoveShard::start(bool&) {
 
       // --- Check that Planned servers are still as we expect
       addPreconditionUnchanged(pending, planPath, planned);
+      // Check that failoverCandidates are still as we inspected them:
+      doForAllShards(_snapshot, _database, shardsLikeMe,
+          [this, &pending](Slice plan, Slice current,
+                           std::string& planPath,
+                           std::string& curPath) {
+            // take off "servers" from curPath and add
+            // "failoverCandidates":
+            std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
+            foCandsPath += StaticStrings::FailoverCandidates;
+            auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+            if (foCands.second) {
+              addPreconditionUnchanged(pending, foCandsPath, foCands.first);
+            }
+          });
       addPreconditionShardNotBlocked(pending, _shard);
       addPreconditionServerNotBlocked(pending, _to);
       addPreconditionServerHealth(pending, _to, "GOOD");
