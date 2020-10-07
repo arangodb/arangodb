@@ -450,7 +450,11 @@ function propagateSelfHeal () {
 
 // INTERNAL_SERVICE_MAP manipulation
 
+// initialize /_admin/aardvark and /_api/foxx
 function initInternalServiceMap () {
+  if (INTERNAL_SERVICE_MAP.size !== 0) {
+    return;
+  }
   const internalServiceMap = new Map();
   // initialize /_admin/aardvark and /_api/foxx
   for (const mount of SYSTEM_SERVICE_MOUNTS) {
@@ -469,16 +473,13 @@ function initInternalServiceMap () {
 // GLOBAL_SERVICE_MAP manipulation
 
 function initLocalServiceMap () {
-  const localServiceMap = new Map();
-  
-  if (INTERNAL_SERVICE_MAP.size === 0) {
-    // initialize /_admin/aardvark and /_api/foxx
-    // this will populate INTERNAL_SERVICE_MAP
-    initInternalServiceMap();
-  }
+  // initialize /_admin/aardvark and /_api/foxx
+  // this will populate INTERNAL_SERVICE_MAP if needed
+  initInternalServiceMap();
 
+  const localServiceMap = new Map();
   // copy internal services into map
-  for (let [mount, service] in INTERNAL_SERVICE_MAP) {
+  for (let [mount, service] of INTERNAL_SERVICE_MAP) {
     localServiceMap.set(mount, service);
   }
 
@@ -494,12 +495,12 @@ function initLocalServiceMap () {
 }
 
 function ensureFoxxInitialized (internalOnly) {
+  // initialize /_admin/aardvark and /_api/foxx
+  // this will populate INTERNAL_SERVICE_MAP if needed
+  initInternalServiceMap();
+
   if (internalOnly) {
-    if (INTERNAL_SERVICE_MAP.size === 0) {
-      // initialize /_admin/aardvark and /_api/foxx
-      // this will populate INTERNAL_SERVICE_MAP
-      initInternalServiceMap();
-    }
+    // all we need to know must be in the internal service map
     return;
   }
 
@@ -558,6 +559,9 @@ function reloadInstalledService (mount, runSetup) {
   const service = loadInstalledService(serviceDefinition);
   if (runSetup) {
     service.executeScript('setup');
+  }
+  if (!GLOBAL_SERVICE_MAP.has(db._name())) {
+    initLocalServiceMap();
   }
   GLOBAL_SERVICE_MAP.get(db._name()).set(service.mount, service);
   return service;
@@ -789,6 +793,9 @@ function _uninstall (mount, options = {}) {
     FILTER service.mount == ${mount}
     REMOVE service IN ${collection}
   `);
+  if (!GLOBAL_SERVICE_MAP.has(db._name())) {
+    initLocalServiceMap();
+  }
   GLOBAL_SERVICE_MAP.get(db._name()).delete(mount);
   const servicePath = FoxxService.basePath(mount);
   if (fs.exists(servicePath)) {
@@ -1128,7 +1135,7 @@ function getMountPoints (internalOnly) {
 }
 
 function installedServices () {
-  ensureFoxxInitialized();
+  ensureFoxxInitialized(false);
   return Array.from(GLOBAL_SERVICE_MAP.get(db._name()).values()).filter(service => !service.error);
 }
 
