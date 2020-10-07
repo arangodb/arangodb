@@ -206,7 +206,16 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief return a list of the currently open WAL files
   std::vector<std::string> currentWalFiles() const override;
 
-  Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) override;
+  /// @brief flushes the RocksDB WAL. 
+  /// the optional parameter "waitForSync" is currently only used when the
+  /// "waitForCollector" parameter is also set to true. If "waitForCollector"
+  /// is true, all the RocksDB column family memtables are flushed, and, if
+  /// "waitForSync" is set, additionally synced to disk. The only call site
+  /// that uses "waitForCollector" currently is hot backup.
+  /// The function parameter name are a remainder from MMFiles times, when
+  /// they made more sense. This can be refactored at any point, so that
+  /// flushing column families becomes a separate API.
+  Result flushWal(bool waitForSync, bool waitForCollector) override;
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& info,
@@ -457,6 +466,10 @@ class RocksDBEngine final : public StorageEngine {
   // WAL sync interval, specified in milliseconds by end user, but uses
   // microseconds internally
   uint64_t _syncInterval;
+  
+  // WAL sync delay threshold. Any WAL disk sync longer ago than this value
+  // will trigger a warning (in milliseconds)
+  uint64_t _syncDelayThreshold;
 
   // use write-throttling
   bool _useThrottle;
