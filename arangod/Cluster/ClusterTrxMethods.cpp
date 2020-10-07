@@ -268,6 +268,11 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
                       << "synchronous replication: dropping follower "
                       << follower << " for shard " << tc.collectionName()
                       << " in database " << cc->vocbase().name();
+                  LOG_TOPIC("b071c", WARN, Logger::DEVEL)
+                      << "synchronous replication: dropping follower "
+                      << follower << " for shard " << tc.collectionName()
+                      << " in database " << cc->vocbase().name()
+                      << ": " << resp.combinedResult().errorMessage();
                 } else {
                   LOG_TOPIC("4971f", ERR, Logger::REPLICATION)
                       << "synchronous replication: could not drop follower "
