@@ -50,8 +50,8 @@ CollectNode::CollectNode(
     Variable const* expressionVariable, Variable const* outVariable,
     std::vector<Variable const*> const& keepVariables,
     std::unordered_map<VariableId, std::string const> const& variableMap,
-    std::vector<std::pair<Variable const*, Variable const*>> const& groupVariables,
-    std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
+    std::vector<GroupVarInfo> const& groupVariables,
+    std::vector<AggregateVarInfo> const& aggregateVariables,
     bool count, bool isDistinctCommand)
     : ExecutionNode(plan, base),
       _options(base),
@@ -80,9 +80,9 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     for (auto const& groupVariable : _groupVariables) {
       VPackObjectBuilder obj(&nodes);
       nodes.add(VPackValue("outVariable"));
-      groupVariable.first->toVelocyPack(nodes);
+      groupVariable.outVar->toVelocyPack(nodes);
       nodes.add(VPackValue("inVariable"));
-      groupVariable.second->toVelocyPack(nodes);
+      groupVariable.inVar->toVelocyPack(nodes);
     }
   }
 
@@ -93,10 +93,10 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     for (auto const& aggregateVariable : _aggregateVariables) {
       VPackObjectBuilder obj(&nodes);
       nodes.add(VPackValue("outVariable"));
-      aggregateVariable.first->toVelocyPack(nodes);
+      aggregateVariable.outVar->toVelocyPack(nodes);
       nodes.add(VPackValue("inVariable"));
-      aggregateVariable.second.first->toVelocyPack(nodes);
-      nodes.add("type", VPackValue(aggregateVariable.second.second));
+      aggregateVariable.inVar->toVelocyPack(nodes);
+      nodes.add("type", VPackValue(aggregateVariable.type));
     }
   }
 
@@ -161,10 +161,10 @@ void CollectNode::calcGroupRegisters(
   for (auto const& p : _groupVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
-    auto itOut = getRegisterPlan()->varInfo.find(p.first->id);
+    auto itOut = getRegisterPlan()->varInfo.find(p.outVar->id);
     TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
 
-    auto itIn = getRegisterPlan()->varInfo.find(p.second->id);
+    auto itIn = getRegisterPlan()->varInfo.find(p.inVar->id);
     TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
 
     RegisterId inReg = itIn->second.registerId;
@@ -183,14 +183,14 @@ void CollectNode::calcAggregateRegisters(std::vector<std::pair<RegisterId, Regis
   for (auto const& p : _aggregateVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
-    auto itOut = getRegisterPlan()->varInfo.find(p.first->id);
+    auto itOut = getRegisterPlan()->varInfo.find(p.outVar->id);
     TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
     RegisterId outReg = itOut->second.registerId;
     TRI_ASSERT(outReg < RegisterPlan::MaxRegisterId);
 
     RegisterId inReg = RegisterPlan::MaxRegisterId;
-    if (Aggregator::requiresInput(p.second.second)) {
-      auto itIn = getRegisterPlan()->varInfo.find(p.second.first->id);
+    if (Aggregator::requiresInput(p.type)) {
+      auto itIn = getRegisterPlan()->varInfo.find(p.inVar->id);
       TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
       inReg = itIn->second.registerId;
       TRI_ASSERT(inReg < RegisterPlan::MaxRegisterId);
@@ -207,7 +207,7 @@ void CollectNode::calcAggregateRegisters(std::vector<std::pair<RegisterId, Regis
 void CollectNode::calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const {
   for (auto const& p : _aggregateVariables) {
     aggregateTypes.emplace_back(
-      Aggregator::fromTypeString(&_plan->getAst()->query().vpackOptions(), p.second.second));
+      Aggregator::fromTypeString(&_plan->getAst()->query().vpackOptions(), p.type));
   }
 }
 
@@ -262,7 +262,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       std::vector<std::string> aggregateTypes;
       std::transform(aggregateVariables().begin(), aggregateVariables().end(),
                      std::back_inserter(aggregateTypes),
-                     [](auto& it) { return it.second.second; });
+                     [](auto& it) { return it.type; });
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
       auto executorInfos =
@@ -311,7 +311,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       std::vector<std::string> aggregateTypes;
       std::transform(aggregateVariables().begin(), aggregateVariables().end(),
                      std::back_inserter(aggregateTypes),
-                     [](auto& it) { return it.second.second; });
+                     [](auto& it) { return it.type; });
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
       auto executorInfos =
@@ -389,18 +389,17 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
     groupVariables.clear();
 
     for (auto& it : _groupVariables) {
-      auto out = plan->getAst()->variables()->createVariable(it.first);
-      auto in = plan->getAst()->variables()->createVariable(it.second);
-      groupVariables.emplace_back(std::make_pair(out, in));
+      auto out = plan->getAst()->variables()->createVariable(it.outVar);
+      auto in = plan->getAst()->variables()->createVariable(it.inVar);
+      groupVariables.emplace_back(GroupVarInfo{out, in});
     }
 
     aggregateVariables.clear();
 
     for (auto& it : _aggregateVariables) {
-      auto out = plan->getAst()->variables()->createVariable(it.first);
-      auto in = plan->getAst()->variables()->createVariable(it.second.first);
-      aggregateVariables.emplace_back(
-          std::make_pair(out, std::make_pair(in, it.second.second)));
+      auto out = plan->getAst()->variables()->createVariable(it.outVar);
+      auto in = plan->getAst()->variables()->createVariable(it.inVar);
+      aggregateVariables.emplace_back(AggregateVarInfo{out, in, it.type});
     }
   }
 
@@ -451,8 +450,9 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
+    case ExecutionNode::WINDOW:
       return false;
-    case ExecutionNode::MUTEX:
+    case ExecutionNode::MUTEX: // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -494,8 +494,9 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
+    case ExecutionNode::WINDOW:
       return false;
-    case ExecutionNode::MUTEX:
+    case ExecutionNode::MUTEX: // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -537,8 +538,9 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
+    case ExecutionNode::WINDOW:
       return false;
-    case ExecutionNode::MUTEX:
+    case ExecutionNode::MUTEX: // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -623,10 +625,10 @@ void CollectNode::calculateAccessibleUserVariables(ExecutionNode const& node,
 /// @brief getVariablesUsedHere, modifying the set in-place
 void CollectNode::getVariablesUsedHere(VarSet& vars) const {
   for (auto const& p : _groupVariables) {
-    vars.emplace(p.second);
+    vars.emplace(p.inVar);
   }
   for (auto const& p : _aggregateVariables) {
-    vars.emplace(p.second.first);
+    vars.emplace(p.inVar);
   }
 
   if (_expressionVariable != nullptr) {
@@ -646,7 +648,7 @@ void CollectNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 void CollectNode::setAggregateVariables(
-    std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables) {
+    std::vector<AggregateVarInfo> const& aggregateVariables) {
   _aggregateVariables = aggregateVariables;
 }
 
@@ -680,8 +682,8 @@ CostEstimate CollectNode::estimateCost() const {
 
 CollectNode::CollectNode(
     ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
-    std::vector<std::pair<Variable const*, Variable const*>> const& groupVariables,
-    std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
+    std::vector<GroupVarInfo> const& groupVariables,
+    std::vector<AggregateVarInfo> const& aggregateVariables,
     Variable const* expressionVariable, Variable const* outVariable,
     std::vector<Variable const*> const& keepVariables,
     std::unordered_map<VariableId, std::string const> const& variableMap,
@@ -742,7 +744,7 @@ void CollectNode::clearKeepVariables() {
 }
 
 void CollectNode::clearAggregates(
-    std::function<bool(std::pair<Variable const*, std::pair<Variable const*, std::string>> const&)> cb) {
+    std::function<bool(AggregateVarInfo const&)> cb) {
   for (auto it = _aggregateVariables.begin(); it != _aggregateVariables.end();
        /* no hoisting */) {
     if (cb(*it)) {
@@ -784,20 +786,20 @@ std::unordered_map<VariableId, std::string const> const& CollectNode::variableMa
   return _variableMap;
 }
 
-std::vector<std::pair<Variable const*, Variable const*>> const& CollectNode::groupVariables() const {
+std::vector<GroupVarInfo> const& CollectNode::groupVariables() const {
   return _groupVariables;
 }
 
-void CollectNode::groupVariables(std::vector<std::pair<Variable const*, Variable const*>> const& vars) {
+void CollectNode::groupVariables(std::vector<GroupVarInfo> const& vars) {
   _groupVariables = vars;
 }
 
-std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const&
+std::vector<AggregateVarInfo> const&
 CollectNode::aggregateVariables() const {
   return _aggregateVariables;
 }
 
-std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>>& CollectNode::aggregateVariables() {
+std::vector<AggregateVarInfo>& CollectNode::aggregateVariables() {
   return _aggregateVariables;
 }
 
@@ -807,10 +809,10 @@ std::vector<Variable const*> CollectNode::getVariablesSetHere() const {
             (_outVariable == nullptr ? 0 : 1));
 
   for (auto const& p : _groupVariables) {
-    v.emplace_back(p.first);
+    v.emplace_back(p.outVar);
   }
   for (auto const& p : _aggregateVariables) {
-    v.emplace_back(p.first);
+    v.emplace_back(p.outVar);
   }
   if (_outVariable != nullptr) {
     v.emplace_back(_outVariable);
