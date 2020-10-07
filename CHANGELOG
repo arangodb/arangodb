@@ -5,7 +5,7 @@ v3.6.8 (XXXX-XX-XX)
   In the case that the follower has simply been dropped in the meantime, we now
   avoid an error reported by the shard leader.
 
-* Fixed issue ES-664: SEARCH vs FILTER lookup performance.
+* Fixed issue ES-696: SEARCH vs FILTER lookup performance.
   Consolidation functionality for ArangoSearch view links was able to hit non-
   mergable enormous amount of segments due to improper scheduling logic.
 
