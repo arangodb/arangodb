@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual, ArangoAgency */
+/*global assertTrue, assertEqual, ArangoAgency, ArangoClusterInfo */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,10 +32,12 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const _ = require("lodash");
-const wait = require("internal").wait;
+const internal = require("internal");
+const wait = internal.wait;
 const supervisionState = require("@arangodb/cluster").supervisionState;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-const errors = require("internal").errors;
+const errors = internal.errors;
+const request = require('@arangodb/request');
 
 // in the `useData` case, use this many documents:
 const numDocuments = 1000;
@@ -50,6 +52,44 @@ function getDBServers() {
 }
 
 var servers = getDBServers();
+
+function getEndpointById(id) {
+  const endpointToURL = (endpoint) => {
+    if (endpoint.substr(0, 6) === 'ssl://') {
+      return 'https://' + endpoint.substr(6);
+    }
+    let pos = endpoint.indexOf('://');
+    if (pos === -1) {
+      return 'http://' + endpoint;
+    }
+    return 'http' + endpoint.substr(pos);
+  };
+
+  const endpoint = ArangoClusterInfo.getServerEndpoint(id);
+  return endpointToURL(endpoint);
+}
+
+/// @brief set failure point
+function debugSetFailAt(endpoint, failAt) {
+  let res = request.put({
+    url: endpoint + '/_admin/debug/failat/' + failAt,
+    body: ""
+  });
+  if (res.status !== 200) {
+    throw "Error setting failure point";
+  }
+}
+
+/// @brief remove failure points
+function debugClearFailAt(endpoint) {
+  let res = request.delete({
+    url: endpoint + '/_admin/debug/failat',
+    body: ""
+  });
+  if (res.status !== 200) {
+    throw "Error removing failure points";
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -92,7 +132,7 @@ function MovingShardsSuite ({useData}) {
           s => global.ArangoClusterInfo.getCollectionInfoCurrent(
             database, c[i].name(), s)
         );
-        replicas = ccinfo.map(s => [s.servers.length, s.failoverCandidates.length]);
+        var replicas = ccinfo.map(s => [s.servers.length, s.failoverCandidates.length]);
         if (replicas.every(x => x[0] === replFactor && x[0] === x[1])) {
           // This also checks that there are as many failoverCandidates
           // as there are followers in sync. This should eventually be
@@ -106,6 +146,39 @@ function MovingShardsSuite ({useData}) {
       if (count > 120) {
         return false;
       }
+    }
+    return true;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait for an incomplete moveShard to have happened, this is a
+/// very special test for "testMoveShardFromFollowerRepl3_failoverCands".
+////////////////////////////////////////////////////////////////////////////////
+
+  function waitForIncompleteMoveShard(database, collection, replFactor) {
+    console.info("Waiting for incomplete move shard to settle...");
+    global.ArangoClusterInfo.flush();
+    var cinfo = global.ArangoClusterInfo.getCollectionInfo( database, collection);
+    var shards = Object.keys(cinfo.shards);
+    var count = 0;
+    while (++count <= 180) {
+      var ccinfo = shards.map(
+        s => global.ArangoClusterInfo.getCollectionInfoCurrent(
+          database, collection, s)
+      );
+      var replicas = ccinfo.map(s => [s.servers.length, s.failoverCandidates.length]);
+      if (replicas.every(x => x[0] === replFactor + 1 && x[0] === x[1])) {
+        // This also checks that there are as many failoverCandidates
+        // as there are followers in sync. This should eventually be
+        // reached.
+        console.info("Incomplete moveShard completed!");
+        break;
+      }
+      wait(0.5);
+      global.ArangoClusterInfo.flush();
+    }
+    if (count > 120) {
+      return false;
     }
     return true;
   }
@@ -325,7 +398,7 @@ function MovingShardsSuite ({useData}) {
           + JSON.stringify(body));
         return false;
       }
-      require("internal").wait(1.0);
+      wait(1.0);
     }
   }
 
@@ -366,7 +439,7 @@ function MovingShardsSuite ({useData}) {
           + JSON.stringify(body));
         return false;
       }
-      require("internal").wait(1.0);
+      wait(1.0);
     }
   }
 
@@ -480,7 +553,7 @@ function MovingShardsSuite ({useData}) {
           + JSON.stringify(body));
         return false;
       }
-      require("internal").wait(1.0);
+      wait(1.0);
     }
   }
 
@@ -937,9 +1010,45 @@ function MovingShardsSuite ({useData}) {
       checkCollectionContents();
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pausing supervision for a couple of seconds
+////////////////////////////////////////////////////////////////////////////////
+
+    testMoveShardFromFollowerRepl3_failoverCands : function() {
+      if (!internal.debugCanUseFailAt()) {
+        console.log("Skipping test for failoverCandidates because failure points are not compiled in!");
+        return;
+      }
+      createSomeCollections(1, 1, 3, useData);
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[1].name());
+      var leader = servers[0];
+      var fromServer = servers[1];
+      var leaderEndpoint = getEndpointById(leader);
+      // Switch off something in the maintenance on the leader to detect
+      // followers which are not in Plan. This means that the moveShard
+      // below will leave the old server in Current/servers and
+      // Current/failoverCandidates.
+      debugSetFailAt(leaderEndpoint, "Maintenance::doNotRemoveUnPlannedFollowers");
+
+      var toServer = findServerNotOnList(servers);
+      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", c[1].name());
+      var shard = Object.keys(cinfo.shards)[0];
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
+      assertTrue(waitForIncompleteMoveShard("_system", c[1].name(), 3));
+      wait(5);   // After 5 seconds the situation should be unchanged!
+      assertTrue(waitForIncompleteMoveShard("_system", c[1].name(), 3));
+      debugClearFailAt(leaderEndpoint);
+      // Now we should go back to only 3 servers in Current.
+      assertTrue(waitForSynchronousReplication("_system"));
+      assertTrue(testServerEmpty(fromServer, false, 1, 1));
+      assertTrue(waitForSupervision());
+      checkCollectionContents();
+    },
+
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite

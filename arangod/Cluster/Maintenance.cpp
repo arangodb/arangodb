@@ -234,40 +234,45 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
     // Check if there is some in-sync-follower which is no longer in the Plan:
     std::string followersToDropString;
     if (leading && shouldBeLeading) {
-      VPackSlice shards = cprops.get("shards");
-      if (shards.isObject()) {
-        VPackSlice planServers = shards.get(shname);
-        if (planServers.isArray()) {
-          std::unordered_set<std::string> followersToDrop;
-          // Now we have two server lists (servers and
-          // failoverCandidates, we are looking for a server which
-          // occurs in either of them but not in the plan
-          VPackSlice serverList = lcol.get("servers");
-          if (serverList.isArray()) {
-            for (auto const& q : VPackArrayIterator(serverList)) {
-              followersToDrop.insert(q.copyString());
+      TRI_IF_FAILURE("Maintenance::doNotRemoveUnPlannedFollowers") {
+        LOG_TOPIC("de342", ERR, Logger::MAINTENANCE)
+          << "Skipping check for followers not in Plan because of failure point.";
+      } else {
+        VPackSlice shards = cprops.get("shards");
+        if (shards.isObject()) {
+          VPackSlice planServers = shards.get(shname);
+          if (planServers.isArray()) {
+            std::unordered_set<std::string> followersToDrop;
+            // Now we have two server lists (servers and
+            // failoverCandidates, we are looking for a server which
+            // occurs in either of them but not in the plan
+            VPackSlice serverList = lcol.get("servers");
+            if (serverList.isArray()) {
+              for (auto const& q : VPackArrayIterator(serverList)) {
+                followersToDrop.insert(q.copyString());
+              }
             }
-          }
-          serverList = lcol.get(StaticStrings::FailoverCandidates);
-          if (serverList.isArray()) {
-            // And again for the failoverCandidates:
-            for (auto const& q : VPackArrayIterator(serverList)) {
-              followersToDrop.insert(q.copyString());
+            serverList = lcol.get(StaticStrings::FailoverCandidates);
+            if (serverList.isArray()) {
+              // And again for the failoverCandidates:
+              for (auto const& q : VPackArrayIterator(serverList)) {
+                followersToDrop.insert(q.copyString());
+              }
             }
-          }
-          // Remove those in Plan:
-          for (auto const& p : VPackArrayIterator(planServers)) {
-            if (p.isString()) {
-              followersToDrop.erase(p.copyString());
+            // Remove those in Plan:
+            for (auto const& p : VPackArrayIterator(planServers)) {
+              if (p.isString()) {
+                followersToDrop.erase(p.copyString());
+              }
             }
-          }
-          // Everything remaining in followersToDrop is something we
-          // need to act on
-          for (auto const& r : followersToDrop) {
-            if (!followersToDropString.empty()) {
-              followersToDropString.push_back(',');
+            // Everything remaining in followersToDrop is something we
+            // need to act on
+            for (auto const& r : followersToDrop) {
+              if (!followersToDropString.empty()) {
+                followersToDropString.push_back(',');
+              }
+              followersToDropString += r;
             }
-            followersToDropString += r;
           }
         }
       }
