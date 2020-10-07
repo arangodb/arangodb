@@ -315,6 +315,22 @@ stats::Descriptions::Descriptions()
                                stats::FigureType::Accumulated,
                                stats::Unit::Number,
                                {}});
+  
+  _figures.emplace_back(Figure{stats::GroupType::Http,
+                               "requestsSuperuser",
+                               "Total superuser requests",
+                               "Total number of HTTP requests executed by superuser/JWT.",
+                               stats::FigureType::Accumulated,
+                               stats::Unit::Number,
+                               {}});
+  
+  _figures.emplace_back(Figure{stats::GroupType::Http,
+                               "requestsUser",
+                               "Total user requests",
+                               "Total number of HTTP requests executed by clients.",
+                               stats::FigureType::Accumulated,
+                               stats::Unit::Number,
+                               {}});
 
   _figures.emplace_back(
       Figure{stats::GroupType::Http,
@@ -478,13 +494,15 @@ static void FillDistribution(VPackBuilder& b, std::string const& name,
 void stats::Descriptions::clientStatistics(velocypack::Builder& b, RequestStatisticsSource source) const {
   basics::StatisticsCounter httpConnections;
   basics::StatisticsCounter totalRequests;
+  basics::StatisticsCounter totalRequestsSuperuser;
+  basics::StatisticsCounter totalRequestsUser;
   std::array<basics::StatisticsCounter, basics::MethodRequestsStatisticsSize> methodRequests;
   basics::StatisticsCounter asyncRequests;
   basics::StatisticsDistribution connectionTime;
 
   // FIXME why are httpConnections in here ?
-  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                             asyncRequests, connectionTime);
+  ConnectionStatistics::fill(httpConnections, totalRequests, totalRequestsSuperuser, totalRequestsUser,
+                             methodRequests, asyncRequests, connectionTime);
 
   b.add("httpConnections", VPackValue(httpConnections._count));
   FillDistribution(b, "connectionTime", connectionTime);
@@ -509,15 +527,19 @@ void stats::Descriptions::clientStatistics(velocypack::Builder& b, RequestStatis
 void stats::Descriptions::httpStatistics(velocypack::Builder& b) const {
   basics::StatisticsCounter httpConnections;
   basics::StatisticsCounter totalRequests;
+  basics::StatisticsCounter totalRequestsSuperuser;
+  basics::StatisticsCounter totalRequestsUser;
   std::array<basics::StatisticsCounter, basics::MethodRequestsStatisticsSize> methodRequests;
   basics::StatisticsCounter asyncRequests;
   basics::StatisticsDistribution connectionTime;
 
-  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                             asyncRequests, connectionTime);
+  ConnectionStatistics::fill(httpConnections, totalRequests, totalRequestsSuperuser, totalRequestsUser,
+                             methodRequests, asyncRequests, connectionTime);
 
   // request counters
   b.add("requestsTotal", VPackValue(totalRequests._count));
+  b.add("requestsSuperuser", VPackValue(totalRequestsSuperuser._count));
+  b.add("requestsUser", VPackValue(totalRequestsUser._count));
   b.add("requestsAsync", VPackValue(asyncRequests._count));
   b.add("requestsGet", VPackValue(methodRequests[(int)rest::RequestType::GET]._count));
   b.add("requestsHead", VPackValue(methodRequests[(int)rest::RequestType::HEAD]._count));

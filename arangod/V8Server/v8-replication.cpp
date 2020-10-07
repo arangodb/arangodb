@@ -381,7 +381,7 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
 
   Result r;
   try {
-    r = syncer.syncCollectionFinalize(collection);
+    r = syncer.syncCollectionFinalize(collection, nullptr);
   } catch (arangodb::basics::Exception const& ex) {
     r = Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
