@@ -549,7 +549,7 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
 }
 
 /// @brief The shard must be one of a collection without
-/// `distributeShardsLike`. This returns all servers which 
+/// `distributeShardsLike`. This returns all servers which
 /// are in `failoverCandidates` for this shard or for any of its clones.
 std::unordered_set<std::string> Job::findAllFailoverCandidates(
     Node const& snap,
