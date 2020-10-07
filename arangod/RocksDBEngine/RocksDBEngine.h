@@ -470,6 +470,10 @@ public:
   // microseconds internally
   uint64_t _syncInterval;
 
+  // WAL sync delay threshold. Any WAL disk sync longer ago than this value
+  // will trigger a warning (in milliseconds)
+  uint64_t _syncDelayThreshold;
+
   // use write-throttling
   bool _useThrottle;
 

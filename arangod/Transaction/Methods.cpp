@@ -3283,7 +3283,16 @@ Future<Result> Methods::replicateOperations(
           replicationWorked = !found;
         }
         auto r = resp.combinedResult();
-        didRefuse = didRefuse || r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION;
+        bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+        didRefuse = didRefuse || followerRefused;
+
+        if (followerRefused) {
+          LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
+              << "synchronous replication: follower "
+              << (*followerList)[i] << " for shard " << collection->name()
+              << " in database " << collection->vocbase().name() 
+              << " refused the operation: " << r.errorMessage();
+        }
       }
 
       if (!replicationWorked) {
@@ -3294,12 +3303,19 @@ Future<Result> Methods::replicateOperations(
           _state->removeKnownServer(deadFollower);
           LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
               << "synchronous replication: dropping follower "
-              << deadFollower << " for shard " << collection->name();
+              << deadFollower << " for shard " << collection->name()
+              << " in database " << collection->vocbase().name(); 
+          LOG_TOPIC("a4c06", WARN, Logger::DEVEL)
+              << "synchronous replication: dropping follower "
+              << deadFollower << " for shard " << collection->name()
+              << " in database " << collection->vocbase().name()
+              << ": " << resp.combinedResult().errorMessage();
         } else {
           LOG_TOPIC("db473", ERR, Logger::REPLICATION)
               << "synchronous replication: could not drop follower "
-              << deadFollower << " for shard " << collection->name() << ": "
-              << res.errorMessage();
+              << deadFollower << " for shard " << collection->name() 
+              << " in database " << collection->vocbase().name() 
+              << ": " << res.errorMessage();
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
         }
       }

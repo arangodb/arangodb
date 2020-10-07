@@ -212,12 +212,14 @@ static void JS_ClientStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
 
   StatisticsCounter httpConnections;
   StatisticsCounter totalRequests;
+  StatisticsCounter totalRequestsSuperuser;
+  StatisticsCounter totalRequestsUser;
   std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
   StatisticsCounter asyncRequests;
   StatisticsDistribution connectionTime;
 
-  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                             asyncRequests, connectionTime);
+  ConnectionStatistics::fill(httpConnections, totalRequests, totalRequestsSuperuser, totalRequestsUser, 
+                             methodRequests, asyncRequests, connectionTime);
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "httpConnections"),
               v8::Number::New(isolate, (double)httpConnections._count));
@@ -257,16 +259,22 @@ static void JS_HttpStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   StatisticsCounter httpConnections;
   StatisticsCounter totalRequests;
+  StatisticsCounter totalRequestsSuperuser;
+  StatisticsCounter totalRequestsUser;
   std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
   StatisticsCounter asyncRequests;
   StatisticsDistribution connectionTime;
 
-  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                             asyncRequests, connectionTime);
+  ConnectionStatistics::fill(httpConnections, totalRequests, totalRequestsSuperuser, totalRequestsUser, 
+                             methodRequests, asyncRequests, connectionTime);
 
   // request counters
   result->Set(TRI_V8_ASCII_STRING(isolate, "requestsTotal"),
               v8::Number::New(isolate, (double)totalRequests._count));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsSuperuser"),
+              v8::Number::New(isolate, (double)totalRequestsSuperuser._count));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsUser"),
+              v8::Number::New(isolate, (double)totalRequestsUser._count));
   result->Set(TRI_V8_ASCII_STRING(isolate, "requestsAsync"),
               v8::Number::New(isolate, (double)asyncRequests._count));
   result->Set(TRI_V8_ASCII_STRING(isolate, "requestsGet"),
