@@ -36,7 +36,7 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringBuffer.h"
-#include "Cluster/ClusterInfo.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
@@ -75,7 +75,7 @@ RestStatus RestStatusHandler::execute() {
 
 RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
   VPackBuilder result;
-  result.add(VPackValue(VPackValueType::Object));
+  result.openObject();
   result.add("server", VPackValue("arango"));
   result.add("version", VPackValue(ARANGODB_VERSION));
 
@@ -181,7 +181,7 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
 RestStatus RestStatusHandler::executeOverview() {
   VPackBuilder result;
 
-  result.add(VPackValue(VPackValueType::Object));
+  result.openObject();
   result.add("version", VPackValue(ARANGODB_VERSION));
   result.add("platform", VPackValue(TRI_PLATFORM));
 

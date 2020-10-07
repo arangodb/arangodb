@@ -15,6 +15,23 @@ v3.7.3 (XXXX-XX-XX)
 * Make scheduler react and start new threads slightly faster in case a lot
   of new work arrives.
 
+* Fixed a bug in handling of followers which refuse to replicate operations.
+  In the case that the follower has simply been dropped in the meantime, we now
+  avoid an error reported by the shard leader.
+
+* Fix a performance regression when a LIMIT is combined with a COLLECT WITH
+  COUNT INTO. Reported in ES-692.
+
+* Fixed issue ES-664: SEARCH vs FILTER lookup performance.
+  Consolidation functionality for ArangoSearch view links was able to hit non-
+  mergable enormous amount of segments due to improper scheduling logic.
+
+* Fix REST handler GET /_admin/status when called with URL parameter value
+  `overview=true`. For generating the `hash` attribute in the response, the
+  current Plan was retrieved and analyzed. Due to a change in the internal Plan
+  format the REST handler code failed to pick up the number of servers, which
+  resulted in the REST handler returning HTTP 500 in cluster mode.
+
 * Use rclone built from v1.51.0 source with go1.15.2 instead of prebuilt
   v1.51.0 release.
 
