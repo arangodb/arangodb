@@ -3559,7 +3559,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   VPackSlice indexes = collectionFromPlan.indexes();
   for (auto const& other : VPackArrayIterator(indexes)) {
     TRI_ASSERT(other.isObject());
-    if (true == arangodb::Index::Compare(slice, other)) {
+    if (true == arangodb::Index::Compare(slice, other, collection.vocbase().name())) {
       {  // found an existing index... Copy over all elements in slice.
         VPackObjectBuilder b(&resultBuilder);
         resultBuilder.add(VPackObjectIterator(other));
