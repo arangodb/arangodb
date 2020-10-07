@@ -251,7 +251,6 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
           serverList = lcol.get(StaticStrings::FailoverCandidates);
           if (serverList.isArray()) {
             // And again for the failoverCandidates:
-            std::unordered_set<std::string> followersToDrop;
             for (auto const& q : VPackArrayIterator(serverList)) {
               followersToDrop.insert(q.copyString());
             }
