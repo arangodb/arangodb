@@ -67,7 +67,7 @@ Result RocksDBWalAccess::tickRange(std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& mi
 ///  }}
 ///
 TRI_voc_tick_t RocksDBWalAccess::lastTick() const {
-  _engine.flushWal(false, false, false);
+  _engine.flushWal(false, false);
   return _engine.db()->GetLatestSequenceNumber();
 }
 

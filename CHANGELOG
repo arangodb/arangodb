@@ -1,6 +1,11 @@
 devel
 -----
 
+* Added configuration option `--rocksdb.sync-delay-threshold`.
+  This option can be used to track if any RocksDB WAL sync operations is 
+  delayed by more than the configured value (in milliseconds). The intention
+  is to get aware of severely delayed WAL sync operations.
+
 * Fix for BTS-191: Made transaction API database-aware.
 
 * Minor clean up of and less verbosity in agent callbacks. 
@@ -43,7 +48,7 @@ devel
 * Fix a performance regression when a LIMIT is combined with a COLLECT WITH
   COUNT INTO. Reported in ES-692.
 
-* Fixed issue ES-664: SEARCH vs FILTER lookup performance.
+* Fixed issue ES-696: SEARCH vs FILTER lookup performance.
   Consolidation functionality for ArangoSearch view links was able to hit non-
   mergable enormous amount of segments due to improper scheduling logic.
 

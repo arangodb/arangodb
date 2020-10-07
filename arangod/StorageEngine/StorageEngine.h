@@ -168,8 +168,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   /// @brief return a list of the currently open WAL files
   virtual std::vector<std::string> currentWalFiles() const = 0;
 
-  virtual Result flushWal(bool waitForSync = false, bool waitForCollector = false,
-                          bool writeShutdownFile = false) = 0;
+  virtual Result flushWal(bool waitForSync = false, bool waitForCollector = false) = 0;
 
   virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) = 0;
 
