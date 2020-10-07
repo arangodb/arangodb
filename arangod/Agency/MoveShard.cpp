@@ -273,11 +273,13 @@ bool MoveShard::start(bool&) {
   TRI_ASSERT(planned.isArray());
 
   int found = -1;
+  int foundTo = -1;
   int count = 0;
   _toServerIsFollower = false;
   for (VPackSlice srv : VPackArrayIterator(planned)) {
     TRI_ASSERT(srv.isString());
     if (srv.copyString() == _to) {
+      foundTo = count;
       if (!_isLeader) {
         finish("", "", false, "toServer must not be planned for a following shard");
         return false;
@@ -303,7 +305,7 @@ bool MoveShard::start(bool&) {
   std::vector<Job::shard_t> shardsLikeMe =
       clones(_snapshot, _database, _collection, _shard);
 
-  if (found < 0) {   // not in Plan, then it must not be a failoverCandidate:
+  if (foundTo < 0) { // _to not in Plan, then it must not be a failoverCandidate:
     auto failoverCands = Job::findAllFailoverCandidates(
         _snapshot, _database, shardsLikeMe);
     if (failoverCands.find(_to) != failoverCands.end()) {

@@ -517,7 +517,7 @@ function MovingShardsSuite ({useData}) {
 /// @brief move a single shard
 ////////////////////////////////////////////////////////////////////////////////
 
-  function moveShard(database, collection, shard, fromServer, toServer, dontwait) {
+  function moveShard(database, collection, shard, fromServer, toServer, dontwait, expectedResult) {
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
@@ -544,7 +544,7 @@ function MovingShardsSuite ({useData}) {
     while (true) {
       var job = require("@arangodb/cluster").queryAgencyJob(result.json.id);
       console.info("Status of moveShard job:", job.status);
-      if (job.error === false && job.status === "Finished") {
+      if (job.error === false && job.status === expectedResult) {
         return result;
       }
       if (count-- < 0) {
@@ -723,6 +723,7 @@ function MovingShardsSuite ({useData}) {
 /// @brief cleaning out collection with one shard without replication
 ////////////////////////////////////////////////////////////////////////////////
 
+    /*
     testShrinkNoReplication : function() {
       assertTrue(waitForSynchronousReplication("_system"));
       var _dbservers = servers;
@@ -751,7 +752,7 @@ function MovingShardsSuite ({useData}) {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer, false));
+      assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer, false, "Finished"));
       assertTrue(testServerEmpty(fromServer), false);
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -769,7 +770,7 @@ function MovingShardsSuite ({useData}) {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer, false));
+      assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer, false, "Finished"));
       assertTrue(testServerEmpty(fromServer), false);
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -788,7 +789,7 @@ function MovingShardsSuite ({useData}) {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false, "Finished"));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -807,7 +808,7 @@ function MovingShardsSuite ({useData}) {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false, "Finished"));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -826,7 +827,7 @@ function MovingShardsSuite ({useData}) {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false, "Finished"));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -845,7 +846,7 @@ function MovingShardsSuite ({useData}) {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false, "Finished"));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -864,7 +865,7 @@ function MovingShardsSuite ({useData}) {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false, "Finished"));
       assertTrue(testServerNoLeader(fromServer, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -988,7 +989,7 @@ function MovingShardsSuite ({useData}) {
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, true));
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, true, "Finished"));
       var first = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
           arango.Supervision.State, state;
       var waitUntil = new Date().getTime() + 30.0*1000;
@@ -1010,6 +1011,7 @@ function MovingShardsSuite ({useData}) {
       checkCollectionContents();
     },
 
+    */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pausing supervision for a couple of seconds
 ////////////////////////////////////////////////////////////////////////////////
@@ -1035,10 +1037,14 @@ function MovingShardsSuite ({useData}) {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false, "Finished"));
       assertTrue(waitForIncompleteMoveShard("_system", c[1].name(), 3));
       wait(5);   // After 5 seconds the situation should be unchanged!
       assertTrue(waitForIncompleteMoveShard("_system", c[1].name(), 3));
+      // Now we know that the old follower is not in the plan but is in
+      // failoverCandidates (and indeed in Current/servers). Let's now
+      // try to move the shard back, this ought to be denied:
+      assertTrue(moveShard("_system", c[1]._id, shard, toServer, fromServer, false, "Failed"));
       debugClearFailAt(leaderEndpoint);
       // Now we should go back to only 3 servers in Current.
       assertTrue(waitForSynchronousReplication("_system"));
