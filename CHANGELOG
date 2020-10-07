@@ -1,4 +1,4 @@
-v3.7.4 (XXXX-XX-XX)
+v3.7.3 (XXXX-XX-XX)
 -------------------
 
 * Added configuration option `--rocksdb.sync-delay-threshold`.
@@ -6,7 +6,7 @@ v3.7.4 (XXXX-XX-XX)
   delayed by more than the configured value (in milliseconds). The intention
   is to get aware of severely delayed WAL sync operations.
 
-* Add database, shard name and error information to several shard-related log 
+* Add database, shard name and error information to several shard-related log
   messages.
 
 * Display shard names of a collection in the web interface when in the details
@@ -17,12 +17,8 @@ v3.7.4 (XXXX-XX-XX)
 
   - `arangodb_http_request_statistics_superuser_requests`: Total number of HTTP
     requests executed by superuser/JWT
-  - `arangodb_http_request_statistics_user_requests`: Total number of HTTP 
+  - `arangodb_http_request_statistics_user_requests`: Total number of HTTP
     requests executed by clients
-
-
-v3.7.3 (XXXX-XX-XX)
--------------------
 
 * Fixed a bug in handling of followers which refuse to replicate operations.
   In the case that the follower has simply been dropped in the meantime, we now
