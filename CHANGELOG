@@ -1,5 +1,9 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
+* Fixed issue BTS-212: Web UI doesn't let to make partial view update and partial
+  view update should be audited (also reported as ES-700)
+  Fixed link definition comparison logic. Equality wasn`t properly detected
+  leading to link recreation.
 
 * Fixed a bug in handling of followers which refuse to replicate operations.
   In the case that the follower has simply been dropped in the meantime, we now
