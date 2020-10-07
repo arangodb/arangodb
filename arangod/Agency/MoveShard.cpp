@@ -303,7 +303,7 @@ bool MoveShard::start(bool&) {
   std::vector<Job::shard_t> shardsLikeMe =
       clones(_snapshot, _database, _collection, _shard);
 
-  if (!found) {   // not in Plan, then it must not be a failoverCandidate:
+  if (found < 0) {   // not in Plan, then it must not be a failoverCandidate:
     auto failoverCands = Job::findAllFailoverCandidates(
         _snapshot, _database, shardsLikeMe);
     if (failoverCands.find(_to) != failoverCands.end()) {
