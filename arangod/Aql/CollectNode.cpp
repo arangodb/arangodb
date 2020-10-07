@@ -450,7 +450,6 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
-    case ExecutionNode::WINDOW:
       return false;
     case ExecutionNode::MUTEX: // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
@@ -494,7 +493,6 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
-    case ExecutionNode::WINDOW:
       return false;
     case ExecutionNode::MUTEX: // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
@@ -538,7 +536,6 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
-    case ExecutionNode::WINDOW:
       return false;
     case ExecutionNode::MUTEX: // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
