@@ -2131,11 +2131,6 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         en = fromNodeUpsert(en, member);
         break;
       }
-        
-      case NODE_TYPE_WINDOW: {
-        en = fromNodeWindow(en, member);
-        break;
-      }
 
       default: {
         // node type not implemented
