@@ -1160,7 +1160,7 @@ function routeRequest (req, res, routes) {
     for (let mount of FoxxManager.systemServiceMounts) {
       if (req.url.startsWith(mount) &&
           (req.url.length === mount.length ||
-           req.url[mount.length] === '/')) {
+           ['/', '?'].indexOf(req.url[mount.length]) !== -1)) {
         internalRoute = true;
         break;
       }
