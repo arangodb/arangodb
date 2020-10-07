@@ -183,15 +183,9 @@ void RequestStatistics::release() {
   TRI_ASSERT(!_released);
   TRI_ASSERT(!_inQueue);
 
-  if (!_ignore) {
-    _inQueue = true;
-    bool ok = _finishedList.push(this);
-    TRI_ASSERT(ok);
-  } else {
-    reset();
-    bool ok = _freeList.push(this);
-    TRI_ASSERT(ok);
-  }
+  _inQueue = true;
+  bool ok = _finishedList.push(this);
+  TRI_ASSERT(ok);
 }
 
 void RequestStatistics::getSnapshot(Snapshot& snapshot, stats::RequestStatisticsSource source) {
@@ -222,7 +216,7 @@ void RequestStatistics::getSnapshot(Snapshot& snapshot, stats::RequestStatistics
   }
 }
 
-std::string RequestStatistics::Item::timingsCsv() {
+std::string RequestStatistics::Item::timingsCsv() const {
   TRI_ASSERT(_stat != nullptr);
   std::stringstream ss;
 
@@ -231,8 +225,7 @@ std::string RequestStatistics::Item::timingsCsv() {
      << ",queue," << (_stat->_queueEnd - _stat->_queueStart)
      << ",queue-size," << _stat->_queueSize
      << ",request," << (_stat->_requestEnd - _stat->_requestStart)
-     << ",total," << (StatisticsFeature::time() - _stat->_readStart)
-     << ",error," << (_stat->_executeError ? "true" : "false");
+     << ",total," << (StatisticsFeature::time() - _stat->_readStart);
 
   return ss.str();
 }

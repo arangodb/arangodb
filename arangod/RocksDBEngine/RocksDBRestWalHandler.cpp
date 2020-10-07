@@ -106,7 +106,6 @@ void RocksDBRestWalHandler::flush() {
 
   bool waitForSync = false;
   bool waitForCollector = false;
-  double maxWaitTime = 300.0;
 
   if (slice.isObject()) {
     // got a request body
@@ -123,22 +122,16 @@ void RocksDBRestWalHandler::flush() {
     } else if (value.isBoolean()) {
       waitForCollector = value.getBoolean();
     }
-
-    value = slice.get("maxWaitTime");
-    if (value.isNumber()) {
-      maxWaitTime = value.getNumericValue<double>();
-    }
   } else {
     // no request body
     waitForSync = _request->parsedValue("waitForSync", waitForSync);
     waitForCollector = _request->parsedValue("waitForCollector", waitForCollector);
-    maxWaitTime = _request->parsedValue("maxWaitTime", maxWaitTime);
   }
 
   int res = TRI_ERROR_NO_ERROR;
   if (ServerState::instance()->isCoordinator()) {
     auto& feature = server().getFeature<ClusterFeature>();
-    res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector, maxWaitTime);
+    res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector);
   } else {
     if (waitForSync) {
       EngineSelectorFeature::ENGINE->flushWal();
