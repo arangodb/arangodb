@@ -605,9 +605,8 @@ void GeneralServerFeature::defineHandlers() {
 
 
   // engine specific handlers
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
-  engine->addRestHandlers(*_handlerFactory);
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  engine.addRestHandlers(*_handlerFactory);
 }
 
 }  // namespace arangodb

@@ -373,8 +373,8 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   std::shared_ptr<TransactionState> state;
   try {
     // now start our own transaction
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    state = engine->createTransactionState(vocbase, tid, options);
+    StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
+    state = engine.createTransactionState(vocbase, tid, options);
   } catch (basics::Exception const& e) {
     return res.reset(e.code(), e.message());
   }

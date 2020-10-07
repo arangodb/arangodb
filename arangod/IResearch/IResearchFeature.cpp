@@ -514,8 +514,9 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
   });
 }
 
-void registerRecoveryHelper() {
-  auto helper = std::make_shared<arangodb::iresearch::IResearchRocksDBRecoveryHelper>();
+void registerRecoveryHelper(arangodb::application_features::ApplicationServer& server) {
+  auto helper =
+      std::make_shared<arangodb::iresearch::IResearchRocksDBRecoveryHelper>(server);
   auto res = arangodb::RocksDBEngine::registerRecoveryHelper(helper);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1015,7 +1016,7 @@ void IResearchFeature::prepare() {
   // register 'arangosearch' Transaction DataSource registration callback
   registerTransactionDataSourceRegistrationCallback();
 
-  registerRecoveryHelper();
+  registerRecoveryHelper(server());
 
   // start the async task thread pool
   if (!ServerState::instance()->isCoordinator() // not a coordinator

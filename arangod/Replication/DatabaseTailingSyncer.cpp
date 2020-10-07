@@ -148,7 +148,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
       TRI_ASSERT(r.ok());
       if (hard) {
         // now do a final sync-to-disk call. note that this can fail
-        r = EngineSelectorFeature::ENGINE->flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
+        auto& engine = vocbase()->server().getFeature<EngineSelectorFeature>().engine();
+        r = engine.flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
       }
       until = fromTick;
       return r;
@@ -245,7 +246,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
       TRI_ASSERT(r.ok());
       if (hard) {
         // now do a final sync-to-disk call. note that this can fail
-        r = EngineSelectorFeature::ENGINE->flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
+        auto& engine = vocbase()->server().getFeature<EngineSelectorFeature>().engine();
+        r = engine.flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
       }
       until = fromTick;
       return r;

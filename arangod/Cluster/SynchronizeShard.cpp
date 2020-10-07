@@ -758,7 +758,8 @@ bool SynchronizeShard::first() {
           << planId << "'";
 
       // now do a final sync-to-disk call. note that this can fail
-      Result res = EngineSelectorFeature::ENGINE->flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
+      auto& engine = vocbase->server().getFeature<EngineSelectorFeature>().engine();
+      Result res = engine.flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
       if (res.fail()) {
         LOG_TOPIC("a49d1", INFO, Logger::MAINTENANCE) << res.errorMessage();
         _result.reset(res);

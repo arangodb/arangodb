@@ -100,10 +100,11 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(VPackSlice const& firs
   return result;
 }
 
-static VPackBuilder compareIndexes(
-  std::string const& dbname, std::string const& collname, std::string const& shname,
-  VPackSlice const& plan, VPackSlice const& local,
-  MaintenanceFeature::errors_t const& errors, std::unordered_set<std::string>& indis) {
+static VPackBuilder compareIndexes(StorageEngine& engine, std::string const& dbname,
+                                   std::string const& collname, std::string const& shname,
+                                   VPackSlice const& plan, VPackSlice const& local,
+                                   MaintenanceFeature::errors_t const& errors,
+                                   std::unordered_set<std::string>& indis) {
   TRI_ASSERT(plan.isArray());
 
   VPackBuilder builder;
@@ -149,7 +150,7 @@ static VPackBuilder compareIndexes(
             // should be fine. However, for robustness sake, we compare,
             // if the local index found actually has the right properties,
             // if not, we schedule a dropIndex action:
-            if (!arangodb::Index::Compare(pindex, lindex, dbname)) {
+            if (!arangodb::Index::Compare(engine, pindex, lindex, dbname)) {
               // To achieve this, we remove the long version of the ID
               // from the indis set. This way, the local index will be
               // dropped further down in handleLocalShard:
@@ -204,17 +205,16 @@ static std::string CreateLeaderString(std::string const& leaderId, bool shouldBe
   return leaderId;
 }
 
-void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice const& ldb,
-                     std::string const& dbname, std::string const& colname,
-                     std::string const& shname, std::string const& serverId,
-                     std::string const& leaderId, std::unordered_set<std::string>& commonShrds,
+void handlePlanShard(StorageEngine& engine, uint64_t planIndex, VPackSlice const& cprops,
+                     VPackSlice const& ldb, std::string const& dbname,
+                     std::string const& colname, std::string const& shname,
+                     std::string const& serverId, std::string const& leaderId,
+                     std::unordered_set<std::string>& commonShrds,
                      std::unordered_set<std::string>& indis,
                      MaintenanceFeature::errors_t& errors,
-                     std::unordered_set<DatabaseID>& makeDirty,
-                     bool& callNotify,
+                     std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
                      std::vector<std::shared_ptr<ActionDescription>>& actions,
                      MaintenanceFeature::ShardActionMap const& shardActionMap) {
-
   // First check if the shard is locked:
   auto it = shardActionMap.find(shname);
   if (it != shardActionMap.end()) {
@@ -323,8 +323,8 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
     auto const& pindexes = cprops.get(INDEXES);
     if (pindexes.isArray()) {
       auto const& lindexes = lcol.get(INDEXES);
-      auto difference =
-          compareIndexes(dbname, colname, shname, pindexes, lindexes, errors, indis);
+      auto difference = compareIndexes(engine, dbname, colname, shname,
+                                       pindexes, lindexes, errors, indis);
 
       // Index errors are checked in `compareIndexes`. THe loop below only
       // cares about those indexes that have no error.
@@ -498,14 +498,14 @@ VPackBuilder getShardMap(VPackSlice const& collections) {
 
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal(
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
-  uint64_t planIndex, std::unordered_set<std::string> dirty,
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& local,
-  std::string const& serverId, MaintenanceFeature::errors_t& errors,
-  std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
-  std::vector<std::shared_ptr<ActionDescription>>& actions,
-  MaintenanceFeature::ShardActionMap const& shardActionMap) {
-
+    StorageEngine& engine,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
+    uint64_t planIndex, std::unordered_set<std::string> dirty,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    std::string const& serverId, MaintenanceFeature::errors_t& errors,
+    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+    std::vector<std::shared_ptr<ActionDescription>>& actions,
+    MaintenanceFeature::ShardActionMap const& shardActionMap) {
   // You are entering the functional sector.
   // Vous entrez dans le secteur fonctionel.
   // Sie betreten den funktionalen Sektor.
@@ -606,10 +606,11 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                   // We only care for shards, where we find us as "serverId" or "_serverId"
                   if (dbs.isEqualString(serverId) || dbs.isEqualString(UNDERSCORE + serverId)) {
                     // at this point a shard is in plan, we have the db for it
-                    handlePlanShard(planIndex, cprops, ldb, dbname, pcol.key.copyString(),
-                                    shard.key.copyString(), serverId,
-                                    shard.value[0].copyString(), commonShrds, indis,
-                                    errors, makeDirty, callNotify, actions, shardActionMap);
+                    handlePlanShard(engine, planIndex, cprops, ldb, dbname,
+                                    pcol.key.copyString(), shard.key.copyString(),
+                                    serverId, shard.value[0].copyString(),
+                                    commonShrds, indis, errors, makeDirty,
+                                    callNotify, actions, shardActionMap);
                     break;
                   }
                 }
@@ -752,7 +753,9 @@ arangodb::Result arangodb::maintenance::executePlan(
     VPackArrayBuilder a(&report);
     std::unordered_set<DatabaseID> makeDirty;
     bool callNotify = false;
-    diffPlanLocal(plan, planIndex, dirty, local, serverId, errors, makeDirty, callNotify, actions, shardActionMap);
+    auto& engine = feature.server().getFeature<EngineSelectorFeature>().engine();
+    diffPlanLocal(engine, plan, planIndex, dirty, local, serverId, errors,
+                  makeDirty, callNotify, actions, shardActionMap);
     feature.addDirty(makeDirty, callNotify);
   }
 

@@ -153,25 +153,6 @@ class RocksDBEncryptionProvider final : public irs::encryption {
   rocksdb::EnvOptions _options;
 };  // RocksDBEncryptionProvider
 
-std::function<void(irs::directory&)> const RocksDBLinkInitCallback = [](irs::directory& dir) {
-  TRI_ASSERT(arangodb::EngineSelectorFeature::isRocksDB());
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* engine =
-      dynamic_cast<arangodb::RocksDBEngine*>(arangodb::EngineSelectorFeature::ENGINE);
-#else
-  auto* engine =
-      static_cast<arangodb::RocksDBEngine*>(arangodb::EngineSelectorFeature::ENGINE);
-#endif
-
-  auto* encryption = engine ? engine->encryptionProvider() : nullptr;
-
-  if (encryption) {
-    dir.attributes().emplace<RocksDBEncryptionProvider>(*encryption,
-                                                        engine->rocksDBOptions());
-  }
-};
-
 IResearchRocksDBLink::IndexFactory::IndexFactory(arangodb::application_features::ApplicationServer& server)
     : IndexTypeFactory(server) {}
 
@@ -186,7 +167,16 @@ std::shared_ptr<arangodb::Index> IResearchRocksDBLink::IndexFactory::instantiate
     IndexId id, bool /*isClusterConstructor*/) const {
   auto link = std::shared_ptr<arangodb::iresearch::IResearchRocksDBLink>(
       new arangodb::iresearch::IResearchRocksDBLink(id, collection));
-  auto res = link->init(definition, RocksDBLinkInitCallback);
+  auto res = link->init(definition, [this](irs::directory& dir) {
+    auto& selector = _server.getFeature<EngineSelectorFeature>();
+    TRI_ASSERT(selector.isRocksDB());
+    auto& engine = selector.engine<RocksDBEngine>();
+    auto* encryption = engine.encryptionProvider();
+    if (encryption) {
+      dir.attributes().emplace<RocksDBEncryptionProvider>(*encryption,
+                                                          engine.rocksDBOptions());
+    }
+  });
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);

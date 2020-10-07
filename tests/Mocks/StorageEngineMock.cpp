@@ -1223,8 +1223,11 @@ bool PhysicalCollectionMock::addIndex(std::shared_ptr<arangodb::Index> idx) {
 void PhysicalCollectionMock::prepareIndexes(arangodb::velocypack::Slice indexesSlice) {
   before();
 
-  auto* engine = arangodb::EngineSelectorFeature::ENGINE;
-  auto& idxFactory = engine->indexFactory();
+  auto& engine = _logicalCollection.vocbase()
+                     .server()
+                     .getFeature<arangodb::EngineSelectorFeature>()
+                     .engine();
+  auto& idxFactory = engine.indexFactory();
 
   for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error", false)) {

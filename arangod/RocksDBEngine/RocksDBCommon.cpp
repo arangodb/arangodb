@@ -52,64 +52,11 @@
 namespace arangodb {
 namespace rocksutils {
 
-rocksdb::TransactionDB* globalRocksDB() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
-  RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
-  TRI_ASSERT(rocks->db() != nullptr);
-  return rocks->db();
-}
-
-rocksdb::ColumnFamilyHandle* defaultCF() {
-  auto db = globalRocksDB();
-  TRI_ASSERT(db != nullptr);
-  return db->DefaultColumnFamily();
-}
-
-RocksDBEngine* globalRocksEngine() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
-  return static_cast<RocksDBEngine*>(engine);
-}
-
-arangodb::Result globalRocksDBPut(rocksdb::ColumnFamilyHandle* cf,
-                                  rocksdb::Slice const& key, rocksdb::Slice const& val,
-                                  rocksdb::WriteOptions const& options) {
-  TRI_ASSERT(cf != nullptr);
-  auto status = globalRocksDB()->Put(options, cf, key, val);
-  return convertStatus(status);
-}
-
-arangodb::Result globalRocksDBRemove(rocksdb::ColumnFamilyHandle* cf,
-                                     rocksdb::Slice const& key,
-                                     rocksdb::WriteOptions const& options) {
-  TRI_ASSERT(cf != nullptr);
-  auto status = globalRocksDB()->Delete(options, cf, key);
-  return convertStatus(status);
-}
-
-uint64_t latestSequenceNumber() {
-  auto seq = globalRocksDB()->GetLatestSequenceNumber();
-  return static_cast<uint64_t>(seq);
-}
-
 void checkIteratorStatus(rocksdb::Iterator const* iterator) {
   auto s = iterator->status();
   if (!s.ok()) {
     THROW_ARANGO_EXCEPTION(arangodb::rocksutils::convertStatus(s));
   }
-}
-
-std::pair<TRI_voc_tick_t, DataSourceId> mapObjectToCollection(uint64_t objectId) {
-  return globalRocksEngine()->mapObjectToCollection(objectId);
-}
-
-RocksDBEngine::IndexTriple mapObjectToIndex(uint64_t objectId) {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
-  RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
-  TRI_ASSERT(rocks->db() != nullptr);
-  return rocks->mapObjectToIndex(objectId);
 }
 
 /// @brief count all keys in the given column family
