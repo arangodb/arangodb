@@ -23,7 +23,7 @@
 'use strict';
 
 const jsunity = require("jsunity");
-const {assertEqual} = jsunity.jsUnity.assertions;
+const {assertEqual, assertTypeOf} = jsunity.jsUnity.assertions;
 
 const arangodb = require("@arangodb");
 const db = arangodb.db;
@@ -31,6 +31,7 @@ const _ = require('lodash');
 
 function ShellAqlRegressionSuite () {
   const colName = 'UnitTestsCollection';
+  const shardKeys = [];
 
   return {
     setUpAll: function () {
@@ -43,6 +44,7 @@ function ShellAqlRegressionSuite () {
       }
       let value = 0;
       for (const [shard, shardKey] of shardToKey) {
+        shardKeys.push(shardKey);
         const docs = Array.from({length: 1001}).map(_ => ({shardKey, value: value++}));
         col.insert(docs);
       }
@@ -57,7 +59,6 @@ function ShellAqlRegressionSuite () {
       const query = `FOR d IN @@col SORT d.value LIMIT @limit RETURN d`;
       const bindVars = {'@col': colName, limit};
       const batchSize = 1;
-      const cursorOptions = {batchSize};
       const options = {
         optimizer: {rules: ['-parallelize-gather']},
         stream: true,
@@ -84,8 +85,21 @@ function ShellAqlRegressionSuite () {
       assertEqual('GatherNode', gatherNode.type);
       assertEqual("undefined", gatherNode.parallelism);
       // It's important to check the limit, it's only in the constrained case
-      assertEqual(10, gatherNode.limit);
-      stmt.execute();
+      assertEqual(limit, gatherNode.limit);
+      const cursor = stmt.execute();
+      try {
+        const results = [];
+        while (cursor.hasNext()) {
+          results.push(cursor.next());
+        }
+        assertEqual(_.range(limit), results.map(doc => doc.value));
+        assertTypeOf('number', results[0].shardKey);
+        // key of the first shard, containing the smaller elements
+        const firstShardsKey = shardKeys[0];
+        assertEqual(_.fill(Array(limit), firstShardsKey), results.map(doc => doc.shardKey));
+      } finally {
+        cursor.dispose();
+      }
     },
   };
 }
