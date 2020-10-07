@@ -85,39 +85,16 @@
 namespace {
 
 using namespace std::literals::string_literals;
-
 static char const ANALYZER_PREFIX_DELIM = ':'; // name prefix delimiter (2 chars)
 static size_t const ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024; // arbitrary value
 static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
 static std::string const FEATURE_NAME("ArangoSearchAnalyzer");
-static constexpr frozen::map<irs::string_ref, irs::string_ref, 13> STATIC_ANALYZERS_NAMES {
-  {irs::type<IdentityAnalyzer>::name(), irs::type<IdentityAnalyzer>::name()},
-  {"text_de", "de"}, {"text_en", "en"}, {"text_es", "es"}, {"text_fi", "fi"},
-  {"text_fr", "fr"}, {"text_it", "it"}, {"text_nl", "nl"}, {"text_no", "no"},
-  {"text_pt", "pt"}, {"text_ru", "ru"}, {"text_sv", "sv"}, {"text_zh", "zh"} };
+static irs::string_ref constexpr IDENTITY_ANALYZER_NAME("identity");
 
-REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
-REGISTER_ANALYZER_VPACK(GeoJSONAnalyzer, GeoJSONAnalyzer::make, GeoJSONAnalyzer::normalize);
-REGISTER_ANALYZER_VPACK(GeoPointAnalyzer, GeoPointAnalyzer::make, GeoPointAnalyzer::normalize);
 
-bool normalize(std::string& out,
-               irs::string_ref const& type,
-               VPackSlice const properties) {
-  if (type.empty()) {
-    // in ArangoSearch we don't allow to have analyzers with empty type string
-    return false;
-  }
-
-  // for API consistency we only support analyzers configurable via jSON
-  return irs::analysis::analyzers::normalize(
-    out, type,
-    irs::type<irs::text_format::vpack>::get(),
-    arangodb::iresearch::ref<char>(properties),
-    false);
-}
 
 class IdentityAnalyzer final : public irs::analysis::analyzer {
- public:
+public:
   static constexpr irs::string_ref type_name() noexcept {
     return IDENTITY_ANALYZER_NAME;
   }
@@ -134,7 +111,7 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
 
   IdentityAnalyzer()
     : irs::analysis::analyzer(irs::type<IdentityAnalyzer>::get()),
-      _empty(true) {
+    _empty(true) {
   }
 
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
@@ -143,8 +120,8 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
     }
 
     return type == irs::type<irs::term_attribute>::id()
-        ? &_term
-        : nullptr;
+      ? &_term
+      : nullptr;
   }
 
   virtual bool next() noexcept override {
@@ -162,13 +139,35 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
     return true;
   }
 
- private:
+private:
   irs::term_attribute _term;
   irs::increment _inc;
   bool _empty;
 }; // IdentityAnalyzer
 
 REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
+
+static constexpr frozen::map<irs::string_ref, irs::string_ref, 13> STATIC_ANALYZERS_NAMES {
+  {irs::type<IdentityAnalyzer>::name(), irs::type<IdentityAnalyzer>::name()},
+  {"text_de", "de"}, {"text_en", "en"}, {"text_es", "es"}, {"text_fi", "fi"},
+  {"text_fr", "fr"}, {"text_it", "it"}, {"text_nl", "nl"}, {"text_no", "no"},
+  {"text_pt", "pt"}, {"text_ru", "ru"}, {"text_sv", "sv"}, {"text_zh", "zh"} };
+
+bool normalize(std::string& out,
+               irs::string_ref const& type,
+               VPackSlice const properties) {
+  if (type.empty()) {
+    // in ArangoSearch we don't allow to have analyzers with empty type string
+    return false;
+  }
+
+  // for API consistency we only support analyzers configurable via jSON
+  return irs::analysis::analyzers::normalize(
+    out, type,
+    irs::type<irs::text_format::vpack>::get(),
+    arangodb::iresearch::ref<char>(properties),
+    false);
+}
 
 // Delimiter analyzer vpack routines ////////////////////////////
 namespace delimiter_vpack {
