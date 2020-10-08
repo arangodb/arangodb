@@ -26,6 +26,7 @@
 
 #include "Agency/Store.h"
 #include "AgencyCommon.h"
+#include "RestServer/MetricsFeature.h"
 #include "Utils/OperationOptions.h"
 
 #include <cstdint>
@@ -56,7 +57,7 @@ class Agent;
 class State {
  public:
   /// @brief Default constructor
-  State();
+  State(application_features::ApplicationServer& server);
 
   /// @brief Default Destructor
   virtual ~State();
@@ -252,6 +253,9 @@ class State {
 
   /// @brief Remove obsolete logs
   bool removeObsolete(arangodb::consensus::index_t cind);
+
+  /// @brief Our agent
+  application_features::ApplicationServer& _server;
 
   /// @brief Our agent
   Agent* _agent;

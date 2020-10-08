@@ -64,6 +64,7 @@ Agent::Agent(ApplicationServer& server, config_t const& config)
     : Thread(server, "Agent"),
       _constituent(server),
       _supervision(server),
+      _state(server),
       _config(config),
       _commitIndex(0),
       _spearhead(server, this),
