@@ -34,6 +34,9 @@ using namespace arangodb::aql;
 
 AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state)
     : _finalState{state}, _aqlItemMatrix{nullptr} {
+  // TODO As we only allow HASMORE, just use the default constructor and remove
+  //      this one.
+  TRI_ASSERT(state == ExecutorState::HASMORE);
   TRI_ASSERT(_aqlItemMatrix == nullptr);
   TRI_ASSERT(!hasDataRow());
 }
@@ -110,7 +113,10 @@ bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
   if (_aqlItemMatrix == nullptr) {
     return false;
   }
-  return (!_shadowRow.isInitialized() && _aqlItemMatrix->size() != 0);
+
+  return !hasShadowRow() && _aqlItemMatrix != nullptr &&
+         ((_aqlItemMatrix->stoppedOnShadowRow()) ||
+          (_aqlItemMatrix->size() > 0 && _finalState == ExecutorState::DONE));
 }
 
 std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::nextShadowRow() {
