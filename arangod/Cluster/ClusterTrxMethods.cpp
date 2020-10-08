@@ -268,11 +268,18 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
                   // TODO: what happens if a server is re-added during a transaction ?
                   LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
                       << "synchronous replication: dropping follower "
-                      << follower << " for shard " << tc.collectionName();
+                      << follower << " for shard " << tc.collectionName()
+                      << " in database " << cc->vocbase().name();
+                  LOG_TOPIC("b071c", WARN, Logger::DEVEL)
+                      << "synchronous replication: dropping follower "
+                      << follower << " for shard " << tc.collectionName()
+                      << " in database " << cc->vocbase().name()
+                      << ": " << resp.combinedResult().errorMessage();
                 } else {
                   LOG_TOPIC("4971f", ERR, Logger::REPLICATION)
                       << "synchronous replication: could not drop follower "
                       << follower << " for shard " << tc.collectionName()
+                      << " in database " << cc->vocbase().name()
                       << ": " << r.errorMessage();
                   res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
                   return false;  // cancel transaction

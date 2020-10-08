@@ -79,6 +79,8 @@ void ConnectionStatistics::getSnapshot(Snapshot& snapshot) {
 
   snapshot.httpConnections = statistics::HttpConnections;
   snapshot.totalRequests = statistics::TotalRequests;
+  snapshot.totalRequestsSuperuser = statistics::TotalRequestsSuperuser;
+  snapshot.totalRequestsUser = statistics::TotalRequestsUser;
   snapshot.methodRequests = statistics::MethodRequests;
   snapshot.asyncRequests = statistics::AsyncRequests;
   snapshot.connectionTime = statistics::ConnectionTimeDistribution;
