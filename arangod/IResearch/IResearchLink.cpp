@@ -101,8 +101,8 @@ struct LinkTrxState final : public arangodb::TransactionState::Cookie {
 
   operator irs::index_writer::documents_context&() noexcept { return _ctx; }
 
-  void remove(arangodb::LocalDocumentId const& value) {
-    _ctx.remove(_removals.emplace(value));
+  void remove(arangodb::StorageEngine& engine, arangodb::LocalDocumentId const& value) {
+    _ctx.remove(_removals.emplace(engine, value));
   }
 
   void reset() noexcept {
@@ -614,15 +614,6 @@ Result IResearchLink::commitUnsafe(bool wait) {
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
-  auto* engine = EngineSelectorFeature::ENGINE;
-
-  if (!engine) {
-    return {
-        TRI_ERROR_INTERNAL,
-        "failure to get storage engine while committing arangosearch link '" +
-            std::to_string(id().id()) + "'"};
-  }
-
   auto subscription = std::static_pointer_cast<IResearchFlushSubscription>(_flushSubscription);
 
   if (!subscription) {
@@ -631,7 +622,7 @@ Result IResearchLink::commitUnsafe(bool wait) {
   }
 
   try {
-    auto const lastTickBeforeCommit = engine->currentTick();
+    auto const lastTickBeforeCommit = _engine->currentTick();
 
     TRY_SCOPED_LOCK_NAMED(_commitMutex, commitLock);
 
@@ -1070,14 +1061,7 @@ Result IResearchLink::initDataStore(
                 "' while initializing link '" + std::to_string(_id.id()) + "'"};
   }
 
-  _engine = EngineSelectorFeature::ENGINE;
-
-  if (!_engine) {
-    return {
-        TRI_ERROR_INTERNAL,
-        "failure to get storage engine while initializing arangosearch link '" +
-            std::to_string(id().id()) + "'"};
-  }
+  _engine = &server.getFeature<EngineSelectorFeature>().engine();
 
   bool pathExists;
 
@@ -1725,7 +1709,7 @@ Result IResearchLink::remove(
   // all of its fid stores, no impact to iResearch View data integrity
   // ...........................................................................
   try {
-    ctx->remove(documentId);
+    ctx->remove(*_engine, documentId);
 
     return {TRI_ERROR_NO_ERROR};
   } catch (basics::Exception const& e) {

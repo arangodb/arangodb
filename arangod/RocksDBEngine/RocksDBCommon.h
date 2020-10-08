@@ -58,27 +58,11 @@ class RocksDBEngine;
 
 namespace rocksutils {
 
-rocksdb::TransactionDB* globalRocksDB();
-rocksdb::ColumnFamilyHandle* defaultCF();
-RocksDBEngine* globalRocksEngine();
-arangodb::Result globalRocksDBPut(rocksdb::ColumnFamilyHandle* cf,
-                                  rocksdb::Slice const& key, rocksdb::Slice const& value,
-                                  rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
-
-arangodb::Result globalRocksDBRemove(rocksdb::ColumnFamilyHandle* cf,
-                                     rocksdb::Slice const& key,
-                                     rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
-
-uint64_t latestSequenceNumber();
-
 /// @brief throws an exception of appropriate type if the iterator's status is !ok().
 /// does nothing if the iterator's status is ok().
 /// this function can be used by IndexIterators to verify that an iterator is still
 /// in good shape
 void checkIteratorStatus(rocksdb::Iterator const* iterator);
-
-std::pair<TRI_voc_tick_t, DataSourceId> mapObjectToCollection(uint64_t);
-RocksDBEngine::IndexTriple mapObjectToIndex(uint64_t);
 
 /// @brief count all keys in the given column family
 std::size_t countKeys(rocksdb::DB*, rocksdb::ColumnFamilyHandle* cf);
@@ -100,15 +84,14 @@ Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLeve)
 // to avoid template
 // this helper is not meant for transactional usage!
 template <typename T>  // T is an invokeable that takes a rocksdb::Iterator*
-void iterateBounds(RocksDBKeyBounds const& bounds, T callback,
+void iterateBounds(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds, T callback,
                    rocksdb::ReadOptions options = rocksdb::ReadOptions()) {
   rocksdb::Slice const end = bounds.end();
   options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
   options.prefix_same_as_start = true;
   options.verify_checksums = false;
   options.fill_cache = false;
-  std::unique_ptr<rocksdb::Iterator> it(
-      globalRocksDB()->NewIterator(options, bounds.columnFamily()));
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(options, bounds.columnFamily()));
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     callback(it.get());
   }

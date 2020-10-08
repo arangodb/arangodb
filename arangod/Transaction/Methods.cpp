@@ -2339,7 +2339,7 @@ Future<Result> Methods::replicateOperations(
       }
 
       if (!replicationWorked) {
-        LOG_TOPIC("20f31", INFO, Logger::REPLICATION)
+        LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
             << "synchronous replication: dropping follower "
             << follower << " for shard " << collection->name()
             << " in database " << collection->vocbase().name() 
@@ -2349,11 +2349,6 @@ Future<Result> Methods::replicateOperations(
         if (res.ok()) {
           // simon: follower cannot be re-added without lock on collection
           _state->removeKnownServer(follower);
-          LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
-              << "synchronous replication: dropped follower "
-              << follower << " for shard " << collection->name()
-              << " in database " << collection->vocbase().name() 
-              << ": " << resp.combinedResult().errorMessage();
         } else {
           LOG_TOPIC("db473", ERR, Logger::REPLICATION)
               << "synchronous replication: could not drop follower "

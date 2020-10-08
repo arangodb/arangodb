@@ -41,6 +41,7 @@
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Utils/DatabaseGuard.h"
@@ -71,8 +72,10 @@ DataSourceId normalizeIdentifier(TRI_vocbase_t& vocbase, std::string const& iden
 
 }  // namespace
 
-RocksDBReplicationContext::RocksDBReplicationContext(double ttl, SyncerId syncerId, ServerId clientId)
-    : _id{TRI_NewTickServer()},
+RocksDBReplicationContext::RocksDBReplicationContext(RocksDBEngine& engine, double ttl,
+                                                     SyncerId syncerId, ServerId clientId)
+    : _engine(engine),
+      _id{TRI_NewTickServer()},
       _syncerId{syncerId},
       // buggy clients may not send the serverId
       _clientId{clientId.isSet() ? clientId : ServerId(_id)},
@@ -89,7 +92,7 @@ RocksDBReplicationContext::~RocksDBReplicationContext() {
   MUTEX_LOCKER(guard, _contextLock);
   _iterators.clear();
   if (_snapshot != nullptr) {
-    globalRocksDB()->ReleaseSnapshot(_snapshot);
+    _engine.db()->ReleaseSnapshot(_snapshot);
     _snapshot = nullptr;
   }
 }
@@ -392,7 +395,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   char ridBuffer[21];  // temporary buffer for stringifying revision ids
   RocksDBKey docKey;
   VPackBuilder tmpHashBuilder;
-  rocksdb::TransactionDB* db = globalRocksDB();
+  rocksdb::TransactionDB* db = _engine.db();
   auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
   uint64_t snapNumDocs = 0;
@@ -472,7 +475,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
           << "inconsistent collection count detected, "
           << "an offet of " << adjustment << " will be applied";
       auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
-      auto seq = rocksutils::latestSequenceNumber();
+      auto seq = _engine.db()->GetLatestSequenceNumber();
       rcoll->meta().adjustNumberDocuments(seq, RevisionId::none(), adjustment);
     }
   }
@@ -550,7 +553,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
   char ridBuffer[21];  // temporary buffer for stringifying revision ids
-  rocksdb::TransactionDB* db = globalRocksDB();
+  rocksdb::TransactionDB* db = _engine.db();
   auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
 
@@ -664,7 +667,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
 
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
-  rocksdb::TransactionDB* db = globalRocksDB();
+  rocksdb::TransactionDB* db = _engine.db();
   auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
 
@@ -811,7 +814,7 @@ void RocksDBReplicationContext::extendLifetime(double ttl) {
 void RocksDBReplicationContext::lazyCreateSnapshot() {
   _contextLock.assertLockedByCurrentThread();
   if (_snapshot == nullptr) {
-    _snapshot = globalRocksDB()->GetSnapshot();
+    _snapshot = _engine.db()->GetSnapshot();
     TRI_ASSERT(_snapshot);
     _snapshotTick = _snapshot->GetSequenceNumber();
   }
@@ -888,7 +891,11 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
 
     TRI_ASSERT(_upperLimit.size() > 0);
     _readOptions.iterate_upper_bound = &_upperLimit;
-    iter.reset(rocksutils::globalRocksDB()->NewIterator(_readOptions, cf));
+    iter.reset(vocbase.server()
+                   .getFeature<EngineSelectorFeature>()
+                   .engine<RocksDBEngine>()
+                   .db()
+                   ->NewIterator(_readOptions, cf));
     TRI_ASSERT(iter);
     iter->Seek(bounds.start());
     currentTick = 1;
