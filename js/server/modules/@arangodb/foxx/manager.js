@@ -345,6 +345,7 @@ function startup () {
     // but as all queries can run locally, it should always make progress
     selfHealAll();
   } else {
+    global.KEYSPACE_CREATE('FoxxFirstSelfHeal', 1, true);
     // in a cluster, move the initial self-heal job to a backup thread,
     // so that we do not block on startup
     try {
@@ -356,6 +357,9 @@ function startup () {
         command: function () {
           const FoxxManager = require('@arangodb/foxx/manager');
           FoxxManager.healAll();
+          if (global.KEYSPACE_EXISTS('FoxxFirstSelfHeal')) {
+            global.KEYSPACE_DROP('FoxxFirstSelfHeal');
+          }
         }
       });
     } catch (ee) {
@@ -505,6 +509,10 @@ function ensureFoxxInitialized (internalOnly) {
   }
 
   if (!GLOBAL_SERVICE_MAP.has(db._name())) {
+//TODO we can also add a key for every DB we have healed here.
+    if (global.KEYSPACE_EXISTS('FoxxFirstSelfHeal')) {
+      triggerSelfHeal();
+    }
     initLocalServiceMap();
   }
 }
