@@ -1167,17 +1167,24 @@ function routeRequest (req, res, routes) {
     }
 
     const dbname = arangodb.db._name();
-
     if (internalRoute) {
       // internal route, i.e. /_admin, /_api, etc.
       if (!InternalRoutingList[dbname]) {
-        InternalRoutingList[dbname] = buildRouting(dbname, true);
+        // Do not join these two lines. If so there is a chance
+        // the RoutingList will contain undefined afterwards.
+        // i have not found out why this is the case.
+        const r = buildRouting(dbname, true);
+        InternalRoutingList[dbname] = r;
       }
       routes = InternalRoutingList[dbname];
     } else {
       // user-defined, i.e. custom Foxx route
       if (!CustomRoutingList[dbname]) {
-        CustomRoutingList[dbname] = buildRouting(dbname, false);
+        // Do not join these two lines. If so there is a chance
+        // the RoutingList will contain undefined afterwards.
+        // i have not found out why this is the case.
+        const r = buildRouting(dbname, false);
+        CustomRoutingList[dbname] = r;
       }
 
       routes = CustomRoutingList[dbname];
