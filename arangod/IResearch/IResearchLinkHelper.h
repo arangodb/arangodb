@@ -28,7 +28,7 @@
 
 #include "Basics/Result.h"
 #include "VocBase/voc-types.h"
-#include "Utils/string.hpp"
+#include "utils/string.hpp"
 
 
 namespace arangodb {
