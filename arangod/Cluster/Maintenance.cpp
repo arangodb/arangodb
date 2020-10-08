@@ -245,7 +245,7 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
             // Now we have two server lists (servers and
             // failoverCandidates, we are looking for a server which
             // occurs in either of them but not in the plan
-            VPackSlice serverList = lcol.get("servers");
+            VPackSlice serverList = lcol.get(SERVERS);
             if (serverList.isArray()) {
               for (auto const& q : VPackArrayIterator(serverList)) {
                 followersToDrop.insert(q.copyString());
