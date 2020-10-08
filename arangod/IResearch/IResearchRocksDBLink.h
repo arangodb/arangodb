@@ -127,7 +127,8 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
 
    public:
     bool equal(arangodb::velocypack::Slice const& lhs,
-               arangodb::velocypack::Slice const& rhs) const override;
+               arangodb::velocypack::Slice const& rhs,
+               std::string const& dbname) const override;
 
     std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                  arangodb::velocypack::Slice const& definition,

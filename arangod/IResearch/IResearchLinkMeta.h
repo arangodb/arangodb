@@ -142,7 +142,7 @@ struct FieldMeta {
   bool init(arangodb::application_features::ApplicationServer& server,
             velocypack::Slice const& slice,
             std::string& errorField,
-            TRI_vocbase_t const* defaultVocbase = nullptr,
+            irs::string_ref const defaultVocbase,
             FieldMeta const& defaults = DEFAULT(),
             Mask* mask = nullptr,
             std::set<AnalyzerPool::ptr, AnalyzerComparer>* referencedAnalyzers = nullptr);
@@ -244,7 +244,7 @@ struct IResearchLinkMeta : public FieldMeta {
       arangodb::velocypack::Slice const& slice,
       bool readAnalyzerDefinition,
       std::string& errorField,
-      TRI_vocbase_t const* defaultVocbase = nullptr,
+      irs::string_ref const defaultVocbase = irs::string_ref::NIL,
       IResearchLinkMeta const& defaults = DEFAULT(),
       Mask* mask = nullptr);
 
