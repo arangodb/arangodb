@@ -137,7 +137,7 @@ TYPED_TEST_P(InputRangeTest, test_default_initializer) {
   for (auto const& finalState : states) {
     if (std::is_same_v<AqlItemBlockInputMatrix, TypeParam> &&
         finalState == ExecutorState::DONE) {
-      // The AqlItemBlockInputMatrix may not be instantiated with DON
+      // The AqlItemBlockInputMatrix may not be instantiated with DONE
       continue;
     }
     SCOPED_TRACE("Testing state: " + stateToString(finalState));
