@@ -131,13 +131,6 @@ std::function<void(irs::directory&)> const RocksDBLinkInitCallback = [](irs::dir
   }
 };
 
-IResearchRocksDBLink::IndexFactory::IndexFactory(arangodb::application_features::ApplicationServer& server)
-    : IndexTypeFactory(server) {}
-
-bool IResearchRocksDBLink::IndexFactory::equal(arangodb::velocypack::Slice const& lhs,
-                                               arangodb::velocypack::Slice const& rhs,
-                                               std::string const& dbname) const {
-  return arangodb::iresearch::IResearchLinkHelper::equal(_server, lhs, rhs, dbname);
 }
 
 namespace arangodb {
@@ -148,8 +141,9 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchRocksDBLink::IndexFactory : public arangodb::IndexTypeFactory {
   bool equal(arangodb::velocypack::Slice const& lhs,
-             arangodb::velocypack::Slice const& rhs) const override {
-    return arangodb::iresearch::IResearchLinkHelper::equal(lhs, rhs);
+             arangodb::velocypack::Slice const& rhs,
+             std::string const& dbname) const override {
+    return arangodb::iresearch::IResearchLinkHelper::equal(lhs, rhs, dbname);
   }
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,

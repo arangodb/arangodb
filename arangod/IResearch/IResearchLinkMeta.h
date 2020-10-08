@@ -227,7 +227,6 @@ struct IResearchLinkMeta : public FieldMeta {
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
   bool init(
-      arangodb::application_features::ApplicationServer& server,
       arangodb::velocypack::Slice const& slice,
       bool readAnalyzerDefinition,
       std::string& errorField,

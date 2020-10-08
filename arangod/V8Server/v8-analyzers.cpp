@@ -268,9 +268,8 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  TRI_GET_GLOBALS();
-  auto& analyzers =
-      v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto& system = arangodb::application_features::ApplicationServer::server();
+  auto& analyzers = system.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName =
@@ -412,9 +411,8 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  TRI_GET_GLOBALS();
-  auto& analyzers =
-      v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto& system = arangodb::application_features::ApplicationServer::server();
+  auto& analyzers = system.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
 
   auto name = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
@@ -562,9 +560,8 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  TRI_GET_GLOBALS();
-  auto& analyzers =
-      v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto& system = arangodb::application_features::ApplicationServer::server();
+  auto& analyzers = system.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName =

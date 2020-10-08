@@ -162,26 +162,11 @@ arangodb::iresearch::FieldMeta::Analyzer extractAnalyzerFromArg(
     return invalid;
   }
   auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
-
-  analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase());
-
-  if (!analyzer) {
-    return {
-      TRI_ERROR_BAD_PARAMETER,
-      "'"s.append("' AQL function: Unable to load requested analyzer '")
-          .append(analyzerId.c_str(), analyzerId.size()).append("'")
-    };
-  }
+  ScopedAqlValue analyzerValue(*analyzerArg);
 
   if (!filter && !analyzerValue.isConstant()) {
     return arangodb::iresearch::FieldMeta::Analyzer();
   }
-
-  shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
-    analyzerId, ctx.trx->vocbase().name(), false);
-
-  return {};
-}
 
   if (!analyzerValue.execute(ctx)) {
     LOG_TOPIC("9f918", WARN, arangodb::iresearch::TOPIC)
@@ -211,16 +196,10 @@ arangodb::iresearch::FieldMeta::Analyzer extractAnalyzerFromArg(
   auto& shortName = result._shortName;
 
   if (ctx.trx) {
-    auto& server = arangodb::application_features::ApplicationServer::server();
-    auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
-                          ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-                          : nullptr;
-
-    if (sysVocbase) {
-      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
-
-      shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-        analyzerId, ctx.trx->vocbase(), *sysVocbase, false); // args
+    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase());
+    if (analyzer) {
+      shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
+        analyzerId, ctx.trx->vocbase().name(), false);
     }
   } else {
     analyzer = analyzerFeature.get(analyzerId);  // verbatim
@@ -1578,16 +1557,24 @@ arangodb::Result fromFuncAnalyzer(irs::boolean_filter* filter, QueryContext cons
       return arangodb::Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, message};
     }
     auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
-    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase());
+
+    shortName = analyzerIdValue;
+
+    if (ctx.trx) {
+      analyzer = analyzerFeature.get(analyzerIdValue, ctx.trx->vocbase());
+      if (analyzer) {
+        shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
+          analyzerIdValue, ctx.trx->vocbase().name(), false);  // args
+      }
+    } else {
+      analyzer = analyzerFeature.get(analyzerIdValue);  // verbatim
+    }
+
     if (!analyzer) {
       auto message = "'ANALYZER' AQL function: Unable to lookup analyzer '"s + analyzerIdValue.c_str() + "'"s;
       LOG_TOPIC("404c9", WARN, arangodb::iresearch::TOPIC) << message;
       return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
     }
-
-    shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
-      analyzerId, ctx.trx->vocbase().name(), false);  // args
-
   }
 
   FilterContext const subFilterContext(analyzerValue, filterCtx.boost); // override analyzer

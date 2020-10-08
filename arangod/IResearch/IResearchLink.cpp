@@ -808,7 +808,7 @@ Result IResearchLink::init(
   IResearchLinkMeta meta;
 
   // definition should already be normalized and analyzers created if required
-  if (!meta.init(_collection.vocbase().server(), definition, true, error,
+  if (!meta.init(definition, true, error,
                  _collection.vocbase().name())) {
     return {
       TRI_ERROR_BAD_PARAMETER,
@@ -1554,7 +1554,7 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
   IResearchLinkMeta other;
   std::string errorField;
 
-  return other.init(_collection.vocbase().server(), slice, true, errorField,
+  return other.init(slice, true, errorField,
                     _collection.vocbase().name())  // for db-server analyzer validation should have already apssed on coordinator (missing analyzer == no match)
          && _meta == other;
 }

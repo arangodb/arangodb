@@ -950,7 +950,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_failure_invalid_name_adding_voc
   ASSERT_NE(sysVocbase, nullptr);
   auto pool =
       feature().get(arangodb::StaticStrings::SystemDatabase + "::invalid",
-                    *sysVocbase, arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+                    *sysVocbase);
   EXPECT_EQ(pool, nullptr);
 }
 
@@ -1886,7 +1886,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
     ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
                     rhs, "db::test", "TestAnalyzer",
                     VPackParser::fromJson("\"abcd\"")->slice(),
-                    irs::flags{irs::type<irs::frequency>::get()})
+                    irs::flags{irs::frequency::type()})
                     .ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(lhs, rhs);

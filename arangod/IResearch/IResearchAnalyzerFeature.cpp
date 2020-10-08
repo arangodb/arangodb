@@ -76,9 +76,9 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
-#include "frozen/map.h"
+#include "VocBase/Methods/Collections.h"
 #include <Containers/HashSet.h>
-
+#include <map>
 
 namespace iresearch {
 namespace text_format {
@@ -100,8 +100,8 @@ static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
 static std::string const FEATURE_NAME("ArangoSearchAnalyzer");
 static irs::string_ref const IDENTITY_ANALYZER_NAME("identity");
 static auto const RELOAD_INTERVAL = std::chrono::seconds(60); // arbitrary value
-static constexpr frozen::map<irs::string_ref, irs::string_ref, 13> STATIC_ANALYZERS_NAMES {
-  {irs::type<IdentityAnalyzer>::name(), irs::type<IdentityAnalyzer>::name()},
+static const std::map<irs::string_ref, irs::string_ref> STATIC_ANALYZERS_NAMES {
+  {IDENTITY_ANALYZER_NAME, IDENTITY_ANALYZER_NAME},
   {"text_de", "de"}, {"text_en", "en"}, {"text_es", "es"}, {"text_fi", "fi"},
   {"text_fr", "fr"}, {"text_it", "it"}, {"text_nl", "nl"}, {"text_no", "no"},
   {"text_pt", "pt"}, {"text_ru", "ru"}, {"text_sv", "sv"}, {"text_zh", "zh"} };
@@ -519,8 +519,11 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressi
   auto& server = arangodb::application_features::ApplicationServer::server();
   if (args.size() > 1) {
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    pool = analyzers.get(name, trx->vocbase(),
-                         trx->state()->analyzersRevision());
+    if (trx) {
+      pool = analyzers.get(name, trx->vocbase());
+    } else {
+      pool = analyzers.get(name);
+    }
   } else { //do not look for identity, we already have reference)
     pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
   }
@@ -1587,7 +1590,6 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     irs::string_ref const& name,
     TRI_vocbase_t const& activeVocbase,
-    arangodb::QueryAnalyzerRevisions const& revision,
     bool onlyCached /*= false*/) const {
   auto const normalizedName = normalize(name, activeVocbase.name(), true);
 
@@ -1616,8 +1618,8 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 
         auto pool = std::make_shared<AnalyzerPool>(IDENTITY_ANALYZER_NAME);
 
-        static_assert(STATIC_ANALYZERS_NAMES.begin()->first == irs::type<IdentityAnalyzer>::name(), "Identity analyzer is misplaced");
-        if (!pool || !pool->init(irs::type<IdentityAnalyzer>::name(),
+        TRI_ASSERT(STATIC_ANALYZERS_NAMES.begin()->first == IDENTITY_ANALYZER_NAME);
+        if (!pool || !pool->init(IDENTITY_ANALYZER_NAME,
                                  VPackSlice::emptyObjectSlice(),
                                  extraFeatures)) {
           LOG_TOPIC("26de1", WARN, iresearch::TOPIC)
@@ -1647,8 +1649,8 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
         irs::string_ref const type("text");
 
         VPackBuilder properties;
-        static_assert(STATIC_ANALYZERS_NAMES.size() > 1, "Static analyzer count too low");
-        for (auto staticName = (STATIC_ANALYZERS_NAMES.cbegin()+1); staticName != STATIC_ANALYZERS_NAMES.cend(); ++staticName) {
+       TRI_ASSERT(STATIC_ANALYZERS_NAMES.size() > 1);
+        for (auto staticName = (STATIC_ANALYZERS_NAMES.cbegin()++); staticName != STATIC_ANALYZERS_NAMES.cend(); ++staticName) {
           // { locale: "<locale>.UTF-8", stopwords: [] }
           {
             properties.clear();

@@ -138,21 +138,22 @@ static VPackBuilder compareIndexes(std::string const& dbname, std::string const&
               localIdS = localIdS.substr(pos + 1);
             }
 
-          if (localIdS == planIdS) {
-            // Already have this id, so abort search:
-            found = true;
-            // We should be done now, this index already exists, and since
-            // one cannot legally change the properties of an index, we
-            // should be fine. However, for robustness sake, we compare,
-            // if the local index found actually has the right properties,
-            // if not, we schedule a dropIndex action:
-            if (!arangodb::Index::Compare(pindex, lindex, dbname)) {
-              // To achieve this, we remove the long version of the ID
-              // from the indis set. This way, the local index will be
-              // dropped further down in handleLocalShard:
-              indis.erase(planIdWithColl);
+            if (localIdS == planIdS) {
+              // Already have this id, so abort search:
+              found = true;
+              // We should be done now, this index already exists, and since
+              // one cannot legally change the properties of an index, we
+              // should be fine. However, for robustness sake, we compare,
+              // if the local index found actually has the right properties,
+              // if not, we schedule a dropIndex action:
+              if (!arangodb::Index::Compare(pindex, lindex, dbname)) {
+                // To achieve this, we remove the long version of the ID
+                // from the indis set. This way, the local index will be
+                // dropped further down in handleLocalShard:
+                indis.erase(planIdWithColl);
+              }
+              break;
             }
-            break;
           }
         }
         if (!found) {
