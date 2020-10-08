@@ -826,10 +826,11 @@ static void JS_GetCollectionInfoCurrentClusterInfo(v8::FunctionCallbackInfo<v8::
   list = v8::Array::New(isolate, static_cast<int>(servers.size()));
   pos = 0;
   for (auto const& s : servers) {
-    list->Set(pos, TRI_V8_STD_STRING(isolate, s));
+    list->Set(context, pos, TRI_V8_STD_STRING(isolate, s)).FromMaybe(false);
     pos++;
   }
-  result->Set(TRI_V8_ASCII_STRING(isolate, "failoverCandidates"), list);
+  result->Set(context,
+              TRI_V8_ASCII_STRING(isolate, "failoverCandidates"), list).FromMaybe(false);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
