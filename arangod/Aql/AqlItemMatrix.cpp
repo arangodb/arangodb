@@ -54,7 +54,7 @@ InputAqlItemRow AqlItemMatrix::getRow(AqlItemMatrix::RowIndex index) const noexc
 
 std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
   std::vector<RowIndex> result;
-  if (!empty()) {
+  if (!blocksEmpty()) {
     result.reserve(size());
     for (auto const& [index, block] : enumerate(_blocks)) {
       // Default case, 0 -> end
@@ -77,18 +77,18 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
   return result;
 }
 
-bool AqlItemMatrix::empty() const noexcept { return _blocks.empty(); }
+bool AqlItemMatrix::blocksEmpty() const noexcept { return _blocks.empty(); }
 
 void AqlItemMatrix::clear() {
   _blocks.clear();
-  _size = 0;
+  _numDataRows = 0;
   _startIndexInFirstBlock = 0;
   _stopIndexInLastBlock = InvalidRowIndex;
 }
 
 RegisterCount AqlItemMatrix::getNrRegisters() const noexcept { return _nrRegs; }
 
-uint64_t AqlItemMatrix::size() const noexcept { return _size; }
+uint64_t AqlItemMatrix::size() const noexcept { return _numDataRows; }
 
 void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
   // If we are stopped by shadow row, we first need to solve this blockage
@@ -118,9 +118,9 @@ void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
     TRI_ASSERT(shadowRowsBegin != shadowRowsEnd);
     // Let us stop on the first
     _stopIndexInLastBlock = *shadowRowsBegin;
-    _size += _stopIndexInLastBlock;
+    _numDataRows += _stopIndexInLastBlock;
   } else {
-    _size += blockPtr->size();
+    _numDataRows += blockPtr->size();
   }
 
   // Move block into _blocks
@@ -148,13 +148,13 @@ ShadowAqlItemRow AqlItemMatrix::popShadowRow() {
     TRI_ASSERT(stoppedOnShadowRow());
     // We move always forward
     TRI_ASSERT(_stopIndexInLastBlock >= _startIndexInFirstBlock);
-    _size = _stopIndexInLastBlock - _startIndexInFirstBlock;
+    _numDataRows = _stopIndexInLastBlock - _startIndexInFirstBlock;
   } else {
     _stopIndexInLastBlock = InvalidRowIndex;
     TRI_ASSERT(!stoppedOnShadowRow());
     // _stopIndexInLastBlock a 0 based index. size is a counter.
     TRI_ASSERT(blockPtr->size() >= _startIndexInFirstBlock);
-    _size = blockPtr->size() - _startIndexInFirstBlock;
+    _numDataRows = blockPtr->size() - _startIndexInFirstBlock;
   }
   if (_startIndexInFirstBlock >= _blocks.back()->size()) {
     // The last block is also fully used
@@ -174,7 +174,7 @@ ShadowAqlItemRow AqlItemMatrix::peekShadowRow() const {
 }
 
 AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
-    : _size(0), _nrRegs(nrRegs), _stopIndexInLastBlock(InvalidRowIndex) {}
+    : _numDataRows(0), _nrRegs(nrRegs), _stopIndexInLastBlock(InvalidRowIndex) {}
 
 [[nodiscard]] auto AqlItemMatrix::countDataRows() const noexcept -> std::size_t {
   size_t num = 0;
