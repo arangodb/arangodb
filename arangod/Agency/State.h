@@ -82,7 +82,7 @@ class State {
   ///        Default: [first, last]
   std::vector<log_t> get(index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
-  
+
   uint64_t toVelocyPack(index_t lastIndex, VPackBuilder& builder) const;
 
  private:
@@ -290,8 +290,11 @@ class State {
 
   /// @brief Protect writing into configuration collection
   arangodb::Mutex _configurationWriteLock;
-};
 
+  /// @brief Current state deque size in bytes
+  Gauge<uint64_t>& _log_size;
+
+};
 }  // namespace consensus
 }  // namespace arangodb
 
