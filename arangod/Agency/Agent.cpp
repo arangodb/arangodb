@@ -747,17 +747,24 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
   reqOpts.skipScheduler = true;
   reqOpts.timeout = network::Timeout(3 * _config.minPing() * _config.timeoutMult());
 
+  double now = TRI_microtime();
   network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, path.str(),
                        std::move(buffer), reqOpts).thenValue([=](network::Response r) {
     ac->operator()(r);
   });
 
+  double diff = TRI_microtime() - now;
+  if (diff > 0.01) {
+    LOG_TOPIC("cfb7c", DEBUG, Logger::AGENCY)
+        << "Calling network::sendRequest took more than 1/100 of a second: " << diff;
+  }
+
   _constituent.notifyHeartbeatSent(followerId);
 
-  double now = TRI_microtime();
+  now = TRI_microtime();
   LOG_TOPIC("54798", DEBUG, Logger::AGENCY)
       << "Sending empty appendEntriesRPC to follower " << followerId;
-  double diff = TRI_microtime() - now;
+  diff = TRI_microtime() - now;
   if (diff > 0.01) {
     LOG_TOPIC("cfb7b", DEBUG, Logger::AGENCY)
         << "Logging of a line took more than 1/100 of a second, this is bad:" << diff;
