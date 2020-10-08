@@ -745,7 +745,7 @@ void Constituent::run() {
                 }
               }
             }
-            LOG_TOPIC("ddeea", DEBUG, Logger::AGENCY) << "Considering empty AppendEntriesRPC for follower "
+            LOG_TOPIC("ddeae", DEBUG, Logger::AGENCY) << "Considering empty AppendEntriesRPC for follower "
               << followerId << " needed: " << needed;
             if (needed) {
               auto startTime = std::chrono::steady_clock::now();
