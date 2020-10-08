@@ -158,12 +158,19 @@ Result FollowerInfo::remove(ServerID const& sid) {
                                          // local data is modified again.
 
   // First check if there is anything to do:
-  if (std::find(_followers->begin(), _followers->end(), sid) == _followers->end()) {
-    TRI_ASSERT(std::find(_failoverCandidates->begin(), _failoverCandidates->end(),
-                         sid) == _failoverCandidates->end());
+  if (std::find(_followers->begin(), _followers->end(), sid)
+        == _followers->end() &&
+      std::find(_failoverCandidates->begin(), _failoverCandidates->end(), sid)
+        == _failoverCandidates->end()) {
     return {TRI_ERROR_NO_ERROR};  // nothing to do
   }
-  // Both lists have to be in sync at any time!
+  // Both lists have to be in sync most of the time, sometimes the
+  // _failoverCandidates have additional servers, and sometimes, this
+  // code here is called to remove a server from the _failoverCandidates,
+  // even if it is not on _followers. There should never be a follower
+  // which is in _followers but not in _failoverCandidates. Therefore,
+  // there should never be a call to remove here for a server which is
+  // not in the failoverCandidates.
   TRI_ASSERT(std::find(_failoverCandidates->begin(), _failoverCandidates->end(),
                        sid) != _failoverCandidates->end());
   auto oldFollowers = _followers;
