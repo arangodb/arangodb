@@ -789,6 +789,15 @@ static void JS_GetCollectionInfoCurrentClusterInfo(v8::FunctionCallbackInfo<v8::
   result->Set(TRI_V8_ASCII_STRING(isolate, "servers"), list);
   result->Set(TRI_V8_ASCII_STRING(isolate, "shorts"), shorts);
 
+  servers = cic->failoverCandidates(shardID);
+  list = v8::Array::New(isolate, static_cast<int>(servers.size()));
+  pos = 0;
+  for (auto const& s : servers) {
+    list->Set(pos, TRI_V8_STD_STRING(isolate, s));
+    pos++;
+  }
+  result->Set(TRI_V8_ASCII_STRING(isolate, "failoverCandidates"), list);
+
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
