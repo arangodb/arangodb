@@ -65,19 +65,6 @@ bool MerkleTree<BranchingBits, LockStripes>::Node::operator==(Node const& other)
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
-constexpr std::size_t MerkleTree<BranchingBits, LockStripes>::nodeCountAtDepth(std::size_t maxDepth) {
-  return static_cast<std::size_t>(1) << (BranchingBits * maxDepth);
-}
-class TestNodeCountAtDepth : public MerkleTree<3, 64> {
-  static_assert(nodeCountAtDepth(0) == 1);
-  static_assert(nodeCountAtDepth(1) == 8);
-  static_assert(nodeCountAtDepth(2) == 64);
-  static_assert(nodeCountAtDepth(3) == 512);
-  // ...
-  static_assert(nodeCountAtDepth(10) == 1073741824);
-};
-
-template <std::size_t const BranchingBits, std::size_t const LockStripes>
 constexpr std::size_t MerkleTree<BranchingBits, LockStripes>::nodeCountUpToDepth(std::size_t maxDepth) {
   return ((static_cast<std::size_t>(1) << (BranchingBits * (maxDepth + 1))) - 1) /
          (BranchingFactor - 1);
@@ -475,14 +462,65 @@ std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> MerkleTree<BranchingBits
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
+std::unique_ptr<MerkleTree<BranchingBits, LockStripes>>
+MerkleTree<BranchingBits, LockStripes>::cloneWithDepth(std::size_t newDepth) const {
+  std::shared_lock<std::shared_mutex> guard(_bufferLock);
+
+  if (newDepth == meta().maxDepth) {
+    return std::unique_ptr<MerkleTree<BranchingBits, LockStripes>>(
+        new MerkleTree<BranchingBits, LockStripes>(*this));
+  }
+
+  if (newDepth < meta().maxDepth) {
+    std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> newTree =
+        std::make_unique<MerkleTree<BranchingBits, LockStripes>>(newDepth,
+                                                                 meta().rangeMin,
+                                                                 meta().rangeMax);
+    for (std::size_t index = 0; index < nodeCountUpToDepth(newDepth); ++index) {
+      Node& n = this->node(index);
+      Node& m = newTree->node(index);
+      m = n;
+    }
+    return newTree;
+  }
+
+  // Otherwise let's grow the tree deeper. We're going to grow one level at a
+  // time, recursively. Typically we'll only be requesting to grow one level
+  // deeper at a time anyway, and we should very, very rarely be growing more
+  // than a couple levels at a time.
+  std::uint64_t newRangeMax =
+      meta().rangeMin + ((meta().rangeMax - meta().rangeMin) * BranchingFactor);
+  std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> newTree =
+      std::make_unique<MerkleTree<BranchingBits, LockStripes>>(newDepth, meta().rangeMin,
+                                                               newRangeMax);
+  {
+    for (std::size_t d = 0; d <= meta().maxDepth; ++d) {
+      // copy each cell into the same index at the next level of the deeper tree
+      std::size_t const offset = (d == 0 ? 0 : nodeCountUpToDepth(d - 1));
+      std::size_t const offsetNew = nodeCountUpToDepth(d);
+      for (std::size_t i = 0; i < nodeCountAtDepth(d); ++i) {
+        Node& n = this->node(offset + i);
+        Node& m = newTree->node(offsetNew + i);
+        m = n;
+      }
+      // now copy the root into the root, special case
+      Node& n = this->node(0);
+      Node& m = newTree->node(0);
+      m = n;
+    }
+  }
+
+  if (newDepth == meta().maxDepth + 1) {
+    return newTree;
+  }
+  return newTree->cloneWithDepth(newDepth);
+}
+
+template <std::size_t const BranchingBits, std::size_t const LockStripes>
 std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<BranchingBits, LockStripes>::diff(
     MerkleTree<BranchingBits, LockStripes>& other) {
   std::shared_lock<std::shared_mutex> guard1(_bufferLock);
   std::shared_lock<std::shared_mutex> guard2(other._bufferLock);
-
-  if (this->meta().maxDepth != other.meta().maxDepth) {
-    throw std::invalid_argument("Expecting two trees with same maxDepth.");
-  }
 
   if (this->meta().rangeMin != other.meta().rangeMin) {
     throw std::invalid_argument("Expecting two trees with same rangeMin.");
@@ -504,6 +542,7 @@ std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<BranchingBits, L
     // switched between shared/exclusive locks
   }
 
+  std::size_t const maxDepth = std::min(meta().maxDepth, other.meta().maxDepth);
   std::vector<std::pair<std::uint64_t, std::uint64_t>> result;
   std::queue<std::size_t> candidates;
   candidates.emplace(0);
@@ -512,7 +551,7 @@ std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<BranchingBits, L
     std::size_t index = candidates.front();
     candidates.pop();
     if (!equalAtIndex(other, index)) {
-      bool leaves = childrenAreLeaves(index);
+      bool leaves = childrenAreLeaves(index) || other.childrenAreLeaves(index);
       for (std::size_t child = (BranchingFactor * index) + 1;
            child < (BranchingFactor * (index + 1) + 1); ++child) {
         if (!leaves) {
@@ -521,9 +560,8 @@ std::vector<std::pair<std::uint64_t, std::uint64_t>> MerkleTree<BranchingBits, L
         } else {
           if (!equalAtIndex(other, child)) {
             // actually work with key ranges now
-            std::size_t chunk = child - nodeCountUpToDepth(meta().maxDepth - 1);
-            std::pair<std::uint64_t, std::uint64_t> range =
-                chunkRange(chunk, meta().maxDepth);
+            std::size_t chunk = child - nodeCountUpToDepth(maxDepth - 1);
+            std::pair<std::uint64_t, std::uint64_t> range = chunkRange(chunk, maxDepth);
             if (!result.empty() && result.back().second >= range.first - 1) {
               // we are in a continuous range here, just extend it
               result.back().second = range.second;
@@ -613,7 +651,7 @@ MerkleTree<BranchingBits, LockStripes>::MerkleTree(std::string_view buffer)
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
-MerkleTree<BranchingBits, LockStripes>::MerkleTree(MerkleTree<BranchingBits, LockStripes>& other)
+MerkleTree<BranchingBits, LockStripes>::MerkleTree(MerkleTree<BranchingBits, LockStripes> const& other)
     : _buffer(new uint8_t[allocationSize(other.meta().maxDepth)]) {
   new (&meta()) Meta{other.meta().rangeMin, other.meta().rangeMax, other.meta().maxDepth};
 

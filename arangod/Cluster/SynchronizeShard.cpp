@@ -46,6 +46,8 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -266,7 +268,7 @@ static arangodb::Result addShardFollower(
               "Short cut synchronization for shard " + shard +
               " did not work, since we got a document in the meantime.";
           LOG_TOPIC("ef299", INFO, Logger::MAINTENANCE) << msg;
-          return arangodb::Result(TRI_ERROR_INTERNAL, msg);
+          return arangodb::Result(TRI_ERROR_REPLICATION_SHARD_NONEMPTY, msg);
         }
       }
     }
@@ -292,6 +294,9 @@ static arangodb::Result addShardFollower(
       } else {
         LOG_TOPIC("abf2e", INFO, Logger::MAINTENANCE)
             << errorMessage << "With shortcut (can happen, no problem).";
+        if (result.errorNumber() == TRI_ERROR_REPLICATION_SHARD_NONEMPTY) {
+          return result;   // hand on leader protest
+        }
       }
       return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
     }
@@ -475,12 +480,10 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
   return result;
 }
 
-enum ApplierType { APPLIER_DATABASE, APPLIER_GLOBAL };
-
 static arangodb::ResultT<SyncerId> replicationSynchronize(
     std::shared_ptr<arangodb::LogicalCollection> const& col,
     VPackSlice const& config, std::string const& clientInfoString,
-    ApplierType applierType, std::shared_ptr<VPackBuilder> sy) {
+    std::shared_ptr<VPackBuilder> sy) {
 
   auto& vocbase = col->vocbase();
 
@@ -498,26 +501,18 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   configuration.setClientInfo(clientInfoString);
   configuration.validate();
 
-  std::shared_ptr<InitialSyncer> syncer;
+  // database-specific synchronization
+  auto syncer = std::make_shared<DatabaseInitialSyncer>(vocbase, configuration);
 
-  if (applierType == APPLIER_DATABASE) {
-    // database-specific synchronization
-    syncer.reset(new DatabaseInitialSyncer(vocbase, configuration));
-
-    if (!leaderId.empty()) {
-      syncer->setLeaderId(leaderId);
-    }
-  } else if (applierType == APPLIER_GLOBAL) {
-    configuration._skipCreateDrop = false;
-    syncer.reset(new GlobalInitialSyncer(configuration));
-  } else {
-    TRI_ASSERT(false);
+  if (!leaderId.empty()) {
+    syncer->setLeaderId(leaderId);
   }
 
   SyncerId syncerId{syncer->syncerId()};
 
   try {
-    Result r = syncer->run(configuration._incremental);
+    std::string const context = "synchronization of shard " + shard + " in database " + database;
+    Result r = syncer->run(configuration._incremental, context.c_str());
 
     if (r.fail()) {
       LOG_TOPIC("3efff", DEBUG, Logger::REPLICATION)
@@ -585,7 +580,8 @@ static arangodb::Result replicationSynchronizeCatchup(
 
   Result r;
   try {
-    r = syncer.syncCollectionCatchup(collection, timeout, tickReached, didTimeout);
+    std::string const context = "catching up delta changes for shard " + collection + " in database " + database;
+    r = syncer.syncCollectionCatchup(collection, timeout, tickReached, didTimeout, context.c_str());
   } catch (arangodb::basics::Exception const& ex) {
     r = Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -608,7 +604,7 @@ static arangodb::Result replicationSynchronizeFinalize(application_features::App
   auto const collection = conf.get(COLLECTION).copyString();
   auto const leaderId = conf.get(LEADER_ID).copyString();
   auto const fromTick = conf.get("from").getNumber<uint64_t>();
-
+    
   ReplicationApplierConfiguration configuration =
       ReplicationApplierConfiguration::fromVelocyPack(server, conf, database);
   // will throw if invalid
@@ -623,7 +619,8 @@ static arangodb::Result replicationSynchronizeFinalize(application_features::App
 
   Result r;
   try {
-    r = syncer.syncCollectionFinalize(collection);
+    std::string const context = "final synchronization of shard " + collection + " in database " + database;
+    r = syncer.syncCollectionFinalize(collection, context.c_str());
   } catch (arangodb::basics::Exception const& ex) {
     r = Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -759,6 +756,16 @@ bool SynchronizeShard::first() {
              "'"
           << database << "/" << shard << "' for central '" << database << "/"
           << planId << "'";
+
+      // now do a final sync-to-disk call. note that this can fail
+      auto& engine = vocbase->server().getFeature<EngineSelectorFeature>().engine();
+      Result res = engine.flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
+      if (res.fail()) {
+        LOG_TOPIC("a49d1", INFO, Logger::MAINTENANCE) << res.errorMessage();
+        _result.reset(res);
+        return false;
+      }
+
       try {
         NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
         network::ConnectionPool* pool = nf.pool();
@@ -773,9 +780,15 @@ bool SynchronizeShard::first() {
             LOG_TOPIC("f4a5b", DEBUG, Logger::MAINTENANCE) << msg.str();
           }
           collection->followers()->setTheLeader(leader);
-          notify();
           return false;
         }
+        if (asResult.errorNumber() != TRI_ERROR_REPLICATION_SHARD_NONEMPTY) {
+          // Stop action in this case
+          LOG_TOPIC("daaaa", INFO, Logger::MAINTENANCE) << "SynchronizeShard, error in addFollower (short cut): " << asResult.errorMessage();
+          _result.reset(asResult);
+          return false;
+        }
+        // Otherwise move on.
       } catch (...) {
       }
     }
@@ -789,8 +802,6 @@ bool SynchronizeShard::first() {
       // fail. If it fails with an exception, it is caught, but this
       // should usually not happen. If it fails without an exception,
       // we log and use return.
-
-      Result res;  // used multiple times for intermediate results
 
       // First once without a read transaction:
 
@@ -830,8 +841,7 @@ bool SynchronizeShard::first() {
       auto details = std::make_shared<VPackBuilder>();
 
       ResultT<SyncerId> syncRes =
-          replicationSynchronize(collection, config.slice(), _clientInfoString,
-                                 APPLIER_DATABASE, details);
+          replicationSynchronize(collection, config.slice(), _clientInfoString, details);
 
       auto sy = details->slice();
       auto const endTime = system_clock::now();
@@ -882,9 +892,9 @@ bool SynchronizeShard::first() {
       }
       lastTick = tickResult.get();
 
-      // Now start a exclusive transaction to stop writes:
-      res = catchupWithExclusiveLock(ep, database, *collection, clientId, shard,
-                                     leader, syncerId, lastTick, builder);
+      // Now start an exclusive transaction to stop writes:
+      Result res = catchupWithExclusiveLock(ep, database, *collection, clientId, shard,
+                                            leader, syncerId, lastTick, builder);
       if (!res.ok()) {
         LOG_TOPIC("be85f", INFO, Logger::MAINTENANCE) << res.errorMessage();
         _result.reset(res);
@@ -928,7 +938,6 @@ bool SynchronizeShard::first() {
     AppendShardInformationToMessage(database, shard, planId, startTime, msg);
     LOG_TOPIC("e6780", INFO, Logger::MAINTENANCE) << "synchronizeOneShard: done, " << msg.str();
   }
-  notify();
   return false;
 }
 

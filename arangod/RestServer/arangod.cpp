@@ -36,6 +36,7 @@
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
+#include "ApplicationFeatures/TimeZoneFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
@@ -205,6 +206,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<InitDatabaseFeature>(nonServerFeatures);
     server.addFeature<LanguageCheckFeature>();
     server.addFeature<LanguageFeature>();
+    server.addFeature<TimeZoneFeature>();
     server.addFeature<LockfileFeature>();
     server.addFeature<LogBufferFeature>();
     server.addFeature<LoggerFeature>(true);

@@ -379,6 +379,11 @@ void AqlFunctionFeature::addGeoFunctions() {
   add({"GEO_AREA", ".|.",
     Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
     &Functions::GeoArea});
+
+  // (point0, point1, lower, upper[, includeLower = true, includeUpper = true, ellipsoid = "shpere"])
+  add({"GEO_IN_RANGE", ".,.,.,.|.,.,.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
+       &Functions::GeoInRange});
 }
 
 void AqlFunctionFeature::addGeometryConstructors() {
@@ -420,6 +425,8 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_COMPARE", ".,.,.|.", flags, &Functions::DateCompare});
   add({"DATE_FORMAT", ".,.", flags, &Functions::DateFormat});
   add({"DATE_TRUNC", ".,.", flags, &Functions::DateTrunc});
+  add({"DATE_UTCTOLOCAL", ".,.", flags, &Functions::DateUtcToLocal});
+  add({"DATE_LOCALTOUTC", ".,.", flags, &Functions::DateLocalToUtc});
   add({"DATE_ROUND", ".,.,.", flags, &Functions::DateRound});
 
   // special flags:

@@ -57,10 +57,8 @@ struct RocksDBColumnFamily {
   static rocksdb::ColumnFamilyHandle* geo() { return _geo; }
 
   static rocksdb::ColumnFamilyHandle* fulltext() { return _fulltext; }
-  
-  static rocksdb::ColumnFamilyHandle* invalid() {
-    return rocksutils::defaultCF();
-  }
+
+  static rocksdb::ColumnFamilyHandle* invalid() { return _default; }
 
   static char const* columnFamilyName(rocksdb::ColumnFamilyHandle* cf) {
     if (cf == _definitions) {
@@ -84,7 +82,7 @@ struct RocksDBColumnFamily {
     if (cf == _fulltext) {
       return "fulltext";
     }
-    if (cf == rocksutils::defaultCF()) {
+    if (cf == _default) {
       return "invalid";
     }
     TRI_ASSERT(false);
@@ -95,6 +93,7 @@ struct RocksDBColumnFamily {
   // static variables for all existing column families
   // note that these are initialized in RocksDBEngine.cpp
   // as there is no RocksDBColumnFamily.cpp
+  static rocksdb::ColumnFamilyHandle* _default;
   static rocksdb::ColumnFamilyHandle* _definitions;
   static rocksdb::ColumnFamilyHandle* _documents;
   static rocksdb::ColumnFamilyHandle* _primary;

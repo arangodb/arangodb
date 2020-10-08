@@ -144,8 +144,7 @@ uint64_t Manager::getActiveTransactionCount() {
   return idleTTLDBServer;
 }
 
-Manager::ManagedTrx::ManagedTrx(MetaType t, double ttl,
-                                std::shared_ptr<TransactionState> st)
+Manager::ManagedTrx::ManagedTrx(MetaType t, double ttl, std::shared_ptr<TransactionState> st)
     : type(t),
       intermediateCommits(false),
       finalStatus(Status::UNDEFINED),
@@ -153,6 +152,7 @@ Manager::ManagedTrx::ManagedTrx(MetaType t, double ttl,
       expiryTime(TRI_microtime() + Manager::ttlForType(t)),
       state(std::move(st)),
       user(::currentUser()),
+      db(state ? state->vocbase().name() : ""),
       rwlock() {}
 
 bool Manager::ManagedTrx::hasPerformedIntermediateCommits() const {
@@ -373,8 +373,8 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   std::shared_ptr<TransactionState> state;
   try {
     // now start our own transaction
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    state = engine->createTransactionState(vocbase, tid, options);
+    StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
+    state = engine.createTransactionState(vocbase, tid, options);
   } catch (basics::Exception const& e) {
     return res.reset(e.code(), e.message());
   }
@@ -604,17 +604,19 @@ void Manager::returnManagedTrx(TransactionId tid) noexcept {
   it->second.rwlock.unlock();
 
   if (isSoftAborted) {
-    abortManagedTrx(tid);
+    abortManagedTrx(tid, "" /* any database */);
   }
 }
 
 /// @brief get the transasction state
-transaction::Status Manager::getManagedTrxStatus(TransactionId tid) const {
+transaction::Status Manager::getManagedTrxStatus(TransactionId tid,
+                                                 std::string const& database) const {
   size_t bucket = getBucket(tid);
   READ_LOCKER(writeLocker, _transactions[bucket]._lock);
 
   auto it = _transactions[bucket]._managed.find(tid);
-  if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user)) {
+  if (it == _transactions[bucket]._managed.end() ||
+      !::authorized(it->second.user) || it->second.db != database) {
     return transaction::Status::UNDEFINED;
   }
 
@@ -629,12 +631,13 @@ transaction::Status Manager::getManagedTrxStatus(TransactionId tid) const {
   }
 }
 
-Result Manager::statusChangeWithTimeout(TransactionId tid, transaction::Status status) {
+Result Manager::statusChangeWithTimeout(TransactionId tid, std::string const& database,
+                                        transaction::Status status) {
   double startTime = 0.0;
   constexpr double maxWaitTime = 2.0;
   Result res;
   while (true) {
-    res = updateTransaction(tid, status, false);
+    res = updateTransaction(tid, status, false, database);
     if (res.ok() || !res.is(TRI_ERROR_LOCKED)) {
       break;
     }
@@ -649,16 +652,16 @@ Result Manager::statusChangeWithTimeout(TransactionId tid, transaction::Status s
   return res;
 }
 
-Result Manager::commitManagedTrx(TransactionId tid) {
-  return statusChangeWithTimeout(tid, transaction::Status::COMMITTED);
+Result Manager::commitManagedTrx(TransactionId tid, std::string const& database) {
+  return statusChangeWithTimeout(tid, database, transaction::Status::COMMITTED);
 }
 
-Result Manager::abortManagedTrx(TransactionId tid) {
-  return statusChangeWithTimeout(tid, transaction::Status::ABORTED);
+Result Manager::abortManagedTrx(TransactionId tid, std::string const& database) {
+  return statusChangeWithTimeout(tid, database, transaction::Status::ABORTED);
 }
 
 Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
-                                  bool clearServers) {
+                                  bool clearServers, std::string const& database) {
   TRI_ASSERT(status == transaction::Status::COMMITTED ||
              status == transaction::Status::ABORTED);
 
@@ -675,7 +678,8 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
 
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
-    if (it == buck._managed.end() || !::authorized(it->second.user)) {
+    if (it == buck._managed.end() || !::authorized(it->second.user) ||
+        (!database.empty() && it->second.db != database)) {
       return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
                        std::string("transaction '") + std::to_string(tid.id()) +
                            "' not found");
@@ -992,8 +996,8 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
   }
 
   // merge with local transactions
-  iterateManagedTrx([&builder](TransactionId tid, ManagedTrx const& trx) {
-    if (::authorized(trx.user)) {
+  iterateManagedTrx([&builder, &database](TransactionId tid, ManagedTrx const& trx) {
+    if (::authorized(trx.user) && trx.db == database) {
       builder.openObject(true);
       builder.add("id", VPackValue(std::to_string(tid.id())));
       builder.add("state", VPackValue(transaction::statusString(trx.state->status())));

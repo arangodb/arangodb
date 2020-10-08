@@ -90,6 +90,7 @@
 
 #include <date/date.h>
 #include <date/iso_week.h>
+#include <date/tz.h>
 #include <s2/s2loop.h>
 
 #include <unicode/schriter.h>
@@ -273,7 +274,7 @@ AqlValue numberValue(double value, bool nullify) {
 /// @brief optimized version of datetime stringification
 /// string format is hard-coded to YYYY-MM-DDTHH:MM:SS.XXXZ
 AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
-                      tp_sys_clock_ms const& tp) {
+                      tp_sys_clock_ms const& tp, bool utc = true) {
   char formatted[24];
 
   year_month_day ymd{floor<days>(tp)};
@@ -320,7 +321,7 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
   formatted[22] = '0' + (millis % 10);
   formatted[23] = 'Z';
 
-  return AqlValue(&formatted[0], sizeof(formatted));
+  return AqlValue(&formatted[0], utc ? sizeof(formatted) : sizeof(formatted) - 1);
 }
 
 DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
@@ -1214,12 +1215,13 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
   }
 
   AqlValueMaterializer mat2(trx);
-  res.reset(TRI_ERROR_BAD_PARAMETER,
-            "Second arg requires coordinate pair or GeoJSON");
   if (p2.isArray() && p2.length() >= 2) {
     res = inner.parseCoordinates(mat2.slice(p2, true), /*geoJson*/ true);
   } else if (p2.isObject()) {
     res = geo::geojson::parseRegion(mat2.slice(p2, true), inner);
+  } else {
+    res.reset(TRI_ERROR_BAD_PARAMETER,
+              "Second arg requires coordinate pair or GeoJSON");
   }
   if (res.fail()) {
     registerWarning(expressionContext, func, res);
@@ -1323,6 +1325,20 @@ static Result parseGeoPolygon(VPackSlice polygon, VPackBuilder& b) {
   }
 
   return {TRI_ERROR_NO_ERROR};
+}
+
+Result parseShape(transaction::Methods& trx,
+                  AqlValue const& value,
+                  geo::ShapeContainer& shape) {
+  AqlValueMaterializer mat(&trx);
+
+  if (value.isArray() && value.length() >= 2) {
+    return shape.parseCoordinates(mat.slice(value, true), /*geoJson*/ true);
+  } else if (value.isObject()) {
+    return geo::geojson::parseRegion(mat.slice(value, true), shape);
+  } else {
+    return {TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON"};
+  }
 }
 
 }  // namespace
@@ -1717,16 +1733,7 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, transaction::Methods* trx
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
   auto& analyzerFeature = server.getFeature<iresearch::IResearchAnalyzerFeature>();
-
-  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
-
-  if (ADB_UNLIKELY(nullptr == sysVocbase)) {
-    arangodb::aql::registerWarning(ctx, AFN, TRI_ERROR_INTERNAL);
-    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
-  }
-  auto analyzer = analyzerFeature.get(analyzerId, trx->vocbase(), *sysVocbase,
+  auto analyzer = analyzerFeature.get(analyzerId, trx->vocbase(),
                                       trx->state()->analyzersRevision());
   if (!analyzer) {
     arangodb::aql::registerWarning(
@@ -3501,8 +3508,7 @@ AqlValue Functions::DateDayOfWeek(ExpressionContext* expressionContext,
   }
   weekday wd{floor<days>(tp)};
 
-  // Library has unsigned operator implemented
-  return AqlValue(AqlValueHintUInt(static_cast<uint64_t>(unsigned(wd))));
+  return AqlValue(AqlValueHintUInt(wd.c_encoding()));
 }
 
 /// @brief function DATE_YEAR
@@ -3757,6 +3763,68 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
   tp = tp_sys_clock_ms{sys_days(ymd) + ms};
 
   return ::timeAqlValue(expressionContext, AFN, tp);
+}
+
+/// @brief function DATE_UTCTOLOCAL
+AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext,
+                                   transaction::Methods* trx,
+                                   VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_UTCTOLOCAL";
+  using namespace std::chrono;
+  using namespace date;
+
+  tp_sys_clock_ms tp_utc;
+
+  if (!::parameterToTimePoint(expressionContext, parameters, tp_utc, AFN, 0)) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue const& timeZoneParam = extractFunctionParameterValue(parameters, 1);
+
+  if (!timeZoneParam.isString()) {  // timezone type must be string
+    registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  const std::string tz = timeZoneParam.slice().copyString();
+  const auto utc = floor<milliseconds>(tp_utc);
+  const auto zoned = make_zoned(tz, utc);
+  const auto tp_local = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
+
+  auto info = zoned.get_info();
+
+  return ::timeAqlValue(expressionContext, AFN, tp_local,info.offset.count() == 0 && info.save.count() == 0);
+}
+
+
+/// @brief function DATE_LOCALTOUTC
+AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext,
+                                   transaction::Methods* trx,
+                                   VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_LOCALTOUTC";
+  using namespace std::chrono;
+  using namespace date;
+
+  tp_sys_clock_ms tp_local;
+
+  if (!::parameterToTimePoint(expressionContext, parameters, tp_local, AFN, 0)) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue const& timeZoneParam = extractFunctionParameterValue(parameters, 1);
+
+  if (!timeZoneParam.isString()) {  // timezone type must be string
+    registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  const std::string tz = timeZoneParam.slice().copyString();
+
+  const auto local = local_time<milliseconds>{floor<milliseconds>(tp_local).time_since_epoch()};
+  const auto zoned = make_zoned(tz, local);
+  const auto tp_utc = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
+
+  return ::timeAqlValue(expressionContext, AFN, tp_utc);
 }
 
 /// @brief function DATE_ADD
@@ -5376,31 +5444,21 @@ AqlValue Functions::Distance(ExpressionContext* expressionContext, transaction::
 AqlValue Functions::GeoDistance(ExpressionContext* expressionContext,
                                 transaction::Methods* trx,
                                 VPackFunctionParameters const& parameters) {
-  AqlValue loc1 = extractFunctionParameterValue(parameters, 0);
-  AqlValue loc2 = extractFunctionParameterValue(parameters, 1);
-
-  Result res(TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON");
-  AqlValueMaterializer mat1(trx);
+  TRI_ASSERT(trx);
+  constexpr char const AFN[] = "GEO_DISTANCE";
   geo::ShapeContainer shape1, shape2;
-  if (loc1.isArray() && loc1.length() >= 2) {
-    res = shape1.parseCoordinates(mat1.slice(loc1, true), /*geoJson*/ true);
-  } else if (loc1.isObject()) {
-    res = geo::geojson::parseRegion(mat1.slice(loc1, true), shape1);
-  }
+
+  auto res = ::parseShape(*trx, extractFunctionParameterValue(parameters, 0), shape1);
+
   if (res.fail()) {
-    registerWarning(expressionContext, "GEO_DISTANCE", res);
+    registerWarning(expressionContext, AFN, res);
     return AqlValue(AqlValueHintNull());
   }
 
-  AqlValueMaterializer mat2(trx);
-  res.reset(TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON");
-  if (loc2.isArray() && loc2.length() >= 2) {
-    res = shape2.parseCoordinates(mat2.slice(loc2, true), /*geoJson*/ true);
-  } else if (loc2.isObject()) {
-    res = geo::geojson::parseRegion(mat2.slice(loc2, true), shape2);
-  }
+  res = ::parseShape(*trx, extractFunctionParameterValue(parameters, 1), shape2);
+
   if (res.fail()) {
-    registerWarning(expressionContext, "GEO_DISTANCE", res);
+    registerWarning(expressionContext, AFN, res);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -5411,6 +5469,97 @@ AqlValue Functions::GeoDistance(ExpressionContext* expressionContext,
     return ::numberValue(shape1.distanceFromCentroid(shape2.centroid(), e), true);
   }
   return ::numberValue(shape1.distanceFromCentroid(shape2.centroid()), true);
+}
+
+/// @brief function GEO_IN_RANGE
+AqlValue Functions::GeoInRange(ExpressionContext* ctx,
+                               transaction::Methods* trx,
+                               VPackFunctionParameters const& args) {
+  TRI_ASSERT(trx);
+  constexpr char const AFN[] = "GEO_IN_RANGE";
+
+  auto const argc = args.size();
+
+  if (argc < 4 || argc > 7) {
+    registerWarning(ctx, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  geo::ShapeContainer shape1, shape2;
+  auto res = parseShape(*trx, extractFunctionParameterValue(args, 0), shape1);
+
+  if (res.fail()) {
+    registerWarning(ctx, AFN, res);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  res = parseShape(*trx, extractFunctionParameterValue(args, 1), shape2);
+
+  if (res.fail()) {
+    registerWarning(ctx, AFN, res);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  auto const& lowerBound = extractFunctionParameterValue(args, 2);
+
+  if (!lowerBound.isNumber()) {
+    registerWarning(ctx, AFN, {TRI_ERROR_BAD_PARAMETER, "3rd argument requires a number"});
+    return AqlValue(AqlValueHintNull());
+  }
+
+  auto const& upperBound = extractFunctionParameterValue(args, 3);
+
+  if (!upperBound.isNumber()) {
+    registerWarning(ctx, AFN, {TRI_ERROR_BAD_PARAMETER, "4th argument requires a number"});
+    return AqlValue(AqlValueHintNull());
+  }
+
+  bool includeLower = true;
+  bool includeUpper = true;
+  geo::Ellipsoid const* ellipsoid = &geo::SPHERE;
+
+  if (argc > 4) {
+    auto const& includeLowerValue = extractFunctionParameterValue(args, 4);
+
+    if (!includeLowerValue.isBoolean()) {
+      registerWarning(ctx, AFN, {TRI_ERROR_BAD_PARAMETER, "5th argument requires a bool"});
+      return AqlValue(AqlValueHintNull());
+    }
+
+    includeLower = includeLowerValue.toBoolean();
+
+    if (argc > 5) {
+      auto const& includeUpperValue = extractFunctionParameterValue(args, 4);
+
+      if (!includeUpperValue.isBoolean()) {
+        registerWarning(ctx, AFN, {TRI_ERROR_BAD_PARAMETER, "6th argument requires a bool"});
+        return AqlValue(AqlValueHintNull());
+      }
+
+      includeUpper = includeUpperValue.toBoolean();
+    }
+
+    if (argc > 6) {
+      auto const& value = extractFunctionParameterValue(args, 6);
+      if (value.isString()) {
+        VPackValueLength len;
+        char const* ptr = value.slice().getStringUnchecked(len);
+        ellipsoid = &geo::utils::ellipsoidFromString(ptr, len);
+      }
+    }
+  }
+
+  auto const minDistance = lowerBound.toDouble();
+  auto const maxDistance = upperBound.toDouble();
+  auto const distance = (ellipsoid == &geo::SPHERE
+    ? shape1.distanceFromCentroid(shape2.centroid())
+    : shape1.distanceFromCentroid(shape2.centroid(), *ellipsoid));
+
+  return AqlValue{AqlValueHintBool{
+    (includeLower ? distance >= minDistance
+                  : distance > minDistance) &&
+    (includeUpper ? distance <= maxDistance
+                  : distance < maxDistance) }};
 }
 
 /// @brief function GEO_CONTAINS

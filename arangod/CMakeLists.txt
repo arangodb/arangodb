@@ -53,6 +53,9 @@ add_library(arango_iresearch
   IResearch/AqlHelper.cpp IResearch/AqlHelper.h
   IResearch/Containers.cpp IResearch/Containers.h
   IResearch/ExpressionFilter.cpp IResearch/ExpressionFilter.h
+  IResearch/Geo.cpp IResearch/Geo.h
+  IResearch/GeoAnalyzer.cpp IResearch/GeoAnalyzer.h
+  IResearch/GeoFilter.cpp IResearch/GeoFilter.h
   IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
   IResearch/IResearchCalculationAnalyzer.cpp IResearch/IResearchCalculationAnalyzer.h
   IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
@@ -61,6 +64,7 @@ add_library(arango_iresearch
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
   IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
   IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
+  IResearch/IResearchIdentityAnalyzer.cpp IResearch/IResearchIdentityAnalyzer.h
   IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
   IResearch/IResearchLink.cpp IResearch/IResearchLink.h
   IResearch/IResearchLinkCoordinator.cpp IResearch/IResearchLinkCoordinator.h
@@ -177,6 +181,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/TraverserCacheFactory.cpp
   Graph/TraverserDocumentCache.cpp
   Graph/TraverserOptions.cpp
+  Graph/WeightedEnumerator.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   RestHandler/RestGraphHandler.cpp
 )
@@ -535,6 +540,7 @@ set(LIB_ARANGO_AGENCY_SOURCES
 )
 
 set(LIB_ARANGO_V8SERVER_SOURCES
+  Cluster/v8-cluster.cpp
   Transaction/V8Context.cpp
   V8Server/FoxxQueuesFeature.cpp
   V8Server/V8Context.cpp
@@ -615,7 +621,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/SynchronizeShard.cpp
   Cluster/TakeoverShardLeadership.cpp
   Cluster/UpdateCollection.cpp
-  Cluster/v8-cluster.cpp
   FeaturePhases/AgencyFeaturePhase.cpp
   FeaturePhases/AqlFeaturePhase.cpp
   FeaturePhases/BasicFeaturePhaseServer.cpp

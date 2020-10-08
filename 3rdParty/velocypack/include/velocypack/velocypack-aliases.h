@@ -83,6 +83,7 @@ using VPackSink = arangodb::velocypack::Sink;
 using VPackCharBufferSink = arangodb::velocypack::CharBufferSink;
 using VPackStringSink = arangodb::velocypack::StringSink;
 using VPackStringStreamSink = arangodb::velocypack::StringStreamSink;
+using VPackStringLengthSink = arangodb::velocypack::StringLengthSink;
 #endif
 #endif
 
