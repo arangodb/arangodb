@@ -127,6 +127,7 @@ void RequestStatistics::process(RequestStatistics* statistics) {
       }
 
       if (statistics->_superuser) {
+        TRI_TotalRequestsStatisticsSuperuser.incCounter();
         TRI_TotalTimeDistributionStatistics.addFigure(totalTime);
 
         double requestTime = statistics->_requestEnd - statistics->_requestStart;
@@ -148,6 +149,7 @@ void RequestStatistics::process(RequestStatistics* statistics) {
         TRI_BytesSentDistributionStatistics.addFigure(statistics->_sentBytes);
         TRI_BytesReceivedDistributionStatistics.addFigure(statistics->_receivedBytes);
       } else {
+        TRI_TotalRequestsStatisticsUser.incCounter();
         TRI_TotalTimeDistributionStatisticsUser.addFigure(totalTime);
 
         double requestTime = statistics->_requestEnd - statistics->_requestStart;

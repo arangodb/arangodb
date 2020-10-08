@@ -1,11 +1,26 @@
 v3.6.8 (XXXX-XX-XX)
 -------------------
 
-* Fixed a bug in handling of followers which refuse to replicate operations.
-  In the case that the follower has simply been dropped in the meantime, we now
-  avoid an error reported by the shard leader.
+* Added configuration option `--rocksdb.sync-delay-threshold`.
+  This option can be used to track if any RocksDB WAL sync operations is 
+  delayed by more than the configured value (in milliseconds). The intention
+  is to get aware of severely delayed WAL sync operations.
 
-* Fixed issue ES-664: SEARCH vs FILTER lookup performance.
+* Add database, shard name and error information to several shard-related log
+  messages.
+
+* Display shard names of a collection in the web interface when in the details
+  view of the collection.
+
+* Added HTTP requests metrics for tracking the number of superuser and normal
+  user requests separately:
+
+  - `arangodb_http_request_statistics_superuser_requests`: Total number of HTTP
+    requests executed by superuser/JWT
+  - `arangodb_http_request_statistics_user_requests`: Total number of HTTP
+    requests executed by clients
+
+* Fixed issue ES-696: SEARCH vs FILTER lookup performance.
   Consolidation functionality for ArangoSearch view links was able to hit non-
   mergable enormous amount of segments due to improper scheduling logic.
 
