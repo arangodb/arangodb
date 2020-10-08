@@ -4,6 +4,11 @@ v3.7.3 (XXXX-XX-XX)
 * Fix #12693: SORT inside a subquery could sometimes swallow part of its input
   when it crossed boundaries of internal row batches.
 
+* Fixed issue BTS-212: Web UI doesn't let to make partial view update and
+  partial view update should be audited (also reported as ES-700).
+  Fixed link definition comparison logic: equality wasn`t properly detected and
+  led to link recreation.
+
 * Added configuration option `--rocksdb.sync-delay-threshold`.
   This option can be used to track if any RocksDB WAL sync operations is 
   delayed by more than the configured value (in milliseconds). The intention
