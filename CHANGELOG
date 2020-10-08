@@ -1,4 +1,4 @@
-v3.6.7.2 (XXXX-XX-XX)
+v3.6.7.2 (2020-08-10)
 ---------------------
 
 * Fixed handling of failoverCandidates. Sometimes, a server can still be a
