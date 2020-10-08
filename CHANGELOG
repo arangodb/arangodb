@@ -3,8 +3,8 @@ v3.6.8 (XXXX-XX-XX)
 
 * Fixed handling of failoverCandidates. Sometimes, a server can still be a
   failoverCandidate even though it has been taken out of the Plan. With this
-  fix, such a server is quickly taken out of failoverCandidates and it can
-  never be re-added to the Plan before this has happened.
+  fix, such a server is quickly taken out of failoverCandidates and it can never
+  be re-added to the Plan before this has happened.
 
 * Added configuration option `--rocksdb.sync-delay-threshold`.
   This option can be used to track if any RocksDB WAL sync operations is 
