@@ -142,6 +142,7 @@ class Logger {
  public:
   static LogTopic AGENCY;
   static LogTopic AGENCYCOMM;
+  static LogTopic AGENCYSTORE;
   static LogTopic AQL;
   static LogTopic AUTHENTICATION;
   static LogTopic AUTHORIZATION;
@@ -151,10 +152,8 @@ class Logger {
   static LogTopic CLUSTERCOMM;
   static LogTopic COLLECTOR;
   static LogTopic COMMUNICATION;
-  static LogTopic COMPACTOR;
   static LogTopic CONFIG;
   static LogTopic CRASH;
-  static LogTopic DATAFILES;
   static LogTopic DEVEL;
   static LogTopic DUMP;
   static LogTopic ENGINES;
