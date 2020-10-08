@@ -3,8 +3,13 @@ v3.7.3 (XXXX-XX-XX)
 
 * Fixed handling of failoverCandidates. Sometimes, a server can still be a
   failoverCandidate even though it has been taken out of the Plan. With this
-  fix, such a server is quickly taken out of failoverCandidates and it can
-  never be re-added to the Plan before this has happened.
+  fix, such a server is quickly taken out of failoverCandidates and it can never
+  be re-added to the Plan before this has happened.
+
+* Fixed issue BTS-212: Web UI doesn't let to make partial view update and
+  partial view update should be audited (also reported as ES-700).
+  Fixed link definition comparison logic: equality wasn`t properly detected and
+  led to link recreation.
 
 * Added configuration option `--rocksdb.sync-delay-threshold`.
   This option can be used to track if any RocksDB WAL sync operations is 

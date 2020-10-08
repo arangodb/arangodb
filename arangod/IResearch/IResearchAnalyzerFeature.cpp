@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -78,37 +79,22 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
-
+#include "frozen/map.h"
 #include <Containers/HashSet.h>
 
 namespace {
 
 using namespace std::literals::string_literals;
-
 static char const ANALYZER_PREFIX_DELIM = ':'; // name prefix delimiter (2 chars)
 static size_t const ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024; // arbitrary value
 static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
 static std::string const FEATURE_NAME("ArangoSearchAnalyzer");
 static irs::string_ref constexpr IDENTITY_ANALYZER_NAME("identity");
 
-bool normalize(std::string& out,
-               irs::string_ref const& type,
-               VPackSlice const properties) {
-  if (type.empty()) {
-    // in ArangoSearch we don't allow to have analyzers with empty type string
-    return false;
-  }
 
-  // for API consistency we only support analyzers configurable via jSON
-  return irs::analysis::analyzers::normalize(
-    out, type,
-    irs::type<irs::text_format::vpack>::get(),
-    arangodb::iresearch::ref<char>(properties),
-    false);
-}
 
 class IdentityAnalyzer final : public irs::analysis::analyzer {
- public:
+public:
   static constexpr irs::string_ref type_name() noexcept {
     return IDENTITY_ANALYZER_NAME;
   }
@@ -125,7 +111,7 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
 
   IdentityAnalyzer()
     : irs::analysis::analyzer(irs::type<IdentityAnalyzer>::get()),
-      _empty(true) {
+    _empty(true) {
   }
 
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
@@ -134,8 +120,8 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
     }
 
     return type == irs::type<irs::term_attribute>::id()
-        ? &_term
-        : nullptr;
+      ? &_term
+      : nullptr;
   }
 
   virtual bool next() noexcept override {
@@ -153,13 +139,35 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
     return true;
   }
 
- private:
+private:
   irs::term_attribute _term;
   irs::increment _inc;
   bool _empty;
 }; // IdentityAnalyzer
 
 REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
+
+static constexpr frozen::map<irs::string_ref, irs::string_ref, 13> STATIC_ANALYZERS_NAMES {
+  {irs::type<IdentityAnalyzer>::name(), irs::type<IdentityAnalyzer>::name()},
+  {"text_de", "de"}, {"text_en", "en"}, {"text_es", "es"}, {"text_fi", "fi"},
+  {"text_fr", "fr"}, {"text_it", "it"}, {"text_nl", "nl"}, {"text_no", "no"},
+  {"text_pt", "pt"}, {"text_ru", "ru"}, {"text_sv", "sv"}, {"text_zh", "zh"} };
+
+bool normalize(std::string& out,
+               irs::string_ref const& type,
+               VPackSlice const properties) {
+  if (type.empty()) {
+    // in ArangoSearch we don't allow to have analyzers with empty type string
+    return false;
+  }
+
+  // for API consistency we only support analyzers configurable via jSON
+  return irs::analysis::analyzers::normalize(
+    out, type,
+    irs::type<irs::text_format::vpack>::get(),
+    arangodb::iresearch::ref<char>(properties),
+    false);
+}
 
 // Delimiter analyzer vpack routines ////////////////////////////
 namespace delimiter_vpack {
@@ -499,13 +507,8 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressi
   auto& server = trx->vocbase().server();
   if (args.size() > 1) {
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
-                          ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-                          : nullptr;
-    if (sysVocbase) {
-      pool = analyzers.get(name, trx->vocbase(), *sysVocbase,
-                           trx->state()->analyzersRevision());
-    }
+    pool = analyzers.get(name, trx->vocbase(),
+                         trx->state()->analyzersRevision());
   } else { //do not look for identity, we already have reference)
     pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
   }
@@ -1165,6 +1168,13 @@ AnalyzerPool::Builder::make(
 AnalyzerPool::AnalyzerPool(irs::string_ref const& name)
   : _cache(DEFAULT_POOL_SIZE),
     _name(name) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // validation for name - should  be only normalized or static!
+  auto splitted = IResearchAnalyzerFeature::splitAnalyzerName(_name);
+  if (splitted.first.empty()) {
+    TRI_ASSERT(STATIC_ANALYZERS_NAMES.find(name) != STATIC_ANALYZERS_NAMES.end()); // This should be static analyzer
+  }
+#endif
 }
 
 bool AnalyzerPool::operator==(AnalyzerPool const& rhs) const {
@@ -1810,7 +1820,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     if (!res.ok()) {
       return res;
     }
-    
+
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
 
@@ -2013,16 +2023,15 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     irs::string_ref const& name,
     TRI_vocbase_t const& activeVocbase,
-    TRI_vocbase_t const& systemVocbase,
     arangodb::QueryAnalyzerRevisions const& revision,
     bool onlyCached /*= false*/) const {
-  auto const normalizedName = normalize(name, activeVocbase, systemVocbase, true);
+  auto const normalizedName = normalize(name, activeVocbase.name(), true);
 
   auto const split = splitAnalyzerName(normalizedName);
 
   if (!split.first.null() &&
       split.first != activeVocbase.name() &&
-      split.first != systemVocbase.name()) {
+      split.first != arangodb::StaticStrings::SystemDatabase) {
     // accessing local analyzer from within another database
     return nullptr;
   }
@@ -2048,7 +2057,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 
         auto pool = std::make_shared<AnalyzerPool>(IDENTITY_ANALYZER_NAME);
 
-
+        static_assert(STATIC_ANALYZERS_NAMES.begin()->first == irs::type<IdentityAnalyzer>::name(), "Identity analyzer is misplaced");
         if (!pool || !pool->init(irs::type<IdentityAnalyzer>::name(),
                                  VPackSlice::emptyObjectSlice(),
                                  AnalyzersRevision::MIN,
@@ -2071,11 +2080,6 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
       // register the text analyzers
       {
         // Note: ArangoDB strings coming from JavaScript user input are UTF-8 encoded
-        irs::string_ref const locales[] = {
-          "de", "en", "es", "fi", "fr", "it",
-          "nl", "no", "pt", "ru", "sv", "zh"
-        };
-
         irs::flags const extraFeatures = {
           irs::type<irs::frequency>::get(),
           irs::type<irs::norm>::get(),
@@ -2084,30 +2088,24 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 
         irs::string_ref const type("text");
 
-        std::string name;
         VPackBuilder properties;
-        for (auto const& locale : locales) {
-          // "text_<locale>"
-          {
-            name = "text_";
-            name.append(locale.c_str(), locale.size());
-          }
-
+        static_assert(STATIC_ANALYZERS_NAMES.size() > 1, "Static analyzer count too low");
+        for (auto staticName = (STATIC_ANALYZERS_NAMES.cbegin()+1); staticName != STATIC_ANALYZERS_NAMES.cend(); ++staticName) {
           // { locale: "<locale>.UTF-8", stopwords: [] }
           {
             properties.clear();
             VPackObjectBuilder rootScope(&properties);
-            properties.add("locale", VPackValue(std::string(locale) + ".UTF-8"));
+            properties.add("locale", VPackValue(std::string(staticName->second) + ".UTF-8"));
             VPackArrayBuilder stopwordsArrayScope(&properties, "stopwords");
           }
 
-          auto pool = std::make_shared<AnalyzerPool>(name);
+          auto pool = std::make_shared<AnalyzerPool>(staticName->first);
 
           if (!pool->init(type, properties.slice(), AnalyzersRevision::MIN, extraFeatures)) {
             LOG_TOPIC("e25f5", WARN, iresearch::TOPIC)
                 << "failure creating an arangosearch static analyzer instance "
                    "for name '"
-                << name << "'";
+                << std::string(staticName->first) << "'";
 
             // this should never happen, treat as an assertion failure
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to create arangosearch static analyzer instance");
@@ -2557,8 +2555,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
 /*static*/ std::string IResearchAnalyzerFeature::normalize( // normalize name
     irs::string_ref const& name, // analyzer name
-    TRI_vocbase_t const& activeVocbase, // fallback vocbase if not part of name
-    TRI_vocbase_t const& systemVocbase, // the system vocbase for use with empty prefix
+    irs::string_ref const& activeVocbase, // fallback vocbase if not part of name
     bool expandVocbasePrefix /*= true*/) { // use full vocbase name as prefix for active/system v.s. EMPTY/'::'
   auto& staticAnalyzers = getStaticAnalyzers();
 
@@ -2570,24 +2567,24 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
   if (expandVocbasePrefix) {
     if (split.first.null()) {
-      return normalizedAnalyzerName(activeVocbase.name(), split.second);
+      return normalizedAnalyzerName(activeVocbase, split.second);
     }
 
     if (split.first.empty()) {
-      return normalizedAnalyzerName(systemVocbase.name(), split.second);
+      return normalizedAnalyzerName(arangodb::StaticStrings::SystemDatabase, split.second);
     }
   } else {
     // .........................................................................
     // normalize vocbase such that active vocbase takes precedence over system
     // vocbase i.e. prefer NIL over EMPTY
     // .........................................................................
-    if (&systemVocbase == &activeVocbase ||
+    if (arangodb::StaticStrings::SystemDatabase == activeVocbase ||
         split.first.null() ||
-        (split.first == activeVocbase.name())) { // active vocbase
+        (split.first == activeVocbase)) { // active vocbase
       return split.second;
     }
 
-    if (split.first.empty() || split.first == systemVocbase.name()) { // system vocbase
+    if (split.first.empty() || split.first == arangodb::StaticStrings::SystemDatabase) { // system vocbase
       return normalizedAnalyzerName("", split.second);
     }
   }
