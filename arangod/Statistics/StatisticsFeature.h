@@ -47,6 +47,8 @@ extern std::vector<double> const TRI_RequestTimeDistributionVectorStatistics;
 extern StatisticsCounter TRI_AsyncRequestsStatistics;
 extern StatisticsCounter TRI_HttpConnectionsStatistics;
 extern StatisticsCounter TRI_TotalRequestsStatistics;
+extern StatisticsCounter TRI_TotalRequestsStatisticsSuperuser;
+extern StatisticsCounter TRI_TotalRequestsStatisticsUser;
 
 constexpr size_t MethodRequestsStatisticsSize =
     ((size_t)arangodb::rest::RequestType::ILLEGAL) + 1;
