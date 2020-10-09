@@ -141,12 +141,7 @@ void QueryList::remove(Query* query) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
-      std::string q;
-      if (trackQueryString()) {
-        q = extractQueryString(query, _maxQueryStringLength);
-      } else {
-        q = "<hidden>";
-      }
+      std::string q = extractQueryString(query, _maxQueryStringLength);
 
       QueryProfile* profile = query->profile();
       double loadTime = 0.0;
@@ -159,7 +154,7 @@ void QueryList::remove(Query* query) {
       if (_trackBindVars) {
         // also log bind variables
         auto bp = query->bindParameters();
-        if (bp != nullptr) {
+        if (bp != nullptr && !bp->slice().isNone()) {
           bindParameters.append(", bind vars: ");
           bindParameters.append(bp->slice().toJson());
           if (bindParameters.size() > _maxQueryStringLength) {
@@ -198,6 +193,8 @@ void QueryList::remove(Query* query) {
 
 /// @brief kills a query
 Result QueryList::kill(TRI_voc_tick_t id) {
+  size_t const maxLength = _maxQueryStringLength;
+
   READ_LOCKER(writeLocker, _lock);
 
   auto it = _current.find(id);
@@ -208,7 +205,7 @@ Result QueryList::kill(TRI_voc_tick_t id) {
 
   Query* query = (*it).second;
   LOG_TOPIC("25cc4", WARN, arangodb::Logger::FIXME)
-      << "killing AQL query " << id << " '" << query->queryString() << "'";
+      << "killing AQL query " << id << " '" << extractQueryString(query, maxLength) << "'";
 
   query->kill();
   return Result();
@@ -218,6 +215,7 @@ Result QueryList::kill(TRI_voc_tick_t id) {
 /// (i.e. the filter should return true for a queries to be killed)
 uint64_t QueryList::kill(std::function<bool(Query&)> const& filter, bool silent) {
   uint64_t killed = 0;
+  size_t const maxLength = _maxQueryStringLength;
 
   READ_LOCKER(readLocker, _lock);
 
@@ -230,10 +228,10 @@ uint64_t QueryList::kill(std::function<bool(Query&)> const& filter, bool silent)
 
     if (silent) {
       LOG_TOPIC("f7722", TRACE, arangodb::Logger::FIXME)
-          << "killing AQL query " << query.id() << " '" << query.queryString() << "'";
+          << "killing AQL query " << query.id() << " '" << extractQueryString(&query, maxLength) << "'";
     } else {
       LOG_TOPIC("90113", WARN, arangodb::Logger::FIXME)
-          << "killing AQL query " << query.id() << " '" << query.queryString() << "'";
+          << "killing AQL query " << query.id() << " '" << extractQueryString(&query, maxLength) << "'";
     }
 
     query.kill();
@@ -314,5 +312,8 @@ size_t QueryList::count() {
 }
 
 std::string QueryList::extractQueryString(Query const* query, size_t maxLength) const {
-  return query->queryString().extract(maxLength);
+  if (trackQueryString()) {
+    return query->queryString().extract(maxLength);
+  }
+  return "<hidden>";
 }
