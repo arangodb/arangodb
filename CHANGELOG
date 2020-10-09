@@ -6,6 +6,9 @@ v3.7.3 (XXXX-XX-XX)
   fix, such a server is quickly taken out of failoverCandidates and it can never
   be re-added to the Plan before this has happened.
 
+* Fix #12693: SORT inside a subquery could sometimes swallow part of its input
+  when it crossed boundaries of internal row batches.
+
 * Fixed issue BTS-212: Web UI doesn't let to make partial view update and
   partial view update should be audited (also reported as ES-700).
   Fixed link definition comparison logic: equality wasn`t properly detected and
