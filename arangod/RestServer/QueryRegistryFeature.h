@@ -29,10 +29,6 @@
 
 namespace arangodb {
 
-enum class QueryTrackingMode {
-  Off, NoBindvars, Verbose
-};
-
 class QueryRegistryFeature final : public application_features::ApplicationFeature {
  public:
   static aql::QueryRegistry* registry() {
