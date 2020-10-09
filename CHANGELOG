@@ -11,6 +11,16 @@ v3.7.4 (XXXX-XX-XX)
   All the above APIs were intended to be used for internal means only. These
   APIs are deprecated now and will be removed in ArangoDB v3.9.
 
+* Added startup option `--foxx.force-update-on-startup` to toggle wait for all foxx services
+  in all databases to be propagated to this coordinator before it completes the
+  boot sequence. In case we do not wait, the coordinator will complete the boot
+  sequence faster, and the foxx services will be propagated lazily. This can cause
+  slower response times on the first calls to foxx services.
+  If you are not using foxx you should keep this option false (default) to gain
+  faster startup.
+  If you rely on foxx to be fast as soon as a coordinator is integrated, you should
+  set this option to true.
+
 
 v3.7.3 (XXXX-XX-XX)
 -------------------
