@@ -161,10 +161,12 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 }
 
 /// @brief return the figures for a collection
-futures::Future<OperationResult> ClusterCollection::figures(bool details) {
+futures::Future<OperationResult> ClusterCollection::figures(bool details,
+                                                            OperationOptions const& options) {
   auto& feature = _logicalCollection.vocbase().server().getFeature<ClusterFeature>();
   return figuresOnCoordinator(feature, _logicalCollection.vocbase().name(),
-                              std::to_string(_logicalCollection.id().id()), details);
+                              std::to_string(_logicalCollection.id().id()),
+                              details, options);
 }
 
 void ClusterCollection::figuresSpecific(bool /*details*/, arangodb::velocypack::Builder& /*builder*/) {
@@ -209,15 +211,15 @@ void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
   WRITE_LOCKER(guard, _indexesLock);
   TRI_ASSERT(indexesSlice.isArray());
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
+  StorageEngine& engine =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine();
   std::vector<std::shared_ptr<Index>> indexes;
 
   if (indexesSlice.length() == 0 && _indexes.empty()) {
-    engine->indexFactory().fillSystemIndexes(_logicalCollection, indexes);
+    engine.indexFactory().fillSystemIndexes(_logicalCollection, indexes);
 
   } else {
-    engine->indexFactory().prepareIndexes(_logicalCollection, indexesSlice, indexes);
+    engine.indexFactory().prepareIndexes(_logicalCollection, indexesSlice, indexes);
   }
 
   for (std::shared_ptr<Index>& idx : indexes) {
@@ -261,12 +263,12 @@ std::shared_ptr<Index> ClusterCollection::createIndex(arangodb::velocypack::Slic
     return idx;
   }
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
+  StorageEngine& engine =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
   // We are sure that we do not have an index of this type.
   // We also hold the lock. Create it
-  idx = engine->indexFactory().prepareIndexFromSlice(info, true, _logicalCollection, false);
+  idx = engine.indexFactory().prepareIndexFromSlice(info, true, _logicalCollection, false);
   TRI_ASSERT(idx != nullptr);
 
   // In the coordinator case we do not fill the index

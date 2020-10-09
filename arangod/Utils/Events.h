@@ -48,10 +48,12 @@ void Authenticated(GeneralRequest const&, rest::AuthenticationMethod);
 void NotAuthorized(GeneralRequest const&);
 void CreateCollection(std::string const& db, std::string const& name, int result);
 void DropCollection(std::string const& db, std::string const& name, int result);
-void PropertyUpdateCollection(std::string const& db, std::string const& collectionName, VPackSlice const& propertiesSlice);
-void TruncateCollection(std::string const& db, std::string const& name, int result);
-void CreateDatabase(std::string const& name, int result);
-void DropDatabase(std::string const& name, int result);
+void PropertyUpdateCollection(std::string const& db, std::string const& collectionName,
+                              OperationResult const&);
+void TruncateCollection(std::string const& db, std::string const& name,
+                        OperationResult const& result);
+void CreateDatabase(std::string const& name, Result const& result, ExecContext const& context);
+void DropDatabase(std::string const& name, Result const& result, ExecContext const& context);
 void CreateIndex(std::string const& db, std::string const& col, VPackSlice const&, int result);
 void DropIndex(std::string const& db, std::string const& col,
                std::string const& idx, int result);

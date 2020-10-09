@@ -191,7 +191,7 @@ Result checkTransactionResult(TransactionId desiredTid, transaction::Status desS
     return res;
   }
   LOG_TOPIC("fb343", DEBUG, Logger::TRANSACTIONS)
-      << " failed to begin transaction on " << resp.destination;
+      << "failed to begin transaction on " << resp.destination;
 
   return Result(TRI_ERROR_TRANSACTION_INTERNAL);  // unspecified error
 }
@@ -261,24 +261,33 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
           Result res = ::checkTransactionResult(tidPlus, status, resp);
           if (res.fail()) {  // remove follower from all collections
             ServerID follower = resp.serverId();
+            LOG_TOPIC("230c3", INFO, Logger::REPLICATION) 
+                << "synchronous replication: dropping follower " 
+                << follower << " for all participating shards in"
+                << " transaction " << state->id().id() << " (status " 
+                << arangodb::transaction::statusString(status) 
+                << "), status code: " << static_cast<int>(resp.statusCode()) 
+                << ", message: " << resp.combinedResult().errorMessage();
             state->allCollections([&](TransactionCollection& tc) {
               auto cc = tc.collection();
               if (cc) {
+                LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
+                    << "synchronous replication: dropping follower "
+                    << follower << " for shard " << tc.collectionName()
+                    << " in database " << cc->vocbase().name() 
+                    << ": " << resp.combinedResult().errorMessage();
+
                 Result r = cc->followers()->remove(follower);
-                if (r.ok()) {
-                  // TODO: what happens if a server is re-added during a transaction ?
-                  LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
-                      << "synchronous replication: dropping follower "
-                      << follower << " for shard " << tc.collectionName();
-                } else {
+                if (r.fail()) {
                   LOG_TOPIC("4971f", ERR, Logger::REPLICATION)
                       << "synchronous replication: could not drop follower "
                       << follower << " for shard " << tc.collectionName()
                       << ": " << r.errorMessage();
                   res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
-                  return false;  // cancel transaction
                 }
               }
+              // continue dropping the follower for all shards in this
+              // transaction
               return true;
             });
           }
@@ -401,7 +410,7 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
     }
     state.addKnownServer(server);  // remember server
   } else if (state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
-    // this case cannot occur for be a top-level AQL query,
+    // this case cannot occur for a top-level AQL query,
     // simon: however it might occur when UDF functions uses
     // db._query(...) in which case we can get here
     bool canHaveUDF = trx.transactionContext()->isV8Context();

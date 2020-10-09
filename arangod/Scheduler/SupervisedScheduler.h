@@ -83,7 +83,6 @@ class SupervisedScheduler final : public Scheduler {
   alignas(64) std::atomic<uint64_t> _jobsSubmitted;
   alignas(64) std::atomic<uint64_t> _jobsDequeued;
   alignas(64) std::atomic<uint64_t> _jobsDone;
-  alignas(64) std::atomic<uint64_t> _jobsDirectExec;
 
   // During a queue operation there a two reasons to manually wake up a worker
   //  1. the queue length is bigger than _wakeupQueueLength and the last submit time
@@ -166,7 +165,9 @@ class SupervisedScheduler final : public Scheduler {
   void stopOneThread();
 
   bool cleanupAbandonedThreads();
-  void sortoutLongRunningThreads();
+  /// @brief returns whether or not a new thread was started by
+  /// the method
+  bool sortoutLongRunningThreads();
 
   // Check if we are allowed to pull from a queue with the given index
   // This is used to give priority to "FAST" and "MED" lanes accordingly.
@@ -175,6 +176,8 @@ class SupervisedScheduler final : public Scheduler {
   Gauge<uint64_t>& _metricsQueueLength;
   Gauge<uint64_t>& _metricsAwakeThreads;
   Gauge<uint64_t>& _metricsNumWorkerThreads;
+  Counter& _metricsThreadsStarted;
+  Counter& _metricsThreadsStopped;
   Counter& _metricsQueueFull;
 };
 

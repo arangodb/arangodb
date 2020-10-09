@@ -97,7 +97,8 @@ TRI_col_type_e Collection::type() const { return getCollection()->type(); }
 
 /// @brief count the number of documents in the collection
 size_t Collection::count(transaction::Methods* trx, transaction::CountType type) const {
-  OperationResult res = trx->count(_name, type); 
+  OperationOptions options;  // TODO get from trx?
+  OperationResult res = trx->count(_name, type, options);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result);
   }
@@ -281,8 +282,8 @@ std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
 
 /// @brief use the already set collection 
 std::shared_ptr<LogicalCollection> Collection::getCollection() const {
-  ensureCollection();
   TRI_ASSERT(_collection != nullptr);
+  ensureCollection();
   return _collection;
 }
   

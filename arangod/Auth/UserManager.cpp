@@ -107,8 +107,8 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
     VPackSlice s = authSlice.resolveExternal();
 
-    if (s.hasKey("source") && s.get("source").isString() &&
-        s.get("source").copyString() == "LDAP") {
+    if (s.get("source").isString() &&
+        s.get("source").stringRef() == "LDAP") {
       LOG_TOPIC("18ee8", TRACE, arangodb::Logger::CONFIG)
           << "LDAP: skip user in collection _users: " << s.get("user").copyString();
       continue;
@@ -118,7 +118,9 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
     // otherwise all following update/replace/remove operations on the
     // user will fail
     auth::User user = auth::User::fromDocument(s);
-    result.try_emplace(user.username(), std::move(user));
+    // intentional copy, as we are about to move-away from user
+    std::string username = user.username();
+    result.try_emplace(std::move(username), std::move(user));
   }
   return result;
 }

@@ -74,7 +74,6 @@ struct GraphTestSetup
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   GraphTestSetup() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
     arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
     arangodb::ClusterEngine::Mocking = true;
     arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
@@ -83,6 +82,8 @@ struct GraphTestSetup
     features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::EngineSelectorFeature>(), false);
+    server.getFeature<EngineSelectorFeature>().setEngineTesting(&engine);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
     system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                                              systemDBInfo(server));
@@ -111,7 +112,7 @@ struct GraphTestSetup
   ~GraphTestSetup() {
     system.reset();  // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+    server.getFeature<EngineSelectorFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {

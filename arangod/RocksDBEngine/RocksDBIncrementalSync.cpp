@@ -36,6 +36,7 @@
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
@@ -214,17 +215,23 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     ++stats.numKeysRequests;
 
     if (replutils::hasFailed(response.get())) {
+      ++stats.numFailedConnects;
       return replutils::buildHttpError(response.get(), url, syncer._state.connection);
     }
   }
 
   TRI_ASSERT(response != nullptr);
 
+  if (response->hasContentLength()) {
+    stats.numSyncBytesReceived += response->getContentLength();
+  }
+
   VPackBuilder builder;
   Result r = replutils::parseResponse(builder, response.get());
   response.reset();  // not needed anymore
 
   if (r.fail()) {
+    ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from leader at ") +
                       syncer._state.leader.endpoint + ": " + r.errorMessage());
@@ -232,6 +239,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
   VPackSlice const responseBody = builder.slice();
   if (!responseBody.isArray()) {
+    ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from leader at ") +
                       syncer._state.leader.endpoint + ": response is no array");
@@ -239,6 +247,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
   size_t const numKeys = static_cast<size_t>(responseBody.length());
   if (numKeys == 0) {
+    ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from leader at ") +
                       syncer._state.leader.endpoint +
@@ -257,6 +266,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
   for (VPackSlice pair : VPackArrayIterator(responseBody)) {
     if (!pair.isArray() || pair.length() != 2) {
+      ++stats.numFailedConnects;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from leader at ") +
                         syncer._state.leader.endpoint +
@@ -266,6 +276,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     // key
     VPackSlice const keySlice = pair.at(0);
     if (!keySlice.isString()) {
+      ++stats.numFailedConnects;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from leader at ") +
                         syncer._state.leader.endpoint +
@@ -404,17 +415,23 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       ++stats.numDocsRequests;
 
       if (replutils::hasFailed(response.get())) {
+        ++stats.numFailedConnects;
         return replutils::buildHttpError(response.get(), url, syncer._state.connection);
       }
     }
 
     TRI_ASSERT(response != nullptr);
 
+    if (response->hasContentLength()) {
+      stats.numSyncBytesReceived += response->getContentLength();
+    }
+
     transaction::BuilderLeaser docsBuilder(trx);
     docsBuilder->clear();
     Result r = replutils::parseResponse(*docsBuilder.get(), response.get());
 
     if (r.fail()) {
+      ++stats.numFailedConnects;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from leader at ") +
                         syncer._state.leader.endpoint +
@@ -423,6 +440,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
     VPackSlice const slice = docsBuilder->slice();
     if (!slice.isArray()) {
+      ++stats.numFailedConnects;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from leader at ") +
                         syncer._state.leader.endpoint +
@@ -438,6 +456,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       }
 
       if (!it.isObject()) {
+        ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
                           syncer._state.leader.endpoint +
@@ -447,6 +466,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       VPackSlice const keySlice = it.get(StaticStrings::KeyString);
 
       if (!keySlice.isString()) {
+        ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
                           syncer._state.leader.endpoint +
@@ -456,6 +476,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       VPackSlice const revSlice = it.get(StaticStrings::RevString);
 
       if (!revSlice.isString()) {
+        ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
                           syncer._state.leader.endpoint +
@@ -594,16 +615,22 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     stats.waitedForInitial += TRI_microtime() - t;
 
     if (replutils::hasFailed(response.get())) {
+      ++stats.numFailedConnects;
       return replutils::buildHttpError(response.get(), url, syncer._state.connection);
     }
   }
 
   TRI_ASSERT(response != nullptr);
 
+  if (response->hasContentLength()) {
+    stats.numSyncBytesReceived += response->getContentLength();
+  }
+
   VPackBuilder builder;
   Result r = replutils::parseResponse(builder, response.get());
 
   if (r.fail()) {
+    ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from leader at ") +
                       syncer._state.leader.endpoint + ": " + r.errorMessage());
@@ -612,6 +639,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   VPackSlice const chunkSlice = builder.slice();
 
   if (!chunkSlice.isArray()) {
+    ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from leader at ") +
                       syncer._state.leader.endpoint + ": response is no array");
@@ -861,7 +889,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         // patch the document counter of the collection and the transaction
         int64_t diff = static_cast<int64_t>(numberDocumentsAfterSync) -
                        static_cast<int64_t>(numberDocumentsDueToCounter);
-        auto seq = rocksutils::latestSequenceNumber();
+        RocksDBEngine& engine =
+            col->vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+        auto seq = engine.db()->GetLatestSequenceNumber();
         static_cast<RocksDBCollection*>(trx.documentCollection()->getPhysical())
             ->meta()
             .adjustNumberDocuments(seq, RevisionId::none(), diff);
@@ -877,16 +907,17 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   
   syncer.setProgress(
       std::string("incremental sync statistics for collection '") + col->name() +
-      "': " + "keys requests: " + std::to_string(stats.numKeysRequests) + ", " +
-      "docs requests: " + std::to_string(stats.numDocsRequests) + ", " +
-      "number of documents requested: " + std::to_string(stats.numDocsRequested) +
-      ", " + "number of documents inserted: " + std::to_string(stats.numDocsInserted) +
-      ", " + "number of documents removed: " + std::to_string(stats.numDocsRemoved) +
-      ", " + "waited for initial: " + std::to_string(stats.waitedForInitial) +
-      " s, " + "waited for keys: " + std::to_string(stats.waitedForKeys) +
-      " s, " + "waited for docs: " + std::to_string(stats.waitedForDocs) +
-      " s, " + "waited for insertions: " + std::to_string(stats.waitedForInsertions) +
-      " s, " + "total time: " + std::to_string(TRI_microtime() - startTime) +
+      "': keys requests: " + std::to_string(stats.numKeysRequests) +
+      ", docs requests: " + std::to_string(stats.numDocsRequests) +
+      ", bytes received: " + std::to_string(stats.numSyncBytesReceived) +
+      ", number of documents requested: " + std::to_string(stats.numDocsRequested) +
+      ", number of documents inserted: " + std::to_string(stats.numDocsInserted) +
+      ", number of documents removed: " + std::to_string(stats.numDocsRemoved) +
+      ", waited for initial: " + std::to_string(stats.waitedForInitial) +
+      " s, waited for keys: " + std::to_string(stats.waitedForKeys) +
+      " s, waited for docs: " + std::to_string(stats.waitedForDocs) +
+      " s, waited for insertions: " + std::to_string(stats.waitedForInsertions) +
+      " s, total time: " + std::to_string(TRI_microtime() - startTime) +
       " s");
 
   return Result();

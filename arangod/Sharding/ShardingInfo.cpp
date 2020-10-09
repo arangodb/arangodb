@@ -30,8 +30,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Sharding/ShardingFeature.h"
 #include "Sharding/ShardingStrategyDefault.h"
 #include "Utils/CollectionNameResolver.h"
@@ -92,7 +90,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
 
   auto avoidServersSlice = info.get("avoidServers");
   if (avoidServersSlice.isArray()) {
-    for (const auto& i : VPackArrayIterator(avoidServersSlice)) {
+    for (VPackSlice i : VPackArrayIterator(avoidServersSlice)) {
       if (i.isString()) {
         _avoidServers.push_back(i.copyString());
       } else {
@@ -175,7 +173,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     _shardKeys.emplace_back(StaticStrings::KeyString);
   } else {
     if (shardKeysSlice.isArray()) {
-      for (auto const& sk : VPackArrayIterator(shardKeysSlice)) {
+      for (VPackSlice sk : VPackArrayIterator(shardKeysSlice)) {
         if (sk.isString()) {
           velocypack::StringRef key = sk.stringRef();
           // remove : char at the beginning or end (for enterprise)

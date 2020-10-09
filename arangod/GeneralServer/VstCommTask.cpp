@@ -58,10 +58,13 @@ VstCommTask<T>::VstCommTask(GeneralServer& server, ConnectionInfo info,
     : GeneralCommTask<T>(server, std::move(info), std::move(so)),
       _writeLoopActive(false),
       _numProcessing(0),
-      _authToken("", false, 0),
-      _authenticated(!this->_auth->isActive()),
+      _authToken("", !this->_auth->isActive(), 0),
       _authMethod(rest::AuthenticationMethod::NONE),
-      _vstVersion(v) {}
+      _vstVersion(v) {
+  // arbitrary initial reserve value to save a few memory allocations
+  // in the most common cases.
+  _writeQueue.reserve(32);
+}
 
 template <SocketType T>
 VstCommTask<T>::~VstCommTask() {
@@ -266,22 +269,15 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t
   // handle request types
   if (mt == fu::MessageType::Authentication) {  // auth
     handleVstAuthRequest(VPackSlice(buffer.data()), messageId);
-    // Separate superuser traffic:
-    // Note that currently, velocystream traffic will never come from
-    // a forwarding, since we always forward with HTTP.
-    if (_authMethod != AuthenticationMethod::NONE && _authenticated &&
-        _authToken.username().empty()) {
-      stat.SET_SUPERUSER();
-    }
   } else if (mt == fu::MessageType::Request) {  // request
 
     // the handler will take ownership of this pointer
     auto req = std::make_unique<VstRequest>(this->_connectionInfo, std::move(buffer),
                                             /*payloadOffset*/ headerLength, messageId);
-    req->setAuthenticated(_authenticated);
+    req->setAuthenticated(_authToken.authenticated());
     req->setUser(_authToken.username());
     req->setAuthenticationMethod(_authMethod);
-    if (_authenticated && this->_auth->userManager() != nullptr) {
+    if (_authToken.authenticated() && this->_auth->userManager() != nullptr) {
       // if we don't call checkAuthentication we need to refresh
       this->_auth->userManager()->refreshUser(this->_authToken.username());
     }
@@ -290,7 +286,8 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t
     // Separate superuser traffic:
     // Note that currently, velocystream traffic will never come from
     // a forwarding, since we always forward with HTTP.
-    if (_authMethod != AuthenticationMethod::NONE && _authenticated &&
+    if (_authMethod != AuthenticationMethod::NONE &&
+        _authToken.authenticated() &&
         this->_authToken.username().empty()) {
       stat.SET_SUPERUSER();
     }
@@ -382,14 +379,19 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
   // this uses a fixed capacity queue, push might fail (unlikely, we limit max streams)
   unsigned retries = 512;
-  while (ADB_UNLIKELY(!_writeQueue.push(resItem.get()))) {
-    std::this_thread::yield();
-    if (--retries == 0) {
-      LOG_TOPIC("a3bfc", WARN, Logger::REQUESTS)
-          << "was not able to queue response this=" << (void*)this;
-      this->stop();  // stop is thread-safe
-      return;
+  try {
+    while (ADB_UNLIKELY(!_writeQueue.push(resItem.get()) && --retries > 0)) {
+      std::this_thread::yield();
+      --retries;
     }
+  } catch (...) {
+    retries = 0;
+  }
+  if (retries == 0) {
+    LOG_TOPIC("a3bfc", WARN, Logger::REQUESTS)
+        << "was not able to queue response this=" << (void*)this;
+    this->stop();  // stop is thread-safe
+    return;
   }
   resItem.release();
 
@@ -467,7 +469,6 @@ template <SocketType T>
 void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId) {
   std::string authString;
   std::string user = "";
-  _authenticated = false;
   _authMethod = AuthenticationMethod::NONE;
 
   std::string encryption = header.at(2).copyString();
@@ -484,9 +485,17 @@ void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId) {
   }
 
   _authToken = this->_auth->tokenCache().checkAuthentication(_authMethod, authString);
-  _authenticated = _authToken.authenticated();
+  
+  // Separate superuser traffic:
+  // Note that currently, velocystream traffic will never come from
+  // a forwarding, since we always forward with HTTP.
+  if (_authMethod != AuthenticationMethod::NONE &&
+      _authToken.authenticated() &&
+      _authToken.username().empty()) {
+    this->statistics(mId).SET_SUPERUSER();
+  }
 
-  if (_authenticated || !this->_auth->isActive()) {
+  if (_authToken.authenticated() || !this->_auth->isActive()) {
     // simon: drivers expect a response for their auth request
     this->sendErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, mId,
                             TRI_ERROR_NO_ERROR, "auth successful");

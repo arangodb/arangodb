@@ -220,11 +220,13 @@ class IResearchOrderTest
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   IResearchOrderTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init();
 
     // setup required application features
+    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    selector.setEngineTesting(&engine);
+    features.emplace_back(selector, false);
     features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);
@@ -256,7 +258,7 @@ class IResearchOrderTest
   ~IResearchOrderTest() {
     arangodb::aql::AqlFunctionFeature(server).unprepare();  // unset singleton instance
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {

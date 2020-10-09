@@ -125,16 +125,13 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  OperationResult result;
-
   try {
-    result = trx.insert("log", body.slice(), _options);
+    OperationResult result = trx.insert("log", body.slice(), _options);
+    res = trx.finish(result.result);
   } catch (std::exception const& e) {
     LOG_TOPIC("ec1ca", ERR, Logger::AGENCY) << "Failed to persist log entry:" << e.what();
     return false;
   }
-
-  res = trx.finish(result.result);
 
   LOG_TOPIC("e0321", TRACE, Logger::AGENCY)
       << "persist done index=" << index << " term=" << term
@@ -207,16 +204,18 @@ bool State::persistConf(index_t index, term_t term, uint64_t millis,
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  OperationResult logResult, confResult;
   try {
-    logResult = trx.insert("log", log.slice(), _options);
-    confResult = trx.replace("configuration", configuration.slice(), _options);
+    OperationResult logResult = trx.insert("log", log.slice(), _options);
+    if (logResult.fail()) {
+      THROW_ARANGO_EXCEPTION(logResult.result);
+    }
+    OperationResult confResult =
+        trx.replace("configuration", configuration.slice(), _options);
+    res = trx.finish(confResult.result);
   } catch (std::exception const& e) {
-    LOG_TOPIC("ced35", ERR, Logger::AGENCY) << "Failed to persist log entry:" << e.what();
+    LOG_TOPIC("ced35", ERR, Logger::AGENCY) << "Failed to persist log entry: " << e.what();
     return false;
   }
-
-  res = trx.finish(confResult.result);
 
   // Successful persistence affects local configuration ------------------------
   if (res.ok()) {
@@ -294,10 +293,21 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
                               term_t term, uint64_t millis, std::string const& clientId,
                               bool leading, bool reconfiguration) {
   _logLock.assertLockedByCurrentThread();
-
-  auto byteSize = slice.byteSize();
-  auto buf = std::make_shared<Buffer<uint8_t>>();
-  buf->append((char const*)slice.begin(), byteSize);
+  
+  // verbose logging for all agency operations
+  // there are two different log levels in use here for the AGENCYSTORE topic
+  // - DEBUG: will log writes only on the leader
+  // - TRACE: will log writes on both leaders and followers
+  // the default log level for the AGENCYSTORE topic is WARN
+  if (leading) {
+    LOG_TOPIC("b578f", DEBUG, Logger::AGENCYSTORE)
+        << "leader: true, client: " << clientId << ", index: " << idx << ", term: " << term
+        << ", data: " << slice.toJson();
+  } else {
+    LOG_TOPIC("f586f", TRACE, Logger::AGENCYSTORE)
+        << "leader: false, client: " << clientId << ", index: " << idx << ", term: " << term
+        << ", data: " << slice.toJson();
+  }
 
   bool success = reconfiguration ? persistConf(idx, term, millis, slice, clientId)
     : persist(idx, term, millis, slice, clientId);
@@ -307,8 +317,12 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
       << "RAFT member fails to persist log entries!";
     FATAL_ERROR_EXIT();
   }
+  
+  auto byteSize = slice.byteSize();
+  auto buf = std::make_shared<Buffer<uint8_t>>(byteSize);
+  buf->append(slice.begin(), byteSize);
 
-  logEmplaceBackNoLock(log_t(idx, term, buf, clientId, millis));
+  logEmplaceBackNoLock(log_t(idx, term, std::move(buf), clientId, millis));
   _log_size += byteSize;
 
   return _log.back().index;
@@ -316,7 +330,6 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
 
 
 void State::logEmplaceBackNoLock(log_t&& l) {
-
   if (!l.clientId.empty()) {
     try {
       _clientIdLookupTable.emplace(  // keep track of client or die
@@ -327,7 +340,7 @@ void State::logEmplaceBackNoLock(log_t&& l) {
       FATAL_ERROR_EXIT();
     }
   }
-
+  
   try {
     _log.emplace_back(std::forward<log_t>(l));  // log to RAM or die
   } catch (std::bad_alloc const&) {
@@ -335,7 +348,6 @@ void State::logEmplaceBackNoLock(log_t&& l) {
       << "RAFT member fails to allocate volatile log entries!";
     FATAL_ERROR_EXIT();
   }
-
 }
 
 /// Log transactions (follower)
@@ -1016,7 +1028,6 @@ bool State::loadOrPersistConfiguration() {
     auto ctx = std::make_shared<transaction::StandaloneContext>(*_vocbase);
     SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
     Result res = trx.begin();
-    OperationResult result;
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -1030,14 +1041,13 @@ bool State::loadOrPersistConfiguration() {
     }
 
     try {
-      result = trx.insert("configuration", doc.slice(), _options);
+      OperationResult result = trx.insert("configuration", doc.slice(), _options);
+      res = trx.finish(result.result);
     } catch (std::exception const& e) {
       LOG_TOPIC("4384a", ERR, Logger::AGENCY)
           << "Failed to persist configuration entry:" << e.what();
       FATAL_ERROR_EXIT();
     }
-
-    res = trx.finish(result.result);
 
     LOG_TOPIC("c5d88", DEBUG, Logger::AGENCY)
         << "Persisted configuration: " << doc.slice().toJson();
@@ -1335,9 +1345,8 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    OperationResult result;
     try {
-      result = trx.insert("compact", store.slice(), _options);
+      OperationResult result = trx.insert("compact", store.slice(), _options);
       if (!result.ok()) {
         if (result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
           LOG_TOPIC("b1b55", DEBUG, Logger::AGENCY)
@@ -1350,13 +1359,12 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
           FATAL_ERROR_EXIT();
         }
       }
+      res = trx.finish(result.result);
     } catch (std::exception const& e) {
       LOG_TOPIC("41965", FATAL, Logger::AGENCY)
         << "Failed to persist compacted agency state: " << e.what();
       FATAL_ERROR_EXIT();
     }
-
-    res = trx.finish(result.result);
 
     if (res.ok()) {
       _lastCompactionAt = cind;

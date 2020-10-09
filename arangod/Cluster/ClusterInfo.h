@@ -41,6 +41,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/AgencyCallback.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
@@ -91,10 +92,10 @@ class CollectionWatcher {
     // Make sure we did not miss a callback
     _agencyCallback->refetchAndUpdate(true, false);
     return _present.load();
-  };
+  }
 
-private:
-  AgencyCallbackRegistry *_agencyCallbackRegistry;
+ private:
+  AgencyCallbackRegistry* _agencyCallbackRegistry;
   std::shared_ptr<AgencyCallback> _agencyCallback;
 
   // TODO: this does not really need to be atomic: We only write to it
@@ -353,7 +354,7 @@ class ClusterInfo final {
     std::shared_ptr<LogicalCollection> collection;
   };
   typedef std::unordered_map<CollectionID, CollectionWithHash> DatabaseCollections;
-  typedef std::unordered_map<DatabaseID, DatabaseCollections> AllCollections;
+  typedef std::unordered_map<DatabaseID, std::shared_ptr<DatabaseCollections>> AllCollections;
   typedef std::unordered_map<CollectionID, std::shared_ptr<CollectionInfoCurrent>> DatabaseCollectionsCurrent;
   typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent> AllCollectionsCurrent;
 
@@ -451,6 +452,9 @@ public:
 
   /// @brief produces an agency dump and logs it
   void logAgencyDump() const;
+
+  /// @brief get database cache
+  VPackBuilder toVelocyPack();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get a number of cluster-wide unique IDs, returns the first
@@ -551,11 +555,11 @@ public:
 
   TEST_VIRTUAL std::shared_ptr<LogicalCollection> getCollectionNT(DatabaseID const&,
                                                                   CollectionID const&);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection or a view
   /// If it is not found in the cache, the cache is reloaded once. The second
-  /// argument can be a collection ID or a collection name (both cluster-wide) 
+  /// argument can be a collection ID or a collection name (both cluster-wide)
   /// or a view ID or name.
   /// will not throw but return nullptr if the collection/view isn't found.
   //////////////////////////////////////////////////////////////////////////////
@@ -900,6 +904,8 @@ public:
 
   std::shared_ptr<VPackBuilder> getPlan();
   std::shared_ptr<VPackBuilder> getPlan(uint64_t& planIndex);
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
+    getPlan(uint64_t& planIndex, std::unordered_set<std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Current" structure
@@ -907,6 +913,8 @@ public:
 
   std::shared_ptr<VPackBuilder> getCurrent();
   std::shared_ptr<VPackBuilder> getCurrent(uint64_t& currentIndex);
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
+    getCurrent(uint64_t& currentIndex, std::unordered_set<std::string> const&);
 
   std::vector<std::string> getFailedServers() {
     MUTEX_LOCKER(guard, _failedServersMutex);
@@ -1012,7 +1020,8 @@ public:
   void buildFinalSlice(CreateDatabaseInfo const& database,
                          VPackBuilder& builder);
 
-  Result waitForDatabaseInCurrent(CreateDatabaseInfo const& database);
+  Result waitForDatabaseInCurrent(
+    CreateDatabaseInfo const& database, AgencyWriteTransaction const& trx);
   void loadClusterId();
 
   void triggerWaiting(
@@ -1108,8 +1117,8 @@ public:
   std::unordered_map<ServerShortID, ServerID> _coordinatorIdMap;
   ProtectionData _mappingsProt;
 
-  std::shared_ptr<VPackBuilder> _plan;
-  std::shared_ptr<VPackBuilder> _current;
+  std::unordered_map<DatabaseID, std::shared_ptr<VPackBuilder>> _plan;
+  std::unordered_map<DatabaseID, std::shared_ptr<VPackBuilder>> _current;
 
   std::string _clusterId;
 
@@ -1227,16 +1236,16 @@ public:
 
   /// @brief histogram for loadPlan runtime
   Histogram<log_scale_t<float>>& _lpTimer;
-  
+
   /// @brief total time for loadPlan runtime
   Counter& _lpTotal;
-  
+
   /// @brief histogram for loadCurrent runtime
   Histogram<log_scale_t<float>>& _lcTimer;
-  
+
   /// @brief total time for loadCurrent runtime
   Counter& _lcTotal;
-    
+
 };
 
 namespace cluster {

@@ -175,9 +175,9 @@ RestStatus RestWalAccessHandler::execute() {
     return RestStatus::DONE;
   }
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
-  WalAccess const* wal = engine->walAccess();
+  TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  WalAccess const* wal = engine.walAccess();
   TRI_ASSERT(wal != nullptr);
 
   if (suffixes[0] == "range" && _request->requestType() == RequestType::GET) {

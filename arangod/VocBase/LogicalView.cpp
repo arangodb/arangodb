@@ -423,9 +423,9 @@ Result LogicalView::rename(std::string&& newName) {
                         "invalid builder provided for LogicalView definition"));
     }
 
-    auto* engine = EngineSelectorFeature::ENGINE;
-
-    if (!engine) {
+    auto& server = view.vocbase().server();
+    if (!server.hasFeature<EngineSelectorFeature>() ||
+        !server.getFeature<EngineSelectorFeature>().selected()) {
       return Result(TRI_ERROR_INTERNAL,
                     std::string("failed to find a storage engine while "
                                 "querying definition of view '") +
