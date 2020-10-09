@@ -1,6 +1,12 @@
 v3.6.7.1 (2020-10-03)
 ---------------------
 
+* Added configuration option `--query.tracking-slow-queries` to decide whether
+  slow queries are tracked extra.
+
+* Added configuration option `--query.tracking-with-querystring` to decide whether
+  the query string is shown.
+
 * Fixed a bug in handling of followers which refuse to replicate operations.
   In the case that the follower has simply been dropped in the meantime, we now
   avoid an error reported by the shard leader.
