@@ -1,6 +1,12 @@
 v3.6.8 (XXXX-XX-XX)
 -------------------
 
+* Added configuration option `--query.tracking-slow-queries` to decide whether
+  slow queries are tracked extra.
+
+* Added configuration option `--query.tracking-with-querystring` to decide whether
+  the query string is shown.
+
 * Added configuration option `--rocksdb.sync-delay-threshold`.
   This option can be used to track if any RocksDB WAL sync operations is 
   delayed by more than the configured value (in milliseconds). The intention
