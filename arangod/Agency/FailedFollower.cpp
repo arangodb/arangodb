@@ -26,6 +26,7 @@
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
+#include "Basics/StaticStrings.h"
 
 using namespace arangodb::consensus;
 
