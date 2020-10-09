@@ -7150,6 +7150,10 @@ TEST_F(IResearchFilterFunctionTest, GeoIntersects) {
       vocbase(),
       R"(FOR d IN myView FILTER GEO_INTERSECTS([ 1, 2 ], d['name']) RETURN d)",
       expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_INTERSECTS(d.name, GEO_POINT(1, 2)) RETURN d)",
+      expected, &ExpressionContextMock::EMPTY);
   }
 
   {
@@ -7164,22 +7168,26 @@ TEST_F(IResearchFilterFunctionTest, GeoIntersects) {
     opts->prefix = "";
     ASSERT_TRUE(opts->shape.parseCoordinates(json->slice(), true).ok());
 
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("lat", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 2 }));
+    ctx.vars.emplace("lng", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 1 }));
+
     assertFilterSuccess(
       vocbase(),
-      R"(FOR d IN myView FILTER BOOST(GEO_INTERSECTS(d.name, { "type": "Point", "coordinates": [ 1, 2 ] }), 1.5) RETURN d)",
-      expected);
+      R"(FOR d IN myView FILTER BOOST(GEO_INTERSECTS(d[_FORWARD_('name')], { "type": "Point", "coordinates": [ 1, 2 ] }), 1.5) RETURN d)",
+      expected, &ctx);
     assertFilterSuccess(
       vocbase(),
       R"(FOR d IN myView FILTER BOOST(GEO_INTERSECTS({ "type": "Point", "coordinates": [ 1, 2 ] }, d.name), 1.5) RETURN d)",
       expected);
     assertFilterSuccess(
       vocbase(),
-      R"(FOR d IN myView FILTER BOOST(GEO_INTERSECTS(d['name'],  [ 1, 2 ] ), 1.5) RETURN d)",
-      expected);
+      R"(LET lng=1 LET lat=2 FOR d IN myView FILTER BOOST(GEO_INTERSECTS(d['name'], [lng, lat] ), 1.5) RETURN d)",
+      expected, &ctx);
     assertFilterSuccess(
       vocbase(),
-      R"(FOR d IN myView FILTER booSt(GEO_INTERSECTS([ 1, 2 ], d['name']), 1.5) RETURN d)",
-      expected);
+      R"(LET lng=1 LET lat=2 FOR d IN myView FILTER booSt(GEO_INTERSECTS([ lng, lat ], d['name']), 1.5) RETURN d)",
+      expected, &ctx);
   }
 
   // wrong number of arguments
@@ -7189,6 +7197,11 @@ TEST_F(IResearchFilterFunctionTest, GeoIntersects) {
   assertFilterParseFail(
       vocbase(),
       R"(FOR d IN myView FILTER GEO_INTERSECTS(d['name'], [ 1, 2 ], null) RETURN d)");
+
+  // non-deterministic arg
+  assertFilterParseFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_INTERSECTS(d['name'], RAND() > 0.5 ? [ 1, 2 ] : [2 : 1]) RETURN d)");
 
   // wrong first arg type
   assertFilterFail(
@@ -7246,16 +7259,31 @@ TEST_F(IResearchFilterFunctionTest, GeoContains) {
     opts->prefix = "";
     ASSERT_TRUE(opts->shape.parseCoordinates(json->slice(), true).ok());
 
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("lat", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 2 }));
+    ctx.vars.emplace("lng", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 1 }));
+
     assertFilterSuccess(
       vocbase(),
       R"(FOR d IN myView FILTER GEO_CONTAINS(d.name, { "type": "Point", "coordinates": [ 1, 2 ] }) RETURN d)",
       expected);
     assertFilterSuccess(
       vocbase(),
+      R"(FOR d IN myView FILTER GEO_CONTAINS(d.name, GEO_POINT(1, 2)) RETURN d)",
+      expected, &ctx);
+    assertFilterSuccess(
+      vocbase(),
+      R"(LET lng = 1 LET lat = 2 FOR d IN myView FILTER GEO_CONTAINS(d.name, GEO_POINT(lng, lat)) RETURN d)",
+      expected, &ctx);
+    assertFilterSuccess(
+      vocbase(),
       R"(FOR d IN myView FILTER GEO_CONTAINS(d['name'],  [ 1, 2 ] ) RETURN d)",
       expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(LET lat = 2 LET lng = 1 FOR d IN myView FILTER GEO_CONTAINS(d['name'],  [ lng, lat ] ) RETURN d)",
+      expected, &ctx);
   }
-
 
   {
     auto json = VPackParser::fromJson(R"([ 1, 2 ])");
@@ -7329,6 +7357,11 @@ TEST_F(IResearchFilterFunctionTest, GeoContains) {
     vocbase(),
     R"(FOR d IN myView FILTER GEO_CONTAINS(d['name'], [ 1, 2 ], null) RETURN d)");
 
+  // non-deterministic arg
+  assertFilterParseFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_CONTAINS(d['name'], RAND() > 0.5 ? [ 1, 2 ] : [2 : 1]) RETURN d)");
+
   // wrong first arg type
   assertFilterFail(
     vocbase(),
@@ -7372,3 +7405,26 @@ TEST_F(IResearchFilterFunctionTest, GeoContains) {
     vocbase(),
     R"(FOR d IN myView FILTER GEO_CONTAINS(d['name'], {foo:[1,2]}) RETURN d)");
 }
+
+//TEST_F(IResearchFilterFunctionTest, GeoDistance) {
+//  {
+//    auto json = VPackParser::fromJson(R"([ 1, 2 ])");
+//
+//    irs::Or expected;
+//    auto& filter = expected.add<arangodb::iresearch::GeoFilter>();
+//    *filter.mutable_field() = mangleStringIdentity("name");
+//    auto* opts = filter.mutable_options();
+//    opts->type = arangodb::iresearch::GeoFilterType::IS_CONTAINED;
+//    opts->prefix = "";
+//    ASSERT_TRUE(opts->shape.parseCoordinates(json->slice(), true).ok());
+//
+//    assertFilterSuccess(
+//      vocbase(),
+//      R"(FOR d IN myView FILTER GEO_CONTAINS(d.name, { "type": "Point", "coordinates": [ 1, 2 ] }) RETURN d)",
+//      expected);
+//    assertFilterSuccess(
+//      vocbase(),
+//      R"(FOR d IN myView FILTER GEO_CONTAINS(d['name'],  [ 1, 2 ] ) RETURN d)",
+//      expected);
+//  }
+//}
