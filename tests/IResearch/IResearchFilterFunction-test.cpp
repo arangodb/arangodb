@@ -56,6 +56,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/ExpressionFilter.h"
+#include "IResearch/GeoFilter.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -7119,5 +7120,116 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
   assertFilterFail(
     vocbase(),
     "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, RAND() ? 'identity' : 'test_analyzer') RETURN d");
+}
 
+TEST_F(IResearchFilterFunctionTest, GeoIntersects) {
+  {
+    auto json = VPackParser::fromJson(R"([ 1, 2 ])");
+
+    irs::Or expected;
+    auto& filter = expected.add<arangodb::iresearch::GeoFilter>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->type = arangodb::iresearch::GeoFilterType::INTERSECTS;
+    opts->prefix = "";
+    ASSERT_TRUE(opts->shape.parseCoordinates(json->slice(), true).ok());
+
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_INTERSECTS(d.name, { "type": "Point", "coordinates": [ 1, 2 ] }) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_INTERSECTS({ "type": "Point", "coordinates": [ 1, 2 ] }, d.name) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_INTERSECTS(d['name'],  [ 1, 2 ] ) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_INTERSECTS([ 1, 2 ], d['name']) RETURN d)",
+      expected);
+  }
+
+  {
+    auto json = VPackParser::fromJson(R"([ 1, 2 ])");
+
+    irs::Or expected;
+    auto& filter = expected.add<arangodb::iresearch::GeoFilter>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    filter.boost(1.5);
+    auto* opts = filter.mutable_options();
+    opts->type = arangodb::iresearch::GeoFilterType::INTERSECTS;
+    opts->prefix = "";
+    ASSERT_TRUE(opts->shape.parseCoordinates(json->slice(), true).ok());
+
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER BOOST(GEO_INTERSECTS(d.name, { "type": "Point", "coordinates": [ 1, 2 ] }), 1.5) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER BOOST(GEO_INTERSECTS({ "type": "Point", "coordinates": [ 1, 2 ] }, d.name), 1.5) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER BOOST(GEO_INTERSECTS(d['name'],  [ 1, 2 ] ), 1.5) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER booSt(GEO_INTERSECTS([ 1, 2 ], d['name']), 1.5) RETURN d)",
+      expected);
+  }
+
+  // wrong number of arguments
+  assertFilterParseFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_INTERSECTS(d.name) RETURN d)");
+  assertFilterParseFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_INTERSECTS(d['name'], [ 1, 2 ], null) RETURN d)");
+
+  // wrong first arg type
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_INTERSECTS(d[*],  [ 1, 2 ] ) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_INTERSECTS([1, 2],  [ 1, 2 ] ) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_INTERSECTS(1,  [ 1, 2 ] ) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_INTERSECTS('[1,2]',  [ 1, 2 ] ) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_INTERSECTS(null,  [ 1, 2 ] ) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_INTERSECTS(['1', '2'],  [ 1, 2 ] ) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_INTERSECTS({ "type": "Point", "coordinates": [ 1, 2 ] },  [ 1, 2 ] ) RETURN d)");
+
+  // wrong second arg
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_INTERSECTS(d['name'], [ '1', '2' ] ) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_INTERSECTS(d['name'], 1 ) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_INTERSECTS(d['name'], '[1,2]') RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_INTERSECTS(d['name'], true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_INTERSECTS(d['name'], null) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_INTERSECTS(d['name'], {foo:[1,2]}) RETURN d)");
 }
