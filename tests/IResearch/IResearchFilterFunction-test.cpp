@@ -7233,3 +7233,142 @@ TEST_F(IResearchFilterFunctionTest, GeoIntersects) {
     vocbase(),
     R"(FOR d IN myView FILTER GEO_INTERSECTS(d['name'], {foo:[1,2]}) RETURN d)");
 }
+
+TEST_F(IResearchFilterFunctionTest, GeoContains) {
+  {
+    auto json = VPackParser::fromJson(R"([ 1, 2 ])");
+
+    irs::Or expected;
+    auto& filter = expected.add<arangodb::iresearch::GeoFilter>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->type = arangodb::iresearch::GeoFilterType::IS_CONTAINED;
+    opts->prefix = "";
+    ASSERT_TRUE(opts->shape.parseCoordinates(json->slice(), true).ok());
+
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_CONTAINS(d.name, { "type": "Point", "coordinates": [ 1, 2 ] }) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_CONTAINS(d['name'],  [ 1, 2 ] ) RETURN d)",
+      expected);
+  }
+
+
+  {
+    auto json = VPackParser::fromJson(R"([ 1, 2 ])");
+
+    irs::Or expected;
+    auto& filter = expected.add<arangodb::iresearch::GeoFilter>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->type = arangodb::iresearch::GeoFilterType::CONTAINS;
+    opts->prefix = "";
+    ASSERT_TRUE(opts->shape.parseCoordinates(json->slice(), true).ok());
+
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_CONTAINS({ "type": "Point", "coordinates": [ 1, 2 ] }, d.name) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_CONTAINS([ 1, 2 ], d['name']) RETURN d)",
+      expected);
+  }
+
+  {
+    auto json = VPackParser::fromJson(R"([ 1, 2 ])");
+
+    irs::Or expected;
+    auto& filter = expected.add<arangodb::iresearch::GeoFilter>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    filter.boost(1.5);
+    auto* opts = filter.mutable_options();
+    opts->type = arangodb::iresearch::GeoFilterType::IS_CONTAINED;
+    opts->prefix = "";
+    ASSERT_TRUE(opts->shape.parseCoordinates(json->slice(), true).ok());
+
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER BOOST(GEO_CONTAINS(d.name, { "type": "Point", "coordinates": [ 1, 2 ] }), 1.5) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER BOOST(GEO_CONTAINS(d['name'],  [ 1, 2 ] ), 1.5) RETURN d)",
+      expected);
+  }
+
+  {
+    auto json = VPackParser::fromJson(R"([ 1, 2 ])");
+
+    irs::Or expected;
+    auto& filter = expected.add<arangodb::iresearch::GeoFilter>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    filter.boost(1.5);
+    auto* opts = filter.mutable_options();
+    opts->type = arangodb::iresearch::GeoFilterType::CONTAINS;
+    opts->prefix = "";
+    ASSERT_TRUE(opts->shape.parseCoordinates(json->slice(), true).ok());
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER BOOST(GEO_CONTAINS({ "type": "Point", "coordinates": [ 1, 2 ] }, d.name), 1.5) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER booSt(GEO_CONTAINS([ 1, 2 ], d['name']), 1.5) RETURN d)",
+      expected);
+  }
+
+  // wrong number of arguments
+  assertFilterParseFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_CONTAINS(d.name) RETURN d)");
+  assertFilterParseFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_CONTAINS(d['name'], [ 1, 2 ], null) RETURN d)");
+
+  // wrong first arg type
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_CONTAINS(d[*],  [ 1, 2 ] ) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_CONTAINS([1, 2],  [ 1, 2 ] ) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_CONTAINS(1,  [ 1, 2 ] ) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_CONTAINS('[1,2]',  [ 1, 2 ] ) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_CONTAINS(null,  [ 1, 2 ] ) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_CONTAINS(['1', '2'],  [ 1, 2 ] ) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_CONTAINS({ "type": "Point", "coordinates": [ 1, 2 ] },  [ 1, 2 ] ) RETURN d)");
+
+  // wrong second arg
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_CONTAINS(d['name'], [ '1', '2' ] ) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_CONTAINS(d['name'], 1 ) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_CONTAINS(d['name'], '[1,2]') RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_CONTAINS(d['name'], true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_CONTAINS(d['name'], null) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_CONTAINS(d['name'], {foo:[1,2]}) RETURN d)");
+}
