@@ -1,8 +1,8 @@
 
 @startDocuBlock put_admin_compact
-@brief compact entire database
+@brief compact all databases
 
-@RESTHEADER{PUT /_admin/compact, Compact the entire database data, RestCompactHandler}
+@RESTHEADER{PUT /_admin/compact, Compact the entire database system data, RestCompactHandler}
 
 @HINTS
 {% hint 'warning' %}
