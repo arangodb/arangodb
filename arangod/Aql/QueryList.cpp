@@ -64,8 +64,9 @@ QueryList::QueryList(QueryRegistryFeature& feature, TRI_vocbase_t*)
       _current(),
       _slow(),
       _slowCount(0),
-      _enabled(feature.trackSlowQueries()),
-      _trackSlowQueries(feature.trackSlowQueries()),
+      _enabled(feature.trackingEnabled()),
+      _trackSlowQueries(_enabled && feature.trackSlowQueries()),
+      _trackQueryString(feature.trackQueryString()),
       _trackBindVars(feature.trackBindVars()),
       _slowQueryThreshold(feature.slowQueryThreshold()),
       _slowStreamingQueryThreshold(feature.slowStreamingQueryThreshold()),
@@ -77,7 +78,7 @@ QueryList::QueryList(QueryRegistryFeature& feature, TRI_vocbase_t*)
 /// @brief insert a query
 bool QueryList::insert(Query* query) {
   // not enable or no query string
-  if (!_enabled || query == nullptr || query->queryString().empty()) {
+  if (!enabled() || query == nullptr || query->queryString().empty()) {
     return false;
   }
 
@@ -122,7 +123,7 @@ void QueryList::remove(Query* query) {
   bool const isStreaming = query->queryOptions().stream;
   double threshold = (isStreaming ? _slowStreamingQueryThreshold : _slowQueryThreshold);
 
-  if (!_trackSlowQueries || threshold < 0.0) {
+  if (!trackSlowQueries() || threshold < 0.0) {
     return;
   }
 
@@ -140,7 +141,12 @@ void QueryList::remove(Query* query) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
-      std::string q = extractQueryString(query, _maxQueryStringLength);
+      std::string q;
+      if (trackQueryString()) {
+        q = extractQueryString(query, _maxQueryStringLength);
+      } else {
+        q = "<hidden>";
+      }
 
       QueryProfile* profile = query->profile();
       double loadTime = 0.0;

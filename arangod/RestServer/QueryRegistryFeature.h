@@ -29,6 +29,10 @@
 
 namespace arangodb {
 
+enum class QueryTrackingMode {
+  Off, NoBindvars, Verbose
+};
+
 class QueryRegistryFeature final : public application_features::ApplicationFeature {
  public:
   static aql::QueryRegistry* registry() {
@@ -45,7 +49,9 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void stop() override final;
   void unprepare() override final;
 
+  bool trackingEnabled() const { return _trackingEnabled; }
   bool trackSlowQueries() const { return _trackSlowQueries; }
+  bool trackQueryString() const { return _trackQueryString; }
   bool trackBindVars() const { return _trackBindVars; }
   double slowQueryThreshold() const { return _slowQueryThreshold; }
   double slowStreamingQueryThreshold() const {
@@ -62,7 +68,9 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void trackSlowQuery() { ++_slowQueriesCounter; }
 
  private:
+  bool _trackingEnabled;
   bool _trackSlowQueries;
+  bool _trackQueryString;
   bool _trackBindVars;
   bool _failOnWarning;
   bool _queryCacheIncludeSystem;
