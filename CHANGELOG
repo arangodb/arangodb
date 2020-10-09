@@ -1,3 +1,12 @@
+v3.6.7.2 (XXXX-XX-XX)
+---------------------
+
+* Fixed handling of failoverCandidates. Sometimes, a server can still be a
+  failoverCandidate even though it has been taken out of the Plan. With this
+  fix, such a server is quickly taken out of failoverCandidates and it can never
+  be re-added to the Plan before this has happened.
+
+
 v3.6.7.1 (2020-10-03)
 ---------------------
 
