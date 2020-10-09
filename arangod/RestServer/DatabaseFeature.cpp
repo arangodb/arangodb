@@ -244,7 +244,7 @@ void DatabaseManagerThread::run() {
 
 namespace {
   arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(application_features::ApplicationServer& server) {
-    arangodb::CreateDatabaseInfo info(server);
+    arangodb::CreateDatabaseInfo info(server, ExecContext::current());
     auto rv = info.load("_expression_vocbase", std::numeric_limits<uint64_t>::max());
     return info;
   }

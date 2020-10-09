@@ -107,6 +107,7 @@ static constexpr frozen::map<irs::string_ref, irs::string_ref, 13> STATIC_ANALYZ
 REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(GeoJSONAnalyzer, GeoJSONAnalyzer::make, GeoJSONAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(GeoPointAnalyzer, GeoPointAnalyzer::make, GeoPointAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(CalculationAnalyzer, CalculationAnalyzer::make, CalculationAnalyzer::normalize);
 
 bool normalize(std::string& out,
                irs::string_ref const& type,
@@ -2662,7 +2663,8 @@ void IResearchAnalyzerFeature::prepare() {
 
   // load all static analyzers
   _analyzers = getStaticAnalyzers();
-  calculation_vpack::CalculationAnalyzer::DB_FEATURE = &server().getFeature<arangodb::DatabaseFeature>();
+  //TODO: remove kludge!
+  CalculationAnalyzer::DB_FEATURE = &server().getFeature<arangodb::DatabaseFeature>();
 }
 
 Result IResearchAnalyzerFeature::removeFromCollection(irs::string_ref const& name, irs::string_ref const& vocbase) {

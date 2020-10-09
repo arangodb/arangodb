@@ -56,7 +56,7 @@ using namespace arangodb::velocypack::deserializer;
 constexpr const char QUERY_STRING_PARAM_NAME[] = "queryString";
 constexpr const char COLLAPSE_ARRAY_POSITIONS_PARAM_NAME[] = "collapseArrayPos";
 constexpr const char DISCARD_NULLS_PARAM_NAME[] = "discardNulls";
-using Options = arangodb::iresearch::calculation_vpack::CalculationAnalyzer::options_t;
+using Options = arangodb::iresearch::CalculationAnalyzer::options_t;
 
 struct OptionsValidator {
   std::optional<deserialize_error> operator()(Options const& opts) const {
@@ -67,8 +67,11 @@ struct OptionsValidator {
   }
 };
 
+
+using non_empty_string = validate<values::value_deserializer<std::string>, utilities::not_empty_validator>;
+
 using OptionsDeserializer = utilities::constructing_deserializer<Options, parameter_list<
-  factory_simple_parameter<QUERY_STRING_PARAM_NAME, std::string, true>,
+  factory_deserialized_parameter<QUERY_STRING_PARAM_NAME, values::value_deserializer<std::string>, true>,
   factory_simple_parameter<COLLAPSE_ARRAY_POSITIONS_PARAM_NAME, bool, false, values::numeric_value<bool, false>>,
   factory_simple_parameter<DISCARD_NULLS_PARAM_NAME, bool, false, values::numeric_value<bool, true>>
   >>;
@@ -79,31 +82,46 @@ using ValidatingOptionsDeserializer = validate<OptionsDeserializer, OptionsValid
 
 namespace arangodb {
 namespace iresearch {
-namespace calculation_vpack {
 
 arangodb::DatabaseFeature* CalculationAnalyzer::DB_FEATURE;
 
-bool CalculationAnalyzer::parse_options(VPackSlice const& slice, options_t& options) {
-  if (slice.isObject()) {
-
+bool CalculationAnalyzer::parse_options(const irs::string_ref& args, options_t& options) {
+  auto const slice = arangodb::iresearch::slice(args);
+  auto const res = deserialize<ValidatingOptionsDeserializer>(slice);
+  if (!res.ok()) {
+    LOG_TOPIC("4349c", WARN, arangodb::iresearch::TOPIC) <<
+      "Failed to deserialize options from JSON while constructing '"
+      << type_name() << "' analyzer, error: '"
+      << res.error().message << "'";
+    return false;
   }
-  else {
-    IR_FRMT_ERROR("Non object passsed as calculation analyzer options, args:%s",
-      slice.toString().c_str());
+  options = res.get();
+  return true;
+}
+
+/*static*/ bool CalculationAnalyzer::normalize(const irs::string_ref& args, std::string& out) {
+  options_t options;
+  if (parse_options(args, options)) {
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder root(&builder);
+      builder.add(QUERY_STRING_PARAM_NAME, VPackValue(options.queryString));
+      builder.add(COLLAPSE_ARRAY_POSITIONS_PARAM_NAME, VPackValue(options.collapseArrayPositions));
+      builder.add(DISCARD_NULLS_PARAM_NAME, VPackValue(options.discardNulls));
+    }
+    out.resize(builder.slice().byteSize());
+    std::memcpy(&out[0], builder.slice().begin(), out.size());
+    return true;
   }
   return false;
 }
 
-inline bool CalculationAnalyzer::normalize(const irs::string_ref&, std::string& out) {
-  out.resize(VPackSlice::emptyObjectSlice().byteSize());
-  std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
-  return true;
-}
-
-inline irs::analysis::analyzer::ptr CalculationAnalyzer::make(irs::string_ref const&) {
-  // TODO: implement parsing
-  options_t temp;
-  return std::make_shared<CalculationAnalyzer>(temp);
+/*static*/ irs::analysis::analyzer::ptr CalculationAnalyzer::make(irs::string_ref const& args) {
+  options_t options;
+  if (parse_options(args, options)) {
+    return std::make_shared<CalculationAnalyzer>(options);
+  }
+  return nullptr;
 }
 
 inline bool CalculationAnalyzer::next() {
@@ -140,16 +158,12 @@ inline bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
 
   _query = std::make_unique<arangodb::aql::Query>(
     std::make_shared<arangodb::transaction::StandaloneContext>(DB_FEATURE->getExpressionVocbase()),
-    arangodb::aql::QueryString("RETURN SOUNDEX(@field)"),
+    arangodb::aql::QueryString(_options.queryString),
     vPackArgs, nullptr);
   _query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
   _query->execute(_queryResult);
   _has_data = true;
   return _queryResult.ok();
 }
-
-REGISTER_ANALYZER_VPACK(CalculationAnalyzer, CalculationAnalyzer::make,
-  CalculationAnalyzer::normalize);
-} // calculation_vpack
 } // iresearch
 } // arangodb

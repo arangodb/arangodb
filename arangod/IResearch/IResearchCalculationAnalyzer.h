@@ -28,27 +28,18 @@
 
 #include <string>
 
-namespace iresearch {
-namespace text_format {
-  struct vpack {
-    static constexpr irs::string_ref type_name() noexcept {
-      return "vpack";
-    }
-  };
-} // iresearch
-} // text_format
-
-  // TODO: remove me!
-#define REGISTER_ANALYZER_VPACK(analyzer_name, factory, normalizer) \
-  REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::vpack, factory, normalizer)
-
 namespace arangodb {
 namespace iresearch {
-namespace calculation_vpack {
 
 class CalculationAnalyzer final : public irs::analysis::analyzer{
  public:
   struct options_t {
+    options_t() = default;
+
+    options_t(std::string&& query, bool collapse, bool discard)
+      : queryString(query), collapseArrayPositions(collapse),
+      discardNulls(discard) {}
+
     /// @brief Query string to be executed for each document.
     /// Field value is set with @param binded parameter.
     std::string queryString;
@@ -63,18 +54,14 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
     bool discardNulls{ true };
   };
 
-  static bool parse_options(VPackSlice const& slice, options_t& options);
-
-
-  static arangodb::DatabaseFeature* DB_FEATURE; // FIXME: implement properly. Just needed for expression db
+  static bool parse_options(const irs::string_ref& args, options_t& options);
 
   static constexpr irs::string_ref type_name() noexcept {
     return "calculation";
   }
 
-  static bool normalize(const irs::string_ref& /*args*/, std::string& out);
-
-  static irs::analysis::analyzer::ptr make(irs::string_ref const& /*args*/);
+  static bool normalize(const irs::string_ref& args, std::string& out);
+  static irs::analysis::analyzer::ptr make(irs::string_ref const& args);
 
   CalculationAnalyzer(options_t const& options)
     : irs::analysis::analyzer(irs::type<CalculationAnalyzer>::get()), _options(options) {
@@ -86,13 +73,13 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
     }
 
     return type == irs::type<irs::term_attribute>::id()
-      ? &_term
-      : nullptr;
+      ? &_term : nullptr;
   }
 
   virtual bool next() override;
   virtual bool reset(irs::string_ref const& field) noexcept override;
 
+  static arangodb::DatabaseFeature* DB_FEATURE; // FIXME: implement properly. Just needed for expression db
  private:
   irs::term_attribute _term;
   irs::increment _inc;
@@ -102,8 +89,6 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   std::string _str;
   options_t _options;
 }; // CalculationAnalyzer
-
-}
 }
 }
 
