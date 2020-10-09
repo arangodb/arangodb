@@ -272,6 +272,65 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   return _meta.numberDocuments();
 }
 
+// rescans the collection to update document count
+ResultT<std::uint64_t> RocksDBMetaCollection::recalculateCounts(transaction::Methods& trx) {
+  auto state = RocksDBTransactionState::toState(&trx);
+  RocksDBMethods* mthds = state->rocksdbMethods();
+
+  auto seq = state->sequenceNumber();
+  auto guard = scopeGuard([&] {  // remove blocker afterwards
+    _meta.removeBlocker(state->id());
+  });
+  _meta.placeBlocker(state->id(), seq);
+
+  auto bounds = RocksDBKeyBounds::Empty();
+  bool set = false;
+  {
+    READ_LOCKER(guard, _indexesLock);
+    for (auto it : _indexes) {
+      if (it->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
+        bounds = RocksDBKeyBounds::PrimaryIndex(rix->objectId());
+        set = true;
+        break;
+      }
+    }
+  }
+  if (!set) {
+    return ResultT<std::uint64_t>::error(TRI_ERROR_INTERNAL,
+                                         "did not find primary index");
+  }
+
+  // count documents
+  rocksdb::Slice upper(bounds.end());
+
+  rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
+  ro.prefix_same_as_start = true;
+  ro.iterate_upper_bound = &upper;
+  ro.verify_checksums = false;
+  ro.fill_cache = false;
+
+  rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
+  std::unique_ptr<rocksdb::Iterator> it(mthds->NewIterator(ro, cf));
+  std::int64_t count = 0;
+  std::int64_t snapCount = numberDocuments(&trx);
+
+  for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
+    TRI_ASSERT(it->key().compare(upper) < 0);
+    ++count;
+  }
+
+  int64_t adjustment = count - snapCount;
+  if (adjustment != 0) {
+    LOG_TOPIC("ad6d3", WARN, Logger::REPLICATION)
+        << "inconsistent collection count detected, "
+        << "an offet of " << adjustment << " will be applied";
+    _meta.adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
+  }
+
+  return ResultT<std::uint64_t>::success(static_cast<std::uint64_t>(count));
+}
+
 Result RocksDBMetaCollection::compact() {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::CompactRangeOptions opts;

@@ -46,9 +46,10 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
-#include "Transaction/StandaloneContext.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -208,11 +209,48 @@ static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollect
   return opResult.result;
 }
 
-static arangodb::Result addShardFollower(
-    network::ConnectionPool* pool, std::string const& endpoint,
-    std::string const& database, std::string const& shard, uint64_t lockJobId,
-    std::string const& clientId, SyncerId const syncerId,
-    std::string const& clientInfoString, double timeout = 120.0) {
+arangodb::Result collectionReCount(std::shared_ptr<arangodb::LogicalCollection> const& col,
+                                   uint64_t& c) {
+  std::string collectionName(col->name());
+  auto ctx = std::make_shared<transaction::StandaloneContext>(col->vocbase());
+  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
+
+  Result res = trx.begin();
+  if (res.fail()) {
+    LOG_TOPIC("5be16", ERR, Logger::MAINTENANCE)
+        << "Failed to start count transaction: " << res;
+    return res;
+  }
+
+  ResultT<std::uint64_t> result = col->getPhysical()->recalculateCounts(trx);
+  res = trx.finish(result.result());
+
+  if (result.fail()) {
+    LOG_TOPIC("263d1", ERR, Logger::MAINTENANCE)
+        << "Failed to recalculate count of local collection '" << col->name()
+        << "': " << result.result();
+    return result.result();
+  }
+
+  if (res.fail()) {
+    LOG_TOPIC("263d2", ERR, Logger::MAINTENANCE)
+        << "Failed to finish count transaction for '" << col->name() << "': " << res;
+    return res;
+  }
+
+  c = result.get();
+
+  return result.result();
+}
+
+enum class ChecksumRecalculation { None, Self, Leader };
+
+arangodb::Result addShardFollower(network::ConnectionPool* pool,
+                                  std::string const& endpoint, std::string const& database,
+                                  std::string const& shard, uint64_t lockJobId,
+                                  std::string const& clientId, SyncerId const syncerId,
+                                  std::string const& clientInfoString,
+                                  ChecksumRecalculation recalc, double timeout = 120.0) {
   LOG_TOPIC("b982e", DEBUG, Logger::MAINTENANCE)
       << "addShardFollower: tell the leader to put us into the follower "
          "list...";
@@ -236,12 +274,45 @@ static arangodb::Result addShardFollower(
     }
 
     uint64_t docCount;
-    {
+    if (recalc == ::ChecksumRecalculation::Self) {
+      // recalculate locally
+      Result res = collectionReCount(collection, docCount);
+      if (res.fail()) {
+        return res;
+      }
+    } else {
+      // use cached count
       Result res = collectionCount(collection, docCount);
       if (res.fail()) {
         return res;
       }
     }
+
+    if (recalc == ::ChecksumRecalculation::Leader) {
+      // recalculate on leader
+      network::RequestOptions options;
+      options.database = database;
+      options.timeout = network::Timeout(timeout * 10);  // this can be slow!!!
+      options.skipScheduler = true;  // hack to speed up future.get()
+
+      std::string const url = "/_api/collection/" + collection->name() +
+                              "/recalculateCount?nonBlocking=true";
+
+      auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Put,
+                                           url, VPackBuffer<uint8_t>(), options)
+                          .get();
+      auto result = response.combinedResult();
+
+      if (result.fail()) {
+        std::string const errorMessage =
+            "addShardFollower: could not add us to the leader's follower "
+            "list, error while recalculating count on leader: " +
+            result.errorMessage();
+        LOG_TOPIC("22e0b", WARN, Logger::MAINTENANCE) << errorMessage;
+        return arangodb::Result(result.errorNumber(), errorMessage);
+      }
+    }
+
     VPackBuilder body;
     {
       VPackObjectBuilder b(&body);
@@ -286,17 +357,18 @@ static arangodb::Result addShardFollower(
     auto result = response.combinedResult();
 
     if (result.fail()) {
-      auto const errorMessage =
-          "addShardFollower: could not add us to the leader's follower list. ";
+      std::string const errorMessage =
+          "addShardFollower: could not add us to the leader's follower list";
 
       if (lockJobId != 0) {
         LOG_TOPIC("22e0a", WARN, Logger::MAINTENANCE)
-            << errorMessage << result.errorMessage();
+            << errorMessage << ", " << result.errorMessage();
       } else {
         LOG_TOPIC("abf2e", INFO, Logger::MAINTENANCE)
             << errorMessage << "With shortcut (can happen, no problem).";
       }
-      return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
+      return arangodb::Result(result.errorNumber(),
+                              errorMessage + ", " + result.errorMessage());
     }
 
     LOG_TOPIC("79935", DEBUG, Logger::MAINTENANCE) << "addShardFollower: success";
@@ -829,7 +901,8 @@ bool SynchronizeShard::first() {
         NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
         network::ConnectionPool* pool = nf.pool();
         auto asResult = addShardFollower(pool, ep, database, shard, 0, clientId,
-                                         SyncerId{}, _clientInfoString, 60.0);
+                                         SyncerId{}, _clientInfoString,
+                                         ::ChecksumRecalculation::None, 60.0);
 
         if (asResult.ok()) {
           if (Logger::isEnabled(LogLevel::DEBUG, Logger::MAINTENANCE)) {
@@ -1147,9 +1220,26 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
   NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
-  res = addShardFollower(pool, ep, database, shard, lockJobId, clientId,
-                         syncerId, _clientInfoString, 60.0);
+  res = addShardFollower(pool, ep, database, shard, lockJobId, clientId, syncerId,
+                         _clientInfoString, ::ChecksumRecalculation::None, 60.0);
 
+  // if we get a checksum mismatch, first try to recalculate it locally and then
+  // retry adding as follower
+  if (res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM)) {
+    // recalculate count and try again
+    res = addShardFollower(pool, ep, database, shard, lockJobId, clientId, syncerId,
+                           _clientInfoString, ::ChecksumRecalculation::Self, 60.0);
+  }
+
+  // if we still get a checksum mismatch, now try to recalculate the count on
+  // the leader, then retry to add as follower again
+  if (res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM)) {
+    // recalculate count and try again
+    res = addShardFollower(pool, ep, database, shard, lockJobId, clientId, syncerId,
+                           _clientInfoString, ::ChecksumRecalculation::Leader, 60.0);
+  }
+
+  // no more retrying...
   if (!res.ok()) {
     std::string errorMessage(
       "synchronizeOneshard: error in addShardFollower: ");

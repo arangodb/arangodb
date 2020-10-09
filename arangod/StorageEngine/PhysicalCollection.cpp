@@ -428,6 +428,10 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
   return Result();
 }
 
+ResultT<std::uint64_t> PhysicalCollection::recalculateCounts(transaction::Methods& trx) {
+  return ResultT<std::uint64_t>::error(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 /// @brief new object for remove, must have _key set
 void PhysicalCollection::newObjectForRemove(transaction::Methods*,
                                             VPackSlice const& oldValue,

@@ -26,8 +26,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "RocksDBEngine/RocksDBMetadata.h"
+#include "Cluster/ResultT.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBMetadata.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -67,10 +68,13 @@ class RocksDBMetaCollection : public PhysicalCollection {
   void unlockWrite();
   int lockRead(double timeout = 0.0);
   void unlockRead();
-  
-  /// recalculte counts for collection in case of failure
+
+  /// recalculate counts for collection in case of failure, blocking
   uint64_t recalculateCounts();
-  
+
+  /// recalculate counts for collection in case of failure, non-blocking
+  ResultT<uint64_t> recalculateCounts(transaction::Methods& trx) override;
+
   /// @brief compact-data operation
   /// triggers rocksdb compaction for documentDB and indexes
   Result compact() override final;
