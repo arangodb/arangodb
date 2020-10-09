@@ -254,10 +254,6 @@ bool FailedLeader::start(bool& aborts) {
   for (auto const& id : failoverCands) {
     excludes.push_back(id);
   }
-  LOG_DEVEL << "FailedLeader: shard: " << _shard << " excludes: ";
-  for (auto const& ex : excludes) {
-    LOG_DEVEL << ex;
-  }
 
   // Additional follower, if applicable
   auto additionalFollower = randomIdleAvailableServer(_snapshot, excludes);
@@ -353,8 +349,6 @@ bool FailedLeader::start(bool& aborts) {
       }  // Preconditions -----------------------------------------------------
     }
   }
-
-  LOG_DEVEL << "FailedLeader: Full transaction: " << pending.slice().toJson();
 
   // Abort job blocking server if abortable
   //  (likely to not exist, avoid warning message by testing first)
