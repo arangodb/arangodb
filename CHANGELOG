@@ -1,6 +1,11 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed handling of failoverCandidates. Sometimes, a server can still be a
+  failoverCandidate even though it has been taken out of the Plan. With this
+  fix, such a server is quickly taken out of failoverCandidates and it can never
+  be re-added to the Plan before this has happened.
+
 * Fix #12693: SORT inside a subquery could sometimes swallow part of its input
   when it crossed boundaries of internal row batches.
 
