@@ -1,6 +1,12 @@
 devel
 -----
 
+* Added configuration option `--query.tracking-slow-queries` to decide whether
+  slow queries are tracked extra.
+
+* Added configuration option `--query.tracking-with-querystring` to decide whether
+  the query string is shown.
+
 * Added optional verbose logging for agency write operations. This logging
   is configurable by using the new log topic "agencystore".
 
