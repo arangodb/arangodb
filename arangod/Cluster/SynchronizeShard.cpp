@@ -197,7 +197,7 @@ static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollect
   res = trx.finish(opResult.result);
 
   if (res.fail()) {
-    LOG_TOPIC("263d2", ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("26ed2", ERR, Logger::MAINTENANCE)
         << "Failed to finish count transaction: " << res;
     return res;
   }
@@ -217,7 +217,7 @@ arangodb::Result collectionReCount(std::shared_ptr<arangodb::LogicalCollection> 
 
   Result res = trx.begin();
   if (res.fail()) {
-    LOG_TOPIC("5be16", ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("5bef6", ERR, Logger::MAINTENANCE)
         << "Failed to start count transaction: " << res;
     return res;
   }
