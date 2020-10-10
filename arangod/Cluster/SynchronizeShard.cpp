@@ -253,7 +253,7 @@ arangodb::Result addShardFollower(network::ConnectionPool* pool,
                                   ChecksumRecalculation recalc, double timeout = 120.0) {
   LOG_TOPIC("b982e", DEBUG, Logger::MAINTENANCE)
       << "addShardFollower: tell the leader to put us into the follower "
-         "list...";
+         "list for " << database << "/" << shard << "...";
 
   if (pool == nullptr) {  // nullptr only happens during controlled shutdown
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
@@ -276,6 +276,10 @@ arangodb::Result addShardFollower(network::ConnectionPool* pool,
     uint64_t docCount;
     if (recalc == ::ChecksumRecalculation::Self) {
       // recalculate locally
+      LOG_TOPIC("29384", INFO, Logger::MAINTENANCE) 
+         << "recalculating collection count on follower for "
+         << database << "/" << shard;
+
       Result res = collectionReCount(collection, docCount);
       if (res.fail()) {
         return res;
@@ -290,6 +294,10 @@ arangodb::Result addShardFollower(network::ConnectionPool* pool,
 
     if (recalc == ::ChecksumRecalculation::Leader) {
       // recalculate on leader
+      LOG_TOPIC("3dc64", INFO, Logger::MAINTENANCE) 
+         << "recalculating collection count on leader for "
+         << database << "/" << shard;
+
       network::RequestOptions options;
       options.database = database;
       options.timeout = network::Timeout(timeout * 10);  // this can be slow!!!
@@ -306,7 +314,8 @@ arangodb::Result addShardFollower(network::ConnectionPool* pool,
       if (result.fail()) {
         std::string const errorMessage =
             "addShardFollower: could not add us to the leader's follower "
-            "list, error while recalculating count on leader: " +
+            "list for " + database + "/" + shard +
+            ", error while recalculating count on leader: " +
             result.errorMessage();
         LOG_TOPIC("22e0b", WARN, Logger::MAINTENANCE) << errorMessage;
         return arangodb::Result(result.errorNumber(), errorMessage);
@@ -337,7 +346,7 @@ arangodb::Result addShardFollower(network::ConnectionPool* pool,
           // here. Note that we are in the lockJobId == 0 case, which is
           // the shortcut.
           std::string msg =
-              "Short cut synchronization for shard " + shard +
+              "Short cut synchronization for " + database + "/" + shard +
               " did not work, since we got a document in the meantime.";
           LOG_TOPIC("ef299", INFO, Logger::MAINTENANCE) << msg;
           return arangodb::Result(TRI_ERROR_INTERNAL, msg);
@@ -358,14 +367,15 @@ arangodb::Result addShardFollower(network::ConnectionPool* pool,
 
     if (result.fail()) {
       std::string const errorMessage =
-          "addShardFollower: could not add us to the leader's follower list";
+          "addShardFollower: could not add us to the leader's follower list for " +
+          database + "/" + shard;
 
       if (lockJobId != 0) {
         LOG_TOPIC("22e0a", WARN, Logger::MAINTENANCE)
             << errorMessage << ", " << result.errorMessage();
       } else {
         LOG_TOPIC("abf2e", INFO, Logger::MAINTENANCE)
-            << errorMessage << "With shortcut (can happen, no problem).";
+            << errorMessage << " with shortcut (can happen, no problem).";
       }
       return arangodb::Result(result.errorNumber(),
                               errorMessage + ", " + result.errorMessage());
@@ -882,6 +892,7 @@ bool SynchronizeShard::first() {
           "/" + resolver.getCollectionName(collection->id());
     }
 
+#if 0
     if (docCount == 0) {
       // We have a short cut:
       LOG_TOPIC("0932a", DEBUG, Logger::MAINTENANCE)
@@ -918,6 +929,7 @@ bool SynchronizeShard::first() {
       } catch (...) {
       }
     }
+#endif
 
     LOG_TOPIC("53337", DEBUG, Logger::MAINTENANCE)
         << "synchronizeOneShard: trying to synchronize local shard '" << database
