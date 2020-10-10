@@ -297,6 +297,11 @@ arangodb::Result addShardFollower(network::ConnectionPool* pool,
       LOG_TOPIC("3dc64", INFO, Logger::MAINTENANCE) 
          << "recalculating collection count on leader for "
          << database << "/" << shard;
+  
+      VPackBuffer<uint8_t> buffer;
+      VPackBuilder tmp(buffer);
+      tmp.openObject();
+      tmp.close();
 
       network::RequestOptions options;
       options.database = database;
@@ -307,7 +312,7 @@ arangodb::Result addShardFollower(network::ConnectionPool* pool,
                               "/recalculateCount?nonBlocking=true";
 
       auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Put,
-                                           url, VPackBuffer<uint8_t>(), options)
+                                           url, std::move(buffer), options)
                           .get();
       auto result = response.combinedResult();
 
