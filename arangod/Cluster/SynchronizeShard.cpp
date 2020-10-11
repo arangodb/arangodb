@@ -292,6 +292,7 @@ arangodb::Result addShardFollower(network::ConnectionPool* pool,
       }
     }
 
+    uint64_t leaderCount = 0;
     if (recalc == ::ChecksumRecalculation::Leader) {
       // recalculate on leader
       LOG_TOPIC("3dc64", INFO, Logger::MAINTENANCE) 
@@ -325,6 +326,11 @@ arangodb::Result addShardFollower(network::ConnectionPool* pool,
         LOG_TOPIC("22e0b", WARN, Logger::MAINTENANCE) << errorMessage;
         return arangodb::Result(result.errorNumber(), errorMessage);
       }
+
+      VPackSlice slice = response.slice();
+      if (slice.isObject() && slice.hasKey("count")) {
+        leaderCount = slice.get("count").getNumber<int64_t>();
+      }
     }
 
     VPackBuilder body;
@@ -339,6 +345,10 @@ arangodb::Result addShardFollower(network::ConnectionPool* pool,
       }
       if (!clientInfoString.empty()) {
         body.add("clientInfo", VPackValue(clientInfoString));
+      }
+      if (recalc == ::ChecksumRecalculation::Leader) {
+        // we recalculated the count on the leader. send its count to the job
+        body.add("leaderCount", VPackValue(leaderCount));
       }
       if (lockJobId != 0) {
         body.add("readLockId", VPackValue(std::to_string(lockJobId)));

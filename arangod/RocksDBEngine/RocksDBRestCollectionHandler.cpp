@@ -49,18 +49,22 @@ Result RocksDBRestCollectionHandler::handleExtraCommandPut(std::shared_ptr<Logic
     Result res;
     uint64_t count = 0;
     if (nonBlocking) {
-      auto trx = createTransaction(coll->name(), AccessMode::Type::WRITE);
+      auto trx = createTransaction(coll->name(), AccessMode::Type::READ);
       if (!trx) {
         return Result(TRI_ERROR_INTERNAL, "could not create transaction");
       }
 
-      ResultT<std::uint64_t> result = physical->recalculateCounts(*trx);
-      res = result.result();
-      if (res.ok()) {
-        count = result.get();
-      }
+      res = trx->begin();
 
-      trx->finish(res);
+      if (res.ok()) {
+        ResultT<std::uint64_t> result = physical->recalculateCounts(*trx);
+        res = result.result();
+        if (res.ok()) {
+          count = result.get();
+        }
+
+        res = trx->finish(res);
+      }
     } else {
       try {
         count = physical->recalculateCounts();
