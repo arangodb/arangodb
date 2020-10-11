@@ -200,6 +200,7 @@ void RocksDBMetaCollection::trackWaitForSync(arangodb::transaction::Methods* trx
 
 // rescans the collection to update document count
 uint64_t RocksDBMetaCollection::recalculateCounts() {
+  std::unique_lock<std::mutex> guard(_recalculationLock);
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
   rocksdb::TransactionDB* db = engine->db();
   const rocksdb::Snapshot* snapshot = nullptr;
@@ -274,11 +275,12 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
 
 // rescans the collection to update document count
 ResultT<std::uint64_t> RocksDBMetaCollection::recalculateCounts(transaction::Methods& trx) {
+  std::unique_lock<std::mutex> guard(_recalculationLock);
   auto state = RocksDBTransactionState::toState(&trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
 
   auto seq = state->sequenceNumber();
-  auto guard = scopeGuard([&] {  // remove blocker afterwards
+  auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
     _meta.removeBlocker(state->id());
   });
   _meta.placeBlocker(state->id(), seq);

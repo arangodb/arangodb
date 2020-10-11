@@ -97,6 +97,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   uint64_t const _objectId; /// rocksdb-specific object id for collection
   /// @brief collection lock used for write access
   mutable basics::ReadWriteLock _exclusiveLock;
+  mutable std::mutex _recalculationLock;
 };
 
 } // namespace arangodb
