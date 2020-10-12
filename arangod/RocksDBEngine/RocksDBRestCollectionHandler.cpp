@@ -43,42 +43,20 @@ Result RocksDBRestCollectionHandler::handleExtraCommandPut(std::shared_ptr<Logic
       return Result(TRI_ERROR_FORBIDDEN);
     }
 
-    bool nonBlocking = _request->parsedValue("nonBlocking", false);
     auto physical = toRocksDBCollection(coll->getPhysical());
 
     Result res;
     uint64_t count = 0;
-    if (nonBlocking) {
-      auto trx = createTransaction(coll->name(), AccessMode::Type::READ);
-      if (!trx) {
-        return Result(TRI_ERROR_INTERNAL, "could not create transaction");
-      }
-
-      res = trx->begin();
-
-      if (res.ok()) {
-        ResultT<std::uint64_t> result = physical->recalculateCounts(*trx);
-        res = result.result();
-        if (res.ok()) {
-          count = result.get();
-        }
-
-        res = trx->finish(res);
-      }
-    } else {
-      try {
-        count = physical->recalculateCounts();
-      } catch (basics::Exception const& e) {
-        res.reset(e.code(), e.message());
-      }
+    try {
+      count = physical->recalculateCounts();
+    } catch (basics::Exception const& e) {
+      res.reset(e.code(), e.message());
     }
-
     if (res.ok()) {
       VPackObjectBuilder guard(&builder);
       builder.add("result", VPackValue(true));
       builder.add("count", VPackValue(count));
     }
-
     return res;
   }
 

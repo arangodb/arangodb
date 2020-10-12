@@ -30,7 +30,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "Cluster/ResultT.h"
 #include "Futures/Future.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
@@ -77,11 +76,14 @@ class PhysicalCollection {
 
   /// @brief report extra memory used by indexes etc.
   virtual size_t memory() const = 0;
-
+  
   /// @brief opens an existing collection
   virtual void open(bool ignoreErrors) = 0;
 
   void drop();
+  
+  /// recalculate counts for collection in case of failure, blocking
+  virtual uint64_t recalculateCounts();
 
   ////////////////////////////////////
   // -- SECTION Indexes --
@@ -210,8 +212,6 @@ class PhysicalCollection {
   Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice const& value,
                             bool isEdgeCollection, velocypack::Builder& builder,
                             bool isRestore, TRI_voc_rid_t& revisionId) const;
-
-  virtual ResultT<std::uint64_t> recalculateCounts(transaction::Methods& trx);
 
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);

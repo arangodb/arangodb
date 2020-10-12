@@ -211,29 +211,15 @@ static arangodb::Result collectionCount(arangodb::LogicalCollection const& colle
 
 arangodb::Result collectionReCount(LogicalCollection& collection,
                                    uint64_t& c) {
-  std::string collectionName(collection.name());
-  auto ctx = std::make_shared<transaction::StandaloneContext>(collection.vocbase());
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
-
-  Result res = trx.begin();
-  if (res.fail()) {
-    LOG_TOPIC("5bef6", ERR, Logger::MAINTENANCE)
-        << "Failed to start count transaction: " << res;
-    return res;
+  Result res;
+  if (EngineSelectorFeature::isRocksDB()) {
+    try {
+      c = collection.getPhysical()->recalculateCounts();
+    } catch (basics::Exception const& e) {
+      res.reset(e.code(), e.message());
+    }
   }
-
-  ResultT<std::uint64_t> result = collection.getPhysical()->recalculateCounts(trx);
-  res = trx.finish(result.result());
-
-  if (res.fail()) {
-    LOG_TOPIC("263d2", ERR, Logger::MAINTENANCE)
-        << "Failed to finish count transaction for '" << collection.name() << "': " << res;
-    return res;
-  }
-
-  c = result.get();
-
-  return result.result();
+  return res;
 }
 
 arangodb::Result addShardFollower(network::ConnectionPool* pool,
@@ -1208,7 +1194,6 @@ Result SynchronizeShard::catchupWithExclusiveLock(
        << "recalculating collection count on follower for "
        << database << "/" << shard;
   
-    // recalculate on follower. this can take a long time
     uint64_t docCount;
     Result countRes = collectionCount(collection, docCount);
     if (countRes.fail()) {
@@ -1217,7 +1202,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     // store current count value
     uint64_t oldCount = docCount;
 
-    // recalculate collection count value
+    // recalculate on follower. this can take a long time
     countRes = collectionReCount(collection, docCount);
     if (countRes.fail()) {
       return countRes;

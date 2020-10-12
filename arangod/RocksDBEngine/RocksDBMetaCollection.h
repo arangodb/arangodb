@@ -70,10 +70,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   void unlockRead();
 
   /// recalculate counts for collection in case of failure, blocking
-  uint64_t recalculateCounts();
-
-  /// recalculate counts for collection in case of failure, non-blocking
-  ResultT<uint64_t> recalculateCounts(transaction::Methods& trx) override;
+  uint64_t recalculateCounts() override;
 
   /// @brief compact-data operation
   /// triggers rocksdb compaction for documentDB and indexes

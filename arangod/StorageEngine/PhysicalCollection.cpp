@@ -89,6 +89,10 @@ void PhysicalCollection::drop() {
   }
 }
 
+uint64_t PhysicalCollection::recalculateCounts() {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "recalculateCounts not implemented for this engine");
+}
+
 bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
   if (!slice.isString()) {
     return false;
@@ -426,10 +430,6 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
 
   builder.close();
   return Result();
-}
-
-ResultT<std::uint64_t> PhysicalCollection::recalculateCounts(transaction::Methods& trx) {
-  return ResultT<std::uint64_t>::error(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 /// @brief new object for remove, must have _key set
