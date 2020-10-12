@@ -1170,6 +1170,8 @@ Result fromGeoDistanceInterval(
     geo_filter.boost(filterCtx.boost);
 
     auto* options = geo_filter.mutable_options();
+    setupGeoFilter(filterCtx.analyzer, options->options);
+
     options->origin = centroid.ToPoint();
 
     auto const type = (aql::NODE_TYPE_OPERATOR_BINARY_GE == node.cmp ||

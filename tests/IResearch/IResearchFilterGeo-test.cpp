@@ -23,6 +23,8 @@
 
 #include "gtest/gtest.h"
 
+#include <s2/s2latlng.h>
+
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
@@ -261,6 +263,9 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoIntersects) {
   assertFilterFail(
     vocbase(),
     R"(FOR d IN myView FILTER GEO_INTERSECTS(d['name'], {foo:[1,2]}) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_INTERSECTS(d['name'], { "type": "Pointt", "coordinates": [ 1, 2 ] }) RETURN d)");
 }
 
 TEST_F(IResearchFilterGeoFunctionsTest, GeoContains) {
@@ -420,27 +425,557 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoContains) {
   assertFilterFail(
     vocbase(),
     R"(FOR d IN myView FILTER GEO_CONTAINS(d['name'], {foo:[1,2]}) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_CONTAINS(d['name'], { "type": "Pointt", "coordinates": [ 1, 2 ] }) RETURN d)");
 }
 
-//TEST_F(IResearchFilterGeoFunctionsTest, GeoDistance) {
+TEST_F(IResearchFilterGeoFunctionsTest, GeoDistance) {
+  {
+    irs::Or expected;
+    auto& filter = expected.add<arangodb::iresearch::GeoDistanceFilter>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->origin = S2LatLng::FromDegrees(0., 0.).Normalized().ToPoint();
+    opts->range.max = 5000;
+    opts->range.max_type = irs::BoundType::INCLUSIVE;
+    opts->prefix = "";
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("lat", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("lng", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 5000 }));
+
+    assertFilterSuccess(
+      vocbase(),
+      R"(LET lat = 0 LET dist = 5000 FOR d IN myView FILTER GEO_DISTANCE(d.name, { "type": "Point", "coordinates": [ lat, 0 ] }) <= dist RETURN d)",
+      expected, &ctx);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE({ "type": "Point", "coordinates": [ 0, 0 ] }, d.name) <= 5000 RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE(d[_FORWARD_('name')], [ 0, 0 ]) <= 5000 RETURN d)",
+      expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess(
+      vocbase(),
+      R"(LET lat = 0 LET lng = 0 LET dist = 5000 FOR d IN myView FILTER GEO_DISTANCE([ lat, lng ], d[_FORWARD_('name')]) <= dist RETURN d)",
+      expected, &ctx);
+  }
+
+  {
+    irs::Or expected;
+    auto& filter = expected.add<arangodb::iresearch::GeoDistanceFilter>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->origin = S2LatLng::FromDegrees(0., 0.).Normalized().ToPoint();
+    opts->range.max = 5000;
+    opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    opts->prefix = "";
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("lat", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("lng", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 5000 }));
+
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE(d.name, { "type": "Point", "coordinates": [ 0, 0 ] }) < 5000 RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE({ "type": "Point", "coordinates": [ 0, 0 ] }, d.name) < 5000 RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE(d[_FORWARD_('name')], [ 0, 0 ]) < 5000 RETURN d)",
+      expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess(
+      vocbase(),
+      R"(LET lat = 0 LET lng = 0 LET dist = 5000 FOR d IN myView FILTER GEO_DISTANCE([ lng, lat ], d[_FORWARD_('name')]) < dist RETURN d)",
+      expected, &ctx);
+  }
+
+  {
+    irs::Or expected;
+    auto& filter = expected.add<arangodb::iresearch::GeoDistanceFilter>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->origin = S2LatLng::FromDegrees(0., 0.).Normalized().ToPoint();
+    opts->range.min = 5000;
+    opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    opts->prefix = "";
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("lat", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("lng", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 5000 }));
+
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE(d.name, { "type": "Point", "coordinates": [ 0, 0 ] }) > 5000 RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE({ "type": "Point", "coordinates": [ 0, 0 ] }, d.name) > 5000 RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE(d[_FORWARD_('name')], [ 0, 0 ]) > 5000 RETURN d)",
+      expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess(
+      vocbase(),
+      R"(LET lat = 0 LET lng = 0 LET dist = 5000 FOR d IN myView FILTER GEO_DISTANCE([ 0, 0 ], d[_FORWARD_('name')]) > dist RETURN d)",
+      expected, &ctx);
+  }
+
+  {
+    irs::Or expected;
+    auto& filter = expected.add<arangodb::iresearch::GeoDistanceFilter>();
+    filter.boost(1.5f);
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->origin = S2LatLng::FromDegrees(0., 0.).Normalized().ToPoint();
+    opts->range.min = 5000;
+    opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    opts->prefix = "";
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("lat", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("lng", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 5000 }));
+
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER BOOST(GEO_DISTANCE(d.name, { "type": "Point", "coordinates": [ 0, 0 ] }) > 5000, 1.5) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER BOOST(GEO_DISTANCE(GEO_DISTANCE({ "type": "Point", "coordinates": [ 0, 0 ] }, d.name) > 5000, 1.5) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER BOOST(GEO_DISTANCE(d[_FORWARD_('name')], [ 0, 0 ]) > 5000, 1.5) RETURN d)",
+      expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess(
+      vocbase(),
+      R"(LET lat = 0 LET lng = 0 LET dist = 5000 FOR d IN myView FILTER BOOST(GEO_DISTANCE([ 0, 0 ], d[_FORWARD_('name')]) > dist, 1.5) RETURN d)",
+      expected, &ctx);
+  }
+
+  {
+    irs::Or expected;
+    auto& filter = expected.add<arangodb::iresearch::GeoDistanceFilter>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->origin = S2LatLng::FromDegrees(0., 0.).Normalized().ToPoint();
+    opts->range.min = 5000;
+    opts->range.min_type = irs::BoundType::INCLUSIVE;
+    opts->prefix = "";
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("lat", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("lng", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 5000 }));
+
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE(d.name, { "type": "Point", "coordinates": [ 0, 0 ] }) >= 5000 RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE({ "type": "Point", "coordinates": [ 0, 0 ] }, d.name) >= 5000 RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE(d[_FORWARD_('name')], [ 0, 0 ]) >= 5000 RETURN d)",
+      expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess(
+      vocbase(),
+      R"(LET lat = 0 LET lng = 0 LET dist = 5000 FOR d IN myView FILTER GEO_DISTANCE([ 0, 0 ], d[_FORWARD_('name')]) >= dist RETURN d)",
+      expected, &ctx);
+  }
+
+  // wrong number of arguments
+  assertFilterParseFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_DISTANCE(d.name) < 5000 RETURN d)");
+  assertFilterParseFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], [ 1, 2 ], null, null) < 5000 RETURN d)");
+  assertExpressionFilter(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], [ 1, 2 ], null) < 5000 RETURN d)");
+
+  // non-deterministic arg
+  assertFilterParseFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], RAND() > 0.5 ? [ 1, 2 ] : [2 : 1]) < 5000 RETURN d)");
+
+  assertExpressionFilter(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_DISTANCE(d[*],  [ 1, 2 ] ) < 5000 RETURN d)");
+
+  // wrong second arg
+  assertExpressionFilter(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], 1 ) < 5000 RETURN d)");
+  assertExpressionFilter(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], '[1,2]') < 5000 RETURN d)");
+  assertExpressionFilter(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], true) < 5000 RETURN d)");
+  assertExpressionFilter(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], null) < 5000 RETURN d)");
+  assertExpressionFilter(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], {foo:[1,2]}) < 5000 RETURN d)");
+  assertExpressionFilter(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], { "type": "Pointt", "coordinates": [ 1, 2 ] }) < 5000 RETURN d)");
+
+  // wrong distance
+  assertExpressionFilter(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], [ 1, 2 ] ) < '5000' RETURN d)");
+  assertExpressionFilter(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], [ 1, 2 ] ) < false RETURN d)");
+  assertExpressionFilter(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], [ 1, 2 ] ) < null RETURN d)");
+  assertExpressionFilter(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], [ 1, 2 ] ) < [5000] RETURN d)");
+  assertExpressionFilter(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], [ 1, 2 ] ) < {} RETURN d)");
+  assertExpressionFilter(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_DISTANCE(d['name'], [ 1, 2 ] ) < d RETURN d)");
+}
+
+TEST_F(IResearchFilterGeoFunctionsTest, GeoInRange) {
+  {
+    irs::Or expected;
+    auto& filter = expected.add<arangodb::iresearch::GeoDistanceFilter>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->origin = S2LatLng::FromDegrees(0., 0.).Normalized().ToPoint();
+    opts->range.max = 5000;
+    opts->range.max_type = irs::BoundType::INCLUSIVE;
+    opts->prefix = "";
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("lat", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("lng", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 5000 }));
+
+    assertFilterSuccess(
+      vocbase(),
+      R"(LET lat = 0 LET dist = 5000 FOR d IN myView FILTER GEO_IN_RANGE(d.name, { "type": "Point", "coordinates": [ lat, 0 ] }, 0, 5000) RETURN d)",
+      expected, &ctx);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, { "type": "Point", "coordinates": [ 0, 0 ] }, 0, 5000) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_IN_RANGE(d[_FORWARD_('name')], [ 0, 0 ], 0, 5000, true) <= 5000 RETURN d)",
+      expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess(
+      vocbase(),
+      R"(LET lat = 0 LET lng = 0 LET dist = 5000 FOR d IN myView FILTER GEO_IN_RANGE(d[_FORWARD_('name')], [ lat, lng ], lat, dist) RETURN d)",
+      expected, &ctx);
+  }
+
+  {
+    irs::Or expected;
+    auto& filter = expected.add<arangodb::iresearch::GeoDistanceFilter>();
+    filter.boost(1.5f);
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->origin = S2LatLng::FromDegrees(0., 0.).Normalized().ToPoint();
+    opts->range.max = 5000;
+    opts->range.max_type = irs::BoundType::INCLUSIVE;
+    opts->prefix = "";
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("lat", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("lng", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 5000 }));
+
+    assertFilterSuccess(
+      vocbase(),
+      R"(LET lat = 0 LET dist = 5000 FOR d IN myView FILTER BOOST(GEO_IN_RANGE(d.name, { "type": "Point", "coordinates": [ lat, 0 ] }, 0, 5000), 1.5) RETURN d)",
+      expected, &ctx);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER boosT(GEO_IN_RANGE(d.name, { "type": "Point", "coordinates": [ 0, 0 ] }, 0, 5000), 1.5) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER boosT(GEO_IN_RANGE(d[_FORWARD_('name')], [ 0, 0 ], 0, 5000, true), 1.5) RETURN d)",
+      expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess(
+      vocbase(),
+      R"(LET lat = 0 LET lng = 0 LET dist = 5000 FOR d IN myView FILTER boosT(GEO_IN_RANGE(d[_FORWARD_('name')], [ lat, lng ], lat, dist), 1.5) RETURN d)",
+      expected, &ctx);
+  }
+
+  {
+    irs::Or expected;
+    auto& filter = expected.add<arangodb::iresearch::GeoDistanceFilter>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->origin = S2LatLng::FromDegrees(0., 0.).Normalized().ToPoint();
+    opts->range.max = 5000;
+    opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    opts->prefix = "";
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("lat", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("lng", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 5000 }));
+
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE(d.name, { "type": "Point", "coordinates": [ 0, 0 ] }, 0, 5000, false, false) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE(d.name, { "type": "Point", "coordinates": [ 0, 0 ] }, 0, 5000, false, false) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE(d[_FORWARD_('name')], [ 0, 0 ], 0, 5000, false, false) RETURN d)",
+      expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess(
+      vocbase(),
+      R"(LET lat = 0 LET lng = 0 LET dist = 5000 FOR d IN myView FILTER GEO_DISTANCE(d[_FORWARD_('name')], [ lng, lat ], lat, dist, lat != lon, lat != lon) RETURN d)",
+      expected, &ctx);
+  }
+
 //  {
-//    auto json = VPackParser::fromJson(R"([ 1, 2 ])");
-//
 //    irs::Or expected;
-//    auto& filter = expected.add<arangodb::iresearch::GeoFilter>();
+//    auto& filter = expected.add<arangodb::iresearch::GeoDistanceFilter>();
 //    *filter.mutable_field() = mangleStringIdentity("name");
 //    auto* opts = filter.mutable_options();
-//    opts->type = arangodb::iresearch::GeoFilterType::IS_CONTAINED;
+//    opts->origin = S2LatLng::FromDegrees(0., 0.).Normalized().ToPoint();
+//    opts->range.min = 5000;
+//    opts->range.min_type = irs::BoundType::EXCLUSIVE;
 //    opts->prefix = "";
-//    ASSERT_TRUE(opts->shape.parseCoordinates(json->slice(), true).ok());
+//
+//    ExpressionContextMock ctx;
+//    ctx.vars.emplace("lat", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+//    ctx.vars.emplace("lng", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+//    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 5000 }));
 //
 //    assertFilterSuccess(
 //      vocbase(),
-//      R"(FOR d IN myView FILTER GEO_CONTAINS(d.name, { "type": "Point", "coordinates": [ 1, 2 ] }) RETURN d)",
+//      R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, { "type": "Point", "coordinates": [ 0, 0 ] }, 5000) > 5000 RETURN d)",
 //      expected);
 //    assertFilterSuccess(
 //      vocbase(),
-//      R"(FOR d IN myView FILTER GEO_CONTAINS(d['name'],  [ 1, 2 ] ) RETURN d)",
+//      R"(FOR d IN myView FILTER GEO_DISTANCE({ "type": "Point", "coordinates": [ 0, 0 ] }, d.name) > 5000 RETURN d)",
 //      expected);
+//    assertFilterSuccess(
+//      vocbase(),
+//      R"(FOR d IN myView FILTER GEO_DISTANCE(d[_FORWARD_('name')], [ 0, 0 ]) > 5000 RETURN d)",
+//      expected, &ExpressionContextMock::EMPTY);
+//    assertFilterSuccess(
+//      vocbase(),
+//      R"(LET lat = 0 LET lng = 0 LET dist = 5000 FOR d IN myView FILTER GEO_DISTANCE([ 0, 0 ], d[_FORWARD_('name')]) > dist RETURN d)",
+//      expected, &ctx);
 //  }
-//}
+//
+//  {
+//    irs::Or expected;
+//    auto& filter = expected.add<arangodb::iresearch::GeoDistanceFilter>();
+//    *filter.mutable_field() = mangleStringIdentity("name");
+//    auto* opts = filter.mutable_options();
+//    opts->origin = S2LatLng::FromDegrees(0., 0.).Normalized().ToPoint();
+//    opts->range.min = 5000;
+//    opts->range.min_type = irs::BoundType::INCLUSIVE;
+//    opts->prefix = "";
+//
+//    ExpressionContextMock ctx;
+//    ctx.vars.emplace("lat", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+//    ctx.vars.emplace("lng", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+//    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 5000 }));
+//
+//    assertFilterSuccess(
+//      vocbase(),
+//      R"(FOR d IN myView FILTER GEO_DISTANCE(d.name, { "type": "Point", "coordinates": [ 0, 0 ] }) >= 5000 RETURN d)",
+//      expected);
+//    assertFilterSuccess(
+//      vocbase(),
+//      R"(FOR d IN myView FILTER GEO_DISTANCE({ "type": "Point", "coordinates": [ 0, 0 ] }, d.name) >= 5000 RETURN d)",
+//      expected);
+//    assertFilterSuccess(
+//      vocbase(),
+//      R"(FOR d IN myView FILTER GEO_DISTANCE(d[_FORWARD_('name')], [ 0, 0 ]) >= 5000 RETURN d)",
+//      expected, &ExpressionContextMock::EMPTY);
+//    assertFilterSuccess(
+//      vocbase(),
+//      R"(LET lat = 0 LET lng = 0 LET dist = 5000 FOR d IN myView FILTER GEO_DISTANCE([ 0, 0 ], d[_FORWARD_('name')]) >= dist RETURN d)",
+//      expected, &ctx);
+//  }
+
+  // wrong number of arguments
+  assertFilterParseFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name) RETURN d)");
+  assertFilterParseFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2]) RETURN d)");
+  assertFilterParseFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0) RETURN d)");
+  assertFilterParseFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000) RETURN d)");
+  assertFilterParseFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, true, false, null) RETURN d)");
+
+  // non-deterministic arg
+  assertFilterParseFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_IN_RANGE(d['name'], RAND() > 0.5 ? [ 1, 2 ] : [2 : 1], 0, 5000) RETURN d)");
+
+  // wrong first arg
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d[*],  [ 1, 2 ], 0, 5000, true, true) RETURN d)",
+    &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE([1,2],  [ 1, 2 ], 0, 5000, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(1,  [ 1, 2 ], 0, 5000, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE('[1,2]',  [ 1, 2 ], 0, 5000, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(null,  [ 1, 2 ], 0, 5000, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(['1', '2'],  [ 1, 2 ], 0, 5000, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE({ "type": "Point", "coordinates": [ 1, 2 ] },  [ 1, 2 ], 0, 5000, true, true) RETURN d)");
+
+  // wrong second arg
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, d[*], 0, 5000, true, true) RETURN d)",
+    &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, '[1,2]', 0, 5000, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, ['1','2'], 0, 5000, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, 1, 0, 5000, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, null, 0, 5000, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, true, 0, 5000, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, { "type": "Pointt", "coordinates": [ 1, 2 ] }, 0, 5000, true, true) RETURN d)");
+
+  // wrong third arg
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], '0', 5000, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], true, 5000, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], null, 5000, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], [0], 5000, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], {}, 5000, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], d[*], 5000, true, true) RETURN d)",
+    &ExpressionContextMock::EMPTY);
+
+  // wrong 4th arg
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, '5000', true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, true, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, null, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, [5000], true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, {}, true, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, d[*], true, true) RETURN d)",
+    &ExpressionContextMock::EMPTY);
+
+  // wrong 5th arg
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, 'true', true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, null, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, 0, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, [true], true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, {}, true) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, d[*], true) RETURN d)",
+    &ExpressionContextMock::EMPTY);
+
+  // wrong 6th arg
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, true, 'true') RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, true, null) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, true, 0) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, true, [true]) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, true, {}) RETURN d)");
+  assertFilterFail(
+    vocbase(),
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, true, d[*]) RETURN d)",
+    &ExpressionContextMock::EMPTY);
+}

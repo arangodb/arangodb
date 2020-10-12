@@ -658,7 +658,7 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
       value_.reset(node);
 
       if (!value_.execute(*ctx_)) {
-        // failed to evalue value
+        // failed to evaluate value
         return false;
       }
 
