@@ -271,7 +271,7 @@ function collectionCountsSuite () {
       while (tries++ < 120) {
         shardInfo = c.shards(true);
         servers = shardInfo[shard];
-        if (servers.length === 2) {
+        if (servers.length === 2 && c.count() === 100000) {
           break;
         }
         require("internal").sleep(0.5);
@@ -423,7 +423,6 @@ function collectionCountsSuite () {
       c.insert({ _key: "test100" });
 
       assertEqual(101, c.toArray().length);
-      assertNotEqual(101, c.count());
       
       clearFailurePoints();
         
@@ -492,7 +491,6 @@ function collectionCountsSuite () {
       c.insert({ _key: "test100" });
 
       assertEqual(101, c.toArray().length);
-      assertNotEqual(101, c.count());
       
       clearFailurePoints();
         

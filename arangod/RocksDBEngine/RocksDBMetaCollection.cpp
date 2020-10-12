@@ -226,6 +226,13 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   auto collGuard =
   scopeGuard([&] { vocbase.releaseCollection(&_logicalCollection); });
 
+  TRI_voc_tid_t trxId = 0;
+  auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
+    if (trxId != 0) {
+      _meta.removeBlocker(trxId);
+    }
+  });
+
   uint64_t snapNumberOfDocuments = 0;
   {
     // fetch number docs and snapshot under exclusive lock
@@ -236,22 +243,21 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
       lockGuard.cancel();
       THROW_ARANGO_EXCEPTION(res);
     }
+  
+    // generate a unique transaction id for a blocker
+    trxId = transaction::Context::makeTransactionId();
+ 
+    // place a blocker. will be removed by blockerGuard automatically
+    _meta.placeBlocker(trxId, engine->db()->GetLatestSequenceNumber());
     
-    snapNumberOfDocuments = _meta.numberDocuments();
     snapshot = engine->db()->GetSnapshot();
+    snapNumberOfDocuments = _meta.numberDocuments();
     TRI_ASSERT(snapshot);
   }
 
   TRI_ASSERT(snapshot != nullptr);
   
   auto seq = snapshot->GetSequenceNumber();
-
-  // generate a unique transaction id for a blocker
-  TRI_voc_tid_t const trxId = transaction::Context::makeTransactionId();
-  auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
-    _meta.removeBlocker(trxId);
-  });
-  _meta.placeBlocker(trxId, seq);
   
   auto bounds = RocksDBKeyBounds::Empty();
   bool set = false;
