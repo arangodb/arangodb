@@ -117,9 +117,9 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_IO_ERROR, "storage engine I/O error");
   REG_ERROR(ERROR_REPLICATION_NO_RESPONSE, "no response");
   REG_ERROR(ERROR_REPLICATION_INVALID_RESPONSE, "invalid response");
-  REG_ERROR(ERROR_REPLICATION_MASTER_ERROR, "master error");
-  REG_ERROR(ERROR_REPLICATION_MASTER_INCOMPATIBLE, "master incompatible");
-  REG_ERROR(ERROR_REPLICATION_MASTER_CHANGE, "master change");
+  REG_ERROR(ERROR_REPLICATION_LEADER_ERROR, "leader error");
+  REG_ERROR(ERROR_REPLICATION_LEADER_INCOMPATIBLE, "leader incompatible");
+  REG_ERROR(ERROR_REPLICATION_LEADER_CHANGE, "leader change");
   REG_ERROR(ERROR_REPLICATION_LOOP, "loop detected");
   REG_ERROR(ERROR_REPLICATION_UNEXPECTED_MARKER, "unexpected marker");
   REG_ERROR(ERROR_REPLICATION_INVALID_APPLIER_STATE, "invalid applier state");
@@ -131,6 +131,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_REPLICATION_START_TICK_NOT_PRESENT, "start tick not present");
   REG_ERROR(ERROR_REPLICATION_WRONG_CHECKSUM, "wrong checksum");
   REG_ERROR(ERROR_REPLICATION_SHARD_NONEMPTY, "shard not empty");
+  REG_ERROR(ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED, "follower transaction intermediate commit already performed");
   REG_ERROR(ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED, "creating collection failed due to precondition");
   REG_ERROR(ERROR_CLUSTER_SERVER_UNKNOWN, "got a request from an unkown server");
   REG_ERROR(ERROR_CLUSTER_TOO_MANY_SHARDS, "too many shards");

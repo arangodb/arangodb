@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -53,7 +54,7 @@ class IndexNodeTest
 };  // IndexNodeTest
 
 arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::ApplicationServer& server) {
-  arangodb::CreateDatabaseInfo info(server);
+  arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
   auto rv = info.load("testVocbase", 2);
   if (rv.fail()) {
     throw std::runtime_error(rv.errorMessage());

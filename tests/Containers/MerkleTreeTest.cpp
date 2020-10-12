@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -48,9 +49,9 @@ std::vector<std::size_t> permutation(std::size_t n) {
 
 bool diffAsExpected(arangodb::containers::MerkleTree<3, 64>& t1,
                     arangodb::containers::MerkleTree<3, 64>& t2,
-                    std::vector<std::pair<std::size_t, std::size_t>>& expected) {
-  std::vector<std::pair<std::size_t, std::size_t>> d1 = t1.diff(t2);
-  std::vector<std::pair<std::size_t, std::size_t>> d2 = t2.diff(t1);
+                    std::vector<std::pair<std::uint64_t, std::uint64_t>>& expected) {
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> d1 = t1.diff(t2);
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> d2 = t2.diff(t1);
 
   auto printTrees = [&t1, &t2]() -> void {
     LOG_DEVEL << "T1: " << t1;
@@ -71,6 +72,15 @@ bool diffAsExpected(arangodb::containers::MerkleTree<3, 64>& t1,
   return true;
 }
 }  // namespace
+
+class TestNodeCountAtDepth : public arangodb::containers::MerkleTree<3, 64> {
+  static_assert(nodeCountAtDepth(0) == 1);
+  static_assert(nodeCountAtDepth(1) == 8);
+  static_assert(nodeCountAtDepth(2) == 64);
+  static_assert(nodeCountAtDepth(3) == 512);
+  // ...
+  static_assert(nodeCountAtDepth(10) == 1073741824);
+};
 
 class InternalMerkleTreeTest : public ::arangodb::containers::MerkleTree<3, 64>,
                                public ::testing::Test {
@@ -107,7 +117,7 @@ TEST_F(InternalMerkleTreeTest, test_chunkRange) {
 }
 
 TEST_F(InternalMerkleTreeTest, test_index) {
-  std::pair<std::size_t, std::size_t> range = this->range();
+  std::pair<std::uint64_t, std::uint64_t> range = this->range();
   ASSERT_EQ(range.first, 0);
   ASSERT_EQ(range.second, 64);
 
@@ -131,7 +141,7 @@ TEST_F(InternalMerkleTreeTest, test_index) {
 }
 
 TEST_F(InternalMerkleTreeTest, test_modify) {
-  std::pair<std::size_t, std::size_t> range = this->range();
+  std::pair<std::uint64_t, std::uint64_t> range = this->range();
   ASSERT_EQ(range.first, 0);
   ASSERT_EQ(range.second, 64);
 
@@ -154,7 +164,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   for (std::size_t index = 0; index < 73; ++index) {
     bool inSet0 = indices0.find(index) != indices0.end();
     std::size_t expectedCount = inSet0 ? 1 : 0;
-    std::size_t expectedHash = inSet0 ? TRI_FnvHashPod(0) : 0;
+    std::uint64_t expectedHash = inSet0 ? TRI_FnvHashPod(0) : 0;
 
     InternalMerkleTreeTest::Node& node = this->node(index);
     ASSERT_EQ(node.count, expectedCount);
@@ -175,7 +185,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   for (std::size_t index = 0; index < 73; ++index) {
     bool inSet0 = indices0.find(index) != indices0.end();
     std::size_t expectedCount = inSet0 ? 1 : 0;
-    std::size_t expectedHash = inSet0 ? TRI_FnvHashPod(0) : 0;
+    std::uint64_t expectedHash = inSet0 ? TRI_FnvHashPod(0) : 0;
     if (indices63.find(index) != indices63.end()) {
       ++expectedCount;
       expectedHash ^= TRI_FnvHashPod(63);
@@ -200,7 +210,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   for (std::size_t index = 0; index < 73; ++index) {
     bool inSet0 = indices0.find(index) != indices0.end();
     std::size_t expectedCount = inSet0 ? 1 : 0;
-    std::size_t expectedHash = inSet0 ? TRI_FnvHashPod(0) : 0;
+    std::uint64_t expectedHash = inSet0 ? TRI_FnvHashPod(0) : 0;
     if (indices1.find(index) != indices1.end()) {
       ++expectedCount;
       expectedHash ^= TRI_FnvHashPod(1);
@@ -223,7 +233,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   for (std::size_t index = 0; index < 73; ++index) {
     bool inSet0 = indices0.find(index) != indices0.end();
     std::size_t expectedCount = inSet0 ? 1 : 0;
-    std::size_t expectedHash = inSet0 ? TRI_FnvHashPod(0) : 0;
+    std::uint64_t expectedHash = inSet0 ? TRI_FnvHashPod(0) : 0;
     if (indices1.find(index) != indices1.end()) {
       ++expectedCount;
       expectedHash ^= TRI_FnvHashPod(1);
@@ -242,7 +252,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   for (std::size_t index = 0; index < 73; ++index) {
     bool inSet0 = indices0.find(index) != indices0.end();
     std::size_t expectedCount = inSet0 ? 1 : 0;
-    std::size_t expectedHash = inSet0 ? TRI_FnvHashPod(0) : 0;
+    std::uint64_t expectedHash = inSet0 ? TRI_FnvHashPod(0) : 0;
 
     InternalMerkleTreeTest::Node& node = this->node(index);
     ASSERT_EQ(node.count, expectedCount);
@@ -267,7 +277,7 @@ TEST_F(InternalMerkleTreeTest, test_grow) {
   ASSERT_EQ(range.second, 64);
 
   // fill the tree, but not enough that it grows
-  for (std::size_t i = 0; i < 64; ++i) {
+  for (std::uint64_t i = 0; i < 64; ++i) {
     insert(i, TRI_FnvHashPod(i));
   }
   range = this->range();
@@ -276,16 +286,16 @@ TEST_F(InternalMerkleTreeTest, test_grow) {
 
   // check that tree state is as expected prior to growing
   {
-    std::size_t hash0 = 0;
-    std::size_t hash1[8] = {0};
-    std::size_t hash2[64] = {0};
+    std::uint64_t hash0 = 0;
+    std::uint64_t hash1[8] = {0};
+    std::uint64_t hash2[64] = {0};
     for (std::size_t i = 0; i < 64; ++i) {
-      hash0 ^= TRI_FnvHashPod(i);
-      hash1[i / 8] ^= TRI_FnvHashPod(i);
-      hash2[i] ^= TRI_FnvHashPod(i);
+      hash0 ^= TRI_FnvHashPod(static_cast<std::uint64_t>(i));
+      hash1[i / 8] ^= TRI_FnvHashPod(static_cast<std::uint64_t>(i));
+      hash2[i] ^= TRI_FnvHashPod(static_cast<std::uint64_t>(i));
     }
     for (std::size_t i = 0; i < 64; ++i) {
-      Node& node = this->node(this->index(i, 2));
+      Node& node = this->node(this->index(static_cast<std::uint64_t>(i), 2));
       ASSERT_EQ(node.count, 1);
       ASSERT_EQ(node.hash, hash2[i]);
     }
@@ -302,7 +312,7 @@ TEST_F(InternalMerkleTreeTest, test_grow) {
   }
 
   // insert some more and cause it to grow
-  for (std::size_t i = 64; i < 128; ++i) {
+  for (std::uint64_t i = 64; i < 128; ++i) {
     insert(i, TRI_FnvHashPod(i));
   }
   range = this->range();
@@ -311,13 +321,13 @@ TEST_F(InternalMerkleTreeTest, test_grow) {
 
   // check that tree state is as expected after growing
   {
-    std::size_t hash0 = 0;
-    std::size_t hash1[8] = {0};
-    std::size_t hash2[64] = {0};
+    std::uint64_t hash0 = 0;
+    std::uint64_t hash1[8] = {0};
+    std::uint64_t hash2[64] = {0};
     for (std::size_t i = 0; i < 128; ++i) {
-      hash0 ^= TRI_FnvHashPod(i);
-      hash1[i / 16] ^= TRI_FnvHashPod(i);
-      hash2[i / 2] ^= TRI_FnvHashPod(i);
+      hash0 ^= TRI_FnvHashPod(static_cast<std::uint64_t>(i));
+      hash1[i / 16] ^= TRI_FnvHashPod(static_cast<std::uint64_t>(i));
+      hash2[i / 2] ^= TRI_FnvHashPod(static_cast<std::uint64_t>(i));
     }
     for (std::size_t i = 0; i < 64; ++i) {
       Node& node = this->node(i + 9);
@@ -343,18 +353,18 @@ TEST(MerkleTreeTest, test_diff_equal) {
   ::arangodb::containers::MerkleTree<3, 64> t1(2, 0, 64);
   ::arangodb::containers::MerkleTree<3, 64> t2(2, 0, 64);
 
-  std::vector<std::pair<std::size_t, std::size_t>> expected;  // empty
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;  // empty
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
 
   std::vector<std::size_t> order = ::permutation(64);
-  for (std::size_t i : order) {
+  for (std::uint64_t i : order) {
     t1.insert(i, TRI_FnvHashPod(i));
     t2.insert(i, TRI_FnvHashPod(i));
     ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
   }
 
   order = ::permutation(64);
-  for (std::size_t i : order) {
+  for (std::uint64_t i : order) {
     t1.remove(i, TRI_FnvHashPod(i));
     t2.remove(i, TRI_FnvHashPod(i));
     ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
@@ -365,24 +375,24 @@ TEST(MerkleTreeTest, test_diff_one_empty) {
   ::arangodb::containers::MerkleTree<3, 64> t1(2, 0, 64);
   ::arangodb::containers::MerkleTree<3, 64> t2(2, 0, 64);
 
-  std::vector<std::pair<std::size_t, std::size_t>> expected;
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
 
-  for (std::size_t i = 0; i < 8; ++i) {
+  for (std::uint64_t i = 0; i < 8; ++i) {
     t1.insert(8 * i, TRI_FnvHashPod(8 * i));
     expected.emplace_back(std::make_pair(8 * i, 8 * i));
     ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
   }
 
   expected.clear();
-  for (std::size_t i = 0; i < 8; ++i) {
+  for (std::uint64_t i = 0; i < 8; ++i) {
     t1.insert((8 * i) + 1, TRI_FnvHashPod((8 * i) + 1));
     expected.emplace_back(std::make_pair(8 * i, (8 * i) + 1));
   }
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
 
   expected.clear();
-  for (std::size_t i = 0; i < 8; ++i) {
+  for (std::uint64_t i = 0; i < 8; ++i) {
     t1.insert((8 * i) + 2, TRI_FnvHashPod((8 * i) + 2));
     t1.insert((8 * i) + 3, TRI_FnvHashPod((8 * i) + 3));
     expected.emplace_back(std::make_pair(8 * i, (8 * i) + 3));
@@ -390,7 +400,7 @@ TEST(MerkleTreeTest, test_diff_one_empty) {
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
 
   expected.clear();
-  for (std::size_t i = 0; i < 8; ++i) {
+  for (std::uint64_t i = 0; i < 8; ++i) {
     t1.insert((8 * i) + 4, TRI_FnvHashPod((8 * i) + 4));
     t1.insert((8 * i) + 5, TRI_FnvHashPod((8 * i) + 5));
     t1.insert((8 * i) + 6, TRI_FnvHashPod((8 * i) + 6));
@@ -404,24 +414,24 @@ TEST(MerkleTreeTest, test_diff_misc) {
   ::arangodb::containers::MerkleTree<3, 64> t1(2, 0, 64);
   ::arangodb::containers::MerkleTree<3, 64> t2(2, 0, 64);
 
-  std::vector<std::pair<std::size_t, std::size_t>> expected;
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
 
-  for (std::size_t i = 0; i < 32; ++i) {
+  for (std::uint64_t i = 0; i < 32; ++i) {
     t1.insert(2 * i, TRI_FnvHashPod(2 * i));
     expected.emplace_back(std::make_pair(2 * i, 2 * i));
   }
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
 
   expected.clear();
-  for (std::size_t i = 0; i < 32; ++i) {
+  for (std::uint64_t i = 0; i < 32; ++i) {
     t2.insert((2 * i) + 1, TRI_FnvHashPod((2 * i) + 1));
   }
   expected.emplace_back(std::make_pair(0, 63));
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
 
   expected.clear();
-  for (std::size_t i = 0; i < 16; ++i) {
+  for (std::uint64_t i = 0; i < 16; ++i) {
     t1.insert((2 * i) + 1, TRI_FnvHashPod((2 * i) + 1));
     expected.emplace_back(std::make_pair(2 * i, 2 * i));
   }
@@ -432,7 +442,7 @@ TEST(MerkleTreeTest, test_diff_misc) {
 TEST(MerkleTreeTest, test_serializeBinary) {
   ::arangodb::containers::MerkleTree<3, 64> t1(2, 0, 64);
 
-  for (std::size_t i = 0; i < 32; ++i) {
+  for (std::uint64_t i = 0; i < 32; ++i) {
     t1.insert(2 * i, TRI_FnvHashPod(2 * i));
   }
 
@@ -448,7 +458,7 @@ TEST(MerkleTreeTest, test_serializeBinary) {
 TEST(MerkleTreeTest, test_serializePortable) {
   ::arangodb::containers::MerkleTree<3, 64> t1(2, 0, 64);
 
-  for (std::size_t i = 0; i < 32; ++i) {
+  for (std::uint64_t i = 0; i < 32; ++i) {
     t1.insert(2 * i, TRI_FnvHashPod(2 * i));
   }
 
@@ -459,4 +469,50 @@ TEST(MerkleTreeTest, test_serializePortable) {
   ASSERT_NE(t2, nullptr);
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
+}
+
+TEST(MerkleTreeTest, test_deepen) {
+  ::arangodb::containers::MerkleTree<3, 64> t1(2, 0, 64);
+  ::arangodb::containers::MerkleTree<3, 64> t2(2, 0, 64);
+
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;  // empty
+  ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
+
+  std::vector<std::size_t> order = ::permutation(64);
+  for (std::uint64_t i : order) {
+    t1.insert(i, TRI_FnvHashPod(i));
+    t2.insert(i, TRI_FnvHashPod(i));
+    ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
+  }
+
+  order = ::permutation(64);
+  for (std::uint64_t i : order) {
+    t1.remove(i, TRI_FnvHashPod(i));
+    t2.remove(i, TRI_FnvHashPod(i));
+    ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
+  }
+
+  auto t3 = t2.cloneWithDepth(3);
+  ASSERT_TRUE(::diffAsExpected(t1, *t3, expected));
+  ASSERT_TRUE(::diffAsExpected(*t3, t1, expected));
+  ASSERT_TRUE(::diffAsExpected(t2, *t3, expected));
+  ASSERT_TRUE(::diffAsExpected(*t3, t2, expected));
+
+  auto t4 = t1.cloneWithDepth(3);
+  ASSERT_TRUE(::diffAsExpected(t1, *t4, expected));
+  ASSERT_TRUE(::diffAsExpected(*t4, t1, expected));
+  ASSERT_TRUE(::diffAsExpected(t2, *t4, expected));
+  ASSERT_TRUE(::diffAsExpected(*t4, t2, expected));
+  ASSERT_TRUE(::diffAsExpected(*t3, *t4, expected));
+  ASSERT_TRUE(::diffAsExpected(*t4, *t3, expected));
+
+  auto t5 = t1.cloneWithDepth(4);
+  ASSERT_TRUE(::diffAsExpected(t1, *t5, expected));
+  ASSERT_TRUE(::diffAsExpected(*t5, t1, expected));
+  ASSERT_TRUE(::diffAsExpected(t2, *t5, expected));
+  ASSERT_TRUE(::diffAsExpected(*t5, t2, expected));
+  ASSERT_TRUE(::diffAsExpected(*t3, *t5, expected));
+  ASSERT_TRUE(::diffAsExpected(*t5, *t3, expected));
+  ASSERT_TRUE(::diffAsExpected(*t4, *t5, expected));
+  ASSERT_TRUE(::diffAsExpected(*t5, *t4, expected));
 }

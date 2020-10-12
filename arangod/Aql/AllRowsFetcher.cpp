@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,8 +27,6 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/DependencyProxy.h"
-#include "Aql/InputAqlItemRow.h"
-#include "Aql/ShadowAqlItemRow.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -75,43 +74,6 @@ std::tuple<ExecutionState, SkipResult, AqlItemBlockInputMatrix> AllRowsFetcher::
   }
 }
 
-ExecutionState AllRowsFetcher::fetchData() {
-  if (_upstreamState == ExecutionState::DONE) {
-    TRI_ASSERT(_aqlItemMatrix != nullptr);
-    return ExecutionState::DONE;
-  }
-  if (fetchUntilDone() == ExecutionState::WAITING) {
-    return ExecutionState::WAITING;
-  }
-  TRI_ASSERT(_aqlItemMatrix != nullptr);
-  return ExecutionState::DONE;
-}
-
-ExecutionState AllRowsFetcher::fetchUntilDone() {
-  if (_aqlItemMatrix == nullptr) {
-    _aqlItemMatrix = std::make_unique<AqlItemMatrix>(getNrInputRegisters());
-  }
-
-  ExecutionState state = ExecutionState::HASMORE;
-  SharedAqlItemBlockPtr block;
-
-  while (state == ExecutionState::HASMORE && !_aqlItemMatrix->stoppedOnShadowRow()) {
-    std::tie(state, block) = fetchBlock();
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(block == nullptr);
-      return state;
-    }
-    if (block == nullptr) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-    } else {
-      _aqlItemMatrix->addBlock(std::move(block));
-    }
-  }
-
-  TRI_ASSERT(_aqlItemMatrix != nullptr);
-  return state;
-}
-
 AllRowsFetcher::AllRowsFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock)
     : _dependencyProxy(&executionBlock),
       _aqlItemMatrix(nullptr),
@@ -120,14 +82,6 @@ AllRowsFetcher::AllRowsFetcher(DependencyProxy<BlockPassthrough::Disable>& execu
 
 RegisterCount AllRowsFetcher::getNrInputRegisters() const {
   return _dependencyProxy->getNrInputRegisters();
-}
-
-std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlock() {
-  auto res = _dependencyProxy->fetchBlock();
-
-  _upstreamState = res.first;
-
-  return res;
 }
 
 ExecutionState AllRowsFetcher::upstreamState() {
@@ -142,9 +96,4 @@ ExecutionState AllRowsFetcher::upstreamState() {
     return ExecutionState::DONE;
   }
   return ExecutionState::HASMORE;
-}
-
-//@deprecated
-auto AllRowsFetcher::useStack(AqlCallStack const& stack) -> void {
-  _dependencyProxy->useStack(stack);
 }

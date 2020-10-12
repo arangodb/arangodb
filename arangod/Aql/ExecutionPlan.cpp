@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Graph/TraverserOptions.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -69,7 +70,7 @@ namespace {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 /// @brief validate the counters of the plan
-struct NodeCounter final : public WalkerWorker<ExecutionNode> {
+struct NodeCounter final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> counts;
   std::unordered_set<ExecutionNode const*> seen;
 
@@ -96,7 +97,7 @@ struct NodeCounter final : public WalkerWorker<ExecutionNode> {
     if (!arangodb::ServerState::instance()->isDBServer() ||
         (en->getType() != ExecutionNode::REMOTE && en->getType() != ExecutionNode::SCATTER &&
          en->getType() != ExecutionNode::DISTRIBUTE)) {
-      return WalkerWorker<ExecutionNode>::done(en);
+      return WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique>::done(en);
     }
     return false;
   }
@@ -159,7 +160,6 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
-
   auto steps = direction->getMember(1);
 
   bool invalidDepth = false;
@@ -185,8 +185,11 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
                                    "invalid traversal depth");
   }
 
+  // WTF this is the 10th place the deals with parsing of options
+  // how do you even maintain that?
   if (optionsNode != nullptr && optionsNode->type == NODE_TYPE_OBJECT) {
     size_t n = optionsNode->numMembers();
+    bool hasBFS = false;
 
     for (size_t i = 0; i < n; ++i) {
       auto member = optionsNode->getMemberUnchecked(i);
@@ -197,7 +200,10 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
         TRI_ASSERT(value->isConstant());
 
         if (name == "bfs") {
-          options->useBreadthFirst = value->isTrue();
+          options->mode = value->isTrue()
+                              ? arangodb::traverser::TraverserOptions::Order::BFS
+                              : arangodb::traverser::TraverserOptions::Order::DFS;
+          hasBFS = true;
         } else if (name == "uniqueVertices" && value->isStringValue()) {
           if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryPath)) {
             options->uniqueVertices =
@@ -222,6 +228,22 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
           parseGraphCollectionRestriction(options->edgeCollections, value);
         } else if (name == "vertexCollections") {
           parseGraphCollectionRestriction(options->vertexCollections, value);
+        } else if (name == StaticStrings::GraphQueryOrder && !hasBFS) {
+          // dfs is the default
+          if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryOrderBFS)) {
+            options->mode = traverser::TraverserOptions::Order::BFS;
+          } else if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryOrderWeighted)) {
+            options->mode = traverser::TraverserOptions::Order::WEIGHTED;
+          } else if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryOrderDFS)) {
+            options->mode = traverser::TraverserOptions::Order::DFS;
+          } else {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                           "order: unknown order");
+          }
+        } else if (name == "defaultWeight" && value->isNumericValue()) {
+          options->defaultWeight = value->getDoubleValue();
+        } else if (name == "weightAttribute" && value->isStringValue()) {
+          options->weightAttribute = value->getString();
         } else if (name == "parallelism") {
           if (ast->canApplyParallelism()) {
             // parallelism is only used when there is no usage of V8 in the
@@ -234,10 +256,10 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
   }
 
   if (options->uniqueVertices == arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL &&
-      !options->useBreadthFirst) {
+      !(options->isUniqueGlobalVerticesAllowed())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "uniqueVertices: 'global' is only "
-                                   "supported, with bfs: true due to "
+                                   "supported, with mode: bfs|weighted due to "
                                    "otherwise unpredictable results.");
   }
 
@@ -328,7 +350,7 @@ ExecutionPlan::~ExecutionPlan() {
   _ast->query().resourceMonitor().decreaseMemoryUsage(_ids.size() * sizeof(ExecutionNode));
 #endif
 #endif
-  
+
   for (auto& x : _ids) {
     delete x.second;
   }
@@ -361,7 +383,6 @@ std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromAst(Ast* ast) {
   return plan;
 }
 
-/// @brief whether or not the plan contains at least one node of this type
 bool ExecutionPlan::contains(ExecutionNode::NodeType type) const {
   TRI_ASSERT(_varUsageComputed);
   return _typeCounts[type] > 0;
@@ -378,7 +399,7 @@ void ExecutionPlan::getCollectionsFromVelocyPack(aql::Collections& colls, VPackS
   if (slice.isObject()) {
     collectionsSlice = slice.get("collections");
   }
-  
+
   if (!collectionsSlice.isArray()) {
    THROW_ARANGO_EXCEPTION_MESSAGE(
        TRI_ERROR_INTERNAL,
@@ -826,8 +847,8 @@ ModificationOptions ExecutionPlan::createModificationOptions(AstNode const* node
       // its unclear which collections the traversal will access
       isReadWrite = true;
     } else {
-      _ast->query().collections().visit([&isReadWrite](std::string const&, aql::Collection* collection) {
-        if (collection->isReadWrite()) {
+      _ast->query().collections().visit([&isReadWrite](std::string const&, aql::Collection& collection) {
+        if (collection.isReadWrite()) {
           // stop iterating
           isReadWrite = true;
           return false;
@@ -878,10 +899,10 @@ ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) 
   TRI_ASSERT(node->plan() == this);
   TRI_ASSERT(node->id() > ExecutionNodeId{0});
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
-  
+
   // may throw
   _ast->query().resourceMonitor().increaseMemoryUsage(sizeof(ExecutionNode));
- 
+
   try {
     auto emplaced = _ids.try_emplace(node->id(), node.get()).second;  // take ownership
     TRI_ASSERT(emplaced);
@@ -903,7 +924,7 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   try {
     // may throw
     _ast->query().resourceMonitor().increaseMemoryUsage(sizeof(ExecutionNode));
-    
+
     auto [it, emplaced] = _ids.try_emplace(node->id(), node);
     if (!emplaced) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1134,7 +1155,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
 
   auto options =
       createTraversalOptions(getAst(), direction, node->getMember(4));
-  
+
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
   direction = direction->getMember(0);
@@ -2065,7 +2086,7 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         en = fromNodeLet(en, member);
         break;
       }
-      
+
       case NODE_TYPE_SORT: {
         en = fromNodeSort(en, member);
         break;
@@ -2131,47 +2152,41 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   return en;
 }
 
-/// @brief find nodes of a certain type
+template <WalkerUniqueness U>
+/// @brief find nodes of certain types
 void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
-                                    ExecutionNode::NodeType type, bool enterSubqueries) {
-  // consult our nodes-of-type counters array
-  if (contains(type)) {
-    // node type present in plan
-    NodeFinder<ExecutionNode::NodeType> finder(type, result, enterSubqueries);
+                                    std::initializer_list<ExecutionNode::NodeType> const& types,
+                                    bool enterSubqueries) {
+  // check if any of the node types is actually present in the plan
+  bool haveNodes = std::any_of(types.begin(), types.end(),
+                               [this](ExecutionNode::NodeType type) -> bool {
+                                 return contains(type);
+                               });
+  if (haveNodes) {
+    // found a node type that is in the plan
+    NodeFinder<std::initializer_list<ExecutionNode::NodeType>, U> finder(types, result, enterSubqueries);
     root()->walk(finder);
   }
 }
 
-/// @brief find nodes of certain types
+/// @brief find nodes of a certain type
 void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
-                                    std::vector<ExecutionNode::NodeType> const& types,
-                                    bool enterSubqueries) {
-  // check if any of the node types is actually present in the plan
-  for (auto const& type : types) {
-    if (contains(type)) {
-      // found a node type that is in the plan
-      NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result, enterSubqueries);
-      root()->walk(finder);
-      // abort, because we were looking for all nodes at the same time
-      return;
-    }
-  }
+                                    ExecutionNode::NodeType type, bool enterSubqueries) {
+  findNodesOfType<WalkerUniqueness::NonUnique>(result, {type}, enterSubqueries);
 }
 
 /// @brief find nodes of certain types
-void ExecutionPlan::findUniqueNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
-                                          std::vector<ExecutionNode::NodeType> const& types,
-                                          bool enterSubqueries) {
-  // check if any of the node types is actually present in the plan
-  for (auto const& type : types) {
-    if (contains(type)) {
-      // found a node type that is in the plan
-      UniqueNodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result, enterSubqueries);
-      root()->walk(finder);
-      // abort, because we were looking for all nodes at the same time
-      return;
-    }
-  }
+void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+                                    std::initializer_list<ExecutionNode::NodeType> const& types,
+                                    bool enterSubqueries) {
+  findNodesOfType<WalkerUniqueness::NonUnique>(result, types, enterSubqueries);
+}
+
+/// @brief find nodes of certain types
+void ExecutionPlan::findUniqueNodesOfType(
+    ::arangodb::containers::SmallVector<ExecutionNode*>& result,
+    std::initializer_list<ExecutionNode::NodeType> const& types, bool enterSubqueries) {
+  findNodesOfType<WalkerUniqueness::Unique>(result, types, enterSubqueries);
 }
 
 /// @brief find all end nodes in a plan
@@ -2449,7 +2464,7 @@ bool ExecutionPlan::fullCount() const noexcept {
                                  : ExecutionNode::castTo<LimitNode*>(_lastLimitNode);
   return lastLimitNode != nullptr && lastLimitNode->fullCount();
 }
-  
+
 /// @brief find all variables that are populated with data from collections
 void ExecutionPlan::findCollectionAccessVariables() {
   _ast->variables()->visit([this](Variable* variable) {
@@ -2493,11 +2508,22 @@ void ExecutionPlan::prepareTraversalOptions() {
   }
 }
 
+AstNode const* ExecutionPlan::resolveVariableAlias(AstNode const* node) const {
+  if (node->type == NODE_TYPE_REFERENCE) {
+    auto setter = getVarSetBy(static_cast<Variable const*>(node->getData())->id);
+    if (setter != nullptr && setter->getType() == ExecutionNode::CALCULATION) {
+      auto cn = ExecutionNode::castTo<CalculationNode const*>(setter);
+      node = cn->expression()->node();
+    }
+  }
+  return node;
+}
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
 
 /// @brief show an overview over the plan
-struct Shower final : public WalkerWorker<ExecutionNode> {
+struct Shower final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   int indent;
 
   Shower() : indent(0) {}
@@ -2531,7 +2557,7 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
     }
   }
 
-  static LoggerStream& logNode(LoggerStream& log, ExecutionNode const& node) {
+  static LoggerStreamBase& logNode(LoggerStreamBase& log, ExecutionNode const& node) {
     return log << "[" << node.id() << "]" << detailedNodeType(node);
   }
 

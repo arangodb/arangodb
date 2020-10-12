@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -132,10 +133,10 @@ class RestAnalyzerHandlerTest
     // create system vocbase
     {
       std::shared_ptr<arangodb::LogicalCollection> unused;
-      arangodb::methods::Collections::createSystem(server.getSystemDatabase(),
+      arangodb::OperationOptions options(arangodb::ExecContext::current());
+      arangodb::methods::Collections::createSystem(server.getSystemDatabase(), options,
                                                    arangodb::tests::AnalyzerCollectionName,
-                                                   false,
-                                                   unused);
+                                                   false, unused);
     }
     createAnalyzers();
 
@@ -177,8 +178,10 @@ class RestAnalyzerHandlerTest
                {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW}});
 
     std::shared_ptr<arangodb::LogicalCollection> ignored;
-    arangodb::Result res = arangodb::methods::Collections::createSystem(*dbFeature.useDatabase(name),
-                                                     arangodb::tests::AnalyzerCollectionName,
+    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::Result res =
+        arangodb::methods::Collections::createSystem(*dbFeature.useDatabase(name),
+                                                     options, arangodb::tests::AnalyzerCollectionName,
                                                      false, ignored);
 
     ASSERT_TRUE(res.ok());

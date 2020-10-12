@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -374,6 +375,13 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
+  // remove calculations that are never necessary
+  registerRule("remove-unnecessary-calculations-3", removeUnnecessaryCalculationsRule,
+               OptimizerRule::removeUnnecessaryCalculationsRule3,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::DisabledByDefault,
+                                        OptimizerRule::Flags::Hidden));
+
   registerRule("remove-unnecessary-remote-scatter", removeUnnecessaryRemoteScatterRule,
                OptimizerRule::removeUnnecessaryRemoteScatterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
@@ -413,7 +421,7 @@ void OptimizerRulesFeature::addRules() {
   registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule,
                OptimizerRule::moveFiltersIntoEnumerateRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
+
   registerRule("optimize-count", optimizeCountRule,
                OptimizerRule::optimizeCountRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
@@ -444,7 +452,7 @@ void OptimizerRulesFeature::addRules() {
                arangodb::iresearch::lateDocumentMaterializationArangoSearchRule,
                OptimizerRule::lateDocumentMaterializationArangoSearchRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
+
   // add the storage-engine specific rules
   addStorageEngineRules();
 
@@ -460,7 +468,7 @@ void OptimizerRulesFeature::addRules() {
   // SubqueryEndNode and would likely be more complicated to write.
   registerRule("splice-subqueries", spliceSubqueriesRule, OptimizerRule::spliceSubqueriesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
+
   // finally sort all rules by their level
   std::sort(
       _rules.begin(), _rules.end(),
@@ -475,9 +483,8 @@ void OptimizerRulesFeature::addRules() {
 }
 
 void OptimizerRulesFeature::addStorageEngineRules() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
-  engine->addOptimizerRules(*this);
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  engine.addOptimizerRules(*this);
 }
 
 /// @brief translate a list of rule ids into rule names

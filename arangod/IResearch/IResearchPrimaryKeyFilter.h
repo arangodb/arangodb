@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,6 +32,7 @@
 #include "utils/type_limits.hpp"
 
 namespace arangodb {
+class StorageEngine;
 namespace iresearch {
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -45,10 +47,10 @@ class PrimaryKeyFilter final
     return "arangodb::iresearch::PrimaryKeyFilter";
   }
 
-  static irs::type_info type();
+  static irs::type_info type(StorageEngine& engine);
 
-  explicit PrimaryKeyFilter(arangodb::LocalDocumentId const& value) noexcept
-      : irs::filter(PrimaryKeyFilter::type()),
+  PrimaryKeyFilter(StorageEngine& engine, arangodb::LocalDocumentId const& value) noexcept
+      : irs::filter(PrimaryKeyFilter::type(engine)),
         _pk(DocumentPrimaryKey::encode(value)),
         _pkSeen(false) {}
 
@@ -130,8 +132,8 @@ class PrimaryKeyFilterContainer final : public irs::filter {
   PrimaryKeyFilterContainer(PrimaryKeyFilterContainer&&) = default;
   PrimaryKeyFilterContainer& operator=(PrimaryKeyFilterContainer&&) = default;
 
-  PrimaryKeyFilter& emplace(arangodb::LocalDocumentId const& value) {
-    _filters.emplace_back(value);
+  PrimaryKeyFilter& emplace(StorageEngine& engine, arangodb::LocalDocumentId const& value) {
+    _filters.emplace_back(engine, value);
 
     return _filters.back();
   }

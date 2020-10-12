@@ -50,14 +50,14 @@ for data that cannot be re-created otherwise.
 (The default is *false*)
 This option is meaningful for the MMFiles storage engine only.
 
-@RESTBODYPARAM{keyOptions,object,optional,post_api_collection_opts}
-additional options for key generation. If specified, then *keyOptions*
-should be a JSON array containing the following attributes:
-
-@RESTBODYPARAM{schema,object,optional,post_api_collection_opts}
+@RESTBODYPARAM{schema,object,optional,}
 Optional object that specifies the collection level schema for
 documents. The attribute keys `rule`, `level` and `message` must follow the
 rules documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
+
+@RESTBODYPARAM{keyOptions,object,optional,post_api_collection_opts}
+additional options for key generation. If specified, then *keyOptions*
+should be a JSON array containing the following attributes:
 
 @RESTSTRUCT{type,post_api_collection_opts,string,required,string}
 specifies the type of the key generator. The currently available generators are
@@ -113,7 +113,8 @@ and the hash value is used to determine the target shard.
 of each shard are kept on different DB-Servers. The value 1 means that only one
 copy (no synchronous replication) is kept. A value of k means that k-1 replicas
 are kept. It can also be the string `"satellite"` for a SatelliteCollection,
-where the replication factor is matched to the number of DB-Servers.
+where the replication factor is matched to the number of DB-Servers
+(Enterprise Edition only).
 
 Any two copies reside on different DB-Servers. Replication between them is
 synchronous, that is, every write operation to the "leader" copy will be replicated

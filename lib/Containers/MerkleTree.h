@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -49,7 +50,7 @@ class MerkleTree {
   static constexpr std::size_t BranchingFactor = static_cast<std::size_t>(1) << BranchingBits;
 
   struct Node {
-    std::size_t hash;
+    std::uint64_t hash;
     std::size_t count;
 
     bool operator==(Node const& other);
@@ -60,21 +61,29 @@ class MerkleTree {
   static constexpr std::size_t NodeSize = sizeof(Node);
 
   struct Meta {
-    std::size_t rangeMin;
-    std::size_t rangeMax;
+    std::uint64_t rangeMin;
+    std::uint64_t rangeMax;
     std::size_t maxDepth;
   };
   static_assert(sizeof(Meta) == 24, "Meta size assumptions invalid.");
   static constexpr std::size_t MetaSize =
       (CacheLineSize * ((sizeof(Meta) + (CacheLineSize - 1)) / CacheLineSize));
 
-  static constexpr std::size_t nodeCountAtDepth(std::size_t maxDepth);
   static constexpr std::size_t nodeCountUpToDepth(std::size_t maxDepth);
   static constexpr std::size_t allocationSize(std::size_t maxDepth);
-  static constexpr std::size_t log2ceil(std::size_t n);
-  static constexpr std::size_t minimumFactorFor(std::size_t current, std::size_t target);
+  static constexpr std::uint64_t log2ceil(std::uint64_t n);
+  static constexpr std::uint64_t minimumFactorFor(std::uint64_t current, std::uint64_t target);
 
  public:
+  /**
+   * @brief Calculates the number of nodes at the given depth
+   *
+   * @param maxDepth The same depth value used for the calculation
+   */
+  static constexpr std::size_t nodeCountAtDepth(std::size_t maxDepth) {
+    return static_cast<std::size_t>(1) << (BranchingBits * maxDepth);
+  }
+
   /**
    * @brief Chooses the default range width for a tree of a given depth.
    *
@@ -84,7 +93,7 @@ class MerkleTree {
    *
    * @param maxDepth The same depth value passed to the constructor
    */
-  static std::size_t defaultRange(std::size_t maxDepth);
+  static std::uint64_t defaultRange(std::size_t maxDepth);
 
   /**
    * @brief Construct a tree from a buffer containing a serialized tree
@@ -120,7 +129,7 @@ class MerkleTree {
    *                 merged as necessary.
    * @throws std::invalid_argument  If maxDepth is less than 2
    */
-  MerkleTree(std::size_t maxDepth, std::size_t rangeMin, std::size_t rangeMax = 0);
+  MerkleTree(std::size_t maxDepth, std::uint64_t rangeMin, std::uint64_t rangeMax = 0);
 
   ~MerkleTree();
 
@@ -140,12 +149,12 @@ class MerkleTree {
    * @brief Returns the hash of all values in the tree, equivalently the root
    *        value
    */
-  std::size_t rootValue() const;
+  std::uint64_t rootValue() const;
 
   /**
    * @brief Returns the current range of the tree
    */
-  std::pair<std::size_t, std::size_t> range() const;
+  std::pair<std::uint64_t, std::uint64_t> range() const;
 
   /**
    * @brief Returns the maximum depth of the tree
@@ -162,7 +171,7 @@ class MerkleTree {
    * @param value The hashed value associated with the key
    * @throws std::out_of_range  If key is less than rangeMin
    */
-  void insert(std::size_t key, std::size_t value);
+  void insert(std::uint64_t key, std::uint64_t value);
 
   /**
    * @brief Insert a batch of keys (as values) into the tree. May trigger a
@@ -173,7 +182,7 @@ class MerkleTree {
    *              method. This batch method is considerably more efficient.
    * @throws std::out_of_range  If key is less than rangeMin
    */
-  void insert(std::vector<std::size_t> const& keys);
+  void insert(std::vector<std::uint64_t> const& keys);
 
   /**
    * @brief Remove a value from the tree.
@@ -184,7 +193,7 @@ class MerkleTree {
    * @throws std::out_of_range  If key is outside current range
    * @throws std::invalid_argument  If remove hits a node with 0 count
    */
-  void remove(std::size_t key, std::size_t value);
+  void remove(std::uint64_t key, std::uint64_t value);
 
   /**
    * @brief Remove a batch of keys (as values) from the tree.
@@ -194,7 +203,7 @@ class MerkleTree {
    *              method. This batch method is considerably more efficient.
    * @throws std::out_of_range  If key is less than rangeMin
    */
-  void remove(std::vector<std::size_t> const& keys);
+  void remove(std::vector<std::uint64_t> const& keys);
 
   /**
    * @brief Remove all values from the tree.
@@ -207,14 +216,26 @@ class MerkleTree {
   std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> clone();
 
   /**
+   * @brief Clone the tree with the given depth
+   *
+   * Will return a new copy of the tree, with the specified depth. If the new
+   * depth is the same as the old, this is equivalent to clone(). If the new
+   * depth is less than the old depth, this simply truncates the tree. If the
+   * new depth is greater than the old depth, then the rangeMax will also be
+   * increased.
+   *
+   * @param newDepth  Max depth to use for new tree
+   */
+  std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> cloneWithDepth(std::size_t newDepth) const;
+
+  /**
    * @brief Find the ranges of keys over which two trees differ.
    *
    * @param other The other tree to compare
    * @return  Vector of (inclusive) ranges of keys over which trees differ
-   * @throws std::invalid_argument  If trees do not have different depth or
-   *                                rangeMin
+   * @throws std::invalid_argument  If trees different rangeMin
    */
-  std::vector<std::pair<std::size_t, std::size_t>> diff(MerkleTree<BranchingBits, LockStripes>& other);
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> diff(MerkleTree<BranchingBits, LockStripes>& other);
 
   /**
    * @brief Convert to a human-readable string for printing
@@ -242,21 +263,21 @@ class MerkleTree {
 
  protected:
   explicit MerkleTree(std::string_view buffer);
-  explicit MerkleTree(MerkleTree<BranchingBits, LockStripes>& other);
+  explicit MerkleTree(MerkleTree<BranchingBits, LockStripes> const& other);
 
   Meta& meta() const;
   Node& node(std::size_t index) const;
   std::mutex& lock(std::size_t index) const;
-  std::size_t index(std::size_t key, std::size_t depth) const;
-  void modify(std::size_t key, std::size_t value, bool isInsert);
-  void modify(std::vector<std::size_t> const& keys, bool isInsert);
-  void modifyLocal(std::size_t depth, std::size_t key, std::size_t value,
+  std::size_t index(std::uint64_t key, std::size_t depth) const;
+  void modify(std::uint64_t key, std::uint64_t value, bool isInsert);
+  void modify(std::vector<std::uint64_t> const& keys, bool isInsert);
+  void modifyLocal(std::size_t depth, std::uint64_t key, std::uint64_t value,
                    bool isInsert, bool doLock);
-  void grow(std::size_t key);
+  void grow(std::uint64_t key);
   bool equalAtIndex(MerkleTree<BranchingBits, LockStripes> const& other,
                     std::size_t index) const;
   bool childrenAreLeaves(std::size_t index);
-  std::pair<std::size_t, std::size_t> chunkRange(std::size_t chunk, std::size_t depth);
+  std::pair<std::uint64_t, std::uint64_t> chunkRange(std::size_t chunk, std::size_t depth);
 
  private:
   std::unique_ptr<std::uint8_t[]> _buffer;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,14 +36,17 @@ using namespace arangodb;
 /// @brief create the context
 transaction::V8Context::V8Context(TRI_vocbase_t& vocbase, bool embeddable)
     : Context(vocbase),
-      _sharedTransactionContext(nullptr),
-      _mainScope(nullptr),
       _currentTransaction(nullptr),
       _embeddable(embeddable) {
   // need to set everything here
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
-  _sharedTransactionContext = static_cast<transaction::V8Context*>(v8g->_transactionContext);
+  _v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
+}
+
+transaction::V8Context::~V8Context() noexcept {
+  if (_v8g->_transactionContext == this) {
+    this->exitV8Context();
+  }
 }
 
 /// @brief order a custom type handler for the collection
@@ -51,12 +54,10 @@ VPackCustomTypeHandler* transaction::V8Context::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
     _customTypeHandler = transaction::Context::createCustomTypeHandler(_vocbase, resolver());
     _options.customTypeHandler = _customTypeHandler.get();
-    _dumpOptions.customTypeHandler = _customTypeHandler.get();
   }
 
   TRI_ASSERT(_customTypeHandler != nullptr);
   TRI_ASSERT(_options.customTypeHandler != nullptr);
-  TRI_ASSERT(_dumpOptions.customTypeHandler != nullptr);
 
   return _customTypeHandler.get();
 }
@@ -64,14 +65,7 @@ VPackCustomTypeHandler* transaction::V8Context::orderCustomTypeHandler() {
 /// @brief return the resolver
 CollectionNameResolver const& transaction::V8Context::resolver() {
   if (_resolver == nullptr) {
-    transaction::V8Context* main = _sharedTransactionContext->_mainScope;
-
-    if (main != nullptr && main != this && !main->isGlobal()) {
-      _resolver = &(main->resolver());
-    } else {
-      TRI_ASSERT(_resolver == nullptr);
-      createResolver();  // sets _resolver
-    }
+    createResolver();  // sets _resolver
   }
 
   TRI_ASSERT(_resolver != nullptr);
@@ -81,13 +75,19 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
 /// @brief get transaction state, determine commit responsibility
 /*virtual*/ std::shared_ptr<TransactionState> transaction::V8Context::acquireState(transaction::Options const& options,
                                                                                    bool& responsibleForCommit) {
+  if (_currentTransaction) {
+    responsibleForCommit = false;
+    return _currentTransaction;
+  }
   
-  TRI_ASSERT(_sharedTransactionContext != nullptr);
+  if (_v8g->_transactionContext != nullptr) {
+    _currentTransaction = _v8g->_transactionContext->_currentTransaction;
+  } else if (_v8g->_transactionState) {
+    _currentTransaction = _v8g->_transactionState;
+  }
   
-  auto state = _sharedTransactionContext->_currentTransaction;
-  if (!state) {
-    state = transaction::Context::createState(options);
-    enterV8Context(state);
+  if (!_currentTransaction) {
+    _currentTransaction = transaction::Context::createState(options);
     responsibleForCommit = true;
   } else {
     if (!isEmbeddable()) {
@@ -97,23 +97,22 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
     responsibleForCommit = false;
   }
 
-  return state;
+  return _currentTransaction;
 }
 
-void transaction::V8Context::enterV8Context(std::shared_ptr<TransactionState> const& state) {
+void transaction::V8Context::enterV8Context() {
   // registerTransaction
-  TRI_ASSERT(_sharedTransactionContext != nullptr);
-  TRI_ASSERT(_sharedTransactionContext->_currentTransaction == nullptr);
-  TRI_ASSERT(_sharedTransactionContext->_mainScope == nullptr);
-
-  _sharedTransactionContext->_currentTransaction = state;
-  _sharedTransactionContext->_mainScope = this;
+  TRI_ASSERT(_v8g != nullptr);
+  TRI_ASSERT(_currentTransaction != nullptr);
+  TRI_ASSERT(_v8g->_transactionContext == nullptr ||
+             _v8g->_transactionContext == this);
+  
+  _v8g->_transactionContext = this;
 }
 
 void transaction::V8Context::exitV8Context() {
-  TRI_ASSERT(_sharedTransactionContext != nullptr);
-  _sharedTransactionContext->_currentTransaction = nullptr;
-  _sharedTransactionContext->_mainScope = nullptr;
+  TRI_ASSERT(_v8g != nullptr);
+  _v8g->_transactionContext = nullptr;
 }
 
 /// @brief unregister the transaction from the context
@@ -127,24 +126,14 @@ std::shared_ptr<transaction::Context> transaction::V8Context::clone() const {
   // v8 isolates and stuff.
   // This comes with the consequence that one cannot run any JavaScript
   // code in the cloned context!
+  TRI_ASSERT(_currentTransaction != nullptr);
   auto clone = std::make_shared<transaction::StandaloneContext>(_vocbase);
-  //#warning are you sure _currentTransaction is set?
-  auto state = _sharedTransactionContext->_currentTransaction;
-  clone->setState(state);
+  clone->setState(_currentTransaction);
   return clone;
 }
 
 /// @brief whether or not the transaction is embeddable
 bool transaction::V8Context::isEmbeddable() const { return _embeddable; }
-
-/// @brief make this context a global context
-/// this is only called upon V8 context initialization
-void transaction::V8Context::makeGlobal() { _sharedTransactionContext = this; }
-
-/// @brief whether or not the transaction context is a global one
-bool transaction::V8Context::isGlobal() const {
-  return _sharedTransactionContext == this;
-}
 
 /// @brief return parent transaction state or none
 /*static*/ std::shared_ptr<TransactionState> transaction::V8Context::getParentState() {

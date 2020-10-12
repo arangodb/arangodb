@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +23,6 @@
 
 #include "AgencyCallbackRegistry.h"
 
-#include <ctime>
-
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -33,36 +31,40 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/AgencyCache.h"
+#include "Cluster/AgencyCallback.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/MetricsFeature.h"
 
 using namespace arangodb;
 
 AgencyCallbackRegistry::AgencyCallbackRegistry(application_features::ApplicationServer& server,
                                                std::string const& callbackBasePath)
-  : _agency(server), _callbackBasePath(callbackBasePath) {}
+  : _agency(server), 
+    _callbackBasePath(callbackBasePath),
+    _totalCallbacksRegistered(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_agency_callback_registered", 0, "Total number of agency callbacks registered")) {}
 
 AgencyCallbackRegistry::~AgencyCallbackRegistry() = default;
 
 bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb, bool local) {
   uint64_t rand;
-  {
+  while (true) {
+    rand = RandomGenerator::interval(std::numeric_limits<uint64_t>::max());
+
     WRITE_LOCKER(locker, _lock);
-    while (true) {
-      rand = RandomGenerator::interval(std::numeric_limits<uint64_t>::max());
-      if (_endpoints.try_emplace(rand, cb).second) {
-        break;
-      }
+    if (_endpoints.try_emplace(rand, cb).second) {
+      break;
     }
   }
 
-  
-  bool ok = false;
   try {
+    bool ok = false;
     if (local) {
       auto& cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
       ok = cache.registerCallback(cb->key, rand);
@@ -70,20 +72,21 @@ bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb
       ok = _agency.registerCallback(cb->key, getEndpointUrl(rand)).successful();
       cb->local(false);
     }
-    if (!ok) {
-      LOG_TOPIC("b88f4", ERR, Logger::CLUSTER) << "Registering callback failed";
+    if (ok) {
+      ++_totalCallbacksRegistered;
+      return true;
     }
+    LOG_TOPIC("b88f4", ERR, Logger::CLUSTER) << "Registering callback failed";
   } catch (std::exception const& e) {
-    LOG_TOPIC("f5330", ERR, Logger::CLUSTER) << "Couldn't register callback " << e.what();
+    LOG_TOPIC("f5330", ERR, Logger::CLUSTER) << "Couldn't register callback: " << e.what();
   } catch (...) {
     LOG_TOPIC("1d24f", ERR, Logger::CLUSTER)
-        << "Couldn't register callback. Unknown exception";
+        << "Couldn't register callback: unknown exception";
   }
-  if (!ok) {
-    WRITE_LOCKER(locker, _lock);
-    _endpoints.erase(rand);
-  }
-  return ok;
+    
+  WRITE_LOCKER(locker, _lock);
+  _endpoints.erase(rand);
+  return false;
 }
 
 std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint64_t id) {

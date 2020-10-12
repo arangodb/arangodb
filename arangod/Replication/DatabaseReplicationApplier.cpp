@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -92,9 +92,9 @@ void DatabaseReplicationApplier::forget() {
 
   removeState();
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  StorageEngine& engine = _vocbase.server().getFeature<EngineSelectorFeature>().engine();
 
-  engine->removeReplicationApplierConfiguration(_vocbase);
+  engine.removeReplicationApplierConfiguration(_vocbase);
   _configuration.reset();
 }
 
@@ -116,9 +116,9 @@ void DatabaseReplicationApplier::forget() {
 /// @brief load a persisted configuration for the applier
 ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(TRI_vocbase_t& vocbase) {
   // TODO: move to ReplicationApplier
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
   int res = TRI_ERROR_INTERNAL;
-  VPackBuilder builder = engine->getReplicationApplierConfiguration(vocbase, res);
+  VPackBuilder builder = engine.getReplicationApplierConfiguration(vocbase, res);
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     // file not found
@@ -148,8 +148,8 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
       << "storing applier configuration " << builder.slice().toJson() << " for "
       << _databaseName;
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  int res = engine->saveReplicationApplierConfiguration(_vocbase, builder.slice(), doSync);
+  StorageEngine& engine = _vocbase.server().getFeature<EngineSelectorFeature>().engine();
+  int res = engine.saveReplicationApplierConfiguration(_vocbase, builder.slice(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -161,15 +161,15 @@ std::shared_ptr<InitialSyncer> DatabaseReplicationApplier::buildInitialSyncer() 
 }
 
 std::shared_ptr<TailingSyncer> DatabaseReplicationApplier::buildTailingSyncer(
-    TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) const {
+    TRI_voc_tick_t initialTick, bool useTick) const {
   return std::make_shared<arangodb::DatabaseTailingSyncer>(_vocbase, _configuration,
-                                                           initialTick, useTick, barrierId);
+                                                           initialTick, useTick);
 }
 
 std::string DatabaseReplicationApplier::getStateFilename() const {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  StorageEngine& engine = _vocbase.server().getFeature<EngineSelectorFeature>().engine();
 
-  std::string const path = engine->databasePath(&_vocbase);
+  std::string const path = engine.databasePath(&_vocbase);
   if (path.empty()) {
     return std::string();
   }

@@ -1,6 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+///
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -607,7 +608,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
           // special handling for nop as it is a singleton
           addMember(ast->createNodeNop());
         } else {
-          addMember(new AstNode(ast, it));
+          addMember(ast->createNode(it));
         }
       }
     } catch (...) {
@@ -620,8 +621,6 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
       throw;
     }
   }
-
-  ast->resources().addNode(this);
 }
 
 /// @brief create the node
@@ -2883,6 +2882,7 @@ void AstNode::setDoubleValue(double v) {
 }
 
 char const* AstNode::getStringValue() const { return value.value._string; }
+
 size_t AstNode::getStringLength() const {
   return static_cast<size_t>(value.length);
 }

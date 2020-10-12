@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -78,6 +78,8 @@ class ConnectionStatistics {
   struct Snapshot {
     statistics::Counter httpConnections;
     statistics::Counter totalRequests;
+    statistics::Counter totalRequestsSuperuser;
+    statistics::Counter totalRequestsUser;
     statistics::MethodRequestCounters methodRequests;
     statistics::Counter asyncRequests;
     statistics::Distribution connectionTime;

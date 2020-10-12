@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -186,7 +186,8 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
       // below where we check that we are in the list of failoverCandidates!
       ci.waitForCurrent(planIndex);
       auto currentInfo =
-          ci.getCollectionCurrent(databaseName, std::to_string(collection.planId()));
+          ci.getCollectionCurrent(databaseName,
+                                  std::to_string(collection.planId().id()));
       if (currentInfo == nullptr) {
         // Collection has been dropped we cannot continue here.
         return;
@@ -288,6 +289,12 @@ bool TakeoverShardLeadership::first() {
                              _description.get(SERVER_ID), _result);
   }
 
-  notify();
   return false;
+}
+
+void TakeoverShardLeadership::setState(ActionState state) {
+  if ((COMPLETE == state || FAILED == state) && _state != state) {
+    _feature.unlockShard(_description.get(SHARD));
+  }
+  ActionBase::setState(state);
 }

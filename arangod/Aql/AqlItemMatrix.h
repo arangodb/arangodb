@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -65,14 +66,14 @@ class AqlItemMatrix {
   /**
    * @brief Number of registers, i.e. width of the matrix.
    */
-  RegisterCount getNrRegisters() const noexcept;
+  RegisterCount getNumRegisters() const noexcept;
 
   /**
    * @brief Test if this matrix is empty
    *
    * @return True if empty
    */
-  bool empty() const noexcept;
+  bool blocksEmpty() const noexcept;
 
   void clear();
 
@@ -106,7 +107,7 @@ class AqlItemMatrix {
  private:
   std::vector<SharedAqlItemBlockPtr> _blocks;
 
-  uint64_t _size;
+  uint64_t _numDataRows;
 
   RegisterCount _nrRegs;
   size_t _startIndexInFirstBlock{0};

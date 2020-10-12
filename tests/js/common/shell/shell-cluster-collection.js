@@ -303,8 +303,8 @@ function ClusterCollectionSuite () {
 
       try {
         db._collection("UnitTestsClusterCrud").properties({
-          replicationFactor: 3,
-          minReplicationFactor: 3
+          replicationFactor: 5,
+          minReplicationFactor: 5
         });
         fail();
       } catch (err) {
@@ -905,9 +905,9 @@ function ClusterCollectionSuite () {
         {'@cn' : cn});
       assertEqual(1, c.toArray().length);
       var doc = c.any();
-      assertTrue(doc.super === "cat");
+      assertEqual(doc.super, "cat");
       doc = cursor.next();                // should be: cursor >>= id
-      assertTrue(doc[0].super === "cat");  // extra [] buy subquery return
+      assertEqual(doc[0].super, "cat");  // extra [] buy subquery return
 
       //remove
       cursor = db._query(`

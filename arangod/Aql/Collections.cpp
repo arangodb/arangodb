@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -100,11 +100,11 @@ void Collections::toVelocyPack(velocypack::Builder& builder) const {
   }
   builder.close();
 }
-  
-void Collections::visit(std::function<bool(std::string const&, Collection*)> const& visitor) const {
+
+void Collections::visit(std::function<bool(std::string const&, Collection&)> const& visitor) const {
   for (auto const& it : _collections) {
     // stop iterating when visitor returns false
-    if (!visitor(it.first, it.second.get())) {
+    if (!visitor(it.first, *it.second.get())) {
       return;
     }
   }

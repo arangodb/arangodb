@@ -38,17 +38,23 @@ class TableMatcher;
 
 NS_BEGIN(fsa)
 
+class BooleanWeight;
+
+template<typename W, typename L>
 struct Transition;
 
-using AutomatonState = VectorState<Transition, std::allocator<Transition>>;
-using Automaton = VectorFst<Transition, AutomatonState>;
+template<typename W, typename L>
+using AutomatonState = VectorState<Transition<W, L>, std::allocator<Transition<W, L>>>;
+
+template<typename W = BooleanWeight, typename L = int32_t>
+using Automaton = VectorFst<Transition<W, L>, AutomatonState<W, L>>;
 
 NS_END // fsa
 NS_END // fst
 
 NS_ROOT
 
-using automaton = fst::fsa::Automaton;
+using automaton = fst::fsa::Automaton<>;
 
 using automaton_table_matcher = fst::TableMatcher<automaton, 256, true>;
 

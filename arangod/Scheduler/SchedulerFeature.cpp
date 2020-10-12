@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,8 +43,7 @@
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
-#include "V8Server/V8DealerFeature.h"
-#include "V8Server/v8-dispatcher.h"
+#include "VocBase/Methods/Tasks.h"
 
 #ifdef _WIN32
 #include <stdio.h>
@@ -198,45 +197,18 @@ void SchedulerFeature::start() {
     FATAL_ERROR_EXIT();
   }
   LOG_TOPIC("14e6f", DEBUG, Logger::STARTUP) << "scheduler has started";
-
-  initV8Stuff();
 }
 
 void SchedulerFeature::stop() {
+  // shutdown user jobs again, in case new ones appear
+  arangodb::Task::shutdownTasks();
   signalStuffDeinit();
-  deinitV8Stuff();
-
   _scheduler->shutdown();
 }
 
 void SchedulerFeature::unprepare() {
   SCHEDULER = nullptr;
   _scheduler.reset();
-}
-
-// ---------------------------------------------------------------------------
-// Unrelated V8 Stuff - no body knows what this has to do with scheduling
-// ---------------------------------------------------------------------------
-
-void SchedulerFeature::initV8Stuff() {
-  // THIS CODE IS TOTALLY UNRELATED TO THE SCHEDULER!?!
-  try {
-    auto& dealer = server().getFeature<V8DealerFeature>();
-    if (dealer.isEnabled()) {
-      dealer.defineContextUpdate(
-          [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
-            TRI_InitV8Dispatcher(isolate, context);
-          },
-          nullptr);
-    }
-  } catch (...) {
-  }
-}
-
-void SchedulerFeature::deinitV8Stuff() {
-  // This was once called twice on shutdown
-  // shutdown user jobs again, in case new ones appear
-  TRI_ShutdownV8Dispatcher();
 }
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,19 +51,24 @@ bool AgentCallback::operator()(arangodb::network::Response const& r) {
       auto body = r.slice();
       bool success = false;
       term_t otherTerm = 0;
-      try {
+
+      if (body.hasKey("success") &&  body.get("success").isBoolean() &&
+          body.hasKey("term") && body.get("term").isNumber()) {
         success = body.get("success").isTrue();
         otherTerm = body.get("term").getNumber<term_t>();
-      } catch (std::exception const& e) {
-        LOG_TOPIC("1b7bb", WARN, Logger::AGENCY) << "Bad callback message received: " << e.what();
+      } else {
+        LOG_TOPIC("1b7bb", DEBUG, Logger::AGENCY)
+          << "Bad callback message received: " << body.toJson();
         _agent->reportFailed(_slaveID, _toLog);
+        return true;
       }
+
       if (otherTerm > _agent->term()) {
         _agent->resign(otherTerm);
       } else if (!success) {
         LOG_TOPIC("7cbce", DEBUG, Logger::CLUSTER)
             << "Got negative answer from follower, will retry later.";
-        // This reportFailed will reset _confirmed in Agent fot this follower
+        // This reportFailed will reset _confirmed in Agent for this follower
         _agent->reportFailed(_slaveID, _toLog, true);
       } else {
         Slice senderTimeStamp = body.get("senderTimeStamp");

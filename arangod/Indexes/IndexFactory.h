@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,7 +52,8 @@ struct IndexTypeFactory {
   virtual bool equal(Index::IndexType type, velocypack::Slice const& lhs, velocypack::Slice const& rhs,
                      bool attributeOrderMatters) const;
 
-  virtual bool equal(velocypack::Slice const& lhs, velocypack::Slice const& rhs) const = 0;
+  virtual bool equal(velocypack::Slice const& lhs, velocypack::Slice const& rhs,
+                     std::string const& dbname) const = 0;
 
   /// @brief instantiate an Index definition
   virtual std::shared_ptr<Index> instantiate(LogicalCollection& collection,
@@ -168,7 +169,7 @@ class IndexFactory {
   static IndexId validateSlice(arangodb::velocypack::Slice info,
                                bool generateKey, bool isClusterConstructor);
 
- private:
+ protected:
   application_features::ApplicationServer& _server;
   std::unordered_map<std::string, IndexTypeFactory const*> _factories;
   std::unique_ptr<IndexTypeFactory> _invalid;

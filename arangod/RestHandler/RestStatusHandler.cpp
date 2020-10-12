@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,7 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringBuffer.h"
-#include "Cluster/ClusterInfo.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
@@ -75,7 +75,7 @@ RestStatus RestStatusHandler::execute() {
 
 RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
   VPackBuilder result;
-  result.add(VPackValue(VPackValueType::Object));
+  result.openObject();
   result.add("server", VPackValue("arango"));
   result.add("version", VPackValue(ARANGODB_VERSION));
 
@@ -181,7 +181,7 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
 RestStatus RestStatusHandler::executeOverview() {
   VPackBuilder result;
 
-  result.add(VPackValue(VPackValueType::Object));
+  result.openObject();
   result.add("version", VPackValue(ARANGODB_VERSION));
   result.add("platform", VPackValue(TRI_PLATFORM));
 
@@ -191,8 +191,8 @@ RestStatus RestStatusHandler::executeOverview() {
   result.add("license", VPackValue("community"));
 #endif
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  result.add("engine", VPackValue(engine->typeName()));
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  result.add("engine", VPackValue(engine.typeName()));
 
   StringBuffer buffer;
 
@@ -205,15 +205,21 @@ RestStatus RestStatusHandler::executeOverview() {
     result.add("role", VPackValue(ServerState::roleToString(role)));
 
     if (role == ServerState::ROLE_COORDINATOR) {
-      ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
-      auto plan = ci.getPlan();
+      AgencyCache& agencyCache = server().getFeature<ClusterFeature>().agencyCache();
+      auto [b, i] = agencyCache.get("arango/Plan");
+    
+      VPackSlice planSlice = b->slice().get(std::vector<std::string>{AgencyCommHelper::path(), "Plan"});
 
-      if (plan != nullptr) {
-        auto coordinators = plan->slice().get("Coordinators");
-        buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(coordinators).size()));
-        buffer.appendText("-");
-        auto dbservers = plan->slice().get("DBServers");
-        buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(dbservers).size()));
+      if (planSlice.isObject()) {
+        if (planSlice.hasKey("Coordinators")) {
+          auto coordinators =  planSlice.get("Coordinators");
+          buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(coordinators).size()));
+          buffer.appendText("-");
+        }
+        if (planSlice.hasKey("DBServers")) {
+          auto dbservers = planSlice.get("DBServers");
+          buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(dbservers).size()));
+        }
       } else {
         buffer.appendHex(static_cast<uint32_t>(0xFFFF));
         buffer.appendText("-");

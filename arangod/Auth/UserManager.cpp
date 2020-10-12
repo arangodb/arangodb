@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -107,8 +107,8 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
     VPackSlice s = authSlice.resolveExternal();
 
-    if (s.hasKey("source") && s.get("source").isString() &&
-        s.get("source").copyString() == "LDAP") {
+    if (s.get("source").isString() &&
+        s.get("source").stringRef() == "LDAP") {
       LOG_TOPIC("18ee8", TRACE, arangodb::Logger::CONFIG)
           << "LDAP: skip user in collection _users: " << s.get("user").copyString();
       continue;
@@ -118,7 +118,9 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
     // otherwise all following update/replace/remove operations on the
     // user will fail
     auth::User user = auth::User::fromDocument(s);
-    result.try_emplace(user.username(), std::move(user));
+    // intentional copy, as we are about to move-away from user
+    std::string username = user.username();
+    result.try_emplace(std::move(username), std::move(user));
   }
   return result;
 }
@@ -297,7 +299,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
 
       // parse user including document _key
       auth::User created = auth::User::fromDocument(userDoc);
-      TRI_ASSERT(!created.key().empty() && created.rev() != 0);
+      TRI_ASSERT(!created.key().empty() && created.rev().isSet());
       TRI_ASSERT(created.username() == entry.username());
       TRI_ASSERT(created.isActive() == entry.isActive());
       TRI_ASSERT(created.passwordHash() == entry.passwordHash());
@@ -345,7 +347,7 @@ void auth::UserManager::createRootUser() {
     return;
   }
   TRI_ASSERT(_userCache.empty());
-  LOG_TOPIC("857d7", INFO, Logger::AUTHENTICATION) << "Creating user \"root\"";
+  LOG_TOPIC("857d7", DEBUG, Logger::AUTHENTICATION) << "Creating user \"root\"";
 
   try {
     // Attention:
@@ -441,7 +443,7 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
   }
 
   std::string oldKey;  // will only be populated during replace
-  TRI_voc_rid_t oldRev = 0;
+  RevisionId oldRev = RevisionId::none();
   if (replace) {
     auth::User const& oldEntry = it->second;
     oldKey = oldEntry.key();
@@ -482,7 +484,7 @@ Result auth::UserManager::enumerateUsers(std::function<bool(auth::User&)>&& func
         continue;
       }
       auth::User user = it.second;  // copy user object
-      TRI_ASSERT(!user.key().empty() && user.rev() != 0);
+      TRI_ASSERT(!user.key().empty() && user.rev().isSet());
       if (func(user)) {
         toUpdate.emplace_back(std::move(user));
       }
@@ -543,7 +545,7 @@ Result auth::UserManager::updateUser(std::string const& name, UserCallback&& fun
 
   LOG_TOPIC("574c5", DEBUG, Logger::AUTHENTICATION) << "Updating user " << name;
   auth::User user = it->second;  // make a copy
-  TRI_ASSERT(!user.key().empty() && user.rev() != 0);
+  TRI_ASSERT(!user.key().empty() && user.rev().isSet());
   Result r = func(user);
   if (r.fail()) {
     return r;
@@ -797,6 +799,7 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
   return level;
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 /// Only used for testing
 void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
@@ -804,3 +807,4 @@ void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   _userCache = newMap;
   _internalVersion.store(_globalVersion.load());
 }
+#endif

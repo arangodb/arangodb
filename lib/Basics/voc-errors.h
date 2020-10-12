@@ -569,32 +569,32 @@ constexpr int TRI_ERROR_ARANGO_IO_ERROR                                         
 /// 1400: ERROR_REPLICATION_NO_RESPONSE
 /// "no response"
 /// Will be raised when the replication applier does not receive any or an
-/// incomplete response from the master.
+/// incomplete response from the leader.
 constexpr int TRI_ERROR_REPLICATION_NO_RESPONSE                                 = 1400;
 
 /// 1401: ERROR_REPLICATION_INVALID_RESPONSE
 /// "invalid response"
 /// Will be raised when the replication applier receives an invalid response
-/// from the master.
+/// from the leader.
 constexpr int TRI_ERROR_REPLICATION_INVALID_RESPONSE                            = 1401;
 
-/// 1402: ERROR_REPLICATION_MASTER_ERROR
-/// "master error"
+/// 1402: ERROR_REPLICATION_LEADER_ERROR
+/// "leader error"
 /// Will be raised when the replication applier receives a server error from
-/// the master.
-constexpr int TRI_ERROR_REPLICATION_MASTER_ERROR                                = 1402;
+/// the leader.
+constexpr int TRI_ERROR_REPLICATION_LEADER_ERROR                                = 1402;
 
-/// 1403: ERROR_REPLICATION_MASTER_INCOMPATIBLE
-/// "master incompatible"
-/// Will be raised when the replication applier connects to a master that has
+/// 1403: ERROR_REPLICATION_LEADER_INCOMPATIBLE
+/// "leader incompatible"
+/// Will be raised when the replication applier connects to a leader that has
 /// an incompatible version.
-constexpr int TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE                         = 1403;
+constexpr int TRI_ERROR_REPLICATION_LEADER_INCOMPATIBLE                         = 1403;
 
-/// 1404: ERROR_REPLICATION_MASTER_CHANGE
-/// "master change"
-/// Will be raised when the replication applier connects to a different master
+/// 1404: ERROR_REPLICATION_LEADER_CHANGE
+/// "leader change"
+/// Will be raised when the replication applier connects to a different leader
 /// than before.
-constexpr int TRI_ERROR_REPLICATION_MASTER_CHANGE                               = 1404;
+constexpr int TRI_ERROR_REPLICATION_LEADER_CHANGE                               = 1404;
 
 /// 1405: ERROR_REPLICATION_LOOP
 /// "loop detected"
@@ -658,9 +658,15 @@ constexpr int TRI_ERROR_REPLICATION_WRONG_CHECKSUM                              
 /// Will be raised when a shard is not empty and the follower tries a shortcut
 constexpr int TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              = 1417;
 
+/// 1447: ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED
+/// "follower transaction intermediate commit already performed"
+/// Will be raised when a follower transaction has already performed an
+/// intermediate commit and must be rolled back.
+constexpr int TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED           = 1447;
+
 /// 1448: ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED
 /// "creating collection failed due to precondition"
-/// Will be raised when updating the plan on collection creatio failed.
+/// Will be raised when updating the plan on collection creation failed.
 constexpr int TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED           = 1448;
 
 /// 1449: ERROR_CLUSTER_SERVER_UNKNOWN

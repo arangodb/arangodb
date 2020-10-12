@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -212,6 +213,11 @@ class TraverserHelper : public Traverser {
 
   bool getSingleVertex(VPackSlice edge, arangodb::velocypack::StringRef const sourceVertex,
                        uint64_t depth, arangodb::velocypack::StringRef& targetVertex) override {
+    // Implement
+    return false;
+  }
+
+  bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) override {
     // Implement
     return false;
   }

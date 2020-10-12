@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -422,6 +423,17 @@ bool assertRules(TRI_vocbase_t& vocbase, std::string const& queryString,
   return expectedRules.empty();
 }
 
+arangodb::aql::QueryResult explainQuery(TRI_vocbase_t& vocbase, std::string const& queryString,
+                                        std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
+                                        std::string const& optionsString /*= "{}"*/) {
+
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString), bindVars,
+                             arangodb::velocypack::Parser::fromJson(optionsString));
+
+  return query.explain();
+}
+
 arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase, std::string const& queryString,
                                         std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
                                         std::string const& optionsString /*= "{}"*/
@@ -538,8 +550,8 @@ std::string mangleString(std::string name, std::string suffix) {
 }
 
 std::string mangleStringIdentity(std::string name) {
-  arangodb::iresearch::kludge::mangleStringField(name, arangodb::iresearch::FieldMeta::Analyzer()  // args
-  );
+  arangodb::iresearch::kludge::mangleField(
+    name, arangodb::iresearch::FieldMeta::Analyzer());
 
   return name;
 }
@@ -902,7 +914,7 @@ void assertFilterParseFail(TRI_vocbase_t& vocbase, std::string const& queryStrin
 }
 
 arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id) {
-  arangodb::CreateDatabaseInfo info(server);
+  arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
   auto rv = info.load(name, id);
   if (rv.fail()) {
     throw std::runtime_error(rv.errorMessage());

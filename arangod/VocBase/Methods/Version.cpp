@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Version.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -101,10 +104,9 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
     // upgrading from, so we can't do anything sensible here.
     return VersionResult{VersionResult::VERSION_MATCH, serverVersion, serverVersion, tasks};
   }
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
+  StorageEngine& engine = vocbase->server().getFeature<EngineSelectorFeature>().engine();
 
-  std::string versionFile = engine->versionFilename(vocbase->id());
+  std::string versionFile = engine.versionFilename(vocbase->id());
   if (!basics::FileUtils::exists(versionFile)) {
     LOG_TOPIC("fde3f", DEBUG, Logger::STARTUP) << "VERSION file '" << versionFile << "' not found";
     return VersionResult{VersionResult::NO_VERSION_FILE, 0, 0, {}};
@@ -171,10 +173,9 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
 }
 
 Result Version::write(TRI_vocbase_t* vocbase, std::map<std::string, bool> const& tasks, bool sync) {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
+  StorageEngine& engine = vocbase->server().getFeature<EngineSelectorFeature>().engine();
 
-  std::string versionFile = engine->versionFilename(vocbase->id());
+  std::string versionFile = engine.versionFilename(vocbase->id());
   if (versionFile.empty()) {
     // cluster engine
     return Result();

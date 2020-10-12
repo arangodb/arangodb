@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,8 +33,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/Index.h"
 #include "Transaction/Methods.h"
-#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -90,14 +90,15 @@ void Collection::setExclusiveAccess() {
 }
 
 /// @brief get the collection id
-TRI_voc_cid_t Collection::id() const { return getCollection()->id(); }
+DataSourceId Collection::id() const { return getCollection()->id(); }
 
 /// @brief collection type
 TRI_col_type_e Collection::type() const { return getCollection()->type(); }
 
 /// @brief count the number of documents in the collection
 size_t Collection::count(transaction::Methods* trx, transaction::CountType type) const {
-  OperationResult res = trx->count(_name, type); 
+  OperationOptions options;  // TODO get from trx?
+  OperationResult res = trx->count(_name, type, options);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result);
   }
@@ -143,7 +144,7 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
     for (auto const& n : names) {
       auto collectionInfo = clusterInfo.getCollection(_vocbase->name(), n);
       auto list = clusterInfo.getShardList(
-          arangodb::basics::StringUtils::itoa(collectionInfo->id()));
+          arangodb::basics::StringUtils::itoa(collectionInfo->id().id()));
       for (auto const& x : *list) {
         res->push_back(x);
       }
@@ -151,7 +152,7 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
     return res;
   }
 
-  return clusterInfo.getShardList(arangodb::basics::StringUtils::itoa(id()));
+  return clusterInfo.getShardList(arangodb::basics::StringUtils::itoa(id().id()));
 }
 
 /// @brief returns the filtered list of shard ids of a collection
@@ -281,8 +282,8 @@ std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
 
 /// @brief use the already set collection 
 std::shared_ptr<LogicalCollection> Collection::getCollection() const {
-  ensureCollection();
   TRI_ASSERT(_collection != nullptr);
+  ensureCollection();
   return _collection;
 }
   

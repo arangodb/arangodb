@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -438,7 +438,7 @@ void ClusterFeature::prepare() {
   network::ConnectionPool::Config config;
   config.numIOThreads = 2u;
   config.maxOpenConnections = 2;
-  config.idleConnectionMilli = 1000;
+  config.idleConnectionMilli = 10000;
   config.verifyHosts = false;
   config.clusterInfo = &clusterInfo();
   config.name = "AgencyComm";
@@ -698,7 +698,6 @@ void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallback
   }
 }
 
-
 void ClusterFeature::shutdownHeartbeatThread() {
   if (_heartbeatThread == nullptr) {
     return;
@@ -706,20 +705,19 @@ void ClusterFeature::shutdownHeartbeatThread() {
   _heartbeatThread->beginShutdown();
   auto start = std::chrono::steady_clock::now();
   size_t counter = 0;
-  while(_heartbeatThread->isRunning()) {
+  while (_heartbeatThread->isRunning()) {
     if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
       LOG_TOPIC("d8a5b", FATAL, Logger::CLUSTER)
         << "exiting prematurely as we failed terminating the heartbeat thread";
       FATAL_ERROR_EXIT();
     }
-    if(++counter % 50 == 0) {
+    if (++counter % 50 == 0) {
       LOG_TOPIC("acaa9", WARN, arangodb::Logger::CLUSTER)
         << "waiting for heartbeat thread to finish";
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 }
-
 
 void ClusterFeature::shutdownAgencyCache() {
   if (_agencyCache == nullptr) {
@@ -728,20 +726,19 @@ void ClusterFeature::shutdownAgencyCache() {
   _agencyCache->beginShutdown();
   auto start = std::chrono::steady_clock::now();
   size_t counter = 0;
-  while(_agencyCache != nullptr && _agencyCache->isRunning()) {
+  while (_agencyCache != nullptr && _agencyCache->isRunning()) {
     if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
       LOG_TOPIC("b5a8d", FATAL, Logger::CLUSTER)
         << "exiting prematurely as we failed terminating the agency cache";
       FATAL_ERROR_EXIT();
     }
-    if(counter % 50 == 0) {
+    if (++counter % 50 == 0) {
       LOG_TOPIC("acab0", WARN, arangodb::Logger::CLUSTER)
         << "waiting for agency cache thread to finish";
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 }
-
 
 void ClusterFeature::notify() {
   if (_heartbeatThread != nullptr) {
@@ -782,4 +779,62 @@ void ClusterFeature::allocateMembers() {
   _agencyCache =
     std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry);
   _allocated = true;
+}
+
+void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, bool callNotify) {
+  if (databases.size() > 0) {
+    MUTEX_LOCKER(guard, _dirtyLock);
+    for (auto const& database : databases) {
+      if (_dirtyDatabases.emplace(database).second) {
+        LOG_TOPIC("35b75", DEBUG, Logger::MAINTENANCE)
+          << "adding " << database << " to dirty databases";
+      }
+    }
+    if (callNotify) {
+      notify();
+    }
+  }
+}
+
+void ClusterFeature::addDirty(std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& databases) {
+  if (databases.size() > 0) {
+    MUTEX_LOCKER(guard, _dirtyLock);
+    for (auto const& database : databases) {
+      if (_dirtyDatabases.emplace(database.first).second) {
+        LOG_TOPIC("35b77", DEBUG, Logger::MAINTENANCE)
+          << "adding " << database << " to dirty databases";
+      }
+    }
+    notify();
+  }
+}
+
+void ClusterFeature::addDirty(std::string const& database) {
+  MUTEX_LOCKER(guard, _dirtyLock);
+  if (_dirtyDatabases.emplace(database).second) {
+    LOG_TOPIC("357b9", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databases";
+  }
+  notify();
+}
+
+std::unordered_set<std::string> ClusterFeature::dirty() {
+  MUTEX_LOCKER(guard, _dirtyLock);
+  std::unordered_set<std::string> ret;
+  ret.swap(_dirtyDatabases);
+  return ret;
+}
+
+bool ClusterFeature::isDirty(std::string const& dbName) const {
+  MUTEX_LOCKER(guard, _dirtyLock);
+  return _dirtyDatabases.find(dbName) != _dirtyDatabases.end();
+}
+
+std::unordered_set<std::string> ClusterFeature::allDatabases() const {
+  std::unordered_set<std::string> allDBNames;
+  auto const tmp = server().getFeature<DatabaseFeature>().getDatabaseNames();
+  allDBNames.reserve(tmp.size());
+  for (auto const& i : tmp) {
+    allDBNames.emplace(i);
+  }
+  return allDBNames;
 }

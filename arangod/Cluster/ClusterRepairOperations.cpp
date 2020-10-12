@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -353,16 +354,16 @@ VPackSlice RepairOperationToTransactionVisitor::createSingleValueVPack(T val) {
 RepairOperationToTransactionVisitor::ReturnValueT RepairOperationToTransactionVisitor::operator()(
     BeginRepairsOperation const& op) {
   std::string const distributeShardsLikePath =
-      agencyCollectionId(op.database, op.collectionId) + "/" +
+      agencyDataSourceId(op.database, op.collectionId) + "/" +
       "distributeShardsLike";
   std::string const repairingDistributeShardsLikePath =
-      agencyCollectionId(op.database, op.collectionId) + "/" +
+      agencyDataSourceId(op.database, op.collectionId) + "/" +
       "repairingDistributeShardsLike";
   std::string const replicationFactorPath =
-      agencyCollectionId(op.database, op.collectionId) + "/" +
+      agencyDataSourceId(op.database, op.collectionId) + "/" +
       "replicationFactor";
   std::string const protoReplicationFactorPath =
-      agencyCollectionId(op.database, op.protoCollectionId) + "/" +
+      agencyDataSourceId(op.database, op.protoCollectionId) + "/" +
       "replicationFactor";
 
   VPackSlice protoCollectionIdSlice = createSingleValueVPack(op.protoCollectionId);
@@ -428,15 +429,15 @@ RepairOperationToTransactionVisitor::ReturnValueT RepairOperationToTransactionVi
 
 RepairOperationToTransactionVisitor::ReturnValueT RepairOperationToTransactionVisitor::operator()(
     FinishRepairsOperation const& op) {
-  std::string const oldAttrPath = agencyCollectionId(op.database, op.collectionId) +
+  std::string const oldAttrPath = agencyDataSourceId(op.database, op.collectionId) +
                                   "/" + "repairingDistributeShardsLike";
-  std::string const newAttrPath = agencyCollectionId(op.database, op.collectionId) +
+  std::string const newAttrPath = agencyDataSourceId(op.database, op.collectionId) +
                                   "/" + "distributeShardsLike";
   std::string const replicationFactorPath =
-      agencyCollectionId(op.database, op.collectionId) + "/" +
+      agencyDataSourceId(op.database, op.collectionId) + "/" +
       "replicationFactor";
   std::string const protoReplicationFactorPath =
-      agencyCollectionId(op.database, op.protoCollectionId) + "/" +
+      agencyDataSourceId(op.database, op.protoCollectionId) + "/" +
       "replicationFactor";
 
   VPackSlice protoCollectionIdSlice = createSingleValueVPack(op.protoCollectionId);
@@ -454,9 +455,9 @@ RepairOperationToTransactionVisitor::ReturnValueT RepairOperationToTransactionVi
     DBServers dbServers;
     std::tie(shardId, protoShardId, dbServers) = it;
     std::string const shardPath =
-        agencyCollectionId(op.database, op.collectionId) + "/shards/" + shardId;
+        agencyDataSourceId(op.database, op.collectionId) + "/shards/" + shardId;
     std::string const protoShardPath =
-        agencyCollectionId(op.database, op.protoCollectionId) + "/shards/" + protoShardId;
+        agencyDataSourceId(op.database, op.protoCollectionId) + "/shards/" + protoShardId;
 
     VPackSlice dbServersSlice;
     {
@@ -508,9 +509,9 @@ RepairOperationToTransactionVisitor::ReturnValueT RepairOperationToTransactionVi
 RepairOperationToTransactionVisitor::ReturnValueT RepairOperationToTransactionVisitor::operator()(
     FixServerOrderOperation const& op) {
   std::string const agencyShardId =
-      agencyCollectionId(op.database, op.collectionId) + "/shards/" + op.shard;
+      agencyDataSourceId(op.database, op.collectionId) + "/shards/" + op.shard;
   std::string const agencyProtoShardId =
-      agencyCollectionId(op.database, op.protoCollectionId) + "/shards/" + op.protoShard;
+      agencyDataSourceId(op.database, op.protoCollectionId) + "/shards/" + op.protoShard;
 
   VPackBufferPtr vpack = createShardDbServerArray(op.leader, op.followers);
   VPackSlice oldDbServerSlice = velocypack::Slice(vpack->data());
@@ -530,7 +531,7 @@ RepairOperationToTransactionVisitor::ReturnValueT RepairOperationToTransactionVi
   return {AgencyWriteTransaction{agencyOperation, agencyPreconditions}, std::nullopt};
 }
 
-std::string RepairOperationToTransactionVisitor::agencyCollectionId(DatabaseID database,
+std::string RepairOperationToTransactionVisitor::agencyDataSourceId(DatabaseID database,
                                                                     CollectionID collection) const {
   return "Plan/Collections/" + database + "/" + collection;
 }

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,7 +36,7 @@ class AqlItemMatrixTest : public AqlExecutorTestCase<> {};
 TEST_F(AqlItemMatrixTest, should_forward_number_of_regs) {
   for (RegisterCount c = 1; c < 3; c++) {
     AqlItemMatrix testee(c);
-    EXPECT_EQ(testee.getNrRegisters(), c);
+    EXPECT_EQ(testee.getNumRegisters(), c);
   }
 }
 
@@ -43,7 +44,7 @@ TEST_F(AqlItemMatrixTest, expose_size_of_data_only) {
   auto& manager = this->manager();
 
   AqlItemMatrix testee(1);
-  EXPECT_TRUE(testee.empty());
+  EXPECT_TRUE(testee.blocksEmpty());
   {
     // 12
     auto block =
@@ -51,14 +52,14 @@ TEST_F(AqlItemMatrixTest, expose_size_of_data_only) {
                       {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}});
     testee.addBlock(block);
   }
-  EXPECT_FALSE(testee.empty());
+  EXPECT_FALSE(testee.blocksEmpty());
   ASSERT_EQ(testee.size(), 12);
   {
     // 8
     auto block = buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}});
     testee.addBlock(block);
   }
-  EXPECT_FALSE(testee.empty());
+  EXPECT_FALSE(testee.blocksEmpty());
   ASSERT_EQ(testee.size(), 20);
 
   {
@@ -66,7 +67,7 @@ TEST_F(AqlItemMatrixTest, expose_size_of_data_only) {
     auto block = buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}});
     testee.addBlock(block);
   }
-  EXPECT_FALSE(testee.empty());
+  EXPECT_FALSE(testee.blocksEmpty());
   ASSERT_EQ(testee.size(), 29);
 }
 

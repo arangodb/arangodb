@@ -57,8 +57,8 @@ function restoreIntegrationSuite () {
     addConnectionArgs(args);
 
     let actualRc = internal.executeExternalAndWait(arangorestore, args);
-    assertTrue(actualRc.hasOwnProperty("exit"));
-    assertEqual(rc, actualRc.exit);
+    assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
+    assertEqual(rc, actualRc.exit, actualRc);
   };
 
   return {

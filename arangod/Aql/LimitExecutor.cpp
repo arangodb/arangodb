@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,6 +31,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 
 #include <utility>
@@ -52,13 +54,14 @@ auto LimitExecutor::limitFulfilled() const noexcept -> bool {
 auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> AqlCall {
   auto upstreamCall = AqlCall{};
 
-  // Offsets can simply be added.
-  upstreamCall.offset = clientCall.getOffset() + remainingOffset();
+  auto const limitedClientOffset = std::min(clientCall.getOffset(), remainingLimit());
+
+  // Offsets must be added, but the client's offset is limited by our limit.
+  upstreamCall.offset = remainingOffset() + limitedClientOffset;
 
   // To get the limit for upstream, we must subtract the downstream offset from
   // our limit, and take the minimum of this and the downstream limit.
-  auto const localLimitMinusDownstreamOffset =
-      remainingLimit() - std::min(remainingLimit(), clientCall.getOffset());
+  auto const localLimitMinusDownstreamOffset = remainingLimit() - limitedClientOffset;
   auto const limit =
       std::min<AqlCall::Limit>(clientCall.getLimit(), localLimitMinusDownstreamOffset);
 
@@ -68,13 +71,37 @@ auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> Aq
                             clientCall.getLimit() < localLimitMinusDownstreamOffset;
 
   if (useSoftLimit) {
+    // fullCount may only be set with a hard limit
+    TRI_ASSERT(!clientCall.needsFullCount());
+
     upstreamCall.softLimit = limit;
     upstreamCall.fullCount = false;
+  } else if (clientCall.needsFullCount() && 0 == clientCall.getLimit() && !_didProduceRows) {
+    // The request is a hard limit of 0 together with fullCount, so we always
+    // need to skip both our offset and our limit, regardless of the client's
+    // offset.
+    // If we ever got a client limit > 0 and thus produced rows, we may not send
+    // a non-zero offset, and thus must avoid this branch.
+    TRI_ASSERT(!useSoftLimit);
+    TRI_ASSERT(clientCall.hasHardLimit());
+
+    upstreamCall.offset = upstreamCall.offset + remainingLimit();
+    upstreamCall.hardLimit = std::size_t(0);
+    // We need to send fullCount upstream iff this is fullCount-enabled LIMIT
+    // block.
+    upstreamCall.fullCount = infos().isFullCountEnabled();
   } else {
+    TRI_ASSERT(!useSoftLimit);
+    TRI_ASSERT(!clientCall.needsFullCount() || 0 < clientCall.getLimit() || _didProduceRows);
+
     upstreamCall.hardLimit = limit;
-    // We need the fullCount either if we need to report it ourselfes.
-    // or if the clientCall needs to report it.
-    upstreamCall.fullCount = infos().isFullCountEnabled() || clientCall.fullCount;
+    // We need the fullCount if we need to report it ourselves.
+    // If the client needs full count, we need to skip up to our limit upstream.
+    // But currently the execute API does not allow limited skipping after
+    // fetching rows, so we must pass fullCount upstream, even if that's
+    // inefficient.
+    // This is going to be fixed in a later PR.
+    upstreamCall.fullCount = infos().isFullCountEnabled() || clientCall.needsFullCount();
   }
 
   return upstreamCall;
@@ -122,6 +149,7 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
         output.copyRow(inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{}).second);
         output.advanceRow();
         numRowsWritten++;
+        _didProduceRows = true;
       }
       _counter += numRowsWritten;
       if (infos().isFullCountEnabled()) {

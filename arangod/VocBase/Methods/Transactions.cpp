@@ -1,7 +1,31 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jan Christoph Uhde
+////////////////////////////////////////////////////////////////////////////////
+
 #include <v8.h>
 #include "Transactions.h"
 
 #include "Basics/ReadLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
@@ -141,7 +165,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
     // be overwritten later if is contained in `object`
     VPackBuilder builder;
     // we must use "convertFunctionsToNull" here, because "action" is most
-    // likey a JavaScript function
+    // likely a JavaScript function
     TRI_V8ToVPack(isolate, builder, object, false,
                   /*convertFunctionsToNull*/ true);
     if (!builder.isClosed()) {
@@ -339,6 +363,15 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
 
   if (rv.fail()) {
     return rv;
+  }
+  
+  auto guard = scopeGuard([&ctx] {
+    ctx->exitV8Context();
+  });
+  if (transaction::V8Context::isEmbedded()) { // do not enter context if already embedded
+    guard.cancel();
+  } else {
+    ctx->enterV8Context();
   }
 
   try {

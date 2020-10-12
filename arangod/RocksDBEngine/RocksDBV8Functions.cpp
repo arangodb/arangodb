@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,8 @@
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -51,7 +53,6 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bool waitForSync = false;
   bool waitForCollector = false;
-  bool writeShutdownFile = false;
 
   if (args.Length() > 0) {
     if (args[0]->IsObject()) {
@@ -67,25 +68,17 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
             isolate,
             obj->Get(context, TRI_V8_ASCII_STRING(isolate, "waitForCollector")).FromMaybe(v8::Local<v8::Value>()));
       }
-      if (TRI_HasProperty(context, isolate, obj, "writeShutdownFile")) {
-        writeShutdownFile = TRI_ObjectToBoolean(
-            isolate,
-            obj->Get(context, TRI_V8_ASCII_STRING(isolate, "writeShutdownFile")).FromMaybe(v8::Local<v8::Value>()));
-      }
     } else {
       waitForSync = TRI_ObjectToBoolean(isolate, args[0]);
 
       if (args.Length() > 1) {
         waitForCollector = TRI_ObjectToBoolean(isolate, args[1]);
-
-        if (args.Length() > 2) {
-          writeShutdownFile = TRI_ObjectToBoolean(isolate, args[2]);
-        }
       }
     }
   }
 
-  EngineSelectorFeature::ENGINE->flushWal(waitForSync, waitForCollector, writeShutdownFile);
+  TRI_GET_GLOBALS();
+  v8g->_server.getFeature<EngineSelectorFeature>().engine().flushWal(waitForSync, waitForCollector);
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
@@ -195,7 +188,9 @@ static void JS_WaitForEstimatorSync(v8::FunctionCallbackInfo<v8::Value> const& a
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  EngineSelectorFeature::ENGINE->waitForEstimatorSync(std::chrono::seconds(10));
+  TRI_GET_GLOBALS();
+  v8g->_server.getFeature<EngineSelectorFeature>().engine().waitForEstimatorSync(
+      std::chrono::seconds(10));
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END

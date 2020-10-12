@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -219,6 +219,12 @@ void Task::removeTasksForDatabase(std::string const& name) {
 }
 
 bool Task::tryCompile(v8::Isolate* isolate, std::string const& command) {
+  if (!V8DealerFeature::DEALER || !V8DealerFeature::DEALER->isEnabled()) {
+    return false;
+  }
+
+  TRI_ASSERT(isolate != nullptr);
+
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
   // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
@@ -364,6 +370,10 @@ void Task::start() {
 }
 
 bool Task::queue(std::chrono::microseconds offset) {
+  if (!V8DealerFeature::DEALER || !V8DealerFeature::DEALER->isEnabled()) {
+    return false;
+  }
+
   MUTEX_LOCKER(lock, _taskHandleMutex);
   bool queued = false;
   std::tie(queued, _taskHandle) =

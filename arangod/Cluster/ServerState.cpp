@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -612,7 +612,7 @@ std::string ServerState::getPersistedId() {
 
 /// @brief check equality of engines with other registered servers
 bool ServerState::checkEngineEquality(AgencyComm& comm) {
-  std::string engineName = EngineSelectorFeature::engineName();
+  std::string engineName = _server.getFeature<EngineSelectorFeature>().engineName();
 
   AgencyCommResult result = comm.getValues(currentServersRegisteredPref);
   if (result.successful()) {  // no error if we cannot reach agency directly
@@ -822,7 +822,8 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
       builder.add("host", VPackValue(getHost()));
       builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
       builder.add("versionString", VPackValue(rest::Version::getServerVersion()));
-      builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
+      builder.add("engine",
+                  VPackValue(_server.getFeature<EngineSelectorFeature>().engineName()));
       builder.add("timestamp",
                   VPackValue(timepointToString(std::chrono::system_clock::now())));
     }

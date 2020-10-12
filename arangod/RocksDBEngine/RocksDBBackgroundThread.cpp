@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -82,7 +83,7 @@ void RocksDBBackgroundThread::run() {
       bool force = isStopping();
       _engine.replicationManager()->garbageCollect(force);
 
-      uint64_t minTick = rocksutils::latestSequenceNumber();
+      uint64_t minTick = _engine.db()->GetLatestSequenceNumber();
       auto cmTick = _engine.settingsManager()->earliestSeqNeeded();
 
       if (cmTick < minTick) {

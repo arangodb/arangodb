@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,8 +30,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Sharding/ShardingFeature.h"
 #include "Sharding/ShardingStrategyDefault.h"
 #include "Utils/CollectionNameResolver.h"
@@ -53,7 +51,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       _shardIds(new ShardMap()) {
   bool const isSmart =
       basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IsSmart, false);
-      
+
   if (isSmart && _collection->type() == TRI_COL_TYPE_EDGE) {
     // smart edge collection
     _numberOfShards = 0;
@@ -92,7 +90,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
 
   auto avoidServersSlice = info.get("avoidServers");
   if (avoidServersSlice.isArray()) {
-    for (const auto& i : VPackArrayIterator(avoidServersSlice)) {
+    for (VPackSlice i : VPackArrayIterator(avoidServersSlice)) {
       if (i.isString()) {
         _avoidServers.push_back(i.copyString());
       } else {
@@ -129,6 +127,11 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       _avoidServers.clear();
       isError = false;
       isASatellite = true;
+    }
+
+    if (isSmart && isASatellite) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "'isSmart' and replicationFactor 'satellite' cannot be combined");
     }
 #endif
     if (isError) {
@@ -170,7 +173,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     _shardKeys.emplace_back(StaticStrings::KeyString);
   } else {
     if (shardKeysSlice.isArray()) {
-      for (auto const& sk : VPackArrayIterator(shardKeysSlice)) {
+      for (VPackSlice sk : VPackArrayIterator(shardKeysSlice)) {
         if (sk.isString()) {
           velocypack::StringRef key = sk.stringRef();
           // remove : char at the beginning or end (for enterprise)
@@ -197,7 +200,6 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
         }
       }
       if (_shardKeys.empty()) { 
-        // && !isCluster) {
         // Compatibility. Old configs might store empty shard-keys locally.
         // This is translated to ["_key"]. In cluster-case this always was
         // forbidden.
@@ -211,7 +213,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
   if (_shardKeys.empty() || _shardKeys.size() > 8) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        std::string("invalid number of shard keys for collection"));
+        "invalid number of shard keys for collection");
   }
 
   auto shardsSlice = info.get("shards");
@@ -310,8 +312,8 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) const 
       CollectionNameResolver resolver(_collection->vocbase());
 
       result.add(StaticStrings::DistributeShardsLike,
-                 VPackValue(resolver.getCollectionNameCluster(static_cast<TRI_voc_cid_t>(
-                     basics::StringUtils::uint64(distributeShardsLike())))));
+                 VPackValue(resolver.getCollectionNameCluster(DataSourceId{
+                     basics::StringUtils::uint64(distributeShardsLike())})));
     } else {
       result.add(StaticStrings::DistributeShardsLike, VPackValue(distributeShardsLike()));
     }

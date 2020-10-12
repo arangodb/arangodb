@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -108,7 +109,7 @@ class IResearchFeatureTest
     dataPath += std::to_string(view.vocbase().id());
     dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
     dataPath += "-";
-    dataPath += std::to_string(view.id());
+    dataPath += std::to_string(view.id().id());
     return dataPath;
   };
 
@@ -121,7 +122,7 @@ class IResearchFeatureTest
     dataPath += std::to_string(link.collection().vocbase().id());
     dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
     dataPath += "-";
-    dataPath += std::to_string(link.collection().id());
+    dataPath += std::to_string(link.collection().id().id());
     dataPath += "_";
     dataPath += std::to_string(link.id().id());
     return dataPath;
@@ -756,7 +757,6 @@ class IResearchFeatureTestCoordinator
     arangodb::network::ConnectionPool::Config poolConfig;
     poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
     poolConfig.numIOThreads = 1;
-    poolConfig.minOpenConnections = 1;
     poolConfig.maxOpenConnections = 3;
     poolConfig.verifyHosts = false;
     _pool = std::make_unique<AsyncAgencyStorePoolMock>(server.server(), poolConfig);
@@ -833,7 +833,7 @@ class IResearchFeatureTestCoordinator
           b.add("id", VPackValue(id));
           b.add("inBackground", VPackValue(false));
           b.add("name", VPackValue(name));
-          b.add("sparse", VPackValue(sparse)); 
+          b.add("sparse", VPackValue(sparse));
           b.add("type", VPackValue(type));
           b.add("unique", VPackValue(unique)); }
       }
@@ -845,7 +845,7 @@ class IResearchFeatureTestCoordinator
 TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   // test coordinator
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"name\": \"testCollection\", \"shards\":{} }");
+      "{ \"id\": \"41\", \"name\": \"testCollection\", \"shards\":{} }");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
       "\"includeAllFields\": true }");
@@ -854,7 +854,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
       "\"version\": 0 }");
   auto versionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"version\": 0, \"tasks\": {} }");
-  auto collectionId = std::to_string(1);
+  auto collectionId = std::to_string(41);
   auto viewId = std::to_string(42);
 
   // add the UpgradeFeature, but make sure it is not prepared
@@ -895,12 +895,13 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   arangodb::velocypack::Builder tmp;
 
   auto const currentCollectionPath = "/Current/Collections/" + vocbase->name() +
-    "/" + std::to_string(logicalCollection->id());
+                                     "/" +
+                                     std::to_string(logicalCollection->id().id());
   {
     ASSERT_TRUE(logicalView0);
-    auto const viewId = std::to_string(logicalView0->planId());
+    auto const viewId = std::to_string(logicalView0->planId().id());
     EXPECT_TRUE("42" == viewId);
-    
+
     // simulate heartbeat thread (create index in current)
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
@@ -910,7 +911,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
                   .successful());
     }
   }
-  
+
   auto [t,i] = server.getFeature<arangodb::ClusterFeature>().
     agencyCache().read(
       std::vector<std::string>{"/arango"});
@@ -936,7 +937,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   // simulate heartbeat thread (create index in current)
   {
     auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                      std::to_string(logicalCollection->id());
+                      std::to_string(logicalCollection->id().id());
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
         "] } }");
@@ -950,7 +951,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
         { VPackObjectBuilder op(b.get());
           b->add(path, value->slice()); }}}
     server.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(b);
-      
+
   }
   EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok());  // run upgrade
   auto logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
@@ -1006,7 +1007,6 @@ class IResearchFeatureTestDBServer
     arangodb::network::ConnectionPool::Config poolConfig;
     poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
     poolConfig.numIOThreads = 1;
-    poolConfig.minOpenConnections = 1;
     poolConfig.maxOpenConnections = 3;
     poolConfig.verifyHosts = false;
     _pool = std::make_unique<AsyncAgencyStorePoolMock>(server.server(), poolConfig);
@@ -1032,7 +1032,7 @@ class IResearchFeatureTestDBServer
     dataPath += std::to_string(view.vocbase().id());
     dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
     dataPath += "-";
-    dataPath += std::to_string(view.id());
+    dataPath += std::to_string(view.id().id());
     return dataPath;
   };
 
@@ -1045,7 +1045,7 @@ class IResearchFeatureTestDBServer
     dataPath += std::to_string(link.collection().vocbase().id());
     dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
     dataPath += "-";
-    dataPath += std::to_string(link.collection().id());
+    dataPath += std::to_string(link.collection().id().id());
     dataPath += "_";
     dataPath += std::to_string(link.id().id());
     return dataPath;

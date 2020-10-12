@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -101,9 +101,9 @@ basics::ReadWriteLock RestReplicationHandler::_tombLock;
 std::unordered_map<std::string, std::chrono::time_point<std::chrono::steady_clock>>
     RestReplicationHandler::_tombstones = {};
 
-static aql::QueryId ExtractReadlockId(VPackSlice slice) {
+static TransactionId ExtractReadlockId(VPackSlice slice) {
   TRI_ASSERT(slice.isString());
-  return StringUtils::uint64(slice.copyString());
+  return TransactionId{StringUtils::uint64(slice.copyString())};
 }
 
 static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force) {
@@ -129,7 +129,7 @@ static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& co
   std::vector<std::string> agencyPath = {"Plan",
                                          "Collections",
                                          col->vocbase().name(),
-                                         std::to_string(col->planId()),
+                                         std::to_string(col->planId().id()),
                                          "shards",
                                          col->name()};
 
@@ -278,7 +278,7 @@ std::string const RestReplicationHandler::RestoreIndexes = "restore-indexes";
 std::string const RestReplicationHandler::RestoreData = "restore-data";
 std::string const RestReplicationHandler::RestoreView = "restore-view";
 std::string const RestReplicationHandler::Sync = "sync";
-std::string const RestReplicationHandler::MakeSlave = "make-slave";
+std::string const RestReplicationHandler::MakeFollower = "make-follower";
 std::string const RestReplicationHandler::ServerId = "server-id";
 std::string const RestReplicationHandler::ApplierConfig = "applier-config";
 std::string const RestReplicationHandler::ApplierStart = "applier-start";
@@ -498,7 +498,8 @@ RestStatus RestReplicationHandler::execute() {
       }
 
       handleCommandSync();
-    } else if (command == MakeSlave) {
+    } else if (command == MakeFollower ||
+               command == "make-slave" /*deprecated*/) {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
@@ -507,7 +508,7 @@ RestStatus RestReplicationHandler::execute() {
         return RestStatus::DONE;
       }
 
-      handleCommandMakeSlave();
+      handleCommandMakeFollower();
     } else if (command == ServerId) {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
@@ -739,10 +740,10 @@ ResultT<std::pair<std::string, bool>> RestReplicationHandler::forwardingTarget()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_makeSlave
+/// @brief was docuBlock JSF_put_api_replication_makeFollower
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestReplicationHandler::handleCommandMakeSlave() {
+void RestReplicationHandler::handleCommandMakeFollower() {
   bool isGlobal = false;
   ReplicationApplier* applier = getApplier(isGlobal);
   if (applier == nullptr) {
@@ -853,7 +854,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     std::shared_ptr<ShardMap> shardMap = c->shardIds();
     // shardMap is an unordered_map from ShardId (string) to a vector of
     // servers (strings), wrapped in a shared_ptr
-    auto cic = ci.getCollectionCurrent(dbName, basics::StringUtils::itoa(c->id()));
+    auto cic = ci.getCollectionCurrent(dbName, basics::StringUtils::itoa(c->id().id()));
     // Check all shards:
     bool isReady = true;
     bool allInSync = true;
@@ -1071,7 +1072,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
           return server().getFeature<iresearch::IResearchAnalyzerFeature>().removeAllAnalyzers(_vocbase);
         }
 
-        auto dropResult = methods::Collections::drop(*col, true, 0.0, true);
+        auto dropResult = methods::Collections::drop(*col, true, 300.0, true);
         if (dropResult.fail()) {
           if (dropResult.is(TRI_ERROR_FORBIDDEN) || dropResult.is(TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE)) {
             // If we are not allowed to drop the collection.
@@ -1672,7 +1673,7 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
                                      collectionName == StaticStrings::UsersCollection);
 
   LogicalCollection* collection = trx.documentCollection(collectionName);
-  if (generateNewRevisionIds && !collection) {
+  if (!collection) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   PhysicalCollection* physical = collection->getPhysical();
@@ -1715,8 +1716,8 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
 
           if (generateNewRevisionIds && arangodb::velocypack::StringRef(it.key) ==
                                             StaticStrings::RevString) {
-            TRI_voc_rid_t newRid = physical->newRevisionId();
-            builder.add(TRI_RidToValuePair(newRid, ridBuffer));
+            RevisionId newRid = physical->newRevisionId();
+            builder.add(newRid.toValuePair(ridBuffer));
           } else {
             builder.add(it.value);
           }
@@ -1726,15 +1727,14 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
   }
 
   VPackSlice requestSlice = builder.slice();
-  OperationResult opRes;
+  OperationOptions options(_context);
+  options.silent = false;
+  options.ignoreRevs = true;
+  options.isRestore = true;
+  options.waitForSync = false;
+  options.overwriteMode = OperationOptions::OverwriteMode::Replace;
+  OperationResult opRes(Result(), options);
   try {
-    OperationOptions options;
-    options.silent = false;
-    options.ignoreRevs = true;
-    options.isRestore = true;
-    options.waitForSync = false;
-    options.overwriteMode = OperationOptions::OverwriteMode::Replace;
-    
     double startTime = TRI_microtime();
     opRes = trx.insert(collectionName, requestSlice, options);
     double duration = TRI_microtime() - startTime;
@@ -1800,7 +1800,7 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
   }
 
   try {
-    OperationOptions options;
+    OperationOptions options(_context);
     options.silent = true;
     options.ignoreRevs = true;
     options.isRestore = true;
@@ -2236,7 +2236,7 @@ void RestReplicationHandler::handleCommandSync() {
   result.add(VPackValue(VPackValueType::Object));
   result.add("collections", VPackValue(VPackValueType::Array));
   for (auto const& it : syncer->getProcessedCollections()) {
-    std::string const cidString = StringUtils::itoa(it.first);
+    std::string const cidString = StringUtils::itoa(it.first.id());
     // Insert a collection
     result.add(VPackValue(VPackValueType::Object));
     result.add("id", VPackValue(cidString));
@@ -2247,12 +2247,6 @@ void RestReplicationHandler::handleCommandSync() {
 
   auto tickString = std::to_string(syncer->getLastLogTick());
   result.add("lastLogTick", VPackValue(tickString));
-
-  bool const keepBarrier = VelocyPackHelper::getBooleanValue(body, "keepBarrier", false);
-  if (keepBarrier) {
-    auto barrierId = std::to_string(syncer->stealBarrier());
-    result.add("barrierId", VPackValue(barrierId));
-  }
 
   result.close();  // base
   generateResult(rest::ResponseCode::OK, result.slice());
@@ -2335,14 +2329,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
     useTick = true;
   }
 
-  TRI_voc_tick_t barrierId = 0;
-  std::string const& value2 = _request->value("barrierId", found);
-  if (found) {
-    // query parameter "barrierId" specified
-    barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
-  }
-
-  applier->startTailing(initialTick, useTick, barrierId);
+  applier->startTailing(initialTick, useTick);
   handleCommandApplierGetState();
 }
 
@@ -2469,7 +2456,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  const std::string followerId = followerIdSlice.copyString();
+  std::string const followerId = followerIdSlice.copyString();
   LOG_TOPIC("312cc", DEBUG, Logger::REPLICATION)
       << "Attempt to Add Follower: " << followerId << " to shard "
       << col->name() << " in database: " << _vocbase.name();
@@ -2482,7 +2469,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
     auto res = trx.begin();
 
     if (res.ok()) {
-      auto countRes = trx.count(col->name(), transaction::CountType::Normal);
+      OperationOptions options(_context);
+      auto countRes = trx.count(col->name(), transaction::CountType::Normal, options);
 
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
@@ -2532,7 +2520,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   // get into trouble here we may need to be more lenient
   TRI_ASSERT(checksumSlice.isString() && readLockIdSlice.isString());
 
-  aql::QueryId readLockId = ExtractReadlockId(readLockIdSlice);
+  TransactionId readLockId = ExtractReadlockId(readLockIdSlice);
 
   // referenceChecksum is the stringified number of documents in the collection
   ResultT<std::string> referenceChecksum =
@@ -2549,10 +2537,11 @@ void RestReplicationHandler::handleCommandAddFollower() {
     LOG_TOPIC("94ebe", DEBUG, Logger::REPLICATION)
         << followerId << " is not yet in sync with " << _vocbase.name() << "/"
         << col->name();
-    const std::string checksum = checksumSlice.copyString();
+    std::string const checksum = checksumSlice.copyString();
     LOG_TOPIC("592ef", WARN, Logger::REPLICATION)
-        << "Cannot add follower, mismatching checksums. "
-        << "Expected: " << referenceChecksum.get() << " Actual: " << checksum;
+        << "Cannot add follower for shard " << shardSlice.copyString() 
+        << " in database " << _vocbase.name() << ", mismatching checksums. "
+        << "Expected: " << referenceChecksum.get() << ", actual: " << checksum;
     generateError(rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
                   "'checksum' is wrong. Expected: " + referenceChecksum.get() +
                       ". Actual: " + checksum);
@@ -2759,7 +2748,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     return;
   }
 
-  aql::QueryId id = ExtractReadlockId(idSlice);
+  TransactionId id = ExtractReadlockId(idSlice);
   auto col = _vocbase.lookupCollection(collection.copyString());
 
   if (col == nullptr) {
@@ -2843,7 +2832,7 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
                   "'id' needs to be a string");
     return;
   }
-  aql::QueryId id = ExtractReadlockId(idSlice);
+  TransactionId id = ExtractReadlockId(idSlice);
   LOG_TOPIC("05a75", DEBUG, Logger::REPLICATION) << "Test if Lock " << id << " is still active.";
   auto res = isLockHeld(id);
   if (!res.ok()) {
@@ -2887,7 +2876,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
                   "'id' needs to be a string");
     return;
   }
-  aql::QueryId id = ExtractReadlockId(idSlice);
+  TransactionId id = ExtractReadlockId(idSlice);
   LOG_TOPIC("9a5e3", DEBUG, Logger::REPLICATION) << "Attempt to cancel Lock: " << id;
 
   auto res = cancelBlockingTransaction(id);
@@ -2918,7 +2907,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
 void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
-  std::string id = std::to_string(transaction::Context::makeTransactionId());
+  std::string id = std::to_string(transaction::Context::makeTransactionId().id());
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);
@@ -2933,11 +2922,11 @@ void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerState() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine);
+  TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
 
   VPackBuilder builder;
-  auto res = engine->createLoggerState(&_vocbase, builder);
+  auto res = engine.createLoggerState(&_vocbase, builder);
 
   if (res.fail()) {
     LOG_TOPIC("c7471", DEBUG, Logger::REPLICATION)
@@ -2957,7 +2946,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
 //////////////////////////////////////////////////////////////////////////////
 void RestReplicationHandler::handleCommandLoggerFirstTick() {
   TRI_voc_tick_t tick = UINT64_MAX;
-  Result res = EngineSelectorFeature::ENGINE->firstTick(tick);
+  Result res = server().getFeature<EngineSelectorFeature>().engine().firstTick(tick);
 
   VPackBuilder b;
   b.add(VPackValue(VPackValueType::Object));
@@ -2982,10 +2971,10 @@ void RestReplicationHandler::handleCommandLoggerFirstTick() {
 //////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerTickRanges() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine);
+  TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
   VPackBuilder b;
-  Result res = engine->createTickRanges(b);
+  Result res = engine.createTickRanges(b);
   if (res.ok()) {
     generateResult(rest::ResponseCode::OK, b.slice());
   } else {
@@ -3028,7 +3017,7 @@ bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& 
   // get resume
   std::string const& resumeString = _request->value("resume", found);
   if (found) {
-    ctx.resume = basics::HybridLogicalClock::decodeTimeStamp(resumeString);
+    ctx.resume = RevisionId::fromString(resumeString);
   }
 
   // print request
@@ -3131,7 +3120,7 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
   bool badFormat = !body.isArray();
   if (!badFormat) {
     std::size_t i = 0;
-    std::uint64_t previousRight = 0;
+    RevisionId previousRight = RevisionId::none();
     for (VPackSlice entry : VPackArrayIterator(body)) {
       if (!entry.isArray() || entry.length() != 2) {
         badFormat = true;
@@ -3143,10 +3132,10 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
         badFormat = true;
         break;
       }
-      TRI_voc_rid_t left = basics::HybridLogicalClock::decodeTimeStamp(first);
-      TRI_voc_rid_t right = basics::HybridLogicalClock::decodeTimeStamp(second);
-      if (left == std::numeric_limits<TRI_voc_rid_t>::max() ||
-          right == std::numeric_limits<TRI_voc_rid_t>::max() || left >= right ||
+      RevisionId left = RevisionId::fromSlice(first);
+      RevisionId right = RevisionId::fromSlice(second);
+      if (left == RevisionId::max() ||
+          right == RevisionId::max() || left >= right ||
           left < previousRight) {
         badFormat = true;
         break;
@@ -3173,14 +3162,14 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
   VPackBuilder response;
   {
     VPackObjectBuilder obj(&response);
-    TRI_voc_rid_t resumeNext = ctx.resume;
+    RevisionId resumeNext = ctx.resume;
     VPackSlice range;
-    TRI_voc_rid_t left;
-    TRI_voc_rid_t right;
+    RevisionId left;
+    RevisionId right;
     auto setRange = [&body, &range, &left, &right](std::size_t index) -> void {
       range = body.at(index);
-      left = basics::HybridLogicalClock::decodeTimeStamp(range.at(0));
-      right = basics::HybridLogicalClock::decodeTimeStamp(range.at(1));
+      left = RevisionId::fromSlice(range.at(0));
+      right = RevisionId::fromSlice(range.at(1));
     };
     setRange(current);
 
@@ -3200,13 +3189,13 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
           TRI_ASSERT(!subOpen);
           response.openArray();
           subOpen = true;
-          resumeNext = std::max(ctx.resume + 1, left);
+          resumeNext = std::max(ctx.resume.next(), left);
         }
 
         if (it.hasMore() && it.revision() >= left && it.revision() <= right) {
-          response.add(basics::HybridLogicalClock::encodeTimeStampToValuePair(it.revision(), ridBuffer));
+          response.add(it.revision().toValuePair(ridBuffer));
           ++total;
-          resumeNext = it.revision() + 1;
+          resumeNext = it.revision().next();
           it.next();
         }
 
@@ -3216,7 +3205,7 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
           subOpen = false;
           response.close();
           TRI_ASSERT(response.isOpenArray());
-          resumeNext = right + 1;
+          resumeNext = right.next();
           ++current;
           if (current < body.length()) {
             setRange(current);
@@ -3239,8 +3228,7 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     if (body.length() >= 1) {
       setRange(body.length() - 1);
       if (body.length() > 0 && resumeNext <= right) {
-        response.add(StaticStrings::RevisionTreeResume,
-                     basics::HybridLogicalClock::encodeTimeStampToValuePair(resumeNext, ridBuffer));
+        response.add(StaticStrings::RevisionTreeResume, resumeNext.toValuePair(ridBuffer));
       }
     }
   }
@@ -3273,8 +3261,8 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
         badFormat = true;
         break;
       }
-      std::uint64_t entryNum = basics::HybridLogicalClock::decodeTimeStamp(entry);
-      if (entryNum == std::numeric_limits<std::uint64_t>::max()) {
+      RevisionId rev = RevisionId::fromSlice(entry);
+      if (rev == RevisionId::max()) {
         badFormat = true;
         break;
       }
@@ -3297,7 +3285,7 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
     VPackArrayBuilder docs(&response);
 
     for (VPackSlice entry : VPackArrayIterator(body)) {
-      TRI_voc_rid_t rev = basics::HybridLogicalClock::decodeTimeStamp(entry);
+      RevisionId rev = RevisionId::fromSlice(entry);
       if (it.hasMore() && it.revision() < rev) {
         it.seek(rev);
       }
@@ -3393,13 +3381,13 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   /* Temporary ASSERTS to prove correctness of new constructor */
   TRI_ASSERT(col->system() == (name[0] == '_'));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_voc_cid_t planId = 0;
+  DataSourceId planId = DataSourceId::none();
   VPackSlice const planIdSlice = slice.get("planId");
   if (planIdSlice.isNumber()) {
-    planId = static_cast<TRI_voc_cid_t>(planIdSlice.getNumericValue<uint64_t>());
+    planId = DataSourceId{planIdSlice.getNumericValue<DataSourceId::BaseType>()};
   } else if (planIdSlice.isString()) {
     std::string tmp = planIdSlice.copyString();
-    planId = static_cast<TRI_voc_cid_t>(StringUtils::uint64(tmp));
+    planId = DataSourceId{StringUtils::uint64(tmp)};
   } else if (planIdSlice.isNone()) {
     // There is no plan ID it has to be equal to collection id
     planId = col->id();
@@ -3466,7 +3454,7 @@ struct RebootCookie : public arangodb::TransactionState::Cookie {
 }
 
 Result RestReplicationHandler::createBlockingTransaction(
-    TRI_voc_tick_t id, LogicalCollection& col, double ttl, AccessMode::Type access,
+    TransactionId id, LogicalCollection& col, double ttl, AccessMode::Type access,
     RebootId const& rebootId, std::string const& serverId) {
   // This is a constant JSON structure for Queries.
   // we actually do not need a plan, as we only want the query registry to have
@@ -3490,7 +3478,7 @@ Result RestReplicationHandler::createBlockingTransaction(
   transaction::Options opts;
   opts.lockTimeout = ttl; // not sure if appropriate ?
   Result res = mgr->createManagedTrx(_vocbase, id, read, {}, exc, opts, ttl);
-  
+
   if (res.fail()) {
     return res;
   }
@@ -3504,7 +3492,7 @@ Result RestReplicationHandler::createBlockingTransaction(
         // Code does not matter, read only access, so we can roll back.
         transaction::Manager* mgr = transaction::ManagerFeature::manager();
         if (mgr) {
-          mgr->abortManagedTrx(id);
+          mgr->abortManagedTrx(id, _vocbase.name());
         }
       } catch (...) {
         // All errors that show up here can only be
@@ -3532,7 +3520,7 @@ Result RestReplicationHandler::createBlockingTransaction(
 
   if (isTombstoned(id)) {
     try {
-      return mgr->abortManagedTrx(id);
+      return mgr->abortManagedTrx(id, _vocbase.name());
     } catch (...) {
       // Maybe thrown in shutdown.
     }
@@ -3546,7 +3534,7 @@ Result RestReplicationHandler::createBlockingTransaction(
   return Result();
 }
 
-ResultT<bool> RestReplicationHandler::isLockHeld(aql::QueryId id) const {
+ResultT<bool> RestReplicationHandler::isLockHeld(TransactionId id) const {
   // The query is only hold for long during initial locking
   // there it should return false.
   // In all other cases it is released quickly.
@@ -3556,8 +3544,8 @@ ResultT<bool> RestReplicationHandler::isLockHeld(aql::QueryId id) const {
   
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
-  
-  transaction::Status stats = mgr->getManagedTrxStatus(id);
+
+  transaction::Status stats = mgr->getManagedTrxStatus(id, _vocbase.name());
   if (stats == transaction::Status::UNDEFINED) {
     return ResultT<bool>::error(TRI_ERROR_HTTP_NOT_FOUND,
                                 "no hold read lock job found for 'id'");
@@ -3566,14 +3554,14 @@ ResultT<bool> RestReplicationHandler::isLockHeld(aql::QueryId id) const {
   return ResultT<bool>::success(true);
 }
 
-ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id) const {
+ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(TransactionId id) const {
   // This lookup is only required for API compatibility,
   // otherwise an unconditional destroy() would do.
   auto res = isLockHeld(id);
   if (res.ok()) {
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     if (mgr) {
-      auto isAborted = mgr->abortManagedTrx(id);
+      auto isAborted = mgr->abortManagedTrx(id, _vocbase.name());
       if (isAborted.ok()) { // lock was held
         return ResultT<bool>::success(true);
       }
@@ -3586,14 +3574,13 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id)
 }
 
 ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(
-    aql::QueryId id, LogicalCollection* col) const {
+    TransactionId id, LogicalCollection* col) const {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   if (!mgr) {
     return ResultT<std::string>::error(TRI_ERROR_SHUTTING_DOWN);
   }
 
   try {
-    
     auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::READ);
     if (!ctx) {
       // Trx does not exist. So we assume it got cancelled.
@@ -3614,8 +3601,8 @@ ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(
   }
 }
 
-static std::string IdToTombstoneKey(TRI_vocbase_t& vocbase, aql::QueryId id) {
-  return vocbase.name() + "/" + StringUtils::itoa(id);
+static std::string IdToTombstoneKey(TRI_vocbase_t& vocbase, TransactionId id) {
+  return vocbase.name() + "/" + StringUtils::itoa(id.id());
 }
 
 void RestReplicationHandler::timeoutTombstones() const {
@@ -3650,7 +3637,7 @@ void RestReplicationHandler::timeoutTombstones() const {
   }
 }
 
-bool RestReplicationHandler::isTombstoned(aql::QueryId id) const {
+bool RestReplicationHandler::isTombstoned(TransactionId id) const {
   std::string key = IdToTombstoneKey(_vocbase, id);
   bool isDead = false;
   {
@@ -3672,7 +3659,7 @@ bool RestReplicationHandler::isTombstoned(aql::QueryId id) const {
   return isDead;
 }
 
-void RestReplicationHandler::registerTombstone(aql::QueryId id) const {
+void RestReplicationHandler::registerTombstone(TransactionId id) const {
   std::string key = IdToTombstoneKey(_vocbase, id);
   {
     WRITE_LOCKER(writeLocker, RestReplicationHandler::_tombLock);

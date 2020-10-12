@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -42,7 +43,9 @@ class RocksDBEngine;
 
 class RocksDBSyncThread final : public Thread {
  public:
-  RocksDBSyncThread(RocksDBEngine& engine, std::chrono::milliseconds interval);
+  RocksDBSyncThread(RocksDBEngine& engine, 
+                    std::chrono::milliseconds interval,
+                    std::chrono::milliseconds delayThreshold);
 
   ~RocksDBSyncThread();
 
@@ -70,6 +73,12 @@ class RocksDBSyncThread final : public Thread {
 
   /// @brief the last definitely synced RocksDB WAL sequence number
   rocksdb::SequenceNumber _lastSequenceNumber;
+
+  /// @brief threshold for self-observation of WAL disk syncs.
+  /// if the last WAL sync happened longer ago than this configured
+  /// threshold, a warning will be logged on every invocation of the
+  /// sync thread
+  std::chrono::milliseconds const _delayThreshold;
 
   /// @brief protects _lastSyncTime and _lastSequenceNumber
   arangodb::basics::ConditionVariable _condition;

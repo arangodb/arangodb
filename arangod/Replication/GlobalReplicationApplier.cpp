@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,8 +54,9 @@ void GlobalReplicationApplier::forget() {
 
   removeState();
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->removeReplicationApplierConfiguration();
+  StorageEngine& engine =
+      configuration()._server.getFeature<EngineSelectorFeature>().engine();
+  engine.removeReplicationApplierConfiguration();
   _configuration.reset();
 }
 
@@ -70,8 +71,9 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
       << "storing applier configuration " << builder.slice().toJson() << " for "
       << _databaseName;
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  int res = engine->saveReplicationApplierConfiguration(builder.slice(), doSync);
+  StorageEngine& engine =
+      _configuration._server.getFeature<EngineSelectorFeature>().engine();
+  int res = engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -79,20 +81,21 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
 }
 
 /// @brief load a persisted configuration for the applier
-ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
+    application_features::ApplicationServer& server) {
+  StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
   int res = TRI_ERROR_INTERNAL;
-  VPackBuilder builder = engine->getReplicationApplierConfiguration(res);
+  VPackBuilder builder = engine.getReplicationApplierConfiguration(res);
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     // file not found
     TRI_ASSERT(builder.isEmpty());
-    return ReplicationApplierConfiguration(engine->server());
+    return ReplicationApplierConfiguration(engine.server());
   }
 
   TRI_ASSERT(!builder.isEmpty());
 
-  return ReplicationApplierConfiguration::fromVelocyPack(engine->server(),
+  return ReplicationApplierConfiguration::fromVelocyPack(engine.server(),
                                                          builder.slice(), std::string());
 }
 
@@ -101,18 +104,19 @@ std::shared_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer() co
 }
 
 std::shared_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(
-    TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) const {
+    TRI_voc_tick_t initialTick, bool useTick) const {
   return std::make_shared<arangodb::GlobalTailingSyncer>(_configuration, initialTick,
-                                                         useTick, barrierId);
+                                                         useTick);
 }
 
 std::string GlobalReplicationApplier::getStateFilename() const {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  StorageEngine& engine =
+      _configuration._server.getFeature<EngineSelectorFeature>().engine();
   auto& sysDbFeature =
       _configuration._server.getFeature<arangodb::SystemDatabaseFeature>();
   auto vocbase = sysDbFeature.use();
 
-  std::string const path = engine->databasePath(vocbase.get());
+  std::string const path = engine.databasePath(vocbase.get());
   if (path.empty()) {
     return std::string();
   }

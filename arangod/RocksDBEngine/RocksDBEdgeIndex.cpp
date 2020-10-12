@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -429,8 +429,12 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& col
                    std::vector<std::vector<AttributeName>>({{AttributeName(attr, false)}}),
                    false, false, RocksDBColumnFamily::edge(),
                    basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
-                   basics::VelocyPackHelper::stringUInt64(info, StaticStrings::TempObjectId),
-                   !ServerState::instance()->isCoordinator() && static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->useEdgeCache() /*useCache*/),
+                   !ServerState::instance()->isCoordinator() &&
+                       collection.vocbase()
+                           .server()
+                           .getFeature<EngineSelectorFeature>()
+                           .engine<RocksDBEngine>()
+                           .useEdgeCache() /*useCache*/),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
       _estimator(nullptr),
@@ -480,7 +484,7 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
 
 Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                 LocalDocumentId const& documentId,
-                                velocypack::Slice const& doc, OperationOptions& options) {
+                                velocypack::Slice const doc, OperationOptions& options) {
   Result res;
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
@@ -516,7 +520,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 
 Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                 LocalDocumentId const& documentId,
-                                velocypack::Slice const& doc, Index::OperationMode mode) {
+                                velocypack::Slice const doc) {
   Result res;
 
   // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
@@ -651,7 +655,9 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   ro.verify_checksums = false;
   ro.fill_cache = EdgeIndexFillBlockCache;
 
-  std::unique_ptr<rocksdb::Iterator> it(rocksutils::globalRocksDB()->NewIterator(ro, _cf));
+  auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  std::unique_ptr<rocksdb::Iterator> it(engine.db()->NewIterator(ro, _cf));
   // get the first and last actual key
   it->Seek(bounds.start());
   if (!it->Valid()) {
@@ -721,8 +727,9 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
   options.total_order_seek = true;  // otherwise full-index-scan does not work
   options.verify_checksums = false;
   options.fill_cache = EdgeIndexFillBlockCache;
-  std::unique_ptr<rocksdb::Iterator> it(
-      rocksutils::globalRocksDB()->NewIterator(options, _cf));
+  auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  std::unique_ptr<rocksdb::Iterator> it(engine.db()->NewIterator(options, _cf));
 
   ManagedDocumentResult mdr;
 
@@ -920,10 +927,11 @@ void RocksDBEdgeIndex::handleValNode(VPackBuilder* keys,
   }
 }
 
-void RocksDBEdgeIndex::afterTruncate(TRI_voc_tick_t tick) {
+void RocksDBEdgeIndex::afterTruncate(TRI_voc_tick_t tick,
+                                     arangodb::transaction::Methods* trx) {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->bufferTruncate(tick);
-  RocksDBIndex::afterTruncate(tick);
+  RocksDBIndex::afterTruncate(tick, trx);
 }
 
 RocksDBCuckooIndexEstimator<uint64_t>* RocksDBEdgeIndex::estimator() {
@@ -939,7 +947,9 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
 
   auto bounds = RocksDBKeyBounds::EdgeIndex(objectId());

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,13 +62,14 @@
 using namespace arangodb;
 
 /// @brief transaction type
-RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                                  transaction::Options const& options)
     : TransactionState(vocbase, tid, options),
       _rocksTransaction(nullptr),
       _readSnapshot(nullptr),
       _rocksReadOptions(),
       _cacheTx(nullptr),
+      _numCommits(0),
       _numInserts(0),
       _numUpdates(0),
       _numRemoves(0),
@@ -98,7 +99,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   }
 
   // register with manager
-  transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction());
+  transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
   updateStatus(transaction::Status::RUNNING);
   _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted++;
 
@@ -112,7 +113,9 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     _cacheTx = CacheManagerFeature::MANAGER->beginTransaction(isReadOnlyTransaction());
   }
 
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   _rocksReadOptions.prefix_same_as_start = true;  // should always be true
 
   TRI_ASSERT(_readSnapshot == nullptr);
@@ -182,7 +185,9 @@ void RocksDBTransactionState::createTransaction() {
   TRI_ASSERT(!isReadOnlyTransaction());
 
   // start rocks transaction
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   rocksdb::TransactionOptions trxOpts;
   trxOpts.set_snapshot = true;
 
@@ -214,7 +219,9 @@ void RocksDBTransactionState::createTransaction() {
 }
 
 void RocksDBTransactionState::prepareCollections() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
   for (auto& trxColl : _collections) {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
@@ -252,7 +259,9 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
   if (_readSnapshot != nullptr) {
     TRI_ASSERT(isReadOnlyTransaction() ||
                hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS));
-    rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+    auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
+    auto& engine = selector.engine<RocksDBEngine>();
+    rocksdb::TransactionDB* db = engine.db();
     db->ReleaseSnapshot(_readSnapshot);  // calls delete
     _readSnapshot = nullptr;
   }
@@ -314,9 +323,9 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     // begin transaction + commit transaction + n doc removes
     TRI_ASSERT(_numLogdata == (2 + _numRemoves));
   }
-  ++_numCommits;
   TRI_ASSERT(x > 0);
 #endif
+  ++_numCommits;
 
   prepareCollections();
 
@@ -350,7 +359,9 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
   if (ADB_LIKELY(numOps > 0)) {
     postCommitSeq += numOps - 1;  // add to get to the next batch
   }
-  TRI_ASSERT(postCommitSeq <= rocksutils::globalRocksDB()->GetLatestSequenceNumber());
+  auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  TRI_ASSERT(postCommitSeq <= engine.db()->GetLatestSequenceNumber());
   _lastWrittenOperationTick = postCommitSeq;
 
   commitCounts();
@@ -359,16 +370,14 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
 #ifndef _WIN32
   // wait for sync if required, for all other platforms but Windows
   if (waitForSync()) {
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-    TRI_ASSERT(engine != nullptr);
-    if (engine->syncThread()) {
+    if (engine.syncThread()) {
       // we do have a sync thread
-      return engine->syncThread()->syncWal();
+      return engine.syncThread()->syncWal();
     } else {
       // no sync thread present... this may be the case if automatic
       // syncing is completely turned off. in this case, use the
       // static sync method
-      return RocksDBSyncThread::sync(engine->db()->GetBaseDB());
+      return RocksDBSyncThread::sync(engine.db()->GetBaseDB());
     }
   }
 #endif
@@ -426,7 +435,7 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
   return result;
 }
 
-void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t rid,
+void RocksDBTransactionState::prepareOperation(DataSourceId cid, RevisionId rid,
                                                TRI_voc_document_operation_e operationType) {
   TRI_ASSERT(!isReadOnlyTransaction());
 
@@ -452,7 +461,7 @@ void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t 
         break;
       }
       case TRI_VOC_DOCUMENT_OPERATION_REMOVE: {
-        TRI_ASSERT(rid != 0);
+        TRI_ASSERT(rid.isSet());
 
         auto logValue = RocksDBLogValue::SingleRemoveV2(_vocbase.id(), cid, rid);
 
@@ -500,7 +509,7 @@ void RocksDBTransactionState::rollbackOperation(TRI_voc_document_operation_e ope
 }
 
 /// @brief add an operation for a transaction collection
-Result RocksDBTransactionState::addOperation(TRI_voc_cid_t cid, TRI_voc_rid_t revisionId,
+Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisionId,
                                              TRI_voc_document_operation_e operationType,
                                              bool& hasPerformedIntermediateCommit) {
   size_t currentSize = _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
@@ -514,7 +523,7 @@ Result RocksDBTransactionState::addOperation(TRI_voc_cid_t cid, TRI_voc_rid_t re
 
   auto tcoll = static_cast<RocksDBTransactionCollection*>(findCollection(cid));
   if (tcoll == nullptr) {
-    std::string message = "collection '" + std::to_string(cid) +
+    std::string message = "collection '" + std::to_string(cid.id()) +
                           "' not found in transaction state";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
@@ -556,7 +565,9 @@ uint64_t RocksDBTransactionState::sequenceNumber() const {
     return static_cast<uint64_t>(_readSnapshot->GetSequenceNumber());
   } 
   if (isReadOnlyTransaction() && isSingleOperation()) {
-    return rocksutils::latestSequenceNumber();
+    RocksDBEngine& engine =
+        vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+    return engine.db()->GetLatestSequenceNumber();
   }
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "No snapshot set");
@@ -567,7 +578,9 @@ bool RocksDBTransactionState::setSnapshotOnReadOnly() {
   if (_readSnapshot == nullptr && isReadOnlyTransaction()) {
     TRI_ASSERT(_rocksTransaction == nullptr);
     TRI_ASSERT(isSingleOperation());
-    _readSnapshot = rocksutils::globalRocksDB()->GetSnapshot();
+    auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
+    auto& engine = selector.engine<RocksDBEngine>();
+    _readSnapshot = engine.db()->GetSnapshot();
     return true;
   }
   return false;
@@ -604,6 +617,8 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
     TRI_TerminateDebugging("SegfaultAfterIntermediateCommit");
   }
 
+  // reset counters for DML operations, but intentionally don't reset
+  // the commit counter, as we need to track if we had intermediate commits
   _numInserts = 0;
   _numUpdates = 0;
   _numRemoves = 0;
@@ -619,6 +634,10 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
 
 Result RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit) {
   hasPerformedIntermediateCommit = false;
+    
+  TRI_IF_FAILURE("noIntermediateCommits") {
+    return TRI_ERROR_NO_ERROR;
+  }
 
   if (hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS)) {
     auto numOperations = _numInserts + _numUpdates + _numRemoves;
@@ -633,13 +652,13 @@ Result RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize, bool& 
   return TRI_ERROR_NO_ERROR;
 }
 
-RocksDBTransactionCollection::TrackedOperations& RocksDBTransactionState::trackedOperations(TRI_voc_cid_t cid) {
+RocksDBTransactionCollection::TrackedOperations& RocksDBTransactionState::trackedOperations(DataSourceId cid) {
   auto col = findCollection(cid);
   TRI_ASSERT(col != nullptr);
   return static_cast<RocksDBTransactionCollection*>(col)->trackedOperations();
 }
 
-void RocksDBTransactionState::trackInsert(TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
+void RocksDBTransactionState::trackInsert(DataSourceId cid, RevisionId rid) {
   auto col = findCollection(cid);
   if (col != nullptr) {
     static_cast<RocksDBTransactionCollection*>(col)->trackInsert(rid);
@@ -648,7 +667,7 @@ void RocksDBTransactionState::trackInsert(TRI_voc_cid_t cid, TRI_voc_rid_t rid) 
   }
 }
 
-void RocksDBTransactionState::trackRemove(TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
+void RocksDBTransactionState::trackRemove(DataSourceId cid, RevisionId rid) {
   auto col = findCollection(cid);
   if (col != nullptr) {
     static_cast<RocksDBTransactionCollection*>(col)->trackRemove(rid);
@@ -657,7 +676,7 @@ void RocksDBTransactionState::trackRemove(TRI_voc_cid_t cid, TRI_voc_rid_t rid) 
   }
 }
 
-void RocksDBTransactionState::trackIndexInsert(TRI_voc_cid_t cid, IndexId idxId, uint64_t hash) {
+void RocksDBTransactionState::trackIndexInsert(DataSourceId cid, IndexId idxId, uint64_t hash) {
   auto col = findCollection(cid);
   if (col != nullptr) {
     static_cast<RocksDBTransactionCollection*>(col)->trackIndexInsert(idxId, hash);
@@ -666,7 +685,7 @@ void RocksDBTransactionState::trackIndexInsert(TRI_voc_cid_t cid, IndexId idxId,
   }
 }
 
-void RocksDBTransactionState::trackIndexRemove(TRI_voc_cid_t cid, IndexId idxId, uint64_t hash) {
+void RocksDBTransactionState::trackIndexRemove(DataSourceId cid, IndexId idxId, uint64_t hash) {
   auto col = findCollection(cid);
   if (col != nullptr) {
     static_cast<RocksDBTransactionCollection*>(col)->trackIndexRemove(idxId, hash);
@@ -693,7 +712,9 @@ rocksdb::SequenceNumber RocksDBTransactionState::beginSeq() const {
   } else if (_readSnapshot) {
     return _readSnapshot->GetSequenceNumber();
   }
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   return db->GetLatestSequenceNumber();
 }
 

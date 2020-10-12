@@ -22,4 +22,6 @@ void TRI_InitializeExitMessages() {
   REG_EXIT(EXIT_RECOVERY, "recovery failed");
   REG_EXIT(EXIT_DB_NOT_EMPTY, "database not empty");
   REG_EXIT(EXIT_UNSUPPORTED_STORAGE_ENGINE, "unsupported storage engine");
+  REG_EXIT(EXIT_ICU_INITIALIZATION_FAILED, "failed to initialize ICU library");
+  REG_EXIT(EXIT_TZDATA_INITIALIZATION_FAILED, "failed to locate tzdata");
 }

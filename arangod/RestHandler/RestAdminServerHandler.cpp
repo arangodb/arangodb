@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -238,7 +238,8 @@ void RestAdminServerHandler::handleTLS() {
   } else if (requestType == rest::RequestType::POST) {
 
     // Only the superuser may reload TLS data:
-    if (!_request->authenticated() || !_request->user().empty()) {
+    if (ExecContext::isAuthEnabled() &&
+        !ExecContext::current().isSuperuser()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                     "only superusers may reload TLS data");
       return;

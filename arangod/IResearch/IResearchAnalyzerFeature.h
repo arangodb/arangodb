@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,6 +37,7 @@
 #include <analysis/analyzers.hpp>
 #include <utils/async_utils.hpp>
 #include <utils/attributes.hpp>
+#include <utils/bit_utils.hpp>
 #include <utils/hash_utils.hpp>
 #include <utils/memory.hpp>
 #include <utils/noncopyable.hpp>
@@ -49,24 +51,10 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Auth/Common.h"
 #include "Basics/Result.h"
-#include "Cluster/ClusterTypes.h"
 #include "Basics/Identifier.h" // this include only need to make clang see << operator for Identifier
+#include "Cluster/ClusterTypes.h"
+#include "IResearch/IResearchVPackFormat.h"
 #include "Scheduler/SchedulerFeature.h"
-
-namespace iresearch {
-namespace text_format {
-
-struct vpack {
-  static constexpr irs::string_ref type_name() noexcept {
-    return "vpack";
-  }
-};
-
-} // iresearch
-} // text_format
-
-#define REGISTER_ANALYZER_VPACK(analyzer_name, factory, normalizer) \
-  REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::vpack, factory, normalizer)
 
 struct TRI_vocbase_t; // forward declaration
 
@@ -79,17 +67,47 @@ class ApplicationServer;
 namespace arangodb {
 namespace iresearch {
 
+enum class AnalyzerValueType : uint64_t {
+  Undefined = 0,
+  // Primitive types
+  String    = 1,
+  Number    = 1 << 1,
+  Bool      = 1 << 2,
+  Null      = 1 << 3,
+  // Complex types
+  Array     = 1 << 4,
+  Object    = 1 << 5,
+};
+
+ENABLE_BITMASK_ENUM(AnalyzerValueType);
+
 // thread-safe analyzer pool
 class AnalyzerPool : private irs::util::noncopyable {
  public:
-  typedef std::shared_ptr<AnalyzerPool> ptr;
+  using ptr = std::shared_ptr<AnalyzerPool>;
+  using StoreFunc = VPackSlice(*)(
+    irs::token_stream const* ctx,
+    VPackSlice slice,
+    VPackBuffer<uint8_t>& buf);
+
   explicit AnalyzerPool(irs::string_ref const& name);
   irs::flags const& features() const noexcept { return _features; }
-  irs::analysis::analyzer::ptr get() const noexcept;  // nullptr == error creating analyzer
   std::string const& name() const noexcept { return _name; }
   VPackSlice properties() const noexcept { return _properties; }
   irs::string_ref const& type() const noexcept { return _type; }
-  AnalyzersRevision::Revision  revision() const noexcept { return _revision; }
+  AnalyzersRevision::Revision revision() const noexcept { return _revision; }
+  AnalyzerValueType inputType() const noexcept { return  _inputType; }
+  AnalyzerValueType returnType() const noexcept { return  _returnType; }
+  StoreFunc storeFunc() const noexcept { return _storeFunc; }
+  bool accepts(AnalyzerValueType types) const noexcept {
+    return (_inputType & types) != AnalyzerValueType::Undefined;
+  }
+  bool returns(AnalyzerValueType types) const noexcept {
+    return (_returnType & types) != AnalyzerValueType::Undefined;
+  }
+
+  irs::analysis::analyzer::ptr get() const noexcept;  // nullptr == error creating analyzer
+
   // definition to be stored in _analyzers collection or shown to the end user
   void toVelocyPack(velocypack::Builder& builder,
                     bool forPersistence = false);
@@ -124,13 +142,19 @@ class AnalyzerPool : private irs::util::noncopyable {
 
   mutable irs::unbounded_object_pool<Builder> _cache;  // cache of irs::analysis::analyzer
                                                        // (constructed via AnalyzerBuilder::make(...))
+
   std::string _config;     // non-null type + non-null properties + key
   irs::flags _features;    // cached analyzer features
   irs::string_ref _key;    // the key of the persisted configuration for this pool,
                            // null == static analyzer
-  std::string _name;       // ArangoDB alias for an IResearch analyzer configuration
+  std::string _name;       // ArangoDB alias for an IResearch analyzer configuration.
+                           // Should be normalized name or static analyzer name see
+                           // assertion in ctor
   VPackSlice _properties;  // IResearch analyzer configuration
   irs::string_ref _type;   // IResearch analyzer name
+  StoreFunc _storeFunc{};
+  AnalyzerValueType _inputType{ AnalyzerValueType::Undefined };
+  AnalyzerValueType _returnType{ AnalyzerValueType::Undefined };
   arangodb::AnalyzersRevision::Revision _revision{ arangodb::AnalyzersRevision::MIN };
 }; // AnalyzerPool
 
@@ -199,14 +223,12 @@ class IResearchAnalyzerFeature final
   //////////////////////////////////////////////////////////////////////////////
   /// @param name analyzer name
   /// @param activeVocbase fallback vocbase if not part of name
-  /// @param systemVocbase the system vocbase for use with empty prefix
   /// @param expandVocbasePrefix use full vocbase name as prefix for
   ///                            active/system v.s. EMPTY/'::'
   /// @return normalized analyzer name, i.e. with vocbase prefix
   //////////////////////////////////////////////////////////////////////////////
   static std::string normalize(irs::string_ref const& name,
-                               TRI_vocbase_t const& activeVocbase,
-                               TRI_vocbase_t const& systemVocbase,
+                               irs::string_ref const& activeVocbase,
                                bool expandVocbasePrefix = true);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -313,13 +335,11 @@ class IResearchAnalyzerFeature final
   /// @brief find analyzer
   /// @param name analyzer name
   /// @param activeVocbase fallback vocbase if not part of name
-  /// @param systemVocbase the system vocbase for use with empty prefix
   /// @param onlyCached check only locally cached analyzers
   /// @return analyzer with the specified name or nullptr
   //////////////////////////////////////////////////////////////////////////////
   AnalyzerPool::ptr get(irs::string_ref const& name,
                         TRI_vocbase_t const& activeVocbase,
-                        TRI_vocbase_t const& systemVocbase,
                         arangodb::QueryAnalyzerRevisions const& revision,
                         bool onlyCached = false) const;
 

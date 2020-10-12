@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -125,7 +126,8 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
 
    public:
     bool equal(arangodb::velocypack::Slice const& lhs,
-               arangodb::velocypack::Slice const& rhs) const override;
+               arangodb::velocypack::Slice const& rhs,
+               std::string const& dbname) const override;
 
     std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                  arangodb::velocypack::Slice const& definition,

@@ -5,14 +5,14 @@
 @RESTHEADER{GET /_api/transaction, Get currently running transactions, executeGetState:transactions}
 
 @RESTDESCRIPTION
-The result is an object describing with the attribute *transactions*, which contains
+The result is an object with the attribute *transactions*, which contains
 an array of transactions.
 In a cluster the array will contain the transactions from all Coordinators.
 
 Each array entry contains an object with the following attributes:
 
 - *id*: the transaction's id
-- *status*: the transaction's status
+- *state*: the transaction's status
 
 @RESTRETURNCODES
 

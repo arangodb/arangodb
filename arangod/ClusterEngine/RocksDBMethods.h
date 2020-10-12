@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,12 +27,17 @@
 #include "Basics/Result.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace rocksdb {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief recalculate collection count on all DBServers
 ////////////////////////////////////////////////////////////////////////////////
 
-Result recalculateCountsOnAllDBServers(std::string const& dbname, std::string const& collname);
+Result recalculateCountsOnAllDBServers(application_features::ApplicationServer& server,
+                                       std::string const& dbname,
+                                       std::string const& collname);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for estimator sync on all DBServers

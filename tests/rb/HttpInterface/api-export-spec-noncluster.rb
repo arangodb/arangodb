@@ -380,7 +380,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "creates a cursor, single run" do
+      it "creates a cursor, single run, bigger" do
         cmd = api + "?collection=#{@cn}"
         body = "{ \"count\" : true, \"batchSize\" : 2000, \"flush\" : true }"
         doc = ArangoDB.log_post("#{prefix}-return-single", cmd, :body => body)
@@ -395,7 +395,7 @@ describe ArangoDB do
         doc.parsed_response['result'].length.should eq(2000)
       end
       
-      it "creates a cursor, multiple runs" do
+      it "creates a cursor, multiple runs, bigger" do
         cmd = api + "?collection=#{@cn}"
         body = "{ \"count\" : true, \"batchSize\" : 700, \"flush\" : true }"
         doc = ArangoDB.log_post("#{prefix}-limit-return", cmd, :body => body)
@@ -448,7 +448,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(404)
       end
 
-      it "using limit" do
+      it "using limit, bigger" do
         cmd = api + "?collection=#{@cn}"
         body = "{ \"count\" : true, \"batchSize\" : 2000, \"flush\" : true, \"limit\" : 5 }"
         doc = ArangoDB.log_post("#{prefix}-limit", cmd, :body => body)
@@ -463,7 +463,7 @@ describe ArangoDB do
         doc.parsed_response['result'].length.should eq(5)
       end
       
-      it "using limit == collection size" do
+      it "using limit == collection size, bigger" do
         cmd = api + "?collection=#{@cn}"
         body = "{ \"count\" : true, \"batchSize\" : 2000, \"flush\" : true, \"limit\" : 2000 }"
         doc = ArangoDB.log_post("#{prefix}-limit-eq", cmd, :body => body)
@@ -478,7 +478,7 @@ describe ArangoDB do
         doc.parsed_response['result'].length.should eq(2000)
       end
       
-      it "using limit > collection size" do
+      it "using limit > collection size, bigger" do
         cmd = api + "?collection=#{@cn}"
         body = "{ \"count\" : true, \"batchSize\" : 2000, \"flush\" : true, \"limit\" : 200000 }"
         doc = ArangoDB.log_post("#{prefix}-limit", cmd, :body => body)

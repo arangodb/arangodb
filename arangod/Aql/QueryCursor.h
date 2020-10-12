@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -107,23 +107,26 @@ class QueryStreamCursor final : public arangodb::Cursor {
   // _queryResults and sets _queryResultPos appropriately. Relies on the caller
   // to have fetched more than batchSize() result rows (if possible) in order to
   // set hasMore reliably.
-  Result writeResult(velocypack::Builder& builder);
+  ExecutionState writeResult(arangodb::velocypack::Builder& builder);
 
   ExecutionState prepareDump();
+  ExecutionState finalization();
 
   void cleanupStateCallback();
-  void cleanupResources();
 
  private:
+  velocypack::UInt8Buffer _extrasBuffer;
   std::deque<SharedAqlItemBlockPtr> _queryResults; /// buffered results
   std::shared_ptr<transaction::Context> _ctx; /// cache context
   std::unique_ptr<aql::Query> _query;
-
   /// index of the next to-be-returned row in _queryResults.front()
   size_t _queryResultPos;
+  
   int64_t _exportCount;  // used by RocksDBRestExportHandler (<0 is not used)
   /// used when cursor is owned by V8 transaction
   transaction::Methods::StatusChangeCallback _stateChangeCb;
+  
+  bool _finalization;
 };
 
 }  // namespace aql

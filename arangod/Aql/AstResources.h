@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,12 +27,19 @@
 #include <string>
 #include <vector>
 
+#include "Aql/AstNode.h"
 #include "Aql/ShortStringStorage.h"
 #include "Basics/Common.h"
+#include "Basics/FixedSizeAllocator.h"
 
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
+
 namespace aql {
 
+class Ast;
 struct AstNode;
 struct ResourceMonitor;
 
@@ -45,8 +52,11 @@ class AstResources {
   explicit AstResources(ResourceMonitor*);
   ~AstResources();
 
-  /// @brief add a node to the list of nodes
-  void addNode(AstNode*);
+  /// @brief create and register an AstNode
+  AstNode* registerNode(AstNodeType type);
+  
+  /// @brief create and register an AstNode
+  AstNode* registerNode(Ast*, arangodb::velocypack::Slice slice);
 
   /// @brief register a string
   /// the string is freed when the query is destroyed
@@ -70,7 +80,7 @@ class AstResources {
   ResourceMonitor* _resourceMonitor;
 
   /// @brief all nodes created in the AST - will be used for freeing them later
-  std::vector<AstNode*> _nodes;
+  FixedSizeAllocator<AstNode> _nodes;
 
   /// @brief strings created in the query - used for easy memory deallocation
   std::vector<char*> _strings;

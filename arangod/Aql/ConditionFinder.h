@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,7 +39,7 @@ class SortCondition;
 struct Variable;
 
 /// @brief condition finder
-class ConditionFinder : public WalkerWorker<ExecutionNode> {
+class ConditionFinder : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
   ConditionFinder(ExecutionPlan* plan, std::unordered_map<ExecutionNodeId, ExecutionNode*>* changes,
                   bool* hasEmptyResult, bool viewMode);

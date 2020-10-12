@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -296,7 +297,9 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
   {
     std::string const query =
         "FOR d IN testView SEARCH d.name == 'A'"
-        " OPTIONS { collections : [ " + std::to_string(logicalCollection2->id()) + " ] }"
+        " OPTIONS { collections : [ " +
+        std::to_string(logicalCollection2->id().id()) +
+        " ] }"
         " RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
@@ -304,6 +307,28 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
 
     std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs{
         {"A", &insertedDocs[1]}};
+
+    // check node estimation
+    {
+      auto explanationResult =
+          arangodb::tests::explainQuery(vocbase, query);
+      ASSERT_TRUE(explanationResult.result.ok());
+      auto const explanationSlice = explanationResult.data->slice();
+      ASSERT_TRUE(explanationSlice.isObject());
+      auto const nodesSlice = explanationSlice.get("nodes");
+      ASSERT_TRUE(nodesSlice.isArray());
+      VPackSlice viewNode;
+      for (auto node : VPackArrayIterator(nodesSlice)) {
+        if ("EnumerateViewNode" == node.get("type").toString() &&
+            "testView" == node.get("view").toString()) {
+          viewNode = node;
+          break;
+        }
+      }
+      ASSERT_TRUE(viewNode.isObject());
+      ASSERT_EQ(insertedDocs.size()/2 + 1., viewNode.get("estimatedCost").getDouble());
+      ASSERT_EQ(insertedDocs.size()/2, viewNode.get("estimatedNrItems").getNumber<size_t>());
+    }
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -334,7 +359,7 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
     std::string const query =
         "FOR d IN testView SEARCH d.name == 'A'"
         " OPTIONS { collections : [ '" +
-        std::to_string(logicalCollection2->id()) +
+        std::to_string(logicalCollection2->id().id()) +
         "' ] }"
         " RETURN d";
 
@@ -372,7 +397,9 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
   {
     std::string const query =
         "FOR d IN testView SEARCH d.name == 'A'"
-        " OPTIONS { collections : [ '" + std::to_string(logicalCollection2->id()) + "', 'collection_1' ] }"
+        " OPTIONS { collections : [ '" +
+        std::to_string(logicalCollection2->id().id()) +
+        "', 'collection_1' ] }"
         " SORT d._id"
         " RETURN d";
 
@@ -441,6 +468,28 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
 
     EXPECT_TRUE(arangodb::tests::assertRules(
         vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+
+    // check node estimation
+    {
+      auto explanationResult =
+          arangodb::tests::explainQuery(vocbase, query);
+      ASSERT_TRUE(explanationResult.result.ok());
+      auto const explanationSlice = explanationResult.data->slice();
+      ASSERT_TRUE(explanationSlice.isObject());
+      auto const nodesSlice = explanationSlice.get("nodes");
+      ASSERT_TRUE(nodesSlice.isArray());
+      VPackSlice viewNode;
+      for (auto node : VPackArrayIterator(nodesSlice)) {
+        if ("EnumerateViewNode" == node.get("type").toString() &&
+            "testView" == node.get("view").toString()) {
+          viewNode = node;
+          break;
+        }
+      }
+      ASSERT_TRUE(viewNode.isObject());
+      ASSERT_EQ(insertedDocs.size() + 1., viewNode.get("estimatedCost").getDouble());
+      ASSERT_EQ(insertedDocs.size(), viewNode.get("estimatedNrItems").getNumber<size_t>());
+    }
 
     std::map<irs::string_ref, std::vector<arangodb::ManagedDocumentResult const*>> expectedDocs{
         {"A", {&insertedDocs[0], &insertedDocs[1]}}};

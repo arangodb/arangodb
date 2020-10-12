@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,12 +24,13 @@
 #include "RocksDBIterators.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
-#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -309,12 +311,12 @@ bool RocksDBAnyIndexIterator::outOfRange() const {
   return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
 }
 
-RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::ReadOptions& options,
+RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::TransactionDB* db,
+                                               rocksdb::ReadOptions& options,
                                                RocksDBKeyBounds const& bounds)
     : _bounds(bounds),
       _options(options),
-      _iterator(arangodb::rocksutils::globalRocksDB()->NewIterator(_options,
-                                                                   _bounds.columnFamily())),
+      _iterator(db->NewIterator(_options, _bounds.columnFamily())),
       _cmp(_bounds.columnFamily()->GetComparator()) {
   reset();
 }
@@ -400,7 +402,9 @@ RocksDBGenericIterator arangodb::createPrimaryIndexIterator(transaction::Methods
   auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
 
   auto bounds(RocksDBKeyBounds::PrimaryIndex(primaryIndex->objectId()));
-  auto iterator = RocksDBGenericIterator(options, bounds);
+  auto& selector = col->vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  auto iterator = RocksDBGenericIterator(engine.db(), options, bounds);
 
   TRI_ASSERT(iterator.bounds().objectId() == primaryIndex->objectId());
   TRI_ASSERT(iterator.bounds().columnFamily() == RocksDBColumnFamily::primary());

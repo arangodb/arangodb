@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,7 +65,7 @@ AqlTransaction::AqlTransaction(
     : transaction::Methods(transactionContext, options) { 
   addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
-  collections.visit([this](std::string const&, aql::Collection* collection) {
+  collections.visit([this](std::string const&, aql::Collection& collection) {
     Result res = processCollection(collection);
 
     if (res.fail()) {
@@ -77,17 +77,17 @@ AqlTransaction::AqlTransaction(
 }
 
 /// @brief add a collection to the transaction
-Result AqlTransaction::processCollection(aql::Collection* collection) {
-  if (collection->hasCollectionObject()) {
+Result AqlTransaction::processCollection(aql::Collection& collection) {
+  if (collection.hasCollectionObject()) {
     // we should get here for all existing collections/shards, but
     // not for views.
-    auto c = collection->getCollection();
+    auto c = collection.getCollection();
     // note that c->name() and collection->name() may differ if the collection
     // is accessed in a query by its id instead of its name.
-    return addCollection(c->id(), c->name(), collection->accessType());
+    return addCollection(c->id(), c->name(), collection.accessType());
   }
 
   // views
-  TRI_voc_cid_t cid = resolver()->getCollectionId(collection->name());
-  return addCollection(cid, collection->name(), collection->accessType());
+  DataSourceId cid = resolver()->getCollectionId(collection.name());
+  return addCollection(cid, collection.name(), collection.accessType());
 }

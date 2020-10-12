@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -79,6 +79,8 @@ void ConnectionStatistics::getSnapshot(Snapshot& snapshot) {
 
   snapshot.httpConnections = statistics::HttpConnections;
   snapshot.totalRequests = statistics::TotalRequests;
+  snapshot.totalRequestsSuperuser = statistics::TotalRequestsSuperuser;
+  snapshot.totalRequestsUser = statistics::TotalRequestsUser;
   snapshot.methodRequests = statistics::MethodRequests;
   snapshot.asyncRequests = statistics::AsyncRequests;
   snapshot.connectionTime = statistics::ConnectionTimeDistribution;

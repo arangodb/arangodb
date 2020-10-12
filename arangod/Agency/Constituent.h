@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,10 +37,6 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-namespace aql {
-class QueryRegistry;
-}
-
 namespace consensus {
 
 static inline double steadyClockToDouble() {
@@ -107,7 +103,7 @@ class Constituent : public Thread {
   // Orderly shutdown of thread
   void beginShutdown() override;
 
-  bool start(TRI_vocbase_t* vocbase, aql::QueryRegistry*);
+  bool start(TRI_vocbase_t* vocbase);
 
   // update leaderId and term if inactive
   void update(std::string const&, term_t);
@@ -149,7 +145,6 @@ class Constituent : public Thread {
   int64_t countRecentElectionEvents(double threshold);
 
   TRI_vocbase_t* _vocbase;
-  aql::QueryRegistry* _queryRegistry;
 
   term_t _term;  // term number
   Gauge<term_t>& _gterm;  // term number

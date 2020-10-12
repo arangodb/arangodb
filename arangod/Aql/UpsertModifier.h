@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -74,6 +75,8 @@ class UpsertModifier {
  public:
   explicit UpsertModifier(ModificationExecutorInfos& infos)
       : _infos(infos),
+        _updateResults(Result(), infos._options),
+        _insertResults(Result(), infos._options),
 
         // Batch size has to be 1 so that the upsert modifier sees its own
         // writes.

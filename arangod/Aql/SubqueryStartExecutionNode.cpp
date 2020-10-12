@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,12 +89,10 @@ ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan, bool withDependenci
 
 bool SubqueryStartNode::isEqualTo(ExecutionNode const& other) const {
   // On purpose exclude the _subqueryOutVariable
-  try {
-    SubqueryStartNode const& p = dynamic_cast<SubqueryStartNode const&>(other);
-    return ExecutionNode::isEqualTo(p);
-  } catch (const std::bad_cast&) {
+  if (other.getType() != ExecutionNode::SUBQUERY_START) {
     return false;
   }
+  return ExecutionNode::isEqualTo(other);
 }
 
 }  // namespace aql

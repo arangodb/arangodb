@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,17 +37,17 @@ class HeartbeatThread;
 struct DBServerAgencySyncResult {
   bool success;
   std::string errorMessage;
-  uint64_t planVersion;
-  uint64_t currentVersion;
+  uint64_t planIndex;
+  uint64_t currentIndex;
 
   DBServerAgencySyncResult()
-      : success(false), planVersion(0), currentVersion(0) {}
+    : success(false), planIndex(0), currentIndex(0) {}
 
-  DBServerAgencySyncResult(bool s, uint64_t p, uint64_t c)
-      : success(s), planVersion(p), currentVersion(c) {}
+  DBServerAgencySyncResult(bool s, uint64_t pi, uint64_t ci)
+    : success(s), planIndex(pi), currentIndex(ci) {}
 
-  DBServerAgencySyncResult(bool s, std::string const& e, uint64_t p, uint64_t c)
-      : success(s), errorMessage(e), planVersion(p), currentVersion(c) {}
+  DBServerAgencySyncResult(bool s, std::string const& e, uint64_t pi, uint64_t ci)
+    : success(s), errorMessage(e), planIndex(pi), currentIndex(ci) {}
 };
 
 class DBServerAgencySync {
@@ -65,7 +65,9 @@ class DBServerAgencySync {
    * @brief Get copy of current local state
    * @param  collections  Builder to fill to
    */
-  arangodb::Result getLocalCollections(VPackBuilder& collections);
+  arangodb::Result getLocalCollections(
+    std::unordered_set<std::string> const& dirty,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>>& collections);
 
  private:
   DBServerAgencySyncResult execute();
@@ -73,6 +75,7 @@ class DBServerAgencySync {
  private:
   application_features::ApplicationServer& _server;
   HeartbeatThread* _heartbeat;
+
 };
 }  // namespace arangodb
 

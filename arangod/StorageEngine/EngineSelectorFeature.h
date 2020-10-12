@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -50,24 +51,21 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
   template <typename As, typename std::enable_if<std::is_base_of<StorageEngine, As>::value, int>::type = 0>
   As& engine();
 
-  static std::string const& engineName();
+  std::string const& engineName();
 
   static std::string const& defaultEngine();
 
   /// @brief note that this will return true for the ClusterEngine too, in case
   /// the underlying engine is the RocksDB engine.
-  static bool isRocksDB();
-
-  // selected storage engine. this will contain a pointer to the storage engine
-  // after prepare() and before unprepare()
-  static StorageEngine* ENGINE;
+  bool isRocksDB();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   void setEngineTesting(StorageEngine*);
 #endif
 
  private:
-  std::string _engine;
+  StorageEngine* _engine;
+  std::string _engineName;
   std::string _engineFilePath;
   std::atomic<bool> _selected;
   bool _allowDeprecatedDeployments;

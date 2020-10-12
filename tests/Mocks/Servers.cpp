@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,6 +24,7 @@
 #include <algorithm>
 
 #include "Agency/AsyncAgencyComm.h"
+#include "Agency/AgencyStrings.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -59,6 +61,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -91,6 +94,7 @@
 
 #include <boost/core/demangle.hpp>
 using namespace arangodb;
+using namespace arangodb::consensus;
 using namespace arangodb::tests;
 using namespace arangodb::tests::mocks;
 
@@ -331,7 +335,7 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
   auto queryOptions = std::make_shared<VPackBuilder>();
   queryOptions->openObject();
   if (activateTracing) {
-    queryOptions->add("profile", VPackValue(aql::PROFILE_LEVEL_TRACE_2));
+    queryOptions->add("profile", VPackValue(int(aql::ProfileLevel::TraceTwo)));
   }
   queryOptions->close();
   if (queryString.empty()) {
@@ -352,9 +356,8 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
 }
 
 MockRestServer::MockRestServer(bool start) : MockServer() {
-  addFeature<arangodb::QueryRegistryFeature>(false);
-
   SetupV8Phase(*this);
+  addFeature<arangodb::QueryRegistryFeature>(false);
   if (start) {
     startFeatures();
   }
@@ -365,6 +368,7 @@ std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::
 
   std::unordered_set<uint64_t> uniq;
   std::vector<uint64_t> toCall;
+  std::unordered_set<std::string> pc, cc;
   std::pair<std::vector<consensus::apply_ret_t>,consensus::index_t> res;
 
   {
@@ -376,7 +380,16 @@ std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::
   {
     std::lock_guard g(_callbacksLock);
     for (auto const& trx : VPackArrayIterator(trxs->slice())) {
-      handleCallbacksNoLock(trx[0], uniq, toCall);
+      handleCallbacksNoLock(trx[0], uniq, toCall, pc, cc);
+    }
+    {
+      std::lock_guard g(_storeLock);
+      for (auto const& i : pc) {
+        _planChanges.emplace(_commitIndex, i);
+      }
+      for (auto const& i : cc) {
+        _currentChanges.emplace(_commitIndex, i);
+      }
     }
   }
   invokeCallbacks(toCall);
@@ -400,7 +413,6 @@ MockClusterServer::MockClusterServer() : MockServer() {
 
   arangodb::network::ConnectionPool::Config config;
   config.numIOThreads = 1;
-  config.minOpenConnections = 1;
   config.maxOpenConnections = 8;
   config.verifyHosts = false;
   addFeature<arangodb::NetworkFeature>(true, config);
@@ -418,7 +430,6 @@ void MockClusterServer::startFeatures() {
   arangodb::network::ConnectionPool::Config poolConfig;
   poolConfig.clusterInfo = &getFeature<arangodb::ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
-  poolConfig.minOpenConnections = 1;
   poolConfig.maxOpenConnections = 3;
   poolConfig.verifyHosts = false;
 
@@ -507,7 +518,7 @@ TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
     maintenance::ActionDescription ad(
       {{std::string(maintenance::NAME), std::string(maintenance::CREATE_DATABASE)},
        {std::string(maintenance::DATABASE), std::string(name)}},
-      maintenance::HIGHER_PRIORITY);
+      maintenance::HIGHER_PRIORITY, false);
     auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
     maintenance::CreateDatabase cd(mf, ad);
     cd.first();  // Does the job
@@ -529,7 +540,7 @@ void MockDBServer::dropDatabase(std::string const& name) {
   maintenance::ActionDescription ad(
     {{std::string(maintenance::NAME), std::string(maintenance::DROP_DATABASE)},
      {std::string(maintenance::DATABASE), std::string(name)}},
-    maintenance::HIGHER_PRIORITY);
+    maintenance::HIGHER_PRIORITY, false);
   auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
   maintenance::DropDatabase dd(mf, ad);
   dd.first();  // Does the job

@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for MaintenanceFeature
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -74,7 +71,7 @@ class TestActionBasic : public ActionBase {
       if (gres.ok()) {
         pred.insert({"iterate_count", iterate_count});
       }
-      _preAction = std::make_shared<ActionDescription>(pred, arangodb::maintenance::NORMAL_PRIORITY);
+      _preAction = std::make_shared<ActionDescription>(std::move(pred), arangodb::maintenance::NORMAL_PRIORITY, false);
     }  // if
 
     if (description.get("postaction_result_code", value).ok()) {
@@ -84,7 +81,7 @@ class TestActionBasic : public ActionBase {
         postd.insert({"iterate_count", iterate_count});
       }
       _postAction =
-          std::make_shared<ActionDescription>(postd, arangodb::maintenance::NORMAL_PRIORITY);
+          std::make_shared<ActionDescription>(std::move(postd), arangodb::maintenance::NORMAL_PRIORITY, false);
     }  // if
   };
 
@@ -173,13 +170,14 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_ok) {
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(
+    new TestActionBasic(
       tf, ActionDescription(
-              std::map<std::string, std::string>{{"name", "TestActionBasic"},
-                                                 {"iterate_count", "0"}},
-              arangodb::maintenance::NORMAL_PRIORITY)));
+        std::map<std::string, std::string>{
+          {"name", "TestActionBasic"}, {"iterate_count", "0"}},
+        arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
-      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
+    tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
 
   ASSERT_TRUE(result.ok());
   ASSERT_TRUE(tf._recentAction->result().ok());
@@ -207,12 +205,12 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_fail) {
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "0"},
                                                  {"result_code", "1"}},
-              arangodb::maintenance::NORMAL_PRIORITY)));
+              arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
       tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
 
@@ -242,11 +240,11 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_ok) {
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "1"}},
-              arangodb::maintenance::NORMAL_PRIORITY)));
+              arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
       tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
 
@@ -276,12 +274,12 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_fail) {
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "1"},
                                                  {"result_code", "1"}},
-              arangodb::maintenance::NORMAL_PRIORITY)));
+              arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
       tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
 
@@ -312,11 +310,11 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_2_times_ok) {
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "2"}},
-              arangodb::maintenance::NORMAL_PRIORITY)));
+              arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
       tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
 
@@ -347,11 +345,11 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_ok) {
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "100"}},
-              arangodb::maintenance::NORMAL_PRIORITY)));
+              arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
       tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
 
@@ -382,12 +380,12 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_fail) {
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "100"},
                                                  {"result_code", "1"}},
-              arangodb::maintenance::NORMAL_PRIORITY)));
+              arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
       tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
 
@@ -426,12 +424,12 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
   //   a. 100 iterations then fail
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "100"},
                                                  {"result_code", "1"}},
-              arangodb::maintenance::NORMAL_PRIORITY)));
+              arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
       tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), false);
 
@@ -440,11 +438,11 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
   pre_thread.push_back({1, 0, READY, 0});
   post_thread.push_back({1, 1, FAILED, 100});
 
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "2"}},
-              arangodb::maintenance::NORMAL_PRIORITY)));
+              arangodb::maintenance::NORMAL_PRIORITY, false)));
   result = tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), false);
 
   ASSERT_TRUE(result.ok());  // has not executed, ok() is about parse and list add
@@ -453,12 +451,12 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
   post_thread.push_back({2, 0, COMPLETE, 2});
 
   //   c. duplicate of 'a', should fail to add
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "100"},
                                                  {"result_code", "1"}},
-              arangodb::maintenance::NORMAL_PRIORITY)));
+              arangodb::maintenance::NORMAL_PRIORITY, false)));
   result = tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), false);
 
   ASSERT_FALSE(result.ok());  // has not executed, ok() is about parse and list add
@@ -509,12 +507,12 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_preaction) {
   // 1. load up the queue without threads running
   //   a. 100 iterations then fail
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "100"},
                                                  {"preaction_result_code", "0"}},
-              arangodb::maintenance::NORMAL_PRIORITY)));
+              arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
       tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), false);
 
@@ -568,13 +566,13 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_postaction) {
   // 1. load up the queue without threads running
   //   a. 100 iterations then fail
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf,
       ActionDescription(
           std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                              {"iterate_count", "100"},
                                              {"postaction_result_code", "0"}},
-          arangodb::maintenance::NORMAL_PRIORITY)));
+          arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
       tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), false);
 
@@ -629,13 +627,13 @@ TEST(MaintenanceFeatureTestThreaded, priority_queue_should_be_able_to_process_fa
   // 1. load up the queue without threads running
   //   a. 100 iterations then fail
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf,
       ActionDescription(
           std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                              {"iterate_count", "100"},
                                              {TestActionBasic::FAST_TRACK, ""}},
-          arangodb::maintenance::NORMAL_PRIORITY)));
+          arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
       tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), false);
 
@@ -678,13 +676,13 @@ TEST(MaintenanceFeatureTestThreaded, action_delete) {
   // 1. load up the queue without threads running
   //   a. 100 iterations then fail
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf,
       ActionDescription(
           std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                              {"iterate_count", "100"},
                                              {"postaction_result_code", "0"}},
-          arangodb::maintenance::NORMAL_PRIORITY)));
+          arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
       tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), false);
 

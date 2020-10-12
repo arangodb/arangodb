@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,8 @@ struct InvalidIndexFactory : public arangodb::IndexTypeFactory {
       : IndexTypeFactory(server) {}
 
   bool equal(arangodb::velocypack::Slice const&,
-             arangodb::velocypack::Slice const&) const override {
+             arangodb::velocypack::Slice const&,
+             std::string const&) const override {
     return false;  // invalid definitions are never equal
   }
 

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,7 +31,7 @@ class CrashHandler {
   [[noreturn]] static void crash(char const* context);
 
   /// @brief logs an assertion failure and crashes the program
-  [[noreturn]] static void assertionFailure(char const* file, int line, char const* context);
+  [[noreturn]] static void assertionFailure(char const* file, int line, char const* func, char const* context);
 
   /// @brief set flag to kill process hard using SIGKILL, in order to circumvent core
   /// file generation etc.

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@
 namespace arangodb {
 
 class LogicalCollection;
+class StorageEngine;
 
 namespace maintenance {
 
@@ -51,16 +52,12 @@ constexpr int SYNCHRONIZE_PRIORITY = 1;
 
 using Transactions = std::vector<std::pair<VPackBuilder, VPackBuilder>>;
 
-arangodb::Result diffPlanLocalForDatabases(VPackSlice const&,
-                                           std::vector<std::string> const&,
-                                           std::vector<std::string>&,
-                                           std::vector<std::string>&);
-
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run
  *
  * @param plan     Snapshot of agency's planned state
  * @param planIndex Raft index of this plan version
+ * @param dirty    List of dirty databases in this run
  * @param local    Snapshot of local state
  * @param serverId This server's UUID
  * @param errors   Copy of last maintenance feature errors
@@ -69,18 +66,23 @@ arangodb::Result diffPlanLocalForDatabases(VPackSlice const&,
  *
  * @return         Result
  */
-arangodb::Result diffPlanLocal(VPackSlice const& plan, uint64_t planIndex,
-                               VPackSlice const& local,
-                               std::string const& serverId,
-                               MaintenanceFeature::errors_t& errors,
-                               MaintenanceFeature& feature,
-                               std::vector<ActionDescription>& actions);
+
+arangodb::Result diffPlanLocal(
+    StorageEngine& engine,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
+    uint64_t planIndex, std::unordered_set<std::string> dirty,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    std::string const& serverId, MaintenanceFeature::errors_t& errors,
+    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+    std::vector<std::shared_ptr<ActionDescription>>& actions,
+    MaintenanceFeature::ShardActionMap const& shardActionMap);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run
  *
  * @param plan     Snapshot of agency's planned state
  * @param planIndex Raft index of this plan version
+ * @param dirty    List of dirty databases in this run
  * @param current  Snapshot of agency's current state
  * @param local    Snapshot of local state
  * @param serverId This server's UUID
@@ -89,9 +91,13 @@ arangodb::Result diffPlanLocal(VPackSlice const& plan, uint64_t planIndex,
  *
  * @return         Result
  */
-arangodb::Result executePlan(VPackSlice const& plan, uint64_t planIndex, VPackSlice const& local,
-                             std::string const& serverId,
-                             arangodb::MaintenanceFeature& feature, VPackBuilder& report);
+arangodb::Result executePlan(
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
+  uint64_t planIndex, std::unordered_set<std::string> const& dirty,
+  std::unordered_set<std::string> const& moreDirt,
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& local,
+  std::string const& serverId, arangodb::MaintenanceFeature& feature, VPackBuilder& report,
+  arangodb::MaintenanceFeature::ShardActionMap const& shardActionMap);
 
 /**
  * @brief          Difference local and current states for phase 2 of
@@ -104,14 +110,17 @@ arangodb::Result executePlan(VPackSlice const& plan, uint64_t planIndex, VPackSl
  *
  * @return         Result
  */
-arangodb::Result diffLocalCurrent(VPackSlice const& local, VPackSlice const& current,
-                                  std::string const& serverId, Transactions& report);
+arangodb::Result diffLocalCurrent(
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& local,
+  VPackSlice const& current, std::string const& serverId, Transactions& report,
+  MaintenanceFeature::ShardActionMap const& shardActionMap);
 
 /**
  * @brief          Phase one: Execute plan, shard replication startups
  *
  * @param plan     Snapshot of agency's planned state
  * @param planIndex Raft index of this version of the plan
+ * @param dirty    List of dirty databases in this run
  * @param current  Snapshot of agency's current state
  * @param local    Snapshot of local state
  * @param serverId This server's UUID
@@ -120,9 +129,13 @@ arangodb::Result diffLocalCurrent(VPackSlice const& local, VPackSlice const& cur
  *
  * @return         Result
  */
-arangodb::Result phaseOne(VPackSlice const& plan, uint64_t planIndex, VPackSlice const& local,
-                          std::string const& serverId,
-                          MaintenanceFeature& feature, VPackBuilder& report);
+arangodb::Result phaseOne(
+  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
+  uint64_t planIndex, std::unordered_set<std::string> const& dirty,
+  std::unordered_set<std::string> const& moreDirt,
+  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+  std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
+  MaintenanceFeature::ShardActionMap const& shardActionMap);
 
 /**
  * @brief          Phase two: Report in agency
@@ -136,9 +149,13 @@ arangodb::Result phaseOne(VPackSlice const& plan, uint64_t planIndex, VPackSlice
  *
  * @return         Result
  */
-arangodb::Result phaseTwo(VPackSlice const& plan, VPackSlice const& cur,
-                          VPackSlice const& local, std::string const& serverId,
-                          MaintenanceFeature& feature, VPackBuilder& report);
+arangodb::Result phaseTwo(
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& cur,
+  uint64_t currentIndex, std::unordered_set<std::string> const& dirty,
+  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+  std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
+  MaintenanceFeature::ShardActionMap const& shardActionMap);
 
 /**
  * @brief          Report local changes to current
@@ -158,11 +175,13 @@ struct ShardStatistics {
   uint64_t numNotReplicated;
 };
 
-arangodb::Result reportInCurrent(VPackSlice const& plan, VPackSlice const& cur,
-                                 VPackSlice const& local,
-                                 MaintenanceFeature::errors_t const& allErrors,
-                                 std::string const& serverId, VPackBuilder& report,
-                                 ShardStatistics& shardStats);
+arangodb::Result reportInCurrent(
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
+  std::unordered_set<std::string> const& dirty,
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& cur,
+  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+  MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
+  VPackBuilder& report, ShardStatistics& shardStats);
 
 /**
  * @brief            Schedule synchroneous replications
@@ -171,17 +190,17 @@ arangodb::Result reportInCurrent(VPackSlice const& plan, VPackSlice const& cur,
  * @param  current   Current's scnapshot
  * @param  local     Local snapshot
  * @param  serverId  My server's uuid
- * @param  actions   Resulting actions
- * @param  rescheduleForSync Report to DBServerAgencySync, that we need to rerun
- *
- * @return           Success story
+ * @param  feature   Maintenance feature
  */
-arangodb::Result syncReplicatedShardsWithLeaders(VPackSlice const& plan,
-                                                 VPackSlice const& current,
-                                                 VPackSlice const& local,
-                                                 std::string const& serverId,
-                                                 MaintenanceFeature& feature,
-                                                 std::vector<ActionDescription>& actions);
+void syncReplicatedShardsWithLeaders(
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
+  std::unordered_set<std::string> const& dirty,
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& current,
+  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+  std::string const& serverId, MaintenanceFeature& feature,
+  MaintenanceFeature::ShardActionMap const& shardActionMap,
+  std::unordered_set<std::string>& makeDirty);
+
 
 }  // namespace maintenance
 }  // namespace arangodb

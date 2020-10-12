@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <algorithm>
+#include <cstring>
 #include <iostream>
 
 #include "Basics/operating-system.h"
@@ -176,19 +177,7 @@ LogAppenderFile::LogAppenderFile(std::string const& filename)
   _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());
 }
 
-LogAppenderFile::~LogAppenderFile() {
-  if (_filename != "+" && _filename != "-") {
-    // remove ourselves from the list of open appenders
-    std::unique_lock<std::mutex> guard(_openAppendersMutex);
-    for (auto it = _openAppenders.begin(); it != _openAppenders.end(); /* no hoisting */) {
-      if ((*it) == this) {
-        it = _openAppenders.erase(it);
-      } else {
-        ++it;
-      }
-    }
-  }
-}
+LogAppenderFile::~LogAppenderFile() = default;
 
 void LogAppenderFile::writeLogMessage(LogLevel level, size_t /*topicId*/, char const* buffer, size_t len) {
   bool giveUp = false;

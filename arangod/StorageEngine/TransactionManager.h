@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,11 +42,12 @@ class TransactionManager {
   virtual ~TransactionManager() = default;
 
   // register a transaction
-  virtual void registerTransaction(TRI_voc_tid_t transactionId,
+  virtual void registerTransaction(TransactionId transactionId,
                                    bool isReadOnlyTransaction) = 0;
 
   // unregister a transaction
-  virtual void unregisterTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction) = 0;
+  virtual void unregisterTransaction(TransactionId transactionId,
+                                     bool isReadOnlyTransaction) = 0;
 
   virtual uint64_t getActiveTransactionCount() = 0;
 

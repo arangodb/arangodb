@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -37,7 +38,7 @@ class TransactionState;
 /// @brief collection used in a transaction
 class ClusterTransactionCollection final : public TransactionCollection {
  public:
-  ClusterTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid,
+  ClusterTransactionCollection(TransactionState* trx, DataSourceId cid,
                                AccessMode::Type accessType);
   ~ClusterTransactionCollection();
 

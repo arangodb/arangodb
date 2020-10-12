@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -46,6 +47,8 @@ extern std::initializer_list<double> const RequestTimeDistributionCuts;
 extern Counter AsyncRequests;
 extern Counter HttpConnections;
 extern Counter TotalRequests;
+extern Counter TotalRequestsSuperuser;
+extern Counter TotalRequestsUser;
 
 constexpr size_t MethodRequestsStatisticsSize =
     ((size_t)arangodb::rest::RequestType::ILLEGAL) + 1;
@@ -68,7 +71,7 @@ struct RequestFigures {
   Distribution requestTimeDistribution;
   Distribution totalTimeDistribution;
 };
-extern RequestFigures GeneralRequestFigures;
+extern RequestFigures SuperuserRequestFigures;
 extern RequestFigures UserRequestFigures;
 }  // namespace statistics
 

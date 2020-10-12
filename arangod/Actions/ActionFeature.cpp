@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,8 +28,6 @@
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "V8Server/V8DealerFeature.h"
-#include "V8Server/v8-actions.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -56,16 +55,10 @@ void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void ActionFeature::start() {
   ACTION = this;
-
-  V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
-  dealer.defineContextUpdate([](v8::Isolate* isolate, v8::Handle<v8::Context> /*context*/,
-                                size_t) { TRI_InitV8Actions(isolate); },
-                             nullptr);
 }
 
 void ActionFeature::unprepare() {
   TRI_CleanupActions();
-
   ACTION = nullptr;
 }
 

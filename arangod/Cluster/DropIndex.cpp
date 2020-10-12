@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,10 +44,10 @@ DropIndex::DropIndex(MaintenanceFeature& feature, ActionDescription const& d)
     : ActionBase(feature, d) {
   std::stringstream error;
 
-  if (!d.has(COLLECTION)) {
-    error << "collection must be specified. ";
+  if (!d.has(SHARD)) {
+    error << "shard must be specified. ";
   }
-  TRI_ASSERT(d.has(COLLECTION));
+  TRI_ASSERT(d.has(SHARD));
 
   if (!d.has(DATABASE)) {
     error << "database must be specified. ";
@@ -70,7 +70,7 @@ DropIndex::~DropIndex() = default;
 
 bool DropIndex::first() {
   auto const& database = _description.get(DATABASE);
-  auto const& collection = _description.get(COLLECTION);
+  auto const& shard = _description.get(SHARD);
   auto const& id = _description.get(INDEX);
 
   VPackBuilder index;
@@ -80,10 +80,10 @@ bool DropIndex::first() {
     DatabaseGuard guard(database);
     auto vocbase = &guard.database();
 
-    auto col = vocbase->lookupCollection(collection);
+    auto col = vocbase->lookupCollection(shard);
     if (col == nullptr) {
       std::stringstream error;
-      error << "failed to lookup local collection " << collection
+      error << "failed to lookup local collection " << shard
             << " in database " << database;
       LOG_TOPIC("c593d", ERR, Logger::MAINTENANCE) << "DropIndex: " << error.str();
       _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
@@ -91,7 +91,7 @@ bool DropIndex::first() {
     }
 
     LOG_TOPIC("837c5", DEBUG, Logger::MAINTENANCE)
-        << "Dropping local index " + collection + "/" + id;
+        << "Dropping local index " + shard + "/" + id;
     _result = Indexes::drop(col.get(), index.slice());
 
   } catch (std::exception const& e) {
@@ -104,6 +104,5 @@ bool DropIndex::first() {
     return false;
   }
 
-  notify();
   return false;
 }

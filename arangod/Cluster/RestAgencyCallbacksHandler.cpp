@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 
 #include "RestAgencyCallbacksHandler.h"
 
+#include "Cluster/AgencyCallback.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -65,8 +66,8 @@ RestStatus RestAgencyCallbacksHandler::execute() {
 
   uint64_t index = basics::StringUtils::uint64(suffixes.at(0));
   auto cb = _agencyCallbackRegistry->getCallback(index);
-  if (cb.get() == nullptr) {
-    // no entry by this id!
+  if (cb == nullptr) {
+    // no entry for this id!
     resetResponse(arangodb::rest::ResponseCode::NOT_FOUND);
   } else {
     LOG_TOPIC("76a8a", DEBUG, Logger::CLUSTER)
@@ -75,7 +76,7 @@ RestStatus RestAgencyCallbacksHandler::execute() {
     try {
       cb->refetchAndUpdate(true, false);
     } catch (arangodb::basics::Exception const& e) {
-      LOG_TOPIC("c3910", WARN, Logger::AGENCYCOMM) << "Error executing callback: " << e.message();
+      LOG_TOPIC("c3910", WARN, Logger::CLUSTER) << "Error executing callback: " << e.message();
     }
     resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
   }

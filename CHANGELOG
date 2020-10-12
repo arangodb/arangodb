@@ -1,20 +1,690 @@
 devel
 -----
 
+* Added optional verbose logging for agency write operations. This logging
+  is configurable by using the new log topic "agencystore".
+
+  The following log levels can be used for for the "agencystore" log topic
+  to log writes to the agency:
+  - DEBUG: will log all writes on the leader
+  - TRACE: will log all writes on both leaders and followers
+  The default log level for the "agencystore" log topic is WARN, meaning no
+  agency writes will be logged.
+  Turning on this logging can be used for auditing and debugging, but it is
+  not recommended in the general case, as it can lead to large amounts of 
+  data being logged, which can have a performance impact and will lead to
+  higher disk space usage.
+  
+* Fix #12693: SORT inside a subquery could sometimes swallow part of its input
+  when it crossed boundaries of internal row batches.
+
+* Added configuration option `--rocksdb.sync-delay-threshold`.
+  This option can be used to track if any RocksDB WAL sync operations is 
+  delayed by more than the configured value (in milliseconds). The intention
+  is to get aware of severely delayed WAL sync operations.
+
+* Fix for BTS-191: Made transaction API database-aware.
+
+* Minor clean up of and less verbosity in agent callbacks. 
+
+* Speed up initial replication of collections/shards data by not wrapping 
+  each document in a seperate `{"type":2300,"data":...}` envelope. In 
+  addition, the follower side of the replication will request data from 
+  leaders in VelocyPack format if the leader is running at least version 
+  3.8.
+  Stripping the envelopes and using VelocyPack for transfer allows for 
+  smaller data sizes when exchanging the documents and faster processing, 
+  and thus can lead to time savings in document packing and unpacking as 
+  well as reduce the number of required HTTP requests. 
+
+* Add database, shard name and error information to several shard-related log 
+  messages.
+
+* Display shard names of a collection in the web interface when in the details
+  view of the collection.
+
+* Added HTTP requests metrics for tracking the number of superuser and normal
+  user requests separately:
+
+  - `arangodb_http_request_statistics_superuser_requests`: Total number of HTTP
+    requests executed by superuser/JWT
+  - `arangodb_http_request_statistics_user_requests`: Total number of HTTP
+    requests executed by clients
+
+* Added metric `arangodb_agency_callback_registered counter` for tracking the
+  total number of agency callbacks that were registered.
+
+* Fixed a bug in handling of followers which refuse to replicate operations.
+  In the case that the follower has simply been dropped in the meantime, we now
+  avoid an error reported by the shard leader.
+
+* Added weighted traversal. Use `mode: "weighted"` as option to enumerate
+  paths by increasing weights. The cost of an edge can be read from an
+  attribute which can be specified using `weightAttribute` option.
+
+* Fix a performance regression when a LIMIT is combined with a COLLECT WITH
+  COUNT INTO. Reported in ES-692.
+
+* Fixed issue ES-696: SEARCH vs FILTER lookup performance.
+  Consolidation functionality for ArangoSearch view links was able to hit non-
+  mergable enormous amount of segments due to improper scheduling logic.
+
+* Data definition reconsiliation in cluster has been modified
+  extensively to greatly accelerate the creation of 1000s of
+  databases through following means:
+  - AgencyCache offers change sets API based on Raft index.
+  - ClusterInfo caches are only updated using change sets.
+  - Maintenance uses local as well as agency change sets to limit
+    the scope of every runtime to these change sets.
+
+* Make scheduler react and start new threads slightly faster in case a lot
+  of new work arrives.
+
+* Make scheduler propertly count down the number of working threads in case
+  an exception happens in a worker thread.
+
+* Added startup option `--database.old-system-collections` to toggle automatic
+  creation of system collections `_modules` and `_fishbowl`, along with their
+  internal usage. These collections are useful only in very few cases, so it
+  is normally not worth to create them in all databases.
+  The `_modules` collection is only used to register custom JavaScript modules,
+  for which there exists no API, and `_fishbowl` is used to store the temporary
+  list of Foxx apps retrieved from the Github Foxx store.
+  If the option value is `false` (which is the default from v3.8 onwards), the
+  two collections will not be created for any new database. The `_fishbowl`
+  collection will still be created dynamically when needed. If the option value
+  is `true`, the collections will be created regularly as before.
+  The option will also be introduced to v3.7, where it will have a default
+  value of `true`, meaning the collections will still be created there.
+
+  Any functionality related to the `_modules` system collection is deprecated
+  and will be removed in ArangoDB v3.9.
+
+  Two side effects of turning this option off (which is the default) are:
+  * there will no be iteration over all databases at server startup just to check
+    the contents of all `_modules` collections.
+  * less collections/shards will be around for deployments that create a large
+    number of databases.
+  Already existing `_modules` and `_fishbowl` system collections will not be
+  modified by this change, even though they will likely be empty and unused.
+
+* Don't iterate over all databases at server startup in order to initialize the
+  routing information. This is not necessary, as the routing information is
+  global and not tied to a specific database.
+
+  Any functionality related to the `_modules` system collection is deprecated
+  and will be removed in ArangoDB v3.9.
+
+* Use rclone built from v1.51.0 source with go1.15.2 instead of prebuilt
+  v1.53.0 release.
+
+* Fixed a possible crash during instantiation of an AQL graph traversal.
+  Reported in #12597.
+
+* Added new ArangoSearch "pipeline" analyzer type
+
+* Reduce the number of dropped followers when running larger (>= 128 MB)
+  write transactions.
+
+* Fixed a bug in AQL COLLECT with OPTIONS { "hash" } that lead to a quadratic
+  runtime in the number of output rows.
+
+* Make the reboot tracker catch failed coordinators, too. Previously the
+  reboot tracker was invoked only when a DB server failed or was restarted,
+  and when a coordinator was restarted. Now it will also act if a coordinator
+  just fails (without restart).
+
+* Added scheduler thread creation/destruction metrics:
+
+  - `arangodb_scheduler_threads_started`: Number of scheduler threads started
+  - `arangodb_scheduler_threads_stopped`: Number of scheduler threads stopped
+
+* Added replication metrics `arangodb_replication_initial_sync_bytes_received`
+  for the number of bytes received during replication initial sync operations
+  and `arangodb_replication_tailing_bytes_received` for the number of bytes
+  received for replication tailing requests.
+  Also added `arangodb_replication_failed_connects` to track the number of
+  connection failures or non-OK response during replication.
+
+* Added metrics `rocksdb_free_inodes` and `rocksdb_total_inodes` to track the
+  number of free inodes and the total/maximum number of inodes for the file
+  system the RocksDB database directory is located in. These metrics will
+  always be 0 on Windows.
+
+* Fixed inifinite reload of the login window after logout of an LDAP user.
+
+* Added startup option `--query.max-runtime` to limit the maximum runtime of
+  all AQL queries to a specified threshold value (in seconds). By default,
+  the threshold is 0, meaning that the runtime of AQL queries is not limited.
+  Setting it to any positive value will restrict the runtime of all AQL
+  queries unless it is overwritten in the per-query "maxRuntime" query option.
+  Please note that setting this option will affect *all* queries in all
+  databases, and also queries issues for administration and database-internal
+  purposes.
+  If a query exceeds the configured runtime, it will be killed on the next
+  occasion when the query checks its own status. Killing is best effort,
+  so it is not guaranteed that a query will no longer than exactly the
+  configured amount of time.
+
+* Updated rclone to 1.53.0.
+
+* Fixed slightly wrong log level for authentication and also added login event
+  to the standard log.
+
+* Ensure that the argument to an AQL OPTIONS clause is always an object
+  which does not contain any dynamic (run-time) values. Previously, this
+  was only enforced for traversal options and options for data-modification
+  queries. This change extends the check to all occurrences of OPTIONS.
+
+* Added `details` option to figures command of a collection:
+  `collection.figures(details)`
+
+  Setting `details` to `true` will return extended storage engine-specific
+  details to the figures. The details are intended for debugging ArangoDB
+  itself and their format is subject to change. There is not much use in using
+  the details from a client application.
+  By default, `details` is set to `false`, so no details are returned and the
+  behavior is identical to previous versions of ArangoDB.
+
+* Enforce a maximum result register usage limit in AQL queries. In an AQL
+  query, every user-defined or internal (unnamed) variable will need a
+  register to store results in.
+
+  AQL queries that use more result registers than allowed (currently 1000)
+  will now abort deterministically during the planning stage with error 32
+  (`resource limit exceeded`) and the error message
+  "too many registers (1000) needed for AQL query".
+
+  Before this fix, an AQL query that used more than 1000 result registers
+  crashed the server when assertions were turned on, and the behavior was
+  undefined when assertions were turned off.
+
+* Implement RebootTracker usage for AQL queries in case of coordinator
+  restarts or failures. This will clean up the rest of an AQL query
+  on dbservers more quickly and in particular release locks faster.
+
+* Serialize maintenance actions for each shard. This addresses lost document
+  problems found in chaos testing.
+
+* Fixed an issue with audit logging misreporting some document requests as
+  internal instead of logging the proper request information
+
+* Add option `--rocksdb.max-write-buffer-size-to-maintain` with default of 0.
+  This configures how much memory RocksDB is allowed to use for immutable
+  flushed memtables/write-buffers. The default of 0 will usually be good
+  for all purposes and restores the 3.6 memory usage for write-buffers.
+
+* Updated arangosync to 0.7.10.
+
+* Make followers in active failover run a compaction after they process a
+  truncate operation and the truncate removed more than 4k documents. This
+  can help to reclaim disk space on the follower earlier than without running
+  the truncate.
+
+* Added REST API PUT `/_admin/compact` for compacting the entire database
+  data. This endpoint can be used to reclaim disk space after substantial data
+  deletions have taken place. The command is also exposed via the JavaScript
+  API as `db._compact();`.
+
+  This command can cause a full rewrite of all data in all databases, which
+  may take very long for large databases. It should thus only be used with care
+  and only when additional I/O load can be tolerated for a prolonged time.
+
+  This command requires superuser access.
+
+* Added new metrics for the total and the free disk space for the mount
+  used for the RocksDB database directory:
+
+  * `arangodb_rocksdb_free_disk_space`: provides the free disk space for
+    the mount, in bytes
+  * `arangodb_rocksdb_total_disk_space`: provides the total disk space of
+    the mount, in bytes
+
+* Fixed some cases where subqueries in PRUNE did not result in a parse error,
+  but either in an incomprehensible error (in 3.7), or undefined behavior
+  during execution (pre 3.7).
+
+* Apply user-defined idle connection timeouts for HTTP/2 and VST connections.
+  The timeout value for idle HTTP/2 and VST connections can now be configured
+  via the configuration option `--http.keep-alive-timeout` in the same way
+  as for HTTP/1 connections.
+  HTTP/2 and VST connections that are sending data back to the client are now
+  closed after 300 seconds or the configured idle timeout (the higher of both
+  values is used here).
+  Before this change, the timeouts for HTTP/2 and VST connections were hard-
+  coded to 120 seconds, and even non-idle connections were closed after this
+  timeout.
+
+* Added new metric `arangodb_network_forwarded_requests` to track the number
+  of requests forwarded from one coordinator to another in a load-balancing
+  context.
+
+* Added new metrics for tracking AQL queries and slow queries:
+  * `arangodb_aql_query_time`: histogram with AQL query times distribution.
+  * `arangodb_aql_slow_query_time`: histogram with AQL slow query times
+    distribution.
+  * `arangodb_aql_all_query`: total number of all AQL queries.
+
+* Added new metrics for replication:
+  * `arangodb_replication_dump_requests`: number of replication dump requests
+    made.
+  * `arangodb_replication_dump_bytes_received`: number of bytes received in
+    replication dump requests.
+  * `arangodb_replication_dump_documents`: number of documents received in
+    replication dump requests.
+  * `arangodb_replication_dump_request_time`: wait time for replication dump
+    requests.
+  * `arangodb_replication_dump_apply_time`: time required for applying data
+    from replication dump responses.
+  * `arangodb_replication_initial_sync_keys_requests`: number of replication
+    initial sync keys requests made.
+  * `arangodb_replication_initial_sync_docs_requests`: number of replication
+    initial sync docs requests made.
+  * `arangodb_replication_initial_sync_docs_requested`: number of documents
+    requested via replication initial sync requests.
+  * `arangodb_replication_initial_sync_docs_inserted`: number of documents
+    inserted by replication initial sync.
+  * `arangodb_replication_initial_sync_docs_removed`: number of documents
+    inserted by replication initial sync.
+  * `arangodb_replication_initial_chunks_requests_time`: wait time histogram
+    for replication key chunks determination requests.
+  * `arangodb_replication_initial_keys_requests_time`: wait time for replication
+    keys requests.
+  * `arangodb_replication_initial_docs_requests_time`: time needed to apply
+    replication docs data.
+  * `arangodb_replication_initial_insert_apply_time`: time needed to apply
+    replication initial sync insertions.
+  * `arangodb_replication_initial_remove_apply_time`: time needed to apply
+    replication initial sync removals.
+  * `arangodb_replication_initial_lookup_time`: time needed for replication
+    initial sync key lookups.
+  * `arangodb_replication_tailing_requests`: number of replication tailing
+    requests.
+  * `arangodb_replication_tailing_follow_tick_failures`: number of replication
+    tailing failures due to missing tick on leader.
+  * `arangodb_replication_tailing_markers`: number of replication tailing
+    markers processed.
+  * `arangodb_replication_tailing_documents`: number of replication tailing
+    document inserts/replaces processed.
+  * `arangodb_replication_tailing_removals`: number of replication tailing
+    document removals processed.
+  * `arangodb_replication_tailing_bytes_received`: number of bytes received
+    for replication tailing requests.
+  * `arangodb_replication_tailing_request_time`: wait time for replication
+    tailing requests.
+  * `arangodb_replication_tailing_apply_time`: time needed to apply replication
+    tailing markers.
+
+* Allow calling of REST APIs `/_api/engine/stats`, GET `/_api/collection`,
+  GET `/_api/database/current` and GET `/_admin/metrics` on followers in active
+  failover deployments. This can help debugging and inspecting the follower.
+
+* Added metrics for V8 contexts usage:
+  * `arangodb_v8_context_alive`: number of V8 contexts currently alive.
+  * `arangodb_v8_context_busy`: number of V8 contexts currently busy.
+  * `arangodb_v8_context_dirty`: number of V8 contexts currently dirty.
+  * `arangodb_v8_context_free`: number of V8 contexts currently free.
+  * `arangodb_v8_context_max`: maximum number of concurrent V8 contexts.
+  * `arangodb_v8_context_min`: minimum number of concurrent V8 contexts.
+
+* Fix for issue BTS-183: added pending operations purging before ArangoSearch
+  index truncation
+
+* Don't allow creation of smart satellite graphs or collections (i.e. using
+  `"isSmart":true` together with `"replicationFactor":"satellite"` when creating
+  graphs or collections. This combination of parameters makes no sense, so that
+  the server will now respond with "bad parameter" and an HTTP status code of
+  HTTP 400 ("Bad request").
+
+* Fixed: More cases in AQL can now react to a query being killed, so reaction
+  time to query abortion is now shortened. This was a regression in comparison
+  to 3.6 series.
+
+* Support projections on sub-attributes (e.g. `a.b.c`).
+
+  In previous versions of ArangoDB, projections were only supported on
+  top-level attributes. For example, in the query
+
+      FOR doc IN collection
+        RETURN doc.a.b
+
+  the projection that was used was just `a`. Now the projection will be `a.b`,
+  which can help reduce the amount of data to be extracted from documents,
+  when only some sub-attributes are accessed.
+
+  In addition, indexes can now be used to extract the data of sub-attributes
+  for projections. If for the above example query an index on `a.b` exists,
+  it will be used now. Previously, no index could be used for this projection.
+
+  Projections now can also be fed by any attribute in a combined index. For
+  example, in the query
+
+    FOR doc IN collection
+      RETURN doc.b
+
+  the projection can be satisfied by a single-attribute index on attribute `b`,
+  but now also by a combined index on attributes `a` and `b` (or `b` and `a`).
+
+* Remove some JavaScript files containing testsuites and test utilities from our
+  official release packages.
+
+* Fixed internal issue #741: STARTS_WITH fails to accept 'array' as variable.
+
+* Fixed internal issue #738: PHRASE doesn't accept a reference to an array of
+  arguments.
+
+* Fixed internal issue #747: fixed possible dangling open files in ArangoSearch
+  index after remove operations.
+
+* Make the `IS_IPV4` AQL function behave identical on MacOS as on other
+  platforms. It previously allowed leading zeros in octets on MacOS,
+  whereas on other platforms they were disallowed.
+  Now this is disallowed on MacOS as well.
+
+* Added new metric "arangodb_aql_slow_query" for slow AQL queries, so this can
+  be monitored more easily.
+
+* Added new metric "arangodb_scheduler_queue_full_failures" for tracking cases
+  of a full scheduler queue and dropping requests.
+
+* Added new metrics for the number of V8 contexts dynamically created and destroyed
+  ("arangodb_v8_context_created" and "arangodb_v8_context_destroyed") and for the
+  number of times a V8 context was entered and left ("arangodb_v8_context_entered"
+  and "arangodb_v8_context_exited"). There is also a new metric for tracking the
+  cases when a V8 context cannot be successfully acquired and an operation is not
+  performed ("arangodb_v8_context_enter_failures").
+
+* Added extra info to "queue full" and "giving up waiting for unused v8 context"
+  log messages.
+
+* Request to the `/_admin/statistics` API now processed via the CLIENT_FAST lane.
+  Previously they were handled in the CLIENT_SLOW lane, meaning that monitoring
+  requests using that API didn't get through when the queue was rather full.
+
+* Fixed issue BTS-169: cost estimation for LIMIT nodes showed wrong number of
+  estimated items.
+
+* Fixed issue #12507: SegFault when using an AQL for loop through edges.
+
+* Add attributes `database` and `user` when tracking current and slow AQL queries.
+  `database` contains the name of the database the query is/was running in, `user`
+  contains the name of the user that started the query.
+  These attributes will be returned in addition when calling the APIs for current
+  and slow query inspection:
+  * GET `/_api/query/current` and `require("arangodb/aql/queries").current()`
+  * GET `/_api/query/slow` and `require("arangodb/aql/queries").slow()`
+
+  The "slow query" log message has also been augmented to contain the database
+  name and the user name.
+
+  The `user` attribute is now also displayed in the web interface in the "Running
+  queries" and "Slow queries" views.
+
+* Introduce an internal high-water mark for the maximum row number that was
+  written to in an AqlItemBlock. Using this number several operations on the
+  whole block, such as cleaning up or copying can be made more efficient when
+  run on only partially filled blocks.
+
+* Updated arangosync to 0.7.10.
+
+* Make UPSERT statement with collection bind parameter behave identical to its
+  non-bind parameter counterpart.
+
+  For example, the query
+
+      FOR d IN ["key_1", "key_2", "key_3", "key_1"]
+        UPSERT d INSERT d UPDATE d IN @@collection
+
+  would fail with "unique constraint violation" when used with a collection bind
+  parameter, but the equivalent query
+
+      FOR d IN ["key_1", "key_2", "key_3", "key_1"]
+        UPSERT d INSERT d UPDATE d IN collectionName
+
+  with a hard-coded collection name would succeed. This is now fixed so both
+  queries have the same behavior (no failure) in single server.
+
+* Fixed internal issue #744: LIMIT with only offset and constrained heap
+  optimization will use estimation value for ArangoSearch views.
+
+* Fix internal issue #742: Add tick storage in index meta payload after
+  truncate operation
+
+* Fixed: During a move-shard job which moves the leader there is a
+  situation in which the old owner of a shard can reclaim ownership
+  (after having resigned already), with a small race where it allows to
+  write documents only locally, but then continue the move-shard to a
+  server without those documents. An additional bug in the MoveShard
+  Supervision job would then leave the shard in a bad configuration
+  with a resigned leader permanently in charge.
+
+* Fixed issue #12304: insert in transaction causing com.arangodb.ArangoDBException:
+  Response: 500, Error: 4 - Builder value not yet sealed.
+
+  This happened when too deeply-nested documents (more than 63 levels of nesting)
+  were inserted. While indefinite nesting is still not supported, the error message
+  has been corrected from the internal HTTP 500 error "Builder value not yet sealed"
+  to the correct HTTP 400 "Bad parameter".
+
+* Show optimizer rules with highest execution times in explain output.
+
+* Renamed "master" to "leader" and "slave" to "follower" in replication messages.
+  This will change the contents of replication log messages as well the string
+  contents of replication-related error messages.
+
+The messages of the error codes 1402, 1403 and 1404 were also changed accordingly,
+as well as the identifiers:
+- `TRI_ERROR_REPLICATION_MASTER_ERROR` renamed to `TRI_ERROR_REPLICATION_LEADER_ERROR`
+- `TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE` renamed to `TRI_ERROR_REPLICATION_LEADER_INCOMPATIBLE`
+- `TRI_ERROR_REPLICATION_MASTER_CHANGE` renamed to `TRI_ERROR_REPLICATION_LEADER_CHANGE`
+
+  This change also renames the API endpoint `/_api/replication/make-slave` to
+  `/_api/replication/make-follower`. The API is still available under the old
+  name, but using it is deprecated.
+
+* Fixed that dropping a vanished follower works again. An exception response
+  to the replication request is now handled properly.
+
+* Make optimizer rule "remove-filters-covered-by-index" remove FILTERs that were
+  referring to aliases of the collection variable, e.g.
+
+      FOR doc IN collection
+        LET value = doc.indexedAttribute
+        FILTER value == ...
+
+  Previously, FILTERs that were using aliases were not removed by that optimizer
+  rule.
+  In addition, the optimizer rule "remove-unnecessary-calculations" will now run
+  again in case it successfully removed variables. This can unlock further removal
+  of unused variables in sequences such as
+
+      FOR doc IN collection
+        LET value = doc.indexedAttribute
+        LET tmp1 = value > ...
+        LET tmp2 = value < ...
+
+  when the removal of `tmp1` and `tmp2` makes it possible to also remove the
+  calculation of `value`.
+
+* Fixed bad behavior in agency supervision in some corner cases involving
+  already resigned leaders in Current.
+
+* Fixed a problem with potentially lost updates because a failover could
+  happen at a wrong time or a restarted leader could come back at an
+  unlucky time.
+
+* Fixed issue BTS-168: Fixed undefined behavior that did trigger
+  segfaults on cluster startups. It is only witnessed for
+  MacOS based builds. The issue could be triggered by any network connection.
+  This behavior is not part of any released version.
+
+* Fixed issue ES-664: the optimizer rule `inline-subqueries` must not pull out
+  subqueries that contains a COLLECT statement if the subquery is itself called
+	from within a loop. Otherwise the COLLECT will be applied to the values in the
+	outer FOR loop, which can produce a different result.
+
+* Fixed a blockage on hotbackup when writes are happening concurrently, since
+  followers could no longer replicate leader transactions.
+
+* Updated arangosync to 0.7.9.
+
+* Fixed hotbackup S3 credentials validation and error reporting for upload
+  and download.
+
+* Make AQL user-defined functions (UDFs) work in a cluster in case the UDF runs
+  an AQL query inside its own function code (BTS-159).
+
+* Fix: writeConcern is now honored correctly (ES-655).
+
+* Fix: The 'sorted' COLLECT variant would return undefined instead of null when
+  grouping by a null value.
+
+* Hard-code returned "planVersion" attribute of collections to a value of 1.
+  Before 3.7, the most recent Plan version from the agency was returned inside
+  "planVersion".
+  In 3.7, the attribute contained the Plan version that was in use when the
+  in-memory LogicalCollection object was last constructed. The object was
+  always reconstructed in case the underlying Plan data for the collection
+  changed or when a collection contained links to arangosearch views.
+  This made the attribute relatively useless for any real-world use cases, and
+  so we are now hard-coding it to simplify the internal code. Using the attribute
+  in client applications is also deprecated.
+
+* Slightly improve the performance of cluster DDL maintenance operations.
+
+* Don't prevent concurrent synchronization of different shards from the same
+  database. Previously only one shard was synchronized at a time per database.
+
+* Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late materialzation
+  after OneShard optimization
+
+* Improve performance of many non-subquery AQL queries, by optimizing away
+  some storage overhead for subquery context data.
+
+* Improve performance of internal cluster Plan and Current reload operations.
+
+* Fixed issue #12349: arangosh compact Arangoerror 404.
+
+* Wait until restore task queue is idle before shutting down.
+
+* Fix a race problem in the unit tests w.r.t. PlanSyncer.
+
+* Always fetch data for /_api/cluster/agency-dump from leader of the agency.
+  Add option "redirectToLeader=true" to internal /_api/agency/state API.
+
+* Fixed issue #12297: ArangoDB 3.6.5 Swagger Error?
+  This issue caused the Swagger UI for displaying the APIs of user-defined Foxx
+  services to remain invisible in the web UI, because of a JavaScript exception.
+  This PR fixes the JavaScript exception, so the services API is displayed
+  again properly.
+
+* Fixed issue #12248: Web UI on 3.6.5: 404 error on adding new index.
+  This issue caused "404: not found" errors when creating indexes via the web
+  UI. The indexes were created successfully despite the error message popping
+  up. This fix removes the misleading unconditional error message.
+
+* Slightly improved the performance of some k-shortest-path queries.
+
+* Added startup option `--rocksdb.encryption-key-rotation` to activate/deactivate
+  the encryption key rotation REST API. The API is disabled by default.
+
+* Add internal caching for LogicalCollection objects inside ClusterInfo::loadPlan.
+  This allows avoiding the recreation of LogicalCollection objects that did not
+  change from one loadPlan run to the next. It reduces CPU usage considerably on
+  both Coordinators and DB-servers.
+
+* Fixed undefined behavior in AQL COLLECT with multiple group variables (issue
+  #12267).
+  If you are grouping on "large" values that occur multiple times in different
+  groups, and two different groups with the same large value are written to
+  different batches in the output then the memory could be invalid.
+  e.g. the following query is affected:
+  ```
+  FOR d IN documents
+  FOR batchSizeFiller IN 1..1001
+  COLLECT largeVal = d.largeValue, t = batchSizeFiller
+  RETURN 1
+  ```
+
+* Revive faster out-of-range comparator for secondary index scans that do a full
+  collection index scan for index types "hash", "skiplist", "persistent".
+
+* Fixed internal issue #733: Primary sort compression in views now used properly.
+
+* Errors with error code 1200 (Arango conflict) will now get the HTTP response
+  code 409 (Conflict) instead of 412 (Precondition failed), unless "if-match" header
+  was used in `_api/document` or `_api/gharial`.
+
+* Fix spurious lock timeout errors when restoring collections.
+
+* Improve performance of agency cache by not copying the hierarchical Node
+  tree result for serialization, but serializing it directly.
+
+* Make sure cluster statistics in web UI work in case a coordinator is down.
+
+* Change HTTP response code for error 1450 ("too many shards") from HTTP 500 to
+  HTTP 400, as this is clearly a client error.
+
+* Turn off maintenance threads on Coordinators, as they are not needed there.
+
+* Fixed crash in cleanup of parallel traversal queries.
+
+* Updated arangosync to 0.7.8.
+
+* Fixed hotbackup upload and download with encryption at rest key indirection.
+
+* Fixed a race between a new request and the keepAlive timeout.
+
+* Added cluster metrics `arangodb_load_plan_accum_runtime_msec` and
+  `arangodb_load_current_accum_runtime_msec` to track the total time spent
+  in `loadPlan()` and `loadCurrent()` operations.
+
+* Fixed wrong reporting of failures in all maintenace failure counter metrics
+  (`arangodb_maintenance_action_failure_counter`). Previously, each successful
+  maintenance operation was reported as a failure, so the failure counters
+  actually were counters for the number of successful maintenance actions.
+
+* Adjusted the scale of the `arangodb_maintenance_action_queue_time_msec` to
+  cover a more useful range.
+
+* The filter executor will now overfetch data again if followed by a limit, same as in 3.6 series.
+  The following queries are effected:
+  ```
+  something
+  FILTER a == b
+  LIMIT 10
+  ```
+  something will now be asked for a full batch, instead of only 10 documents.
+
+* In rare cases SmartBFS could use a wrong index for looking up edges. This is fixed now.
+
+* The internally used JS-based ClusterComm send request function can now again use JSON, and does
+  not require VelocyPack anymore. This fixes an issue with Foxx-App management (install, updated, remove)
+  got delayed in a sharded environment, all servers do get all apps eventually, now the fast-path
+  will work again.
+
+* Fixed a rare race in Agents, if the leader is rebooted quickly there is a chance
+  that it is still assumed to be the leader, but delivers a state shortly in the
+  past.
+
+* Fixed a race in the ConnectionPool which could lease out a connection
+  that got its idle timeout after the lease was completed. This could lead
+  to sporadic network failures in TLS and to inefficiencies with TCP.
+
 * Fixed restoring a SmartGraph into a database that already contains that same graph.
   The use case is restoring a SmartGraph from backup, apply some modifications, which are
   undesired, and then resetting it to the restored state, without dropping the database.
-  One way to achieve this is to use arangorestore with the `overwrite` option on the same dataset, 
+  One way to achieve this is to use arangorestore with the `overwrite` option on the same dataset,
   effectively resetting the SmartGraph to the original state.
   Without this fix, the workaround for is to either drop the graph (or the database) before the
   restore call, yielding an identical result.
-  
-* Keep the list of last-acknowledged entires in Agency more consistent.
+
+* Keep the list of last-acknowledged entries in Agency more consistent.
   During leadership take-over it was possible to get into a situation that
   the new leader does not successfully report the agency config, which
   was eventually fixed by the Agent itself. Now this situation is impossible.
 
-* Allow changing collection properties for smart edge collections as well. 
+* Allow changing collection properties for smart edge collections as well.
 
 * Fixed that the hotbackup agency lock is released under all circumstances
   using scope guards. This addresses a rare case in which the lock was left
@@ -33,7 +703,7 @@ devel
   within the UI.
 
 * Added vertex collection validation in case of a SmartGraph edge definition
-  update. 
+  update.
 
 * Updated arangosync to 0.7.7.
 
@@ -162,7 +832,7 @@ devel
   queries.
 
 * Allow restoring collections from v3.3.0 with their all-numeric collection
-  GUID values, by creating a new, unambiguous collection GUID for them. 
+  GUID values, by creating a new, unambiguous collection GUID for them.
   v3.3.0 had a bug because it created all-numeric GUID values, which can be
   confused with numeric collection ids in lookups. v3.3.1 already changed the
   GUID routine to produce something non-numeric already, but collections
@@ -209,7 +879,7 @@ devel
 
 * added option `--log.in-memory` to toggle storing log messages in memory,
   from which they can be consumed via the `/_admin/log` and by the web UI. By
-  default, this option is turned on, so log messages are consumable via API 
+  default, this option is turned on, so log messages are consumable via API
   and the web UI. Turning this option off will disable that functionality and
   save a tiny bit of memory for the in-memory log buffers.
 
@@ -344,7 +1014,7 @@ devel
   collection counts. The bug could have led to count adjustments being
   applied with the wrong sign.
 
-* Removed external file loading in a used 3rd party library (Web UI). 
+* Removed external file loading in a used 3rd party library (Web UI).
 
 * More substantial metrics in agency.
 
@@ -365,7 +1035,7 @@ devel
   * `--rocksdb.pin-l0-filter-and-index-blocks-in-cache` make filter and index blocks
     be pinned and only evicted from cache when the table reader is freed
   * `--rocksdb.pin-top-level-index-and-filter` make the top-level index of partitioned
-    filter and index blocks pinned and only be evicted from cache when the table reader 
+    filter and index blocks pinned and only be evicted from cache when the table reader
     is freed
 
 * Don't move potentially expensive AQL function calls into loops in the
@@ -388,7 +1058,7 @@ devel
   it merges calculations in the `remove-unnecessary-calculations` optimizer rule.
 
 * Fixed modification executors inside of a subquery, where the subquery decided to
-  fetch all rows from upstream first and the amount of rows is higher then the 
+  fetch all rows from upstream first and the amount of rows is higher then the
   batch size.
 
 * Fixed reporting of skipped number of documents if we have a LIMIT x, 0
@@ -414,7 +1084,7 @@ devel
     collections that are not present in the database. Previously there were
     no warnings, so missing a collection by misspelling its name could easily
     go unnoticed.
-  - when a restore is restricted to one or multiple collections using the 
+  - when a restore is restricted to one or multiple collections using the
     `--collection` option of arangorestore, warnings are issued for all specified
     collections that are not present in the dump. Previously there were
     no warnings, so missing a collection by misspelling its name could easily
@@ -424,7 +1094,7 @@ devel
     directory was the same as the requested encryption mode. This could have
     led to dump directories with both encrypted and unencrypted files. This
     was only the case when using `--overwrite true`, which is not the default.
-  - when a restore was performed using the `--encryption.keyfile` option, 
+  - when a restore was performed using the `--encryption.keyfile` option,
     there was no check whether the to-be-restored files were actually encrypted.
     Now this check is enforced and arangorestore will bail out with an error
     if the requested encryption mode for restore is not the same as for the
@@ -469,7 +1139,7 @@ devel
   server use cached offline credentials in case of LDAP server communication was
   lost and ArangoDB can't prolong cache online.
 
-* Include all requests to the web interface at endpoint `/_admin/aardvark` in 
+* Include all requests to the web interface at endpoint `/_admin/aardvark` in
   a node's requests statistics. Previously, requests going to `/_admin/aardvark`
   were excluded from the request statistics if and only if the requested
   database was the `_system` database.
@@ -512,10 +1182,10 @@ devel
 * Added feature: Disjoint SmartGraphs
 
   SmartGraphs have been extended to a new subtype, called **Disjoint SmartGraphs**.
-  A Disjoint SmartGraph prohibits edges between different SmartGraph components. 
-  In case the graph schema can be represented without the need of connected 
-  SmartGraph components, a Disjoint SmartGraph should be used as this knowledge 
-  can be used by the internal optimizer to gain even better query traversal 
+  A Disjoint SmartGraph prohibits edges between different SmartGraph components.
+  In case the graph schema can be represented without the need of connected
+  SmartGraph components, a Disjoint SmartGraph should be used as this knowledge
+  can be used by the internal optimizer to gain even better query traversal
   execution times.
 
 * Fixed issue ES-605: arangodump broken when using encryption.
@@ -552,7 +1222,7 @@ devel
   rather than collapsing all sections by default.
 
 * Add optimization for subqueries for which only the number of results
-  matters. The optimization will be triggered for read-only subqueries that 
+  matters. The optimization will be triggered for read-only subqueries that
   use a full collection scan or an index scan, without any additional filtering
   (early pruning or document post-filtering) and without LIMIT.
 
@@ -560,16 +1230,16 @@ devel
 
       FOR doc IN ...
         LET count = COUNT(
-          FOR sub IN subCollection 
-            FILTER sub._from == doc._id 
+          FOR sub IN subCollection
+            FILTER sub._from == doc._id
             RETURN sub
         )
         ...
 
-  The restrictions are that the subquery result must only be used with the 
+  The restrictions are that the subquery result must only be used with the
   COUNT/LENGTH function and not for anything else. The subquery itself must
   be read-only (no data-modification subquery), not use nested FOR loops nor
-  LIMIT, nor a FILTER condition or calculation that requires accessing the 
+  LIMIT, nor a FILTER condition or calculation that requires accessing the
   document data. Accessing index data is supported for filtering, but not
   for further calculations.
 
@@ -650,7 +1320,7 @@ devel
   and no replication factor was specified for a graph. In this case, the new
   graph will use the configured minimum replication factor.
 
-* Show some index details in index overview of the web interface, e.g. the 
+* Show some index details in index overview of the web interface, e.g. the
   `minLength` attribute for fulltext indexes or the `expireAfter` attribute for
   TTL indexes.
 
@@ -670,7 +1340,7 @@ devel
 * Improve continuation behavior of AQL queries. We post the continuation
   handler on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM
   prio instead of LOW.
-  
+
 * When relaying requests to other coordinators in a load-balanced setup, don't
   forward the "http/1.1" HTTP header from the remote response. Forwarding that
   header in the same way as any other header is not required, as each response

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,6 +54,8 @@ class Slice;
 }  // namespace velocypack
 
 namespace aql {
+struct AttributeNamePath;
+class Projections;
 class SortCondition;
 struct Variable;
 }  // namespace aql
@@ -103,9 +105,6 @@ class Index {
     TRI_IDX_TYPE_IRESEARCH_LINK,
     TRI_IDX_TYPE_NO_ACCESS_INDEX
   };
-
-  /// @brief: mode to signal how operation should behave
-  enum OperationMode { normal, internal, rollback };
   
   /// @brief: helper struct returned by index methods that determine the costs
   /// of index usage for filtering
@@ -227,8 +226,9 @@ class Index {
   /// @brief if index needs explicit reversal and wouldn`t be reverted by storage rollback
   virtual bool needsReversal() const { return false; } 
 
-  /// @brief whether or not the index covers all the attributes passed in
-  virtual bool covers(std::unordered_set<std::string> const& attributes) const;
+  /// @brief whether or not the index covers all the attributes passed in.
+  /// the function may modify the projections by setting the coveringIndexPosition value in it.
+  bool covers(arangodb::aql::Projections& projections) const;
 
   /// @brief return the underlying collection
   inline LogicalCollection& collection() const { return _collection; }
@@ -287,7 +287,9 @@ class Index {
 
   /// @brief index comparator, used by the coordinator to detect if two index
   /// contents are the same
-  static bool Compare(velocypack::Slice const& lhs, velocypack::Slice const& rhs);
+  static bool Compare(StorageEngine&, velocypack::Slice const& lhs,
+                      velocypack::Slice const& rhs,
+                      std::string const& dbname);
 
   /// @brief whether or not the index is persistent (storage on durable media)
   /// or not (RAM only)
@@ -383,7 +385,7 @@ class Index {
 
   /// @brief called after the collection was truncated
   /// @param tick at which truncate was applied
-  virtual void afterTruncate(TRI_voc_tick_t tick) {}
+  virtual void afterTruncate(TRI_voc_tick_t, transaction::Methods*) {}
 
   /// @brief whether or not the filter condition is supported by the index
   /// returns detailed information about the costs associated with using this index

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -211,14 +211,11 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto parameters = std::make_shared<VPackBuilder>();
 
   if (TRI_HasProperty(context, isolate, obj, "params")) {
-    int res = TRI_V8ToVPack(isolate, *parameters,
-                            obj->Get(TRI_IGETC,
-                                     TRI_V8_ASCII_STRING(isolate, "params"))
-                                .FromMaybe(v8::Local<v8::Value>()),
-                            false);
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
+    TRI_V8ToVPack(isolate, *parameters,
+                  obj->Get(TRI_IGETC,
+                           TRI_V8_ASCII_STRING(isolate, "params"))
+                      .FromMaybe(v8::Local<v8::Value>()),
+                  false);
   }
 
   command = "(function (params) { " + command + " } )(params);";
@@ -447,14 +444,4 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context)
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_GET_TASK"), JS_GetTask);
-}
-
-void TRI_ShutdownV8Dispatcher() {
-  using arangodb::Task;
-  Task::shutdownTasks();
-}
-
-void TRI_RemoveDatabaseTasksV8Dispatcher(std::string const& name) {
-  using arangodb::Task;
-  Task::removeTasksForDatabase(name);
 }

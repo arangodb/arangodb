@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -33,6 +34,9 @@ using namespace arangodb::aql;
 
 AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state)
     : _finalState{state}, _aqlItemMatrix{nullptr} {
+  // TODO As we only allow HASMORE, just use the default constructor and remove
+  //      this one.
+  TRI_ASSERT(state == ExecutorState::HASMORE);
   TRI_ASSERT(_aqlItemMatrix == nullptr);
   TRI_ASSERT(!hasDataRow());
 }
@@ -109,7 +113,10 @@ bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
   if (_aqlItemMatrix == nullptr) {
     return false;
   }
-  return (!_shadowRow.isInitialized() && _aqlItemMatrix->size() != 0);
+
+  return !hasShadowRow() && _aqlItemMatrix != nullptr &&
+         ((_aqlItemMatrix->stoppedOnShadowRow()) ||
+          (_aqlItemMatrix->size() > 0 && _finalState == ExecutorState::DONE));
 }
 
 std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::nextShadowRow() {

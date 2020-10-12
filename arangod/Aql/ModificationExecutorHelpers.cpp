@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,6 +26,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ModificationExecutorInfos.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationResult.h"
 
@@ -65,7 +67,7 @@ Result ModificationExecutorHelpers::getKey(CollectionNameResolver const& resolve
 
   if (!keyEntry.isString()) {
     return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING,
-                  std::string{"Expected _key to be present in document."}};
+                  std::string{"Expected _key to be a string attribute in document."}};
   }
 
   // Key found and assigned, note rev is empty by assertion

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +36,7 @@
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
+#include "ApplicationFeatures/TimeZoneFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
@@ -77,6 +78,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Replication/ReplicationFeature.h"
+#include "Replication/ReplicationMetricsFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
@@ -204,6 +206,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<InitDatabaseFeature>(nonServerFeatures);
     server.addFeature<LanguageCheckFeature>();
     server.addFeature<LanguageFeature>();
+    server.addFeature<TimeZoneFeature>();
     server.addFeature<LockfileFeature>();
     server.addFeature<LogBufferFeature>();
     server.addFeature<LoggerFeature>(true);
@@ -216,6 +219,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<QueryRegistryFeature>();
     server.addFeature<RandomFeature>();
     server.addFeature<ReplicationFeature>();
+    server.addFeature<ReplicationMetricsFeature>();
     server.addFeature<ReplicationTimeoutFeature>();
     server.addFeature<RocksDBOptionFeature>();
     server.addFeature<SchedulerFeature>();

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -39,7 +40,6 @@
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsWorker.h"
-#include "V8Server/V8DealerFeature.h"
 #include "VocBase/vocbase.h"
 
 #include <chrono>
@@ -65,6 +65,8 @@ std::initializer_list<double> const RequestTimeDistributionCuts{0.01, 0.05, 0.1,
 Counter AsyncRequests;
 Counter HttpConnections;
 Counter TotalRequests;
+Counter TotalRequestsSuperuser;
+Counter TotalRequestsUser;
 MethodRequestCounters MethodRequests;
 Distribution ConnectionTimeDistribution(ConnectionTimeDistributionCuts);
 
@@ -74,10 +76,9 @@ RequestFigures::RequestFigures() :
   ioTimeDistribution(RequestTimeDistributionCuts),
   queueTimeDistribution(RequestTimeDistributionCuts),
   requestTimeDistribution(RequestTimeDistributionCuts),
-  totalTimeDistribution(RequestTimeDistributionCuts)
-{}
+  totalTimeDistribution(RequestTimeDistributionCuts) {}
 
-RequestFigures GeneralRequestFigures;
+RequestFigures SuperuserRequestFigures;
 RequestFigures UserRequestFigures;
 }  // namespace statistics
 }  // namespace arangodb

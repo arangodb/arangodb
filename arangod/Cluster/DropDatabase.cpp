@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,8 @@
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
+#include "Utils/ExecContext.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/Methods/Databases.h"
 
 using namespace arangodb::application_features;
@@ -66,7 +68,7 @@ bool DropDatabase::first() {
     DatabaseGuard guard("_system");
     auto vocbase = &guard.database();
 
-    _result = Databases::drop(vocbase, database);
+    _result = Databases::drop(ExecContext::current(), vocbase, database);
     if (!_result.ok() && _result.errorNumber() != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
       LOG_TOPIC("f46b7", ERR, Logger::AGENCY) << "DropDatabase: dropping database " << database
                                      << " failed: " << _result.errorMessage();
@@ -79,6 +81,5 @@ bool DropDatabase::first() {
     return false;
   }
 
-  notify();
   return false;
 }

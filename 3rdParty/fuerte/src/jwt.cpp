@@ -20,18 +20,17 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <chrono>
 #include <fuerte/helper.h>
 #include <fuerte/jwt.h>
-
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/md5.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
-
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <chrono>
 
 #ifdef OPENSSL_NO_SSL2  // OpenSSL > 1.1.0 deprecates RAND_pseudo_bytes
 #define RAND_BYTES RAND_bytes
@@ -81,7 +80,8 @@ std::string jwt::generateUserToken(std::string const& secret,
   return generateRawJwt(secret, bodyBuilder.slice());
 }
 
-std::string jwt::generateRawJwt(std::string const& secret, VPackSlice const& body) {
+std::string jwt::generateRawJwt(std::string const& secret,
+                                VPackSlice const& body) {
   VPackBuilder headerBuilder;
   {
     VPackObjectBuilder h(&headerBuilder);
@@ -106,7 +106,7 @@ std::string jwt::generateRawJwt(std::string const& secret, VPackSlice const& bod
 // code from ArangoDBs SslInterface.cpp
 
 std::string jwt::sslHMAC(char const* key, size_t keyLength, char const* message,
-                    size_t messageLen, Algorithm algorithm) {
+                         size_t messageLen, Algorithm algorithm) {
   EVP_MD* evp_md = nullptr;
 
   if (algorithm == Algorithm::ALGORITHM_SHA1) {
@@ -143,8 +143,8 @@ std::string jwt::sslHMAC(char const* key, size_t keyLength, char const* message,
 }
 
 bool jwt::verifyHMAC(char const* challenge, size_t challengeLength,
-                char const* secret, size_t secretLen, char const* response,
-                size_t responseLen, jwt::Algorithm algorithm) {
+                     char const* secret, size_t secretLen, char const* response,
+                     size_t responseLen, jwt::Algorithm algorithm) {
   // challenge = key
   // secret, secretLen = message
   // result must == BASE64(response, responseLen)

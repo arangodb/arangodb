@@ -1,10 +1,8 @@
-/// @brief Implementation of k Shortest Path Execution Node
-///
-/// @file arangod/Aql/KShortestPathsNode.cpp
-///
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -218,12 +216,12 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan,
   TRI_ASSERT(base.hasKey("fromCondition"));
   // the plan's AST takes ownership of the newly created AstNode, so this is
   // safe cppcheck-suppress *
-  _fromCondition = new AstNode(plan->getAst(), base.get("fromCondition"));
+  _fromCondition = plan->getAst()->createNode(base.get("fromCondition"));
 
   TRI_ASSERT(base.hasKey("toCondition"));
   // the plan's AST takes ownership of the newly created AstNode, so this is
   // safe cppcheck-suppress *
-  _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
+  _toCondition = plan->getAst()->createNode(base.get("toCondition"));
 }
 
 // This constructor is only used from LocalTraversalNode, and GraphNode
