@@ -141,6 +141,161 @@ class FailedLeaderTest
     transBuilder->add(VPackValue((uint64_t)1));
   }
 
+  void AssertTransactionFormat(query_t const& q) {
+    auto slice = q->slice();
+    ASSERT_TRUE(slice.isArray());
+    // This test only does one transaction per envelope
+    EXPECT_EQ(slice.length(), 1);
+    slice = slice.at(0);
+    ASSERT_TRUE(slice.isArray());
+    // This test only does one transaction per envelope
+    EXPECT_GE(slice.length(), 1); // At least [[write]]
+    EXPECT_LE(slice.length(), 2); // At most [[write, precondition]]
+  }
+
+  void AssertVersionIncremented(query_t const& q) {
+    auto w = getWritePartUnsafe(q);
+    auto path = "/arango/Plan/Version";
+    ASSERT_TRUE(w.hasKey(path));
+    w = w.get(path);
+    ASSERT_TRUE(w.isObject());
+    EXPECT_TRUE(w.hasKey("op"));
+    EXPECT_TRUE(w.get("op").isEqualString("increment"));
+  }
+
+  void AssertShardLocked(query_t const& q) {
+    auto w = getWritePartUnsafe(q);
+    auto path = "/arango/Supervision/Shards/s99";
+    ASSERT_TRUE(w.hasKey(path));
+    w = w.get(path);
+    EXPECT_TRUE(w.isEqualString("1"));
+  }
+
+  void AssertJobMovedToPending(query_t const& q, std::string const& jobId) {
+    auto w = getWritePartUnsafe(q);
+    {
+      // added to pending
+      auto path = "/arango/Target/Pending/" + jobId;
+      ASSERT_TRUE(w.hasKey(path));
+
+      auto pending = w.get(path);
+      ASSERT_TRUE(pending.isObject());
+      auto jobJobId = VelocyPackHelper::getStringValue(pending, "jobId", "INVALID");
+      EXPECT_EQ(jobJobId, jobId);
+      auto jobType = VelocyPackHelper::getStringValue(pending, "type", "INVALID");
+      EXPECT_EQ(jobType, "failedLeader");
+      auto jobShard = VelocyPackHelper::getStringValue(pending, "shard", "INVALID");
+      EXPECT_EQ(jobShard, "s99");
+    }
+    {
+      // Removed from TODO
+      auto path = "/arango/Target/ToDo/" + jobId;
+      ASSERT_TRUE(w.hasKey(path));
+      auto deleteOp = w.get(path);
+      ASSERT_TRUE(deleteOp.isObject());
+      EXPECT_TRUE(deleteOp.hasKey("op"));
+      EXPECT_TRUE(deleteOp.get("op").isEqualString("delete"));
+    }
+  }
+
+  void AssertNewServers(query_t const& q, std::vector<std::string> const& expectedServers) {
+    auto w = getWritePartUnsafe(q);
+    auto path = "/arango/Plan/Collections/database/collection/shards/s99";
+    ASSERT_TRUE(w.hasKey(path));
+    auto nextGenServers = w.get(path);
+    ASSERT_TRUE(nextGenServers.isArray());
+    size_t index = 0;
+    ASSERT_EQ(expectedServers.size(), nextGenServers.length());
+    for (auto const& it : VPackArrayIterator(nextGenServers)) {
+      ASSERT_TRUE(it.isString());
+      EXPECT_EQ(it.copyString(), expectedServers[index++]);
+    }
+  }
+
+  void AssertPreconditions(query_t const& q, std::vector<std::string> const& expectedServers,
+                           std::vector<std::string> const& lastGenPlan,
+                           std::vector<std::string> const& lastGenFollowers,
+                           std::vector<std::string> const& lastGenFailoverCandidates) {
+    auto pre = getPreconditionPartUnsafe(q);
+
+    {
+      // Section: Locking, and server status.
+      ASSERT_FALSE(lastGenPlan.empty());
+      ASSERT_FALSE(expectedServers.empty());
+      auto const& oldLeader = lastGenPlan.front();
+      auto const& newLeader = expectedServers.front();
+      // Shard is not locked
+      {
+        auto path = "/arango/Supervision/Shards/s99";
+        ASSERT_TRUE(pre.hasKey(path));
+        AssertOldEmptyObject(pre.get(path));
+      }
+      // New Leader is not locked (this lock is captured by failedServerJob)
+      {
+        auto path = "/arango/Supervision/DBServers/" + newLeader;
+        ASSERT_TRUE(pre.hasKey(path));
+        AssertOldEmptyObject(pre.get(path));
+      }
+      {
+        // New leader is healty
+        auto path = "/arango/Supervision/Health/" + newLeader + "/Status";
+        ASSERT_TRUE(pre.hasKey(path));
+        AssertOldIsString(pre.get(path), "GOOD");
+      }
+      {
+        // Old leader is still failed
+        auto path = "/arango/Supervision/Health/" + oldLeader + "/Status";
+        ASSERT_TRUE(pre.hasKey(path));
+        AssertOldIsString(pre.get(path), "FAILED");
+      }
+    }
+    {
+      // Section: Protection against lost plan updates:
+      {
+        // Plan
+        auto path = "/arango/Plan/Collections/database/collection/shards/s99";
+        ASSERT_TRUE(pre.hasKey(path));
+        AssertOldIsArray(pre.get(path), lastGenPlan);
+      }
+      {
+        // Followers
+        auto path =
+            "/arango/Current/Collections/database/collection/s99/servers";
+        ASSERT_TRUE(pre.hasKey(path));
+        AssertOldIsArray(pre.get(path), lastGenFollowers);
+      }
+      {
+        // Failover candidates
+        auto path =
+            "/arango/Current/Collections/database/collection/s99/"
+            "failoverCandidates";
+        if (lastGenFailoverCandidates.empty()) {
+          // For old collections we should not assert failoverCandidates
+          // Backwards compatibility, otherwise we could potentially not
+          // failover
+          ASSERT_FALSE(pre.hasKey(path));
+        } else {
+          ASSERT_TRUE(pre.hasKey(path));
+          AssertOldIsArray(pre.get(path), lastGenFailoverCandidates);
+        }
+      }
+    }
+  }
+
+  void AssertIsValidTransaction(query_t const& q, std::string const& jobId,
+                                std::vector<std::string> const& expectedServers,
+                                std::vector<std::string> const& lastGenPlan,
+                                std::vector<std::string> const& lastGenFollowers,
+                                std::vector<std::string> const& lastGenFailoverCandidates) {
+    AssertTransactionFormat(q);
+    AssertVersionIncremented(q);
+    AssertShardLocked(q);
+    AssertJobMovedToPending(q, jobId);
+    AssertNewServers(q, expectedServers);
+    AssertPreconditions(q, expectedServers, lastGenPlan, lastGenFollowers,
+                        lastGenFailoverCandidates);
+  }
+
   class AgencyBuilder {
    public:
     AgencyBuilder(VPackBuilder&& base) : _builder(std::move(base)) {}
@@ -166,6 +321,12 @@ class FailedLeaderTest
           std::string(R"({"arango": {"Current": {"Collections": {"database": {"collection": {"s99": { "servers": )");
       jsonString += vectorToArray(servers);
       jsonString += std::string(R"( } } } } } } } )");
+      return applyJson(std::move(jsonString));
+    };
+
+    auto setServerFailed(std::string const& server) -> AgencyBuilder& {
+      auto jsonString = std::string(R"({"arango": {"Supervision": {"Health": {")") +
+                        server + std::string(R"(": {"Status": "FAILED" } } } } })");
       return applyJson(std::move(jsonString));
     };
 
@@ -204,6 +365,46 @@ class FailedLeaderTest
     }
     VPackBuilder _builder;
   };
+
+ private:
+  // Internal helpers, do not call in test code.
+
+  auto getWritePartUnsafe(query_t const& q) -> VPackSlice {
+    // Call AssertTransactionFormat forst to ensure formatting
+    return q->slice().at(0).at(0);
+  }
+
+  auto getPreconditionPartUnsafe(query_t const& q) -> VPackSlice {
+    // Call AssertTransactionFormat forst to ensure formatting
+    return q->slice().at(0).at(1);
+  }
+
+  void AssertOldEmptyObject(VPackSlice obj) {
+    ASSERT_TRUE(obj.isObject());
+    // Will be set to false if ommited, or actively se t to false
+    bool oldEmpty = VelocyPackHelper::getBooleanValue(obj, "oldEmpty", false);
+    // Required to be TRUE!
+    EXPECT_TRUE(oldEmpty);
+  }
+
+  void AssertOldIsString(VPackSlice obj, std::string const& expected) {
+    ASSERT_TRUE(obj.isObject());
+    ASSERT_TRUE(obj.hasKey("old"));
+    ASSERT_TRUE(obj.get("old").isEqualString(expected));
+  }
+
+  void AssertOldIsArray(VPackSlice obj, std::vector<std::string> const& expected) {
+    ASSERT_TRUE(obj.isObject());
+    ASSERT_TRUE(obj.hasKey("old"));
+    obj = obj.get("old");
+    ASSERT_TRUE(obj.isArray());
+    size_t index = 0;
+    ASSERT_EQ(expected.size(), obj.length());
+    for (auto const& it : VPackArrayIterator(obj)) {
+      ASSERT_TRUE(it.isString());
+      EXPECT_EQ(it.copyString(), expected[index++]);
+    }
+  }
 };
 
 TEST_F(FailedLeaderTest, creating_a_job_should_create_a_job_in_todo) {
@@ -1173,7 +1374,69 @@ TEST_F(FailedLeaderTest, failedleader_must_not_take_a_candidate_and_follower_int
   failedLeader.start(aborts);
 }
 
+TEST_F(FailedLeaderTest, failedleader_must_not_readd_servers_not_in_plan) {
+  std::string jobId = "1";
+  std::vector<std::string> expected = {SHARD_FOLLOWER1, SHARD_LEADER, FREE_SERVER};
+  std::vector<std::string> planned = {SHARD_LEADER, SHARD_FOLLOWER1};
+  std::vector<std::string> followers = {SHARD_FOLLOWER1, SHARD_LEADER, SHARD_FOLLOWER2};
+  std::vector<std::string> failovers = {SHARD_FOLLOWER1, SHARD_LEADER, SHARD_FOLLOWER2};
 
+  Node agency = AgencyBuilder(baseStructure.toBuilder())
+                    // Follower 1 planned
+                    .setPlannedServers(planned)
+                    // Follower 2 in candidates
+                    .setFailoverCandidates(followers)
+                    // Follower 2 in followers
+                    .setFollowers(failovers)
+                    .setJobInTodo(jobId)
+                    .createNode();
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, transact)).AlwaysDo([&](query_t const& q) -> trans_ret_t {
+    AssertIsValidTransaction(q, jobId, expected, planned, followers, failovers);
+    return fakeTransResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface& agent = mockAgent.get();
+
+  // new server will randomly be selected...so seed the random number generator
+  srand(1);
+  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  failedLeader.start(aborts);
+}
+
+TEST_F(FailedLeaderTest, failedleader_must_not_add_a_follower_if_none_exists) {
+  std::string jobId = "1";
+  // We should have 3 servers, but there is no healthy one
+  std::vector<std::string> expected = {SHARD_FOLLOWER1, SHARD_LEADER};
+  std::vector<std::string> planned = {SHARD_LEADER, SHARD_FOLLOWER1};
+  std::vector<std::string> followers = {SHARD_FOLLOWER1, SHARD_LEADER, SHARD_FOLLOWER2};
+  std::vector<std::string> failovers = {SHARD_FOLLOWER1, SHARD_LEADER, SHARD_FOLLOWER2};
+
+  Node agency = AgencyBuilder(baseStructure.toBuilder())
+                    // Follower 1 planned
+                    .setPlannedServers(planned)
+                    // Follower 2 in candidates
+                    .setFailoverCandidates(followers)
+                    // Follower 2 in followers
+                    .setFollowers(failovers)
+                    .setServerFailed(FREE_SERVER)
+                    .setJobInTodo(jobId)
+                    .createNode();
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, transact)).AlwaysDo([&](query_t const& q) -> trans_ret_t {
+    AssertIsValidTransaction(q, jobId, expected, planned, followers, failovers);
+    return fakeTransResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface& agent = mockAgent.get();
+
+  // new server will randomly be selected...so seed the random number generator
+  srand(1);
+  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  failedLeader.start(aborts);
+}
 
 }  // namespace failed_leader_test
 }  // namespace tests
