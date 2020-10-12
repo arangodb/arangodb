@@ -1208,7 +1208,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       return countRes;
     }
 
-    // check if we recalculation has made a difference
+    // check if our recalculation has made a difference
     if (oldCount == docCount) {
       // no change happened due to recalculation. now try recounting on leader too.
       // this is last resort and should not happen often!
