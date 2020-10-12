@@ -26,11 +26,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <iostream>
+#include <numeric>
 
 #include "gtest/gtest.h"
 
 #include "fakeit.hpp"
 
+#include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -138,6 +140,70 @@ class FailedLeaderTest
     VPackArrayBuilder a(transBuilder.get());
     transBuilder->add(VPackValue((uint64_t)1));
   }
+
+  class AgencyBuilder {
+   public:
+    AgencyBuilder(VPackBuilder&& base) : _builder(std::move(base)) {}
+
+    auto setPlannedServers(std::vector<std::string> const& servers) -> AgencyBuilder& {
+      auto jsonString =
+          std::string(R"({"arango": {"Plan": {"Collections": {"database": {"collection": {"shards": {"s99": )");
+      jsonString += vectorToArray(servers);
+      jsonString += std::string(R"( } } } } } } } )");
+      return applyJson(std::move(jsonString));
+    };
+
+    auto setFailoverCandidates(std::vector<std::string> const& servers) -> AgencyBuilder& {
+      auto jsonString =
+          std::string(R"({"arango": {"Current": {"Collections": {"database": {"collection": {"s99": { "failoverCandidates": )");
+      jsonString += vectorToArray(servers);
+      jsonString += std::string(R"( } } } } } } } )");
+      return applyJson(std::move(jsonString));
+    };
+
+    auto setFollowers(std::vector<std::string> const& servers) -> AgencyBuilder& {
+      auto jsonString =
+          std::string(R"({"arango": {"Current": {"Collections": {"database": {"collection": {"s99": { "servers": )");
+      jsonString += vectorToArray(servers);
+      jsonString += std::string(R"( } } } } } } } )");
+      return applyJson(std::move(jsonString));
+    };
+
+    auto setJobInTodo(std::string const& jobId) -> AgencyBuilder& {
+      auto jsonString = std::string(R"({"arango": {"Target": {"ToDo": {"1": )");
+      jsonString += std::string(todo);
+      jsonString += std::string(R"(} } } } )");
+      return applyJson(std::move(jsonString));
+    }
+
+    auto createNode() const -> Node {
+      return createNodeFromBuilder(_builder);
+    }
+
+   private:
+    auto vectorToArray(std::vector<std::string> servers) -> std::string {
+      TRI_ASSERT(!servers.empty());
+      // NOTE: The strings are surrounded by ""
+      std::string jsonString = "[";
+      bool isFirst = true;
+      for (auto const& s : servers) {
+        if (!isFirst) {
+          jsonString += ",";
+        }
+        isFirst = false;
+        jsonString += "\"" + s + "\"";
+      }
+      jsonString += "]";
+      return jsonString;
+    };
+
+    auto applyJson(std::string&& jsonString) -> AgencyBuilder& {
+      auto parsed = VPackParser::fromJson(std::move(jsonString));
+      _builder = VPackCollection::merge(_builder.slice(), parsed->slice(), true);
+      return *this;
+    }
+    VPackBuilder _builder;
+  };
 };
 
 TEST_F(FailedLeaderTest, creating_a_job_should_create_a_job_in_todo) {
@@ -1001,42 +1067,13 @@ TEST_F(FailedLeaderTest, when_everything_is_finished_there_should_be_cleanup) {
 TEST_F(FailedLeaderTest, failedleader_must_not_take_follower_into_account_if_it_has_dropped_out) {
   std::string jobId = "1";
 
-  TestStructureType createTestStructure = [&](Slice const& s, std::string const& path) {
-    std::unique_ptr<Builder> builder(new Builder());
-    if (s.isObject()) {
-      VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
-        auto childBuilder =
-            createTestStructure(it.value, path + "/" + it.key.copyString());
-        if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
-        }
-      }
-      if (path == "/arango/Target/ToDo") {
-        builder->add("1", createBuilder(todo).slice());
-      }
-    } else {
-      if (path == "/arango/Current/Collections/" + DATABASE + "/" + COLLECTION +
-                      "/" + SHARD + "/servers") {
-        // follower2 in sync
-        VPackArrayBuilder a(builder.get());
-        builder->add(VPackValue(SHARD_LEADER));
-        builder->add(VPackValue(SHARD_FOLLOWER2));
-      } else if (path == "/arango/Plan/Collections/" + DATABASE + "/" +
-                             COLLECTION + "/shards/" + SHARD) {
-        // but not part of the plan => will drop collection on next occasion
-        VPackArrayBuilder a(builder.get());
-        builder->add(VPackValue(SHARD_LEADER));
-        builder->add(VPackValue(SHARD_FOLLOWER1));
-      } else {
-        builder->add(s);
-      }
-    }
-    return builder;
-  };
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
-  ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  Node agency = AgencyBuilder(baseStructure.toBuilder())
+                    // follower2 in sync
+                    .setFollowers({SHARD_LEADER, SHARD_FOLLOWER2})
+                    // but not part of the plan => will drop collection on next occasion
+                    .setPlannedServers({SHARD_LEADER, SHARD_FOLLOWER1})
+                    .setJobInTodo(jobId)
+                    .createNode();
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact)).AlwaysDo([&](query_t const& q) -> trans_ret_t {
@@ -1052,6 +1089,91 @@ TEST_F(FailedLeaderTest, failedleader_must_not_take_follower_into_account_if_it_
   auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
+
+TEST_F(FailedLeaderTest, failedleader_must_not_take_follower_into_account_that_is_not_in_plan) {
+  std::string jobId = "1";
+
+  Node agency = AgencyBuilder(baseStructure.toBuilder())
+                    // Follower 1 planned
+                    .setPlannedServers({SHARD_LEADER, SHARD_FOLLOWER1})
+                    // Follower 2 in followers
+                    .setFollowers({SHARD_LEADER, SHARD_FOLLOWER2})
+                    .setJobInTodo(jobId)
+                    .createNode();
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, transact)).AlwaysDo([&](query_t const& q) -> trans_ret_t {
+    // must NOT be called!
+    EXPECT_TRUE(false);
+    return fakeTransResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface& agent = mockAgent.get();
+
+  // new server will randomly be selected...so seed the random number generator
+  srand(1);
+  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  failedLeader.start(aborts);
+}
+
+TEST_F(FailedLeaderTest, failedleader_must_not_take_a_candidate_into_account_that_is_not_in_plan) {
+  std::string jobId = "1";
+
+  Node agency = AgencyBuilder(baseStructure.toBuilder())
+                    // Follower 1 planned
+                    .setPlannedServers({SHARD_LEADER, SHARD_FOLLOWER1})
+                    // Follower 2 in candidates
+                    .setFailoverCandidates({SHARD_LEADER, SHARD_FOLLOWER2})
+                    // Follower 2 in followers
+                    .setFollowers({SHARD_LEADER})
+                    .setJobInTodo(jobId)
+                    .createNode();
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, transact)).AlwaysDo([&](query_t const& q) -> trans_ret_t {
+    // must NOT be called!
+    EXPECT_TRUE(false);
+    return fakeTransResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface& agent = mockAgent.get();
+
+  // new server will randomly be selected...so seed the random number generator
+  srand(1);
+  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  failedLeader.start(aborts);
+}
+
+
+TEST_F(FailedLeaderTest, failedleader_must_not_take_a_candidate_and_follower_into_account_that_is_not_in_plan) {
+  std::string jobId = "1";
+
+  Node agency = AgencyBuilder(baseStructure.toBuilder())
+                    // Follower 1 planned
+                    .setPlannedServers({SHARD_LEADER, SHARD_FOLLOWER1})
+                    // Follower 2 in candidates
+                    .setFailoverCandidates({SHARD_LEADER, SHARD_FOLLOWER2})
+                    // Follower 2 in followers
+                    .setFollowers({SHARD_LEADER, SHARD_FOLLOWER2})
+                    .setJobInTodo(jobId)
+                    .createNode();
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, transact)).AlwaysDo([&](query_t const& q) -> trans_ret_t {
+    // must NOT be called!
+    EXPECT_TRUE(false);
+    return fakeTransResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface& agent = mockAgent.get();
+
+  // new server will randomly be selected...so seed the random number generator
+  srand(1);
+  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  failedLeader.start(aborts);
+}
+
+
 
 }  // namespace failed_leader_test
 }  // namespace tests
