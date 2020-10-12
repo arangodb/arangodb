@@ -1,6 +1,8 @@
 v3.6.8 (XXXX-XX-XX)
 -------------------
 
+* make sure the optimizer doesn't pick another index than the TTL index itself
+
 * Added optional verbose logging for agency write operations. This logging is
   configurable by using the new log topic "agencystore".
 
