@@ -104,7 +104,7 @@ function collectionCountsSuite () {
 
       // wait until we have an in-sync follower
       let tries = 0;
-      while (tries++ < 60) {
+      while (tries++ < 120) {
         shardInfo = c.shards(true);
         servers = shardInfo[shard];
         if (servers.length === 2) {
@@ -153,7 +153,7 @@ function collectionCountsSuite () {
 
       // wait until we have an in-sync follower
       let tries = 0;
-      while (tries++ < 60) {
+      while (tries++ < 120) {
         shardInfo = c.shards(true);
         servers = shardInfo[shard];
         if (servers.length === 2) {
@@ -201,7 +201,7 @@ function collectionCountsSuite () {
 
       // wait until we have an in-sync follower
       let tries = 0;
-      while (tries++ < 60) {
+      while (tries++ < 120) {
         shardInfo = c.shards(true);
         servers = shardInfo[shard];
         if (servers.length === 2) {
@@ -224,6 +224,149 @@ function collectionCountsSuite () {
         total += result.json.count;
       });
       assertEqual(2 * 100, total);
+    },
+    
+    testWrongCountOnLeaderIncrementalSync : function () {
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 }); 
+
+      let servers = getDBServers();
+      let shardInfo = c.shards(true);
+      let shard = Object.keys(shardInfo)[0];
+      assertEqual(2, shardInfo[shard].length);
+      let leader = shardInfo[shard][0];
+      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i }); 
+      }
+      
+      // wait until we have an in-sync follower
+      let tries = 0;
+      while (tries++ < 120) {
+        shardInfo = c.shards(true);
+        servers = shardInfo[shard];
+        if (servers.length === 2) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+      
+      // set a failure point to get the counts wrong on the leader
+      let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
+      assertEqual(200, result.status);
+      
+      // set a failure point on the leader to drop the follower
+      result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/replicateOperationsDropFollower", body: {} });
+      assertEqual(200, result.status);
+     
+      c.insert({ _key: "test100" });
+
+      assertEqual(101, c.toArray().length);
+      assertNotEqual(101, c.count());
+      
+      clearFailurePoints();
+        
+      // wait until we have an in-sync follower again
+      tries = 0;
+      while (tries++ < 120) {
+        shardInfo = c.shards(true);
+        servers = shardInfo[shard];
+        // also wait for the replication to have repaired the count on the leader
+        if (servers.length === 2 && c.count() === 101) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+      
+      assertEqual(2, servers.length);
+      assertEqual(101, c.count());
+      assertEqual(101, c.toArray().length);
+      
+      let total = 0;
+      getDBServers().forEach((server) => {
+        if (servers.indexOf(server.id) === -1) {
+          return;
+        }
+        let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+        assertEqual(200, result.status);
+        assertEqual(101, result.json.count);
+        total += result.json.count;
+      });
+      assertEqual(2 * 101, total);
+    },
+    
+    testWrongCountOnFollowerIncrementalSync : function () {
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 }); 
+
+      let servers = getDBServers();
+      let shardInfo = c.shards(true);
+      let shard = Object.keys(shardInfo)[0];
+      assertEqual(2, shardInfo[shard].length);
+      let leader = shardInfo[shard][0];
+      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+      let follower = shardInfo[shard][1];
+      let followerUrl = servers.filter((server) => server.id === follower)[0].url;
+      
+      // set a failure point to get the counts wrong on the follower
+      let result = request({ method: "PUT", url: followerUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
+      assertEqual(200, result.status);
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i }); 
+      }
+      
+      // wait until we have an in-sync follower
+      let tries = 0;
+      while (tries++ < 120) {
+        shardInfo = c.shards(true);
+        servers = shardInfo[shard];
+        if (servers.length === 2) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+      
+      // set a failure point on the leader to drop the follower
+      result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/replicateOperationsDropFollower", body: {} });
+      assertEqual(200, result.status);
+     
+      c.insert({ _key: "test100" });
+
+      assertEqual(101, c.toArray().length);
+      assertEqual(101, c.count());
+      
+      clearFailurePoints();
+        
+      // wait until we have an in-sync follower again
+      tries = 0;
+      while (tries++ < 120) {
+        shardInfo = c.shards(true);
+        servers = shardInfo[shard];
+        // also wait for the replication to have repaired the count on the follower
+        try {
+          let result = request({ method: "GET", url: followerUrl + "/_api/collection/" + shard + "/count" });
+          if (servers.length === 2 && result.json.count === 101) {
+            break;
+          }
+        } catch (err) {}
+        require("internal").sleep(0.5);
+      }
+      
+      assertEqual(2, servers.length);
+      assertEqual(101, c.count());
+      assertEqual(101, c.toArray().length);
+      
+      let total = 0;
+      getDBServers().forEach((server) => {
+        if (servers.indexOf(server.id) === -1) {
+          return;
+        }
+        let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+        assertEqual(200, result.status);
+        assertEqual(101, result.json.count);
+        total += result.json.count;
+      });
+      assertEqual(2 * 101, total);
     },
 
   };

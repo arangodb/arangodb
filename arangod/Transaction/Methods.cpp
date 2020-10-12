@@ -3294,6 +3294,10 @@ Future<Result> Methods::replicateOperations(
               << " refused the operation: " << r.errorMessage();
         }
       }
+  
+      TRI_IF_FAILURE("replicateOperationsDropFollower") { 
+        replicationWorked = false;
+      }
 
       if (!replicationWorked) {
         ServerID const& deadFollower = (*followerList)[i];
