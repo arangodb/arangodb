@@ -72,7 +72,6 @@ void ProgressTracker<T>::updateStatus(std::string const& collectionName,
       }
     }
 
-    LOG_DEVEL << "Continuation file = " << builder.toJson();
     arangodb::basics::VelocyPackHelper::velocyPackToFile(directory.pathToFile("continue.json"),
                                                          builder.slice(), true);
   }
@@ -98,7 +97,6 @@ ProgressTracker<T>::ProgressTracker(ManagedDirectory& directory, bool ignoreExis
     return;
   }
 
-  // TODO add error checking
   std::unique_lock guardState(_collectionStatesMutex);
   for (auto&& [key, value] : VPackObjectIterator(progress)) {
     _collectionStates[key.copyString()] = T(value);
