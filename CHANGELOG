@@ -1,7 +1,8 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
-* make sure the optimizer doesn't pick another index than the TTL index itself
+* Make sure the optimizer doesn't pick another index than the TTL index itself
+  while fulfilling the expiry of TTL.
 
 * Added configuration option `--query.tracking-slow-queries` to decide whether
   slow queries are tracked extra.
