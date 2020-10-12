@@ -67,9 +67,6 @@ struct OptionsValidator {
   }
 };
 
-
-using non_empty_string = validate<values::value_deserializer<std::string>, utilities::not_empty_validator>;
-
 using OptionsDeserializer = utilities::constructing_deserializer<Options, parameter_list<
   factory_deserialized_parameter<QUERY_STRING_PARAM_NAME, values::value_deserializer<std::string>, true>,
   factory_simple_parameter<COLLAPSE_ARRAY_POSITIONS_PARAM_NAME, bool, false, values::numeric_value<bool, false>>,

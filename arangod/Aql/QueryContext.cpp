@@ -65,7 +65,9 @@ QueryContext::QueryContext(TRI_vocbase_t& vocbase)
 /// @brief destroys a query
 QueryContext::~QueryContext() {
   _graphs.clear();
-  AqlFeature::unlease();
+  if (_vocbase.id() != std::numeric_limits<uint64_t>::max()) {
+    AqlFeature::unlease();
+  }
 }
 
 Collections& QueryContext::collections() {
