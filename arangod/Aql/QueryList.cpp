@@ -86,8 +86,9 @@ void QueryEntryCopy::toVelocyPack(velocypack::Builder& out) const {
 /// @brief create a query list
 QueryList::QueryList(QueryRegistryFeature& feature)
     : _queryRegistryFeature(feature),
-      _enabled(feature.trackSlowQueries()),
-      _trackSlowQueries(feature.trackSlowQueries()),
+      _enabled(feature.trackingEnabled()),
+      _trackSlowQueries(_enabled && feature.trackSlowQueries()),
+      _trackQueryString(feature.trackQueryString()),
       _trackBindVars(feature.trackBindVars()),
       _slowQueryThreshold(feature.slowQueryThreshold()),
       _slowStreamingQueryThreshold(feature.slowStreamingQueryThreshold()),
@@ -99,7 +100,7 @@ QueryList::QueryList(QueryRegistryFeature& feature)
 /// @brief insert a query
 bool QueryList::insert(Query* query) {
   // not enable or no query string
-  if (!_enabled || query == nullptr || query->queryString().empty()) {
+  if (!enabled() || query == nullptr || query->queryString().empty()) {
     return false;
   }
 
@@ -146,7 +147,7 @@ void QueryList::remove(Query* query) {
 
   _queryRegistryFeature.trackQuery(elapsed);
 
-  if (!_trackSlowQueries.load(std::memory_order_relaxed) || query->killed()) {
+  if (!trackSlowQueries() || query->killed()) {
     return;
   }
 
@@ -210,6 +211,8 @@ void QueryList::remove(Query* query) {
 
 /// @brief kills a query
 Result QueryList::kill(TRI_voc_tick_t id) {
+  size_t const maxLength = _maxQueryStringLength;
+
   READ_LOCKER(writeLocker, _lock);
 
   auto it = _current.find(id);
@@ -220,7 +223,7 @@ Result QueryList::kill(TRI_voc_tick_t id) {
 
   Query* query = (*it).second;
   LOG_TOPIC("25cc4", WARN, arangodb::Logger::FIXME)
-      << "killing AQL query " << id << " '" << query->queryString() << "'";
+      << "killing AQL query " << id << " '" << extractQueryString(query, maxLength) << "'";
 
   query->kill();
   return Result();
@@ -230,6 +233,7 @@ Result QueryList::kill(TRI_voc_tick_t id) {
 /// (i.e. the filter should return true for a queries to be killed)
 uint64_t QueryList::kill(std::function<bool(Query&)> const& filter, bool silent) {
   uint64_t killed = 0;
+  size_t const maxLength = _maxQueryStringLength;
 
   READ_LOCKER(readLocker, _lock);
 
@@ -242,10 +246,10 @@ uint64_t QueryList::kill(std::function<bool(Query&)> const& filter, bool silent)
 
     if (silent) {
       LOG_TOPIC("f7722", TRACE, arangodb::Logger::FIXME)
-          << "killing AQL query " << query.id() << " '" << query.queryString() << "'";
+          << "killing AQL query " << query.id() << " '" << extractQueryString(&query, maxLength) << "'";
     } else {
       LOG_TOPIC("90113", WARN, arangodb::Logger::FIXME)
-          << "killing AQL query " << query.id() << " '" << query.queryString() << "'";
+          << "killing AQL query " << query.id() << " '" << extractQueryString(&query, maxLength) << "'";
     }
 
     query.kill();
@@ -330,5 +334,9 @@ size_t QueryList::count() {
 }
 
 std::string QueryList::extractQueryString(Query const* query, size_t maxLength) const {
-  return query->queryString().extract(maxLength);
+  TRI_ASSERT(query != nullptr);
+  if (trackQueryString()) {
+    return query->queryString().extract(maxLength);
+  }
+  return "<hidden>";
 }
