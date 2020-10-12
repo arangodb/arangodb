@@ -32,6 +32,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -51,10 +52,6 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-#include "Random/RandomGenerator.h"
-#endif
 
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
