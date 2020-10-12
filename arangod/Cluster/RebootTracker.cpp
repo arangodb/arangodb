@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -59,6 +60,9 @@ RebootTracker::RebootTracker(RebootTracker::SchedulerPointer scheduler)
 
 void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> const& state) {
   MUTEX_LOCKER(guard, _mutex);
+        
+  LOG_TOPIC("77a6e", DEBUG, Logger::CLUSTER)
+      << "updating reboot server state from " << _rebootIds << " to " << state;
 
   // Call cb for each iterator.
   auto for_each_iter = [](auto begin, auto end, auto cb) {
@@ -81,6 +85,8 @@ void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> con
     if (newIt == state.end()) {
       // Try to schedule all callbacks for serverId.
       // If that didn't throw, erase the entry.
+      LOG_TOPIC("88858", INFO, Logger::CLUSTER)
+          << "Server " << serverId << " removed, aborting its old jobs now.";
       scheduleAllCallbacksFor(serverId);
       auto it = _callbacks.find(serverId);
       if (it != _callbacks.end()) {

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -174,16 +175,17 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
   {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> ignored;
-    arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false, ignored);
+    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::methods::Collections::createSystem(*vocbase, options,
+                                                 arangodb::tests::AnalyzerCollectionName,
+                                                 false, ignored);
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE(analyzers.emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                                 "identity", VPackSlice::noneSlice()).ok());
   auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                "::testAnalyzer1", arangodb::AnalyzersRevision::LATEST);
+                                "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_FALSE(!analyzer);
 
   struct ExecContext : public arangodb::ExecContext {
@@ -266,8 +268,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
                                                      args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -317,8 +318,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
                                                      args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -345,7 +345,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsObject());
     VPackBuilder resultVPack;
-    ASSERT_EQ(TRI_ERROR_NO_ERROR, TRI_V8ToVPack(isolate.get(), resultVPack, result.ToLocalChecked(), false));
+    TRI_V8ToVPack(isolate.get(), resultVPack, result.ToLocalChecked(), false);
     EXPECT_EQUAL_SLICES(
         resultVPack.slice(),
         VPackSlice::emptyObjectSlice());
@@ -369,8 +369,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -417,8 +416,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -435,9 +433,10 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> ignored;
-    arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false, ignored);
+    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::methods::Collections::createSystem(*vocbase, options,
+                                                 arangodb::tests::AnalyzerCollectionName,
+                                                 false, ignored);
   }
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
@@ -506,8 +505,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -537,8 +535,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -569,8 +566,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -601,8 +597,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -633,8 +628,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -664,8 +658,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -705,7 +698,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         v8AnalyzerWeak->properties());
     ASSERT_TRUE(v8AnalyzerWeak->features().empty());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer1", arangodb::AnalyzersRevision::LATEST);
+                                  "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
   }
 
@@ -731,8 +724,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -772,7 +764,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         v8AnalyzerWeak->properties());
     ASSERT_TRUE(v8AnalyzerWeak->features().empty());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer2", arangodb::AnalyzersRevision::LATEST);
+                                  "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
   }
   // successful creation with DB name prefix
@@ -805,7 +797,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         VPackSlice::emptyObjectSlice(),
         v8AnalyzerWeak->properties());
     ASSERT_TRUE(v8AnalyzerWeak->features().empty());
-    auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer3", arangodb::AnalyzersRevision::LATEST);
+    auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
   }
   // successful creation in system db by :: prefix
@@ -838,7 +830,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         VPackSlice::emptyObjectSlice(),
         v8AnalyzerWeak->properties());
     ASSERT_TRUE(v8AnalyzerWeak->features().empty());
-    auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer4", arangodb::AnalyzersRevision::LATEST);
+    auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer4", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_NE(nullptr, analyzer);
   }
 }
@@ -852,17 +844,19 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
         std::string("[ {\"name\" : \"testVocbase\"} ]"));
     ASSERT_EQ(TRI_ERROR_NO_ERROR, dbFeature.loadDatabases(databases->slice()));
   }
+  arangodb::OperationOptions options(arangodb::ExecContext::current());
   {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> ignored;
-    arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false, ignored);
+    arangodb::methods::Collections::createSystem(*vocbase, options,
+                                                 arangodb::tests::AnalyzerCollectionName,
+                                                 false, ignored);
   }
   {
     auto vocbase = dbFeature.useDatabase("testVocbase");
     std::shared_ptr<arangodb::LogicalCollection> ignored;
-    arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
+    arangodb::methods::Collections::createSystem(*vocbase, options,
+                                                 arangodb::tests::AnalyzerCollectionName,
                                                  false, ignored);
   }
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -925,8 +919,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                                                     args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1040,8 +1033,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                                                     args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_EQ(TRI_ERROR_NO_ERROR, TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1104,8 +1096,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                                                     args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1156,8 +1147,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                                                     args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1186,8 +1176,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                                               static_cast<int>(args.size()),
                                               args.data());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1218,8 +1207,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                                                     args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1233,10 +1221,12 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
   auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
 
+  arangodb::OperationOptions options(arangodb::ExecContext::current());
   {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> ignored;
-    arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
+    arangodb::methods::Collections::createSystem(*vocbase, options,
+                                                 arangodb::tests::AnalyzerCollectionName,
                                                  false, ignored);
   }
   {
@@ -1244,7 +1234,8 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     arangodb::Result res = dbFeature.createDatabase(testDBInfo(server.server()), vocbase);
     ASSERT_TRUE(res.ok());
     std::shared_ptr<arangodb::LogicalCollection> ignored;
-    arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
+    arangodb::methods::Collections::createSystem(*vocbase, options,
+                                                 arangodb::tests::AnalyzerCollectionName,
                                                  false, ignored);
   }
 
@@ -1535,10 +1526,12 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
 
+  arangodb::OperationOptions options(arangodb::ExecContext::current());
   {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> ignored;
-    arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
+    arangodb::methods::Collections::createSystem(*vocbase, options,
+                                                 arangodb::tests::AnalyzerCollectionName,
                                                  false, ignored);
   }
   {
@@ -1546,7 +1539,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     arangodb::Result res = dbFeature.createDatabase(testDBInfo(server.server()), vocbase);
     ASSERT_TRUE(res.ok());
     std::shared_ptr<arangodb::LogicalCollection> ignored;
-    arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
+    arangodb::methods::Collections::createSystem(*vocbase, options,
+                                                 arangodb::tests::AnalyzerCollectionName,
                                                  false, ignored);
   }
   {
@@ -1628,8 +1622,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1660,8 +1653,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1692,8 +1684,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     ASSERT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1701,7 +1692,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                  TRI_ERROR_FORBIDDEN ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer1", arangodb::AnalyzersRevision::LATEST);
+                                  "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
   }
 
@@ -1713,7 +1704,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
         v8::False(isolate.get()),
     };
     auto inUseAnalyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                       "::testAnalyzer2", arangodb::AnalyzersRevision::LATEST);  // hold ref to mark in-use
+                                       "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);  // hold ref to mark in-use
     ASSERT_FALSE(!inUseAnalyzer);
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1731,8 +1722,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     ASSERT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1740,7 +1730,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                  TRI_ERROR_ARANGO_CONFLICT ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer2", arangodb::AnalyzersRevision::LATEST);
+                                  "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
   }
 
@@ -1752,7 +1742,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
         v8::True(isolate.get()),
     };
     auto inUseAnalyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                       "::testAnalyzer2", arangodb::AnalyzersRevision::LATEST);  // hold ref to mark in-use
+                                       "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);  // hold ref to mark in-use
     ASSERT_FALSE(!inUseAnalyzer);
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1769,7 +1759,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer2", arangodb::AnalyzersRevision::LATEST);
+                                  "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(analyzer);
   }
 
@@ -1794,7 +1784,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer1", arangodb::AnalyzersRevision::LATEST);
+                                  "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(analyzer);
   }
   // removal by system db name with ::
@@ -1821,7 +1811,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer3", arangodb::AnalyzersRevision::LATEST);
+                                  "::testAnalyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_EQ(nullptr, analyzer);
   }
   //  removal from wrong db
@@ -1848,15 +1838,14 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
-                                                     tryCatch.Exception(), false)));
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     ASSERT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
-    auto analyzer = analyzers.get("testVocbase::testAnalyzer1", arangodb::AnalyzersRevision::LATEST);
+    auto analyzer = analyzers.get("testVocbase::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_NE(nullptr,  analyzer);
   }
   // success removal from non-system db
@@ -1879,7 +1868,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
-    auto analyzer = analyzers.get("testVocbase::testAnalyzer2", arangodb::AnalyzersRevision::LATEST);
+    auto analyzer = analyzers.get("testVocbase::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_EQ(nullptr, analyzer);
   }
   // success removal with db name prefix
@@ -1902,7 +1891,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
-    auto analyzer = analyzers.get("testVocbase::testAnalyzer3", arangodb::AnalyzersRevision::LATEST);
+    auto analyzer = analyzers.get("testVocbase::testAnalyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_EQ(nullptr, analyzer);
   }
 }

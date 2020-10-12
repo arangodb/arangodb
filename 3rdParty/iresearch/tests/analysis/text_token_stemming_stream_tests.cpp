@@ -27,15 +27,7 @@
 
 NS_LOCAL
 
-class text_token_stemming_stream_tests: public ::testing::Test {
-  virtual void SetUp() {
-    // Code here will be called immediately after the constructor (right before each test).
-  }
-
-  virtual void TearDown() {
-    // Code here will be called immediately after each test (right before the destructor).
-  }
-};
+class text_token_stemming_stream_tests: public ::testing::Test { };
 
 NS_END // NS_LOCAL
 

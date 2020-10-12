@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Cluster/ClusterTypes.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -182,8 +182,11 @@ class ServerState {
   }
 
   /// @brief check whether the server is a single or coordinator
-  bool isSingleServerOrCoordinator() {
-    RoleEnum role = loadRole();
+  bool isSingleServerOrCoordinator() const {
+    return isSingleServerOrCoordinator(loadRole());
+  }
+  
+  static bool isSingleServerOrCoordinator(ServerState::RoleEnum role) {
     return isCoordinator(role) || isSingleServer(role);
   }
 
@@ -194,8 +197,17 @@ class ServerState {
   bool integrateIntoCluster(RoleEnum role, std::string const& myAddr,
                             std::string const& myAdvEndpoint);
 
-  /// @brief unregister this server with the agency
-  bool unregister();
+  /// @brief unregister this server with the agency, removing it from
+  /// the cluster setup.
+  /// the timeout can be used as the max wait time for the agency to
+  /// acknowledge the unregister action.
+  bool unregister(double timeout);
+
+  /// @brief mark this server as shut down in the agency, without removing it
+  /// from the cluster setup.
+  /// the timeout can be used as the max wait time for the agency to
+  /// acknowledge the logoff action.
+  bool logoff(double timeout);
 
   /// @brief set the server role
   void setRole(RoleEnum);

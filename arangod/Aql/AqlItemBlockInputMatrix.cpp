@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -33,6 +34,9 @@ using namespace arangodb::aql;
 
 AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state)
     : _finalState{state}, _aqlItemMatrix{nullptr} {
+  // TODO As we only allow HASMORE, just use the default constructor and remove
+  //      this one.
+  TRI_ASSERT(state == ExecutorState::HASMORE);
   TRI_ASSERT(_aqlItemMatrix == nullptr);
   TRI_ASSERT(!hasDataRow());
 }
@@ -64,8 +68,7 @@ AqlItemBlockInputRange& AqlItemBlockInputMatrix::getInputRange() {
   if (_aqlItemMatrix->numberOfBlocks() == 0) {
     _lastRange = {AqlItemBlockInputRange{upstreamState()}};
   } else {
-    SharedAqlItemBlockPtr blockPtr = _aqlItemMatrix->getBlock(_currentBlockRowIndex);
-    auto [start, end] = blockPtr->getRelevantRange();
+    auto const [blockPtr, start] =  _aqlItemMatrix->getBlock(_currentBlockRowIndex);
     ExecutorState state = incrBlockIndex();
     _lastRange = {state, 0, std::move(blockPtr), start};
   }
@@ -100,16 +103,25 @@ ExecutorState AqlItemBlockInputMatrix::upstreamState() const noexcept {
 bool AqlItemBlockInputMatrix::upstreamHasMore() const noexcept {
   return upstreamState() == ExecutorState::HASMORE;
 }
+  
+bool AqlItemBlockInputMatrix::hasValidRow() const noexcept {
+  return _shadowRow.isInitialized() ||
+         (_aqlItemMatrix != nullptr && _aqlItemMatrix->size() != 0);
+}
 
 bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
   if (_aqlItemMatrix == nullptr) {
     return false;
   }
-  return (!_shadowRow.isInitialized() && _aqlItemMatrix->size() != 0);
+
+  return !hasShadowRow() && _aqlItemMatrix != nullptr &&
+         ((_aqlItemMatrix->stoppedOnShadowRow()) ||
+          (_aqlItemMatrix->size() > 0 && _finalState == ExecutorState::DONE));
 }
 
 std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::nextShadowRow() {
-  auto tmpShadowRow = _shadowRow;
+  auto tmpShadowRow = std::move(_shadowRow);
+  TRI_ASSERT(_aqlItemMatrix != nullptr);
 
   if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow()) {
     // next row will be a shadow row
@@ -126,7 +138,7 @@ std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputMatrix::nextShadowRo
     state = _finalState;
   }
 
-  return {state, tmpShadowRow};
+  return {state, std::move(tmpShadowRow)};
 }
 
 ShadowAqlItemRow AqlItemBlockInputMatrix::peekShadowRow() const {

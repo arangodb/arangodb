@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -51,17 +52,11 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
       : IndexTypeFactory(server), _type(type) {}
 
   bool equal(arangodb::velocypack::Slice const& lhs,
-             arangodb::velocypack::Slice const& rhs) const override {
-    auto* clusterEngine =
-        static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE);
-
-    if (!clusterEngine) {
-      THROW_ARANGO_EXCEPTION(arangodb::Result(
-          TRI_ERROR_INTERNAL,
-          "cannot find cluster engine while normalizing index"));
-    }
-
-    auto* engine = clusterEngine->actualEngine();
+             arangodb::velocypack::Slice const& rhs,
+             std::string const& dbname) const override {
+    auto& clusterEngine =
+        _server.getFeature<arangodb::EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
+    auto* engine = clusterEngine.actualEngine();
 
     if (!engine) {
       THROW_ARANGO_EXCEPTION(arangodb::Result(
@@ -69,22 +64,16 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
           "cannot find storage engine while normalizing index"));
     }
 
-    return engine->indexFactory().factory(_type).equal(lhs, rhs);
+    return engine->indexFactory().factory(_type).equal(lhs, rhs, dbname);
   }
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
                                                arangodb::IndexId id,
                                                bool /* isClusterConstructor */) const override {
-    auto* clusterEngine =
-        static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE);
-
-    if (!clusterEngine) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-          "cannot find cluster engine while creating index");
-    }
-
-    auto ct = clusterEngine->engineType();
+    auto& clusterEngine =
+        _server.getFeature<arangodb::EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
+    auto ct = clusterEngine.engineType();
 
     return std::make_shared<arangodb::ClusterIndex>(id, collection, ct,
                                                     arangodb::Index::type(_type),
@@ -97,16 +86,9 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
       bool isCreation, // definition for index creation
       TRI_vocbase_t const& vocbase // index vocbase
   ) const override {
-    auto* clusterEngine =
-        static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE);
-
-    if (!clusterEngine) {
-      return arangodb::Result(
-          TRI_ERROR_INTERNAL,
-          "cannot find cluster engine while normalizing index");
-    }
-
-    auto* engine = clusterEngine->actualEngine();
+    auto& clusterEngine =
+        _server.getFeature<arangodb::EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
+    auto* engine = clusterEngine.actualEngine();
 
     if (!engine) {
       return arangodb::Result(
@@ -134,15 +116,9 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create edge index");
     }
 
-    auto* clusterEngine =
-        static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE);
-
-    if (!clusterEngine) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-          "cannot find storage engine while creating index");
-    }
-
-    auto ct = clusterEngine->engineType();
+    auto& clusterEngine =
+        _server.getFeature<arangodb::EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
+    auto ct = clusterEngine.engineType();
 
     return std::make_shared<arangodb::ClusterIndex>(id, collection, ct,
                                                     arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX,
@@ -164,15 +140,9 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create primary index");
     }
 
-    auto* clusterEngine =
-        static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE);
-
-    if (!clusterEngine) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-          "cannot find storage engine while creating index");
-    }
-
-    auto ct = clusterEngine->engineType();
+    auto& clusterEngine =
+        _server.getFeature<arangodb::EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
+    auto ct = clusterEngine.engineType();
 
     return std::make_shared<arangodb::ClusterIndex>(arangodb::IndexId::primary(), collection,
                                                     ct, arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX,
@@ -212,8 +182,8 @@ ClusterIndexFactory::ClusterIndexFactory(application_features::ApplicationServer
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
 /// "hash") used to display storage engine capabilities
 std::unordered_map<std::string, std::string> ClusterIndexFactory::indexAliases() const {
-  auto* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
-  auto* ae = ce->actualEngine();
+  auto& ce = _server.getFeature<EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
+  auto* ae = ce.actualEngine();
   if (!ae) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "no actual storage engine for ClusterIndexFactory");
@@ -227,13 +197,9 @@ Result ClusterIndexFactory::enhanceIndexDefinition( // normalize definition
     bool isCreation, // definition for index creation
     TRI_vocbase_t const& vocbase // index vocbase
 ) const {
-  auto* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+  auto& ce = _server.getFeature<EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
 
-  if (!ce) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  auto* ae = ce->actualEngine();
+  auto* ae = ce.actualEngine();
 
   if (!ae) {
     return TRI_ERROR_INTERNAL;
@@ -260,8 +226,8 @@ void ClusterIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
   input.close();
 
   // get the storage engine type
-  ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
-  ClusterEngineType ct = ce->engineType();
+  auto& ce = _server.getFeature<EngineSelectorFeature>().engine<arangodb::ClusterEngine>();
+  ClusterEngineType ct = ce.engineType();
 
   systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
       IndexId::primary(), col, ct, Index::TRI_IDX_TYPE_PRIMARY_INDEX, input.slice()));

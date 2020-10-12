@@ -272,6 +272,9 @@ class IRESEARCH_API attribute_store
   }
 }; // attribute_store
 
+static_assert(std::is_move_constructible<attribute_store>::value,
+              "default move constructor expected");
+
 NS_END
 
 #endif // IRESEARCH_ATTRIBUTE_STORE_H

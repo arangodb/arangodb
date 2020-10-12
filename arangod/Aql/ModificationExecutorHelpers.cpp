@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,6 +26,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ModificationExecutorInfos.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationResult.h"
 
@@ -34,8 +36,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <string>
-
-#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -57,10 +57,8 @@ Result ModificationExecutorHelpers::getKey(CollectionNameResolver const& resolve
                       value.slice().typeName());
   }
 
-  if (!value.hasKey(StaticStrings::KeyString)) {
-    return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING,
-                  std::string{"Expected _key to be present in document."}};
-  }
+  // not necessary to check if key exists in object, since AqlValue::get() will return a
+  // null-result below in case key does not exist.
 
   // Extract key from `value`, and make sure it is a string
   bool mustDestroyKey;
@@ -69,7 +67,7 @@ Result ModificationExecutorHelpers::getKey(CollectionNameResolver const& resolve
 
   if (!keyEntry.isString()) {
     return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING,
-                  std::string{"Expected _key to be present in document."}};
+                  std::string{"Expected _key to be a string attribute in document."}};
   }
 
   // Key found and assigned, note rev is empty by assertion
@@ -108,9 +106,7 @@ Result ModificationExecutorHelpers::getRevision(CollectionNameResolver const& re
 Result ModificationExecutorHelpers::getKeyAndRevision(CollectionNameResolver const& resolver,
                                                       AqlValue const& value,
                                                       std::string& key, std::string& rev) {
-  Result result;
-
-  result = getKey(resolver, value, key);
+  Result result = getKey(resolver, value, key);
   // The key can either be a string, or contained in an object
   // If it is passed in as a string, then there is no revision
   // and there is no point in extracting it further on.
@@ -199,7 +195,7 @@ OperationOptions ModificationExecutorHelpers::convertOptions(ModificationOptions
                                                              Variable const* outVariableOld) {
   OperationOptions out;
 
-  // commented out OperationOptions attributesare not provided
+  // commented out OperationOptions attributes are not provided
   // by the ModificationOptions or the information given by the
   // Variable pointer.
 

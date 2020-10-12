@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -75,8 +76,6 @@ class SingleRowFetcher;
 // class (defined in SimpleModifier.h) with a *completion*.
 // The four completions for SimpleModifiers are defined in InsertModifier.h,
 // RemoveModifier.h, and UpdateReplaceModifier.h
-//
-// The FetcherType has to provide the function fetchRow with the parameter atMost
 //
 // The two types of modifiers (Simple and Upsert) follow a similar design. The main
 // data is held in

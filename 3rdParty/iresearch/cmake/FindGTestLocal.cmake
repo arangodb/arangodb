@@ -4,6 +4,9 @@
 #  GTEST_INCLUDE_DIR, directory containing headers
 #  GTEST_STATIC_LIBS, path to libbfd*.a/libbfd*.lib or cmake target
 #  GTEST_FOUND, whether ftest has been found
+if (GTEST_FOUND)
+return()
+endif()
 
 if ("${GTEST_ROOT}" STREQUAL "")
   set(GTEST_ROOT "$ENV{GTEST_ROOT}")

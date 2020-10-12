@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,13 +37,16 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/AgencyCallback.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
 #include "Futures/Future.h"
+#include "Network/types.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocbaseInfo.h"
@@ -69,7 +72,7 @@ class CollectionWatcher {
     : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
 
     std::string databaseName = collection.vocbase().name();
-    std::string collectionID = std::to_string(collection.id());
+    std::string collectionID = std::to_string(collection.id().id());
     std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
 
     _agencyCallback = std::make_shared<AgencyCallback>(
@@ -89,10 +92,10 @@ class CollectionWatcher {
     // Make sure we did not miss a callback
     _agencyCallback->refetchAndUpdate(true, false);
     return _present.load();
-  };
+  }
 
-private:
-  AgencyCallbackRegistry *_agencyCallbackRegistry;
+ private:
+  AgencyCallbackRegistry* _agencyCallbackRegistry;
   std::shared_ptr<AgencyCallback> _agencyCallback;
 
   // TODO: this does not really need to be atomic: We only write to it
@@ -340,29 +343,29 @@ class AnalyzerModificationTransaction {
 };
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-class ClusterInfo  {
+class ClusterInfo {
 #else
-class ClusterInfo final  {
+class ClusterInfo final {
 #endif
 
-private:
-  typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>> DatabaseCollections;
-  typedef std::unordered_map<DatabaseID, DatabaseCollections> AllCollections;
+ private:
+  struct CollectionWithHash {
+    uint64_t hash;
+    std::shared_ptr<LogicalCollection> collection;
+  };
+  typedef std::unordered_map<CollectionID, CollectionWithHash> DatabaseCollections;
+  typedef std::unordered_map<DatabaseID, std::shared_ptr<DatabaseCollections>> AllCollections;
   typedef std::unordered_map<CollectionID, std::shared_ptr<CollectionInfoCurrent>> DatabaseCollectionsCurrent;
   typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent> AllCollectionsCurrent;
 
   typedef std::unordered_map<ViewID, std::shared_ptr<LogicalView>> DatabaseViews;
   typedef std::unordered_map<DatabaseID, DatabaseViews> AllViews;
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
   class SyncerThread final : public arangodb::Thread {
-#else
-  class SyncerThread : public arangodb::Thread {
-#endif
-  public:
+   public:
     explicit SyncerThread(
       application_features::ApplicationServer&, std::string const& section,
-      std::function<void()>, AgencyCallbackRegistry*);
+      std::function<void()> const&, AgencyCallbackRegistry*);
     explicit SyncerThread(SyncerThread const&);
     ~SyncerThread();
     void beginShutdown();
@@ -370,7 +373,7 @@ private:
     void start();
     bool notify(velocypack::Slice const&);
 
-  private:
+   private:
     std::mutex _m;
     std::condition_variable _cv;
     bool _news;
@@ -442,8 +445,16 @@ public:
    */
   void startSyncers();
 
+  /**
+   * @brief wait for syncers' full stop
+   */
+  void waitForSyncersToStop();
+
   /// @brief produces an agency dump and logs it
   void logAgencyDump() const;
+
+  /// @brief get database cache
+  VPackBuilder toVelocyPack();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get a number of cluster-wide unique IDs, returns the first
@@ -474,18 +485,40 @@ public:
   arangodb::Result agencyReplan(VPackSlice const plan);
 
   /**
-   * @brief Wait for plan cache to be at Raft index
-   * @param    Plan to adapt to
+   * @brief Wait for Plan cache to be at the given Raft index
+   * @param    Plan Raft index to wait for
    * @return       Operation's result
    */
-  futures::Future<Result> waitForPlan(uint64_t index);
+  futures::Future<Result> waitForPlan(uint64_t raftIndex);
 
   /**
-   * @brief Wait for plan cache to be at Raft index
-   * @param    Plan to adapt to
+   * @brief Wait for Plan cache to be at the given Plan version
+   * @param    Plan version to wait for
    * @return       Operation's result
    */
-  futures::Future<Result> waitForCurrent(uint64_t index);
+  [[nodiscard]] futures::Future<Result> waitForPlanVersion(uint64_t planVersion);
+
+  /**
+  * @brief Fetch the current Plan version and wait for the cache to catch up to
+  *        it, if necessary.
+  * @param The timeout is for fetching the Plan version only. Waiting for the
+  *        Plan version afterwards will never timeout.
+  */
+  [[nodiscard]] futures::Future<Result> fetchAndWaitForPlanVersion(network::Timeout);
+
+  /**
+   * @brief Wait for Current cache to be at the given Raft index
+   * @param    Current Raft index to wait for
+   * @return       Operation's result
+   */
+  futures::Future<Result> waitForCurrent(uint64_t raftIndex);
+
+  /**
+   * @brief Wait for Current cache to be at the given Raft index
+   * @param    Current version to wait for
+   * @return       Operation's result
+   */
+  [[nodiscard]] futures::Future<Result> waitForCurrentVersion(uint64_t currentVersion);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief flush the caches (used for testing only)
@@ -522,11 +555,11 @@ public:
 
   TEST_VIRTUAL std::shared_ptr<LogicalCollection> getCollectionNT(DatabaseID const&,
                                                                   CollectionID const&);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection or a view
   /// If it is not found in the cache, the cache is reloaded once. The second
-  /// argument can be a collection ID or a collection name (both cluster-wide) 
+  /// argument can be a collection ID or a collection name (both cluster-wide)
   /// or a view ID or name.
   /// will not throw but return nullptr if the collection/view isn't found.
   //////////////////////////////////////////////////////////////////////////////
@@ -565,6 +598,15 @@ public:
   //////////////////////////////////////////////////////////////////////////////
   AnalyzersRevision::Ptr getAnalyzersRevision(DatabaseID const& databaseID,
                                                           bool forceLoadPlan = false);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Reads analyzers revisions needed for querying specified database.
+  ///        Could trigger plan load if database is not found in plan.
+  /// @param databaseID database to query
+  /// @return extracted revisions
+  //////////////////////////////////////////////////////////////////////////////
+  QueryAnalyzerRevisions getQueryAnalyzersRevision(
+      DatabaseID const& databaseID);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about
@@ -830,7 +872,7 @@ public:
   /// @brief lookup a full coordinator ID by short ID
   //////////////////////////////////////////////////////////////////////////////
 
-  ServerID getCoordinatorByShortID(ServerShortID);
+  ServerID getCoordinatorByShortID(ServerShortID const& shortId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate planned
@@ -861,12 +903,18 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<VPackBuilder> getPlan();
+  std::shared_ptr<VPackBuilder> getPlan(uint64_t& planIndex);
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
+    getPlan(uint64_t& planIndex, std::unordered_set<std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Current" structure
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<VPackBuilder> getCurrent();
+  std::shared_ptr<VPackBuilder> getCurrent(uint64_t& currentIndex);
+  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
+    getCurrent(uint64_t& currentIndex, std::unordered_set<std::string> const&);
 
   std::vector<std::string> getFailedServers() {
     MUTEX_LOCKER(guard, _failedServersMutex);
@@ -939,6 +987,19 @@ public:
 
   application_features::ApplicationServer& server() const;
 
+ private:
+
+  /// @brief helper function to build a new LogicalCollection object from the velocypack
+  /// input
+  static std::shared_ptr<LogicalCollection> createCollectionObject(
+      arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase);
+
+  /// @brief create a new collecion object from the data, using the cache if possible
+  CollectionWithHash buildCollection(
+    bool isBuilding, AllCollections::const_iterator existingCollections,
+    std::string const& collectionId, arangodb::velocypack::Slice data,
+    TRI_vocbase_t& vocbase, uint64_t planVersion) const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
   /// Usually one does not have to call this directly.
@@ -953,15 +1014,14 @@ public:
 
   void loadCurrent();
 
-
- private:
   void buildIsBuildingSlice(CreateDatabaseInfo const& database,
                               VPackBuilder& builder);
 
   void buildFinalSlice(CreateDatabaseInfo const& database,
                          VPackBuilder& builder);
 
-  Result waitForDatabaseInCurrent(CreateDatabaseInfo const& database);
+  Result waitForDatabaseInCurrent(
+    CreateDatabaseInfo const& database, AgencyWriteTransaction const& trx);
   void loadClusterId();
 
   void triggerWaiting(
@@ -1057,8 +1117,8 @@ public:
   std::unordered_map<ServerShortID, ServerID> _coordinatorIdMap;
   ProtectionData _mappingsProt;
 
-  std::shared_ptr<VPackBuilder> _plan;
-  std::shared_ptr<VPackBuilder> _current;
+  std::unordered_map<DatabaseID, std::shared_ptr<VPackBuilder>> _plan;
+  std::unordered_map<DatabaseID, std::shared_ptr<VPackBuilder>> _current;
 
   std::string _clusterId;
 
@@ -1167,11 +1227,36 @@ public:
 
   mutable std::mutex _waitPlanLock;
   std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitPlan;
+  mutable std::mutex _waitPlanVersionLock;
+  std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitPlanVersion;
   mutable std::mutex _waitCurrentLock;
   std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrent;
+  mutable std::mutex _waitCurrentVersionLock;
+  std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrentVersion;
 
+  /// @brief histogram for loadPlan runtime
+  Histogram<log_scale_t<float>>& _lpTimer;
+
+  /// @brief total time for loadPlan runtime
+  Counter& _lpTotal;
+
+  /// @brief histogram for loadCurrent runtime
+  Histogram<log_scale_t<float>>& _lcTimer;
+
+  /// @brief total time for loadCurrent runtime
+  Counter& _lcTotal;
 
 };
+
+namespace cluster {
+
+// Note that while a network error will just return a failed `ResultT`, there
+// are still possible exceptions.
+futures::Future<ResultT<uint64_t>> fetchPlanVersion(network::Timeout timeout);
+futures::Future<ResultT<uint64_t>> fetchCurrentVersion(network::Timeout timeout);
+
+}  // namespace cluster
+
 }  // end namespace arangodb
 
 #endif

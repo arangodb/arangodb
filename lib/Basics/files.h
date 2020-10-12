@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,7 @@
 #include <openssl/evp.h>
 
 #include "Basics/Common.h"
-#include "Basics/StringUtils.h"
+#include "Basics/Result.h"
 #include "Basics/debugging.h"
 
 #ifdef USE_ENTERPRISE
@@ -179,7 +179,7 @@ int TRI_UnlinkFile(char const* filename);
 /// @brief reads into a buffer from a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReadPointer(int fd, void* buffer, size_t length);
+TRI_read_return_t TRI_ReadPointer(int fd, char* buffer, size_t length);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes buffer to a file
@@ -388,18 +388,6 @@ std::string TRI_LocateInstallDirectory(char const* argv0, const char* binaryPath
 
 std::string TRI_LocateConfigDirectory(char const* binaryPath);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the address of the null buffer
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_GetNullBufferFiles();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the size of the null buffer
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_GetNullBufferSizeFiles();
-
 /// @brief creates a new datafile
 /// returns the file descriptor or -1 if the file cannot be created
 int TRI_CreateDatafile(std::string const& filename, size_t maximalSize);
@@ -410,14 +398,20 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize);
 
 bool TRI_PathIsAbsolute(std::string const& path);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize the files subsystem
-////////////////////////////////////////////////////////////////////////////////
+/// @brief return the amount of total and free disk space for the given path
+arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path, 
+                                      uint64_t& totalSpace,
+                                      uint64_t& freeSpace);
 
-void TRI_InitializeFiles();
+/// @brief return the amount of total and free inodes for the given path.
+/// always returns 0 on Windows!
+arangodb::Result TRI_GetINodesInfo(std::string const& path, 
+                                   uint64_t& totalINodes, 
+                                   uint64_t& freeINodes); 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief if which is found, value is overwriten, true returned.
+/// @brief reads an environment variable. returns false if env var was not set.
+/// if env var was set, returns env variable value in "value" and returns true.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_GETENV(char const* which, std::string& value);

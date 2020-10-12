@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -84,6 +84,11 @@ RestStatus RestCursorHandler::execute() {
 }
 
 RestStatus RestCursorHandler::continueExecute() {
+  if (wasCanceled()) {
+    generateError(rest::ResponseCode::GONE, TRI_ERROR_QUERY_KILLED);
+    return RestStatus::DONE;
+  }
+  
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
 
@@ -216,6 +221,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   VPackSlice opts = _options->slice();
 
   bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
+  if (ServerState::instance()->isDBServer()) {
+    stream = false;
+  }
   size_t batchSize = VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
   double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl",
                                                          _queryRegistry->defaultTTL());
@@ -228,6 +236,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
       bindVarsBuilder, _options);
 
   if (stream) {
+    TRI_ASSERT(!ServerState::instance()->isDBServer());
     if (count) {
       generateError(Result(TRI_ERROR_BAD_PARAMETER,
                            "cannot use 'count' option for a streaming query"));
@@ -243,10 +252,19 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   }
 
   // non-stream case. Execute query, then build a cursor
-  //  with the entire result set.
-  query->sharedState()->setWakeupHandler([self = shared_from_this()] {
-    return self->wakeupHandler();
-  });
+  // with the entire result set.
+  if (!ServerState::instance()->isDBServer()) {
+    auto ss = query->sharedState();
+    TRI_ASSERT(ss != nullptr);
+    if (ss == nullptr) {
+      generateError(Result(TRI_ERROR_INTERNAL, "invalid query state"));
+      return RestStatus::DONE;
+    }
+
+    ss->setWakeupHandler([self = shared_from_this()] {
+      return self->wakeupHandler();
+    });
+  }
 
   registerQuery(std::move(query));
   return processQuery(/*continuation*/false);
@@ -434,23 +452,15 @@ void RestCursorHandler::cancelQuery() {
   MUTEX_LOCKER(mutexLocker, _queryLock);
 
   if (_query != nullptr) {
+    // cursor is canceled. now remove the continue handler we may have
+    // registered in the query
+    if (_query->sharedState()) {
+      _query->sharedState()->resetWakeupHandler();
+    }
+    
     _query->kill();
     _queryKilled = true;
     _hasStarted = true;
-
-    // cursor is canceled. now remove the continue handler we may have
-    // registered in the query
-    std::shared_ptr<aql::SharedQueryState> ss;
-    try {
-      ss = _query->sharedState();
-    } catch (...) {
-      // in case we cannot get the query state, the query is not (yet)
-      // initialized. this is not an error, but the kill/cancel command
-      // has been sent too early
-      return;
-    }
-
-    ss->invalidate();
   } else if (!_hasStarted) {
     _queryKilled = true;
   }
@@ -498,6 +508,12 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
       }
       _options->add(keyName, it.value);
     }
+  }
+
+  if (ServerState::instance()->isDBServer()) {
+    // we do not support creating streaming cursors on DB-Servers, at all.
+    // always turn such cursors into non-streaming cursors.
+    isStream = false;
   }
     
   _options->add("stream", VPackValue(isStream));

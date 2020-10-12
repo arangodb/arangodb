@@ -149,7 +149,7 @@ filter::prepared::ptr by_terms::prepare(
     term_stats.finish(stats_buf, term_idx++, field_stats, index);
   }
 
-  return memory::make_shared<multiterm_query>(
+  return memory::make_managed<multiterm_query>(
     std::move(states), std::move(stats),
     boost, sort::MergeType::AGGREGATE);
 }

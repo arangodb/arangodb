@@ -21,10 +21,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <fuerte/detail/vst.h>
+#include <fuerte/helper.h>
 #include <fuerte/message.h>
-
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
+
 #include <sstream>
 
 #include "debugging.h"
@@ -68,8 +69,8 @@ std::string const& MessageHeader::metaByKey(std::string const& key,
 ///////////////////////////////////////////////
 
 void RequestHeader::acceptType(std::string const& type) {
-   addMeta(fu_accept_key, type);
- }
+  addMeta(fu_accept_key, type);
+}
 
 void RequestHeader::addParameter(std::string const& key,
                                  std::string const& value) {
@@ -79,25 +80,7 @@ void RequestHeader::addParameter(std::string const& key,
 /// @brief analyze path and split into components
 /// strips /_db/<name> prefix, sets db name and fills parameters
 void RequestHeader::parseArangoPath(std::string const& p) {
-  size_t pos = p.rfind('?');
-  if (pos != std::string::npos) {
-    this->path = p.substr(0, pos);
-
-    while (pos != std::string::npos && pos + 1 < p.length()) {
-      size_t pos2 = p.find('=', pos + 1);
-      if (pos2 == std::string::npos) {
-        break;
-      }
-      std::string key = p.substr(pos + 1, pos2 - pos - 1);
-      pos = p.find('&', pos2 + 1);  // points to next '&' or string::npos
-      std::string value = pos == std::string::npos
-                              ? p.substr(pos2 + 1)
-                              : p.substr(pos2 + 1, pos - pos2 - 1);
-      this->parameters.emplace(std::move(key), std::move(value));
-    }
-  } else {
-    this->path = p;
-  }
+  this->path = extractPathParameters(p, this->parameters);
 
   // extract database prefix /_db/<name>/
   const char* q = this->path.c_str();
@@ -107,10 +90,11 @@ void RequestHeader::parseArangoPath(std::string const& p) {
     q += 5;
     const char* pathBegin = q;
     // read until end of database name
-    while (*q != '\0' && *q != '/' && *q != '?' &&
-           *q != ' ' && *q != '\n' && *q != '\r') {
+    while (*q != '\0' && *q != '/' && *q != '?' && *q != ' ' && *q != '\n' &&
+           *q != '\r') {
       ++q;
     }
+    FUERTE_ASSERT(q >= pathBegin);
     this->database = std::string(pathBegin, q - pathBegin);
     if (*q == '\0') {
       this->path = "/";

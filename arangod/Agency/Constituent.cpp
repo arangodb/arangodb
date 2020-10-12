@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +33,6 @@
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Aql/QueryRegistry.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
@@ -74,8 +73,9 @@ void Constituent::configure(Agent* agent) {
 Constituent::Constituent(application_features::ApplicationServer& server)
     : Thread(server, "Constituent"),
       _vocbase(nullptr),
-      _queryRegistry(nullptr),
       _term(0),
+      _gterm(_server.getFeature<arangodb::MetricsFeature>().gauge(
+               "arangodb_agency_term", _term, "Agency's term")),
       _leaderID(NO_LEADER),
       _lastHeartbeatSeen(0.0),
       _role(FOLLOWER),
@@ -108,6 +108,7 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
 
   term_t tmp = _term;
   _term = t;
+  _gterm = t;
   std::string tmpVotedFor = _votedFor;
   _votedFor = votedFor;
 
@@ -139,28 +140,17 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
 
     options.waitForSync = _agent->config().waitForSync();
     options.silent = true;
-
-    OperationResult result;
-
-    if (tmp != t) {
-      try {
-        result = trx.insert("election", body.slice(), options);
-      } catch (std::exception const& e) {
-        LOG_TOPIC("334ae", FATAL, Logger::AGENCY)
-            << "Failed to insert RAFT election ballot: " << e.what() << ". Bailing out.";
-        FATAL_ERROR_EXIT();
-      }
-    } else {
-      try {
-        result = trx.replace("election", body.slice(), options);
-      } catch (std::exception const& e) {
-        LOG_TOPIC("ac75f", FATAL, Logger::AGENCY)
-            << "Failed to replace  RAFT election ballot: " << e.what() << ". Bailing out.";
-        FATAL_ERROR_EXIT();
-      }
+    try {
+      OperationResult result = (tmp != t)
+                                   ? trx.insert("election", body.slice(), options)
+                                   : trx.replace("election", body.slice(), options);
+      res = trx.finish(result.result);
+    } catch (std::exception const& e) {
+      LOG_TOPIC("334ae", FATAL, Logger::AGENCY)
+          << "Failed to " << ((tmp != t) ? "insert" : "replace")
+          << " RAFT election ballot: " << e.what() << ". Bailing out.";
+      FATAL_ERROR_EXIT();
     }
-
-    res = trx.finish(result.errorNumber());
   }
 }
 
@@ -500,7 +490,7 @@ void Constituent::callElection() {
             maxTermReceived->compare_exchange_strong(expectedT, receivedT);
           } else {
             // Check result and counts
-            if (slc.get("voteGranted").getBool()) {  // majority in favour?
+            if (slc.get("voteGranted").getBool()) {  // majority in favor?
               yea->fetch_add(1);
               // Vote is counted as yea
               return;
@@ -556,7 +546,7 @@ void Constituent::callElection() {
 void Constituent::update(std::string const& leaderID, term_t t) {
   MUTEX_LOCKER(guard, _termVoteLock);
   _term = t;
-
+  _gterm = t;
   if (_leaderID != leaderID) {
     LOG_TOPIC("fe299", INFO, Logger::AGENCY)
         << "Constituent::update: setting _leaderID to '" << leaderID
@@ -575,10 +565,9 @@ void Constituent::beginShutdown() {
 }
 
 /// Start operation
-bool Constituent::start(TRI_vocbase_t* vocbase, aql::QueryRegistry* queryRegistry) {
+bool Constituent::start(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase != nullptr);
   _vocbase = vocbase;
-  _queryRegistry = queryRegistry;
 
   return Thread::start();
 }
@@ -614,12 +603,10 @@ void Constituent::run() {
         auto ii = i.resolveExternals();
         try {
           MUTEX_LOCKER(locker, _termVoteLock);
-          _term = ii.get("term").getUInt();
-          _votedFor = ii.get("voted_for").copyString();
+          termNoLock(ii.get("term").getUInt(), ii.get("voted_for").copyString());
         } catch (std::exception const&) {
           LOG_TOPIC("404be", ERR, Logger::AGENCY)
-              << "Persisted election entries corrupt! Defaulting term,vote "
-                 "(0,0)";
+            << "Persisted election entries corrupt! Defaulting term,vote (0,0)";
         }
       }
     }
@@ -638,13 +625,12 @@ void Constituent::run() {
     MUTEX_LOCKER(guard, _termVoteLock);
     _leaderID = _agent->config().id();
     LOG_TOPIC("66f72", INFO, Logger::AGENCY)
-        << "Set _leaderID to '" << _leaderID << "' in term " << _term;
+      << "Set _leaderID to '" << _leaderID << "' in term " << _term;
   } else {
     {
       MUTEX_LOCKER(guard, _termVoteLock);
-      LOG_TOPIC("29175", INFO, Logger::AGENCY) << "Setting role to follower"
-                                         " in term "
-                                      << _term;
+      LOG_TOPIC("29175", INFO, Logger::AGENCY)
+        << "Setting role to follower  in term " << _term;
       _role = FOLLOWER;
     }
     while (!this->isStopping()) {

@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for Network/Methods.cpp
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -62,8 +59,7 @@ struct DummyConnection final : public fuerte::Connection {
   }
   
   void cancel() override {}
-  void start() override {}
-  
+
   fuerte::Connection::State _state = fuerte::Connection::State::Connected;
   
   fuerte::Error _err = fuerte::Error::NoError;
@@ -98,7 +94,6 @@ struct NetworkMethodsTest
     network::ConnectionPool::Config config;
     config.clusterInfo = &server.getFeature<ClusterFeature>().clusterInfo();
     config.numIOThreads = 1;
-    config.minOpenConnections = 1;
     config.maxOpenConnections = 3;
     config.verifyHosts = false;
     return config;

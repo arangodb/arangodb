@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,10 +42,6 @@ TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
 // -----------------------------------------------------------------------------
-
-//void ServerStatistics::initialize(double startTime) {
-//    _startTime = startTime;
-//}
 
 double ServerStatistics::uptime() const noexcept {
   return StatisticsFeature::time() - _startTime;

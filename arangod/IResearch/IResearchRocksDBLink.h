@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -42,8 +43,9 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
  public:
   IResearchRocksDBLink(IndexId iid, arangodb::LogicalCollection& collection);
 
-  void afterTruncate(TRI_voc_tick_t /*tick*/) override {
-    IResearchLink::afterTruncate();
+  void afterTruncate(TRI_voc_tick_t tick,
+                     arangodb::transaction::Methods* trx) override {
+    IResearchLink::afterTruncate(tick, trx);
   }
 
   bool canBeDropped() const override {
@@ -59,9 +61,9 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
   arangodb::Result insert(arangodb::transaction::Methods& trx,
                           arangodb::RocksDBMethods* methods,
                           arangodb::LocalDocumentId const& documentId,
-                          arangodb::velocypack::Slice const& doc,
-                          arangodb::OperationOptions& options) override {
-    return IResearchLink::insert(trx, documentId, doc, options.indexOperationMode);
+                          arangodb::velocypack::Slice const doc,
+                          arangodb::OperationOptions& /*options*/) override {
+    return IResearchLink::insert(trx, documentId, doc);
   }
 
   bool isSorted() const override { return IResearchLink::isSorted(); }
@@ -84,9 +86,8 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
   arangodb::Result remove(arangodb::transaction::Methods& trx,
                                   arangodb::RocksDBMethods*,
                                   arangodb::LocalDocumentId const& documentId,
-                                  arangodb::velocypack::Slice const& doc,
-                                  arangodb::Index::OperationMode mode) override {
-    return IResearchLink::remove(trx, documentId, doc, mode);
+                                  arangodb::velocypack::Slice const doc) override {
+    return IResearchLink::remove(trx, documentId, doc);
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -126,7 +127,8 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
 
    public:
     bool equal(arangodb::velocypack::Slice const& lhs,
-               arangodb::velocypack::Slice const& rhs) const override;
+               arangodb::velocypack::Slice const& rhs,
+               std::string const& dbname) const override;
 
     std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                  arangodb::velocypack::Slice const& definition,

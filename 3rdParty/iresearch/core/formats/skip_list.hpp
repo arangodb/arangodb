@@ -203,13 +203,16 @@ class IRESEARCH_API skip_reader: util::noncopyable {
       uint64_t end,
       uint64_t child = 0,
       size_t skipped = 0,
-      doc_id_t doc = doc_limits::invalid()
-    ) noexcept;
-    level(level&& rhs) noexcept;
+      doc_id_t doc = doc_limits::invalid()) noexcept;
+    level(level&&) = default;
+    level& operator=(level&&) = delete;
 
     ptr dup() const override;
     uint8_t read_byte() override;
     size_t read_bytes(byte_type* b, size_t count) override;
+    const byte_type* read_buffer(size_t size, BufferHint hint) override {
+      return stream->read_buffer(size, hint);
+    }
     ptr reopen() const override;
     size_t file_pointer() const override;
     size_t length() const override;
@@ -225,6 +228,8 @@ class IRESEARCH_API skip_reader: util::noncopyable {
     size_t skipped{}; // number of sipped documents
     doc_id_t doc{ doc_limits::invalid() }; // current key
   };
+
+  static_assert(std::is_nothrow_move_constructible_v<level>);
 
   typedef std::vector<level> levels_t;
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -58,6 +58,7 @@ int TRI_createFile(char const* filename, int openFlags, int modeFlags);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_OPEN_WIN32(char const* filename, int openFlags);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a Windows error to a *nix system error
@@ -125,6 +126,12 @@ bool terminalKnowsANSIColors();
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WINDEF_
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mimics TRI_ReadPointer with a nonblocking windows handle
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_read_return_t TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length);
+
 std::string getFileNameFromHandle(HANDLE fileHandle);
 #endif
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,14 +26,16 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "Cluster/ServerState.h"
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/ServerState.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
 #include <map>
@@ -42,7 +44,7 @@
 
 #define LOG_TRX(logid, llevel, trx)                \
   LOG_TOPIC(logid, llevel, arangodb::Logger::TRANSACTIONS) \
-      << "#" << trx->id() << " ("         \
+      << "#" << trx->id().id() << " ("         \
       << transaction::statusString(trx->status()) << "): "
 
 #else
@@ -77,7 +79,7 @@ class TransactionState {
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
-  TransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+  TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                    transaction::Options const& options);
   virtual ~TransactionState();
 
@@ -98,7 +100,7 @@ class TransactionState {
   inline transaction::Options& options() { return _options; }
   inline transaction::Options const& options() const { return _options; }
   inline TRI_vocbase_t& vocbase() const { return _vocbase; }
-  inline TRI_voc_tid_t id() const { return _id; }
+  inline TransactionId id() const { return _id; }
   inline transaction::Status status() const { return _status; }
   inline bool isRunning() const {
     return _status == transaction::Status::RUNNING;
@@ -124,22 +126,29 @@ class TransactionState {
   }
 
   /// @brief return the collection from a transaction
-  TransactionCollection* collection(TRI_voc_cid_t cid,
-                                    AccessMode::Type accessType) const;
-  
+  TransactionCollection* collection(DataSourceId cid, AccessMode::Type accessType) const;
+
   /// @brief return the collection from a transaction
   TransactionCollection* collection(std::string const& name,
                                     AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
-  Result addCollection(TRI_voc_cid_t cid, std::string const& cname,
+  Result addCollection(DataSourceId cid, std::string const& cname,
                        AccessMode::Type accessType, bool lockUsage);
 
   /// @brief use all participating collections of a transaction
   Result useCollections();
 
   /// @brief run a callback on all collections of the transaction
-  void allCollections(std::function<bool(TransactionCollection&)> const& cb);
+  template<typename F>
+  void allCollections(F&& cb) {
+    for (auto& trxCollection : _collections) {
+      TRI_ASSERT(trxCollection);  // ensured by addCollection(...)
+      if (!std::forward<F>(cb)(*trxCollection)) { // abort early
+        return;
+      }
+    }
+  }
   
   /// @brief return the number of collections in the transaction
   size_t numCollections() const { return _collections.size(); }
@@ -163,10 +172,16 @@ class TransactionState {
 
   /// @brief abort a transaction
   virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
+  
+  /// @brief return number of commits.
+  /// for cluster transactions on coordinator, this either returns 0 or 1.
+  /// for leader, follower or single-server transactions, this can include any
+  /// number, because it will also include intermediate commits.
+  virtual uint64_t numCommits() const = 0;
 
   virtual bool hasFailedOperations() const = 0;
 
-  TransactionCollection* findCollection(TRI_voc_cid_t cid) const;
+  TransactionCollection* findCollection(DataSourceId cid) const;
 
   /// @brief make a exclusive transaction, only valid before begin
   void setExclusiveAccessType();
@@ -174,6 +189,11 @@ class TransactionState {
   /// @brief whether or not a transaction is read-only
   bool isReadOnlyTransaction() const {
     return (_type == AccessMode::Type::READ);
+  }
+
+  /// @brief whether or not a transaction is a follower transaction
+  bool isFollowerTransaction() const {
+    return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
   }
 
   /// @brief whether or not a transaction only has exculsive or read accesses
@@ -209,21 +229,23 @@ class TransactionState {
     return _lastWrittenOperationTick;
   }
 
-  void acceptAnalyzersRevision(AnalyzersRevision::Revision analyzersRevision) noexcept;
 
-  AnalyzersRevision::Revision analyzersRevision() const noexcept {
+  void acceptAnalyzersRevision(
+      QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
+
+  const QueryAnalyzerRevisions& analyzersRevision() const noexcept {
     return _analyzersRevision;
   }
   
   #ifdef USE_ENTERPRISE
-    void addInaccessibleCollection(TRI_voc_cid_t cid, std::string const& cname);
-    bool isInaccessibleCollection(TRI_voc_cid_t cid);
-    bool isInaccessibleCollection(std::string const& cname);
+  void addInaccessibleCollection(DataSourceId cid, std::string const& cname);
+  bool isInaccessibleCollection(DataSourceId cid);
+  bool isInaccessibleCollection(std::string const& cname);
   #endif
 
  protected:
   /// @brief find a collection in the transaction's list of collections
-  TransactionCollection* findCollection(TRI_voc_cid_t cid, size_t& position) const;
+  TransactionCollection* findCollection(DataSourceId cid, size_t& position) const;
 
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
@@ -231,12 +253,12 @@ class TransactionState {
 
  private:
   /// @brief check if current user can access this collection
-  Result checkCollectionPermission(TRI_voc_cid_t cid, std::string const& cname,
+  Result checkCollectionPermission(DataSourceId cid, std::string const& cname,
                                    AccessMode::Type);
-  
+
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
-  TRI_voc_tid_t const _id;  /// @brief local trx id
+  TransactionId const _id;  /// @brief local trx id
 
   /// @brief tick of last added & written operation
   TRI_voc_tick_t _lastWrittenOperationTick;
@@ -263,8 +285,7 @@ class TransactionState {
   /// @brief servers we already talked to for this transactions
   ::arangodb::containers::HashSet<std::string> _knownServers;
 
-  arangodb::AnalyzersRevision::Revision _analyzersRevision{ ::arangodb::AnalyzersRevision::MIN };
-
+  QueryAnalyzerRevisions _analyzersRevision;
   bool _registeredTransaction;
 };
 

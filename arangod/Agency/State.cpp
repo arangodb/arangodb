@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +12,7 @@
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
@@ -33,8 +33,8 @@
 #include <thread>
 
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Aql/QueryRegistry.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -42,7 +42,6 @@
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -59,16 +58,19 @@ using namespace arangodb::rest;
 using namespace arangodb::basics;
 
 /// Constructor:
-State::State()
-    : _agent(nullptr),
-      _vocbase(nullptr),
-      _ready(false),
-      _collectionsChecked(false),
-      _collectionsLoaded(false),
-      _nextCompactionAfter(0),
-      _lastCompactionAt(0),
-      _queryRegistry(nullptr),
-      _cur(0) {}
+State::State(application_features::ApplicationServer& server)
+  : _server(server),
+    _agent(nullptr),
+    _vocbase(nullptr),
+    _ready(false),
+    _collectionsChecked(false),
+    _collectionsLoaded(false),
+    _nextCompactionAfter(0),
+    _lastCompactionAt(0),
+    _cur(0),
+    _log_size(
+      _server.getFeature<MetricsFeature>().gauge(
+        "arangodb_agency_log_size_bytes", uint64_t(0), "Agency replicated log size [bytes]")) {}
 
 /// Default dtor
 State::~State() = default;
@@ -123,16 +125,13 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  OperationResult result;
-
   try {
-    result = trx.insert("log", body.slice(), _options);
+    OperationResult result = trx.insert("log", body.slice(), _options);
+    res = trx.finish(result.result);
   } catch (std::exception const& e) {
     LOG_TOPIC("ec1ca", ERR, Logger::AGENCY) << "Failed to persist log entry:" << e.what();
     return false;
   }
-
-  res = trx.finish(result.result);
 
   LOG_TOPIC("e0321", TRACE, Logger::AGENCY)
       << "persist done index=" << index << " term=" << term
@@ -141,7 +140,7 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
   return res.ok();
 }
 
-bool State::persistconf(index_t index, term_t term, uint64_t millis,
+bool State::persistConf(index_t index, term_t term, uint64_t millis,
                         arangodb::velocypack::Slice const& entry,
                         std::string const& clientId) const {
   LOG_TOPIC("7d1c0", TRACE, Logger::AGENCY)
@@ -205,16 +204,18 @@ bool State::persistconf(index_t index, term_t term, uint64_t millis,
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  OperationResult logResult, confResult;
   try {
-    logResult = trx.insert("log", log.slice(), _options);
-    confResult = trx.replace("configuration", configuration.slice(), _options);
+    OperationResult logResult = trx.insert("log", log.slice(), _options);
+    if (logResult.fail()) {
+      THROW_ARANGO_EXCEPTION(logResult.result);
+    }
+    OperationResult confResult =
+        trx.replace("configuration", configuration.slice(), _options);
+    res = trx.finish(confResult.result);
   } catch (std::exception const& e) {
-    LOG_TOPIC("ced35", ERR, Logger::AGENCY) << "Failed to persist log entry:" << e.what();
+    LOG_TOPIC("ced35", ERR, Logger::AGENCY) << "Failed to persist log entry: " << e.what();
     return false;
   }
-
-  res = trx.finish(confResult.result);
 
   // Successful persistence affects local configuration ------------------------
   if (res.ok()) {
@@ -292,11 +293,23 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
                               term_t term, uint64_t millis, std::string const& clientId,
                               bool leading, bool reconfiguration) {
   _logLock.assertLockedByCurrentThread();
+  
+  // verbose logging for all agency operations
+  // there are two different log levels in use here for the AGENCYSTORE topic
+  // - DEBUG: will log writes only on the leader
+  // - TRACE: will log writes on both leaders and followers
+  // the default log level for the AGENCYSTORE topic is WARN
+  if (leading) {
+    LOG_TOPIC("b578f", DEBUG, Logger::AGENCYSTORE)
+        << "leader: true, client: " << clientId << ", index: " << idx << ", term: " << term
+        << ", data: " << slice.toJson();
+  } else {
+    LOG_TOPIC("f586f", TRACE, Logger::AGENCYSTORE)
+        << "leader: false, client: " << clientId << ", index: " << idx << ", term: " << term
+        << ", data: " << slice.toJson();
+  }
 
-  auto buf = std::make_shared<Buffer<uint8_t>>();
-  buf->append((char const*)slice.begin(), slice.byteSize());
-
-  bool success = reconfiguration ? persistconf(idx, term, millis, slice, clientId)
+  bool success = reconfiguration ? persistConf(idx, term, millis, slice, clientId)
     : persist(idx, term, millis, slice, clientId);
 
   if (!success) {  // log to disk or die
@@ -304,15 +317,19 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
       << "RAFT member fails to persist log entries!";
     FATAL_ERROR_EXIT();
   }
+  
+  auto byteSize = slice.byteSize();
+  auto buf = std::make_shared<Buffer<uint8_t>>(byteSize);
+  buf->append(slice.begin(), byteSize);
 
-  logEmplaceBackNoLock(log_t(idx, term, buf, clientId, millis));
+  logEmplaceBackNoLock(log_t(idx, term, std::move(buf), clientId, millis));
+  _log_size += byteSize;
 
   return _log.back().index;
 }
 
 
 void State::logEmplaceBackNoLock(log_t&& l) {
-
   if (!l.clientId.empty()) {
     try {
       _clientIdLookupTable.emplace(  // keep track of client or die
@@ -323,7 +340,7 @@ void State::logEmplaceBackNoLock(log_t&& l) {
       FATAL_ERROR_EXIT();
     }
   }
-
+  
   try {
     _log.emplace_back(std::forward<log_t>(l));  // log to RAM or die
   } catch (std::bad_alloc const&) {
@@ -331,7 +348,6 @@ void State::logEmplaceBackNoLock(log_t&& l) {
       << "RAFT member fails to allocate volatile log entries!";
     FATAL_ERROR_EXIT();
   }
-
 }
 
 /// Log transactions (follower)
@@ -536,8 +552,11 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 void State::logEraseNoLock(
   std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend) {
 
+  uint64_t delSize = 0;
+
   for (auto lit = rbegin; lit != rend; lit++) {
     std::string const& clientId = lit->clientId;
+    delSize += lit->entry->byteSize();
     if (!clientId.empty()) {
       auto ret = _clientIdLookupTable.equal_range(clientId);
       for (auto it = ret.first; it != ret.second;) {
@@ -551,6 +570,8 @@ void State::logEraseNoLock(
   }
 
   _log.erase(rbegin, rend);
+  TRI_ASSERT(delSize <= _log_size.load());
+  _log_size -= delSize;
 
 }
 
@@ -784,16 +805,13 @@ bool State::createCollection(std::string const& name) {
 bool State::ready() const { return _ready; }
 
 /// Load collections
-bool State::loadCollections(TRI_vocbase_t* vocbase,
-                            QueryRegistry* queryRegistry, bool waitForSync) {
+bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
 
   using namespace std::chrono;
   auto const epoch_millis =
     duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
   _vocbase = vocbase;
-  _queryRegistry = queryRegistry;
-
   TRI_ASSERT(_vocbase != nullptr);
 
   _options.waitForSync = waitForSync;
@@ -806,6 +824,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
       VPackSlice value = arangodb::velocypack::Slice::emptyObjectSlice();
       buf->append(value.startAs<char const>(), value.byteSize());
       _log.emplace_back(log_t(index_t(0), term_t(0), buf, std::string(), epoch_millis));
+      _log_size += value.byteSize();
       persist(0, 0, epoch_millis, value, std::string());
     }
     _ready = true;
@@ -921,6 +940,7 @@ bool State::loadCompacted() {
     try {
       _cur = StringUtils::uint64(ii.get("_key").copyString());
       _log.clear();  // will be filled in loadRemaining
+      _log_size = 0;
       _clientIdLookupTable.clear();
       // Schedule next compaction:
       _lastCompactionAt = _cur;
@@ -1008,7 +1028,6 @@ bool State::loadOrPersistConfiguration() {
     auto ctx = std::make_shared<transaction::StandaloneContext>(*_vocbase);
     SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
     Result res = trx.begin();
-    OperationResult result;
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -1022,14 +1041,13 @@ bool State::loadOrPersistConfiguration() {
     }
 
     try {
-      result = trx.insert("configuration", doc.slice(), _options);
+      OperationResult result = trx.insert("configuration", doc.slice(), _options);
+      res = trx.finish(result.result);
     } catch (std::exception const& e) {
       LOG_TOPIC("4384a", ERR, Logger::AGENCY)
           << "Failed to persist configuration entry:" << e.what();
       FATAL_ERROR_EXIT();
     }
-
-    res = trx.finish(result.result);
 
     LOG_TOPIC("c5d88", DEBUG, Logger::AGENCY)
         << "Persisted configuration: " << doc.slice().toJson();
@@ -1108,6 +1126,7 @@ bool State::loadRemaining() {
           for (index_t i = lastIndex + 1; i < index; ++i) {
             LOG_TOPIC("f95c7", WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
             _log.emplace_back(log_t(i, term, buf, std::string()));
+            _log_size += value.byteSize();
             // This has empty clientId, so we do not need to adjust
             // _clientIdLookupTable.
             lastIndex = i;
@@ -1326,9 +1345,8 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    OperationResult result;
     try {
-      result = trx.insert("compact", store.slice(), _options);
+      OperationResult result = trx.insert("compact", store.slice(), _options);
       if (!result.ok()) {
         if (result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
           LOG_TOPIC("b1b55", DEBUG, Logger::AGENCY)
@@ -1341,13 +1359,12 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
           FATAL_ERROR_EXIT();
         }
       }
+      res = trx.finish(result.result);
     } catch (std::exception const& e) {
       LOG_TOPIC("41965", FATAL, Logger::AGENCY)
         << "Failed to persist compacted agency state: " << e.what();
       FATAL_ERROR_EXIT();
     }
-
-    res = trx.finish(result.result);
 
     if (res.ok()) {
       _lastCompactionAt = cind;
@@ -1392,6 +1409,7 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
 
   // volatile logs
   _log.clear();
+  _log_size = 0;
   _clientIdLookupTable.clear();
   _cur = index;
   // This empty log should soon be rectified!

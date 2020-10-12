@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -185,8 +186,7 @@ class FakePathFinder : public ShortestPathFinder {
 };
 
 struct TestShortestPathOptions : public ShortestPathOptions {
-  TestShortestPathOptions(Query* query) :
-    ShortestPathOptions(*query) {
+  TestShortestPathOptions(Query* query) : ShortestPathOptions(*query) {
     std::unique_ptr<TraverserCache> cache = std::make_unique<TokenTranslator>(query, this);
     injectTestCache(std::move(cache));
   }
@@ -315,7 +315,7 @@ class ShortestPathExecutorTest
     auto block = buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix));
 
     // We should always only call the finder at most for all input rows
-    ASSERT_LE(pathsQueriedBetween.size(), block->size());
+    ASSERT_LE(pathsQueriedBetween.size(), block->numRows());
 
     auto blockIndex = size_t{0};
     for (auto const& input : pathsQueriedBetween) {
@@ -323,7 +323,8 @@ class ShortestPathExecutorTest
       auto target = std::string{};
 
       if (executorInfos.useRegisterForSourceInput()) {
-        AqlValue value = block->getValue(blockIndex, executorInfos.getSourceInputRegister());
+        AqlValue value =
+            block->getValue(blockIndex, executorInfos.getSourceInputRegister());
         ASSERT_TRUE(value.isString());
         source = value.slice().copyString();
       } else {
@@ -331,7 +332,8 @@ class ShortestPathExecutorTest
       }
 
       if (executorInfos.useRegisterForTargetInput()) {
-        AqlValue value = block->getValue(blockIndex, executorInfos.getTargetInputRegister());
+        AqlValue value =
+            block->getValue(blockIndex, executorInfos.getTargetInputRegister());
         ASSERT_TRUE(value.isString());
         target = value.slice().copyString();
       } else {
@@ -349,7 +351,8 @@ class ShortestPathExecutorTest
     auto pathsQueriedBetween = finder.getCalledWith();
 
     FakePathFinder& finder = static_cast<FakePathFinder&>(executorInfos.finder());
-    TokenTranslator& translator = *(static_cast<TokenTranslator*>(executorInfos.cache()));
+    TokenTranslator& translator =
+        *(static_cast<TokenTranslator*>(executorInfos.cache()));
 
     auto expectedRowsFound = std::vector<std::string>{};
     auto expectedPathStarts = std::set<size_t>{};
@@ -373,10 +376,11 @@ class ShortestPathExecutorTest
     for (auto const& block : results) {
       if (block != nullptr) {
         ASSERT_NE(block, nullptr);
-        for (size_t blockIndex = 0; blockIndex < block->size(); ++blockIndex, ++expectedRowsIndex) {
+        for (size_t blockIndex = 0; blockIndex < block->numRows(); ++blockIndex, ++expectedRowsIndex) {
           if (executorInfos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
             AqlValue value =
-                block->getValue(blockIndex, executorInfos.getOutputRegister(ShortestPathExecutorInfos::VERTEX));
+                block->getValue(blockIndex, executorInfos.getOutputRegister(
+                                                ShortestPathExecutorInfos::VERTEX));
             EXPECT_TRUE(value.isObject());
             EXPECT_TRUE(arangodb::basics::VelocyPackHelper::compare(
                             value.slice(),
@@ -386,7 +390,8 @@ class ShortestPathExecutorTest
           }
           if (executorInfos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
             AqlValue value =
-                block->getValue(blockIndex, executorInfos.getOutputRegister(ShortestPathExecutorInfos::EDGE));
+                block->getValue(blockIndex, executorInfos.getOutputRegister(
+                                                ShortestPathExecutorInfos::EDGE));
 
             if (expectedPathStarts.find(expectedRowsIndex) != expectedPathStarts.end()) {
               EXPECT_TRUE(value.isNull(false));
@@ -433,6 +438,7 @@ class ShortestPathExecutorTest
       std::tie(state, std::ignore /* stats */, skippedInitial, std::ignore) =
           testee.skipRowsRange(input, ourCall);
     }
+    ourCall.resetSkipCount();
 
     // Produce rows
     while (state == ExecutorState::HASMORE && ourCall.getLimit() > 0) {
@@ -458,6 +464,7 @@ class ShortestPathExecutorTest
       std::tie(state, std::ignore /* stats */, skippedFullCount, std::ignore) =
           testee.skipRowsRange(input, ourCall);
     }
+    ourCall.resetSkipCount();
 
     ValidateCalledWith();
     ValidateResult(outputs, skippedInitial, skippedFullCount);
@@ -537,8 +544,9 @@ auto targets = testing::Values(constTarget, regTarget, brokenTarget);
 static auto inputs = testing::Values(noneRow, oneRow, twoRows, threeRows, someRows);
 auto paths = testing::Values(noPath, onePath, threePaths, somePaths);
 auto calls =
-    testing::Values(AqlCall{}, AqlCall{0, 0u, 0u, false}, AqlCall{0, 1u, 0u, false},
-                    AqlCall{0, 0u, 1u, false}, AqlCall{0, 1u, 1u, false}, AqlCall{1, 1u, 1u},
+    testing::Values(AqlCall{}, AqlCall{0, 0u, 0u, false},
+                    AqlCall{0, 1u, 0u, false}, AqlCall{0, 0u, 1u, false},
+                    AqlCall{0, 1u, 1u, false}, AqlCall{1, 1u, 1u},
                     AqlCall{100, 1u, 1u}, AqlCall{1000}, AqlCall{0, 0u, 0u, true},
                     AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, true});
 

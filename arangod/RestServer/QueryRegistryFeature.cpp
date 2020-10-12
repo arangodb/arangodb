@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,11 +21,15 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+
 #include "QueryRegistryFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
@@ -33,6 +38,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/MetricsFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -46,19 +52,40 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
     : ApplicationFeature(server, "QueryRegistry"),
       _trackSlowQueries(true),
       _trackBindVars(true),
-      _failOnWarning(false),
+      _failOnWarning(aql::QueryOptions::defaultFailOnWarning),
       _queryCacheIncludeSystem(false),
+#ifdef USE_ENTERPRISE
       _smartJoins(true),
       _parallelizeTraversals(true),
-      _queryMemoryLimit(0),
-      _maxQueryPlans(128),
+#endif
+      _queryMemoryLimit(aql::QueryOptions::defaultMemoryLimit),
+      _queryMaxRuntime(aql::QueryOptions::defaultMaxRuntime),
+      _maxQueryPlans(aql::QueryOptions::defaultMaxNumberOfPlans),
       _queryCacheMaxResultsCount(0),
       _queryCacheMaxResultsSize(0),
       _queryCacheMaxEntrySize(0),
+      _maxParallelism(4),
       _slowQueryThreshold(10.0),
       _slowStreamingQueryThreshold(10.0),
       _queryRegistryTTL(0.0),
-      _queryCacheMode("off") {
+      _queryCacheMode("off"),
+      _queryTimes(
+        server.getFeature<arangodb::MetricsFeature>().histogram(
+          "arangodb_aql_query_time", log_scale_t(2., 0.0, 50.0, 20),
+          "Execution time histogram for all AQL queries [s]")),
+      _slowQueryTimes(
+        server.getFeature<arangodb::MetricsFeature>().histogram(
+          "arangodb_aql_slow_query_time", log_scale_t(2., 1.0, 2000.0, 10),
+          "Execution time histogram for slow AQL queries [s]")),
+      _totalQueryExecutionTime(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_aql_total_query_time_msec", 0, "Total execution time of all AQL queries [ms]")),
+      _queriesCounter(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_aql_all_query", 0, "Total number of AQL queries")),
+      _slowQueriesCounter(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_aql_slow_query", 0, "Total number of slow AQL queries")) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
@@ -78,8 +105,13 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOldOption("database.disable-query-tracking", "query.tracking");
 
   options->addOption("--query.memory-limit",
-                     "memory threshold for AQL queries (in bytes)",
+                     "memory threshold for AQL queries (in bytes, 0 = no limit)",
                      new UInt64Parameter(&_queryMemoryLimit));
+  
+  options->addOption("--query.max-runtime",
+                     "runtime threshold for AQL queries (in seconds, 0 = no limit)",
+                     new DoubleParameter(&_queryMaxRuntime))
+                     .setIntroducedIn(30607).setIntroducedIn(30703);
 
   options->addOption("--query.tracking", "whether to track slow AQL queries",
                      new BooleanParameter(&_trackSlowQueries));
@@ -136,8 +168,9 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new DoubleParameter(&_queryRegistryTTL),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   
+#ifdef USE_ENTERPRISE
   options->addOption("--query.smart-joins",
-                     "enable smart joins query optimization",
+                     "enable SmartJoins query optimization",
                      new BooleanParameter(&_smartJoins),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
                      .setIntroducedIn(30405).setIntroducedIn(30500);
@@ -147,9 +180,29 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new BooleanParameter(&_parallelizeTraversals),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
                      .setIntroducedIn(30701);
+
+  // this is an Enterprise-only option
+  // in Community Edition, _maxParallelism will stay at its default value
+  // (currently 4), but will not be used.
+  options
+      ->addOption(
+          "--query.max-parallelism",
+          "maximum number of threads to use for a single query; "
+          "actual query execution may use less depending on various factors",
+          new UInt64Parameter(&_maxParallelism),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
+                                              arangodb::options::Flags::Enterprise))
+      .setIntroducedIn(30701);
+#endif
 }
 
 void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (_queryMaxRuntime < 0.0) {
+    LOG_TOPIC("46572", FATAL, Logger::AQL)
+        << "invalid value for `--query.max-runtime`. expecting 0 or a positive value";
+    FATAL_ERROR_EXIT();
+  }
+
   if (_maxQueryPlans == 0) {
     LOG_TOPIC("4006f", FATAL, Logger::AQL)
         << "invalid value for `--query.optimizer-max-plans`. expecting at "
@@ -159,6 +212,21 @@ void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
 
   // cap the value somehow. creating this many plans really does not make sense
   _maxQueryPlans = std::min(_maxQueryPlans, decltype(_maxQueryPlans)(1024));
+  
+  _maxParallelism = std::clamp(_maxParallelism, static_cast<uint64_t>(1),
+                               static_cast<uint64_t>(NumberOfCores::getValue()));
+                               
+  if (_queryRegistryTTL <= 0) {
+    TRI_ASSERT(ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED);
+    // set to default value based on instance type
+    _queryRegistryTTL = ServerState::instance()->isSingleServer() ? 30 : 600;
+  }
+  
+  aql::QueryOptions::defaultMemoryLimit = _queryMemoryLimit;
+  aql::QueryOptions::defaultMaxNumberOfPlans = _maxQueryPlans;
+  aql::QueryOptions::defaultMaxRuntime = _queryMaxRuntime;
+  aql::QueryOptions::defaultTtl = _queryRegistryTTL;
+  aql::QueryOptions::defaultFailOnWarning = _failOnWarning;
 }
 
 void QueryRegistryFeature::prepare() {
@@ -176,12 +244,6 @@ void QueryRegistryFeature::prepare() {
                                                  _queryCacheIncludeSystem,
                                                  _trackBindVars};
   arangodb::aql::QueryCache::instance()->properties(properties);
-
-  if (_queryRegistryTTL <= 0) {
-    // set to default value based on instance type
-    _queryRegistryTTL = ServerState::instance()->isSingleServer() ? 30 : 600;
-  }
-
   // create the query registery
   _queryRegistry.reset(new aql::QueryRegistry(_queryRegistryTTL));
   QUERY_REGISTRY.store(_queryRegistry.get(), std::memory_order_release);
@@ -203,6 +265,19 @@ void QueryRegistryFeature::stop() {
 void QueryRegistryFeature::unprepare() {
   // clear the query registery
   QUERY_REGISTRY.store(nullptr, std::memory_order_release);
+}
+
+void QueryRegistryFeature::trackQuery(double time) { 
+  ++_queriesCounter; 
+  _queryTimes.count(time);
+  _totalQueryExecutionTime += static_cast<uint64_t>(1000 * time);
+}
+
+void QueryRegistryFeature::trackSlowQuery(double time) { 
+  // query is already counted here as normal query, so don't count it
+  // again in _queryTimes or _totalQueryExecutionTime
+  ++_slowQueriesCounter; 
+  _slowQueryTimes.count(time);
 }
 
 }  // namespace arangodb

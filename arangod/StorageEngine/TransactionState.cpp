@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,9 +41,9 @@
 
 using namespace arangodb;
 
+
 /// @brief transaction type
-TransactionState::TransactionState(TRI_vocbase_t& vocbase,
-                                   TRI_voc_tid_t tid,
+TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                    transaction::Options const& options)
     : _vocbase(vocbase),
       _id(tid),
@@ -69,7 +69,7 @@ TransactionState::~TransactionState() {
 }
 
 /// @brief return the collection from a transaction
-TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid,
+TransactionCollection* TransactionState::collection(DataSourceId cid,
                                                     AccessMode::Type accessType) const {
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
@@ -117,7 +117,7 @@ TransactionState::Cookie::ptr TransactionState::cookie(void const* key,
 }
 
 /// @brief add a collection to a transaction
-Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cname,
+Result TransactionState::addCollection(DataSourceId cid, std::string const& cname,
                                        AccessMode::Type accessType, bool lockUsage) {
   Result res;
 
@@ -185,9 +185,9 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
   // collection was not contained. now create and insert it
   TRI_ASSERT(trxColl == nullptr);
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  StorageEngine& engine = vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
-  trxColl = engine->createTransactionCollection(*this, cid, accessType).release();
+  trxColl = engine.createTransactionCollection(*this, cid, accessType).release();
 
   TRI_ASSERT(trxColl != nullptr);
 
@@ -206,19 +206,6 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
 
   return res;
 }
-
-/// @brief run a callback on all collections
-void TransactionState::allCollections(                     // iterate
-    std::function<bool(TransactionCollection&)> const& cb  // callback to invoke
-) {
-  for (auto& trxCollection : _collections) {
-    TRI_ASSERT(trxCollection);  // ensured by addCollection(...)
-    if (!cb(*trxCollection)) {
-      // abort early
-      return;
-    }
-  }
-}
   
 /// @brief use all participating collections of a transaction
 Result TransactionState::useCollections() {
@@ -234,7 +221,7 @@ Result TransactionState::useCollections() {
 }
 
 /// @brief find a collection in the transaction's list of collections
-TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid) const {
+TransactionCollection* TransactionState::findCollection(DataSourceId cid) const {
   for (auto* trxCollection : _collections) {
     if (cid == trxCollection->id()) {
       // found
@@ -257,7 +244,7 @@ TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid) const
 ///        defines where the collection should be inserted,
 ///        so whenever we want to insert the collection we
 ///        have to use this position for insert.
-TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid,
+TransactionCollection* TransactionState::findCollection(DataSourceId cid,
                                                         size_t& position) const {
   size_t const n = _collections.size();
   size_t i;
@@ -292,16 +279,16 @@ void TransactionState::setExclusiveAccessType() {
   _type = AccessMode::Type::EXCLUSIVE;
 }
 
-void TransactionState::acceptAnalyzersRevision(AnalyzersRevision::Revision analyzersRevision) noexcept {
+void TransactionState::acceptAnalyzersRevision(
+    QueryAnalyzerRevisions const& analyzersRevision) noexcept {
   // only init from default allowed! Or we have problem -> different analyzersRevision in one transaction
-  LOG_TOPIC_IF("9127a", FATAL, Logger::AQL, (_analyzersRevision != analyzersRevision && _analyzersRevision != AnalyzersRevision::MIN))
+  LOG_TOPIC_IF("9127a", ERR, Logger::AQL, (_analyzersRevision != analyzersRevision && !_analyzersRevision.isDefault()))
     << " Changing analyzers revision for transaction from " << _analyzersRevision << " to " << analyzersRevision;
-  TRI_ASSERT(_analyzersRevision == analyzersRevision || _analyzersRevision == AnalyzersRevision::MIN);
+  TRI_ASSERT(_analyzersRevision == analyzersRevision || _analyzersRevision.isDefault());
   _analyzersRevision = analyzersRevision;
 }
 
-Result TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
-                                                   std::string const& cname,
+Result TransactionState::checkCollectionPermission(DataSourceId cid, std::string const& cname,
                                                    AccessMode::Type accessType) {
   TRI_ASSERT(!cname.empty());
   ExecContext const& exec = ExecContext::current();

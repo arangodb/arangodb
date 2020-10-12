@@ -359,7 +359,7 @@
                         'change-replication-factor',
                         'Replication factor',
                         data.replicationFactor,
-                        'This collection is a satellite collection. The replicationFactor is not changeable.',
+                        'This collection is a SatelliteCollection. The replicationFactor is not changeable.',
                         '',
                         true
                       )
@@ -368,8 +368,8 @@
                       window.modalView.createReadOnlyEntry(
                         'change-write-concern',
                         'Write concern',
-                        data.writeConcern,
-                        'This collection is a satellite collection. The write concern is not changeable.',
+                        JSON.stringify(data.writeConcern),
+                        'This collection is a SatelliteCollection. The write concern is not changeable.',
                         '',
                         true
                       )

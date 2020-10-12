@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,6 +56,7 @@ class Query;
 }  // namespace aql
 
 namespace graph {
+class WeightedEnumerator;
 class BreadthFirstEnumerator;
 class NeighborsEnumerator;
 class TraverserCache;
@@ -115,6 +116,7 @@ class TraversalPath {
 
 class Traverser {
   friend class arangodb::graph::BreadthFirstEnumerator;
+  friend class arangodb::graph::WeightedEnumerator;
   friend class DepthFirstEnumerator;
   friend class arangodb::graph::NeighborsEnumerator;
 #ifdef USE_ENTERPRISE
@@ -139,6 +141,8 @@ class Traverser {
     virtual bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::StringRef,
                                  uint64_t, arangodb::velocypack::StringRef&);
 
+    virtual bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth);
+
     virtual void reset(arangodb::velocypack::StringRef const&);
 
    protected:
@@ -161,6 +165,8 @@ class Traverser {
 
     bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::StringRef,
                          uint64_t, arangodb::velocypack::StringRef&) override;
+
+    bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) override;
 
     void reset(arangodb::velocypack::StringRef const&) override;
 
@@ -227,6 +233,8 @@ class Traverser {
                                uint64_t depth,
                                arangodb::velocypack::StringRef& targetVertexId) = 0;
 
+  virtual bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) = 0;
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last vertex as AQLValue
@@ -269,11 +277,11 @@ class Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t getAndResetReadDocuments();
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the number of HTTP requests made
   //////////////////////////////////////////////////////////////////////////////
-  
+
   size_t getAndResetHttpRequests();
 
   TraverserOptions* options() { return _opts; }

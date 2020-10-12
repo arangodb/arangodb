@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -270,17 +271,19 @@ void ProgramOptions::walk(std::function<void(Section const&, Option const&)> con
 // checks whether a specific option exists
 // if the option does not exist, this will flag an error
 bool ProgramOptions::require(std::string const& name) {
-  auto parts = Option::splitName(name);
+  std::string const& modernized = modernize(name);
+
+  auto parts = Option::splitName(modernized);
   auto it = _sections.find(parts.first);
 
   if (it == _sections.end()) {
-    return unknownOption(name);
+    return unknownOption(modernized);
   }
 
   auto it2 = (*it).second.options.find(parts.second);
 
   if (it2 == (*it).second.options.end()) {
-    return unknownOption(name);
+    return unknownOption(modernized);
   }
 
   return true;
@@ -288,16 +291,18 @@ bool ProgramOptions::require(std::string const& name) {
 
 // sets a value for an option
 bool ProgramOptions::setValue(std::string const& name, std::string const& value) {
-  if (!_overrideOptions && _processingResult.frozen(name)) {
+  std::string const& modernized = modernize(name);
+
+  if (!_overrideOptions && _processingResult.frozen(modernized)) {
     // option already frozen. don't override it
     return true;
   }
 
-  auto parts = Option::splitName(name);
+  auto parts = Option::splitName(modernized);
   auto it = _sections.find(parts.first);
 
   if (it == _sections.end()) {
-    return unknownOption(name);
+    return unknownOption(modernized);
   }
 
   if ((*it).second.obsolete) {
@@ -308,13 +313,13 @@ bool ProgramOptions::setValue(std::string const& name, std::string const& value)
   auto it2 = (*it).second.options.find(parts.second);
 
   if (it2 == (*it).second.options.end()) {
-    return unknownOption(name);
+    return unknownOption(modernized);
   }
 
   auto& option = (*it2).second;
   if (option.hasFlag(arangodb::options::Flags::Obsolete)) {
     // option is obsolete. ignore it
-    _processingResult.touch(name);
+    _processingResult.touch(modernized);
     return true;
   }
 
@@ -336,10 +341,10 @@ bool ProgramOptions::setValue(std::string const& name, std::string const& value)
       colorStart2 = ShellColorsFeature::SHELL_COLOR_BOLD_RED;
       colorEnd = ShellColorsFeature::SHELL_COLOR_RESET;
     }
-    return fail(std::string("error setting value for option '") + colorStart2 + "--" + name + colorEnd + "': " + colorStart1 + result + colorEnd);
+    return fail(std::string("error setting value for option '") + colorStart2 + "--" + modernized + colorEnd + "': " + colorStart1 + result + colorEnd);
   }
 
-  _processingResult.touch(name);
+  _processingResult.touch(modernized);
 
   return true;
 }
@@ -354,9 +359,27 @@ void ProgramOptions::endPass() {
   }
 }
 
+std::unordered_map<std::string, std::string> ProgramOptions::modernizedOptions() const {
+  std::unordered_map<std::string, std::string> result;
+  for (auto const& name : _alreadyModernized) {
+    auto it = _oldOptions.find(name);
+    if (it != _oldOptions.end()) {
+      result.emplace(name, (*it).second);
+    }
+  }
+  return result;
+}
+  
+// sets a single old option and its replacement name
+void ProgramOptions::addOldOption(std::string const& old, std::string const& replacement) {
+  _oldOptions[Option::stripPrefix(old)] = Option::stripPrefix(replacement);
+}
+
 // check whether or not an option requires a value
-bool ProgramOptions::requiresValue(std::string const& name) const {
-  auto parts = Option::splitName(name);
+bool ProgramOptions::requiresValue(std::string const& name) {
+  std::string const& modernized = modernize(name);
+
+  auto parts = Option::splitName(modernized);
   auto it = _sections.find(parts.first);
 
   if (it == _sections.end()) {
@@ -374,7 +397,9 @@ bool ProgramOptions::requiresValue(std::string const& name) const {
 
 // returns the option by name. will throw if the option cannot be found
 Option& ProgramOptions::getOption(std::string const& name) {
-  std::string stripped = name;
+  std::string const& modernized = modernize(name);
+
+  std::string stripped = modernized;
   size_t const pos = stripped.find(',');
   if (pos != std::string::npos) {
     // remove shorthand
@@ -398,7 +423,9 @@ Option& ProgramOptions::getOption(std::string const& name) {
 
 // returns an option description
 std::string ProgramOptions::getDescription(std::string const& name) {
-  auto parts = Option::splitName(name);
+  std::string const& modernized = modernize(name);
+
+  auto parts = Option::splitName(modernized);
   auto it = _sections.find(parts.first);
 
   if (it == _sections.end()) {
@@ -448,25 +475,6 @@ bool ProgramOptions::unknownOption(std::string const& name) {
                 << "    " << getDescription(it) << std::endl;
     }
     std::cerr << std::endl;
-  }
-
-  auto it = _oldOptions.find(name);
-  if (it != _oldOptions.end()) {
-    // a now removed or renamed option was specified...
-    auto& now = (*it).second;
-    if (now.empty()) {
-      std::cerr << "Please note that the specified option '" << colorStart3 << "--"
-                << name << colorEnd << "' has been removed in this ArangoDB version";
-    } else {
-      std::cerr << "Please note that the specified option '" << colorStart3
-                << "--" << name << colorEnd << "' has been renamed to '" << colorStart3
-                << "--" << now << colorEnd << "' in this ArangoDB version";
-    }
-
-    std::cerr
-        << std::endl
-        << "Please be sure to read the manual section about changed options" << std::endl
-        << std::endl;
   }
 
   std::cerr << "Use " << colorStart3 << "--help" << colorEnd << " or "
@@ -531,6 +539,19 @@ void ProgramOptions::addOption(Option const& option) {
 
   Section& section = (*sectionIt).second;
   section.options.try_emplace(option.name, option);
+}
+ 
+// modernize an option name
+std::string const& ProgramOptions::modernize(std::string const& name) {
+  auto it = _oldOptions.find(Option::stripPrefix(name));
+  if (it == _oldOptions.end()) {
+    return name;
+  }
+
+  // note which old options have been used
+  _alreadyModernized.emplace(name);
+
+  return (*it).second;
 }
 
 // determine maximum width of all options labels

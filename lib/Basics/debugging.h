@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,12 @@
 
 #include "Basics/system-compiler.h"
 
+#ifndef TRI_ASSERT
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include "Basics/CrashHandler.h"
+#endif
+#endif
+
 /// @brief macro TRI_IF_FAILURE
 /// this macro can be used in maintainer mode to make the server fail at
 /// certain locations in the C code. The points at which a failure is actually
@@ -47,7 +53,7 @@
 
 #endif
 
-/// @brief cause a segmentation violation
+/// @brief intentionally cause a segmentation violation or other failures
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void TRI_TerminateDebugging(char const* value);
 #else
@@ -97,10 +103,6 @@ void TRI_PrintBacktrace();
 
 /// @brief logs a backtrace in log level warning
 void TRI_LogBacktrace();
-
-/// @brief flushes the logger and shuts it down
-void TRI_FlushDebugging();
-void TRI_FlushDebugging(char const* file, int line, char const* message);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container traits
@@ -221,23 +223,14 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o, T
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define TRI_ASSERT(expr)                             \
-  do {                                               \
-    if (!(ADB_LIKELY(expr))) {                       \
-      TRI_FlushDebugging(__FILE__, __LINE__, #expr); \
-      TRI_PrintBacktrace();                          \
-      std::abort();                                  \
-    }                                                \
-  } while (0)
+#define TRI_ASSERT(expr)                                                               \
+  if (!(ADB_LIKELY(expr))) {                                                           \
+    arangodb::CrashHandler::assertionFailure(__FILE__, __LINE__, __FUNCTION__, #expr); \
+  } else {}
 
 #else
 
-#define TRI_ASSERT(expr) \
-  while (0) {            \
-    (void)(expr);        \
-  }                      \
-  do {                   \
-  } while (0)
+#define TRI_ASSERT(expr) while (false) { (void)(expr); }
 
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 

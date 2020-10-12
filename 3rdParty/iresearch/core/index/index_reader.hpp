@@ -93,8 +93,7 @@ struct IRESEARCH_API index_reader {
     size_t i_;
   }; // reader_iterator
 
-  DECLARE_SHARED_PTR(const index_reader);
-  DEFINE_FACTORY_INLINE(index_reader)
+  using ptr = std::shared_ptr<const index_reader>;
 
   virtual ~index_reader() = default;
 
@@ -126,8 +125,7 @@ struct IRESEARCH_API index_reader {
 /// @brief generic interface for accessing an index segment
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API sub_reader : index_reader {
-  DECLARE_SHARED_PTR(const sub_reader);
-  DEFINE_FACTORY_INLINE(sub_reader)
+  using ptr = std::shared_ptr<const sub_reader>;
 
   static const sub_reader& empty() noexcept;
 

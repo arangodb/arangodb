@@ -53,6 +53,9 @@ const CYAN = require('internal').COLORS.COLOR_CYAN;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
+const encryptionKey = '01234567890123456789012345678901';
+const encryptionKeySha256 = "861009ec4d599fab1f40abc76e6f89880cff5833c79c548c99f9045f191cd90b";
+
 const testPaths = {
   'dump': [tu.pathForTesting('server/dump')],
   'dump_authentication': [tu.pathForTesting('server/dump')],
@@ -329,6 +332,13 @@ class DumpRestoreHelper {
       this.results.restoreHotBackup = { status: false };
       return false;
     }
+    if (!list[backupName].hasOwnProperty("keys") ||
+         list[backupName].keys[0].sha256 !== encryptionKeySha256) {
+      this.print("didn't find a backup having correct encryption keys!");
+      this.print(JSON.stringify(list));
+      this.results.restoreHotBackup = { status: false };
+      return false;
+    }
     this.print("restoring backup");
     let cmds = {
       "identifier": backupName,
@@ -514,7 +524,7 @@ function dumpAuthentication (options) {
 }
 
 function dumpEncrypted (options) {
-  // test is only meaningful in the enterprise version
+  // test is only meaningful in the Enterprise Edition
   let skip = true;
   if (global.ARANGODB_CLIENT_VERSION) {
     let version = global.ARANGODB_CLIENT_VERSION(true);
@@ -558,7 +568,7 @@ function dumpEncrypted (options) {
 }
 
 function dumpMaskings (options) {
-  // test is only meaningful in the enterprise version
+  // test is only meaningful in the Enterprise Edition
   let skip = true;
   if (global.ARANGODB_CLIENT_VERSION) {
     let version = global.ARANGODB_CLIENT_VERSION(true);
@@ -618,7 +628,22 @@ function hotBackup (options) {
   // /return dump_backend(options, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){});
   print(CYAN + which + ' tests...' + RESET);
 
-  let instanceInfo = pu.startInstance('tcp', options, {}, which);
+  let addArgs = {};
+  const useEncryption = true;
+  if (useEncryption) {
+    let keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
+    if (!fs.exists(keyDir)) {  // needed on win32
+      fs.makeDirectory(keyDir);
+    }
+    pu.cleanupDBDirectoriesAppend(keyDir);
+  
+    let keyfile = fs.join(keyDir, 'secret');
+    fs.write(keyfile, encryptionKey);
+
+    addArgs['rocksdb.encryption-keyfolder'] = keyDir;
+  }
+
+  let instanceInfo = pu.startInstance('tcp', options, addArgs, which);
 
   if (instanceInfo === false) {
     let rc =  {

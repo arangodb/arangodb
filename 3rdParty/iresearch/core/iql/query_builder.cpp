@@ -252,6 +252,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
       irs::filter::prepared::ptr result; // null-ptr result
       return result;
     }
+
    private:
     friend class parse_context;
     std::string sError;
@@ -518,7 +519,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
       error << "filter conversion error, node: @" << errorNodeId << std::endl;
       print(error, *state.pnFilter, false, true);
-      result.filter = ErrorNode::make<ErrorNode>();
+      result.filter = irs::memory::make_unique<ErrorNode>();
       result.error = &(static_cast<ErrorNode*>(result.filter.get())->sError);
       *(result.error) = error.str();
 
@@ -543,7 +544,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
           sDelim = ", ";
         }
 
-        result.filter = ErrorNode::make<ErrorNode>();
+        result.filter = irs::memory::make_unique<ErrorNode>();
         result.error = &(static_cast<ErrorNode*>(result.filter.get())->sError);
         *(result.error) = error.str();
 
@@ -581,7 +582,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
     irs::iql::query result;
 
-    result.filter = ErrorNode::make<ErrorNode>();
+    result.filter = irs::memory::make_unique<ErrorNode>();
     result.error = &(static_cast<ErrorNode*>(result.filter.get())->sError);
     *(result.error) = error.str();
 

@@ -25,6 +25,7 @@
       $(this.el).html(this.template.render({}));
       this.renderValidationEditor();
       this.getValidationProperties();
+      this.editor.focus();
     },
 
     resize: function () {
@@ -72,7 +73,7 @@
         if (error) {
           arangoHelper.arangoError('Error', 'Could not save schema.');
         } else {
-          var newprops;
+          var newprops = null;
           try {
             newprops = this.editor.get();
           } catch (ex) {
@@ -86,6 +87,7 @@
             } else {
               arangoHelper.arangoNotification('Saved schema for collection ' + this.model.get('name') + '.');
             }
+            this.editor.focus();
           });
 
         } // if error

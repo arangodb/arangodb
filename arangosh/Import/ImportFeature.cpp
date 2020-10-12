@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -192,19 +193,20 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   auto const& positionals = options->processingResult()._positionals;
   size_t n = positionals.size();
 
-  if (1 == n) {
+  if ((1 == n) && (!options->processingResult().touched("--file"))) {
     // only take positional file name attribute into account if user
     // did not specify the --file option as well
-    if (!options->processingResult().touched("--file")) {
-      _filename = positionals[0];
-    }
+    _filename = positionals[0];
   } else if (1 < n) {
     LOG_TOPIC("0dc12", FATAL, arangodb::Logger::FIXME)
         << "expecting at most one filename, got " +
                StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
+  } else if (n > 0) {
+    LOG_TOPIC("0dc13", FATAL, arangodb::Logger::FIXME)
+      << "Unused commandline arguments: " << positionals;
+    FATAL_ERROR_EXIT();
   }
-
   // _chunkSize is dynamic ... unless user explicitly sets it
   _autoChunkSize = !options->processingResult().touched("--batch-size");
 
@@ -260,6 +262,28 @@ void ImportFeature::start() {
 
   int ret = EXIT_SUCCESS;
   *_result = ret;
+
+  // filename
+  if (_filename == "") {
+    LOG_TOPIC("10531", FATAL, arangodb::Logger::FIXME) << "File name is missing.";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_filename != "-" && !FileUtils::isRegularFile(_filename)) {
+    if (!FileUtils::exists(_filename)) {
+      LOG_TOPIC("6f83e", FATAL, arangodb::Logger::FIXME)
+          << "Cannot open file '" << _filename << "'. File not found.";
+    } else if (FileUtils::isDirectory(_filename)) {
+      LOG_TOPIC("70dac", FATAL, arangodb::Logger::FIXME)
+          << "Specified file '" << _filename
+          << "' is a directory. Please use a regular file.";
+    } else {
+      LOG_TOPIC("8699d", FATAL, arangodb::Logger::FIXME)
+          << "Cannot open '" << _filename << "'. Invalid file type.";
+    }
+
+    FATAL_ERROR_EXIT();
+  }
 
   if (_typeImport == "auto") {
     std::regex re = std::regex(".*?\\.([a-zA-Z]+)(.gz|)", std::regex::ECMAScript);
@@ -439,28 +463,6 @@ void ImportFeature::start() {
   // collection name
   if (_collectionName == "") {
     LOG_TOPIC("a64ef", FATAL, arangodb::Logger::FIXME) << "Collection name is missing.";
-    FATAL_ERROR_EXIT();
-  }
-
-  // filename
-  if (_filename == "") {
-    LOG_TOPIC("10531", FATAL, arangodb::Logger::FIXME) << "File name is missing.";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_filename != "-" && !FileUtils::isRegularFile(_filename)) {
-    if (!FileUtils::exists(_filename)) {
-      LOG_TOPIC("6f83e", FATAL, arangodb::Logger::FIXME)
-          << "Cannot open file '" << _filename << "'. File not found.";
-    } else if (FileUtils::isDirectory(_filename)) {
-      LOG_TOPIC("70dac", FATAL, arangodb::Logger::FIXME)
-          << "Specified file '" << _filename
-          << "' is a directory. Please use a regular file.";
-    } else {
-      LOG_TOPIC("8699d", FATAL, arangodb::Logger::FIXME)
-          << "Cannot open '" << _filename << "'. Invalid file type.";
-    }
-
     FATAL_ERROR_EXIT();
   }
 

@@ -435,7 +435,7 @@
           );
           var sparse = (v.hasOwnProperty('sparse') ? v.sparse : 'n/a');
           var extras = [];
-          ["deduplicate", "expireAfter", "minLength"].forEach(function(k) {
+          ["deduplicate", "expireAfter", "minLength", "geoJson"].forEach(function(k) {
             if (v.hasOwnProperty(k)) {
               extras.push(k + ": " + v[k]);
             }

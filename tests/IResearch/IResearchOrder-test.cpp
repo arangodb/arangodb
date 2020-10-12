@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -219,11 +220,13 @@ class IResearchOrderTest
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   IResearchOrderTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init();
 
     // setup required application features
+    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    selector.setEngineTesting(&engine);
+    features.emplace_back(selector, false);
     features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);
@@ -255,7 +258,7 @@ class IResearchOrderTest
   ~IResearchOrderTest() {
     arangodb::aql::AqlFunctionFeature(server).unprepare();  // unset singleton instance
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {
@@ -300,7 +303,7 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
     auto scorer =
         irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
-    expected.add(false, scorer);  // SortCondition is by default ascending
+    expected.add(false, std::move(scorer));  // SortCondition is by default ascending
     assertOrderSuccess(server, query, expected);
   }
 
@@ -312,7 +315,7 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
     auto scorer =
         irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
-    expected.add(false, scorer);
+    expected.add(false, std::move(scorer));
     assertOrderSuccess(server, query, expected);
   }
 
@@ -324,7 +327,7 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
     auto scorer =
         irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
-    expected.add(true, scorer);
+    expected.add(true, std::move(scorer));
     assertOrderSuccess(server, query, expected);
   }
 
@@ -335,7 +338,7 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
     irs::order expected;
     auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ true ]");
 
-    expected.add(true, scorer);
+    expected.add(true, std::move(scorer));
     assertOrderSuccess(server, query, expected);
   }
 
@@ -347,7 +350,7 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
     auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ true ]");
     irs::order expected;
 
-    expected.add(true, scorer);
+    expected.add(true, std::move(scorer));
     
     ExpressionContextMock ctx;
     ctx.vars.emplace("withNorms",
@@ -364,7 +367,7 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
     auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ true ]");
     irs::order expected;
 
-    expected.add(true, scorer);
+    expected.add(true, std::move(scorer));
     
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{5}));
@@ -428,7 +431,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     irs::order expected;
     auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
-    expected.add(false, scorer);  // SortCondition is by default ascending
+    expected.add(false, std::move(scorer));  // SortCondition is by default ascending
     assertOrderSuccess(server, query, expected);
   }
 
@@ -439,7 +442,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     irs::order expected;
     auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
-    expected.add(false, scorer);
+    expected.add(false, std::move(scorer));
     assertOrderSuccess(server, query, expected);
   }
 
@@ -450,7 +453,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     irs::order expected;
     auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
-    expected.add(true, scorer);
+    expected.add(true, std::move(scorer));
     assertOrderSuccess(server, query, expected);
   }
 
@@ -461,7 +464,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     irs::order expected;
     auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.99 ]");
 
-    expected.add(true, scorer);
+    expected.add(true, std::move(scorer));
     assertOrderSuccess(server, query, expected);
   }
 
@@ -476,7 +479,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.99 ]");
     irs::order expected;
 
-    expected.add(true, scorer);
+    expected.add(true, std::move(scorer));
 
     assertOrderSuccess(server, query, expected, &ctx);
   }
@@ -492,7 +495,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.99 ]");
     irs::order expected;
 
-    expected.add(true, scorer);
+    expected.add(true, std::move(scorer));
 
     assertOrderSuccess(server, query, expected, &ctx);
   }
@@ -516,7 +519,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
         irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.99, 1.2 ]");
     irs::order expected;
 
-    expected.add(true, scorer);
+    expected.add(true, std::move(scorer));
 
     assertOrderSuccess(server, query, expected);
   }
@@ -534,7 +537,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
         irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.97, 1.2 ]");
     irs::order expected;
 
-    expected.add(true, scorer);
+    expected.add(true, std::move(scorer));
 
     assertOrderSuccess(server, query, expected, &ctx);
   }
@@ -552,7 +555,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
         irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.99, 1.2 ]");
     irs::order expected;
 
-    expected.add(true, scorer);
+    expected.add(true, std::move(scorer));
 
     assertOrderSuccess(server, query, expected, &ctx);
   }
@@ -576,7 +579,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     auto scorer =
         irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.99, 1.2 ]");
 
-    expected.add(true, scorer);
+    expected.add(true, std::move(scorer));
     assertOrderSuccess(server, query, expected);
   }
 
@@ -595,7 +598,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
         irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.97, 1.2 ]");
     irs::order expected;
 
-    expected.add(true, scorer);
+    expected.add(true, std::move(scorer));
 
     assertOrderSuccess(server, query, expected, &ctx);
   }
@@ -613,7 +616,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
         irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.99, 1.1 ]");
     irs::order expected;
 
-    expected.add(true, scorer);
+    expected.add(true, std::move(scorer));
 
     assertOrderSuccess(server, query, expected, &ctx);
   }
@@ -943,7 +946,7 @@ TEST_F(IResearchOrderTest, test_order) {
         irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
     expected.add<dummy_scorer>(true, irs::string_ref::NIL);
-    expected.add(false, scorer);
+    expected.add(false, std::move(scorer));
     assertOrderSuccess(server, query, expected);
   }
 

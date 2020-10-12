@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -87,8 +88,9 @@ arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(arangodb::aql::AqlIt
   // This constructor should only be used for fresh AqlItemBlocks in the
   // AqlItemBlockManager. All other places should already have a
   // SharedAqlItemBlockPtr.
-  TRI_ASSERT(aqlItemBlock->getRefCount() == 0);
-  incrRefCount();
+  TRI_ASSERT(_aqlItemBlock != nullptr);
+  TRI_ASSERT(_aqlItemBlock->getRefCount() == 0);
+  _aqlItemBlock->incrRefCount();
 }
 
 constexpr arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(std::nullptr_t) noexcept

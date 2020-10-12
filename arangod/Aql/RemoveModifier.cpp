@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,20 +24,15 @@
 #include "RemoveModifier.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/Collection.h"
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryContext.h"
 #include "Basics/Common.h"
+#include "Basics/StaticStrings.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include "Logger/LogMacros.h"
 
 class CollectionNameResolver;
 
@@ -46,9 +42,6 @@ using namespace arangodb::aql::ModificationExecutorHelpers;
 
 ModifierOperationType RemoveModifierCompletion::accumulate(ModificationExecutorAccumulator& accu,
                                                            InputAqlItemRow& row) {
-  std::string key{}, rev{};
-  Result result;
-
   RegisterId const inDocReg = _infos._input1RegisterId;
 
   // The document to be REMOVEd
@@ -57,10 +50,11 @@ ModifierOperationType RemoveModifierCompletion::accumulate(ModificationExecutorA
   if (writeRequired(_infos, inDoc.slice(), StaticStrings::Empty)) {
     CollectionNameResolver const& collectionNameResolver{_infos._query.resolver()};
 
-    result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev);
+    std::string key{}, rev{};
+    Result result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev);
     if (!result.ok()) {
       if (!_infos._ignoreErrors) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+        THROW_ARANGO_EXCEPTION(result);
       }
       return ModifierOperationType::SkipRow;
     }
@@ -69,10 +63,10 @@ ModifierOperationType RemoveModifierCompletion::accumulate(ModificationExecutorA
       rev.clear();
     }
 
-    VPackBuilder keyDocBuilder;
-    buildKeyAndRevDocument(keyDocBuilder, key, rev);
+    _keyDocBuilder.clear();
+    buildKeyAndRevDocument(_keyDocBuilder, key, rev);
     // This deletes _rev if rev is empty or ignoreRevs is set in options.
-    accu.add(keyDocBuilder.slice());
+    accu.add(_keyDocBuilder.slice());
     return ModifierOperationType::ReturnIfAvailable;
   } else {
     return ModifierOperationType::CopyRow;

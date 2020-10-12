@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +43,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -336,25 +336,74 @@ bool ServerState::setReadOnly(bool ro) {
 // ============ Instance methods =================
 
 /// @brief unregister this server with the agency
-bool ServerState::unregister() {
+bool ServerState::unregister(double timeout) {
   TRI_ASSERT(!getId().empty());
   TRI_ASSERT(AsyncAgencyCommManager::isEnabled());
 
+  std::string const agencyListKey = roleToAgencyListKey(loadRole());
   std::string const& id = getId();
   std::vector<AgencyOperation> operations;
-  const std::string agencyListKey = roleToAgencyListKey(loadRole());
-  operations.emplace_back("Plan/" + agencyListKey + "/" + id,
-                          AgencySimpleOperationType::DELETE_OP);
-  operations.emplace_back("Current/" + agencyListKey + "/" + id,
-                          AgencySimpleOperationType::DELETE_OP);
+  operations.reserve(6);
+  operations.emplace_back("Current/" + agencyListKey + "/" + id, AgencySimpleOperationType::DELETE_OP);
   operations.emplace_back("Current/ServersKnown/" + id, AgencySimpleOperationType::DELETE_OP);
+  operations.emplace_back("Current/ServersRegistered/" + id, AgencySimpleOperationType::DELETE_OP);
+  operations.emplace_back("Current/Version", AgencySimpleOperationType::INCREMENT_OP);
+  operations.emplace_back("Plan/" + agencyListKey + "/" + id, AgencySimpleOperationType::DELETE_OP);
   operations.emplace_back("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
+
+  AgencyWriteTransaction unregisterTransaction(operations);
+  AgencyComm comm(_server);
+  AgencyCommResult r = comm.sendTransactionWithFailover(unregisterTransaction, timeout);
+  return r.successful();
+}
+
+/// @brief log off this server from the agency
+bool ServerState::logoff(double timeout) {
+  TRI_ASSERT(!getId().empty());
+  TRI_ASSERT(AsyncAgencyCommManager::isEnabled());
+
+  std::string const agencyListKey = roleToAgencyListKey(loadRole());
+  std::string const& id = getId();
+  std::vector<AgencyOperation> operations;
+  operations.reserve(3);
+  operations.emplace_back("Current/" + agencyListKey + "/" + id, AgencySimpleOperationType::DELETE_OP);
+  operations.emplace_back("Current/ServersRegistered/" + id, AgencySimpleOperationType::DELETE_OP);
   operations.emplace_back("Current/Version", AgencySimpleOperationType::INCREMENT_OP);
 
   AgencyWriteTransaction unregisterTransaction(operations);
   AgencyComm comm(_server);
-  AgencyCommResult r = comm.sendTransactionWithFailover(unregisterTransaction);
-  return r.successful();
+  
+  // Try only once to unregister because maybe the agencycomm
+  // is shutting down as well...
+  int maxTries = static_cast<int>(timeout / 3.0);;
+  int tries = 0;
+  while (true) {
+    AgencyCommResult res = comm.sendTransactionWithFailover(unregisterTransaction, 3.0);
+
+    if (res.successful()) {
+      return true;
+    }
+
+    if (res.httpCode() == TRI_ERROR_HTTP_SERVICE_UNAVAILABLE || !res.connected()) {
+      LOG_TOPIC("1776b", INFO, Logger::CLUSTER)
+          << "unable to unregister server from agency, because agency is in "
+             "shutdown";
+      return false;
+    }
+
+    if (++tries < maxTries) {
+      // try again
+      LOG_TOPIC("c7af5", WARN, Logger::CLUSTER)
+          << "unable to unregister server from agency "
+          << "(attempt " << tries << " of " << maxTries << "): " << res.errorMessage();
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    } else {
+      // give up
+      LOG_TOPIC("c8fc4", ERR, Logger::CLUSTER)
+          << "giving up unregistering server from agency: " << res.errorMessage();
+      return false;
+    }
+  }
 }
 
 ResultT<uint64_t> ServerState::readRebootIdFromAgency(AgencyComm& comm) {
@@ -563,7 +612,7 @@ std::string ServerState::getPersistedId() {
 
 /// @brief check equality of engines with other registered servers
 bool ServerState::checkEngineEquality(AgencyComm& comm) {
-  std::string engineName = EngineSelectorFeature::engineName();
+  std::string engineName = _server.getFeature<EngineSelectorFeature>().engineName();
 
   AgencyCommResult result = comm.getValues(currentServersRegisteredPref);
   if (result.successful()) {  // no error if we cannot reach agency directly
@@ -773,7 +822,8 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
       builder.add("host", VPackValue(getHost()));
       builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
       builder.add("versionString", VPackValue(rest::Version::getServerVersion()));
-      builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
+      builder.add("engine",
+                  VPackValue(_server.getFeature<EngineSelectorFeature>().engineName()));
       builder.add("timestamp",
                   VPackValue(timepointToString(std::chrono::system_clock::now())));
     }

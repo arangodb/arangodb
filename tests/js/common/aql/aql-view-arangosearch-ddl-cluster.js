@@ -1258,16 +1258,16 @@ function IResearchFeatureDDLTestSuite () {
       assertNotEqual(null, db._collection("_analyzers"));
       try { db._dropDatabase(dbName); } catch (e) {}
       try { analyzers.remove(analyzerName); } catch (e) {}
-      assertEqual(0, db._analyzers.count());
       db._createDatabase(dbName);
       db._useDatabase(dbName);
+      assertEqual(0, db._analyzers.count());
       analyzers.save(analyzerName, "identity");
       // recreating database
       db._useDatabase("_system");
       db._dropDatabase(dbName);
       db._createDatabase(dbName);
       db._useDatabase(dbName);
-
+      assertEqual(0, db._analyzers.count());
       assertNull(analyzers.analyzer(analyzerName));
       // this should be no name conflict
       analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
@@ -1281,7 +1281,6 @@ function IResearchFeatureDDLTestSuite () {
           }
         }
       });
-
       var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
       assertEqual(1, db._analyzers.count());
       assertEqual(1, res.length);

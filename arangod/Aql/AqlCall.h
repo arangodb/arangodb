@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,8 +26,8 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Basics/Common.h"
+#include "Basics/ResultT.h"
 #include "Basics/overload.h"
-#include "Cluster/ResultT.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -51,6 +52,31 @@ struct AqlCall {
   //      but it's probably not worth implementing that in terms of data structures.
   class Infinity {};
   using Limit = std::variant<std::size_t, Infinity>;
+
+  /**
+   * @brief We need to implement this wrappter class only for a MSVC compiler insufficency:
+   * For some reason (see bug-report here: https://developercommunity.visualstudio.com/content/problem/1031281/improper-c4244-warning-in-variant-code.html)
+   * the MSVC compiler decides on every operator<< usage if this implementation could be used.
+   * This causes every operator<<(numberType) to test this implementation (and discard it afterwards), however if the
+   * Number type is too large, this will result in a valid compilation unit, emitting this warning (possible dataloss e.g. double -> size_t), which is neither used
+   * nor compiled, but the error is reported.
+   * As we disallow any warnings in the build this will stop compilation here.
+   *
+   * Remove this as soon as the MSVC compiler is fixed.
+   * 
+   * So this wrapper class will be wrapped arround every limit to print now.
+   */
+
+  struct LimitPrinter {
+    explicit LimitPrinter(Limit const& limit) : _limit(limit) {}
+    ~LimitPrinter() = default;
+
+    // Never allow any kind of copying
+    LimitPrinter(LimitPrinter const& other) = delete;
+    LimitPrinter(LimitPrinter&& other) = delete;
+
+    Limit _limit;
+  };
 
   AqlCall() = default;
   // Replacements for struct initialization
@@ -77,22 +103,12 @@ struct AqlCall {
 
   // TODO Remove me, this will not be necessary later
   static AqlCall SimulateSkipSome(std::size_t toSkip) {
-    AqlCall call;
-    call.offset = toSkip;
-    call.softLimit = 0u;
-    call.hardLimit = AqlCall::Infinity{};
-    call.fullCount = false;
-    return call;
+    return AqlCall{/*offset*/ toSkip, /*softLimit*/ 0u, /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false};
   }
 
   // TODO Remove me, this will not be necessary later
   static AqlCall SimulateGetSome(std::size_t atMost) {
-    AqlCall call;
-    call.offset = 0;
-    call.softLimit = atMost;
-    call.hardLimit = AqlCall::Infinity{};
-    call.fullCount = false;
-    return call;
+    return AqlCall{/*offset*/ 0, /*softLimit*/ atMost, /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false};
   }
 
   // TODO Remove me, this will not be necessary later
@@ -182,6 +198,8 @@ struct AqlCall {
     std::visit(minus, hardLimit);
   }
 
+  void resetSkipCount() noexcept;
+
   bool hasLimit() const { return hasHardLimit() || hasSoftLimit(); }
 
   bool hasHardLimit() const {
@@ -219,18 +237,37 @@ constexpr bool operator<(AqlCall::Limit const& a, size_t b) {
   return std::get<size_t>(a) < b;
 }
 
-constexpr bool operator<(size_t a, AqlCall::Limit const& b) { return !(b < a); }
+constexpr bool operator<(size_t a, AqlCall::Limit const& b) {
+  if (std::holds_alternative<AqlCall::Infinity>(b)) {
+    return true;
+  }
+  return a < std::get<size_t>(b);
+}
+
+constexpr bool operator>(size_t a, AqlCall::Limit const& b) {
+  return b < a;
+}
+
+constexpr bool operator>(AqlCall::Limit const& a, size_t b) {
+  return b < a;
+}
 
 constexpr AqlCall::Limit operator+(AqlCall::Limit const& a, size_t n) {
-  return std::visit(overload{[n](size_t const& i) -> AqlCall::Limit {
-                               return i + n;
-                             },
-                             [](auto inf) -> AqlCall::Limit { return inf; }},
-                    a);
+  return std::visit(
+      overload{[n](size_t const& i) -> AqlCall::Limit { return i + n; },
+               [](AqlCall::Infinity inf) -> AqlCall::Limit { return inf; }},
+      a);
 }
 
 constexpr AqlCall::Limit operator+(size_t n, AqlCall::Limit const& a) {
   return a + n;
+}
+
+constexpr AqlCall::Limit operator+(AqlCall::Limit const& a, AqlCall::Limit const& b) {
+  return std::visit(
+      overload{[&a](size_t const& b_) -> AqlCall::Limit { return a + b_; },
+               [](AqlCall::Infinity inf) -> AqlCall::Limit { return inf; }},
+      a);
 }
 
 constexpr bool operator==(AqlCall::Limit const& a, size_t n) {
@@ -265,7 +302,7 @@ constexpr bool operator==(AqlCall const& left, AqlCall const& right) {
          left.skippedRows == right.skippedRows;
 }
 
-auto operator<<(std::ostream& out, const arangodb::aql::AqlCall::Limit& limit)
+auto operator<<(std::ostream& out, const arangodb::aql::AqlCall::LimitPrinter& limit)
     -> std::ostream&;
 
 auto operator<<(std::ostream& out, const arangodb::aql::AqlCall& call) -> std::ostream&;

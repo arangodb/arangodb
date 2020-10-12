@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -120,6 +120,87 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   /// while scanning the index
   bool hasCovering() const override { return true; }
 
+  // calls cb(documentId)
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
+    return nextImplementation([&cb](LocalDocumentId docId,
+                                    VPackSlice /*fromTo*/) {
+      cb(docId);
+    }, limit);
+  }
+
+  // calls cb(documentId, [_from, _to]) or cb(documentId, [_to, _from])
+  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
+    transaction::BuilderLeaser coveringBuilder(_trx);
+    return nextImplementation([&](LocalDocumentId docId,
+                                  VPackSlice fromTo) {
+      TRI_ASSERT(_lastKey.isString());
+      TRI_ASSERT(fromTo.isString());
+      coveringBuilder->clear();
+      coveringBuilder->openArray(/*unindexed*/true);
+      coveringBuilder->add(_lastKey);
+      coveringBuilder->add(fromTo);
+      coveringBuilder->close();
+      cb(docId, coveringBuilder->slice());
+    }, limit);
+  }
+
+  // calls cb(documentId, _from) or (documentId, _to)
+  bool nextExtraImpl(ExtraCallback const& cb, size_t limit) override {
+    return nextImplementation([&cb](LocalDocumentId docId,
+                                    VPackSlice fromTo) {
+      cb(docId, fromTo);
+    }, limit);
+  }
+
+  void resetImpl() override {
+    resetInplaceMemory();
+    _keysIterator.reset();
+    _lastKey = VPackSlice::nullSlice();
+    _builderIterator = VPackArrayIterator(VPackArrayIterator::Empty{});
+  }
+
+  /// @brief index supports rearming
+  bool canRearm() const override { return true; }
+
+  /// @brief rearm the index iterator
+  bool rearmImpl(arangodb::aql::AstNode const* node, arangodb::aql::Variable const* variable,
+                 IndexIteratorOptions const& opts) override {
+    TRI_ASSERT(!_index->isSorted() || opts.sorted);
+
+    TRI_ASSERT(node != nullptr);
+    TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
+    TRI_ASSERT(node->numMembers() == 1);
+    AttributeAccessParts aap(node->getMember(0), variable);
+
+    TRI_ASSERT(aap.attribute->stringEquals(_index->_directionAttr));
+
+    _keys->clear();
+    TRI_ASSERT(_keys->isEmpty());
+
+    if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      // a.b == value
+      _index->fillLookupValue(*_keys, aap.value);
+      _keysIterator = VPackArrayIterator(_keys->slice());
+      reset();
+      return true;
+    }
+
+    if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN && aap.value->isArray()) {
+      // a.b IN values
+      _index->fillInLookupValues(_trx, *_keys, aap.value);
+      _keysIterator = VPackArrayIterator(_keys->slice());
+      reset();
+      return true;
+    }
+
+    // a.b IN non-array or operator type unsupported
+    return false;
+  }
+
+ private:
+
+  void resetInplaceMemory() { _builder.clear(); }
+  
   /// internal retrieval loop
   template <typename F>
   inline bool nextImplementation(F&& cb, size_t limit) {
@@ -223,89 +304,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     return _builderIterator.valid() || _keysIterator.valid();
   }
 
-  // calls cb(documentId)
-  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
-    return nextImplementation([&cb](LocalDocumentId docId,
-                                    VPackSlice /*fromTo*/) {
-      cb(docId);
-    }, limit);
-  }
-
-  // calls cb(documentId, [_from, _to]) or cb(documentId, [_to, _from])
-  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
-    transaction::BuilderLeaser coveringBuilder(_trx);
-    return nextImplementation([&](LocalDocumentId docId,
-                                  VPackSlice fromTo) {
-      TRI_ASSERT(_lastKey.isString());
-      TRI_ASSERT(fromTo.isString());
-      coveringBuilder->clear();
-      coveringBuilder->openArray(/*unindexed*/true);
-      coveringBuilder->add(_lastKey);
-      coveringBuilder->add(fromTo);
-      coveringBuilder->close();
-      cb(docId, coveringBuilder->slice());
-    }, limit);
-  }
-
-  // calls cb(documentId, _from) or (documentId, _to)
-  bool nextExtraImpl(ExtraCallback const& cb, size_t limit) override {
-    return nextImplementation([&cb](LocalDocumentId docId,
-                                    VPackSlice fromTo) {
-      cb(docId, fromTo);
-    }, limit);
-  }
-
-  void resetImpl() override {
-    resetInplaceMemory();
-    _keysIterator.reset();
-    _lastKey = VPackSlice::nullSlice();
-    _builderIterator = VPackArrayIterator(VPackArrayIterator::Empty{});
-  }
-
-  /// @brief index supports rearming
-  bool canRearm() const override { return true; }
-
-  /// @brief rearm the index iterator
-  bool rearmImpl(arangodb::aql::AstNode const* node, arangodb::aql::Variable const* variable,
-                 IndexIteratorOptions const& opts) override {
-    TRI_ASSERT(!_index->isSorted() || opts.sorted);
-
-    TRI_ASSERT(node != nullptr);
-    TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-    TRI_ASSERT(node->numMembers() == 1);
-    AttributeAccessParts aap(node->getMember(0), variable);
-
-    TRI_ASSERT(aap.attribute->stringEquals(_index->_directionAttr));
-
-    _keys->clear();
-    TRI_ASSERT(_keys->isEmpty());
-
-    if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-      // a.b == value
-      _index->fillLookupValue(*_keys, aap.value);
-      _keysIterator = VPackArrayIterator(_keys->slice());
-      reset();
-      return true;
-    }
-
-    if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN && aap.value->isArray()) {
-      // a.b IN values
-      _index->fillInLookupValues(_trx, *_keys, aap.value);
-      _keysIterator = VPackArrayIterator(_keys->slice());
-      reset();
-      return true;
-    }
-
-    // a.b IN non-array or operator type unsupported
-    return false;
-  }
-
- private:
-
-  void resetInplaceMemory() { _builder.clear(); }
-
   void lookupInRocksDB(VPackStringRef fromTo) {
-    // Bad case read from RocksDB
+    // Bad (slow) case: read from RocksDB
     
     auto* mthds = RocksDBTransactionState::toMethods(_trx);
     // intentional copy of the options
@@ -429,8 +429,12 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& col
                    std::vector<std::vector<AttributeName>>({{AttributeName(attr, false)}}),
                    false, false, RocksDBColumnFamily::edge(),
                    basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
-                   basics::VelocyPackHelper::stringUInt64(info, StaticStrings::TempObjectId),
-                   !ServerState::instance()->isCoordinator() && static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->useEdgeCache() /*useCache*/),
+                   !ServerState::instance()->isCoordinator() &&
+                       collection.vocbase()
+                           .server()
+                           .getFeature<EngineSelectorFeature>()
+                           .engine<RocksDBEngine>()
+                           .useEdgeCache() /*useCache*/),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
       _estimator(nullptr),
@@ -480,7 +484,7 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
 
 Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                 LocalDocumentId const& documentId,
-                                velocypack::Slice const& doc, OperationOptions& options) {
+                                velocypack::Slice const doc, OperationOptions& options) {
   Result res;
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
@@ -497,7 +501,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   RocksDBValue value = RocksDBValue::EdgeIndexValue(VPackStringRef(toFrom));
 
   // always invalidate cache entry for all edges with same _from / _to
-  blackListKey(fromToRef);
+  invalidateCacheEntry(fromToRef);
 
   // acquire rocksdb transaction
   rocksdb::Status s = mthd->PutUntracked(_cf, key.ref(), value.string());
@@ -516,7 +520,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 
 Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                 LocalDocumentId const& documentId,
-                                velocypack::Slice const& doc, Index::OperationMode mode) {
+                                velocypack::Slice const doc) {
   Result res;
 
   // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
@@ -533,7 +537,7 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
       RocksDBValue::EdgeIndexValue(arangodb::velocypack::StringRef(toFrom));
 
   // always invalidate cache entry for all edges with same _from / _to
-  blackListKey(fromToRef);
+  invalidateCacheEntry(fromToRef);
 
   rocksdb::Status s = mthd->Delete(_cf, key.ref());
   if (s.ok()) {
@@ -651,7 +655,9 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   ro.verify_checksums = false;
   ro.fill_cache = EdgeIndexFillBlockCache;
 
-  std::unique_ptr<rocksdb::Iterator> it(rocksutils::globalRocksDB()->NewIterator(ro, _cf));
+  auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  std::unique_ptr<rocksdb::Iterator> it(engine.db()->NewIterator(ro, _cf));
   // get the first and last actual key
   it->Seek(bounds.start());
   if (!it->Valid()) {
@@ -721,8 +727,9 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
   options.total_order_seek = true;  // otherwise full-index-scan does not work
   options.verify_checksums = false;
   options.fill_cache = EdgeIndexFillBlockCache;
-  std::unique_ptr<rocksdb::Iterator> it(
-      rocksutils::globalRocksDB()->NewIterator(options, _cf));
+  auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  std::unique_ptr<rocksdb::Iterator> it(engine.db()->NewIterator(options, _cf));
 
   ManagedDocumentResult mdr;
 
@@ -920,10 +927,11 @@ void RocksDBEdgeIndex::handleValNode(VPackBuilder* keys,
   }
 }
 
-void RocksDBEdgeIndex::afterTruncate(TRI_voc_tick_t tick) {
+void RocksDBEdgeIndex::afterTruncate(TRI_voc_tick_t tick,
+                                     arangodb::transaction::Methods* trx) {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->bufferTruncate(tick);
-  RocksDBIndex::afterTruncate(tick);
+  RocksDBIndex::afterTruncate(tick, trx);
 }
 
 RocksDBCuckooIndexEstimator<uint64_t>* RocksDBEdgeIndex::estimator() {
@@ -939,7 +947,9 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
 
   auto bounds = RocksDBKeyBounds::EdgeIndex(objectId());

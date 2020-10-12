@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,7 @@
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 #ifdef USE_ENTERPRISE
@@ -146,9 +147,9 @@ class RocksDBEngine final : public StorageEngine {
 
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(
-      TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) override;
+      TRI_vocbase_t& vocbase, TransactionId, transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
-      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) override;
+      TransactionState& state, DataSourceId cid, AccessMode::Type accessType) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
@@ -162,7 +163,7 @@ class RocksDBEngine final : public StorageEngine {
 
   void getDatabases(arangodb::velocypack::Builder& result) override;
 
-  void getCollectionInfo(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+  void getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
                          arangodb::velocypack::Builder& result,
                          bool includeIndexes, TRI_voc_tick_t maxTick) override;
 
@@ -205,7 +206,16 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief return a list of the currently open WAL files
   std::vector<std::string> currentWalFiles() const override;
 
-  Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) override;
+  /// @brief flushes the RocksDB WAL. 
+  /// the optional parameter "waitForSync" is currently only used when the
+  /// "waitForCollector" parameter is also set to true. If "waitForCollector"
+  /// is true, all the RocksDB column family memtables are flushed, and, if
+  /// "waitForSync" is set, additionally synced to disk. The only call site
+  /// that uses "waitForCollector" currently is hot backup.
+  /// The function parameter name are a remainder from MMFiles times, when
+  /// they made more sense. This can be refactored at any point, so that
+  /// flushing column families becomes a separate API.
+  Result flushWal(bool waitForSync, bool waitForCollector) override;
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& info,
@@ -246,10 +256,12 @@ class RocksDBEngine final : public StorageEngine {
   arangodb::Result changeView(TRI_vocbase_t& vocbase,
                               arangodb::LogicalView const& view, bool doSync) override;
 
-  arangodb::Result createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
+  arangodb::Result createView(TRI_vocbase_t& vocbase, DataSourceId id,
                               arangodb::LogicalView const& view) override;
 
   arangodb::Result dropView(TRI_vocbase_t const& vocbase, LogicalView const& view) override;
+  
+  arangodb::Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
 
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
@@ -267,18 +279,18 @@ class RocksDBEngine final : public StorageEngine {
 
   Result writeDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice,
                              RocksDBLogValue&& logValue);
-  int writeCreateCollectionMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
+  int writeCreateCollectionMarker(TRI_voc_tick_t databaseId, DataSourceId id,
                                   velocypack::Slice const& slice,
                                   RocksDBLogValue&& logValue);
 
-  void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
-  std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> collectionMappings() const;
-  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t, TRI_voc_cid_t, IndexId);
+  void addCollectionMapping(uint64_t, TRI_voc_tick_t, DataSourceId);
+  std::vector<std::pair<TRI_voc_tick_t, DataSourceId>> collectionMappings() const;
+  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t, DataSourceId, IndexId);
   void removeIndexMapping(uint64_t);
 
   // Identifies a collection
-  typedef std::pair<TRI_voc_tick_t, TRI_voc_cid_t> CollectionPair;
-  typedef std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, IndexId> IndexTriple;
+  typedef std::pair<TRI_voc_tick_t, DataSourceId> CollectionPair;
+  typedef std::tuple<TRI_voc_tick_t, DataSourceId, IndexId> IndexTriple;
   CollectionPair mapObjectToCollection(uint64_t) const;
   IndexTriple mapObjectToIndex(uint64_t) const;
 
@@ -314,12 +326,14 @@ class RocksDBEngine final : public StorageEngine {
   void prepareEnterprise();
   void configureEnterpriseRocksDBOptions(rocksdb::Options& options, bool createdEngineDir);
   void validateJournalFiles() const;
-  
-  Result readUserEncryptionKeys(std::map<std::string, std::string>& outlist) const;
+ 
+  Result readUserEncryptionSecrets(std::vector<enterprise::EncryptionSecret>& outlist) const;
 
   enterprise::RocksDBEngineEEData _eeData;
 
  public:
+  bool encryptionKeyRotationEnabled() const;
+
   bool isEncryptionEnabled() const;
   
   std::string const& getEncryptionKey();
@@ -328,10 +342,15 @@ class RocksDBEngine final : public StorageEngine {
   
   std::string getKeyStoreFolder() const;
   
-  std::vector<std::string> userEncryptionKeys() const;
+  std::vector<enterprise::EncryptionSecret> userEncryptionSecrets() const;
   
   /// rotate user-provided keys, writes out the internal key files
   Result rotateUserEncryptionKeys();
+  
+  /// load encryption at rest key from specified keystore
+  Result decryptInternalKeystore(std::string const& keystorePath,
+                                 std::vector<enterprise::EncryptionSecret>& userKeys,
+                                 std::string& encryptionKey) const;
   
  private:
   /// load encryption at rest key from keystore
@@ -447,6 +466,10 @@ class RocksDBEngine final : public StorageEngine {
   // WAL sync interval, specified in milliseconds by end user, but uses
   // microseconds internally
   uint64_t _syncInterval;
+  
+  // WAL sync delay threshold. Any WAL disk sync longer ago than this value
+  // will trigger a warning (in milliseconds)
+  uint64_t _syncDelayThreshold;
 
   // use write-throttling
   bool _useThrottle;
@@ -471,6 +494,9 @@ class RocksDBEngine final : public StorageEngine {
 
   arangodb::basics::ReadWriteLock _purgeLock;
 };
+
+static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";
+static constexpr const char* kEncryptionKeystoreFolder = "ENCRYPTION-KEYS";
 
 }  // namespace arangodb
 

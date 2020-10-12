@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -68,35 +69,34 @@ ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
   // expression.
   CollectionNameResolver const& collectionNameResolver{_infos._query.resolver()};
 
-  Result result;
   auto key = std::string{};
   auto rev = std::string{};
 
   AqlValue const& keyDoc = hasKeyVariable ? row.getValue(keyReg) : inDoc;
-  result = getKeyAndRevision(collectionNameResolver, keyDoc, key, rev);
+  Result result = getKeyAndRevision(collectionNameResolver, keyDoc, key, rev);
 
   if (!result.ok()) {
     // error happened extracting key, record in operations map
     if (!_infos._ignoreErrors) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+      THROW_ARANGO_EXCEPTION(result);
     }
     return ModifierOperationType::SkipRow;
   }
 
   if (writeRequired(_infos, inDoc.slice(), key)) {
     if (hasKeyVariable) {
-      VPackBuilder keyDocBuilder;
+      _keyDocBuilder.clear();
 
       if (_infos._options.ignoreRevs) {
         rev.clear();
       }
 
-      buildKeyAndRevDocument(keyDocBuilder, key, rev);
+      buildKeyAndRevDocument(_keyDocBuilder, key, rev);
 
       // This deletes _rev if rev is empty or ignoreRevs is set in
       // options.
       auto merger =
-          VPackCollection::merge(inDoc.slice(), keyDocBuilder.slice(), false, true);
+          VPackCollection::merge(inDoc.slice(), _keyDocBuilder.slice(), false, true);
       accu.add(merger.slice());
     } else {
       accu.add(inDoc.slice());

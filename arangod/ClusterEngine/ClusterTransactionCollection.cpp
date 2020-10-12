@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -37,7 +38,7 @@
 using namespace arangodb;
 
 ClusterTransactionCollection::ClusterTransactionCollection(TransactionState* trx,
-                                                           TRI_voc_cid_t cid,
+                                                           DataSourceId cid,
                                                            AccessMode::Type accessType)
     : TransactionCollection(trx, cid, accessType) {}
 
@@ -45,7 +46,7 @@ ClusterTransactionCollection::~ClusterTransactionCollection() = default;
 
 /// @brief whether or not any write operations for the collection happened
 bool ClusterTransactionCollection::hasOperations() const {
-  return false;  //(_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
+  return false;  
 }
 
 bool ClusterTransactionCollection::canAccess(AccessMode::Type accessType) const {
@@ -69,8 +70,8 @@ Result ClusterTransactionCollection::lockUsage() {
     ClusterInfo& ci =
         _transaction->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
-    _collection =
-        ci.getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
+    _collection = ci.getCollectionNT(_transaction->vocbase().name(),
+                                     std::to_string(_cid.id()));
     if (_collection == nullptr) {
       return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
     }

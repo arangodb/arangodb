@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -81,7 +81,7 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   VPackBuilder builder;
-  TRI_V8ToVPackSimple(isolate, builder, args[0]);
+  TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
   VPackBuilder output;
   auto res = methods::Indexes::ensureIndex(collection, builder.slice(), create, output);
@@ -144,7 +144,7 @@ static void JS_DropIndexVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& ar
   }
 
   VPackBuilder builder;
-  TRI_V8ToVPackSimple(isolate, builder, args[0]);
+  TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
   auto res = methods::Indexes::drop(collection, builder.slice());
 
@@ -239,12 +239,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     if (!args[1]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
     }
-    int res =
-        TRI_V8ToVPack(isolate, properties,
-                      args[1]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()), false);
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
+    TRI_V8ToVPack(isolate, properties,
+                  args[1]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()), false);
     propSlice = properties.slice();
   }
 
@@ -271,15 +267,16 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   v8::Handle<v8::Value> result;
   std::shared_ptr<LogicalCollection> coll;
-  auto res = methods::Collections::create(
-      vocbase,                        // collection vocbase
-      name,                           // collection name
-      collectionType,                 // collection type
-      propSlice,                      // collection properties
-      createWaitsForSyncReplication,  // replication wait flag
-      enforceReplicationFactor,
-      false,  // is new Database?, here always false
-      coll);
+  OperationOptions options(ExecContext::current());
+  auto res = methods::Collections::create(vocbase,  // collection vocbase
+                                          options,
+                                          name,            // collection name
+                                          collectionType,  // collection type
+                                          propSlice,  // collection properties
+                                          createWaitsForSyncReplication,  // replication wait flag
+                                          enforceReplicationFactor,
+                                          false,  // is new Database?, here always false
+                                          coll);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

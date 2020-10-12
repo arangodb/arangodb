@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Implementation of Traversal Execution Node
-///
-/// @file arangod/Aql/TraversalNode.cpp
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -71,7 +68,7 @@ TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(Trav
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn, arangodb::velocypack::Slice const& condition)
-    : EdgeConditionBuilder(new AstNode(tn->_plan->getAst(), condition)), _tn(tn) {}
+    : EdgeConditionBuilder(tn->_plan->getAst()->createNode(condition)), _tn(tn) {}
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn, TraversalEdgeConditionBuilder const* other)
@@ -228,22 +225,22 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 
   // Filter Condition Parts
   TRI_ASSERT(base.hasKey("fromCondition"));
-  _fromCondition = new AstNode(plan->getAst(), base.get("fromCondition"));
+  _fromCondition = plan->getAst()->createNode(base.get("fromCondition"));
 
   TRI_ASSERT(base.hasKey("toCondition"));
-  _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
+  _toCondition = plan->getAst()->createNode(base.get("toCondition"));
 
   list = base.get("globalEdgeConditions");
   if (list.isArray()) {
     for (auto const& cond : VPackArrayIterator(list)) {
-      _globalEdgeConditions.emplace_back(new AstNode(plan->getAst(), cond));
+      _globalEdgeConditions.emplace_back(plan->getAst()->createNode(cond));
     }
   }
 
   list = base.get("globalVertexConditions");
   if (list.isArray()) {
     for (auto const& cond : VPackArrayIterator(list)) {
-      _globalVertexConditions.emplace_back(new AstNode(plan->getAst(), cond));
+      _globalVertexConditions.emplace_back(plan->getAst()->createNode(cond));
     }
   }
 
@@ -252,7 +249,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
     for (auto const& cond : VPackObjectIterator(list)) {
       std::string key = cond.key.copyString();
       _vertexConditions.try_emplace(StringUtils::uint64(key),
-                                    new AstNode(plan->getAst(), cond.value));
+                                    plan->getAst()->createNode(cond.value));
     }
   }
 
@@ -579,7 +576,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c = std::make_unique<TraversalNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
                                            _inVariable, _vertexId, _defaultDirection,
                                            _directions, std::move(tmp), _graphObj);
-  
+
   traversalCloneHelper(*plan, *c, withProperties);
 
   if (_optionsBuilt) {
@@ -699,16 +696,22 @@ void TraversalNode::prepareOptions() {
     }
   }
 
+
   TraverserOptions* opts = this->TraversalNode::options();
   TRI_ASSERT(opts != nullptr);
+  /*
+   * HACK: DO NOT use other indexes for smart BFS. Otherwise this will produce
+   * wrong results.
+   */
+  bool onlyEdgeIndexes = this->isSmart() && opts->isUseBreadthFirst();
   for (auto& it : _edgeConditions) {
     uint64_t depth = it.first;
     // We probably have to adopt minDepth. We cannot fulfill a condition of
     // larger depth anyway
     auto& builder = it.second;
 
-    for (auto& it : _globalEdgeConditions) {
-      builder->addConditionPart(it);
+    for (auto& it2 : _globalEdgeConditions) {
+      builder->addConditionPart(it2);
     }
 
     for (size_t i = 0; i < numEdgeColls; ++i) {
@@ -718,11 +721,11 @@ void TraversalNode::prepareOptions() {
       switch (dir) {
         case TRI_EDGE_IN:
           opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(), StaticStrings::ToString,
-                                   builder->getInboundCondition()->clone(ast), depth);
+                                   builder->getInboundCondition()->clone(ast), depth, onlyEdgeIndexes);
           break;
         case TRI_EDGE_OUT:
           opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(), StaticStrings::FromString,
-                                   builder->getOutboundCondition()->clone(ast), depth);
+                                   builder->getOutboundCondition()->clone(ast), depth, onlyEdgeIndexes);
           break;
         case TRI_EDGE_ANY:
           TRI_ASSERT(false);

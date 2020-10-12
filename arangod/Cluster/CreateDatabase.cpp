@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,6 +34,7 @@
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/Methods/Databases.h"
 
 using namespace arangodb;
@@ -72,7 +73,8 @@ bool CreateDatabase::first() {
 
     // Assertion in constructor makes sure that we have DATABASE.
     auto& server = _feature.server();
-    _result = Databases::create(server, _description.get(DATABASE), users, properties());
+    _result = Databases::create(server, ExecContext::current(),
+                                _description.get(DATABASE), users, properties());
     if (!_result.ok() && _result.errorNumber() != TRI_ERROR_ARANGO_DUPLICATE_NAME) {
       LOG_TOPIC("5fb67", ERR, Logger::MAINTENANCE)
           << "CreateDatabase: failed to create database " << database << ": " << _result;
@@ -90,7 +92,5 @@ bool CreateDatabase::first() {
     _feature.storeDBError(database, _result);
   }
 
-  // notify always, either error or success
-  notify();
   return false;
 }

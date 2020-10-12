@@ -33,8 +33,7 @@ window.ArangoDocument = Backbone.Collection.extend({
   },
 
   addDocument: function (collectionID, key, body) {
-    var self = this;
-    self.createTypeDocument(collectionID, key, body);
+    this.createTypeDocument(collectionID, key, body);
   },
 
   createTypeEdge: function (collectionID, from, to, key, body, callback) {
@@ -48,7 +47,7 @@ window.ArangoDocument = Backbone.Collection.extend({
       body._to = to;
       newEdge = JSON.stringify(body);
     }
-    catch(x) {
+    catch (x) {
       body = {};
       return this.createTypeEdge(collectionID, from, to, key, body, callback);
     }
@@ -61,7 +60,7 @@ window.ArangoDocument = Backbone.Collection.extend({
       contentType: 'application/json',
       processData: false,
       success: function (data) {
-        callback(false, data);
+        callback(false, data._id);
       },
       error: function (data) {
         callback(true, data._id, data.responseJSON);

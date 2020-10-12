@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,6 +44,10 @@
 #include <windows.h>
 #endif
 
+#ifndef _WIN32
+#include <sys/statvfs.h>
+#endif
+
 #ifdef TRI_HAVE_DIRENT_H
 #include <dirent.h>
 #endif
@@ -64,7 +68,6 @@
 
 #include "files.h"
 
-#include "Basics/CrashHandler.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadWriteLock.h"
@@ -138,9 +141,6 @@ static LockfileRemover remover;
 
 /// @brief read buffer size (used for bulk file reading)
 #define READBUFFER_SIZE 8192
-
-/// @brief a static buffer of zeros, used to initialize files
-static char NullBuffer[4096];
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the character is a directory separator
@@ -336,8 +336,7 @@ bool TRI_CreateSymbolicLink(std::string const& target,
   int res = symlink(target.c_str(), linkpath.c_str());
 
   if (res < 0) {
-    error = "failed to create a symlink " + target + " -> " + linkpath + " - " +
-            strerror(errno);
+    error = "failed to create a symlink " + target + " -> " + linkpath + " - " + strerror(errno);
   }
   return res == 0;
 #endif
@@ -921,28 +920,27 @@ int TRI_UnlinkFile(char const* filename) {
 /// @brief reads into a buffer from a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReadPointer(int fd, void* buffer, size_t length) {
-  char* ptr = static_cast<char*>(buffer);
+TRI_read_return_t TRI_ReadPointer(int fd, char* buffer, size_t length) {
+  char* ptr = buffer;
+  size_t remainLength = length;
 
-  while (0 < length) {
-    TRI_read_return_t n = TRI_READ(fd, ptr, static_cast<TRI_read_t>(length));
+  while (0 < remainLength) {
+    TRI_read_return_t n = TRI_READ(fd, ptr, static_cast<TRI_read_t>(remainLength));
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG_TOPIC("c9c0c", ERR, arangodb::Logger::FIXME) << "cannot read: " << TRI_LAST_ERROR_STR;
-      return false;
+      return n; // always negative
     } else if (n == 0) {
-      TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_TOPIC("87f52", ERR, arangodb::Logger::FIXME)
-          << "cannot read, end-of-file";
-      return false;
+      break;
     }
 
     ptr += n;
-    length -= n;
+    remainLength -= n;
   }
 
-  return true;
+  TRI_ASSERT(ptr >= buffer);
+  return static_cast<TRI_read_return_t>(ptr - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2366,7 +2364,6 @@ std::string TRI_GetTempPath() {
     }
 
     SystemTempPathSweeperInstance.init(SystemTempPath.get());
-    CrashHandler::setTempFilename();
   }
 
   return std::string(path);
@@ -2511,18 +2508,6 @@ std::string TRI_LocateConfigDirectory(char const*) {
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the address of the null buffer
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_GetNullBufferFiles() { return &NullBuffer[0]; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the size of the null buffer
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_GetNullBufferSizeFiles() { return sizeof(NullBuffer); }
-
 /// @brief creates a new datafile
 /// returns the file descriptor or -1 if the file cannot be created
 int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
@@ -2567,17 +2552,21 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
   // cppcheck-suppress knownConditionTrueFalse
   if (res != TRI_ERROR_NO_ERROR) {
     // either fallocate failed or it is not there...
+    
+    // create a buffer filled with zeros
+    static constexpr size_t nullBufferSize = 4096;
+    char nullBuffer[nullBufferSize];
+    memset(&nullBuffer[0], 0, nullBufferSize);
 
-    // fill file with zeros from FileNullBuffer
-    size_t writeSize = TRI_GetNullBufferSizeFiles();
+    // fill file with zeros from buffer
+    size_t writeSize = nullBufferSize;
     size_t written = 0;
     while (written < maximalSize) {
       if (writeSize + written > maximalSize) {
         writeSize = maximalSize - written;
       }
 
-      ssize_t writeResult = TRI_WRITE(fd, TRI_GetNullBufferFiles(),
-                                      static_cast<TRI_write_t>(writeSize));
+      ssize_t writeResult = TRI_WRITE(fd, &nullBuffer[0], static_cast<TRI_write_t>(writeSize));
 
       TRI_IF_FAILURE("CreateDatafile2") {
         // intentionally fail
@@ -2634,17 +2623,59 @@ bool TRI_PathIsAbsolute(std::string const& path) {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize the files subsystem
-////////////////////////////////////////////////////////////////////////////////
+/// @brief return the amount of total and free disk space for the given path
+arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path, 
+                                      uint64_t& totalSpace, 
+                                      uint64_t& freeSpace) {
+#if _WIN32
+  ULARGE_INTEGER freeBytesAvailableToCaller;
+  ULARGE_INTEGER totalNumberOfBytes;
+  if (GetDiskFreeSpaceExW(toWString(path).data(), &freeBytesAvailableToCaller, &totalNumberOfBytes, nullptr) == 0) {
+    DWORD lastError = GetLastError();
+    return translateWindowsError(::GetLastError());
+  }
+  freeSpace = static_cast<uint64_t>(freeBytesAvailableToCaller.QuadPart);
+  totalSpace = static_cast<uint64_t>(totalNumberOfBytes.QuadPart);
+#else
+  struct statvfs stat;
 
-void TRI_InitializeFiles() {
-  // fill buffer with 0 bytes
-  memset(TRI_GetNullBufferFiles(), 0, TRI_GetNullBufferSizeFiles());
+  if (statvfs(path.c_str(), &stat) == -1) {
+    TRI_SYSTEM_ERROR();
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    return {TRI_errno(), TRI_last_error()};
+  }
+  totalSpace = static_cast<uint64_t>(stat.f_frsize) * static_cast<uint64_t>(stat.f_blocks);
+  freeSpace = static_cast<uint64_t>(stat.f_frsize) * static_cast<uint64_t>(stat.f_bfree);
+#endif
+  return {};
+}
+
+/// @brief return the amount of total and free inodes for the given path.
+/// always returns 0 on Windows
+arangodb::Result TRI_GetINodesInfo(std::string const& path, 
+                                   uint64_t& totalINodes, 
+                                   uint64_t& freeINodes) {
+#if _WIN32
+  // hard-coded to always return 0
+  totalINodes = 0;
+  freeINodes = 0;
+#else
+  struct statvfs stat;
+
+  if (statvfs(path.c_str(), &stat) == -1) {
+    TRI_SYSTEM_ERROR();
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    return {TRI_errno(), TRI_last_error()};
+  }
+  totalINodes = static_cast<uint64_t>(stat.f_files);
+  freeINodes = static_cast<uint64_t>(stat.f_ffree);
+#endif
+  return {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown the files subsystem
+/// @brief reads an environment variable. returns false if env var was not set.
+/// if env var was set, returns env variable value in "value" and returns true.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_GETENV(char const* which, std::string& value) {

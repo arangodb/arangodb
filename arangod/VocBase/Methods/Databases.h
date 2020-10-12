@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -37,6 +38,7 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
+struct OperationOptions;
 namespace methods {
 
 /// Common code for the db._database(),
@@ -47,9 +49,10 @@ struct Databases {
                                        std::string const& user = "");
   static arangodb::Result info(TRI_vocbase_t* vocbase, VPackBuilder& result);
   static arangodb::Result create(application_features::ApplicationServer& server,
-                                 std::string const& dbName, VPackSlice const& users,
-                                 VPackSlice const& options);
-  static arangodb::Result drop(TRI_vocbase_t* systemVocbase, std::string const& dbName);
+                                 ExecContext const& context, std::string const& dbName,
+                                 VPackSlice const& users, VPackSlice const& options);
+  static arangodb::Result drop(ExecContext const& context, TRI_vocbase_t* systemVocbase,
+                               std::string const& dbName);
 
  private:
   /// @brief will retry for at most <timeout> seconds

@@ -665,7 +665,7 @@ class term_iterator : public irs::term_iterator {
     const byte_block_pool::sliced_reader prox(pool, prox_begin, prox_end); // term's proximity // TODO: create on demand!!!
 
     doc_itr_.reset(posting, freq, &prox);
-    return doc_iterator::ptr(doc_iterator::ptr(), &doc_itr_); // aliasing ctor
+    return memory::to_managed<irs::doc_iterator, false>(&doc_itr_);
   }
 
   irs::doc_iterator::ptr sort_postings(const posting& posting) const {
@@ -679,7 +679,7 @@ class term_iterator : public irs::term_iterator {
 
     doc_itr_.reset(posting, freq, nullptr);
     sorting_doc_itr_.reset(doc_itr_, doc_map_);
-    return doc_iterator::ptr(doc_iterator::ptr(), &sorting_doc_itr_); // aliasing ctor
+    return memory::to_managed<irs::doc_iterator, false>(&sorting_doc_itr_);
   }
 
   map_t postings_;
@@ -719,7 +719,7 @@ class term_reader final : public irs::basic_term_reader,
   }
 
   virtual irs::term_iterator::ptr iterator() const noexcept override {
-    return memory::make_managed<irs::term_iterator, false>(&it_);
+    return memory::to_managed<irs::term_iterator, false>(&it_);
   }
 
   virtual attribute* get_mutable(type_info::type_id) noexcept override {

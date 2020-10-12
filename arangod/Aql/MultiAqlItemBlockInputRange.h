@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -46,6 +47,8 @@ class MultiAqlItemBlockInputRange {
   ExecutorState upstreamState(size_t const dependency) const noexcept;
   bool upstreamHasMore(size_t const dependency) const noexcept;
 
+  bool hasValidRow() const noexcept;
+  
   bool hasDataRow() const noexcept;
   bool hasDataRow(size_t const dependency) const noexcept;
 
@@ -115,6 +118,9 @@ class MultiAqlItemBlockInputRange {
   [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
 
  private:
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool _dependenciesDontAgreeOnState{false};
+#endif
   std::vector<AqlItemBlockInputRange> _inputs;
 };
 

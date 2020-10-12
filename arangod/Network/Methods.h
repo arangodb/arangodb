@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -42,16 +43,18 @@ class ConnectionPool;
 /// Response data structure
 struct Response {
   DestinationId destination;
-  fuerte::Error error;  /// connectivity error
-  std::unique_ptr<arangodb::fuerte::Response> response;
+  fuerte::Error error = fuerte::Error::ConnectionCanceled;
   std::unique_ptr<arangodb::fuerte::Request> request;
+  std::unique_ptr<arangodb::fuerte::Response> response;
 
-  bool ok() const { return fuerte::Error::NoError == this->error; }
+  [[nodiscard]] bool ok() const {
+    return fuerte::Error::NoError == this->error;
+  }
 
-  bool fail() const { return !ok(); }
+  [[nodiscard]] bool fail() const { return !ok(); }
 
   // returns a slice of the payload if there was no error
-  velocypack::Slice slice() const {
+  [[nodiscard]] velocypack::Slice slice() const {
     if (error == fuerte::Error::NoError && response) {
       return response->slice();
     }
@@ -65,24 +68,34 @@ struct Response {
     return fuerte::StatusUndefined;
   }
 
+  /// @brief Build a Result that contains
+  ///   - no error if everything went well, otherwise
+  ///   - the error from the body, if available, otherwise
+  ///   - the HTTP error, if available, otherwise
+  ///   - the fuerte error, if there was a connectivity error.
+  [[nodiscard]] Result combinedResult() const;
+
  public:
-  std::string destinationShard() const;  /// @brief shardId or empty
-  std::string serverId() const;          /// @brief server ID
+  [[nodiscard]] std::string destinationShard() const;  /// @brief shardId or empty
+  [[nodiscard]] std::string serverId() const;          /// @brief server ID
 };
+
 static_assert(std::is_nothrow_move_constructible<Response>::value, "");
 using FutureRes = arangodb::futures::Future<Response>;
+
+static constexpr Timeout TimeoutDefault = Timeout(120.0);
 
 // Container for optional (often defaulted) parameters
 struct RequestOptions {
   std::string database;
-  std::string contentType; // uses vpack by default
-  std::string acceptType; // uses vpack by default
+  std::string contentType;  // uses vpack by default
+  std::string acceptType;   // uses vpack by default
   fuerte::StringMap parameters;
-  Timeout timeout = Timeout(120.0);
-  bool retryNotFound = false; // retry if answers is "datasource not found"
-  bool skipScheduler = false; // do not use Scheduler queue
+  Timeout timeout = TimeoutDefault;
+  bool retryNotFound = false;  // retry if answers is "datasource not found"
+  bool skipScheduler = false;  // do not use Scheduler queue
 
-  template<typename K, typename V>
+  template <typename K, typename V>
   RequestOptions& param(K&& key, V&& val) {
     this->parameters.insert_or_assign(std::forward<K>(key), std::forward<V>(val));
     return *this;
@@ -90,25 +103,24 @@ struct RequestOptions {
 };
 
 /// @brief send a request to a given destination
+/// This method must not throw under penalty of ...
 FutureRes sendRequest(ConnectionPool* pool, DestinationId destination,
                       arangodb::fuerte::RestVerb type, std::string path,
                       velocypack::Buffer<uint8_t> payload = {},
-                      RequestOptions const& options = {},
-                      Headers headers = {});
+                      RequestOptions const& options = {}, Headers headers = {});
 
 /// @brief send a request to a given destination, retry under certain conditions
-/// a retry will be triggered if the connection was lost our could not be established
-/// optionally a retry will be performed in the case of until timeout is exceeded
+/// a retry will be triggered if the connection was lost our could not be
+/// established optionally a retry will be performed in the case of until
+/// timeout is exceeded This method must not throw under penalty of ...
 FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
                            arangodb::fuerte::RestVerb type, std::string path,
                            velocypack::Buffer<uint8_t> payload = {},
-                           RequestOptions const& options = {},
-                           Headers headers = {});
+                           RequestOptions const& options = {}, Headers headers = {});
 
 using Sender =
     std::function<FutureRes(DestinationId const&, arangodb::fuerte::RestVerb, std::string const&,
-                            velocypack::Buffer<uint8_t>, RequestOptions const& options,
-                            Headers)>;
+                            velocypack::Buffer<uint8_t>, RequestOptions const& options, Headers)>;
 
 }  // namespace network
 }  // namespace arangodb

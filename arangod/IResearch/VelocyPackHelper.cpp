@@ -1,7 +1,8 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 EMC Corporation
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
@@ -163,56 +164,42 @@ bool mergeSliceSkipOffsets(arangodb::velocypack::Builder& builder,
 }
 
 // can't make it noexcept since VPackSlice::getNthOffset is not noexcept
-void Iterator::reset() {
-  TRI_ASSERT(isArrayOrObject(_slice));
+Iterator::Iterator(VPackSlice slice) {
+  TRI_ASSERT(isArrayOrObject(slice));
+  _length = slice.length();
 
-  if (!_size) {
+  if (0 == _length) {
     return;
   }
 
   // according to Iterator.h:160 and Iterator.h:194
-  auto const offset = isCompactArrayOrObject(_slice)
-                          ? _slice.getNthOffset(0)
-                          : _slice.findDataOffset(_slice.head());
+  auto const offset = isCompactArrayOrObject(slice)
+                         ? slice.getNthOffset(0)
+                         : slice.findDataOffset(slice.head());
+  _begin = slice.start() + offset;
 
-  _value.reset(_slice.start() + offset);
+  _value.type = slice.type();
+
+  static_assert(!std::numeric_limits<VPackValueLength>::is_signed);
+  _value.pos = VPackValueLength(0) - 1;
 }
 
 bool Iterator::next() noexcept {
-  if (++_value.pos < _size) {
-    auto const& value = _value.value;
-    _value.reset(value.start() + value.byteSize());
-    return true;
-  }
-  return false;
-}
-
-ObjectIterator::ObjectIterator(VPackSlice const& slice) {
-  if (isArrayOrObject(slice)) {
-    _stack.emplace_back(slice);
-
-    while (isArrayOrObject(topValue())) {
-      _stack.emplace_back(topValue());
-    }
-  }
-}
-
-ObjectIterator& ObjectIterator::operator++() {
-  TRI_ASSERT(valid());
-
-  for (top().next(); !top().valid(); top().next()) {
-    _stack.pop_back();
-
-    if (!valid()) {
-      return *this;
-    }
+  if (0 == _length) {
+    return false;
   }
 
-  while (isArrayOrObject(topValue())) {
-    _stack.emplace_back(topValue());
-  }
+  // whether or not we're in the context of array or object
+  VPackValueLength const isObject = VPackValueType::Array != _value.type;
 
-  return *this;
+  _value.key = VPackSlice(_begin);
+  _value.value = VPackSlice(_begin + isObject * _value.key.byteSize());
+
+  _begin = _value.value.start() + _value.value.byteSize();
+  ++_value.pos;
+  --_length;
+
+  return true;
 }
 
 }  // namespace iresearch

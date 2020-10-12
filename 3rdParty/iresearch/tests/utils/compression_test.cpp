@@ -40,7 +40,7 @@ struct dummy_compressor final : irs::compression::compressor {
 
 struct dummy_decompressor final : irs::compression::decompressor {
   virtual irs::bytes_ref decompress(
-      irs::byte_type* src, size_t src_size,
+      const irs::byte_type* src, size_t src_size,
       irs::byte_type* dst, size_t dst_size) {
     return irs::bytes_ref::NIL;
   }

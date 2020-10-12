@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,6 +33,7 @@
 #include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/ResultT.h"
 #include "VocBase/voc-types.h"
 #include <velocypack/Builder.h>
 
@@ -81,12 +83,15 @@ class QueryContext {
 
   /// @brief return the names of collections used in the query
   std::vector<std::string> collectionNames() const;
+
+  /// @brief return the user that started the query
+  virtual std::string const& user() const;
   
   /// warnings access is thread safe
   QueryWarnings& warnings() { return _warnings; }
 
   /// @brief look up a graph in the _graphs collection
-  graph::Graph const* lookupGraphByName(std::string const& name);
+  ResultT<graph::Graph const*> lookupGraphByName(std::string const& name);
   
   /// @brief note that the query uses the DataSource
   void addDataSource(std::shared_ptr<arangodb::LogicalDataSource> const& ds);
@@ -117,8 +122,6 @@ class QueryContext {
     
   virtual bool killed() const = 0;
 
-  virtual void setKilled() = 0;
-  
   /// @brief whether or not a query is a modification query
   virtual bool isModificationQuery() const noexcept = 0;
   virtual bool isAsyncQuery() const noexcept = 0;
@@ -134,7 +137,7 @@ public:
  protected:
   
   const TRI_voc_tick_t _queryId;
-  
+
   /// @brief current resources and limits used by query
   ResourceMonitor _resourceMonitor;
   
@@ -146,7 +149,7 @@ public:
 
   /// @brief pointer to vocbase the query runs in
   TRI_vocbase_t& _vocbase;
-
+  
   /// @brief graphs used in query, identified by name
   std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;
 

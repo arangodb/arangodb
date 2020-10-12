@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,7 +80,7 @@ Expression::Expression(Ast* ast, AstNode* node)
 
 /// @brief create an expression from VPack
 Expression::Expression(Ast* ast, arangodb::velocypack::Slice const& slice)
-    : Expression(ast, new AstNode(ast, slice.get("expression"))) {
+    : Expression(ast, ast->createNode(slice.get("expression"))) {
   TRI_ASSERT(_type != UNPROCESSED);
 }
 
@@ -611,6 +611,8 @@ AqlValue Expression::executeSimpleExpressionArray(AstNode const* node,
   if (n == 0) {
     return AqlValue(AqlValueHintEmptyArray());
   }
+    
+  auto const* vpackOptions = &trx->vpackOptions();
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -620,12 +622,13 @@ AqlValue Expression::executeSimpleExpressionArray(AstNode const* node,
     bool localMustDestroy = false;
     AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), false);
+    result.toVelocyPack(vpackOptions, *builder.get(), /*resolveExternals*/false,
+                        /*allowUnindexed*/false);
   }
 
   builder->close();
   mustDestroy = true;  // AqlValue contains builder contains dynamic data
-  return AqlValue(builder->slice());
+  return AqlValue(builder->slice(), builder->size());
 }
 
 /// @brief execute an expression of type SIMPLE with OBJECT
@@ -652,6 +655,7 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
   // unordered set for tracking unique object keys
   std::unordered_set<std::string> keys;
   bool const mustCheckUniqueness = node->mustCheckUniqueness();
+  auto const* vpackOptions = &trx->vpackOptions();
 
   transaction::BuilderLeaser builder(trx);
   builder->openObject();
@@ -731,14 +735,15 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
     bool localMustDestroy;
     AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), false);
+    result.toVelocyPack(vpackOptions, *builder.get(), /*resolveExternals*/false,
+                        /*allowUnindexed*/false);
   }
 
   builder->close();
 
   mustDestroy = true;  // AqlValue contains builder contains dynamic data
 
-  return AqlValue(*builder.get());
+  return AqlValue(builder->slice(), builder->size());
 }
 
 /// @brief execute an expression of type SIMPLE with VALUE
@@ -920,14 +925,11 @@ AqlValue Expression::invokeV8Function(ExpressionContext* expressionContext,
   auto& trx = expressionContext->trx();
   transaction::BuilderLeaser builder(&trx);
 
-  int res = TRI_V8ToVPack(isolate, *builder.get(), result, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  // can throw
+  TRI_V8ToVPack(isolate, *builder.get(), result, false);
 
   mustDestroy = true;  // builder = dynamic data
-  return AqlValue(builder->slice());
+  return AqlValue(builder->slice(), builder->size());
 }
 
 /// @brief execute an expression of type SIMPLE, JavaScript variant
@@ -942,8 +944,14 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
   {
     ISOLATE;
     TRI_ASSERT(isolate != nullptr);
-    v8::HandleScope scope(isolate);                                   \
+    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
     auto context = TRI_IGETC;
+
+    VPackOptions const* options = trx->transactionContext()->getVPackOptions();
+
+    auto old = v8g->_expressionContext;
+    v8g->_expressionContext = _expressionContext;
+    TRI_DEFER(v8g->_expressionContext = old);
 
     std::string jsName;
     size_t const n = member->numMembers();
@@ -962,7 +970,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
         AqlValue a = executeSimpleExpression(arg, trx, localMustDestroy, false);
         AqlValueGuard guard(a, localMustDestroy);
 
-        params->Set(context, static_cast<uint32_t>(i), a.toV8(isolate, trx)).FromMaybe(false);
+        params->Set(context, static_cast<uint32_t>(i), a.toV8(isolate, options)).FromMaybe(false);
       }
 
       // function name
@@ -987,7 +995,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
           AqlValue a = executeSimpleExpression(arg, trx, localMustDestroy, false);
           AqlValueGuard guard(a, localMustDestroy);
 
-          args[i] = a.toV8(isolate, trx);
+          args[i] = a.toV8(isolate, options);
         }
       }
     }
@@ -1466,7 +1474,8 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
       return AqlValue(AqlValueHintEmptyArray());
     }
 
-    VPackBuilder builder;
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
     builder.openArray();
 
     // generate a new temporary for the flattened array
@@ -1496,7 +1505,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
     builder.close();
 
     mustDestroy = true;  // builder = dynamic data
-    value = AqlValue(builder);
+    value = AqlValue(std::move(buffer));
   } else {
     bool localMustDestroy;
     AqlValue a = executeSimpleExpression(node->getMember(0), trx, localMustDestroy, false);
@@ -1537,7 +1546,8 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
     }
   }
 
-  VPackBuilder builder;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
   builder.openArray();
 
   size_t const n = value.length();
@@ -1569,7 +1579,8 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
 
     if (takeItem) {
       AqlValue sub = executeSimpleExpression(projectionNode, trx, localMustDestroy, false);
-      sub.toVelocyPack(&trx->vpackOptions(), builder, false);
+      sub.toVelocyPack(&trx->vpackOptions(), builder, /*resolveExternals*/false,
+                       /*allowUnindexed*/false);
       if (localMustDestroy) {
         sub.destroy();
       }
@@ -1588,7 +1599,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
 
   builder.close();
   mustDestroy = true;
-  return AqlValue(builder);  // builder = dynamic data
+  return AqlValue(std::move(buffer));  // builder = dynamic data
 }
 
 /// @brief execute an expression of type SIMPLE with ITERATOR

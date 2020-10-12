@@ -90,7 +90,7 @@ int flush(int fd, void* addr, size_t size, int flags) noexcept;
 //////////////////////////////////////////////////////////////////////////////
 /// @class mmap_handle
 //////////////////////////////////////////////////////////////////////////////
-class mmap_handle : private util::noncopyable {
+class IRESEARCH_API mmap_handle : private util::noncopyable {
  public:
   mmap_handle() noexcept {
     init();

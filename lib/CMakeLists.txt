@@ -36,6 +36,11 @@ set(LIB_ARANGO_LINENOISE
   Utilities/LinenoiseShell.cpp
 )
 
+set(LIB_ARANGO_DATE
+  ${PROJECT_SOURCE_DIR}/3rdParty/date/src/tz.cpp
+)
+add_definitions("-DHAS_REMOTE_API=0")
+
 set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/AttributeTranslator.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Builder.cpp
@@ -48,6 +53,7 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Options.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Parser.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Serializable.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/SharedSlice.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Slice.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/SliceStaticData.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/StringRef.cpp
@@ -88,6 +94,7 @@ add_library(arango STATIC
   ${LIB_ARANGO_MSVC}
   ${LIB_ARANGO_POSIX}
   ${LIB_ARANGO_LINENOISE}
+  ${LIB_ARANGO_DATE}
   ${LIB_ARANGO_VPACK}
   ${LIB_CLOCK_GETTIME}
   ${LIB_ASM_SOURCES}
@@ -100,6 +107,7 @@ add_library(arango STATIC
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/GreetingsFeaturePhase.cpp
   ApplicationFeatures/LanguageFeature.cpp
+  ApplicationFeatures/TimeZoneFeature.cpp
   ApplicationFeatures/MaxMapCountFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp
@@ -239,6 +247,12 @@ add_dependencies(arango snappy-static)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 include_directories(${SNAPPY_INCLUDE_DIR})
+
+if (USE_LIBUNWIND)
+  target_link_libraries(arango ${LIBUNWIND_LIB})
+  target_include_directories(arango PRIVATE "${LIBUNWIND_HOME}/include")
+  add_dependencies(arango libunwind_build)
+endif ()
 
 # Rebuild generated error files so they are up-to-date when all
 # dependent stuff is built

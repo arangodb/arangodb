@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -108,7 +109,8 @@ struct ExecutorTestHelper {
         _query(query),
         _itemBlockManager(itemBlockManager),
         _dummyNode{std::make_unique<SingletonNode>(
-            const_cast<ExecutionPlan*>(_query.rootEngine()->root()->getPlanNode()->plan()),
+            const_cast<ExecutionPlan*>(
+                _query.rootEngine()->root()->getPlanNode()->plan()),
             ExecutionNodeId{42})} {}
 
   auto setCallStack(AqlCallStack stack) -> ExecutorTestHelper& {
@@ -307,9 +309,10 @@ struct ExecutorTestHelper {
         skippedTotal.merge(skipped, false);
         call.didSkip(skipped.getSkipCount());
         if (result != nullptr) {
-          call.didProduce(result->size());
+          call.didProduce(result->numRows());
           allResults.add(result);
         }
+        call.resetSkipCount();
       } while (finalState != ExecutionState::DONE &&
                (!_callStack.peek().hasSoftLimit() ||
                 (_callStack.peek().getLimit() + _callStack.peek().getOffset()) > 0));
@@ -363,8 +366,8 @@ struct ExecutorTestHelper {
     auto& testeeNode = _execNodes.emplace_back(
         std::make_unique<MockTypedNode>(_query.plan(),
                                         ExecutionNodeId{_execNodes.size()}, nodeType));
-    return std::make_unique<ExecutionBlockImpl<E>>(_query.rootEngine(), testeeNode.get(),
-                                                   std::move(registerInfos),
+    return std::make_unique<ExecutionBlockImpl<E>>(_query.rootEngine(),
+                                                   testeeNode.get(), std::move(registerInfos),
                                                    std::move(executorInfos));
   }
 

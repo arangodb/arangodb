@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -189,12 +190,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   [[nodiscard]] RegisterInfos const& registerInfos() const;
 
-  /// @brief shutdown, will be called exactly once for the whole query
-  /// Special implementation for all Executors that need to implement Shutdown
-  /// Most do not, we might be able to move their shutdown logic to a more
-  /// central place.
-  [[nodiscard]] std::pair<ExecutionState, Result> shutdown(int) override;
-
   /// @brief main function to produce data in this ExecutionBlock.
   ///        It gets the AqlCallStack defining the operations required in every
   ///        subquery level. It will then perform the requested amount of offset, data and fullcount.
@@ -235,7 +230,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   auto executeFastForward(typename Fetcher::DataRange& inputRange, AqlCall& clientCall)
       -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCallType>;
 
-  [[nodiscard]] std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr& newBlock,
+  [[nodiscard]] std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr&& newBlock,
                                                                   AqlCall&& call);
 
   [[nodiscard]] QueryContext const& getQuery() const;
@@ -244,8 +239,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   /// @brief request an AqlItemBlock from the memory manager
   [[nodiscard]] SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);
-
-  [[nodiscard]] ExecutionState fetchShadowRowInternal();
 
   // Allocate an output block and install a call in it
   [[nodiscard]] auto allocateOutputBlock(AqlCall&& call, DataRange const& inputRange)
@@ -300,8 +293,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   DependencyProxy _dependencyProxy;
 
   /**
-   * @brief Fetcher used by the Executor. Calls this->fetchBlock() and handles
-   *        memory management of AqlItemBlocks as needed by Executor.
+   * @brief Fetcher used by the Executor.
    */
   Fetcher _rowFetcher;
 

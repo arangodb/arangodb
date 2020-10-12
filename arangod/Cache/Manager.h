@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -271,7 +271,7 @@ class Manager {
   void migrateCache(TaskEnvironment environment, basics::SpinLocker&& metaGuard,
                     Cache* cache, std::shared_ptr<Table>& table);
   std::shared_ptr<Table> leaseTable(std::uint32_t logSize);
-  void reclaimTable(std::shared_ptr<Table> table, bool internal = false);
+  void reclaimTable(std::shared_ptr<Table> table, bool internal);
 
   // helpers for individual allocations
   [[nodiscard]] bool increaseAllowed(uint64_t increase, bool privileged = false) const;

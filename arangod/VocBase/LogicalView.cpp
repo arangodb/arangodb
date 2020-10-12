@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,11 +51,11 @@ namespace arangodb {
 // @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
 // is relevant for this view
-LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice const& definition, uint64_t planVersion)
+LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice const& definition)
     : LogicalDataSource(LogicalView::category(),
                         LogicalDataSource::Type::emplace(arangodb::basics::VelocyPackHelper::getStringRef(
                             definition, StaticStrings::DataSourceType, VPackStringRef())),
-                        vocbase, definition, planVersion) {
+                        vocbase, definition) {
   // ensure that the 'definition' was used as the configuration source
   if (!definition.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -74,7 +74,7 @@ LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice const& definition, u
   }
 
   // update server's tick value
-  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id()));
+  TRI_UpdateTickServer(id().id());
 }
 
 Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
@@ -189,8 +189,7 @@ Result LogicalView::drop() {
 }
 
 /*static*/ Result LogicalView::instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                                           velocypack::Slice definition, uint64_t planVersion /*= 0*/
-) {
+                                           velocypack::Slice definition) {
   if (!vocbase.server().hasFeature<ViewTypesFeature>()) {
     return Result(
         TRI_ERROR_INTERNAL,
@@ -203,7 +202,7 @@ Result LogicalView::drop() {
                                              velocypack::StringRef(nullptr, 0));
   auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
 
-  return factory.instantiate(view, vocbase, definition, planVersion);
+  return factory.instantiate(view, vocbase, definition);
 }
 
 Result LogicalView::rename(std::string&& newName) {
@@ -271,7 +270,7 @@ Result LogicalView::rename(std::string&& newName) {
 
     builder.close();
     res = engine.createViewCoordinator(  // create view
-        vocbase.name(), std::to_string(impl->id()), builder.slice()  // args
+        vocbase.name(), std::to_string(impl->id().id()), builder.slice()  // args
     );
 
     if (!res.ok()) {
@@ -279,7 +278,7 @@ Result LogicalView::rename(std::string&& newName) {
     }
 
     view = engine.getView(vocbase.name(),
-                          std::to_string(impl->id()));  // refresh view from Agency
+                          std::to_string(impl->id().id()));  // refresh view from Agency
 
     if (view) {
       view->open();  // open view to match the behavior in
@@ -307,8 +306,8 @@ Result LogicalView::rename(std::string&& newName) {
     }
     auto& engine = view.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
-    return engine.dropViewCoordinator(                    // drop view
-        view.vocbase().name(), std::to_string(view.id())  // args
+    return engine.dropViewCoordinator(                         // drop view
+        view.vocbase().name(), std::to_string(view.id().id())  // args
     );
   } catch (basics::Exception const& e) {
     return Result(e.code());  // noexcept constructor
@@ -348,7 +347,7 @@ Result LogicalView::rename(std::string&& newName) {
     builder.close();
 
     return engine.setViewPropertiesCoordinator(view.vocbase().name(),
-                                               std::to_string(view.id()),
+                                               std::to_string(view.id().id()),
                                                builder.slice());
   } catch (basics::Exception const& e) {
     return Result(e.code());  // noexcept constructor
@@ -424,9 +423,9 @@ Result LogicalView::rename(std::string&& newName) {
                         "invalid builder provided for LogicalView definition"));
     }
 
-    auto* engine = EngineSelectorFeature::ENGINE;
-
-    if (!engine) {
+    auto& server = view.vocbase().server();
+    if (!server.hasFeature<EngineSelectorFeature>() ||
+        !server.getFeature<EngineSelectorFeature>().selected()) {
       return Result(TRI_ERROR_INTERNAL,
                     std::string("failed to find a storage engine while "
                                 "querying definition of view '") +

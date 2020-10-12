@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -250,6 +251,7 @@ auto HashedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     while (_currentGroup != _allGroups.end() && !output.isFull()) {
       writeCurrentGroupToOutput(output);
       ++_currentGroup;
+      ++_returnedGroups;
       output.advanceRow();
     }
   }
@@ -314,11 +316,35 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
   }
 
   _nextGroupValues.clear();
-  // for inserting into group we need to clone the values
-  // and take over ownership
-  for (auto const& reg : _infos.getGroupRegisters()) {
-    _nextGroupValues.emplace_back(input.stealValue(reg.second));
+
+  if (_infos.getGroupRegisters().size() == 1) {
+    for (auto const& reg : _infos.getGroupRegisters()) {
+      // On a single register there can be no duplicate value
+      // inside the groupValues, so we cannot get into a situation
+      // where it is unclear who is responsible for the data
+      AqlValue a = input.stealValue(reg.second);
+      AqlValueGuard guard{a, true};
+      _nextGroupValues.emplace_back(a);
+      guard.steal();
+    }
+  } else {
+    for (auto const& reg : _infos.getGroupRegisters()) {
+      // With more then 1 register we cannot reliably figure out who
+      // is responsible for which value.
+      // E.g. for 2 registers we have two groups: A , 1 and A , 2
+      // Now A can be from different input blocks, and can be also
+      // be written to different output blocks, or even not handed over
+      // because of a limit. So we simply clone A here on every new group.
+      // So this block is responsible for every grouped tuple, until it
+      // is handed over to the output block. There is no overlapping
+      // of responsibilities of tuples.
+      AqlValue a = input.getValue(reg.second).clone();
+      AqlValueGuard guard{a, true};
+      _nextGroupValues.emplace_back(a);
+      guard.steal();
+    }
   }
+
   // this builds a new group with aggregate functions being prepared.
   auto aggregateValues = std::make_unique<AggregateValuesType>();
   aggregateValues->reserve(_aggregatorFactories.size());
@@ -358,8 +384,8 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
     return call.getLimit();
   }
   // We know how many groups we have left
-  return std::min<size_t>(call.getLimit(),
-                          std::distance(_currentGroup, _allGroups.end()));
+  TRI_ASSERT(_returnedGroups <= _allGroups.size());
+  return std::min<size_t>(call.getLimit(), _allGroups.size() - _returnedGroups);
 }
 
 const HashedCollectExecutor::Infos& HashedCollectExecutor::infos() const noexcept {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,7 @@
 #include "Enterprise/Basics/Version.h"
 
 #ifndef ARANGODB_ENTERPRISE_VERSION
-#error "enterprise version number is not defined"
+#error "Enterprise Edition version number is not defined"
 #endif
 
 #ifndef NDEBUG
@@ -59,7 +59,7 @@
 #else
 
 #ifdef ARANGODB_ENTERPRISE_VERSION
-#error "enterprise version number should not be defined"
+#error "Enterprise Edition version number should not be defined"
 #endif
 
 #ifdef _DEBUG

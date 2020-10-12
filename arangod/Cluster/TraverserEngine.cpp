@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -85,7 +85,8 @@ static const std::string VERTICES = "vertices";
 BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
                        aql::QueryContext& query,
                        VPackSlice info)
-    : _query(query), _trx(nullptr) {
+    : _engineId(TRI_NewTickServer()),
+      _query(query), _trx(nullptr) {
   VPackSlice shardsSlice = info.get(SHARDS);
 
   if (shardsSlice.isNone() || !shardsSlice.isObject()) {
@@ -346,7 +347,7 @@ aql::VariableGenerator const* BaseTraverserEngine::variables() const {
 void BaseTraverserEngine::injectVariables(VPackSlice variableSlice) {
   if (variableSlice.isArray()) {
     _opts->clearVariableValues();
-    for (auto const& pair : VPackArrayIterator(variableSlice)) {
+    for (auto&& pair : VPackArrayIterator(variableSlice)) {
       if ((!pair.isArray()) || pair.length() != 2) {
         // Invalid communication. Skip
         TRI_ASSERT(false);
@@ -466,5 +467,9 @@ void TraverserEngine::smartSearch(VPackSlice, VPackBuilder&) {
 }
 
 void TraverserEngine::smartSearchBFS(VPackSlice, VPackBuilder&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
+}
+
+void TraverserEngine::smartSearchWeighted(VPackSlice, VPackBuilder&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
 }

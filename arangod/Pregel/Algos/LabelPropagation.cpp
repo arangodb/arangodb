@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -121,7 +122,7 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
 
   void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                       LPValue& value) override {
-    value.currentCommunity = vertexIdRange++;
+    value.currentCommunity = _vertexIdRange++;
   }
 
   void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}

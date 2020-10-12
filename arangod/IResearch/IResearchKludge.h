@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -44,13 +45,9 @@ void mangleNull(std::string& name);
 void mangleBool(std::string& name);
 void mangleNumeric(std::string& name);
 
-void mangleStringField(
+void mangleField(
   std::string& name,
-  arangodb::iresearch::FieldMeta::Analyzer const& analyzer);
-
-void demangleStringField(
-  std::string& name,
-  arangodb::iresearch::FieldMeta::Analyzer const& analyzer);
+  iresearch::FieldMeta::Analyzer const& analyzer);
 
 }  // namespace kludge
 }  // namespace iresearch

@@ -357,6 +357,7 @@ ArangoCollection.prototype.properties = function (properties) {
   var attributes = {
     'doCompact': true,
     'journalSize': true,
+    'globallyUniqueId': false,
     'isSmart': false,
     'isSystem': false,
     'isVolatile': false,
@@ -374,7 +375,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'shardingStrategy': false,
     'cacheEnabled': true,
     'syncByRevision': true,
-    'schema' : null
+    'schema' : true,
   };
   var a;
 
@@ -388,6 +389,7 @@ ArangoCollection.prototype.properties = function (properties) {
 
     for (a in attributes) {
       if (attributes.hasOwnProperty(a) &&
+        attributes[a] &&
         properties.hasOwnProperty(a)) {
         body[a] = properties[a];
       }
@@ -426,8 +428,8 @@ ArangoCollection.prototype.recalculateCount = function () {
 // / @brief gets the figures of a collection
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.figures = function () {
-  var requestResult = this._database._connection.GET(this._baseurl('figures'));
+ArangoCollection.prototype.figures = function (details) {
+  var requestResult = this._database._connection.GET(this._baseurl('figures') + '?details=' + (details ? 'true' : 'false'));
 
   arangosh.checkRequestResult(requestResult);
 

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -175,6 +176,7 @@ class StaticStrings {
   static std::string const ContentTypeHeader;
   static std::string const CorsMethods;
   static std::string const Error;
+  static std::string const ErrorCode;
   static std::string const ErrorMessage;
   static std::string const ErrorNum;
   static std::string const Errors;
@@ -231,7 +233,6 @@ class StaticStrings {
   static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
   static std::string const SyncByRevision;
-  static std::string const TempObjectId;
   static std::string const UsesRevisionsAsDocumentIds;
   static std::string const Schema;
   static std::string const Version;
@@ -267,6 +268,11 @@ class StaticStrings {
   static std::string const GraphQueryPath;
   static std::string const GraphQueryGlobal;
   static std::string const GraphQueryNone;
+  static std::string const GraphQueryWeights;
+  static std::string const GraphQueryOrder;
+  static std::string const GraphQueryOrderBFS;
+  static std::string const GraphQueryOrderDFS;
+  static std::string const GraphQueryOrderWeighted;
 
   // Replication
   static std::string const ReplicationSoftLockOnly;
@@ -285,6 +291,7 @@ class StaticStrings {
   // generic attribute names
   static std::string const AttrCoordinator;
   static std::string const AttrCoordinatorRebootId;
+  static std::string const AttrCoordinatorId;
   static std::string const AttrIsBuilding;
 
   // misc strings
@@ -299,7 +306,6 @@ class StaticStrings {
 
   // aql api strings
   static std::string const SerializationFormat;
-  static std::string const AqlRemoteApi;
   static std::string const AqlRemoteExecute;
   static std::string const AqlRemoteCallStack;
   static std::string const AqlRemoteLimit;
@@ -318,6 +324,8 @@ class StaticStrings {
   static std::string const AqlCallListSpecific;
   static std::string const AqlCallListDefault;
   static std::string const ArangoSearchAnalyzersRevision;
+  static std::string const ArangoSearchCurrentAnalyzersRevision;
+  static std::string const ArangoSearchSystemAnalyzersRevision;
 
   // validation
   static std::string const ValidationLevelNone;
@@ -357,8 +365,6 @@ class StaticStrings {
   static std::string const ShardsNotReplicated;
 
   static std::string const AgencyCommRequestTimeMs;
-
-  static std::string const AqlQueryRuntimeMs;
 
   static std::string const SchedulerQueueLength;
   static std::string const SchedulerAwakeWorkers;

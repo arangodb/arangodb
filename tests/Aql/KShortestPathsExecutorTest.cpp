@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -235,7 +236,7 @@ class KShortestPathsExecutorTest
     auto block = buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix));
 
     // We should always only call the finder at most for all input rows
-    ASSERT_LE(calledWith.size(), block->size());
+    ASSERT_LE(calledWith.size(), block->numRows());
 
     auto blockIndex = size_t{0};
     for (auto const& input : calledWith) {
@@ -243,7 +244,8 @@ class KShortestPathsExecutorTest
       auto target = std::string{};
 
       if (executorInfos.useRegisterForSourceInput()) {
-        AqlValue value = block->getValue(blockIndex, executorInfos.getSourceInputRegister());
+        AqlValue value =
+            block->getValue(blockIndex, executorInfos.getSourceInputRegister());
         ASSERT_TRUE(value.isString());
         source = value.slice().copyString();
       } else {
@@ -251,7 +253,8 @@ class KShortestPathsExecutorTest
       }
 
       if (executorInfos.useRegisterForTargetInput()) {
-        AqlValue value = block->getValue(blockIndex, executorInfos.getTargetInputRegister());
+        AqlValue value =
+            block->getValue(blockIndex, executorInfos.getTargetInputRegister());
         ASSERT_TRUE(value.isString());
         target = value.slice().copyString();
       } else {
@@ -280,8 +283,9 @@ class KShortestPathsExecutorTest
     auto expectedRowsIndex = size_t{skippedInitial};
     for (auto const& block : results) {
       if (block != nullptr) {
-        for (size_t blockIndex = 0; blockIndex < block->size(); ++blockIndex, ++expectedRowsIndex) {
-          AqlValue value = block->getValue(blockIndex, executorInfos.getOutputRegister());
+        for (size_t blockIndex = 0; blockIndex < block->numRows(); ++blockIndex, ++expectedRowsIndex) {
+          AqlValue value =
+              block->getValue(blockIndex, executorInfos.getOutputRegister());
           EXPECT_TRUE(value.isArray());
 
           // Note that the correct layout of the result path is currently the
@@ -329,13 +333,15 @@ class KShortestPathsExecutorTest
       std::tie(state, stats, skippedInitial, std::ignore) =
           testee.skipRowsRange(input, ourCall);
     }
+    ourCall.resetSkipCount();
 
     while (state == ExecutorState::HASMORE && ourCall.getLimit() > 0) {
       SharedAqlItemBlockPtr block =
           itemBlockManager.requestBlock(parameters._blockSize, 4);
 
       OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
-          registerInfos.registersToKeep(), registerInfos.registersToClear());
+                              registerInfos.registersToKeep(),
+                              registerInfos.registersToClear());
       output.setCall(std::move(ourCall));
 
       std::tie(state, std::ignore, std::ignore) = testee.produceRows(input, output);
@@ -348,13 +354,16 @@ class KShortestPathsExecutorTest
       std::tie(state, stats, skippedFullCount, std::ignore) =
           testee.skipRowsRange(input, ourCall);
     }
+    ourCall.resetSkipCount();
 
     ValidateCalledWith();
     ValidateResult(outputs, skippedInitial, skippedFullCount);
   }
 };  // namespace aql
 
-TEST_P(KShortestPathsExecutorTest, the_test) { TestExecutor(registerInfos, executorInfos, input); }
+TEST_P(KShortestPathsExecutorTest, the_test) {
+  TestExecutor(registerInfos, executorInfos, input);
+}
 
 // Conflict with the other shortest path finder
 namespace {

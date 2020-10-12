@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -194,7 +195,7 @@ std::
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                                                                             weekday wd{floor<date::days>(tp)};
                                                                             wrk.append(
-                                                                                ::weekDayNames[static_cast<unsigned>(wd)]);
+                                                                                ::weekDayNames[wd.c_encoding()]);
                                                                           }},
 
                                                                          {"%mmm",
@@ -207,8 +208,7 @@ std::
                                                                          {"%www",
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                                                                             weekday wd{floor<date::days>(tp)};
-                                                                            wrk.append(
-                                                                                weekDayNamesShort[static_cast<unsigned>(wd)]);
+                                                                            wrk.append(weekDayNamesShort[wd.c_encoding()]);
                                                                           }},
                                                                          {"%fff",
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
@@ -376,7 +376,7 @@ std::
                                                                              arangodb::tp_sys_clock_ms const& tp) {
                                                                             weekday wd{floor<date::days>(tp)};
                                                                             wrk.append(std::to_string(
-                                                                                static_cast<unsigned>(wd)));
+                                                                                wd.c_encoding()));
                                                                           }},
                                                                          {"%y",
                                                                           [](std::string& wrk,

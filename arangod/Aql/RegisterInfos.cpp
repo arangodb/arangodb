@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -71,7 +72,7 @@ RegisterInfos::RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeable
   }
   for (RegisterId const regToClear : _registersToClear) {
     // sic: It's possible that a current output register is immediately cleared!
-    TRI_ASSERT(regToClear < nrInputRegisters);
+    TRI_ASSERT(regToClear < nrOutputRegisters);
     TRI_ASSERT(_registersToKeep.back().find(regToClear) ==
                _registersToKeep.back().end());
   }

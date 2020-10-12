@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,7 +33,6 @@
 #include "Aql/Stats.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace aql {
@@ -45,10 +45,10 @@ class SingleRowFetcher;
 class SubqueryEndExecutorInfos {
  public:
   SubqueryEndExecutorInfos(velocypack::Options const* options, RegisterId inReg,
-                           RegisterId outReg, bool isModificationSubquery);
+                           RegisterId outReg);
 
   SubqueryEndExecutorInfos() = delete;
-  SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&&) noexcept = default;
+  SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&&) = default;
   SubqueryEndExecutorInfos(SubqueryEndExecutorInfos const&) = delete;
   ~SubqueryEndExecutorInfos();
 
@@ -56,13 +56,11 @@ class SubqueryEndExecutorInfos {
   [[nodiscard]] RegisterId getOutputRegister() const noexcept;
   [[nodiscard]] bool usesInputRegister() const noexcept;
   [[nodiscard]] RegisterId getInputRegister() const noexcept;
-  [[nodiscard]] bool isModificationSubquery() const noexcept;
 
  private:
   velocypack::Options const* _vpackOptions;
   RegisterId const _outReg;
   RegisterId const _inReg;
-  bool const _isModificationSubquery;
 };
 
 class SubqueryEndExecutor {
@@ -79,6 +77,8 @@ class SubqueryEndExecutor {
 
   SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos);
   ~SubqueryEndExecutor();
+
+  void initializeCursor();
 
   // produceRows accumulates all input rows it can get into _accumulator, which
   // will then be read out by ExecutionBlockImpl
@@ -103,8 +103,6 @@ class SubqueryEndExecutor {
    */
   auto consumeShadowRow(ShadowAqlItemRow shadowRow, OutputAqlItemRow& output) -> void;
 
-  [[nodiscard]] auto isModificationSubquery() const noexcept -> bool;
-
  private:
   enum class State {
     ACCUMULATE_DATA_ROWS,
@@ -116,7 +114,7 @@ class SubqueryEndExecutor {
   // control of it to hand over to an AqlValue
   class Accumulator {
    public:
-    explicit Accumulator(VPackOptions const* options);
+    explicit Accumulator(velocypack::Options const* options);
     void reset();
 
     void addValue(AqlValue const& value);
@@ -126,9 +124,9 @@ class SubqueryEndExecutor {
     size_t numValues() const noexcept;
 
    private:
-    VPackOptions const* const _options;
-    std::unique_ptr<arangodb::velocypack::Buffer<uint8_t>> _buffer{nullptr};
-    std::unique_ptr<VPackBuilder> _builder{nullptr};
+    velocypack::Options const* const _options;
+    arangodb::velocypack::Buffer<uint8_t> _buffer;
+    velocypack::Builder _builder;
     size_t _numValues{0};
   };
 

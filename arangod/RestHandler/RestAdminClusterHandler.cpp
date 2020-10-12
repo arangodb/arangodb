@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,18 +31,18 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TimeString.h"
 #include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Cluster/AgencyPaths.h"
+#include "Basics/ResultT.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
-#include "Cluster/ResultT.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/RestHandlerFactory.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -333,7 +333,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::retryTryDeleteServe
           return tryDeleteServer(std::move(ctx));
         });
   } else {
-    generateError(rest::ResponseCode::REQUEST_TIMEOUT, TRI_ERROR_HTTP_PRECONDITION_FAILED,
+    generateError(rest::ResponseCode::PRECONDITION_FAILED, TRI_ERROR_HTTP_PRECONDITION_FAILED,
                   "server may not be deleted");
     return futures::makeFuture();
   }
@@ -498,6 +498,7 @@ RestAdminClusterHandler::MoveShardContext::fromVelocyPack(VPackSlice slice) {
     auto shard = slice.get("shard");
     auto fromServer = slice.get("fromServer");
     auto toServer = slice.get("toServer");
+    auto remainsFollower = slice.get("remainsFollower");
 
     bool valid = collection.isString() && shard.isString() &&
                  fromServer.isString() && toServer.isString();
@@ -508,7 +509,8 @@ RestAdminClusterHandler::MoveShardContext::fromVelocyPack(VPackSlice slice) {
                                                 collection.copyString(),
                                                 shard.copyString(),
                                                 fromServer.copyString(),
-                                                toServer.copyString(), std::string{});
+                                                toServer.copyString(), std::string{},
+                                                remainsFollower.isNone() || remainsFollower.isTrue());
     }
   }
 
@@ -632,7 +634,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
                    builder.add("fromServer", VPackValue(ctx->fromServer));
                    builder.add("toServer", VPackValue(ctx->toServer));
                    builder.add("isLeader", VPackValue(isLeader));
-                   builder.add("remainsFollower", VPackValue(isLeader));
+                   builder.add("remainsFollower", isLeader ? VPackValue(ctx->remainsFollower) : VPackValue(false));
                    builder.add("creator", VPackValue(ServerState::instance()->getId()));
                    builder.add("timeCreated", VPackValue(timepointToString(
                                                   std::chrono::system_clock::now())));
@@ -675,7 +677,8 @@ RestStatus RestAdminClusterHandler::handlePostMoveShard(std::unique_ptr<MoveShar
     return RestStatus::DONE;
   }
 
-  ctx->collectionID = TRI_RidToString(collection->planId());
+  // base64-encode collection id with RevisionId
+  ctx->collectionID = RevisionId{collection->planId().id()}.toString();
   auto planPath = arangodb::cluster::paths::root()->arango()->plan();
 
   VPackBuffer<uint8_t> trx;
@@ -923,12 +926,12 @@ RestStatus RestAdminClusterHandler::handleProxyGetRequest(std::string const& url
               response()->setPayload(std::move(*payload));
             } else {
               switch (result.error) {
-                case fuerte::Error::Canceled:
+                case fuerte::Error::ConnectionCanceled:
                   generateError(rest::ResponseCode::BAD,
                                 TRI_ERROR_HTTP_BAD_PARAMETER, "unknown server");
                   break;
                 case fuerte::Error::CouldNotConnect:
-                case fuerte::Error::Timeout:
+                case fuerte::Error::RequestTimeout:
                   generateError(rest::ResponseCode::REQUEST_TIMEOUT, TRI_ERROR_HTTP_GATEWAY_TIMEOUT,
                                 "server did not answer");
                   break;
@@ -1410,10 +1413,22 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
 }
 
 RestStatus RestAdminClusterHandler::handleNumberOfServers() {
-  if (!ServerState::instance()->isCoordinator() ||
-      !ExecContext::current().isAdminUser()) {
+  if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+ 
+  // GET requests are allowed for everyone, unless --server.harden is used.
+  // in this case admin privileges are required.
+  // PUT requests always require admin privileges
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+  bool const needsAdminPrivileges = 
+      (request()->requestType() != rest::RequestType::GET || security.isRestApiHardened());
+
+  if (needsAdminPrivileges &&
+      !ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     return RestStatus::DONE;
   }
 
@@ -1574,7 +1589,8 @@ void RestAdminClusterHandler::getShardDistribution(
     if (!collection->distributeShardsLike().empty()) {
       continue;
     }
-    std::string collectionID = TRI_RidToString(collection->planId());
+    // base64-encode collection id with RevisionId
+    std::string collectionID = RevisionId{collection->planId().id()}.toString();
     auto shardIds = collection->shardIds();
     for (auto const& shard : *shardIds) {
       for (size_t i = 0; i < shard.second.size(); i++) {

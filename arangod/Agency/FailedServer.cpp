@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -213,7 +213,7 @@ bool FailedServer::start(bool& aborts) {
                     } else {
                       LOG_TOPIC("c6c32", DEBUG, Logger::SUPERVISION)
                           << "Do intentionally nothing for failed follower of "
-                             "satellite collection. job: "
+                             "SatelliteCollection. job: "
                           << _jobId;
                     }
                   }
@@ -237,6 +237,9 @@ bool FailedServer::start(bool& aborts) {
       // Delete todo
       addRemoveJobFromSomewhere(*transactions, "ToDo", _jobId);
       addBlockServer(*transactions, _server, _jobId);
+      // We increment the rebootId of the failed server to let the RebootId
+      // tracker do its magic to recognise the failure soon.
+      addIncreaseRebootId(*transactions, _server);
     }  // <------------ Operations
 
     // Preconditions ----------->

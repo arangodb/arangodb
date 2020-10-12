@@ -1,7 +1,8 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 EMC Corporation
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,7 +51,7 @@ namespace iresearch {
 
 /*static*/ std::shared_ptr<LogicalView> IResearchViewSingleServer::make(
     TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& info, bool isNew,
-    uint64_t planVersion, LogicalView::PreCommitCallback const& preCommit /*= {}*/
+    LogicalView::PreCommitCallback const& preCommit /*= {}*/
 ) {
   auto& properties = info.isObject() ? info : emptyObjectSlice();  // if no 'info' then assume defaults
   std::string error;
@@ -87,11 +88,11 @@ namespace iresearch {
     }
   }
 
-  auto view = IResearchView::make(vocbase, info, isNew, planVersion, preCommit);
+  auto view = IResearchView::make(vocbase, info, isNew, preCommit);
 
   // create links - "on a best-effort basis"
   if (properties.hasKey("links") && isNew) {
-    std::unordered_set<TRI_voc_cid_t> collections;
+    std::unordered_set<DataSourceId> collections;
     auto result = IResearchLinkHelper::updateLinks(collections, vocbase, *view.get(),
                                                    properties.get("links"));
 

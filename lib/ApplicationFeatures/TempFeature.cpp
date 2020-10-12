@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +24,6 @@
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/CrashHandler.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
@@ -61,7 +61,6 @@ void TempFeature::prepare() {
   if (!_path.empty()) {
     TRI_SetTempPath(_path);
   }
-  CrashHandler::setTempFilename();
 }
 
 void TempFeature::start() {

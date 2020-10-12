@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,6 +26,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+#include <algorithm>
 #include <numeric>
 
 using namespace arangodb;
@@ -39,18 +41,23 @@ AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state, std::size_t 
                                                arangodb::aql::SharedAqlItemBlockPtr const& block,
                                                std::size_t index)
     : _block{block}, _rowIndex{index}, _finalState{state}, _skipped{skipped} {
-  TRI_ASSERT(index <= _block->size());
+  TRI_ASSERT(index <= _block->numRows());
 }
 
 AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state, std::size_t skipped,
                                                arangodb::aql::SharedAqlItemBlockPtr&& block,
                                                std::size_t index) noexcept
     : _block{std::move(block)}, _rowIndex{index}, _finalState{state}, _skipped{skipped} {
-  TRI_ASSERT(index <= _block->size());
+  TRI_ASSERT(index <= _block->numRows());
 }
 
 SharedAqlItemBlockPtr AqlItemBlockInputRange::getBlock() const noexcept {
   return _block;
+}
+
+bool AqlItemBlockInputRange::hasValidRow() const noexcept {
+  // covers both data rows & shadow rows
+  return isIndexValid(_rowIndex);
 }
 
 bool AqlItemBlockInputRange::hasDataRow() const noexcept {
@@ -68,19 +75,32 @@ std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRow() 
 }
 
 std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::nextDataRow() {
-  auto res = peekDataRow();
-  if (res.second) {
-    ++_rowIndex;
+  // this is an optimized version that intentionally does not call peekDataRow()
+  // in order to save a few if conditions
+  if (hasDataRow()) {
+    TRI_ASSERT(_block != nullptr);
+    auto state = nextState<LookAhead::NEXT, RowType::DATA>();
+    return std::make_pair(state, InputAqlItemRow{_block, _rowIndex++});
   }
-  return res;
+  return std::make_pair(nextState<LookAhead::NOW, RowType::DATA>(),
+                        InputAqlItemRow{CreateInvalidInputRowHint{}});
 }
 
+/// @brief: this is a performance-optimized version of nextDataRow() that must only
+/// be used if it is sure that there is another data row
 std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::nextDataRow(HasDataRow /*tag unused*/) {
   TRI_ASSERT(_block != nullptr);
   TRI_ASSERT(hasDataRow());
-  // must calculate nextState() before the increase _rowIndex here.
+  // must calculate nextState() before the increase of _rowIndex here.
   auto state = nextState<LookAhead::NEXT, RowType::DATA>();
   return std::make_pair(state, InputAqlItemRow{_block, _rowIndex++});
+}
+
+/// @brief moves the row index one forward if we are at a row right now
+void AqlItemBlockInputRange::advanceDataRow() noexcept {
+  if (hasDataRow()) {
+    ++_rowIndex;
+  }
 }
 
 ExecutorState AqlItemBlockInputRange::upstreamState() const noexcept {
@@ -96,7 +116,7 @@ bool AqlItemBlockInputRange::hasShadowRow() const noexcept {
 }
 
 bool AqlItemBlockInputRange::isIndexValid(std::size_t index) const noexcept {
-  return _block != nullptr && index < _block->size();
+  return _block != nullptr && index < _block->numRows();
 }
 
 bool AqlItemBlockInputRange::isShadowRowAtIndex(std::size_t index) const noexcept {
@@ -116,19 +136,15 @@ std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::nextShadowRow
     ShadowAqlItemRow row{_block, _rowIndex};
     // Advance the current row.
     _rowIndex++;
-    return std::make_pair(nextState<LookAhead::NOW, RowType::SHADOW>(), row);
+    return std::make_pair(nextState<LookAhead::NOW, RowType::SHADOW>(), std::move(row));
   }
   return std::make_pair(nextState<LookAhead::NOW, RowType::SHADOW>(),
                         ShadowAqlItemRow{CreateInvalidShadowRowHint{}});
 }
 
 size_t AqlItemBlockInputRange::skipAllRemainingDataRows() {
-  ExecutorState state;
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
-
   while (hasDataRow()) {
-    std::tie(state, row) = nextDataRow();
-    TRI_ASSERT(row.isInitialized());
+    ++_rowIndex;
   }
   return 0;
 }
@@ -144,11 +160,9 @@ ExecutorState AqlItemBlockInputRange::nextState() const noexcept {
     return _finalState;
   }
 
-  bool isShadowRow = isShadowRowAtIndex(testRowIndex);
-
   if constexpr (RowType::DATA == type) {
     // We Return HASMORE, if the next row is a data row
-    if (!isShadowRow) {
+    if (!isShadowRowAtIndex(testRowIndex)) {
       return ExecutorState::HASMORE;
     }
     return ExecutorState::DONE;
@@ -184,7 +198,7 @@ auto AqlItemBlockInputRange::countDataRows() const noexcept -> std::size_t {
     return 0;
   }
   auto const& block = getBlock();
-  auto total = block->size();
+  auto total = block->numRows();
   if (_rowIndex >= total) {
     return 0;
   }
@@ -195,9 +209,8 @@ auto AqlItemBlockInputRange::countShadowRows() const noexcept -> std::size_t {
   if (_block == nullptr) {
     return 0;
   }
-  auto const& block = getBlock();
-  auto const& rows = block->getShadowRowIndexes();
-  return std::count_if(rows.begin(), rows.end(),
+  auto [shadowRowsBegin, shadowRowsEnd] = getBlock()->getShadowRowIndexesFrom(0);
+  return std::count_if(std::lower_bound(shadowRowsBegin, shadowRowsEnd, _rowIndex), shadowRowsEnd,
                        [&](auto r) -> bool { return r >= _rowIndex; });
 }
 

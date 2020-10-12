@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -135,7 +135,7 @@ class EngineInfoContainerDBServerServerBased {
   //   simon: in v3.7 we get a global QueryId for all snippets on a server
   Result buildEngines(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
                       MapRemoteToSnippet& snippetIds,
-                      std::map<std::string, QueryId>& ServerToQueryId,
+                      aql::ServerQueryIdList& serverQueryIds,
                       std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
 
   /**

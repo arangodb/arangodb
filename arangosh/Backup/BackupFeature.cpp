@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -244,6 +245,10 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
       if (meta.ok()) {
         LOG_TOPIC("0f208", INFO, arangodb::Logger::BACKUP) << "      version:   " << meta.get()._version;
         LOG_TOPIC("55af7", INFO, arangodb::Logger::BACKUP) << "      date/time: " << meta.get()._datetime;
+        if (!meta.get()._userSecretHashes.empty()) {
+          LOG_TOPIC("56bf8", INFO, arangodb::Logger::BACKUP) << "      encryption secret sha256: "
+            << meta.get()._userSecretHashes.front();
+        }
         LOG_TOPIC("43522", INFO, arangodb::Logger::BACKUP) << "      size in bytes: " << meta.get()._sizeInBytes;
         LOG_TOPIC("12532", INFO, arangodb::Logger::BACKUP) << "      number of files: " << meta.get()._nrFiles;
         LOG_TOPIC("43212", INFO, arangodb::Logger::BACKUP) << "      number of DBServers: " << meta.get()._nrDBServers;

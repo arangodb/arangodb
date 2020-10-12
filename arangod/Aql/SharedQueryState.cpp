@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,18 +23,26 @@
 
 #include "SharedQueryState.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-
-#include "Logger/LogMacros.h"
+#include "Transaction/Context.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SharedQueryState::SharedQueryState()
-  : _wakeupCb(nullptr), _numWakeups(0),
-    _cbVersion(0), _numTasks(0), _valid(true) {}
+SharedQueryState::SharedQueryState(application_features::ApplicationServer& server)
+    : _server(server),
+      _wakeupCb(nullptr),
+      _numWakeups(0),
+      _cbVersion(0),
+      _maxTasks(static_cast<unsigned>(_server.getFeature<QueryRegistryFeature>().maxParallelism())),
+      _numTasks(0),
+      _valid(true) {}
 
 void SharedQueryState::invalidate() {
   {
@@ -54,7 +63,7 @@ void SharedQueryState::invalidate() {
 void SharedQueryState::waitForAsyncWakeup() {
   std::unique_lock<std::mutex> guard(_mutex);
   if (!_valid) {
-    return;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
   
   TRI_ASSERT(!_wakeupCb);

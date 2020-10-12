@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -186,7 +187,6 @@ class QuickHistogram : public arangodb::Thread {
         // new age string buffering & formatting
         std::ostringstream oss;
         oss << std::put_time(&tm, "%m-%d-%Y %H:%M:%S");
-        auto str = oss.str();
 
         LOG_TOPIC("8a76c",INFO, arangodb::Logger::FIXME) << Logger::FIXED(fp_measuring,3) << ","
                                                  << Logger::FIXED(fp_interval,3) << ","
@@ -196,7 +196,7 @@ class QuickHistogram : public arangodb::Thread {
                                                  << per95.count() << "," << per99.count() << ","
                                                  << per99_9.count() << ","
                                                  << ((0 != num) ? _readingLatencies->at(num - 1).count() : 0) << ","
-                                                 << _objectsReading.load() << "," << str.c_str();
+                                                 << _objectsReading.load() << "," << oss.str();
 
         _readingLatencies->clear();
         _intervalStart = intervalEnd;

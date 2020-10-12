@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,6 +29,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;
@@ -68,7 +70,7 @@ struct DBUser {
 
 class CreateDatabaseInfo {
  public:
-  explicit CreateDatabaseInfo(application_features::ApplicationServer&);
+  CreateDatabaseInfo(application_features::ApplicationServer&, ExecContext const&);
   Result load(std::string const& name, uint64_t id);
 
   Result load(uint64_t id, VPackSlice const& options,
@@ -133,6 +135,7 @@ class CreateDatabaseInfo {
 
  private:
   application_features::ApplicationServer& _server;
+  ExecContext const& _context;
 
   std::uint64_t _id = 0;
   std::string _name = "";

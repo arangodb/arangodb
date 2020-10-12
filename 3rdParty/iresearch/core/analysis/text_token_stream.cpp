@@ -159,8 +159,7 @@ static auto icu_cleanup = irs::make_finally([]()->void{
 bool get_stopwords(
     irs::analysis::text_token_stream::stopwords_t& buf,
     const std::locale& locale,
-    const irs::string_ref& path = irs::string_ref::NIL
-) {
+    const irs::string_ref& path = irs::string_ref::NIL) {
   auto language = irs::locale_utils::language(locale);
   irs::utf8_path stopword_path;
   auto* custom_stopword_path =
@@ -196,13 +195,12 @@ bool get_stopwords(
         || !(stopword_path /= language).exists_directory(result) || !result) {
       IR_FRMT_ERROR("Failed to load stopwords from path: %s", stopword_path.utf8().c_str());
 
-      return false;
+      return !custom_stopword_path;
     }
 
     irs::analysis::text_token_stream::stopwords_t stopwords;
     auto visitor = [&stopwords, &stopword_path](
-        const irs::utf8_path::native_char_t* name
-    )->bool {
+        const irs::utf8_path::native_char_t* name)->bool {
       auto path = stopword_path;
       bool result;
 
@@ -242,7 +240,7 @@ bool get_stopwords(
     };
 
     if (!stopword_path.visit_directory(visitor, false)) {
-      return false;
+      return !custom_stopword_path;
     }
 
     buf.insert(stopwords.begin(), stopwords.end());
@@ -265,7 +263,7 @@ bool get_stopwords(
 ///  none (empty explicit_Stopwords  and flg explicit_stopwords_set not set) - load from default location
 ////////////////////////////////////////////////////////////////////////////////
 bool build_stopwords(const irs::analysis::text_token_stream::options_t& options,
-  irs::analysis::text_token_stream::stopwords_t& buf) {
+                     irs::analysis::text_token_stream::stopwords_t& buf) {
   if (!options.explicit_stopwords.empty()) {
     // explicit stopwords always go
     buf.insert(options.explicit_stopwords.begin(), options.explicit_stopwords.end()); 
@@ -935,6 +933,11 @@ text_token_stream::text_token_stream(const options_t& options, const stopwords_t
                          normalize_text_config); // match registration above
 }
 
+/*static*/ void text_token_stream::clear_cache() {
+  SCOPED_LOCK(::mutex);
+  cached_state_by_key.clear();
+}
+
 /*static*/ analyzer::ptr text_token_stream::make(const irs::string_ref& locale) {
   return make_text(locale);
 }
@@ -1023,18 +1026,23 @@ bool text_token_stream::reset(const string_ref& data) {
   // convert encoding to UTF8 for use with ICU
   // ...........................................................................
   std::string data_utf8;
-
-  // valid conversion since 'locale_' was created with internal unicode encoding
-  if (!irs::locale_utils::append_internal(data_utf8, data, state_->options.locale)) {
-    return false; // UTF8 conversion failure
+  irs::string_ref data_utf8_ref;
+  if (irs::locale_utils::is_utf8(state_->options.locale)) {
+    data_utf8_ref = data;
+  } else {
+    // valid conversion since 'locale_' was created with internal unicode encoding
+    if (!irs::locale_utils::append_internal(data_utf8, data, state_->options.locale)) {
+      return false; // UTF8 conversion failure
+    }
+    data_utf8_ref = data_utf8;
   }
 
-  if (data_utf8.size() > irs::integer_traits<int32_t>::const_max) {
+  if (data_utf8_ref.size() > irs::integer_traits<int32_t>::const_max) {
     return false; // ICU UnicodeString signatures can handle at most INT32_MAX
   }
 
   state_->data = icu::UnicodeString::fromUTF8(
-    icu::StringPiece(data_utf8.c_str(), (int32_t)(data_utf8.size()))
+    icu::StringPiece(data_utf8_ref.c_str(), (int32_t)(data_utf8_ref.size()))
   );
 
   // ...........................................................................

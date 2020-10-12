@@ -215,7 +215,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             };
             results[te] = {
               status: false,
-              message: 'server unavailable for testing: ' + results[te].message
+              message: 'server unavailable for testing.'
             };
           } else {
             if (results['SKIPPED'].message !== '') {
@@ -341,9 +341,13 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         } else {
           serverDead = true;
           continueTesting = false;
+          let msg = '';
+          if (results[te].hasOwnProperty('message') && results[te].message.length > 0) {
+            msg = results[te].message + ' - ';
+          }
           results[te] = {
             status: false,
-            message: 'server is dead: + ' + results[te].message
+            message: 'server is dead: ' + msg + instanceInfo.message
           };
         }
         
@@ -404,6 +408,10 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     };
     results.status = true;
     print(RED + 'No testcase matched the filter.' + RESET);
+  }
+  if (options.sleepBeforeShutdown !== 0) {
+    print("Sleeping for " + options.sleepBeforeShutdown + " seconds");
+    sleep(options.sleepBeforeShutdown);
   }
   let shutDownStart = time();
   results['testDuration'] = shutDownStart - testrunStart;
@@ -606,7 +614,7 @@ function doOnePathInner (path) {
 }
 
 function scanTestPaths (paths, options) {
-  // add enterprise tests
+  // add Enterprise Edition tests
   if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
     paths = paths.concat(paths.map(function(p) {
       return 'enterprise/' + p;
@@ -876,6 +884,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
       'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');\n';
   }
 
+  require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   let testFunc;
   eval('testFunc = function () { \nglobal.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode + "}");
   
@@ -909,15 +918,18 @@ runInLocalArangosh.info = 'runInLocalArangosh';
 // / @brief runs a unittest file using rspec
 // //////////////////////////////////////////////////////////////////////////////
 function camelize (str) {
-  return str.replace(/(?:^\w|[A-Z]|\b\w)/g, function (letter, index) {
+  return str.replace(/(?:^\w|[A-Z]|\b\w,)/g, function (letter, index) {
     return index === 0 ? letter.toLowerCase() : letter.toUpperCase();
-  }).replace(/\s+/g, '');
+  }).replace(/\s+/g, '_');
 }
 
 const parseRspecJson = function (testCase, res, totalDuration) {
   let tName = camelize(testCase.description);
   let status = (testCase.status === 'passed');
 
+  if (res.hasOwnProperty(tName)) {
+    throw new Error(`duplicate testcase name in ${tName} ${JSON.stringify(testCase)}`);
+  }
   res[tName] = {
     status: status,
     message: testCase.full_description,
@@ -1028,25 +1040,28 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     if (options.extremeVerbosity) {
       print(yaml.safeDump(jsonResult));
     }
-
     for (let j = 0; j < jsonResult.examples.length; ++j) {
       result.failed += parseRspecJson(
-        jsonResult.examples[j], result,
+        jsonResult.examples[j],
+        result,
         jsonResult.summary.duration);
     }
 
     result.duration = jsonResult.summary.duration;
   } catch (x) {
     result.failed = 1;
-    result.message = 'Failed to parse rspec results for: ' + file;
+    result.status = false;
+    result.message = 'Failed to parse rspec results for: ' + file + ' - ' + x.message;
 
     if (res.status === false) {
       options.cleanup = false;
     }
   }
 
-  if (fs.exists(jsonFN)) fs.remove(jsonFN);
-  fs.remove(tmpname);
+  if (options.cleanup) {
+    if (fs.exists(jsonFN)) fs.remove(jsonFN);
+    fs.remove(tmpname);
+  }
   return result;
 }
 runInRSpec.info = 'runInLocalRSpec';

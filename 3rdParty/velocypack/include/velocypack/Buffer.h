@@ -195,6 +195,21 @@ class Buffer {
     initWithNone();
   }
 
+  // Steal external memory; only allowed when the buffer is not local,
+  // i.e. !usesLocalMemory()
+   T* steal() noexcept {
+    VELOCYPACK_ASSERT(!usesLocalMemory());
+
+    auto buffer = _buffer;
+    _buffer = _local;
+    _size = 0;
+    _capacity = sizeof(_local);
+    poison(_buffer, _capacity);
+    initWithNone();
+
+    return buffer;
+  }
+
   inline T& operator[](std::size_t position) noexcept {
     return _buffer[position];
   }
@@ -250,6 +265,12 @@ class Buffer {
     if (_size + len >= _capacity) {
       grow(len);
     }
+  }
+
+  // If true, uses memory inside the buffer (_local).
+  // Otherwise, uses memory on the heap.
+  bool usesLocalMemory() const noexcept {
+    return _buffer == _local;
   }
  
  private:

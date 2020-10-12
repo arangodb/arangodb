@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,7 +61,7 @@ time_point lastQueueFullWarning[3];
 int64_t fullQueueEvents[3] = {0, 0, 0};
 std::mutex fullQueueWarningMutex[3];
 
-void logQueueWarningEveryNowAndThen(int64_t events, uint64_t maxQueueSize) {
+void logQueueWarningEveryNowAndThen(int64_t events, uint64_t maxQueueSize, uint64_t approxQueueLength) {
   auto const now = std::chrono::steady_clock::now();
   uint64_t totalEvents;
   bool printLog = false;
@@ -81,7 +81,8 @@ void logQueueWarningEveryNowAndThen(int64_t events, uint64_t maxQueueSize) {
   if (printLog) {
     LOG_TOPIC("dead2", WARN, Logger::THREADS)
         << "Scheduler queue with max capacity " << maxQueueSize
-        << " is filled more than 50% in last " << sinceLast.count()
+        << " has approximately " << approxQueueLength 
+        << " tasks and is filled more than 50% in last " << sinceLast.count()
         << "s (happened " << totalEvents << " times since last message)";
   }
 }
@@ -128,7 +129,7 @@ class SupervisedSchedulerManagerThread final : public SupervisedSchedulerThread 
                                             SupervisedScheduler& scheduler)
       : Thread(server, "SchedMan"), SupervisedSchedulerThread(server, scheduler) {}
   ~SupervisedSchedulerManagerThread() { shutdown(); }
-  void run() override { _scheduler.runSupervisor(); };
+  void run() override { _scheduler.runSupervisor(); }
 };
 
 class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
@@ -153,7 +154,6 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _jobsSubmitted(0),
       _jobsDequeued(0),
       _jobsDone(0),
-      _jobsDirectExec(0),
       _wakeupQueueLength(5),
       _wakeupTime_ns(1000),
       _definitiveWakeupTime_ns(100000),
@@ -172,7 +172,15 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
           "Number of awake worker threads")),
       _metricsNumWorkerThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           StaticStrings::SchedulerNumWorker, 0,
-          "Number of worker threads")) {
+          "Number of worker threads")),
+      _metricsThreadsStarted(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_scheduler_threads_started", 0,
+          "Number of scheduler threads started")),
+      _metricsThreadsStopped(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_scheduler_threads_stopped", 0,
+          "Number of scheduler threads stopped")),
+      _metricsQueueFull(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_scheduler_queue_full_failures", 0, "Tasks dropped and not added to internal queue")) {
   _queues[0].reserve(maxQueueSize);
   _queues[1].reserve(fifo1Size);
   _queues[2].reserve(fifo2Size);
@@ -213,6 +221,7 @@ bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> h
     LOG_TOPIC("98d94", DEBUG, Logger::THREADS)
         << "unable to push job to scheduler queue: queue is full";
     logQueueFullEveryNowAndThen(queueNo, maxSize);
+    ++_metricsQueueFull;
     return false;
   }
 
@@ -223,10 +232,10 @@ bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> h
     if ((::queueWarningTick++ & 0xFFu) == 0) {
       auto const& now = std::chrono::steady_clock::now();
       if (::conditionQueueFullSince == time_point{}) {
-        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize);
+        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize, approxQueueLength);
         ::conditionQueueFullSince = now;
       } else if (now - ::conditionQueueFullSince > std::chrono::seconds(5)) {
-        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize);
+        logQueueWarningEveryNowAndThen(::queueWarningTick, _maxFifoSize, approxQueueLength);
         ::queueWarningTick = 0;
         ::conditionQueueFullSince = now;
       }
@@ -274,6 +283,7 @@ bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> h
   for (auto& state : _workerStates) {
     std::unique_lock<std::mutex> guard2(state->_mutex);
     if (state->_sleeping) {
+      guard2.unlock();
       state->_conditionWork.notify_one();
       break;
     }
@@ -322,6 +332,7 @@ void SupervisedScheduler::shutdown() {
     for (auto& state : _workerStates) {
       std::unique_lock<std::mutex> guard2(state->_mutex);
       state->_stop = true;
+      guard2.unlock();
       state->_conditionWork.notify_one();
     }
   }
@@ -354,30 +365,37 @@ void SupervisedScheduler::runWorker() {
   std::shared_ptr<WorkerState> state;
 
   {
-    {
-      std::lock_guard<std::mutex> guard1(_mutex);
-      id = _numWorkers++;  // increase the number of workers here, to obtain the id
-      // copy shared_ptr with worker state
-      state = _workerStates.back();
-    }
-
-    state->_sleepTimeout_ms = 20 * (id + 1);
-    // cap the timeout to some boundary value
-    if (state->_sleepTimeout_ms >= 1000) {
-      state->_sleepTimeout_ms = 1000;
-    }
-
-    if (id < 5U) {
-      state->_queueRetryTime_us = (uint64_t(32) >> id) + 1;
-    } else {
-      state->_queueRetryTime_us = 0;
-    }
-
-    // inform the supervisor that this thread is alive
-    state->_ready = true;
-    std::lock_guard<std::mutex> guard(_mutexSupervisor);
-    _conditionSupervisor.notify_one();
+    std::lock_guard<std::mutex> guard1(_mutex);
+    id = _numWorkers++;  // increase the number of workers here, to obtain the id
+    // copy shared_ptr with worker state
+    // obtaining the state from the end of the _workerStates list
+    // is (only) safe here because there is only one thread
+    // (SupervisedScheduler) that modifies _workerStates and
+    // that blocks until we (in this thread) have set the _ready
+    // flag on the state
+    state = _workerStates.back();
+    TRI_ASSERT(!state->_ready);
   }
+
+  state->_sleepTimeout_ms = 20 * (id + 1);
+  // cap the timeout to some boundary value
+  if (state->_sleepTimeout_ms >= 1000) {
+    state->_sleepTimeout_ms = 1000;
+  }
+
+  if (id < 5U) {
+    state->_queueRetryTime_us = (uint64_t(32) >> id) + 1;
+  } else {
+    state->_queueRetryTime_us = 0;
+  }
+
+  // inform the supervisor that this thread is alive
+  state->_ready = true;
+  {
+    std::lock_guard<std::mutex> guard(_mutexSupervisor);
+  }
+  _conditionSupervisor.notify_one();
+
   _nrAwake.fetch_add(1, std::memory_order_relaxed);
   while (true) {
     try {
@@ -391,9 +409,15 @@ void SupervisedScheduler::runWorker() {
       state->_lastJobStarted = clock::now();
       state->_working = true;
       _nrWorking.fetch_add(1, std::memory_order_relaxed);
-      work->_handler();
-      state->_working = false;
-      _nrWorking.fetch_sub(1, std::memory_order_relaxed);
+      try {
+        work->_handler();
+        state->_working = false;
+        _nrWorking.fetch_sub(1, std::memory_order_relaxed);
+      } catch (...) {
+        state->_working = false;
+        _nrWorking.fetch_sub(1, std::memory_order_relaxed);
+        throw;
+      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("a235e", ERR, Logger::THREADS)
           << "scheduler loop caught exception: " << ex.what();
@@ -431,8 +455,8 @@ void SupervisedScheduler::runSupervisor() {
     uint64_t queueLength = jobsSubmitted - jobsDequeued;
 
     uint64_t awake = _nrAwake.load(std::memory_order_relaxed);
-    uint64_t numWorker = _numWorkers.load(std::memory_order_relaxed);
-    bool sleeperFound = (awake < numWorker);
+    uint64_t numWorkers = _numWorkers.load(std::memory_order_relaxed);
+    bool sleeperFound = (awake < numWorkers);
 
     bool doStartOneThread = (((queueLength >= 3 * _numWorkers) &&
                               ((lastQueueLength + _numWorkers) < queueLength)) ||
@@ -447,23 +471,27 @@ void SupervisedScheduler::runSupervisor() {
     lastQueueLength = queueLength;
     lastJobsSubmitted = jobsSubmitted;
 
-    if (roundCount % 8 == 0) {
-      // approx every 0.8s update the metrics
+    if (roundCount++ >= 5) {
+      // approx every 0.5s update the metrics
       _metricsQueueLength.operator=(queueLength);
       _metricsAwakeThreads.operator=(awake);
-      _metricsNumWorkerThreads.operator=(numWorker);
+      _metricsNumWorkerThreads.operator=(numWorkers);
+      roundCount = 0;
     }
 
     try {
+      bool haveStartedThread = false;
+
       if (doStartOneThread && _numWorkers < _maxNumWorker) {
         jobsStallingTick = 0;
         startOneThread();
+        haveStartedThread = true;
       } else if (doStopOneThread && _numWorkers > _minNumWorker) {
         stopOneThread();
       }
 
       cleanupAbandonedThreads();
-      sortoutLongRunningThreads();
+      haveStartedThread |= sortoutLongRunningThreads();
 
       std::unique_lock<std::mutex> guard(_mutexSupervisor);
 
@@ -471,7 +499,10 @@ void SupervisedScheduler::runSupervisor() {
         break;
       }
 
-      _conditionSupervisor.wait_for(guard, std::chrono::milliseconds(100));
+      // use a reduced wait time if we just started a new thread...
+      // it is possible that more work is coming so we should react
+      // quickly.
+      _conditionSupervisor.wait_for(guard,  std::chrono::milliseconds(haveStartedThread ? 50 : 100));
     } catch (std::exception const& ex) {
       LOG_TOPIC("3318c", WARN, Logger::THREADS)
           << "scheduler supervisor thread caught exception: " << ex.what();
@@ -495,10 +526,11 @@ bool SupervisedScheduler::cleanupAbandonedThreads() {
   return _abandonedWorkerStates.empty();
 }
 
-void SupervisedScheduler::sortoutLongRunningThreads() {
+bool SupervisedScheduler::sortoutLongRunningThreads() {
   // Detaching a thread always implies starting a new thread. Hence check here
   // if we can start a new thread.
 
+  bool haveStartedThread = true;
   size_t newThreadsNeeded = 0;
   {
     std::unique_lock<std::mutex> guard(_mutex);  // protect _workerStates
@@ -534,9 +566,12 @@ void SupervisedScheduler::sortoutLongRunningThreads() {
       }
     }
   }
+
   while (newThreadsNeeded--) {
+    haveStartedThread = true;
     startOneThread();
   }
+  return haveStartedThread;
 }
 
 bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const {
@@ -661,8 +696,11 @@ void SupervisedScheduler::startOneThread() {
   }
 
   // sync with runWorker()
-  std::unique_lock<std::mutex> guard2(_mutexSupervisor);
-  _conditionSupervisor.wait(guard2, [&state]() { return state->_ready; });
+  {
+    std::unique_lock<std::mutex> guard2(_mutexSupervisor);
+    _conditionSupervisor.wait(guard2, [&state]() { return state->_ready; });
+  }
+  ++_metricsThreadsStarted;
   LOG_TOPIC("f9de8", TRACE, Logger::THREADS) << "Started new thread";
 }
 
@@ -682,9 +720,11 @@ void SupervisedScheduler::stopOneThread() {
   {
     std::unique_lock<std::mutex> guard(state->_mutex);
     state->_stop = true;
-    state->_conditionWork.notify_one();
     // _stop is set under the mutex, then the worker thread is notified.
   }
+  state->_conditionWork.notify_one();
+  
+  ++_metricsThreadsStopped;
 
   // However the thread may be working on a long job. Hence we enqueue it on
   // the cleanup list and wait for its termination.
@@ -730,17 +770,15 @@ Scheduler::QueueStatistics SupervisedScheduler::queueStatistics() const {
   uint64_t const queued = jobsSubmitted - jobsDone;
   uint64_t const working = jobsDequeued - jobsDone;
 
-  uint64_t const directExec = _jobsDirectExec.load(std::memory_order_relaxed);
-
-  return QueueStatistics{numWorkers, 0, queued, working, directExec};
+  return QueueStatistics{numWorkers, queued, working};
 }
 
 void SupervisedScheduler::toVelocyPack(velocypack::Builder& b) const {
   QueueStatistics qs = queueStatistics();
 
-  b.add("scheduler-threads", VPackValue(qs._running));  // numWorkers
-  b.add("blocked", VPackValue(qs._blocked));            // obsolete
-  b.add("queued", VPackValue(qs._queued));
-  b.add("in-progress", VPackValue(qs._working));
-  b.add("direct-exec", VPackValue(qs._directExec));
+  b.add("scheduler-threads", VPackValue(qs._running)); // numWorkers
+  b.add("blocked", VPackValue(0)); // obsolete
+  b.add("queued", VPackValue(qs._queued)); // scheduler queue length
+  b.add("in-progress", VPackValue(qs._working)); // number of working (non-idle) threads
+  b.add("direct-exec", VPackValue(0)); // obsolete
 }

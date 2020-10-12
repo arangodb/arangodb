@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -34,8 +35,8 @@
 
 #include "Agency/AgencyComm.h"
 
-#include "Cluster/PathComponent.h"
-#include "Cluster/ResultT.h"
+#include "Agency/PathComponent.h"
+#include "Basics/ResultT.h"
 #include "Futures/Future.h"
 #include "Network/Methods.h"
 
@@ -70,7 +71,7 @@ struct AsyncAgencyCommResult {
 
   Result asResult() {
     if (!ok()) {
-      return Result{int(error), arangodb::fuerte::to_string(error)};
+      return Result{int(error), to_string(error)};
     } else if (200 <= statusCode() && statusCode() <= 299) {
       return Result{};
     } else {
@@ -83,7 +84,7 @@ struct AsyncAgencyCommResult {
 // switched off. And since warnings are considered to be errors, we must
 // switch the warning off:
 
-#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 3))
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
@@ -106,7 +107,7 @@ struct AgencyReadResult : public AsyncAgencyCommResult {
   std::shared_ptr<arangodb::cluster::paths::Path const> _valuePath;
 };
 
-#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 3))
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
 #pragma GCC diagnostic pop
 #endif
 

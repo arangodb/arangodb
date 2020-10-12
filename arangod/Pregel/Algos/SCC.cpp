@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,6 +37,7 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
+namespace {
 static std::string const kPhase = "phase";
 static std::string const kFoundNewMax = "max";
 static std::string const kConverged = "converged";
@@ -139,6 +141,8 @@ struct SCCComputation
   }
 };
 
+}
+
 VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>* SCC::createComputation(
     WorkerConfig const* config) const {
   return new SCCComputation();
@@ -157,7 +161,7 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
 
   void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                       SCCValue& senders) override {
-    senders.vertexID = vertexIdRange++;
+    senders.vertexID = _vertexIdRange++;
   }
 
   void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}
@@ -186,7 +190,7 @@ GraphFormat<SCCValue, int8_t>* SCC::inputFormat() const {
 }
 
 struct SCCMasterContext : public MasterContext {
-  SCCMasterContext() {}  // TODO use _threashold
+  SCCMasterContext() {}  // TODO use _threshold
   void preGlobalSuperstep() override {
     if (globalSuperstep() == 0) {
       aggregate<uint32_t>(kPhase, SCCPhase::TRANSPOSE);

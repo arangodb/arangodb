@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -67,6 +67,14 @@ namespace LogTimeFormats {
 /// @brief whether or not the specified format is a local one
 bool isLocalFormat(TimeFormat format) {
   return format == TimeFormat::LocalDateString; 
+}
+
+/// @brief whether or not the specified format produces string outputs
+/// (in contrast to numeric outputs)
+bool isStringFormat(TimeFormat format) {
+  return format == TimeFormat::UTCDateString ||
+         format == TimeFormat::UTCDateStringMillis ||
+         format == TimeFormat::LocalDateString;
 }
 
 /// @brief return the name of the default log time format

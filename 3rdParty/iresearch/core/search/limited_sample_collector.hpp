@@ -215,7 +215,6 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       stats_entry.resize(order.stats_size());
       auto* stats_buf = const_cast<byte_type*>(stats_entry.data());
 
-      order.prepare_stats(stats_buf);
       entry.second.term_stats.finish(stats_buf, 0, entry.second.field_stats, index);
     }
   }

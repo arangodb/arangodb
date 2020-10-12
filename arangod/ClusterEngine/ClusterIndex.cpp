@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -43,7 +44,7 @@ namespace {
 /// fiasco with StaticStrings::FromString etc.
 
 // The primary indexes do not have `_id` in the _fields instance variable
-std::vector<std::vector<arangodb::basics::AttributeName>> const PrimaryIndexAttributes{
+std::vector<std::vector<arangodb::basics::AttributeName>> const primaryIndexAttributes{
     {arangodb::basics::AttributeName("_id", false)},
     {arangodb::basics::AttributeName("_key", false)}};
 
@@ -60,17 +61,22 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
   TRI_ASSERT(_info.slice().isObject());
   TRI_ASSERT(_info.isClosed());
 
-  // The Edge Index on RocksDB can serve _from and _to when being asked.
-  if (_engineType == ClusterEngineType::RocksDBEngine && _indexType == TRI_IDX_TYPE_EDGE_INDEX) {
-    std::string attr = "";
-    TRI_AttributeNamesToString(_fields[0], attr);
-    if (attr == StaticStrings::FromString) {
-      _coveredFields = {{arangodb::basics::AttributeName{StaticStrings::FromString, false}},
-                        {arangodb::basics::AttributeName{StaticStrings::ToString, false}}};
-    } else {
-      TRI_ASSERT(attr == StaticStrings::ToString);
-      _coveredFields = {{arangodb::basics::AttributeName{StaticStrings::ToString, false}},
-                        {arangodb::basics::AttributeName{StaticStrings::FromString, false}}};
+  if (_engineType == ClusterEngineType::RocksDBEngine) {
+    if (_indexType == TRI_IDX_TYPE_EDGE_INDEX) {
+      // The Edge Index on RocksDB can serve _from and _to when being asked.
+      std::string attr = "";
+      TRI_AttributeNamesToString(_fields[0], attr);
+      if (attr == StaticStrings::FromString) {
+        _coveredFields = {{arangodb::basics::AttributeName{StaticStrings::FromString, false}},
+                          {arangodb::basics::AttributeName{StaticStrings::ToString, false}}};
+      } else {
+        TRI_ASSERT(attr == StaticStrings::ToString);
+        _coveredFields = {{arangodb::basics::AttributeName{StaticStrings::ToString, false}},
+                          {arangodb::basics::AttributeName{StaticStrings::FromString, false}}};
+      }
+    } else if (_indexType == TRI_IDX_TYPE_PRIMARY_INDEX) {
+      // The Primary Index on RocksDB can serve _key and _id when being asked.
+      _coveredFields = ::primaryIndexAttributes;
     }
   }
 }
@@ -204,7 +210,9 @@ bool ClusterIndex::hasCoveringIterator() const {
 
 bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
   // TODO implement faster version of this
-  return Index::Compare(_info.slice(), info);
+  auto& engine =
+      _collection.vocbase().server().getFeature<EngineSelectorFeature>().engine();
+  return Index::Compare(engine, _info.slice(), info, _collection.vocbase().name());
 }
 
 Index::FilterCosts ClusterIndex::supportsFilterCondition(
@@ -217,7 +225,7 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
         return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
       }
       // other...
-      SimpleAttributeEqualityMatcher matcher(PrimaryIndexAttributes);
+      SimpleAttributeEqualityMatcher matcher(::primaryIndexAttributes);
       return matcher.matchOne(this, node, reference, itemsInIndex);
     }
     case TRI_IDX_TYPE_EDGE_INDEX: {
@@ -348,7 +356,8 @@ aql::AstNode* ClusterIndex::specializeCondition(aql::AstNode* node,
 }
 
 std::vector<std::vector<arangodb::basics::AttributeName>> const& ClusterIndex::coveredFields() const {
-  if (_engineType == ClusterEngineType::RocksDBEngine && _indexType == TRI_IDX_TYPE_EDGE_INDEX) {
+  if (_engineType == ClusterEngineType::RocksDBEngine && 
+      (_indexType == TRI_IDX_TYPE_EDGE_INDEX || _indexType == TRI_IDX_TYPE_PRIMARY_INDEX)) {
     TRI_ASSERT(_coveredFields.size() == 2);
     return _coveredFields;
   }

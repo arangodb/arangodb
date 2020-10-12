@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -187,9 +187,6 @@ void replaceGatherNodeVariables(
         auto* expr =
             arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(setter)
                 ->expression();
-        if (expr == nullptr) {
-          continue;
-        }
         try {
           // stringifying an expression may fail with "too long" error
           buffer.clear();
@@ -230,7 +227,7 @@ struct PairHash {
 
 /// WalkerWorker to track collection variable dependencies
 class CollectionVariableTracker final
-    : public arangodb::aql::WalkerWorker<arangodb::aql::ExecutionNode> {
+    : public arangodb::aql::WalkerWorker<arangodb::aql::ExecutionNode, arangodb::aql::WalkerUniqueness::NonUnique> {
   using DependencyPair =
       std::pair<arangodb::aql::Variable const*, arangodb::aql::Collection const*>;
   using DependencySet = std::unordered_set<DependencyPair, ::PairHash>;
@@ -344,7 +341,7 @@ class CollectionVariableTracker final
 
 /// WalkerWorker for restrictToSingleShard
 class RestrictToSingleShardChecker final
-    : public arangodb::aql::WalkerWorker<arangodb::aql::ExecutionNode> {
+    : public arangodb::aql::WalkerWorker<arangodb::aql::ExecutionNode, arangodb::aql::WalkerUniqueness::NonUnique> {
   arangodb::aql::ExecutionPlan* _plan;
   CollectionVariableTracker& _tracker;
   std::unordered_map<arangodb::aql::Variable const*, std::unordered_set<std::string>> _shardsUsed;
@@ -586,14 +583,14 @@ void findShardKeysInExpression(arangodb::aql::AstNode const* root,
 }
 
 // static node types used by some optimizer rules
-// having them statically available avoids having to build the vectors over
+// having them statically available avoids having to build the lists over
 // and over for each AQL query
-std::vector<arangodb::aql::ExecutionNode::NodeType> const removeUnnecessaryCalculationsNodeTypes{
+std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const removeUnnecessaryCalculationsNodeTypes{
     arangodb::aql::ExecutionNode::CALCULATION, arangodb::aql::ExecutionNode::SUBQUERY};
-std::vector<arangodb::aql::ExecutionNode::NodeType> const interchangeAdjacentEnumerationsNodeTypes{
+std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const interchangeAdjacentEnumerationsNodeTypes{
     arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
     arangodb::aql::ExecutionNode::ENUMERATE_LIST};
-std::vector<arangodb::aql::ExecutionNode::NodeType> const scatterInClusterNodeTypes{
+std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const scatterInClusterNodeTypes{
     arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
     arangodb::aql::ExecutionNode::INDEX,
     arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
@@ -602,16 +599,16 @@ std::vector<arangodb::aql::ExecutionNode::NodeType> const scatterInClusterNodeTy
     arangodb::aql::ExecutionNode::REPLACE,
     arangodb::aql::ExecutionNode::REMOVE,
     arangodb::aql::ExecutionNode::UPSERT};
-std::vector<arangodb::aql::ExecutionNode::NodeType> const removeDataModificationOutVariablesNodeTypes{
+std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const removeDataModificationOutVariablesNodeTypes{
     arangodb::aql::ExecutionNode::REMOVE, arangodb::aql::ExecutionNode::INSERT,
     arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE,
     arangodb::aql::ExecutionNode::UPSERT};
-std::vector<arangodb::aql::ExecutionNode::NodeType> const patchUpdateRemoveStatementsNodeTypes{
+std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const patchUpdateRemoveStatementsNodeTypes{
     arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE,
     arangodb::aql::ExecutionNode::REMOVE};
-std::vector<arangodb::aql::ExecutionNode::NodeType> const moveFilterIntoEnumerateTypes{
+std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const moveFilterIntoEnumerateTypes{
     arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION, arangodb::aql::ExecutionNode::INDEX};
-std::vector<arangodb::aql::ExecutionNode::NodeType> const undistributeNodeTypes{
+std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const undistributeNodeTypes{
     arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE,
     arangodb::aql::ExecutionNode::REMOVE};
 
@@ -692,13 +689,7 @@ std::string getSingleShardId(arangodb::aql::ExecutionPlan const* plan,
   if (setter->getType() == EN::CALCULATION) {
     arangodb::aql::CalculationNode const* c =
         ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(setter);
-    auto ex = c->expression();
-
-    if (ex == nullptr) {
-      return std::string();
-    }
-
-    auto n = ex->node();
+    auto n = c->expression()->node();
     if (n == nullptr) {
       return std::string();
     }
@@ -788,14 +779,6 @@ std::string getSingleShardId(arangodb::aql::ExecutionPlan const* plan,
 
 bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
                                  arangodb::aql::LimitNode& limitNode) {
-  auto const* loop = sortNode.getLoop();
-  if (loop && arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
-    // since currently view node doesn't provide any
-    // useful estimation, we apply heap optimization
-    // unconditionally
-    return true;
-  }
-
   size_t input = sortNode.getCost().estimatedNrItems;
   size_t output = limitNode.limit() + limitNode.offset();
 
@@ -872,7 +855,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
       continue;
     }
 
-    // filter variable was introduced a CalculationNode. now check the
+    // filter variable was introduced by a CalculationNode. now check the
     // expression
     auto s = ExecutionNode::castTo<CalculationNode*>(setter);
     auto filterExpression = s->expression();
@@ -962,6 +945,21 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
       if (testNode->type == NODE_TYPE_ARRAY &&
           testNode->numMembers() < AstNode::SortNumberThreshold) {
         // number of values is below threshold
+        continue;
+      }
+      
+      if (testNode->type == NODE_TYPE_FCALL && 
+          (static_cast<Function const*>(testNode->getData())->name == "SORTED_UNIQUE" ||
+           static_cast<Function const*>(testNode->getData())->name == "SORTED")) {
+        // we don't need to sort results of a function that already returns sorted
+        // results
+    
+        AstNode* clone = ast->shallowCopyForModify(inNode);
+        TRI_DEFER(FINALIZE_SUBTREE(clone));
+        // set sortedness bit for the IN operator
+        clone->setBoolValue(true);
+        // finally adjust the variable inside the IN calculation
+        filterExpression->replaceNode(clone);
         continue;
       }
 
@@ -1201,8 +1199,6 @@ void arangodb::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
     auto s = ExecutionNode::castTo<CalculationNode*>(setter);
     auto root = s->expression()->node();
 
-    TRI_ASSERT(root != nullptr);
-
     if (!root->isDeterministic()) {
       // we better not tamper with this filter
       continue;
@@ -1272,7 +1268,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
         if (planNode->getType() == EN::CALCULATION) {
           auto cc = ExecutionNode::castTo<CalculationNode const*>(planNode);
           Expression const* exp = cc->expression();
-          if (exp != nullptr && exp->node() != nullptr && !searchVariables.empty()) {
+          if (exp->node() != nullptr && !searchVariables.empty()) {
             bool isSafeForOptimization;
             auto usedThere =
                 ast::getReferencedAttributesForKeep(exp->node(), searchVariables,
@@ -1378,10 +1374,7 @@ class PropagateConstantAttributesHelper {
       if (setter != nullptr && setter->getType() == EN::CALCULATION) {
         auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
         auto expression = cn->expression();
-
-        if (expression != nullptr) {
-          collectConstantAttributes(const_cast<AstNode*>(expression->node()));
-        }
+        collectConstantAttributes(const_cast<AstNode*>(expression->node()));
       }
     }
 
@@ -1392,10 +1385,7 @@ class PropagateConstantAttributesHelper {
         if (setter != nullptr && setter->getType() == EN::CALCULATION) {
           auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
           auto expression = cn->expression();
-
-          if (expression != nullptr) {
-            insertConstantAttributes(const_cast<AstNode*>(expression->node()));
-          }
+          insertConstantAttributes(const_cast<AstNode*>(expression->node()));
         }
       }
     }
@@ -1546,7 +1536,7 @@ class PropagateConstantAttributesHelper {
 
     if (constantValue != nullptr) {
       // first check if we would optimize away a join condition that uses a smartJoinAttribute...
-      // we must not do that, because that would otherwise disable smart join functionality
+      // we must not do that, because that would otherwise disable SmartJoin functionality
       if (arangodb::ServerState::instance()->isCoordinator() &&
           parentNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
         AstNode const* current = parentNode->getMember(accessIndex == 0 ? 1 : 0);
@@ -1563,7 +1553,7 @@ class PropagateConstantAttributesHelper {
                 auto logical = collection->getCollection();
                 if (logical->hasSmartJoinAttribute() &&
                     logical->smartJoinAttribute() == nameAttribute->getString()) {
-                  // don't remove a smart join attribute access!
+                  // don't remove a SmartJoin attribute access!
                   return;
                 } else {
                   std::vector<std::string> shardKeys = collection->shardKeys(true);
@@ -2030,7 +2020,7 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt, std::unique_ptr<ExecutionP
 }
 
 class arangodb::aql::RedundantCalculationsReplacer final
-    : public WalkerWorker<ExecutionNode> {
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
   explicit RedundantCalculationsReplacer(
       Ast* ast, std::unordered_map<VariableId, Variable const*> const& replacements)
@@ -2749,7 +2739,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
         continue;
       }
 
-      if (nn->isModificationSubquery()) {
+      if (nn->isModificationNode()) {
         // subqueries that modify data must not be optimized away
         continue;
       }
@@ -2855,7 +2845,6 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
         // now we can replace the reference to our variable in the other
         // calculation with the variable's expression directly
         auto otherExpression = other->expression();
-        TRI_ASSERT(otherExpression != nullptr);
 
         if (rootNode->type != NODE_TYPE_ATTRIBUTE_ACCESS &&
             Ast::countReferences(otherExpression->node(), outVariable) > 1) {
@@ -2867,14 +2856,33 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
           // expression types (V8 vs. non-V8) do not match. give up
           continue;
         }
+       
+        auto otherLoop = other->getLoop();
 
-        if (!n->isInInnerLoop() && rootNode->callsFunction() && other->isInInnerLoop()) {
-          // original expression calls a function and is not contained in a loop
-          // we're about to move this expression into a loop, but we don't want
-          // to move (expensive) function calls into loops
-          continue;
+        if (otherLoop != nullptr && rootNode->callsFunction()) {
+          auto nLoop = n->getLoop();
+
+          if (nLoop != otherLoop) {
+            // original expression calls a function and is not contained in a loop.
+            // we're about to move this expression into a loop, but we don't want
+            // to move (expensive) function calls into loops
+            continue;
+          }
+          VarSet outer = nLoop->getVarsValid();
+          VarSet used;
+          Ast::getReferencedVariables(rootNode, used);
+          bool doOptimize = true;
+          for (auto& it : used) {
+            if (outer.find(it) == outer.end()) {
+              doOptimize = false;
+              break;
+            }
+          }
+          if (!doOptimize) {
+            continue;
+          }
         }
-
+        
         TRI_ASSERT(other != nullptr);
         otherExpression->replaceVariableReference(outVariable, rootNode);
 
@@ -2885,9 +2893,18 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
 
   if (!toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
+    TRI_ASSERT(nodes.size() >= toUnlink.size());
+    if (nodes.size() - toUnlink.size() > 0) {
+      // need to rerun the rule because removing calculations may unlock
+      // removal of further calculations
+      opt->addPlanAndRerun(std::move(plan), rule, true);
+    } else {
+      // no need to rerun the rule
+      opt->addPlan(std::move(plan), rule, true);
+    }
+  } else {
+    opt->addPlan(std::move(plan), rule, false);
   }
-
-  opt->addPlan(std::move(plan), rule, !toUnlink.empty());
 }
 
 /// @brief useIndex, try to use an index for filtering
@@ -2929,7 +2946,8 @@ void arangodb::aql::useIndexesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan
   }
 }
 
-struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
+struct SortToIndexNode final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   ExecutionPlan* _plan;
   SortNode* _sortNode;
   std::vector<std::pair<Variable const*, bool>> _sorts;
@@ -3426,7 +3444,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(Optimizer* opt,
         }
       }
 
-      if (handled || current->getType() == EN::LIMIT || !current->hasDependency()) {
+      if (handled || current->getType() == EN::LIMIT) {
         break;
       }
 
@@ -3797,8 +3815,8 @@ void moveScatterAbove(ExecutionPlan& plan, ExecutionNode* at) {
   // an earlier iteration in scatterInClusterRule.
   // We remove that block, effectively moving the SCATTER/REMOTE past the
   // current node
-  // The effect is that in a smart join we get joined up nodes that are
-  // all executed on the DBServer
+  // The effect is that in a SmartJoin we get joined up nodes that are
+  // all executed on the DB-Server
   auto found = false;
   auto* current = at->getFirstParent();
   while (current != nullptr) {
@@ -4125,7 +4143,7 @@ auto extractSmartnessAndCollection(ExecutionNode* node)
     isSmart = graphNode->isSmart();
     isDisjoint = graphNode->isDisjoint();
 
-    // Note that here we are in the disjoint smart graph case and "collection()" will
+    // Note that here we are in the Disjoint SmartGraph case and "collection()" will
     // give us any collection in the graph, but they're all sharded the same way.
     collection = graphNode->collection();
 
@@ -4930,7 +4948,7 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
   std::map<Collection const*, std::unordered_set<std::string>> modificationRestrictions;
 
   // forward a shard key restriction from one collection to the other if the two collections
-  // are used in a smart join (and use distributeShardsLike on each other)
+  // are used in a SmartJoin (and use distributeShardsLike on each other)
   auto forwardRestrictionToPrototype = [&plan](ExecutionNode const* current,
                                                std::string const& shardId) {
     auto collectionNode = dynamic_cast<CollectionAccessingNode const*>(current);
@@ -5015,7 +5033,7 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
               if (c->getType() == EN::CALCULATION) {
                 auto cn = ExecutionNode::castTo<CalculationNode const*>(c);
                 auto expr = cn->expression();
-                if (expr != nullptr && !expr->canRunOnDBServer()) {
+                if (!expr->canRunOnDBServer()) {
                   // found something that must not run on a DB server,
                   // but that must run on a coordinator. stop optimization here!
                   toRemove.clear();
@@ -5068,7 +5086,8 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
 }
 
 /// WalkerWorker for undistributeRemoveAfterEnumColl
-class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
+class RemoveToEnumCollFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   ExecutionPlan* _plan;
   ::arangodb::containers::HashSet<ExecutionNode*>& _toUnlink;
   bool _foundModification;
@@ -5223,8 +5242,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
 
         auto const& projections =
             dynamic_cast<DocumentProducingNode const*>(enumColl)->projections();
-        if (projections.size() > 1 ||
-            (!projections.empty() && projections[0] != StaticStrings::KeyString)) {
+        if (projections.isSingle(StaticStrings::KeyString)) {
           // cannot handle projections
           break;
         }
@@ -5264,6 +5282,14 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         return false;  // continue . . .
       }
       case EN::CALCULATION: {
+        auto calculationNode = ExecutionNode::castTo<CalculationNode*>(en);
+        auto expr = calculationNode->expression();
+
+        // If we find an expression that is not allowed to run on a DBServer,
+        // we cannot undistribute (as then the expression *would* run on a dbserver)
+        if (!expr->canRunOnDBServer()) {
+          break;
+        }
         return false;  // continue . . .
       }
       case EN::ENUMERATE_COLLECTION:
@@ -6045,7 +6071,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     // check if we can make use of the optimized neighbors enumerator
     if (!ServerState::instance()->isCoordinator()) {
       if (traversal->vertexOutVariable() != nullptr && traversal->edgeOutVariable() == nullptr &&
-          traversal->pathOutVariable() == nullptr && options->useBreadthFirst &&
+          traversal->pathOutVariable() == nullptr && options->isUseBreadthFirst() &&
           options->uniqueVertices == arangodb::traverser::TraverserOptions::GLOBAL &&
           !options->usesPrune() && !options->hasDepthLookupInfo()) {
         // this is possible in case *only* vertices are produced (no edges, no path),
@@ -6241,7 +6267,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
   for (auto const& n : nodes) {
     auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(n);
 
-    if (subqueryNode->isModificationSubquery()) {
+    if (subqueryNode->isModificationNode()) {
       // can't modify modifying subqueries
       continue;
     }
@@ -6259,7 +6285,15 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
 
     while (current != nullptr) {
       if (current->getType() == EN::COLLECT) {
+        if (subqueryNode->isInInnerLoop()) {
+          eligible = false;
+          break;
+        }
         if (ExecutionNode::castTo<CollectNode const*>(current)->hasOutVariable()) {
+          // COLLECT ... INTO captures all existing variables in the scope.
+          // if we move the subquery from one scope into another, we will end up with
+          // different variables captured, so we must not apply the optimization in
+          // this case.
           eligible = false;
           break;
         }
@@ -6836,7 +6870,7 @@ static void optimizeFilterNode(ExecutionPlan* plan, FilterNode* fn, GeoIndexInfo
   }
   CalculationNode* calc = ExecutionNode::castTo<CalculationNode*>(setter);
   Expression* expr = calc->expression();
-  if (expr == nullptr || expr->node() == nullptr) {
+  if (expr->node() == nullptr) {
     return;  // the expression must exist and must have an AstNode
   }
 
@@ -7213,12 +7247,7 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
 
   for (auto const& n : nodes) {
     auto cn = ExecutionNode::castTo<CalculationNode*>(n);
-    auto expr = cn->expression();
-    if (expr == nullptr) {
-      continue;
-    }
-
-    AstNode const* root = expr->node();
+    AstNode const* root = cn->expression()->node();
     if (root == nullptr) {
       continue;
     }
@@ -7318,7 +7347,7 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
     TRI_ASSERT(node->getType() == EN::SUBQUERY);
     auto sn = ExecutionNode::castTo<SubqueryNode const*>(node);
 
-    if (sn->isModificationSubquery()) {
+    if (sn->isModificationNode()) {
       // cannot push a LIMIT into data-modification subqueries
       continue;
     }
@@ -7506,7 +7535,8 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt,
 namespace {
 
 /// @brief is the node parallelizable?
-struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
+struct ParallelizableFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   bool const _parallelizeWrites;
   bool _isParallelizable;
 
@@ -7595,8 +7625,7 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
   // find all calculation nodes in the plan
   for (auto const& n : nodes) {
     auto cn = ExecutionNode::castTo<CalculationNode*>(n);
-    auto expr = cn->expression();
-    AstNode const* root = expr->node();
+    AstNode const* root = cn->expression()->node();
     if (root == nullptr) {
       continue;
     }
@@ -7616,7 +7645,7 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
             if (setter != nullptr && setter->getType() == EN::SUBQUERY) {
               // COUNT(subquery) / LENGTH(subquery)
               auto sn = ExecutionNode::castTo<SubqueryNode*>(setter);
-              if (sn->isModificationSubquery()) {
+              if (sn->isModificationNode()) {
                 // subquery modifies data
                 // cannot apply optimization for data-modification queries
                 return true;
@@ -7997,7 +8026,7 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
   // be omitted later, as soon as support for spliced subqueries / shadow rows
   // is complete.
 
-  class Finder final : public WalkerWorker<ExecutionNode> {
+  class Finder final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
    public:
     explicit Finder(ResultVector& result, SuitableNodeSet& suitableNodes)
         : _result{result}, _suitableNodes{suitableNodes}, _isSuitableArena{}, _isSuitableLevel{BoolVec{_isSuitableArena}} {
@@ -8203,8 +8232,7 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
 
       // Create new end node
       auto end = plan->createNode<SubqueryEndNode>(plan.get(), plan->nextId(),
-                                                   inVariable, sq->outVariable(),
-                                                   sq->isModificationSubquery());
+                                                   inVariable, sq->outVariable());
       // start and end inherit this property from the subquery node
       end->setIsInSplicedSubquery(sq->isInSplicedSubquery());
       // insert a SubqueryEndNode after the SubqueryNode sq

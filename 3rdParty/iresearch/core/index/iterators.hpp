@@ -57,8 +57,7 @@ NS_ROOT
 struct IRESEARCH_API doc_iterator
     : iterator<doc_id_t>,
       attribute_provider {
-  DECLARE_SHARED_PTR(doc_iterator);
-  DEFINE_FACTORY_INLINE(doc_iterator)
+  using ptr = memory::managed_ptr<doc_iterator>;
 
   static doc_iterator::ptr empty();
 
@@ -76,7 +75,7 @@ struct IRESEARCH_API doc_iterator
 struct term_reader;
 
 struct IRESEARCH_API field_iterator : iterator<const term_reader&> {
-  DECLARE_MANAGED_PTR(field_iterator);
+  using ptr = memory::managed_ptr<field_iterator>;
 
   virtual bool seek(const string_ref& name) = 0;
 
@@ -90,7 +89,7 @@ struct IRESEARCH_API field_iterator : iterator<const term_reader&> {
 struct column_meta;
 
 struct IRESEARCH_API column_iterator : iterator<const column_meta&> {
-  DECLARE_MANAGED_PTR(column_iterator);
+  using ptr = memory::managed_ptr<column_iterator>;
 
   virtual bool seek(const string_ref& name) = 0;
   
@@ -104,7 +103,7 @@ struct IRESEARCH_API column_iterator : iterator<const column_meta&> {
 struct IRESEARCH_API term_iterator
     : iterator<const bytes_ref&>,
       public attribute_provider {
-  DECLARE_MANAGED_PTR(term_iterator);
+  using ptr = memory::managed_ptr<term_iterator>;
 
   static term_iterator::ptr empty();
 
@@ -120,13 +119,14 @@ enum class SeekResult {
 };
 
 struct IRESEARCH_API seek_term_iterator : term_iterator {
-  DECLARE_MANAGED_PTR(seek_term_iterator);
+  using ptr = memory::managed_ptr<seek_term_iterator>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief an empty struct tag type, parent for all seek_term_iterator cookies
   //////////////////////////////////////////////////////////////////////////////
   struct seek_cookie {
-    DECLARE_UNIQUE_PTR(seek_cookie);
+    using ptr = std::unique_ptr<seek_cookie>;
+
     virtual ~seek_cookie() = default;
   }; // seek_cookie
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,7 +64,7 @@ class Collections {
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   
-  void visit(std::function<bool(std::string const&, Collection*)> const& visitor) const;
+  void visit(std::function<bool(std::string const&, Collection&)> const& visitor) const;
 
  private:
   TRI_vocbase_t* _vocbase;

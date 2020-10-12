@@ -66,7 +66,7 @@ describe ArangoDB do
       ArangoDB.set_timeout(@old_timeout)
     end
 
-    it "calls an action and times out" do
+    it "calls an action and times out 1" do
       cmd = "/_admin/execute"
       body = "require('internal').wait(4);"
       begin
@@ -88,7 +88,7 @@ describe ArangoDB do
       ArangoDB.set_read_timeout(@old_timeout)
     end
 
-    it "calls an action and times out" do
+    it "calls an action and times out 2" do
       cmd = "/_admin/execute"
       body = "require('internal').wait(4);"
       begin
@@ -123,7 +123,7 @@ describe ArangoDB do
         doc.response.body.should be_nil
       end
 
-      it "checks whether HEAD returns a body on 4xx" do
+      it "checks whether HEAD returns a body on 4xx 2" do
         cmd = "/_api/cursor"
         doc = ArangoDB.log_head("#{prefix}-head-unsupported-method2", cmd)
 
@@ -186,7 +186,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(404)
       end
 
-      it "checks whether GET returns a body" do
+      it "checks whether GET returns a body 1" do
         cmd = "/_api/non-existing-method"
         doc = ArangoDB.log_get("#{prefix}-get-non-existing-method", cmd)
 
@@ -197,7 +197,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(404)
       end
 
-      it "checks whether GET returns a body" do
+      it "checks whether GET returns a body 2" do
         cmd = "/_api/non-allowed-method"
         doc = ArangoDB.log_get("#{prefix}-get-non-allowed-method", cmd)
 

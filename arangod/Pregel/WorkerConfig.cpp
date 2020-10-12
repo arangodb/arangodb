@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -52,7 +53,6 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   _executionNumber = execNum.getUInt();
   _coordinatorId = coordID.copyString();
   _asynchronousMode = async.getBool();
-  _lazyLoading = params.get(Utils::lazyLoadingKey).getBool();
   _useMemoryMaps = params.get(Utils::useMemoryMaps).getBool();
 
   VPackSlice userParams = params.get(Utils::userParametersKey);

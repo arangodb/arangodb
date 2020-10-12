@@ -129,7 +129,7 @@ bool append_internal(
   auto* to_buf_end = to_buf + to_buf_size;
   auto* to_buf_next = to_buf;
   std::codecvt_base::result result;
-
+  buf.reserve(buf.size() + value.size());
   do {
     result = cvt.in(
       state,
@@ -182,6 +182,12 @@ IRESEARCH_API const irs::string_ref& language(std::locale const& locale);
  * @param locale the locale from which to extract the name
  **/
 IRESEARCH_API const std::string& name(std::locale const& locale);
+
+/**
+* @brief extract if locale is UTF8 locale
+* @param locale the locale from which to extract info
+**/
+IRESEARCH_API bool is_utf8(std::locale const& locale);
 
 NS_END
 NS_END

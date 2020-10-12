@@ -2427,6 +2427,36 @@ function ahuacatlDateFunctionsTestSuite () {
         assertEqual([ value[1] ], getQueryResults("RETURN DATE_ISO8601(@value)", { value: value[0] }));
       });
     },
+	
+	// //////////////////////////////////////////////////////////////////////////////
+    // / @brief test date_utctolocal and date_localtoutc functions
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testDateUtcToLocalAndLocalToUtc: function () {
+      var values = [
+		[ "2020-03-15T01:00:00.000", "Europe/Berlin", "2020-03-15T00:00:00.000Z"],
+		[ "2020-04-15T02:00:00.000", "Europe/Berlin", "2020-04-15T00:00:00.000Z"],
+		[ "2020-10-14T21:00:00.999", "America/New_York", "2020-10-15T01:00:00.999Z"],
+		[ "2020-11-14T20:00:00.999", "America/New_York", "2020-11-15T01:00:00.999Z"],
+		[ "1991-09-10T09:00:00.999", "Asia/Shanghai", "1991-09-10T00:00:00.999Z"],
+		[ "1991-09-20T08:00:00.999", "Asia/Shanghai", "1991-09-20T00:00:00.999Z"],
+		[ "1992-09-10T08:00:00.999", "Asia/Shanghai", "1992-09-10T00:00:00.999Z"],
+		[ "1992-09-20T08:00:00.999", "Asia/Shanghai", "1992-09-20T00:00:00.999Z"],		
+		[ "2020-07-07T09:30:00.333", "Australia/Darwin", "2020-07-07T00:00:00.333Z" ],
+		[ "2020-07-07T08:45:00.333", "Australia/Eucla", "2020-07-07T00:00:00.333Z" ],
+		[ "2020-04-15T06:06:06.111Z", "UTC", "2020-04-15T06:06:06.111Z" ],
+		[ "2020-07-06T18:00:00.333", "Etc/GMT+6", "2020-07-07T00:00:00.333Z" ],
+		[ "2020-07-07T06:00:00.333", "Etc/GMT-6", "2020-07-07T00:00:00.333Z" ]
+      ];
+
+      values.forEach(function (value) {
+        assertEqual([ value[0] ], getQueryResults("RETURN DATE_UTCTOLOCAL(@value,@tz)", { value: value[2], tz: value[1] }));
+		assertEqual([ value[2] ], getQueryResults("RETURN DATE_LOCALTOUTC(@value,@tz)", { value: value[0], tz: value[1] }));
+      });
+	  	  
+	  assertEqual([ "2020-02-29T23:00:00.000Z" ], 
+		getQueryResults("RETURN DATE_LOCALTOUTC(DATE_ADD(DATE_UTCTOLOCAL('2020-01-31T23:00:00.000Z', 'Europe/Berlin'), 1, 'months'), 'Europe/Berlin')"));	  
+    },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test date_iso8601 function

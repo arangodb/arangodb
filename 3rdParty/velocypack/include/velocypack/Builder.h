@@ -46,6 +46,10 @@
 #include "velocypack/Value.h"
 #include "velocypack/ValueType.h"
 
+#if __cplusplus >= 201703L
+#include "velocypack/SharedSlice.h"
+#endif
+
 namespace arangodb {
 namespace velocypack {
 class ArrayIterator;
@@ -206,6 +210,42 @@ class Builder {
     }
     return Slice(start());
   }
+
+#if __cplusplus >= 201703L
+  // Return a SharedSlice of the result (makes a copy of the slice)
+  [[nodiscard]] SharedSlice sharedSlice() const& {
+    if (isEmpty()) {
+      return SharedSlice{};
+    }
+    if (isClosed()) {
+      return SharedSlice{*_buffer};
+    }
+
+    throw Exception(Exception::BuilderNotSealed);
+  }
+
+  // Steal the buffer and return a SharedSlice created from it.
+  // Afterwards the Builder is unusable.
+  // If the Builder is not responsible for its buffer, a copy is created.
+  [[nodiscard]] SharedSlice sharedSlice()&& {
+    if (isEmpty()) {
+      return SharedSlice{};
+    }
+    if (VELOCYPACK_UNLIKELY(!isClosed())) {
+      throw Exception(Exception::BuilderNotSealed);
+    }
+    if (_buffer == nullptr) {
+      // We're not responsible for the buffer, we need to copy.
+      return SharedSlice{*_bufferPtr};
+    }
+    auto rv = SharedSlice{std::move(*_buffer)};
+    _buffer = nullptr;
+    _bufferPtr = nullptr;
+    _start = nullptr;
+    clear();
+    return rv;
+  }
+#endif
 
   // Compute the actual size here, but only when sealed
   ValueLength size() const {

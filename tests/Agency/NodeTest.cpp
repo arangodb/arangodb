@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test agency's key value node class
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -62,7 +59,6 @@ TEST_F(NodeTest, node_name) {
   Node n(name);
 
   EXPECT_EQ(n.name(), name);
-  
 }
 
 
@@ -153,7 +149,7 @@ TEST_F(NodeTest, node_applyOp_set) {
 
   ret = n(path).applyOp(b->slice());
   EXPECT_EQ(ret.ok(), false);
-  std::cout << ret.errorMessage() << std::endl;
+  // std::cout << ret.errorMessage() << std::endl;
 
   b = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder a(b.get());
@@ -161,7 +157,7 @@ TEST_F(NodeTest, node_applyOp_set) {
 
   ret = n(path).applyOp(b->slice());
   EXPECT_EQ(ret.ok(), false);
-  std::cout << ret.errorMessage() << std::endl;
+  // std::cout << ret.errorMessage() << std::endl;
 }
 
 TEST_F(NodeTest, node_applyOp_delete) {

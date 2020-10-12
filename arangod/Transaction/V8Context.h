@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "Context.h"
 
 struct TRI_vocbase_t;
+struct TRI_v8_global_t;
 
 namespace arangodb {
 
@@ -41,7 +42,7 @@ class V8Context final : public Context {
   V8Context(TRI_vocbase_t& vocbase, bool embeddable);
 
   /// @brief destroy the context
-  ~V8Context() = default;
+  ~V8Context() noexcept;
 
   /// @brief order a custom type handler
   arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;
@@ -50,7 +51,7 @@ class V8Context final : public Context {
   std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
                                                  bool& responsibleForCommit) override;
   
-  void enterV8Context(std::shared_ptr<TransactionState> const& state);
+  void enterV8Context();
   void exitV8Context();
 
   /// @brief return the resolver
@@ -63,12 +64,6 @@ class V8Context final : public Context {
 
   /// @brief whether or not the transaction is embeddable
   bool isEmbeddable() const override;
-
-  /// @brief make this transaction context a global context
-  void makeGlobal();
-
-  /// @brief whether or not the transaction context is a global one
-  bool isGlobal() const;
   
   virtual bool isV8Context() override { return true; }
 
@@ -87,11 +82,8 @@ class V8Context final : public Context {
                                                                   bool embeddable);
 
  private:
-  /// @brief the v8 thread-local "global" transaction context
-  transaction::V8Context* _sharedTransactionContext;
-
-  transaction::V8Context* _mainScope;
-
+  TRI_v8_global_t* _v8g;
+ 
   /// @brief the currently ongoing transaction
   std::shared_ptr<TransactionState> _currentTransaction;
 

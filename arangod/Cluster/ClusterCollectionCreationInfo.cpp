@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -81,7 +82,7 @@ VPackSlice ClusterCollectionCreationInfo::isBuildingSlice() const {
 }
 
 bool ClusterCollectionCreationInfo::needsBuildingFlag() const {
-  // Deactivated the smart graph check, our testing mock for coordinator side
+  // Deactivated the SmartGraph check, our testing mock for coordinator side
   // tries to get away without other servers by initially adding only 0
   // shard collections (non-smart). We do not want to loose these test.
   // So we will loose the more precise check for now.

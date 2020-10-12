@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +54,7 @@ namespace aql {
 //        * graph info parsing
 //        * traverser-engine creation
 //        * option preparation
-//        * Smart Graph Handling
+//        * SmartGraph Handling
 class ExecutionEngine;
 
 class GraphNode : public ExecutionNode {
@@ -102,10 +102,10 @@ class GraphNode : public ExecutionNode {
   /// @brief the cost of a graph node
   CostEstimate estimateCost() const override;
 
-  /// @brief flag, if smart traversal (enterprise edition only!) is done
+  /// @brief flag, if smart traversal (Enterprise Edition only!) is done
   bool isSmart() const;
 
-  /// @brief flag, if the graph is a disjoint smart graph (enterprise edition only!)
+  /// @brief flag, if the graph is a Disjoint SmartGraph (Enterprise Edition only!)
   bool isDisjoint() const;
 
   /// @brief return the database
@@ -166,7 +166,7 @@ class GraphNode : public ExecutionNode {
   /// collection!
   Collection const* collection() const;
 
-  void injectVertexCollection(aql::Collection* other);
+  void injectVertexCollection(aql::Collection& other);
 
   std::vector<aql::Collection const*> collections() const;
   void setCollectionToShard(std::map<std::string, std::string> const& map) {
@@ -182,8 +182,10 @@ class GraphNode : public ExecutionNode {
   graph::Graph const* graph() const noexcept;
 
  private:
-  void addEdgeCollection(aql::Collection* collection, TRI_edge_direction_e dir);
-  void addVertexCollection(aql::Collection* collection);
+  void addEdgeCollection(aql::Collections const& collections, std::string const& name, TRI_edge_direction_e dir);
+  void addEdgeCollection(aql::Collection& collection, TRI_edge_direction_e dir);
+  void addVertexCollection(aql::Collections const& collections, std::string const& name);
+  void addVertexCollection(aql::Collection& collection);
 
   void setGraphInfoAndCopyColls(std::vector<Collection*> const& edgeColls,
                                 std::vector<Collection*> const& vertexColls);
@@ -236,10 +238,10 @@ class GraphNode : public ExecutionNode {
   /// @brief The list of traverser engines grouped by server.
   std::unordered_map<ServerID, aql::EngineId> _engines;
 
-  /// @brief flag, if graph is smart (enterprise edition only!)
+  /// @brief flag, if graph is smart (Enterprise Edition only!)
   bool _isSmart;
 
-  /// @brief flag, if graph is smart *and* disjoint (enterprise edition only!)
+  /// @brief flag, if graph is smart *and* disjoint (Enterprise Edition only!)
   bool _isDisjoint;
 
   /// @brief list of shards involved, required for one-shard-databases

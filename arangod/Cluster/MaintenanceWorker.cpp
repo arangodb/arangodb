@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -159,11 +160,11 @@ void MaintenanceWorker::nextState(bool actionMore) {
       _lastResult = _curAction->result();
       _curAction->endStats();
 
-      bool failed = _curAction->result().ok() && FAILED != _curAction->getState();
-      recordJobStats(failed);
+      bool ok = _curAction->result().ok() && FAILED != _curAction->getState();
+      recordJobStats(/*failed*/ !ok);
 
       // if action's state not set, assume it succeeded when result ok
-      if (failed) {
+      if (ok) {
         _curAction->endStats();
         _curAction->setState(COMPLETE);
 

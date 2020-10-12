@@ -417,7 +417,8 @@ describe('_admin/metrics', () => {
     it('collection and index', () => {
       try {
         runTest(() => {
-          db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2});
+          db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
+          require("internal").wait(10.0); // database servers update their shard count in phaseOne. So lets wait until all have done their next phaseOne.
         },
         [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9)]
         );

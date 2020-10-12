@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,7 +25,7 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
@@ -122,7 +123,7 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
   auto const readState = [](velocypack::Slice slice) -> ResultT<ExecutionState> {
     if (ADB_UNLIKELY(!slice.isString())) {
       auto message = std::string{
-          "When deserializating AqlExecuteResult: When reading state: "
+          "When deserializing AqlExecuteResult: When reading state: "
           "Unexpected type "};
       message += slice.typeName();
       return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
@@ -134,7 +135,7 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
       return ExecutionState::HASMORE;
     } else {
       auto message = std::string{
-          "When deserializating AqlExecuteResult: When reading state: "
+          "When deserializing AqlExecuteResult: When reading state: "
           "Unexpected value '"};
       message += value;
       message += "'";
@@ -155,7 +156,7 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
     if (ADB_UNLIKELY(!keySlice.isString())) {
       return Result(
           TRI_ERROR_TYPE_ERROR,
-          "When deserializating AqlExecuteResult: Key is not a string");
+          "When deserializing AqlExecuteResult: Key is not a string");
     }
     auto const key = getStringView(keySlice);
 
@@ -163,7 +164,7 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
         ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
       if (ADB_UNLIKELY(propIt->second)) {
         return Result(TRI_ERROR_TYPE_ERROR,
-                      "When deserializating AqlExecuteResult: "
+                      "When deserializing AqlExecuteResult: "
                       "Encountered duplicate key");
       }
       propIt->second = true;
@@ -189,7 +190,7 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
       block = maybeBlock.get();
     } else {
       LOG_TOPIC("cc6f4", WARN, Logger::AQL)
-          << "When deserializating AqlExecuteResult: Encountered "
+          << "When deserializing AqlExecuteResult: Encountered "
              "unexpected "
              "key "
           << keySlice.toJson();
@@ -202,7 +203,7 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
   for (auto const& it : expectedPropertiesFound) {
     if (ADB_UNLIKELY(!it.second)) {
       auto message =
-          std::string{"When deserializating AqlExecuteResult: missing key "};
+          std::string{"When deserializing AqlExecuteResult: missing key "};
       message += it.first;
       return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
     }

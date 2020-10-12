@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -44,7 +45,7 @@ HotBackup::HotBackup(application_features::ApplicationServer& server)
 #endif
   if (ServerState::instance()->isCoordinator()) {
     _engine = BACKUP_ENGINE::CLUSTER;
-  } else if (EngineSelectorFeature::isRocksDB()) {
+  } else if (server.getFeature<EngineSelectorFeature>().isRocksDB()) {
     _engine = BACKUP_ENGINE::ROCKSDB;
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "hot backup not implemented for this storage engine");

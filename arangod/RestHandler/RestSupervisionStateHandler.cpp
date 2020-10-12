@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,15 +18,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestSupervisionStateHandler.h"
 
 #include <chrono>
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
-#include "Cluster/AgencyPaths.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"

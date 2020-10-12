@@ -167,16 +167,6 @@ skip_reader::level::level(
     doc(doc) {
 }
 
-skip_reader::level::level(skip_reader::level&& rhs) noexcept 
-  : stream(std::move(rhs.stream)),
-    begin(rhs.begin),
-    end(rhs.end),
-    child(rhs.child),
-    step(rhs.step), 
-    skipped(rhs.skipped),
-    doc(rhs.doc) {
-}
-
 index_input::ptr skip_reader::level::dup() const {
   auto clone = stream->dup(); // non thread-safe clone
 
@@ -187,9 +177,8 @@ index_input::ptr skip_reader::level::dup() const {
     throw io_error("failed to duplicate document input");
   }
 
-  return index_input::make<skip_reader::level>(
-    std::move(clone), step, begin, end, child, skipped, doc
-  );
+  return memory::make_unique<skip_reader::level>(
+    std::move(clone), step, begin, end, child, skipped, doc);
 }
 
 byte_type skip_reader::level::read_byte() {
@@ -211,9 +200,8 @@ index_input::ptr skip_reader::level::reopen() const {
     throw io_error("failed to reopen document input");
   }
 
-  return index_input::make<skip_reader::level>(
-    std::move(clone), step, begin, end, child, skipped, doc
-  );
+  return memory::make_unique<skip_reader::level>(
+    std::move(clone), step, begin, end, child, skipped, doc);
 }
 
 size_t skip_reader::level::file_pointer() const {

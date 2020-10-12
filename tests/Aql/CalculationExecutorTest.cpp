@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,7 +29,6 @@
 #include "Aql/AqlCall.h"
 #include "AqlExecutorTestCase.h"
 #include "AqlItemBlockHelper.h"
-#include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
@@ -170,7 +170,7 @@ TEST_P(CalculationExecutorTest, reference_some_input) {
       .run(true);
 }
 
-TEST_P(CalculationExecutorTest, referece_some_input_skip) {
+TEST_P(CalculationExecutorTest, reference_some_input_skip) {
   AqlCall call{};
   call.offset = 4;
   ExecutionStats stats{};

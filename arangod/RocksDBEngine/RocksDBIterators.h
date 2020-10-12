@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -57,12 +58,15 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
  private:
   bool outOfRange() const;
+  void seekIfRequired();
 
  private:
   RocksDBKeyBounds const _bounds;
   rocksdb::Slice _upperBound;  // used for iterate_upper_bound
   std::unique_ptr<rocksdb::Iterator> _iterator;
   rocksdb::Comparator const* _cmp;
+  // we use _mustSeek to save repeated seeks for the same start key
+  bool _mustSeek;
 };
 
 class RocksDBAnyIndexIterator final : public IndexIterator {
@@ -97,7 +101,7 @@ typedef std::function<bool(rocksdb::Slice const& key, rocksdb::Slice const& valu
 
 class RocksDBGenericIterator {
  public:
-  RocksDBGenericIterator(rocksdb::ReadOptions& options,
+  RocksDBGenericIterator(rocksdb::TransactionDB* db, rocksdb::ReadOptions& options,
                          RocksDBKeyBounds const& bounds);
   RocksDBGenericIterator(RocksDBGenericIterator&&) = default;
 

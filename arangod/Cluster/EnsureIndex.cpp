@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -131,7 +131,7 @@ bool EnsureIndex::first() {
       std::stringstream error;
       error << "failed to ensure index " << body.slice().toJson() << " "
             << _result.errorMessage();
-      LOG_TOPIC("bc555", ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+      LOG_TOPIC("bc555", WARN, Logger::MAINTENANCE) << "EnsureIndex: " << _description << ", error: " << error.str();
 
       VPackBuilder eb;
       {
@@ -151,7 +151,6 @@ bool EnsureIndex::first() {
 
       _feature.storeIndexError(database, collection, shard, id, eb.steal());
       _result.reset(TRI_ERROR_INTERNAL, error.str());
-      notify();
       return false;
     }
 
@@ -163,6 +162,5 @@ bool EnsureIndex::first() {
     return false;
   }
 
-  notify();
   return false;
 }

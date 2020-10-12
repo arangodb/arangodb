@@ -57,6 +57,7 @@ function SynchronousReplicationSuite() {
   var cinfo;
   var ccinfo;
   var shards;
+  var failedState = { leader: null, follower: null };
 
   if (!require('internal').debugSetFailAt) {
     console.info("Failure Tests disabled, Skipping...");
@@ -144,8 +145,8 @@ function SynchronousReplicationSuite() {
   /// @brief fail the follower
   ////////////////////////////////////////////////////////////////////////////////
 
-  function failFollower(failAt) {
-    var follower = cinfo.shards[shards[0]][1];
+  function failFollower(failAt = null, follower = null) {
+    if (follower == null) follower = cinfo.shards[shards[0]][1];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
 
     // Now look for instanceInfo:
@@ -159,14 +160,15 @@ function SynchronousReplicationSuite() {
       assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
       console.info("Have failed follower", follower);
     }
+    failedState.follower = { failAt: (failAt ? failAt : null), failedServer: follower };
   }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief heal the follower
   ////////////////////////////////////////////////////////////////////////////////
 
-  function healFollower(failAt) {
-    var follower = cinfo.shards[shards[0]][1];
+  function healFollower(failAt = null, follower = null) {
+    if (follower == null) follower = cinfo.shards[shards[0]][1];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
     // Now look for instanceInfo:
     var pos = _.findIndex(global.instanceInfo.arangods,
@@ -179,14 +181,15 @@ function SynchronousReplicationSuite() {
       assertTrue(continueExternal(global.instanceInfo.arangods[pos].pid));
       console.info("Have healed follower", follower);
     }
+    failedState.follower = null;
   }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fail the leader
   ////////////////////////////////////////////////////////////////////////////////
 
-  function failLeader(failAt) {
-    var leader = cinfo.shards[shards[0]][0];
+  function failLeader(failAt = null, leader = null) {
+    if (leader == null) leader = cinfo.shards[shards[0]][0];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
     // Now look for instanceInfo:
     var pos = _.findIndex(global.instanceInfo.arangods,
@@ -199,15 +202,16 @@ function SynchronousReplicationSuite() {
       assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
       console.info("Have failed leader", leader);
     }
+    failedState.leader = { failAt: (failAt ? failAt : null), failedServer: leader };
     return leader;
   }
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief heal the follower
+  /// @brief heal the leader
   ////////////////////////////////////////////////////////////////////////////////
 
-  function healLeader(failAt) {
-    var leader = cinfo.shards[shards[0]][0];
+  function healLeader(failAt = null, leader = null) {
+    if (leader == null) leader = cinfo.shards[shards[0]][0];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
     // Now look for instanceInfo:
     var pos = _.findIndex(global.instanceInfo.arangods,
@@ -220,6 +224,7 @@ function SynchronousReplicationSuite() {
       assertTrue(continueExternal(global.instanceInfo.arangods[pos].pid));
       console.info("Have healed leader", leader);
     }
+    failedState.leader = null;
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -380,6 +385,8 @@ function SynchronousReplicationSuite() {
         let endpoint = global.ArangoClusterInfo.getServerEndpoint(s.serverId);
         debugClearFailAt(endpoint);
       });
+      if(failedState.leader != null) healLeader(failedState.leader.failAt, failedState.leader.failedServer);
+      if(failedState.follower != null) healFollower(failedState.follower.failAt, failedState.follower.failedServer);
       db._drop(cn);
       //global.ArangoAgency.set('Target/FailedServers', {});
     },

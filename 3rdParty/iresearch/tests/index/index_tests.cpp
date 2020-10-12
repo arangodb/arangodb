@@ -33,7 +33,7 @@
 #include "utils/delta_compression.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/wildcard_utils.hpp"
-#include "utils/fst_table_matcher.hpp"
+#include "utils/fstext/fst_table_matcher.hpp"
 
 NS_BEGIN(tests)
 
@@ -8377,7 +8377,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
     };
 
     ASSERT_TRUE(writer->consolidate(merge_adjacent));
-  };
+  }
 
   // check all segments registered
   {
@@ -9194,8 +9194,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       sub_policy(candidates, meta, consolidating_segments);
       writer->commit();
     };
-    
-    ASSERT_TRUE(writer->consolidate(do_commit_and_consolidate_count)); 
+
+    ASSERT_TRUE(writer->consolidate(do_commit_and_consolidate_count));
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
@@ -9203,11 +9203,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
-    
+
     writer->documents().remove(*query_doc4.filter);
- 
+
     writer->commit(); // commit pending merge + delete
-    ASSERT_EQ(count+8, irs::directory_cleaner::clean(dir())); 
+    ASSERT_EQ(count+8, irs::directory_cleaner::clean(dir()));
 
     // check consolidating segments
     expected_consolidating_segments = { };
@@ -9271,7 +9271,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       }
     }
 
-    // check for dangling old segment versions in writers cache 
+    // check for dangling old segment versions in writers cache
     // first create new segment
     // segment 5
     ASSERT_TRUE(insert(*writer,
@@ -9295,7 +9295,233 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     writer->commit();
 
     // check all old segments are deleted (no old version of segments is left in cache and blocking )
-    ASSERT_EQ(23, irs::directory_cleaner::clean(dir())); 
+    ASSERT_EQ(23, irs::directory_cleaner::clean(dir()));
+  }
+
+  // repeatable consolidation of already consolidated segment
+  {
+    SetUp();
+    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()));
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // count number of files in segments
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()));
+    writer->commit();
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    writer->documents().remove(*query_doc1.filter);
+    ASSERT_TRUE(writer->begin()); // begin transaction
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // this consolidation will be postponed
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+    // check consolidating segments are pending
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    // can't consolidate segments that are already marked for consolidation
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+
+    auto do_commit_and_consolidate_count = [&writer](
+      std::set<const irs::segment_meta*>& candidates,
+      const irs::index_meta& meta,
+      const irs::index_writer::consolidating_segments_t& consolidating_segments
+      ) {
+        writer->commit();
+        writer->begin(); // another commit to process pending consolidating_segments
+        writer->commit();
+        auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
+        sub_policy(candidates, meta, consolidating_segments);
+    };
+
+    // this should fail as segments 1 and 0 are actually consolidated on previous  commit
+    // inside our test policy
+    ASSERT_FALSE(writer->consolidate(do_commit_and_consolidate_count));
+    ASSERT_NE(0, irs::directory_cleaner::clean(dir()));
+    // check all data is deleted
+    const auto one_segment_count = count;
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+    // files count should be the same as with one segment (only +1 for doc_mask)
+    ASSERT_EQ(one_segment_count, count - 1); // -1 for doc-mask from removal
+  }
+
+  // repeatable consolidation of already consolidated segment during two phase commit
+  {
+    SetUp();
+    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc4 = iresearch::iql::query_builder().build("name==D", std::locale::classic());
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()));
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // count number of files in segments
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()));
+    writer->commit();
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    writer->documents().remove(*query_doc1.filter);
+    ASSERT_TRUE(writer->begin()); // begin transaction
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // this consolidation will be postponed
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+    // check consolidating segments are pending
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    // can't consolidate segments that are already marked for consolidation
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+
+    auto do_commit_and_consolidate_count = [&writer, &query_doc4](
+      std::set<const irs::segment_meta*>& candidates,
+      const irs::index_meta& meta,
+      const irs::index_writer::consolidating_segments_t& consolidating_segments
+      ) {
+        writer->commit();
+        writer->begin(); // another commit to process pending consolidating_segments
+        writer->commit();
+        // new transaction with passed 1st phase
+        writer->documents().remove(*query_doc4.filter);
+        writer->begin();
+        auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
+        sub_policy(candidates, meta, consolidating_segments);
+    };
+
+    // this should fail as segments 1 and 0 are actually consolidated on previous  commit
+    // inside our test policy
+    ASSERT_FALSE(writer->consolidate(do_commit_and_consolidate_count));
+    writer->commit();
+    ASSERT_NE(0, irs::directory_cleaner::clean(dir()));
+    // check all data is deleted
+    const auto one_segment_count = count;
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+    // files count should be the same as with one segment (only +1 for doc_mask)
+    ASSERT_EQ(one_segment_count, count - 1); // -1 for doc-mask from removal
+  }
+
+  // check commit rollback and consolidation
+  {
+    SetUp();
+    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()));
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()));
+    writer->commit();
+
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir()));
+
+
+    writer->documents().remove(*query_doc1.filter);
+    ASSERT_TRUE(writer->begin()); // begin transaction
+    // this consolidation will be postponed
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+    // check consolidating segments are pending
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    writer->rollback();
+
+    // leftovers cleanup
+    ASSERT_EQ(3, irs::directory_cleaner::clean(dir()));
+
+    // still pending
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    writer->documents().remove(*query_doc1.filter);
+    // make next commit
+    writer->commit();
+
+    // now no consolidating should be present
+    expected_consolidating_segments = {};
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    // could consolidate successfully
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+
+    // cleanup should remove old files
+    ASSERT_NE(0, irs::directory_cleaner::clean(dir()));
+
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    tests::assert_index(dir(), codec(), expected, all_features);
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(1, reader.size()); // should be one consolidated segment
+    ASSERT_EQ(3, reader.live_docs_count());
   }
 
   // consolidate with deletes + inserts
@@ -11795,7 +12021,7 @@ TEST_P(index_test_case, segment_consolidate) {
       const irs::index_meta& meta,
       const irs::index_writer::consolidating_segments_t&
   )->void {
-    for (auto& segment: meta) {
+    for (auto& segment : meta) {
       if (segment.meta.live_docs_count != segment.meta.docs_count) {
         candidates.insert(&segment.meta);
       }
@@ -12276,7 +12502,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
-    // validate merged segment 
+    // validate merged segment
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
@@ -12367,7 +12593,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
-    // validate merged segment 
+    // validate merged segment
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
@@ -13019,7 +13245,7 @@ TEST_P(index_test_case, segment_options) {
     auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
 
     // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-    while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000));
+    while (!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000));
 
     ASSERT_EQ(std::cv_status::timeout, result);
     // ^^^ expecting timeout because pool should block indefinitely
@@ -13197,7 +13423,7 @@ TEST_P(index_test_case, segment_options) {
 
 TEST_P(index_test_case, writer_close) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"), 
+    resource("simple_sequential.json"),
     &tests::generic_json_field_factory
   );
   auto& directory = dir();
@@ -13221,7 +13447,7 @@ TEST_P(index_test_case, writer_close) {
   ASSERT_TRUE(directory.visit(list_files));
 
   // file removal should pass for all files (especially valid for Microsoft Windows)
-  for (auto& file: files) {
+  for (auto& file : files) {
     ASSERT_TRUE(directory.remove(file));
   }
 
@@ -13230,6 +13456,142 @@ TEST_P(index_test_case, writer_close) {
   ASSERT_TRUE(directory.visit(list_files));
   ASSERT_TRUE(files.empty());
 }
+
+TEST_P(index_test_case, writer_insert_immediate_remove) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+  auto& directory = dir();
+  auto* doc1 = gen.next();
+  auto* doc2 = gen.next();
+  auto* doc3 = gen.next();
+  auto* doc4 = gen.next();
+
+  auto writer = open_writer();
+
+  ASSERT_TRUE(insert(*writer,
+    doc4->indexed.begin(), doc4->indexed.end(),
+    doc4->stored.begin(), doc4->stored.end()
+  ));
+
+  ASSERT_TRUE(insert(*writer,
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end()
+  ));
+
+  writer->commit(); // index should be non-empty
+
+  size_t count = 0;
+  auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
+    count += size_t(name.size() && '_' == name[0]);
+    return true;
+  };
+  directory.visit(get_number_of_files_in_segments);
+  const auto one_segment_files_count = count;
+
+  // Create segment and immediately do a remove operation
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end()
+  ));
+
+  ASSERT_TRUE(insert(*writer,
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end()
+  ));
+
+  auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+  writer->documents().remove(*(query_doc1.filter.get()));
+  writer->commit();
+
+  // remove for initial segment to trigger consolidation
+  // consolidation is needed to force opening all file handles and make cached readers indeed hold reference to a file
+  auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
+  writer->documents().remove(*(query_doc3.filter.get()));
+  writer->commit();
+
+  // this consolidation should bring us to one consolidated segment without removals.
+  ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+  writer->commit();
+
+  // file removal should pass for all files (especially valid for Microsoft Windows)
+  irs::directory_utils::remove_all_unreferenced(directory);
+
+  // validate that all files from old segments have been removed
+  count = 0;
+  directory.visit(get_number_of_files_in_segments);
+  ASSERT_EQ(count, one_segment_files_count);
+}
+
+TEST_P(index_test_case, writer_insert_immediate_remove_all) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+  auto& directory = dir();
+  auto* doc1 = gen.next();
+  auto* doc2 = gen.next();
+  auto* doc3 = gen.next();
+  auto* doc4 = gen.next();
+
+  auto writer = open_writer();
+
+  ASSERT_TRUE(insert(*writer,
+    doc4->indexed.begin(), doc4->indexed.end(),
+    doc4->stored.begin(), doc4->stored.end()
+  ));
+
+  ASSERT_TRUE(insert(*writer,
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end()
+  ));
+
+  writer->commit(); // index should be non-empty
+  size_t count = 0;
+  auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
+    count += size_t(name.size() && '_' == name[0]);
+    return true;
+  };
+  directory.visit(get_number_of_files_in_segments);
+  const auto one_segment_files_count = count;
+
+  // Create segment and immediately do a remove operation for all added documents
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end()
+  ));
+
+  ASSERT_TRUE(insert(*writer,
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end()
+  ));
+
+  auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+  writer->documents().remove(*(query_doc1.filter.get()));
+  auto query_doc2 = iresearch::iql::query_builder().build("name==B", std::locale::classic());
+  writer->documents().remove(*(query_doc2.filter.get()));
+  writer->commit();
+
+  // remove for initial segment to trigger consolidation
+  // consolidation is needed to force opening all file handles and make cached readers indeed hold reference to a file
+  auto query_doc3 = iresearch::iql::query_builder().build("name==C", std::locale::classic());
+  writer->documents().remove(*(query_doc3.filter.get()));
+  writer->commit();
+
+  // this consolidation should bring us to one consolidated segment without removes.
+  ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+  writer->commit();
+
+  // file removal should pass for all files (especially valid for Microsoft Windows)
+  irs::directory_utils::remove_all_unreferenced(directory);
+
+  // validate that all files from old segments have been removed
+  count = 0;
+  directory.visit(get_number_of_files_in_segments);
+  ASSERT_EQ(count, one_segment_files_count);
+}
+
 
 INSTANTIATE_TEST_CASE_P(
   index_test_10,
@@ -13317,7 +13679,18 @@ TEST_P(index_test_case_10, commit_payload) {
   auto& directory = dir();
   auto* doc0 = gen.next();
 
-  auto writer = open_writer();
+  irs::index_writer::init_options writer_options;
+  uint64_t payload_committed_tick{ 0 };
+  irs::bstring input_payload;
+  uint64_t payload_calls_count{ 0 };
+  writer_options.meta_payload_provider = 
+      [&payload_calls_count, &payload_committed_tick, &input_payload](uint64_t tick, irs::bstring& out) {
+    payload_calls_count++;
+    payload_committed_tick = tick;
+    out.append(input_payload.c_str(), input_payload.size());
+    return true;
+  };
+  auto writer = open_writer(irs::OM_CREATE, writer_options);
 
   ASSERT_TRUE(writer->begin()); // initial commit
   writer->commit();
@@ -13356,23 +13729,15 @@ TEST_P(index_test_case_10, commit_payload) {
       ASSERT_EQ(expected_tick-1, trx.tick());
     }
 
-    uint64_t actual_tick = 0;
-
-    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
-    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
-      actual_tick = tick;
-      out.append(payload.c_str(), payload.size());
-      return true;
-    }));
-    ASSERT_EQ(expected_tick, actual_tick);
+    payload_committed_tick = 0;
+    input_payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    ASSERT_TRUE(writer->begin());
+    ASSERT_EQ(expected_tick, payload_committed_tick);
 
     // transaction is already started
-    size_t calls_count = 0;
-    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
-      ++calls_count;
-      return true;
-    });
-    ASSERT_EQ(0, calls_count);
+    payload_calls_count = 0;
+    writer->commit();
+    ASSERT_EQ(0, payload_calls_count);
 
     // check written payload
     {
@@ -13411,15 +13776,11 @@ TEST_P(index_test_case_10, commit_payload) {
       ASSERT_EQ(expected_tick-1, trx.tick());
     }
 
-    uint64_t actual_tick = 0;
+    payload_committed_tick = 0;
 
     auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
-    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
-      actual_tick = tick;
-      out.append(payload.c_str(), payload.size());
-      return true;
-    }));
-    ASSERT_EQ(expected_tick, actual_tick);
+    ASSERT_TRUE(writer->begin());
+    ASSERT_EQ(expected_tick, payload_committed_tick);
 
     writer->rollback();
 
@@ -13458,23 +13819,16 @@ TEST_P(index_test_case_10, commit_payload) {
       ASSERT_EQ(expected_tick, trx.tick());
     }
 
-    uint64_t actual_tick = 0;
+    payload_committed_tick = 0;
 
     auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
-    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
-      actual_tick = tick;
-      out.append(payload.c_str(), payload.size());
-      return false; // reset payload to 'bytes_ref::NIL'
-    }));
-    ASSERT_EQ(expected_tick, actual_tick);
+    ASSERT_TRUE(writer->begin());
+    ASSERT_EQ(expected_tick, payload_committed_tick);
 
     // transaction is already started
-    size_t calls_count = 0;
-    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
-      ++calls_count;
-      return true;
-    });
-    ASSERT_EQ(0, calls_count);
+    payload_calls_count = 0;
+    writer->commit();
+    ASSERT_EQ(0, payload_calls_count);
 
     // check written payload
     {
@@ -13513,22 +13867,15 @@ TEST_P(index_test_case_10, commit_payload) {
       ASSERT_EQ(expected_tick, trx.tick());
     }
 
-    uint64_t actual_tick = 42;
+    payload_committed_tick = 42;
 
-    ASSERT_TRUE(writer->begin([&actual_tick](uint64_t tick, irs::bstring& out) {
-      actual_tick = tick;
-      out.clear();
-      return true;
-    }));
-    ASSERT_EQ(expected_tick, actual_tick);
+    ASSERT_TRUE(writer->begin());
+    ASSERT_EQ(expected_tick, payload_committed_tick);
 
     // transaction is already started
-    size_t calls_count = 0;
-    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
-      ++calls_count;
-      return true;
-    });
-    ASSERT_EQ(0, calls_count);
+    payload_calls_count = 0;
+    writer->commit();
+    ASSERT_EQ(0, payload_calls_count);
 
     // check written payload
     {
@@ -13582,6 +13929,58 @@ INSTANTIATE_TEST_CASE_P(
 
 class index_test_case_11 : public tests::index_test_base { };
 
+TEST_P(index_test_case_11, clean_writer_with_payload) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        doc.insert(std::make_shared<tests::templates::string_field>(
+          irs::string_ref(name),
+          data.str
+          ));
+      }
+    });
+
+  tests::document const* doc1 = gen.next();
+  tests::document const* doc2 = gen.next();
+
+  irs::index_writer::init_options writer_options;
+  uint64_t payload_committed_tick{ 0 };
+  irs::bstring input_payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  bool payload_provider_result{ false };
+  writer_options.meta_payload_provider = 
+    [&payload_provider_result, &payload_committed_tick, &input_payload](uint64_t tick, irs::bstring& out) {
+    payload_committed_tick = tick;
+    out.append(input_payload.c_str(), input_payload.size());
+    return payload_provider_result;
+  };
+  auto writer = open_writer(irs::OM_CREATE, writer_options);
+
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end()
+  ));
+  writer->commit();
+
+  size_t file_count0 = 0;
+  dir().visit([&file_count0](std::string&)->bool{ ++file_count0; return true; });
+
+  {
+    auto reader = irs::directory_reader::open(dir());
+    ASSERT_TRUE(reader.meta().meta.payload().null());
+  }
+  uint64_t expected_tick = 42;
+
+  payload_committed_tick = 0;
+  payload_provider_result = true;
+  writer->clear(expected_tick);
+  {
+    auto reader = irs::directory_reader::open(dir());
+    ASSERT_EQ(input_payload, reader.meta().meta.payload());
+    ASSERT_EQ(payload_committed_tick, expected_tick);
+  }
+}
+
 TEST_P(index_test_case_11, initial_two_phase_commit_no_payload) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
@@ -13589,27 +13988,28 @@ TEST_P(index_test_case_11, initial_two_phase_commit_no_payload) {
 
   auto& directory = dir();
 
-  auto writer = open_writer();
+  irs::index_writer::init_options writer_options;
+  uint64_t payload_calls_count{ 0 };
+  writer_options.meta_payload_provider = 
+      [&payload_calls_count](uint64_t, irs::bstring&) {
+    payload_calls_count++;
+    return false;
+  };
+  auto writer = open_writer(irs::OM_CREATE, writer_options);
 
   ASSERT_TRUE(writer->begin());
 
   // transaction is already started
-  size_t calls_count = 0;
-  writer->commit([&calls_count](uint64_t /*tick*/, irs::bstring& /*out*/) {
-    ++calls_count;
-    return true;
-  });
-  ASSERT_EQ(0, calls_count);
+  payload_calls_count = 0;
+  writer->commit();
+  ASSERT_EQ(0, payload_calls_count);
 
   auto reader = irs::directory_reader::open(directory);
   ASSERT_TRUE(reader.meta().meta.payload().null());
 
   // no changes
-  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
-    ++calls_count;
-    return true;
-  });
-  ASSERT_EQ(0, calls_count);
+  writer->commit();
+  ASSERT_EQ(0, payload_calls_count);
   ASSERT_EQ(reader, reader.reopen());
 }
 
@@ -13620,7 +14020,14 @@ TEST_P(index_test_case_11, initial_commit_no_payload) {
 
   auto& directory = dir();
 
-  auto writer = open_writer();
+  irs::index_writer::init_options writer_options;
+  uint64_t payload_calls_count{ 0 };
+  writer_options.meta_payload_provider = 
+      [&payload_calls_count](uint64_t, irs::bstring&) {
+    payload_calls_count++;
+    return false;
+  };
+  auto writer = open_writer(irs::OM_CREATE, writer_options);
 
   writer->commit();
 
@@ -13628,12 +14035,9 @@ TEST_P(index_test_case_11, initial_commit_no_payload) {
   ASSERT_TRUE(reader.meta().meta.payload().null());
 
   // no changes
-  size_t calls_count = 0;
-  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
-    ++calls_count;
-    return true;
-  });
-  ASSERT_EQ(0, calls_count);
+  payload_calls_count = 0;
+  writer->commit();
+  ASSERT_EQ(0, payload_calls_count);
   ASSERT_EQ(reader, reader.reopen());
 }
 
@@ -13644,34 +14048,38 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload_revert) {
 
   auto& directory = dir();
 
-  auto writer = open_writer();
+  irs::index_writer::init_options writer_options;
+  uint64_t payload_committed_tick{ 0 };
+  irs::bstring input_payload;
+  uint64_t payload_calls_count{ 0 };
+  bool payload_provider_result{ false };
+  writer_options.meta_payload_provider = 
+      [&payload_provider_result, &payload_calls_count, &payload_committed_tick, &input_payload]
+      (uint64_t tick, irs::bstring& out) {
+    payload_calls_count++;
+    payload_committed_tick = tick;
+    out.append(input_payload.c_str(), input_payload.size());
+    return payload_provider_result;
+  };
+  auto writer = open_writer(irs::OM_CREATE, writer_options);
 
-  auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
-  uint64_t actual_tick = 42;
-  ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
-    actual_tick = tick;
-    out.append(payload.c_str(), payload.size());
-    return false; // revert payload
-  }));
-  ASSERT_EQ(0, actual_tick);
+  input_payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  payload_committed_tick = 42;
+  ASSERT_TRUE(writer->begin());
+  ASSERT_EQ(0, payload_committed_tick);
 
+  payload_provider_result = true;
   // transaction is already started
-  size_t calls_count = 0;
-  writer->commit([&calls_count](uint64_t /*tick*/, irs::bstring& /*out*/) {
-    ++calls_count;
-    return true;
-  });
-  ASSERT_EQ(0, calls_count);
+  payload_calls_count = 0;
+  writer->commit();
+  ASSERT_EQ(0, payload_calls_count);
 
   auto reader = irs::directory_reader::open(directory);
   ASSERT_TRUE(reader.meta().meta.payload().null());
 
   // no changes
-  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
-    ++calls_count;
-    return true;
-  });
-  ASSERT_EQ(0, calls_count);
+  writer->commit();
+  ASSERT_EQ(0, payload_calls_count);
   ASSERT_EQ(reader, reader.reopen());
 }
 
@@ -13682,27 +14090,34 @@ TEST_P(index_test_case_11, initial_commit_payload_revert) {
 
   auto& directory = dir();
 
-  auto writer = open_writer();
+  irs::index_writer::init_options writer_options;
+  uint64_t payload_committed_tick{ 0 };
+  irs::bstring input_payload;
+  uint64_t payload_calls_count{ 0 };
+  bool payload_provider_result{ false };
+  writer_options.meta_payload_provider = 
+      [&payload_provider_result, &payload_calls_count, &payload_committed_tick, &input_payload]
+      (uint64_t tick, irs::bstring& out) {
+    payload_calls_count++;
+    payload_committed_tick = tick;
+    out.append(input_payload.c_str(), input_payload.size());
+    return payload_provider_result;
+  };
+  auto writer = open_writer(irs::OM_CREATE, writer_options);
 
-  auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
-  uint64_t actual_tick = 42;
-  writer->commit([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
-    actual_tick = tick;
-    out.append(payload.c_str(), payload.size());
-    return false; // revert payload
-  });
-  ASSERT_EQ(0, actual_tick);
+  input_payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  payload_committed_tick = 42;
+  writer->commit();
+  ASSERT_EQ(0, payload_committed_tick);
 
   auto reader = irs::directory_reader::open(directory);
   ASSERT_TRUE(reader.meta().meta.payload().null());
 
+  payload_provider_result = true;
   // no changes
-  size_t calls_count = 0;
-  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
-    ++calls_count;
-    return true;
-  });
-  ASSERT_EQ(0, calls_count);
+  payload_calls_count = 0;
+  writer->commit();
+  ASSERT_EQ(0, payload_calls_count);
   ASSERT_EQ(reader, reader.reopen());
 }
 
@@ -13713,34 +14128,35 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload) {
 
   auto& directory = dir();
 
-  auto writer = open_writer();
-
-  auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
-  uint64_t actual_tick = 42;
-  ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
-    actual_tick = tick;
-    out.append(payload.c_str(), payload.size());
+  irs::index_writer::init_options writer_options;
+  uint64_t payload_committed_tick{ 0 };
+  irs::bstring input_payload;
+  uint64_t payload_calls_count{ 0 };
+  writer_options.meta_payload_provider = 
+      [&payload_calls_count, &payload_committed_tick, &input_payload](uint64_t tick, irs::bstring& out) {
+    payload_calls_count++;
+    payload_committed_tick = tick;
+    out.append(input_payload.c_str(), input_payload.size());
     return true;
-  }));
-  ASSERT_EQ(0, actual_tick);
+  };
+  auto writer = open_writer(irs::OM_CREATE, writer_options);
+
+  input_payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  payload_committed_tick = 42;
+  ASSERT_TRUE(writer->begin());
+  ASSERT_EQ(0, payload_committed_tick);
 
   // transaction is already started
-  size_t calls_count = 0;
-  writer->commit([&calls_count](uint64_t /*tick*/, irs::bstring& /*out*/) {
-    ++calls_count;
-    return true;
-  });
-  ASSERT_EQ(0, calls_count);
+  payload_calls_count = 0;
+  writer->commit();
+  ASSERT_EQ(0, payload_calls_count);
 
   auto reader = irs::directory_reader::open(directory);
-  ASSERT_EQ(payload, reader.meta().meta.payload());
+  ASSERT_EQ(input_payload, reader.meta().meta.payload());
 
   // no changes
-  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
-    ++calls_count;
-    return true;
-  });
-  ASSERT_EQ(0, calls_count);
+  writer->commit();
+  ASSERT_EQ(0, payload_calls_count);
   ASSERT_EQ(reader, reader.reopen());
 }
 
@@ -13751,27 +14167,31 @@ TEST_P(index_test_case_11, initial_commit_payload) {
 
   auto& directory = dir();
 
-  auto writer = open_writer();
-
-  auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
-  uint64_t actual_tick = 42;
-  writer->commit([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
-    actual_tick = tick;
-    out.append(payload.c_str(), payload.size());
+  irs::index_writer::init_options writer_options;
+  uint64_t payload_committed_tick{ 0 };
+  irs::bstring input_payload;
+  uint64_t payload_calls_count{ 0 };
+  writer_options.meta_payload_provider = 
+      [&payload_calls_count, &payload_committed_tick, &input_payload](uint64_t tick, irs::bstring& out) {
+    payload_calls_count++;
+    payload_committed_tick = tick;
+    out.append(input_payload.c_str(), input_payload.size());
     return true;
-  });
-  ASSERT_EQ(0, actual_tick);
+  };
+  auto writer = open_writer(irs::OM_CREATE, writer_options);
+
+  input_payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  payload_committed_tick = 42;
+  writer->commit();
+  ASSERT_EQ(0, payload_committed_tick);
 
   auto reader = irs::directory_reader::open(directory);
-  ASSERT_EQ(payload, reader.meta().meta.payload());
+  ASSERT_EQ(input_payload, reader.meta().meta.payload());
 
   // no changes
-  size_t calls_count = 0;
-  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
-    ++calls_count;
-    return true;
-  });
-  ASSERT_EQ(0, calls_count);
+  payload_calls_count = 0;
+  writer->commit();
+  ASSERT_EQ(0, payload_calls_count);
   ASSERT_EQ(reader, reader.reopen());
 }
 
@@ -13783,8 +14203,21 @@ TEST_P(index_test_case_11, commit_payload) {
   auto& directory = dir();
   auto* doc0 = gen.next();
 
-  auto writer = open_writer();
+  irs::index_writer::init_options writer_options;
+  uint64_t payload_committed_tick{ 0 };
+  irs::bstring input_payload;
+  uint64_t payload_calls_count{ 0 };
+  bool payload_provider_result = true;
+  writer_options.meta_payload_provider = 
+    [&payload_calls_count, &payload_committed_tick, &input_payload, &payload_provider_result](uint64_t tick, irs::bstring& out) {
+    payload_calls_count++;
+    payload_committed_tick = tick;
+    out.append(input_payload.c_str(), input_payload.size());
+    return payload_provider_result;
+  };
+  auto writer = open_writer(irs::OM_CREATE, writer_options);
 
+  payload_provider_result = false;
   ASSERT_TRUE(writer->begin()); // initial commit
   writer->commit();
   auto reader = irs::directory_reader::open(directory);
@@ -13793,7 +14226,7 @@ TEST_P(index_test_case_11, commit_payload) {
   ASSERT_FALSE(writer->begin()); // transaction hasn't been started, no changes
   writer->commit();
   ASSERT_EQ(reader, reader.reopen());
-
+  payload_provider_result = true;
   // commit with a specified payload
   {
     const uint64_t expected_tick = 42;
@@ -13822,29 +14255,23 @@ TEST_P(index_test_case_11, commit_payload) {
       ASSERT_EQ(expected_tick-1, trx.tick());
     }
 
-    uint64_t actual_tick = 0;
+    payload_committed_tick = 0;
 
-    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
-    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
-      actual_tick = tick;
-      out.append(payload.c_str(), payload.size());
-      return true;
-    }));
-    ASSERT_EQ(expected_tick, actual_tick);
+    input_payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    ASSERT_TRUE(writer->begin());
+    ASSERT_EQ(expected_tick, payload_committed_tick);
 
     // transaction is already started
-    size_t calls_count = 0;
-    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
-      ++calls_count;
-      return true;
-    });
-    ASSERT_EQ(0, calls_count);
+    ASSERT_NE(0, payload_calls_count);
+    payload_calls_count = 0;
+    writer->commit();
+    ASSERT_EQ(0, payload_calls_count);
 
     // check written payload
     {
       auto new_reader = reader.reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_EQ(payload, new_reader.meta().meta.payload());
+      ASSERT_EQ(input_payload, new_reader.meta().meta.payload());
       reader = new_reader;
     }
   }
@@ -13877,15 +14304,11 @@ TEST_P(index_test_case_11, commit_payload) {
       ASSERT_EQ(expected_tick-1, trx.tick());
     }
 
-    uint64_t actual_tick = 0;
+    payload_committed_tick = 0;
 
-    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
-    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
-      actual_tick = tick;
-      out.append(payload.c_str(), payload.size());
-      return true;
-    }));
-    ASSERT_EQ(expected_tick, actual_tick);
+    input_payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    ASSERT_TRUE(writer->begin());
+    ASSERT_EQ(expected_tick, payload_committed_tick);
 
     writer->rollback();
 
@@ -13924,23 +14347,17 @@ TEST_P(index_test_case_11, commit_payload) {
       ASSERT_EQ(expected_tick, trx.tick());
     }
 
-    uint64_t actual_tick = 0;
+    payload_committed_tick = 0;
 
-    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
-    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
-      actual_tick = tick;
-      out.append(payload.c_str(), payload.size());
-      return false; // reset payload to 'bytes_ref::NIL'
-    }));
-    ASSERT_EQ(expected_tick, actual_tick);
+    input_payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    payload_provider_result = false;
+    ASSERT_TRUE(writer->begin());
+    ASSERT_EQ(expected_tick, payload_committed_tick);
 
     // transaction is already started
-    size_t calls_count = 0;
-    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
-      ++calls_count;
-      return true;
-    });
-    ASSERT_EQ(0, calls_count);
+    payload_calls_count = 0;
+    writer->commit();
+    ASSERT_EQ(0, payload_calls_count);
 
     // check written payload
     {
@@ -13979,22 +14396,18 @@ TEST_P(index_test_case_11, commit_payload) {
       ASSERT_EQ(expected_tick, trx.tick());
     }
 
-    uint64_t actual_tick = 42;
+    payload_committed_tick = 42;
+    input_payload.clear();
+    payload_provider_result = true;
 
-    ASSERT_TRUE(writer->begin([&actual_tick](uint64_t tick, irs::bstring& out) {
-      actual_tick = tick;
-      out.clear();
-      return true;
-    }));
-    ASSERT_EQ(expected_tick, actual_tick);
+    ASSERT_TRUE(writer->begin());
+    ASSERT_EQ(expected_tick, payload_committed_tick);
 
     // transaction is already started
-    size_t calls_count = 0;
-    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
-      ++calls_count;
-      return true;
-    });
-    ASSERT_EQ(0, calls_count);
+    payload_calls_count = 0;
+    input_payload.clear();
+    writer->commit();
+    ASSERT_EQ(0, payload_calls_count);
 
     // check written payload
     {
@@ -14009,6 +14422,7 @@ TEST_P(index_test_case_11, commit_payload) {
 
   // commit without payload
   {
+    payload_provider_result = false;
     // insert document (trx 0)
     {
       auto trx = writer->documents();

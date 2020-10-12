@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -94,9 +95,8 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
     _pkSeen = true;  // already matched 1 primary key (should be at most 1 at runtime)
   }
 
-  // aliasing constructor
-  return irs::doc_iterator::ptr(irs::doc_iterator::ptr(),
-                                const_cast<PrimaryKeyIterator*>(&_pkIterator));
+  return irs::memory::to_managed<irs::doc_iterator, false>(
+    const_cast<PrimaryKeyIterator*>(&_pkIterator));
 }
 
 size_t PrimaryKeyFilter::hash() const noexcept {
@@ -122,19 +122,16 @@ irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
     return irs::filter::prepared::empty();  // already processed
   }
 
-  // aliasing constructor
-  return irs::filter::prepared::ptr(irs::filter::prepared::ptr(), this);
+  return irs::memory::to_managed<const irs::filter::prepared, false>(this);
 }
 
 bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
   return filter::equals(rhs) && _pk == static_cast<PrimaryKeyFilter const&>(rhs)._pk;
 }
 
-/*static*/ irs::type_info PrimaryKeyFilter::type() {
-  return arangodb::EngineSelectorFeature::ENGINE &&
-                 arangodb::EngineSelectorFeature::ENGINE->inRecovery()
-             ? irs::type<typeRecovery>::get()
-             : irs::type<typeDefault>::get();
+/*static*/ irs::type_info PrimaryKeyFilter::type(StorageEngine& engine) {
+  return engine.inRecovery() ? irs::type<typeRecovery>::get()
+                             : irs::type<typeDefault>::get();
 }
 
 // ----------------------------------------------------------------------------

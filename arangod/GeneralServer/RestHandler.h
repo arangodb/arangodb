@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,13 +25,13 @@
 #define ARANGOD_HTTP_SERVER_REST_HANDLER_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/ResultT.h"
 #include "GeneralServer/RequestLane.h"
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
 
-#include <Cluster/ResultT.h>
 #include <atomic>
+#include <string_view>
 #include <thread>
 
 namespace arangodb {
@@ -61,9 +61,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   RestHandler(RestHandler const&) = delete;
   RestHandler& operator=(RestHandler const&) = delete;
-
- public:
-  static thread_local RestHandler const* CURRENT_HANDLER;
 
  public:
   RestHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
@@ -147,7 +144,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   void resetResponse(rest::ResponseCode);
 
-  void generateError(rest::ResponseCode, int, std::string const&);
+  void generateError(rest::ResponseCode, int, std::string_view);
 
   // generates an error
   void generateError(rest::ResponseCode, int);
@@ -162,8 +159,11 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
       return RestStatus::DONE;
     }
     bool done = false;
-    std::move(f).thenFinal([self = shared_from_this(), &done](futures::Try<T>) -> void {
+    std::move(f).thenFinal([self = shared_from_this(), &done](futures::Try<T>&& t) -> void {
       auto thisPtr = self.get();
+      if (t.hasException()) {
+        thisPtr->handleExceptionPtr(std::move(t).exception());
+      }
       if (std::this_thread::get_id() == thisPtr->_executionMutexOwner.load()) {
         done = true;
       } else {

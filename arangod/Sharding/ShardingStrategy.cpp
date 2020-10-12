@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShardingStrategy.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 
 #include <velocypack/Builder.h>
@@ -36,6 +37,6 @@ bool ShardingStrategy::isCompatible(ShardingStrategy const* other) const {
 void ShardingStrategy::toVelocyPack(VPackBuilder& result) const {
   // only need to print sharding strategy if we are in a cluster
   if (ServerState::instance()->isRunningInCluster()) {
-    result.add("shardingStrategy", VPackValue(name()));
+    result.add(StaticStrings::ShardingStrategy, VPackValue(name()));
   }
 }

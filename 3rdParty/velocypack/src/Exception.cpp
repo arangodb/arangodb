@@ -31,6 +31,9 @@
 
 using namespace arangodb::velocypack;
 
+Exception::Exception(ExceptionType type, char const* msg) noexcept
+    : _type(type), _msg(msg) {}
+
 std::ostream& operator<<(std::ostream& stream, Exception const* ex) {
   stream << "[Exception " << ex->what() << "]";
   return stream;

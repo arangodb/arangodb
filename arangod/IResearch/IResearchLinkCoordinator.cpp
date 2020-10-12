@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -43,18 +44,21 @@
 
 namespace {
 
-arangodb::ClusterEngineType getEngineType() {
+arangodb::ClusterEngineType getEngineType(arangodb::application_features::ApplicationServer& server) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // during the unit tests there is a mock storage engine which cannot be casted
   // to a ClusterEngine at all. the only sensible way to find out the engine type is 
   // to try a dynamic_cast here and assume the MockEngine if the cast goes wrong
-  auto engine = dynamic_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE);
-  if (engine != nullptr) {
-    return engine->engineType();
+  auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
+  auto cast = dynamic_cast<arangodb::ClusterEngine*>(&engine);
+  if (cast != nullptr) {
+    return cast->engineType();
   }
   return arangodb::ClusterEngineType::MockEngine;
 #else
-  return static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE)->engineType();
+  return server.getFeature<arangodb::EngineSelectorFeature>()
+      .engine<arangodb::ClusterEngine>()
+      .engineType();
 #endif
 }
 
@@ -64,7 +68,8 @@ namespace arangodb {
 namespace iresearch {
 
 IResearchLinkCoordinator::IResearchLinkCoordinator(IndexId id, LogicalCollection& collection)
-    : arangodb::ClusterIndex(id, collection, ::getEngineType(),
+    : arangodb::ClusterIndex(id, collection,
+                             ::getEngineType(collection.vocbase().server()),
                              arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK,
                              IResearchLinkHelper::emptyIndexSlice()),
       IResearchLink(id, collection) {
@@ -111,8 +116,9 @@ IResearchLinkCoordinator::IndexFactory::IndexFactory(arangodb::application_featu
     : IndexTypeFactory(server) {}
 
 bool IResearchLinkCoordinator::IndexFactory::equal(arangodb::velocypack::Slice const& lhs,
-                                                   arangodb::velocypack::Slice const& rhs) const {
-  return arangodb::iresearch::IResearchLinkHelper::equal(_server, lhs, rhs);
+                                                   arangodb::velocypack::Slice const& rhs,
+                                                   std::string const& dbname) const {
+  return arangodb::iresearch::IResearchLinkHelper::equal(_server, lhs, rhs, dbname);
 }
 
 std::shared_ptr<arangodb::Index> IResearchLinkCoordinator::IndexFactory::instantiate(

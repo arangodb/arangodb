@@ -63,8 +63,26 @@ function runArangodRecovery (params) {
   let argv = [];
 
   let binary = pu.ARANGOD_BIN;
+  let crashLogDir = fs.join(fs.getTempPath(), 'crash');
+  fs.makeDirectoryRecursive(crashLogDir);
+  pu.cleanupDBDirectoriesAppend(crashLogDir);
+
+  let crashLog = fs.join(crashLogDir, 'crash.log');
 
   if (params.setup) {
+    try {
+      // clean up crash log before next test
+      fs.remove(crashLog);
+    } catch (err) {}
+
+
+    // special handling for crash-handler recovery tests
+    if (params.script.match(/crash-handler/)) {
+      // forcefully enable crash handler, even if turned off globally
+      // during testing
+      require('internal').env["ARANGODB_OVERRIDE_CRASH_HANDLER"] = "on";
+    }
+
     params.options.disableMonitor = true;
     params.testDir = fs.join(params.tempDir, `${params.count}`);
     pu.cleanupDBDirectoriesAppend(params.testDir);
@@ -89,20 +107,29 @@ function runArangodRecovery (params) {
       'replication.auto-start': 'true',
       'javascript.script': params.script
     });
+      
+    args['log.output'] = 'file://' + crashLog;
 
     if (useEncryption) {
-      const key = '01234567890123456789012345678901';
       let keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
       if (!fs.exists(keyDir)) {  // needed on win32
         fs.makeDirectory(keyDir);
       }
       pu.cleanupDBDirectoriesAppend(keyDir);
-    
+        
+      const key = '01234567890123456789012345678901';
+      
       let keyfile = fs.join(keyDir, 'rocksdb-encryption-keyfile');
       fs.write(keyfile, key);
 
-      args['rocksdb.encryption-keyfile'] = keyfile;
-      process.env["rocksdb-encryption-keyfile"] = keyfile;
+      // special handling for encryption-keyfolder tests
+      if (params.script.match(/encryption-keyfolder/)) {
+        args['rocksdb.encryption-keyfolder'] = keyDir;
+        process.env["rocksdb-encryption-keyfolder"] = keyDir;
+      } else {
+        args['rocksdb.encryption-keyfile'] = keyfile;
+        process.env["rocksdb-encryption-keyfile"] = keyfile;
+      }
     }
 
     params.args = args;
@@ -130,6 +157,8 @@ function runArangodRecovery (params) {
       argv.unshift(pu.ARANGOD_BIN);
     }
   }
+    
+  process.env["crash-log"] = crashLog;
   params.instanceInfo.pid = pu.executeAndWait(
     binary,
     argv,

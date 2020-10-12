@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -60,7 +61,6 @@ std::string const Utils::edgeShardsKey = "edgeShards";
 std::string const Utils::globalShardListKey = "globalShardList";
 std::string const Utils::userParametersKey = "userparams";
 std::string const Utils::asyncModeKey = "asyncMode";
-std::string const Utils::lazyLoadingKey = "lazyloading";
 std::string const Utils::useMemoryMaps = "useMemoryMaps";
 std::string const Utils::parallelismKey = "parallelism";
 

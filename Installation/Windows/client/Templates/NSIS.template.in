@@ -37,7 +37,7 @@
   Var PASSWORD
   Var PASSWORD_AGAIN
 ; Variables for definition of instdir
-; posible values: SingleUser | AllUsers
+; possible values: SingleUser | AllUsers
   VAR TRI_INSTALL_TYPE
   !define TEMP1 $R0 ;Temp variable
   
@@ -247,7 +247,8 @@ Function AddToPath
   StrLen $2 $1
   IntCmp $2 0 CheckPathLength_ShowPathWarning CheckPathLength_Done CheckPathLength_Done
     CheckPathLength_ShowPathWarning:
-    Messagebox MB_OK|MB_ICONEXCLAMATION "Warning! Your PATH environment is already too long; the installer is unable to add ArangoDB to it."
+    Messagebox MB_OK|MB_ICONEXCLAMATION "Your PATH environment variable is already too long. The installer is unable to add ArangoDB to it."
+
     Goto AddToPath_done
   CheckPathLength_Done:
   Push "$1;"
@@ -360,7 +361,7 @@ Function un.RemoveFromPath
 FunctionEnd
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Uninstall sutff
+; Uninstall stuff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;###########################################
@@ -744,7 +745,8 @@ FunctionEnd
 ; TODO       Pop $R0
 ; TODO       StrCpy $0 "1"
 ; TODO       DetailPrint `AccessControl error: $R0`
-; TODO       ; MessageBox MB_OK "target directory  $INSTDIR can not get cannot get correct access rigths"
+; TODO       ; MessageBox MB_OK "Cannot get correct access rights for target directory $INSTDIR"
+
 ; TODO   ${EndIf}
 ; TODO FunctionEnd
 
@@ -762,7 +764,8 @@ Function check_installation_directory
    StrCmp $1 "0" handle_error
    return
    handle_error:
-     MessageBox MB_YESNO "you aren't allowed to install arango in $INSTDIR do you want try once more?" IDNO no
+     MessageBox MB_YESNO "You are not allowed to install ArangoDB in INSTDIR.$\r$\n$\r$\nDo you want try once more?" IDNO no
+
        Abort
      no: Quit
 FunctionEnd
@@ -788,7 +791,7 @@ Function insert_registration_keys
    Return
 
  there_are_erros: ;nothing
-MessageBox MB_OK "There was an error during adding the installation keys to the registry$\nArango will work fine but there may be trouble during the deinstallation$\nplease contact @CPACK_NSIS_CONTACT@"
+MessageBox MB_OK "There was an error during adding the installation keys to the registry.$\r$\n$\r$\nArangoDB will work fine, but uninstalling it may not work properly.$\r$\n$\r$\nPlease contact @CPACK_NSIS_CONTACT@"
 
 FunctionEnd
 

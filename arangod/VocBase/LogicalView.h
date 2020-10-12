@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Meta/utility.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
@@ -53,7 +54,7 @@ namespace arangodb {
 class LogicalView : public LogicalDataSource {
  public:
   typedef std::shared_ptr<LogicalView> ptr;
-  typedef std::function<bool(TRI_voc_cid_t)> CollectionVisitor;
+  typedef std::function<bool(DataSourceId)> CollectionVisitor;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief casts a specified 'LogicalView' to a provided Target type
@@ -149,9 +150,7 @@ class LogicalView : public LogicalDataSource {
   /// @return view instance or nullptr on error
   //////////////////////////////////////////////////////////////////////////////
   static Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                            velocypack::Slice definition,
-                            uint64_t planVersion = 0  // '0' by default for non-cluster
-  );
+                            velocypack::Slice definition);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief opens an existing view when the server is restarted
@@ -170,7 +169,7 @@ class LogicalView : public LogicalDataSource {
   virtual bool visitCollections(CollectionVisitor const& visitor) const = 0;
 
  protected:
-  LogicalView(TRI_vocbase_t& vocbase, velocypack::Slice const& definition, uint64_t planVersion);
+  LogicalView(TRI_vocbase_t& vocbase, velocypack::Slice const& definition);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief queries properties of an existing view

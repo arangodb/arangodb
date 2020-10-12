@@ -40,7 +40,8 @@ function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
-  internal.debugSetFailAt("RocksDBSettingsManagerSync"); 
+  internal.waitForEstimatorSync();
+  internal.debugSetFailAt("RocksDBMetaCollection::serializeRevisionTree");
 
   db._drop(colName1);
   var c = db._create(colName1), i;

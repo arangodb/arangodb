@@ -153,7 +153,10 @@
   // //////////////////////////////////////////////////////////////////////////////
 
   exports.reloadRouting = function () {
-    exports.arango.POST('/_admin/routing/reload', null);
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.POST('/_admin/routing/reload', null);
+    arangosh.checkRequestResult(requestResult);
+    return requestResult;
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -337,7 +340,7 @@
   };
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief returns if we are in enterprise version or not
+  // / @brief returns if we are an Enterprise Edition or not
   // //////////////////////////////////////////////////////////////////////////////
 
   if (global.SYS_IS_ENTERPRISE) {

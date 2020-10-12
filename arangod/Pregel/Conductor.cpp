@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -55,8 +56,8 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::basics;
 
-const char* arangodb::pregel::ExecutionStateNames[6] = {
-    "none", "running", "done", "canceled", "in error", "recovering"};
+const char* arangodb::pregel::ExecutionStateNames[7] = {
+    "none", "running", "storing", "done", "canceled", "in error", "recovering"};
 
 Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
                      std::vector<CollectionID> const& vertexCollections,
@@ -87,12 +88,6 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
   _asyncMode = _algorithm->supportsAsyncMode() && async.isBool() && async.getBoolean();
   if (_asyncMode) {
     LOG_TOPIC("1b1c2", DEBUG, Logger::PREGEL) << "Running in async mode";
-  }
-  VPackSlice lazy = _userParams.slice().get(Utils::lazyLoadingKey);
-  _lazyLoading = _algorithm->supportsLazyLoading();
-  _lazyLoading = _lazyLoading && (lazy.isNone() || lazy.getBoolean());
-  if (_lazyLoading) {
-    LOG_TOPIC("464dd", DEBUG, Logger::PREGEL) << "Enabled lazy loading";
   }
   _useMemoryMaps = VelocyPackHelper::getBooleanValue(_userParams.slice(),
                                                       Utils::useMemoryMaps, _useMemoryMaps);
@@ -186,11 +181,12 @@ bool Conductor::_startGlobalStep() {
   bool done = _globalSuperstep > 0 && _statistics.noActiveVertices() &&
               _statistics.allMessagesProcessed();
   if (!proceed || done || _globalSuperstep >= _maxSuperstep) {
-    _state = ExecutionState::DONE;
     // tells workers to store / discard results
     if (_storeResults) {
+      _state = ExecutionState::STORING;
       _finalizeWorkers();
     } else {  // just stop the timer
+      _state = ExecutionState::DONE;
       _endTimeSecs = TRI_microtime();
       LOG_TOPIC("9e82c", INFO, Logger::PREGEL)
           << "Done execution took" << totalRuntimeSecs() << " s";
@@ -497,7 +493,7 @@ static void resolveInfo(TRI_vocbase_t* vocbase, CollectionID const& collectionID
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, collectionID);
     }
 
-    collectionPlanIdMap.try_emplace(collectionID, std::to_string(lc->planId()));
+    collectionPlanIdMap.try_emplace(collectionID, std::to_string(lc->planId().id()));
     allShards.push_back(collectionID);
     serverMap[ss->getId()][collectionID].push_back(collectionID);
 
@@ -508,10 +504,10 @@ static void resolveInfo(TRI_vocbase_t* vocbase, CollectionID const& collectionID
     if (lc->deleted()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, collectionID);
     }
-    collectionPlanIdMap.try_emplace(collectionID, std::to_string(lc->planId()));
+    collectionPlanIdMap.try_emplace(collectionID, std::to_string(lc->planId().id()));
 
     std::shared_ptr<std::vector<ShardID>> shardIDs =
-        ci.getShardList(std::to_string(lc->id()));
+        ci.getShardList(std::to_string(lc->id().id()));
     allShards.insert(allShards.end(), shardIDs->begin(), shardIDs->end());
 
     for (auto const& shard : *shardIDs) {
@@ -575,7 +571,6 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     b.add(Utils::userParametersKey, _userParams.slice());
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
     b.add(Utils::asyncModeKey, VPackValue(_asyncMode));
-    b.add(Utils::lazyLoadingKey, VPackValue(_lazyLoading));
     b.add(Utils::useMemoryMaps, VPackValue(_useMemoryMaps));
     if (additional.isObject()) {
       for (auto pair : VPackObjectIterator(additional)) {
@@ -670,8 +665,7 @@ int Conductor::_finalizeWorkers() {
   _callbackMutex.assertLockedByCurrentThread();
   _finalizationStartTimeSecs = TRI_microtime();
 
-  bool store = _state == ExecutionState::DONE;
-  store = store && _storeResults;
+  bool store = _state == ExecutionState::STORING;
   if (_masterContext) {
     _masterContext->postApplication();
   }
@@ -703,6 +697,12 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
     return;
   }
 
+  // do not swap an error state to done
+  bool didStore = false;
+  if (_state == ExecutionState::STORING) {
+    _state = ExecutionState::DONE;
+    didStore = true;
+  }
   _endTimeSecs = TRI_microtime();  // offically done
 
   VPackBuilder debugOut;
@@ -721,7 +721,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   LOG_TOPIC("3cfa8", INFO, Logger::PREGEL)
       << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs << "s";
   LOG_TOPIC("d43cb", INFO, Logger::PREGEL) << "Computation Time: " << compTime << "s";
-  LOG_TOPIC("74e05", INFO, Logger::PREGEL) << "Storage Time: " << storeTime << "s";
+  LOG_TOPIC_IF("74e05", INFO, Logger::PREGEL, didStore) << "Storage Time: " << storeTime << "s";
   LOG_TOPIC("06f03", INFO, Logger::PREGEL) << "Overall: " << totalRuntimeSecs() << "s";
   LOG_TOPIC("03f2e", DEBUG, Logger::PREGEL) << "Stats: " << debugOut.toString();
 

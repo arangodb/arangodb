@@ -68,6 +68,13 @@ constexpr std::reverse_iterator<Iterator> make_reverse_iterator(Iterator it) {
   return std::reverse_iterator<Iterator>(it);
 }
 
+template<typename Container, typename Iterator>
+void swap_remove(Container& cont, Iterator it) {
+  assert(!cont.empty());
+  std::swap(*it, cont.back());
+  cont.pop_back();
+}
+
 NS_BEGIN(heap)
 NS_BEGIN(detail)
 

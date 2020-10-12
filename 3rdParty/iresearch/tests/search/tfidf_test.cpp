@@ -24,6 +24,7 @@
 #include "tests_shared.hpp"
 #include "index/index_tests.hpp"
 #include "search/all_filter.hpp"
+#include "search/column_existence_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/phrase_filter.hpp"
 #include "search/prefix_filter.hpp"
@@ -84,7 +85,7 @@ TEST_P(tfidf_test, test_load) {
   auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
   ASSERT_NE(nullptr, scorer);
-  ASSERT_EQ(1, order.add(true, scorer).size());
+  ASSERT_EQ(1, order.add(true, std::move(scorer)).size());
 }
 
 #ifndef IRESEARCH_DLL
@@ -267,18 +268,14 @@ TEST_P(tfidf_test, test_phrase) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
     irs::bytes_ref key_value;
 
     while (docs->next()) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), key_value));
 
       sorted.emplace(
-        score_value,
-        irs::to_string<std::string>(key_value.c_str())
-      );
+        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+        irs::to_string<std::string>(key_value.c_str()));
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -322,16 +319,13 @@ TEST_P(tfidf_test, test_phrase) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
     irs::bytes_ref key_value;
 
     while (docs->next()) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), key_value));
 
       sorted.emplace(
-        score_value,
+        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
         irs::to_string<std::string>(key_value.c_str())
       );
     }
@@ -391,17 +385,15 @@ TEST_P(tfidf_test, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value, seq);
+      sorted.emplace(
+        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+        seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -479,17 +471,15 @@ TEST_P(tfidf_test, test_query) {
       auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
-      // ensure that we avoid COW for pre c++11 std::basic_string
-      const irs::bytes_ref score_value = score->value();
-
       while(docs->next()) {
-        score->evaluate();
         ASSERT_TRUE(values(docs->value(), actual_value));
         in.reset(actual_value);
 
         auto str_seq = irs::read_string<std::string>(in);
         auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-        sorted.emplace(score_value, seq);
+        sorted.emplace(
+          irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+          seq);
       }
     }
 
@@ -578,17 +568,15 @@ TEST_P(tfidf_test, test_query) {
       auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
-      // ensure that we avoid COW for pre c++11 std::basic_string
-      const irs::bytes_ref score_value = score->value();
-
       while(docs->next()) {
-        score->evaluate();
         ASSERT_TRUE(values(docs->value(), actual_value));
         in.reset(actual_value);
 
         auto str_seq = irs::read_string<std::string>(in);
         auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-        sorted.emplace(score_value, seq);
+        sorted.emplace(
+          irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+          seq);
       }
     }
 
@@ -668,17 +656,15 @@ TEST_P(tfidf_test, test_query) {
       auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
-      // ensure that we avoid COW for pre c++11 std::basic_string
-      const irs::bytes_ref score_value = score->value();
-
       while(docs->next()) {
-        score->evaluate();
         ASSERT_TRUE(values(docs->value(), actual_value));
         in.reset(actual_value);
 
         auto str_seq = irs::read_string<std::string>(in);
         auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-        sorted.emplace(score_value, seq);
+        sorted.emplace(
+          irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+          seq);
       }
     }
 
@@ -709,17 +695,15 @@ TEST_P(tfidf_test, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value, seq);
+      sorted.emplace(
+        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+        seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -750,17 +734,15 @@ TEST_P(tfidf_test, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value, seq);
+      sorted.emplace(
+       irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+       seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -837,17 +819,15 @@ TEST_P(tfidf_test, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value, seq);
+      sorted.emplace(
+        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+        seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -885,17 +865,15 @@ TEST_P(tfidf_test, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value, seq);
+      sorted.emplace(
+        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+        seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -928,17 +906,15 @@ TEST_P(tfidf_test, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value, seq);
+      sorted.emplace(
+        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+        seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -964,17 +940,91 @@ TEST_P(tfidf_test, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
-
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
+    ASSERT_FALSE(score->is_default());
 
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
-      score->evaluate();
+
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       ++doc;
       ASSERT_EQ(1.5f, *reinterpret_cast<const float_t*>(score_value.c_str()));
+    }
+    ASSERT_EQ(irs::doc_limits::eof(), docs->value());
+  }
+
+  // all
+  {
+    irs::all filter;
+    filter.boost(0.f);
+
+    irs::bytes_ref actual_value;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_TRUE(bool(score));
+    ASSERT_TRUE(score->is_default());
+
+    irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
+    while(docs->next()) {
+      ASSERT_EQ(doc, docs->value());
+
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ++doc;
+      ASSERT_EQ(0.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
+    }
+    ASSERT_EQ(irs::doc_limits::eof(), docs->value());
+  }
+
+  // column existence
+  {
+    irs::by_column_existence filter;
+    *filter.mutable_field() = "seq";
+    filter.mutable_options()->prefix_match = false;
+
+    irs::bytes_ref actual_value;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_TRUE(bool(score));
+    ASSERT_FALSE(score->is_default());
+
+    irs::doc_id_t doc = irs::doc_limits::min();
+    while(docs->next()) {
+      ASSERT_EQ(doc, docs->value());
+
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ++doc;
+      ASSERT_EQ(1.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
+    }
+    ASSERT_EQ(irs::doc_limits::eof(), docs->value());
+  }
+
+  // column existence
+  {
+    irs::by_column_existence filter;
+    *filter.mutable_field() = "seq";
+    filter.mutable_options()->prefix_match = false;
+    filter.boost(0.f);
+
+    irs::bytes_ref actual_value;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_TRUE(bool(score));
+    ASSERT_TRUE(score->is_default());
+
+    irs::doc_id_t doc = irs::doc_limits::min();
+    while(docs->next()) {
+      ASSERT_EQ(doc, docs->value());
+
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ++doc;
+      ASSERT_EQ(0.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
     }
     ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
@@ -1210,17 +1260,15 @@ TEST_P(tfidf_test, test_order) {
     auto* score = irs::get<iresearch::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     for (; docs->next();) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
       auto str_seq = iresearch::read_string<std::string>(in);
       seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value, seq);
+      sorted.emplace(
+        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+        seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());

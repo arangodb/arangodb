@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,7 +66,7 @@ class AqlTransaction : public transaction::Methods {
 
  protected:
   /// @brief add a collection to the transaction
-  Result processCollection(aql::Collection*);
+  Result processCollection(aql::Collection&);
 };
 }  // namespace aql
 }  // namespace arangodb

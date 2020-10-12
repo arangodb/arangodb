@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -38,7 +39,7 @@ class ScatterNode;
 class ScatterExecutorInfos : public ClientsExecutorInfos {
  public:
   explicit ScatterExecutorInfos(std::vector<std::string> clientIds);
-  ScatterExecutorInfos(ScatterExecutorInfos&&) noexcept = default;
+  ScatterExecutorInfos(ScatterExecutorInfos&&) = default;
 };
 
 // The ScatterBlock is actually implemented by specializing ExecutionBlockImpl,
@@ -69,7 +70,7 @@ class ScatterExecutor {
   explicit ScatterExecutor(Infos const&);
   ~ScatterExecutor() = default;
 
-  auto distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
+  auto distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
                        std::unordered_map<std::string, ClientBlockData>& blockMap) const
       -> void;
 };

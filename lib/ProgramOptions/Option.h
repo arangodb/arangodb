@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -39,7 +40,7 @@ enum class Flags : uint16_t {
                                           // --help-all or --help-.
   Obsolete = 2,                           // the option is obsolete. setting it does not influence the
                                           // program behavior
-  Enterprise = 4,                         // the option is only available in the Enterprise edition
+  Enterprise = 4,                         // the option is only available in the Enterprise Edition
   Command = 8,                            // the option executes a special command, e.g. --version,
                                           // --check-configuration, --dump-options
   Dynamic = 16,                           // the option's default value is dynamic and depends on the

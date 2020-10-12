@@ -7,7 +7,7 @@
 @HINTS
 {% hint 'warning' %}
 This revision-based replication endpoint will only work with the RocksDB
-engine, and with collections created in ArangoDB v3.7.0 or later.
+engine, and with collections created in ArangoDB v3.8.0 or later.
 {% endhint %}
 
 @RESTQUERYPARAMETERS

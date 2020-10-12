@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -152,31 +153,13 @@ class RocksDBEncryptionProvider final : public irs::encryption {
   rocksdb::EnvOptions _options;
 };  // RocksDBEncryptionProvider
 
-std::function<void(irs::directory&)> const RocksDBLinkInitCallback = [](irs::directory& dir) {
-  TRI_ASSERT(arangodb::EngineSelectorFeature::isRocksDB());
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* engine =
-      dynamic_cast<arangodb::RocksDBEngine*>(arangodb::EngineSelectorFeature::ENGINE);
-#else
-  auto* engine =
-      static_cast<arangodb::RocksDBEngine*>(arangodb::EngineSelectorFeature::ENGINE);
-#endif
-
-  auto* encryption = engine ? engine->encryptionProvider() : nullptr;
-
-  if (encryption) {
-    dir.attributes().emplace<RocksDBEncryptionProvider>(*encryption,
-                                                        engine->rocksDBOptions());
-  }
-};
-
 IResearchRocksDBLink::IndexFactory::IndexFactory(arangodb::application_features::ApplicationServer& server)
     : IndexTypeFactory(server) {}
 
 bool IResearchRocksDBLink::IndexFactory::equal(arangodb::velocypack::Slice const& lhs,
-                                               arangodb::velocypack::Slice const& rhs) const {
-  return arangodb::iresearch::IResearchLinkHelper::equal(_server, lhs, rhs);
+                                               arangodb::velocypack::Slice const& rhs,
+                                               std::string const& dbname) const {
+  return arangodb::iresearch::IResearchLinkHelper::equal(_server, lhs, rhs, dbname);
 }
 
 std::shared_ptr<arangodb::Index> IResearchRocksDBLink::IndexFactory::instantiate(
@@ -184,7 +167,16 @@ std::shared_ptr<arangodb::Index> IResearchRocksDBLink::IndexFactory::instantiate
     IndexId id, bool /*isClusterConstructor*/) const {
   auto link = std::shared_ptr<arangodb::iresearch::IResearchRocksDBLink>(
       new arangodb::iresearch::IResearchRocksDBLink(id, collection));
-  auto res = link->init(definition, RocksDBLinkInitCallback);
+  auto res = link->init(definition, [this](irs::directory& dir) {
+    auto& selector = _server.getFeature<EngineSelectorFeature>();
+    TRI_ASSERT(selector.isRocksDB());
+    auto& engine = selector.engine<RocksDBEngine>();
+    auto* encryption = engine.encryptionProvider();
+    if (encryption) {
+      dir.attributes().emplace<RocksDBEncryptionProvider>(*encryption,
+                                                          engine.rocksDBOptions());
+    }
+  });
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);

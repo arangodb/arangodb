@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -50,8 +51,6 @@
 using namespace arangodb;
 
 namespace {
-std::string const collectionName("_aqlfunctions");
-
 // Must not start with `_`, may contain alphanumerical characters, should have
 // at least one set of double colons followed by more alphanumerical characters.
 std::regex const funcRegEx("[a-zA-Z0-9][a-zA-Z0-9_]*(::[a-zA-Z0-9_]+)+", std::regex::ECMAScript);
@@ -68,8 +67,10 @@ bool isValidFunctionNameFilter(std::string const& testName) {
 }
 
 void reloadAqlUserFunctions() {
-  std::string const def("reloadAql");
-  V8DealerFeature::DEALER->addGlobalContextMethod(def);
+  if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->isEnabled()) {
+    std::string const def("reloadAql");
+    V8DealerFeature::DEALER->addGlobalContextMethod(def);
+  }
 }
 
 }  // namespace
@@ -80,46 +81,38 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase, std::string cons
                   std::string("error deleting AQL user function: '") +
                       functionName + "' contains invalid characters");
   }
-
-  std::string aql(
-      "FOR fn IN @@col FILTER fn._key == @fnName REMOVE { _key: fn._key } in "
-      "@@col RETURN 1");
+ 
   std::string UCFN = basics::StringUtils::toupper(functionName);
-
-  auto binds = std::make_shared<VPackBuilder>();
-  binds->openObject();
-  binds->add("fnName", VPackValue(UCFN));
-  binds->add("@col", VPackValue(collectionName));
-  binds->close();  // obj
-
+  Result res;
   {
-    arangodb::aql::Query query(transaction::V8Context::CreateWhenRequired(vocbase, true),
-                               arangodb::aql::QueryString(aql), binds, nullptr);
-    aql::QueryResult queryResult = query.executeSync();
-
-    if (queryResult.result.fail()) {
-      if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
-          (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
-        return Result(TRI_ERROR_REQUEST_CANCELED);
-      }
-      return queryResult.result;
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder guard(&builder);
+      builder.add(StaticStrings::KeyString, VPackValue(UCFN));
     }
 
-    VPackSlice countSlice = queryResult.data->slice();
-    if (!countSlice.isArray()) {
-      return Result(TRI_ERROR_INTERNAL,
-                    "bad query result for deleting AQL user functions");
-    }
+    auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
+    SingleCollectionTransaction trx(ctx, StaticStrings::AqlFunctionsCollection, AccessMode::Type::WRITE);
 
-    if (countSlice.length() != 1) {
-      return Result(TRI_ERROR_QUERY_FUNCTION_NOT_FOUND,
-                    std::string("no AQL user function with name '") +
-                        functionName + "' found");
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+
+    res = trx.begin();
+
+    if (res.ok()) {
+      OperationResult result =
+          trx.remove(StaticStrings::AqlFunctionsCollection, builder.slice(), OperationOptions());
+      res = trx.finish(result.result);
     }
   }
 
-  reloadAqlUserFunctions();
-  return Result();
+  if (res.ok()) {
+    reloadAqlUserFunctions();
+  } else if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+    return res.reset(TRI_ERROR_QUERY_FUNCTION_NOT_FOUND,
+                  std::string("no AQL user function with name '") +
+                      functionName + "' found");
+  }
+  return res;
 }
 
 Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
@@ -148,7 +141,7 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
   binds->openObject();
   binds->add("fnLength", VPackValue(uc.length()));
   binds->add("ucName", VPackValue(uc));
-  binds->add("@col", VPackValue(collectionName));
+  binds->add("@col", VPackValue(StaticStrings::AqlFunctionsCollection));
   binds->close();
 
   std::string aql(
@@ -186,6 +179,11 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
   replacedExisting = false;
 
   Result res;
+  
+  if (!V8DealerFeature::DEALER || !V8DealerFeature::DEALER->isEnabled()) {
+    return res.reset(TRI_ERROR_DISABLED, "JavaScript operations are not available");
+  }
+
   std::string name;
 
   try {
@@ -292,15 +290,15 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
 
     // find and load collection given by name or identifier
     auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-    SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(ctx, StaticStrings::AqlFunctionsCollection, AccessMode::Type::WRITE);
 
     res = trx.begin();
     if (res.fail()) {
       return res;
     }
 
-    arangodb::OperationResult result;
-    result = trx.insert(collectionName, oneFunctionDocument.slice(), opOptions);
+    arangodb::OperationResult result =
+        trx.insert(StaticStrings::AqlFunctionsCollection, oneFunctionDocument.slice(), opOptions);
 
     if (result.ok()) {
       VPackSlice oldSlice = result.slice().get(StaticStrings::Old);
@@ -345,7 +343,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
     aql = "FOR function IN @@col RETURN function";
   }
 
-  binds->add("@col", VPackValue(collectionName));
+  binds->add("@col", VPackValue(StaticStrings::AqlFunctionsCollection));
   binds->close();
 
   arangodb::aql::Query query(transaction::V8Context::CreateWhenRequired(vocbase, true),

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -43,9 +44,9 @@ using namespace arangodb::aql;
 IdExecutorInfos::IdExecutorInfos(bool doCount, RegisterId outputRegister,
                                  std::string distributeId, bool isResponsibleForInitializeCursor)
     : _doCount(doCount),
+      _isResponsibleForInitializeCursor(isResponsibleForInitializeCursor),
       _outputRegister(outputRegister),
-      _distributeId(std::move(distributeId)),
-      _isResponsibleForInitializeCursor(isResponsibleForInitializeCursor) {
+      _distributeId(std::move(distributeId)) {
   // We can only doCount in the case where this executor is used as a Return.
   // And we can only have a distributeId if this executor is used as Gather.
   TRI_ASSERT(!_doCount || _distributeId.empty());
@@ -57,9 +58,9 @@ auto IdExecutorInfos::getOutputRegister() const noexcept -> RegisterId {
   return _outputRegister;
 }
 
-std::string const& IdExecutorInfos::distributeId() { return _distributeId; }
+std::string const& IdExecutorInfos::distributeId() const noexcept { return _distributeId; }
 
-bool IdExecutorInfos::isResponsibleForInitializeCursor() const {
+bool IdExecutorInfos::isResponsibleForInitializeCursor() const noexcept {
   return _isResponsibleForInitializeCursor;
 }
 

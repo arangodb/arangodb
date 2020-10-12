@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -173,7 +174,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
                                          "Edge collection needs to be sharded "
                                          "after shardKeyAttribute parameter ('"
                                          + shardKeyAttribute
-                                         + "'), or use smart graphs. The current shardKey is: "
+                                         + "'), or use SmartGraphs. The current shardKey is: "
                                          + (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'")
 
                                          },

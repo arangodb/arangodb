@@ -72,6 +72,25 @@
             </tr>
           <% } %>
           
+          <% if (figuresData.shards) { %>
+            <tr>
+              <th class="collectionInfoTh2">Shards:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text">
+                <% var allShards = Object.keys(figuresData.shards); 
+                   allShards.forEach(function(shardName, index) {
+                %>
+                <%=(index > 0 ? '<br />' : '')%>
+                <%=shardName%>: [ <%=figuresData.shards[shardName].join('  -  ') %> ] 
+                
+                <%});%>
+                </div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
+          
           <% if (figuresData.replicationFactor) { %>
             <tr>
               <th class="collectionInfoTh2">Replication factor:</th>
@@ -117,7 +136,7 @@
 
           <% if (figuresData.smartJoinAttribute) { %>
             <tr>
-              <th class="collectionInfoTh2">Smart join attribute:</th>
+              <th class="collectionInfoTh2">SmartJoin attribute:</th>
               <th class="collectionInfoTh">
                 <div class="modal-text"><%=figuresData.smartJoinAttribute%></div>
               </th>

@@ -106,7 +106,8 @@ namespace iresearch {
         error(other.error) {
       }
     };
-
+    static_assert(std::is_move_constructible<query>::value,
+                  "default move constructor expected");
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief helper class for transforming a textual query into an iResearch query
     ////////////////////////////////////////////////////////////////////////////////

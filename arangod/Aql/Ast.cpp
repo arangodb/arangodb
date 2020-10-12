@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,6 +60,11 @@ using namespace arangodb::aql;
 namespace {
 
 auto doNothingVisitor = [](AstNode const*) {};
+   
+[[noreturn]] void throwFormattedError(arangodb::aql::QueryContext& query, int code, char const* details) {
+  std::string msg = arangodb::aql::QueryWarnings::buildFormattedString(code, details);
+  query.warnings().registerError(code, msg.c_str());
+}
 
 /**
  * @brief Register the given datasource with the given accesstype in the query.
@@ -115,9 +120,13 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
   if (dataSource->category() == LogicalCollection::category()) {
     // it's a collection!
     // add datasource to query
-    ast.query().collections().add(nameRef.toString(), accessType, aql::Collection::Hint::Collection);
+    aql::Collection::Hint hint = aql::Collection::Hint::Collection;
+    if (ServerState::instance()->isDBServer()) {
+      hint = aql::Collection::Hint::Shard;
+    }
+    ast.query().collections().add(nameRef.toString(), accessType, hint);
     if (nameRef != name) {
-      ast.query().collections().add(name, accessType, aql::Collection::Hint::Collection);  // Add collection by ID as well
+      ast.query().collections().add(name, accessType, hint);  // Add collection by ID as well
     }
   } else if (dataSource->category() == LogicalView::category()) {
     // it's a view!
@@ -238,6 +247,11 @@ AstNode const* Ast::findExpansionSubNode(AstNode const* current) const {
     }
     current = current->getMember(1);
   }
+}
+
+/// @brief create a node from the velocypack slice
+AstNode* Ast::createNode(arangodb::velocypack::Slice slice) {
+  return _resources.registerNode(this, slice);
 }
 
 /// @brief create an AST passhthru node
@@ -654,8 +668,7 @@ AstNode* Ast::createNodeVariable(char const* name, size_t nameLength, bool isUse
   }
 
   if (isUserDefined && *name == '_') {
-    _query.warnings().registerError(TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name);
-    return nullptr;
+    ::throwFormattedError(_query, TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name);
   }
 
   if (_scopes.existsVariable(name, nameLength)) {
@@ -671,8 +684,7 @@ AstNode* Ast::createNodeVariable(char const* name, size_t nameLength, bool isUse
       return node;
     }
 
-    _query.warnings().registerError(TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
-    return nullptr;
+    ::throwFormattedError(_query, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
   }
 
   auto variable = _variables.createVariable(std::string(name, nameLength), isUserDefined);
@@ -1586,16 +1598,14 @@ void Ast::injectBindParameters(BindParameters& parameters,
 
         if (param.empty()) {
           // parameter name must not be empty
-          _query.warnings().registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
-          return nullptr;
+          ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         }
 
         auto const& it = p.find(param);
 
         if (it == p.end()) {
           // query uses a bind parameter that was not defined by the user
-          _query.warnings().registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
-          return nullptr;
+          ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         }
 
         // mark the bind parameter as being used
@@ -1622,6 +1632,13 @@ void Ast::injectBindParameters(BindParameters& parameters,
           }
         } else {
           TRI_ASSERT(node->type == NODE_TYPE_PARAMETER_DATASOURCE);
+         
+          if (!value.isString()) {
+            // we can get here in case `WITH @col ...` when the value of @col
+            // is not a string
+            ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, param.c_str());
+            // query will have been aborted here
+          }
 
           // bound data source parameter
           TRI_ASSERT(value.isString());
@@ -1632,36 +1649,56 @@ void Ast::injectBindParameters(BindParameters& parameters,
           bool isWriteCollection = false;
 
           arangodb::velocypack::StringRef paramRef(param);
+          arangodb::velocypack::StringRef nameRef(name, l);
+
+          AstNode* newNode = nullptr;
           for (auto const& it : _writeCollections) {
             auto const& c = it.first;
 
             if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
                 paramRef == arangodb::velocypack::StringRef(c->getStringValue(),
                                                             c->getStringLength())) {
+              // bind parameter still present in _writeCollections
+              TRI_ASSERT(newNode == nullptr);
               isWriteCollection = true;
+              break;
+            } else if (c->type == NODE_TYPE_COLLECTION &&
+                nameRef == arangodb::velocypack::StringRef(c->getStringValue(),
+                                                           c->getStringLength())) {
+              // bind parameter was already replaced with a proper collection node 
+              // in _writeCollections
+              TRI_ASSERT(newNode == nullptr);
+              isWriteCollection = true;
+              newNode = const_cast<AstNode*>(c);
               break;
             }
           }
 
-          node = createNodeDataSource(resolver, name, l,
-                                      isWriteCollection ? AccessMode::Type::WRITE
-                                                        : AccessMode::Type::READ,
-                                      false, true);
+          TRI_ASSERT(newNode == nullptr || isWriteCollection);
 
-          if (isWriteCollection) {
-            // must update AST info now for all nodes that contained this
-            // parameter
-            for (size_t i = 0; i < _writeCollections.size(); ++i) {
-              auto& c = _writeCollections[i].first;
+          if (newNode == nullptr) {
+            newNode = createNodeDataSource(resolver, name, l,
+                                           isWriteCollection ? AccessMode::Type::WRITE
+                                                             : AccessMode::Type::READ,
+                                        false, true);
+            TRI_ASSERT(newNode != nullptr);
 
-              if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
-                  paramRef == arangodb::velocypack::StringRef(c->getStringValue(),
-                                                              c->getStringLength())) {
-                c = node;
-                // no break here. replace all occurrences
+            if (isWriteCollection) {
+              // must update AST info now for all nodes that contained this
+              // parameter
+              for (auto& it : _writeCollections) {
+                auto& c = it.first;
+
+                if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
+                    paramRef == arangodb::velocypack::StringRef(c->getStringValue(),
+                                                                c->getStringLength())) {
+                  c = newNode;
+                  // no break here. replace all occurrences
+                }
               }
             }
           }
+          node = newNode;
         }
       } else if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
         // look at second sub-node. this is the (replaced) bind parameter
@@ -2323,7 +2360,7 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node, bool& isSaf
   return result;
 }
 
-/// @brief determines the to-be-kept attribute of an INTO expression
+/// @brief determines the to-be-kept attributes of an INTO expression
 std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(
     AstNode const* node, Variable const* searchVariable, bool& isSafeForOptimization) {
   auto isTargetVariable = [&searchVariable](AstNode const* node) {
@@ -2361,9 +2398,9 @@ std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(
   std::unordered_set<std::string> result;
   isSafeForOptimization = true;
 
-  std::function<bool(AstNode const*)> visitor = [&isSafeForOptimization,
-                                                 &result, &isTargetVariable,
-                                                 &searchVariable](AstNode const* node) {
+  auto visitor = [&isSafeForOptimization,
+                  &result, &isTargetVariable,
+                  &searchVariable](AstNode const* node) {
     if (!isSafeForOptimization) {
       return false;
     }
@@ -2456,6 +2493,59 @@ bool Ast::getReferencedAttributes(AstNode const* node, Variable const* variable,
     state.attributeName = nullptr;
     state.nameLength = 0;
 
+    return true;
+  };
+
+  traverseReadOnly(node, visitor, ::doNothingVisitor);
+
+  return state.isSafeForOptimization;
+}
+
+/// @brief determines the attributes (and their subattributes) referenced in an 
+/// expression for the specified out variable
+bool Ast::getReferencedAttributesRecursive(AstNode const* node, Variable const* variable,
+                                           std::unordered_set<arangodb::aql::AttributeNamePath>& vars) {
+  // traversal state
+  struct TraversalState {
+    Variable const* variable;
+    bool isSafeForOptimization;
+    std::unordered_set<arangodb::aql::AttributeNamePath>& vars;
+    arangodb::aql::AttributeNamePath path;
+  };
+
+  TraversalState state{variable, true, vars, {}};
+
+  auto visitor = [&state](AstNode const* node) -> bool {
+    if (node == nullptr || !state.isSafeForOptimization) {
+      return false;
+    }
+
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      state.path.path.emplace_back(node->getStringValue(), node->getStringLength());
+      return true;
+    }
+
+    if (node->type == NODE_TYPE_REFERENCE) {
+      // reference to a variable
+      auto v = static_cast<Variable const*>(node->getData());
+      if (v == state.variable) {
+        if (state.path.empty()) {
+          // we haven't seen an attribute access directly before...
+          // this may have been an access to an indexed property, e.g value[0]
+          // or a reference to the complete value, e.g. FUNC(value) note that
+          // this is unsafe to optimize this away
+          state.isSafeForOptimization = false;
+          return false;
+        }
+        // we picked attribute names up in reverse order, so now reverse them
+        state.path.reverse();
+        state.vars.emplace(std::move(state.path.path));
+        state.path.clear();
+      }
+      // fall-through
+    }
+
+    state.path.clear();
     return true;
   };
 
@@ -2728,7 +2818,7 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
       auto value = member->getMember(0);
 
       if (value->type == NODE_TYPE_OBJECT && value->numMembers() != 0) {
-          createCondition(value);
+        createCondition(value);
       } else {
         auto access = variable;
         for (auto const& it : attributeParts) {
@@ -3829,12 +3919,7 @@ std::pair<std::string, bool> Ast::normalizeFunctionName(char const* name, size_t
 
 /// @brief create a node of the specified type
 AstNode* Ast::createNode(AstNodeType type) {
-  auto node = new AstNode(type);
-
-  // register the node so it gets freed automatically later
-  _resources.addNode(node);
-
-  return node;
+  return _resources.registerNode(type);
 }
 
 /// @brief validate the name of the given datasource
@@ -3883,12 +3968,14 @@ void Ast::extractCollectionsFromGraph(AstNode const* graphNode) {
   if (graphNode->type == NODE_TYPE_VALUE) {
     TRI_ASSERT(graphNode->isStringValue());
     std::string graphName = graphNode->getString();
-    auto graph = _query.lookupGraphByName(graphName);
-    if (graph == nullptr) {
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_GRAPH_NOT_FOUND, graphName.c_str());
+    auto graphLookupRes = _query.lookupGraphByName(graphName);
+    if (graphLookupRes.fail()) {
+      THROW_ARANGO_EXCEPTION(graphLookupRes.result());
     }
-    TRI_ASSERT(graph != nullptr);
 
+    TRI_ASSERT(graphLookupRes.ok());
+
+    auto const& graph = graphLookupRes.get();
     for (const auto& n : graph->vertexCollections()) {
       _query.collections().add(n, AccessMode::Type::READ, Collection::Hint::Collection);
     }

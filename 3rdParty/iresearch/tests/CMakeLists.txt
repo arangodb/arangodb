@@ -26,16 +26,11 @@ set(IResearchTests_INCLUDE_DIR
   ""
 )
 
-if (USE_SIMDCOMP)
-  set(IReSearch_tests_optimized_sources
-    ./store/store_utils_optimized_tests.cpp
-  )
-endif()
-
 set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
   ./analysis/delimited_token_stream_tests.cpp
   ./analysis/ngram_token_stream_test.cpp
+  ./analysis/pipeline_stream_tests.cpp
   ./analysis/text_token_normalizing_stream_tests.cpp
   ./analysis/text_token_stemming_stream_tests.cpp
   ./analysis/token_masking_stream_tests.cpp
@@ -171,6 +166,7 @@ add_executable(${IResearchTests_TARGET_NAME}-static
 set_ipo(${IResearchTests_TARGET_NAME}-static)
 add_sanitizers(${IResearchTests_TARGET_NAME}-static)
 
+
 add_dependencies(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-delimiter-shared
   ${IResearch_TARGET_NAME}-analyzer-ngram-shared
@@ -249,12 +245,10 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-static
 # setup CRT
 if(MSVC)
   target_compile_options(${IResearchTests_TARGET_NAME}-shared
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
     PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
   )
 
   target_compile_options(${IResearchTests_TARGET_NAME}-static
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
     PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
   )
 endif()

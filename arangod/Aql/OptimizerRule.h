@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -260,12 +261,12 @@ struct OptimizerRule {
     scatterIResearchViewInClusterRule,
 
 #ifdef USE_ENTERPRISE
-    // move traversal on satellite graph to db server and add scatter / gather / remote
+    // move traversal on SatelliteGraph to db server and add scatter / gather / remote
     scatterSatelliteGraphRule,
 #endif
 
 #ifdef USE_ENTERPRISE
-    // remove any superfluous satellite collection joins...
+    // remove any superfluous SatelliteCollection joins...
     // put it after Scatter rule because we would do
     // the work twice otherwise
     removeSatelliteJoinsRule,
@@ -283,6 +284,13 @@ struct OptimizerRule {
     // move SortNodes into the distribution.
     // adjust gathernode to also contain the sort criteria.
     distributeSortToClusterRule,
+
+    // remove calculations that are redundant
+    // this is hidden and disabled by default version
+    // used to cleanup calculation nodes after conditionally
+    // removed nodes. Currently used by OneShard rule to handle
+    // removals of sort nodes for arangosearch views.
+    removeUnnecessaryCalculationsRule3,
 
     // try to get rid of a RemoteNode->ScatterNode combination which has
     // only a SingletonNode and possibly some CalculationNodes as dependencies
@@ -345,7 +353,7 @@ struct OptimizerRule {
   static_assert(clusterOneShardRule < smartJoinsRule);
   static_assert(clusterOneShardRule < scatterInClusterRule);
 
-  // smart joins must come before we move filters around, so the smart-join
+  // SmartJoins must come before we move filters around, so the smart-join
   // detection code does not need to take the special filters into account
   static_assert(smartJoinsRule < moveFiltersIntoEnumerateRule);
 #endif

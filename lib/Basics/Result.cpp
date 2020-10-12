@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -45,6 +46,12 @@ Result::Result(int errorNumber, std::string const& errorMessage)
 
 Result::Result(int errorNumber, std::string&& errorMessage) noexcept
     : _errorNumber(errorNumber), _errorMessage(std::move(errorMessage)) {}
+
+Result::Result(int errorNumber, std::string_view const& errorMessage)
+    : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
+
+Result::Result(int errorNumber, const char* errorMessage)
+    : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
 
 Result::Result(Result const& other)
     : _errorNumber(other._errorNumber), _errorMessage(other._errorMessage) {}

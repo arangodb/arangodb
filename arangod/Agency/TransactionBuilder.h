@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -152,7 +153,7 @@ struct write_trx {
     _buffer.openObject();
     return std::move(_buffer);
   }
-  write_trx& operator=(write_trx&&) noexcept = default;
+  write_trx& operator=(write_trx&&) = default;
 
  private:
   friend T;
@@ -205,7 +206,7 @@ void add_to_builder(VPackBuilder* b, V const& v) {
 }
 
 template<>
-void add_to_builder(VPackBuilder* b, VPackSlice const& v) {
+inline void add_to_builder(VPackBuilder* b, VPackSlice const& v) {
   b->add(v);
 }
 

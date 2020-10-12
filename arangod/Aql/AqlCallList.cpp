@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -48,10 +49,17 @@ auto getStringView(VPackSlice slice) -> std::string_view {
 }
 }  // namespace
 
-AqlCallList::AqlCallList(AqlCall const& call) : _specificCalls{call} {}
+AqlCallList::AqlCallList(AqlCall const& call) : _specificCalls{call} {
+  // We can never create a new CallList with existing skipCounter
+  TRI_ASSERT(call.getSkipCount() == 0);
+}
 
 AqlCallList::AqlCallList(AqlCall const& specificCall, AqlCall const& defaultCall)
-    : _specificCalls{specificCall}, _defaultCall{defaultCall} {}
+    : _specificCalls{specificCall}, _defaultCall{defaultCall} {
+  // We can never create a new CallList with existing skipCounter
+  TRI_ASSERT(specificCall.getSkipCount() == 0);
+  TRI_ASSERT(defaultCall.getSkipCount() == 0);
+}
 
 [[nodiscard]] auto AqlCallList::popNextCall() -> AqlCall {
   TRI_ASSERT(hasMoreCalls());

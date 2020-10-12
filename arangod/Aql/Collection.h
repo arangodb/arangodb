@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,7 +69,7 @@ struct Collection {
   void isReadWrite(bool isReadWrite);
 
   /// @brief get the collection id
-  TRI_voc_cid_t id() const;
+  DataSourceId id() const;
 
   /// @brief returns the name of the collection, translated for the sharding
   /// case. this will return _currentShard if it is set, and name otherwise
@@ -113,11 +113,11 @@ struct Collection {
   /// @brief check if collection is a disjoint (edge) collection
   bool isDisjoint() const;
 
-  /// @brief check if collection is a satellite collection
+  /// @brief check if collection is a SatelliteCollection
   bool isSatellite() const;
 
-  /// @brief return the name of the smart join attribute (empty string
-  /// if no smart join attribute is present)
+  /// @brief return the name of the SmartJoin attribute (empty string
+  /// if no SmartJoin attribute is present)
   std::string const& smartJoinAttribute() const;
 
   /// @brief add a mapping of shard => server id

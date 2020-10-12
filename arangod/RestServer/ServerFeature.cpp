@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -109,8 +110,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--server.session-timeout",
       "timeout of web interface server sessions (in seconds)", true);
 
-
-  // add obsolete MMFiles WAL options
+  // add obsolete MMFiles WAL options (obsoleted in 3.7)
   options->addSection("wal", "Configure the WAL of the MMFiles engine");
   options->addObsoleteOption("--wal.allow-oversize-entries",
                              "allow entries that are bigger than '--wal.logfile-size'", false);

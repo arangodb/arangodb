@@ -64,13 +64,7 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
     assert(column_info);
   }
 
-  merge_writer(merge_writer&& rhs) noexcept
-    : dir_(rhs.dir_),
-      readers_(std::move(rhs.readers_)),
-      column_info_(rhs.column_info_),
-      comparator_(rhs.comparator_){
-  }
-
+  merge_writer(merge_writer&&) = default;
   merge_writer& operator=(merge_writer&&) = delete;
 
   operator bool() const noexcept;
@@ -128,6 +122,8 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
   const comparer* comparator_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // merge_writer
+
+static_assert(std::is_nothrow_move_constructible_v<merge_writer>);
 
 NS_END
 

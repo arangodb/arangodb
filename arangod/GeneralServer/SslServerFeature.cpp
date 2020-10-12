@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -720,7 +721,9 @@ static void dumpPEM(std::string const& pem, VPackBuilder& builder, std::string a
   // Now dump the certs and the hash of the key:
   {
     VPackObjectBuilder guard2(&builder, attrName);
-    builder.add("SHA256", VPackValue(func.finalize()));
+    auto sha256 = func.finalize();
+    builder.add("sha256", VPackValue(sha256));
+    builder.add("SHA256", VPackValue(sha256)); // deprecated in 3.7 GA
     {
       VPackArrayBuilder guard3(&builder, "certificates");
       for (auto const& c : certs) {
@@ -730,7 +733,9 @@ static void dumpPEM(std::string const& pem, VPackBuilder& builder, std::string a
     if (!keys.empty()) {
       TRI_SHA256Functor func2;
       func2(keys[0].c_str(), keys[0].size());
-      builder.add("privateKeySHA256", VPackValue(func2.finalize()));
+      sha256 = func2.finalize();
+      builder.add("privateKeySha256", VPackValue(sha256));
+      builder.add("privateKeySHA256", VPackValue(sha256)); // deprecated in 3.7 GA
     }
   }
 }

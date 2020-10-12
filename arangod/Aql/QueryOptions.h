@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Transaction/Options.h"
 
@@ -36,30 +37,30 @@ namespace velocypack {
 class Builder;
 class Slice;
 }  // namespace velocypack
-class QueryRegistryFeature;
 
 namespace aql {
 
-enum ProfileLevel : uint32_t {
+enum class ProfileLevel : uint8_t {
   /// no profiling information
-  PROFILE_LEVEL_NONE = 0,
+  None = 0,
   /// Output timing for query stages
-  PROFILE_LEVEL_BASIC = 1,
-  /// Enable instrumentation for getSome calls
-  PROFILE_LEVEL_BLOCKS = 2,
-  /// Log tracing info for getSome calls
-  PROFILE_LEVEL_TRACE_1 = 3,
-  /// Log tracing information including getSome results
-  PROFILE_LEVEL_TRACE_2 = 4
+  Basic = 1,
+  /// Enable instrumentation for execute calls
+  Blocks = 2,
+  /// Log tracing info for execute calls
+  TraceOne = 3,
+  /// Log tracing information including execute results
+  TraceTwo = 4
 };
 
 struct QueryOptions {
-  explicit QueryOptions(QueryRegistryFeature&);
+  explicit QueryOptions();
+  explicit QueryOptions(arangodb::velocypack::Slice const);
   TEST_VIRTUAL ~QueryOptions() = default;
 
-  void fromVelocyPack(arangodb::velocypack::Slice const& slice);
+  void fromVelocyPack(arangodb::velocypack::Slice const slice);
   void toVelocyPack(arangodb::velocypack::Builder&, bool disableOptimizerRules) const;
-  TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; };
+  TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; }
 
   size_t memoryLimit;
   size_t maxNumberOfPlans;
@@ -80,7 +81,8 @@ struct QueryOptions {
   bool count;
   bool verboseErrors;
   bool inspectSimplePlans;
-  
+  ExplainRegisterPlan explainRegisters;
+
   /// @brief hack to be used only for /_api/export, contains the name of
   /// the target collection
   std::string exportCollection;
@@ -97,6 +99,12 @@ struct QueryOptions {
 #endif
 
   transaction::Options transactionOptions;
+  
+  static size_t defaultMemoryLimit;
+  static size_t defaultMaxNumberOfPlans;
+  static double defaultMaxRuntime;
+  static double defaultTtl;
+  static bool defaultFailOnWarning;
 };
 
 }  // namespace aql

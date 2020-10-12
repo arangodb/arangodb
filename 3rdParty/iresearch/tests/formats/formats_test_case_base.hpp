@@ -199,7 +199,7 @@ class format_test_case : public index_test_base {
     }
 
     irs::doc_iterator::ptr postings(const irs::flags& /*features*/) const {
-      return irs::doc_iterator::make<format_test_case::postings>(
+      return irs::memory::make_managed<format_test_case::postings>(
         docs_.begin(), docs_.end());
     }
 

@@ -10,6 +10,9 @@ This option is only present for the MMFiles storage engine.
 The maximal size setting for journals / datafiles
 in bytes. This option is only present for the MMFiles storage engine.
 
+@RESTSTRUCT{schema,collection_info,object,optional,}
+The collection level schema for documents.
+
 @RESTSTRUCT{keyOptions,collection_info,object,required,key_generator_type}
 A object which contains key generation options
 
@@ -42,7 +45,7 @@ determine the target shard for documents. _(cluster only)_
 @RESTSTRUCT{replicationFactor,collection_info,integer,optional,}
 contains how many copies of each shard are kept on different DB-Servers.
 It is an integer number in the range of 1-10 or the string `"satellite"`
-for a SatelliteCollection. _(cluster only)_
+for a SatelliteCollection (Enterprise Edition only). _(cluster only)_
 
 @RESTSTRUCT{writeConcern,collection_info,integer,optional,}
 determines how many copies of each shard are required to be
@@ -55,8 +58,16 @@ up-to-date copies will succeed at the same time however. The value of
 the sharding strategy selected for the collection.
 One of 'hash' or 'enterprise-hash-smart-edge'. _(cluster only)_
 
+@RESTSTRUCT{isSmart,collection_info,boolean,optional,}
+Whether the collection is used in a SmartGraph (Enterprise Edition only).
+_(cluster only)_
+
 @RESTSTRUCT{smartGraphAttribute,collection_info,string,optional,}
-Attribute that is used in SmartGraphs. _(cluster only)_
+Attribute that is used in SmartGraphs (Enterprise Edition only). _(cluster only)_
+
+@RESTSTRUCT{smartJoinAttribute,collection_info,string,optional,}
+Determines an attribute of the collection that must contain the shard key value
+of the referred-to SmartJoin collection (Enterprise Edition only). _(cluster only)_
 
 @RESTSTRUCT{indexBuckets,collection_info,integer,optional,}
 the number of index buckets

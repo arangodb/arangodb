@@ -280,7 +280,7 @@ class ProtoGraph {
   }
 
   prepareSatelliteGraphs() {
-    // We're not able to test multiple shards in a Satellite Graph as a Satellite Graph has only one shard by default
+    // We're not able to test multiple shards in a SatelliteGraph as a SatelliteGraph has only one shard by default
     const suffix = '_satellite';
     const numberOfShards = 1;
     const vn = this.protoGraphName + '_Vertex' + suffix;

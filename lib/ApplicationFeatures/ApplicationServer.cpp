@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -377,6 +378,18 @@ void ApplicationServer::validateOptions() {
       feature.state(ApplicationFeature::State::VALIDATED);
       reportFeatureProgress(_state.load(std::memory_order_relaxed), feature.name());
     }
+  }
+
+  auto const& modernizedOptions = _options->modernizedOptions();
+  if (!modernizedOptions.empty()) {
+    for (auto const& it : modernizedOptions) {
+      LOG_TOPIC("3e342", WARN, Logger::STARTUP)
+          << "please note that the specified option '--" << it.first 
+          << " has been renamed to '--" << it.second << "' in this ArangoDB version";
+    } 
+      
+    LOG_TOPIC("27c9c", INFO, Logger::STARTUP)
+        << "please be sure to read the manual section about changed options";
   }
 
   // inform about obsolete options

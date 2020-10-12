@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,7 +55,7 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   void executeBegin();
   void executeCommit();
   void executeAbort();
-  void generateTransactionResult(rest::ResponseCode code, TRI_voc_tid_t tid,
+  void generateTransactionResult(rest::ResponseCode code, TransactionId tid,
                                  transaction::Status status);
 
   /// start a legacy JS transaction

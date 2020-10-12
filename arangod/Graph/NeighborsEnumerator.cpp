@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,10 +35,10 @@ using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
 NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser, TraverserOptions* opts)
-    : PathEnumerator(traverser, opts), 
+    : PathEnumerator(traverser, opts),
       _searchDepth(0) {
-      
-  TRI_ASSERT(opts->useBreadthFirst);
+
+  TRI_ASSERT(opts->isUseBreadthFirst());
   TRI_ASSERT(opts->uniqueVertices == arangodb::traverser::TraverserOptions::GLOBAL);
   TRI_ASSERT(!opts->hasDepthLookupInfo());
 }
@@ -95,12 +95,12 @@ bool NeighborsEnumerator::next() {
             TRI_ASSERT(tmp.isString());
             vertex = tmp;
           }
-          
+
           arangodb::velocypack::StringRef v(vertex);
 
           if (_allFound.find(v) == _allFound.end()) {
             v = _opts->cache()->persistString(v);
-            
+
             if (_traverser->vertexMatchesConditions(v, _searchDepth + 1)) {
               _allFound.emplace(v);
               if (shouldPrune(v)) {
@@ -171,7 +171,7 @@ bool NeighborsEnumerator::shouldPrune(arangodb::velocypack::StringRef v) {
     vertex = _traverser->fetchVertexData(v);
     evaluator->injectVertex(vertex.slice());
   }
-  
+
   // We cannot support these two here
   TRI_ASSERT(!evaluator->needsEdge());
   TRI_ASSERT(!evaluator->needsPath());

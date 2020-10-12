@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -250,6 +250,16 @@ void InternalRestTraverserHandler::queryEngine() {
     auto eng = static_cast<BaseTraverserEngine*>(engine);
     TRI_ASSERT(eng != nullptr);
     eng->smartSearchBFS(body, result);
+  } else if (option == "smartSearchWeighted") {
+    if (engine->getType() != BaseEngine::EngineType::TRAVERSER) {
+      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "this engine does not support the requested operation.");
+      return;
+    }
+    // Safe cast BaseTraverserEngines are all of type TRAVERSER
+    auto eng = static_cast<BaseTraverserEngine*>(engine);
+    TRI_ASSERT(eng != nullptr);
+    eng->smartSearchWeighted(body, result);
   } else {
     // PATH Info wrong other error
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "");

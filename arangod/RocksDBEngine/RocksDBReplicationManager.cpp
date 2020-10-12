@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,7 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/system-functions.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -47,7 +48,7 @@ static constexpr size_t maxCollectCount = 32;
 /// @brief create a context repository
 ////////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationManager::RocksDBReplicationManager()
+RocksDBReplicationManager::RocksDBReplicationManager(RocksDBEngine& engine)
     : _lock(), _contexts(), _isShuttingDown(false) {
   _contexts.reserve(64);
 }
@@ -100,8 +101,9 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 //////////////////////////////////////////////////////////////////////////////
 
 RocksDBReplicationContext* RocksDBReplicationManager::createContext(
-    double ttl, SyncerId const syncerId, ServerId const clientId) {
-  auto context = std::make_unique<RocksDBReplicationContext>(ttl, syncerId, clientId);
+    RocksDBEngine& engine, double ttl, SyncerId const syncerId, ServerId const clientId) {
+  auto context =
+      std::make_unique<RocksDBReplicationContext>(engine, ttl, syncerId, clientId);
   TRI_ASSERT(context != nullptr);
   TRI_ASSERT(context->isUsed());
 

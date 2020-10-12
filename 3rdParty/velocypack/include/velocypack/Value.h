@@ -33,6 +33,11 @@
 #include "velocypack/velocypack-common.h"
 #include "velocypack/ValueType.h"
 
+#if __cplusplus >= 201703L
+#include <string_view>
+#define VELOCYPACK_HAS_STRING_VIEW 1
+#endif
+
 namespace arangodb {
 namespace velocypack {
 class StringRef;
@@ -51,7 +56,8 @@ class Value {
     UInt64 = 4,
     String = 5,
     CharPtr = 6,
-    VoidPtr = 7
+    VoidPtr = 7,
+    StringView = 8
   };
 
  private:
@@ -59,65 +65,61 @@ class Value {
   CType _cType;  // denotes variant used, 0: none
 
   union {
-    bool b;                // 1: bool
-    double d;              // 2: double
-    int64_t i;             // 3: int64_t
-    uint64_t u;            // 4: uint64_t
-    std::string const* s;  // 5: std::string
-    char const* c;         // 6: char const*
-    void const* e;         // external
+    bool b;                      // 1: bool
+    double d;                    // 2: double
+    int64_t i;                   // 3: int64_t
+    uint64_t u;                  // 4: uint64_t
+    std::string const* s;        // 5: std::string
+    char const* c;               // 6: char const*
+    void const* e;               // 7: external
+#ifdef VELOCYPACK_HAS_STRING_VIEW
+    std::string_view const* sv;  // 8: std::string_view
+#endif
   } _value;
 
-  bool _unindexed;
-
  public:
-#ifdef SWIG
-  Value()
-      : _valueType(ValueType::None), _cType(CType::None), _unindexed(false) {}
-#else
   Value() = delete;
-#endif
 
   // creates a Value with the specified type Array or Object
   explicit Value(ValueType t, bool allowUnindexed = false);
 
   explicit Value(bool b, ValueType t = ValueType::Bool) noexcept
-      : _valueType(t), _cType(CType::Bool), _unindexed(false) {
+      : _valueType(t), _cType(CType::Bool) {
     _value.b = b;
   }
 
   explicit Value(double d, ValueType t = ValueType::Double) noexcept
-      : _valueType(t), _cType(CType::Double), _unindexed(false) {
+      : _valueType(t), _cType(CType::Double) {
     _value.d = d;
   }
 
   explicit Value(void const* e, ValueType t = ValueType::External) noexcept
-      : _valueType(t), _cType(CType::VoidPtr), _unindexed(false) {
+      : _valueType(t), _cType(CType::VoidPtr) {
     _value.e = e;
   }
 
   explicit Value(char const* c, ValueType t = ValueType::String) noexcept
-      : _valueType(t), _cType(CType::CharPtr), _unindexed(false) {
+      : _valueType(t), _cType(CType::CharPtr) {
     _value.c = c;
   }
 
   explicit Value(int32_t i, ValueType t = ValueType::Int) noexcept
-      : _valueType(t), _cType(CType::Int64), _unindexed(false) {
+      : _valueType(t), _cType(CType::Int64) {
     _value.i = static_cast<int64_t>(i);
   }
 
   explicit Value(uint32_t u, ValueType t = ValueType::UInt) noexcept
-      : _valueType(t), _cType(CType::UInt64), _unindexed(false) {
+      : _valueType(t), _cType(CType::UInt64) {
     _value.u = static_cast<uint64_t>(u);
   }
 
   explicit Value(int64_t i, ValueType t = ValueType::Int) noexcept
-      : _valueType(t), _cType(CType::Int64), _unindexed(false) {
+      : _valueType(t), _cType(CType::Int64) {
     _value.i = i;
   }
 
   explicit Value(uint64_t u, ValueType t = ValueType::UInt) noexcept
-      : _valueType(t), _cType(CType::UInt64), _unindexed(false) {
+      : _valueType(t), _cType(CType::UInt64) {
     _value.u = u;
   }
 
@@ -131,20 +133,31 @@ class Value {
 
   // however, defining the method on Linux and with MSVC will lead
   // to ambiguous overloads, so this is restricted to __APPLE__ only
-  explicit Value(unsigned long i, ValueType t = ValueType::Int) noexcept
-      : _valueType(t), _cType(CType::UInt64), _unindexed(false) {
+  explicit Value(unsigned long i, ValueType t = ValueType::UInt) noexcept
+      : _valueType(t), _cType(CType::UInt64) {
     _value.i = static_cast<uint64_t>(i);
   }
 #endif
 
   explicit Value(std::string const& s, ValueType t = ValueType::String) noexcept
-      : _valueType(t), _cType(CType::String), _unindexed(false) {
+      : _valueType(t), _cType(CType::String) {
     _value.s = &s;
   }
+
+#ifdef VELOCYPACK_HAS_STRING_VIEW
+  explicit Value(std::string_view const& sv, ValueType t = ValueType::String) noexcept
+      : _valueType(t), _cType(CType::StringView) {
+    _value.sv = &sv;
+  }
+#endif
 
   ValueType valueType() const { return _valueType; }
 
   CType cType() const { return _cType; }
+
+  // whether or not the underlying Array/Object can be unindexed.
+  // it is only allowed to call this for Array/Object types!
+  bool unindexed() const;
 
   bool isString() const { return _valueType == ValueType::String; }
 
@@ -172,6 +185,13 @@ class Value {
     VELOCYPACK_ASSERT(_cType == CType::String);
     return _value.s;
   }
+
+#ifdef VELOCYPACK_HAS_STRING_VIEW
+  std::string_view const* getStringView() const {
+    VELOCYPACK_ASSERT(_cType == CType::StringView);
+    return _value.sv;
+  }
+#endif
 
   void const* getExternal() const {
     VELOCYPACK_ASSERT(_cType == CType::VoidPtr);

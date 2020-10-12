@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,10 +34,11 @@
 #include "Agency/JobContext.h"
 #include "Agency/RemoveFollower.h"
 #include "Agency/Store.h"
+#include "AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
-#include "Cluster/AgencyPaths.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
 
@@ -421,18 +422,21 @@ void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
 void handleOnStatusCoordinator(Agent* agent, Node const& snapshot, HealthRecord& persisted,
                                HealthRecord& transisted, std::string const& serverID) {
   if (transisted.status == Supervision::HEALTH_STATUS_FAILED) {
-    // if the current foxxmaster server failed => reset the value to ""
-    if (snapshot.hasAsString(foxxmaster).first == serverID) {
-      VPackBuilder create;
+    VPackBuilder create;
+    {
+      VPackArrayBuilder tx(&create);
       {
-        VPackArrayBuilder tx(&create);
-        {
-          VPackObjectBuilder d(&create);
+        VPackObjectBuilder b(&create);
+        // unconditionally increase reboot id and plan version
+        Job::addIncreaseRebootId(create, serverID);
+
+        // if the current foxxmaster server failed => reset the value to ""
+        if (snapshot.hasAsString(foxxmaster).first == serverID) {
           create.add(foxxmaster, VPackValue(""));
         }
       }
-      singleWriteTransaction(agent, create, false);
     }
+    singleWriteTransaction(agent, create, false);
   }
 }
 
@@ -2209,9 +2213,15 @@ void Supervision::enforceReplication() {
         }
       }
 
-      bool clone = col.has(StaticStrings::DistributeShardsLike);
+      bool const clone = col.has(StaticStrings::DistributeShardsLike);
+      bool const isBuilding = std::invoke([&col] {
+        auto pair = col.hasAsBool(StaticStrings::AttrIsBuilding);
+        // Return true if the attribute exists, is a bool, and that bool is
+        // true. Return false otherwise.
+        return pair.first && pair.second;
+      });
 
-      if (!clone) {
+      if (!clone && !isBuilding) {
         for (auto const& shard_ : col.hasAsChildren("shards").first) {  // Pl shards
           auto const& shard = *(shard_.second);
           VPackBuilder onlyFollowers;
@@ -2401,13 +2411,13 @@ void Supervision::shrinkCluster() {
             maxReplFact = replFact;
           }
         }
-        // Note that this could be a satellite collection, in any case, ignore:
+        // Note that this could be a SatelliteCollection, in any case, ignore:
       }
     }
 
     // mop: do not account any failedservers in this calculation..the ones
     // having
-    // a state of failed still have data of interest to us! We wait indefinately
+    // a state of failed still have data of interest to us! We wait indefinitely
     // for them to recover or for the user to remove them
     if (maxReplFact < availServers.size()) {
       // Clean out as long as number of available servers is bigger
@@ -2446,7 +2456,7 @@ static std::string const syncLatest = "/Sync/LatestID";
 void Supervision::getUniqueIds() {
   _lock.assertLockedByCurrentThread();
 
-  size_t n = 10000;
+  int64_t n = 10000;
 
   std::string path = _agencyPrefix + "/Sync/LatestID";
   auto builder = std::make_shared<Builder>();

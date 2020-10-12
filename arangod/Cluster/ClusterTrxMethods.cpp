@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -87,7 +88,7 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
           if (!cc) {
             continue;
           }
-          auto shards = ci.getShardList(std::to_string(cc->id()));
+          auto shards = ci.getShardList(std::to_string(cc->id().id()));
           for (ShardID const& shard : *shards) {
             auto sss = ci.getResponsibleServer(shard);
             if (server == sss->at(0)) {
@@ -131,8 +132,8 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
 /// @brief lazy begin a transaction on subordinate servers
 Future<network::Response> beginTransactionRequest(TransactionState& state,
                                                   ServerID const& server) {
-  TRI_voc_tid_t tid = state.id() + 1;
-  TRI_ASSERT(!transaction::isLegacyTransactionId(tid));
+  TransactionId tid = state.id().child();
+  TRI_ASSERT(!tid.isLegacyTransactionId());
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
@@ -143,14 +144,14 @@ Future<network::Response> beginTransactionRequest(TransactionState& state,
 
   auto* pool = state.vocbase().server().getFeature<NetworkFeature>().pool();
   network::Headers headers;
-  headers.try_emplace(StaticStrings::TransactionId, std::to_string(tid));
+  headers.try_emplace(StaticStrings::TransactionId, std::to_string(tid.id()));
   auto body = std::make_shared<std::string>(builder.slice().toJson());
   return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
                               "/_api/transaction/begin", std::move(buffer), reqOpts, std::move(headers));
 }
 
 /// check the transaction cluster response with desited TID and status
-Result checkTransactionResult(TRI_voc_tid_t desiredTid, transaction::Status desStatus,
+Result checkTransactionResult(TransactionId desiredTid, transaction::Status desStatus,
                               network::Response const& resp) {
   int commError = network::fuerteToArangoErrorCode(resp);
   if (commError != TRI_ERROR_NO_ERROR) {
@@ -170,7 +171,7 @@ Result checkTransactionResult(TRI_voc_tid_t desiredTid, transaction::Status desS
       return Result(TRI_ERROR_TRANSACTION_INTERNAL,
                     "transaction has wrong format");
     }
-    TRI_voc_tid_t tid = StringUtils::uint64(idSlice.copyString());
+    TransactionId tid{StringUtils::uint64(idSlice.copyString())};
     VPackValueLength len = 0;
     const char* str = statusSlice.getStringUnchecked(len);
     if (tid == desiredTid && transaction::statusFromString(str, len) == desStatus) {
@@ -190,7 +191,7 @@ Result checkTransactionResult(TRI_voc_tid_t desiredTid, transaction::Status desS
     return res;
   }
   LOG_TOPIC("fb343", DEBUG, Logger::TRANSACTIONS)
-      << " failed to begin transaction on " << resp.destination;
+      << "failed to begin transaction on " << resp.destination;
 
   return Result(TRI_ERROR_TRANSACTION_INTERNAL);  // unspecified error
 }
@@ -209,13 +210,13 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
       (state->isCoordinator() && state->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL))) {
     return Result();
   }
-  TRI_ASSERT(!state->isDBServer() || !transaction::isFollowerTransactionId(state->id()));
+  TRI_ASSERT(!state->isDBServer() || !state->id().isFollowerTransactionId());
 
   network::RequestOptions reqOpts;
   reqOpts.database = state->vocbase().name();
 
-  TRI_voc_tid_t tidPlus = state->id() + 1;
-  const std::string path = "/_api/transaction/" + std::to_string(tidPlus);
+  TransactionId tidPlus = state->id().child();
+  const std::string path = "/_api/transaction/" + std::to_string(tidPlus.id());
 
   fuerte::RestVerb verb;
   if (status == transaction::Status::COMMITTED) {
@@ -237,7 +238,7 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
   return futures::collectAll(requests).thenValue(
       [=](std::vector<Try<network::Response>>&& responses) -> Result {
         if (state->isCoordinator()) {
-          TRI_ASSERT(transaction::isCoordinatorTransactionId(state->id()));
+          TRI_ASSERT(state->id().isCoordinatorTransactionId());
 
           for (Try<arangodb::network::Response> const& tryRes : responses) {
             network::Response const& resp = tryRes.get();  // throws exceptions upwards
@@ -251,7 +252,7 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
         }
 
         TRI_ASSERT(state->isDBServer());
-        TRI_ASSERT(transaction::isLeaderTransactionId(state->id()));
+        TRI_ASSERT(state->id().isLeaderTransactionId());
 
         // Drop all followers that were not successful:
         for (Try<arangodb::network::Response> const& tryRes : responses) {
@@ -260,24 +261,33 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
           Result res = ::checkTransactionResult(tidPlus, status, resp);
           if (res.fail()) {  // remove follower from all collections
             ServerID follower = resp.serverId();
+            LOG_TOPIC("230c3", INFO, Logger::REPLICATION) 
+                << "synchronous replication: dropping follower " 
+                << follower << " for all participating shards in"
+                << " transaction " << state->id().id() << " (status " 
+                << arangodb::transaction::statusString(status) 
+                << "), status code: " << static_cast<int>(resp.statusCode()) 
+                << ", message: " << resp.combinedResult().errorMessage();
             state->allCollections([&](TransactionCollection& tc) {
               auto cc = tc.collection();
               if (cc) {
+                LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
+                    << "synchronous replication: dropping follower "
+                    << follower << " for shard " << tc.collectionName()
+                    << " in database " << cc->vocbase().name() 
+                    << ": " << resp.combinedResult().errorMessage();
+
                 Result r = cc->followers()->remove(follower);
-                if (r.ok()) {
-                  // TODO: what happens if a server is re-added during a transaction ?
-                  LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
-                      << "synchronous replication: dropping follower "
-                      << follower << " for shard " << tc.collectionName();
-                } else {
+                if (r.fail()) {
                   LOG_TOPIC("4971f", ERR, Logger::REPLICATION)
                       << "synchronous replication: could not drop follower "
                       << follower << " for shard " << tc.collectionName()
                       << ": " << r.errorMessage();
                   res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
-                  return false;  // cancel transaction
                 }
               }
+              // continue dropping the follower for all shards in this
+              // transaction
               return true;
             });
           }
@@ -314,7 +324,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
     return res;
   }
 
-  const TRI_voc_tid_t tid = state.id() + 1;
+  const TransactionId tid = state.id().child();
   return futures::collectAll(requests).thenValue(
       [=](std::vector<Try<network::Response>>&& responses) -> Result {
         for (Try<arangodb::network::Response> const& tryRes : responses) {
@@ -347,8 +357,8 @@ void addTransactionHeader(transaction::Methods const& trx,
   if (!ClusterTrxMethods::isElCheapo(trx)) {
     return;  // no need
   }
-  TRI_voc_tid_t tidPlus = state.id() + 1;
-  TRI_ASSERT(!transaction::isLegacyTransactionId(tidPlus));
+  TransactionId tidPlus = state.id().child();
+  TRI_ASSERT(!tidPlus.isLegacyTransactionId());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
   const bool addBegin = !state.knowsServer(server);
@@ -357,15 +367,16 @@ void addTransactionHeader(transaction::Methods const& trx,
       return;  // do not add header to servers without a snippet
     }
     TRI_ASSERT(state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
-               transaction::isLeaderTransactionId(state.id()));
+               state.id().isLeaderTransactionId());
     transaction::BuilderLeaser builder(trx.transactionContextPtr());
     ::buildTransactionBody(state, server, *builder.get());
     headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
     headers.try_emplace(arangodb::StaticStrings::TransactionId,
-                    std::to_string(tidPlus).append(" begin"));
+                        std::to_string(tidPlus.id()).append(" begin"));
     state.addKnownServer(server);  // remember server
   } else {
-    headers.try_emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus));
+    headers.try_emplace(arangodb::StaticStrings::TransactionId,
+                        std::to_string(tidPlus.id()));
   }
 }
 template void addTransactionHeader<std::map<std::string, std::string>>(
@@ -384,7 +395,7 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
     return;
   }
 
-  std::string value = std::to_string(state.id() + 1);
+  std::string value = std::to_string(state.id().child().id());
   const bool addBegin = !state.knowsServer(server);
   if (addBegin) {
     if (state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
@@ -399,22 +410,26 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
     }
     state.addKnownServer(server);  // remember server
   } else if (state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
-     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal AQL transaction state");
+    // this case cannot occur for a top-level AQL query,
+    // simon: however it might occur when UDF functions uses
+    // db._query(...) in which case we can get here
+    bool canHaveUDF = trx.transactionContext()->isV8Context();
+    TRI_ASSERT(canHaveUDF);
+    if (!canHaveUDF) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal AQL transaction state");
+    }
   }
   headers.try_emplace(arangodb::StaticStrings::TransactionId, std::move(value));
 }
 template void addAQLTransactionHeader<std::map<std::string, std::string>>(
     transaction::Methods const&, ServerID const&, std::map<std::string, std::string>&);
-template void addAQLTransactionHeader<std::unordered_map<std::string, std::string>>(
-    transaction::Methods const&, ServerID const&,
-    std::unordered_map<std::string, std::string>&);
 
 bool isElCheapo(transaction::Methods const& trx) {
   return isElCheapo(*trx.state());
 }
 
 bool isElCheapo(TransactionState const& state) {
-  return !transaction::isLegacyTransactionId(state.id()) &&
+  return !state.id().isLegacyTransactionId() &&
          (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
           state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
 }

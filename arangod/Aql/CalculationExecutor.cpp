@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -217,8 +218,6 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
 
   if (input.blockHasMoreDataRowsAfterThis()) {
     // We will be called again before the fetcher needs to get a new block.
-    // Thus we won't wait for upstream, nor will get a WAITING on the next
-    // fetchRow().
     // So we keep the context open.
     // This works because this block allows pass through, i.e. produces exactly
     // one output row per input row.

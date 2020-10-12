@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -107,7 +108,7 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable
         }
         // Search InputRow
         RegisterId const& regId = _regs[i];
-        TRI_ASSERT(regId < _input.getNrRegisters());
+        TRI_ASSERT(regId < _input.getNumRegisters());
         return _input.getValue(regId).clone();
       } else {
         mustDestroy = false;
@@ -122,7 +123,7 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable
         }
         // Search InputRow
         RegisterId const& regId = _regs[i];
-        TRI_ASSERT(regId < _input.getNrRegisters());
+        TRI_ASSERT(regId < _input.getNumRegisters());
         return _input.getValue(regId);
       }
     }

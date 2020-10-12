@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -33,12 +34,15 @@
 
 using namespace arangodb;
 
-RocksDBSyncThread::RocksDBSyncThread(RocksDBEngine& engine, std::chrono::milliseconds interval)
+RocksDBSyncThread::RocksDBSyncThread(RocksDBEngine& engine, 
+                                     std::chrono::milliseconds interval,
+                                     std::chrono::milliseconds delayThreshold)
     : Thread(engine.server(), "RocksDBSync"),
       _engine(engine),
       _interval(interval),
       _lastSyncTime(std::chrono::steady_clock::now()),
-      _lastSequenceNumber(0) {}
+      _lastSequenceNumber(0),
+      _delayThreshold(delayThreshold) {}
 
 RocksDBSyncThread::~RocksDBSyncThread() { shutdown(); }
 
@@ -105,12 +109,17 @@ void RocksDBSyncThread::run() {
     try {
       auto const now = std::chrono::steady_clock::now();
 
+      rocksdb::SequenceNumber lastSequenceNumber;
+      rocksdb::SequenceNumber previousLastSequenceNumber;
+      std::chrono::time_point<std::chrono::steady_clock> lastSyncTime;
+      std::chrono::time_point<std::chrono::steady_clock> previousLastSyncTime;
+
       {
         // wait for time to elapse, and after that update last sync time
         CONDITION_LOCKER(guard, _condition);
 
-        auto const previousLastSequenceNumber = _lastSequenceNumber;
-        auto const previousLastSyncTime = _lastSyncTime;
+        previousLastSequenceNumber = _lastSequenceNumber;
+        previousLastSyncTime = _lastSyncTime;
         auto const end = _lastSyncTime + _interval;
         if (end > now) {
           guard.wait(std::chrono::microseconds(
@@ -122,23 +131,44 @@ void RocksDBSyncThread::run() {
           continue;
         }
 
-        _lastSyncTime = std::chrono::steady_clock::now();
-
-        auto lastSequenceNumber = db->GetLatestSequenceNumber();
+        lastSyncTime = std::chrono::steady_clock::now();
+        lastSequenceNumber = db->GetLatestSequenceNumber();
 
         if (lastSequenceNumber == previousLastSequenceNumber) {
-          // nothing to sync, so don't cause unnecessary load
+          // nothing to sync, so don't cause unnecessary load.
+          // still update our lastSyncTime to now, so we don't run into warnings
+          // later with syncs being reported as delayed
+          _lastSyncTime = lastSyncTime;
           continue;
         }
-
-        _lastSequenceNumber = lastSequenceNumber;
       }
 
-      // will update last sync time, and do the actual sync
-      Result res = sync(db);
+      {
+        if (_delayThreshold.count() > 0 && (lastSyncTime - previousLastSyncTime) > _delayThreshold) {
+          LOG_TOPIC("5b708", INFO, Logger::ENGINES)
+            << "last RocksDB WAL sync happened longer ago than configured threshold. "
+            << "last sync happened " << (std::chrono::duration_cast<std::chrono::milliseconds>(lastSyncTime - previousLastSyncTime)).count() << " ms ago, "
+            << "threshold value: " << _delayThreshold.count() << " ms";
+        }
+      }
 
-      if (res.fail()) {
-        LOG_TOPIC("5e275", WARN, Logger::ENGINES)
+      Result res = this->sync(db);
+
+      if (res.ok()) {
+        // success case
+        CONDITION_LOCKER(guard, _condition);
+
+        if (lastSequenceNumber > _lastSequenceNumber) {
+          // bump last sequence number we have synced
+          _lastSequenceNumber = lastSequenceNumber;
+        }
+        if (lastSyncTime > _lastSyncTime) {
+          _lastSyncTime = lastSyncTime;
+        }
+      } else {
+        // could not sync... in this case, don't advance our last
+        // sync time and last synced sequence number
+        LOG_TOPIC("5e275", ERR, Logger::ENGINES)
             << "could not sync RocksDB WAL: " << res.errorMessage();
       }
     } catch (std::exception const& ex) {

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -66,7 +67,7 @@ void RecoveryManager::monitorCollections(DatabaseID const& database,
 
   for (CollectionID const& collname : collections) {
     std::shared_ptr<LogicalCollection> coll = _ci.getCollection(database, collname);
-    CollectionID cid = std::to_string(coll->id());
+    CollectionID cid = std::to_string(coll->id().id());
     std::shared_ptr<std::vector<ShardID>> shards = _ci.getShardList(cid);
 
     if (!shards) {
