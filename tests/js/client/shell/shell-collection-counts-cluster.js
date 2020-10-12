@@ -285,15 +285,22 @@ function collectionCountsSuite () {
       assertEqual(100000, c.toArray().length);
 
       let total = 0;
-      getDBServers().forEach((server) => {
-        if (servers.indexOf(server.id) === -1) {
-          return;
+      tries = 0;
+      while (tries++ < 120) {
+        getDBServers().forEach((server) => {
+          if (servers.indexOf(server.id) === -1) {
+            return;
+          }
+          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+          assertEqual(200, result.status);
+          assertEqual(100000, result.json.count);
+          total += result.json.count;
+        });
+        if (total === 2 * 100000) {
+          break;
         }
-        let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-        assertEqual(200, result.status);
-        assertEqual(100000, result.json.count);
-        total += result.json.count;
-      });
+        require("internal").sleep(0.5);
+      }
       assertEqual(2 * 100000, total);
     },
     
