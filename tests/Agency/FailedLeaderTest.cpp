@@ -296,31 +296,65 @@ class FailedLeaderTest
                         lastGenFailoverCandidates);
   }
 
+
+  struct ShardInfo {
+    std::string database;
+    std::string collection;
+    std::string shard;
+  };
+
   class AgencyBuilder {
+    // Inserts the given string as content of given shard in plan
+    auto injectIntoPlanShardList(ShardInfo const& si, std::string const& content) -> std::string {
+      auto jsonString = std::string(R"({"arango": {"Plan": {"Collections": {")");
+      jsonString += si.database;
+      jsonString += std::string(R"(": {")");
+      jsonString += si.collection;
+      jsonString += std::string(R"(": {"shards": {")");
+      jsonString += si.shard;
+      jsonString += std::string(R"(": )");
+      jsonString += content;
+      jsonString += std::string(R"( } } } } } } } )");
+      return jsonString;
+    }
+    
+    // Inserts the given string as content of given shard in Current
+    // Requires content to be a JSON Object
+    auto injectIntoCurrentEntry(ShardInfo const& si, std::string const& content) -> std::string {
+      auto jsonString = std::string(R"({"arango": {"Current": {"Collections": {")");
+      jsonString += si.database;
+      jsonString += std::string(R"(": {")");
+      jsonString += si.collection;
+      jsonString += std::string(R"(": {")");
+      jsonString += si.shard;
+      jsonString += std::string(R"(": )");
+      jsonString += content;
+      jsonString += std::string(R"( } } } } } } )");
+      return jsonString;
+    }
+
+
    public:
     AgencyBuilder(VPackBuilder&& base) : _builder(std::move(base)) {}
 
-    auto setPlannedServers(std::vector<std::string> const& servers) -> AgencyBuilder& {
-      auto jsonString =
-          std::string(R"({"arango": {"Plan": {"Collections": {"database": {"collection": {"shards": {"s99": )");
-      jsonString += vectorToArray(servers);
-      jsonString += std::string(R"( } } } } } } } )");
+    auto setPlannedServers(ShardInfo const& si, std::vector<std::string> const& servers) -> AgencyBuilder& {
+      auto jsonString = injectIntoPlanShardList(si, vectorToArray(servers));
       return applyJson(std::move(jsonString));
     };
 
-    auto setFailoverCandidates(std::vector<std::string> const& servers) -> AgencyBuilder& {
-      auto jsonString =
-          std::string(R"({"arango": {"Current": {"Collections": {"database": {"collection": {"s99": { "failoverCandidates": )");
-      jsonString += vectorToArray(servers);
-      jsonString += std::string(R"( } } } } } } } )");
+    auto setFailoverCandidates(ShardInfo const& si, std::vector<std::string> const& servers) -> AgencyBuilder& {
+      auto content = std::string(R"({"failoverCandidates": )");
+      content += vectorToArray(servers);
+      content += std::string(R"(})");
+      auto jsonString = injectIntoCurrentEntry(si, std::move(content));
       return applyJson(std::move(jsonString));
     };
 
-    auto setFollowers(std::vector<std::string> const& servers) -> AgencyBuilder& {
-      auto jsonString =
-          std::string(R"({"arango": {"Current": {"Collections": {"database": {"collection": {"s99": { "servers": )");
-      jsonString += vectorToArray(servers);
-      jsonString += std::string(R"( } } } } } } } )");
+    auto setFollowers(ShardInfo const& si, std::vector<std::string> const& servers) -> AgencyBuilder& {
+      auto content = std::string(R"({"servers": )");
+      content += vectorToArray(servers);
+      content += std::string(R"(})");
+      auto jsonString = injectIntoCurrentEntry(si, std::move(content));
       return applyJson(std::move(jsonString));
     };
 
@@ -1267,12 +1301,13 @@ TEST_F(FailedLeaderTest, when_everything_is_finished_there_should_be_cleanup) {
 
 TEST_F(FailedLeaderTest, failedleader_must_not_take_follower_into_account_if_it_has_dropped_out) {
   std::string jobId = "1";
+  ShardInfo si{DATABASE, COLLECTION, SHARD};
 
   Node agency = AgencyBuilder(baseStructure.toBuilder())
                     // follower2 in sync
-                    .setFollowers({SHARD_LEADER, SHARD_FOLLOWER2})
+                    .setFollowers(si, {SHARD_LEADER, SHARD_FOLLOWER2})
                     // but not part of the plan => will drop collection on next occasion
-                    .setPlannedServers({SHARD_LEADER, SHARD_FOLLOWER1})
+                    .setPlannedServers(si, {SHARD_LEADER, SHARD_FOLLOWER1})
                     .setJobInTodo(jobId)
                     .createNode();
 
@@ -1293,12 +1328,13 @@ TEST_F(FailedLeaderTest, failedleader_must_not_take_follower_into_account_if_it_
 
 TEST_F(FailedLeaderTest, failedleader_must_not_take_follower_into_account_that_is_not_in_plan) {
   std::string jobId = "1";
+  ShardInfo si{DATABASE, COLLECTION, SHARD};
 
   Node agency = AgencyBuilder(baseStructure.toBuilder())
                     // Follower 1 planned
-                    .setPlannedServers({SHARD_LEADER, SHARD_FOLLOWER1})
+                    .setPlannedServers(si, {SHARD_LEADER, SHARD_FOLLOWER1})
                     // Follower 2 in followers
-                    .setFollowers({SHARD_LEADER, SHARD_FOLLOWER2})
+                    .setFollowers(si, {SHARD_LEADER, SHARD_FOLLOWER2})
                     .setJobInTodo(jobId)
                     .createNode();
 
@@ -1319,14 +1355,15 @@ TEST_F(FailedLeaderTest, failedleader_must_not_take_follower_into_account_that_i
 
 TEST_F(FailedLeaderTest, failedleader_must_not_take_a_candidate_into_account_that_is_not_in_plan) {
   std::string jobId = "1";
+  ShardInfo si{DATABASE, COLLECTION, SHARD};
 
   Node agency = AgencyBuilder(baseStructure.toBuilder())
                     // Follower 1 planned
-                    .setPlannedServers({SHARD_LEADER, SHARD_FOLLOWER1})
+                    .setPlannedServers(si, {SHARD_LEADER, SHARD_FOLLOWER1})
                     // Follower 2 in candidates
-                    .setFailoverCandidates({SHARD_LEADER, SHARD_FOLLOWER2})
+                    .setFailoverCandidates(si, {SHARD_LEADER, SHARD_FOLLOWER2})
                     // Follower 2 in followers
-                    .setFollowers({SHARD_LEADER})
+                    .setFollowers(si, {SHARD_LEADER})
                     .setJobInTodo(jobId)
                     .createNode();
 
@@ -1348,14 +1385,15 @@ TEST_F(FailedLeaderTest, failedleader_must_not_take_a_candidate_into_account_tha
 
 TEST_F(FailedLeaderTest, failedleader_must_not_take_a_candidate_and_follower_into_account_that_is_not_in_plan) {
   std::string jobId = "1";
+  ShardInfo si{DATABASE, COLLECTION, SHARD};
 
   Node agency = AgencyBuilder(baseStructure.toBuilder())
                     // Follower 1 planned
-                    .setPlannedServers({SHARD_LEADER, SHARD_FOLLOWER1})
+                    .setPlannedServers(si, {SHARD_LEADER, SHARD_FOLLOWER1})
                     // Follower 2 in candidates
-                    .setFailoverCandidates({SHARD_LEADER, SHARD_FOLLOWER2})
+                    .setFailoverCandidates(si, {SHARD_LEADER, SHARD_FOLLOWER2})
                     // Follower 2 in followers
-                    .setFollowers({SHARD_LEADER, SHARD_FOLLOWER2})
+                    .setFollowers(si, {SHARD_LEADER, SHARD_FOLLOWER2})
                     .setJobInTodo(jobId)
                     .createNode();
 
@@ -1376,6 +1414,7 @@ TEST_F(FailedLeaderTest, failedleader_must_not_take_a_candidate_and_follower_int
 
 TEST_F(FailedLeaderTest, failedleader_must_not_readd_servers_not_in_plan) {
   std::string jobId = "1";
+  ShardInfo si{DATABASE, COLLECTION, SHARD};
   std::vector<std::string> expected = {SHARD_FOLLOWER1, SHARD_LEADER, FREE_SERVER};
   std::vector<std::string> planned = {SHARD_LEADER, SHARD_FOLLOWER1};
   std::vector<std::string> followers = {SHARD_FOLLOWER1, SHARD_LEADER, SHARD_FOLLOWER2};
@@ -1383,11 +1422,11 @@ TEST_F(FailedLeaderTest, failedleader_must_not_readd_servers_not_in_plan) {
 
   Node agency = AgencyBuilder(baseStructure.toBuilder())
                     // Follower 1 planned
-                    .setPlannedServers(planned)
+                    .setPlannedServers(si, planned)
                     // Follower 2 in candidates
-                    .setFailoverCandidates(followers)
+                    .setFailoverCandidates(si, followers)
                     // Follower 2 in followers
-                    .setFollowers(failovers)
+                    .setFollowers(si, failovers)
                     .setJobInTodo(jobId)
                     .createNode();
 
@@ -1407,6 +1446,7 @@ TEST_F(FailedLeaderTest, failedleader_must_not_readd_servers_not_in_plan) {
 
 TEST_F(FailedLeaderTest, failedleader_must_not_add_a_follower_if_none_exists) {
   std::string jobId = "1";
+  ShardInfo si{DATABASE, COLLECTION, SHARD};
   // We should have 3 servers, but there is no healthy one
   std::vector<std::string> expected = {SHARD_FOLLOWER1, SHARD_LEADER};
   std::vector<std::string> planned = {SHARD_LEADER, SHARD_FOLLOWER1};
@@ -1415,11 +1455,11 @@ TEST_F(FailedLeaderTest, failedleader_must_not_add_a_follower_if_none_exists) {
 
   Node agency = AgencyBuilder(baseStructure.toBuilder())
                     // Follower 1 planned
-                    .setPlannedServers(planned)
+                    .setPlannedServers(si, planned)
                     // Follower 2 in candidates
-                    .setFailoverCandidates(followers)
+                    .setFailoverCandidates(si, followers)
                     // Follower 2 in followers
-                    .setFollowers(failovers)
+                    .setFollowers(si, failovers)
                     .setServerFailed(FREE_SERVER)
                     .setJobInTodo(jobId)
                     .createNode();
