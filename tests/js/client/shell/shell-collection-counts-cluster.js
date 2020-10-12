@@ -1,0 +1,233 @@
+/*jshint globalstrict:false, strict:false, maxlen : 4000 */
+/* global arango, assertTrue, assertFalse, assertEqual, assertNotEqual */
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests for inventory
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+'use strict';
+const jsunity = require('jsunity');
+const db = require("@arangodb").db;
+const request = require("@arangodb/request");
+const _ = require("lodash");
+
+function collectionCountsSuite () {
+  const cn = "UnitTestsCollection";
+
+  let getDBServers = function() {
+    const isDBServer = (d) => (_.toLower(d.role) === 'dbserver');
+    const endpointToURL = (server) => {
+      let endpoint = server.endpoint;
+      if (endpoint.substr(0, 6) === 'ssl://') {
+        return 'https://' + endpoint.substr(6);
+      }
+      let pos = endpoint.indexOf('://');
+      if (pos === -1) {
+        return 'http://' + endpoint;
+      }
+      return 'http' + endpoint.substr(pos);
+    };
+
+    return global.instanceInfo.arangods.filter(isDBServer)
+                                .map((server) => { 
+                                  return { url: endpointToURL(server), id: server.id };
+                                });
+  };
+
+  let clearFailurePoints = function () {
+    getDBServers().forEach((server) => {
+      // clear all failure points
+      request({ method: "DELETE", url: server.url + "/_admin/debug/failat" });
+    });
+  };
+  
+  return {
+    setUp : function () {
+      db._drop(cn);
+    },
+
+    tearDown : function () {
+      clearFailurePoints();
+      db._drop(cn);
+    },
+
+    testWrongCountOnLeaderFullSync : function () {
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i }); 
+      }
+      assertEqual(100, c.count());
+      assertEqual(100, c.toArray().length);
+
+      let servers = getDBServers();
+      let shardInfo = c.shards(true);
+      let shard = Object.keys(shardInfo)[0];
+      let leader = shardInfo[shard][0];
+      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+
+      // set a failure point to get the counts wrong on the leader
+      let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
+      assertEqual(200, result.status);
+      
+      for (let i = 100; i < 200; ++i) {
+        c.insert({ _key: "test" + i }); 
+      }
+
+      assertNotEqual(200, c.count());
+      assertEqual(200, c.toArray().length);
+      clearFailurePoints();
+
+      c.properties({ replicationFactor: 2 });
+
+      // wait until we have an in-sync follower
+      let tries = 0;
+      while (tries++ < 60) {
+        shardInfo = c.shards(true);
+        servers = shardInfo[shard];
+        if (servers.length === 2) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+      assertEqual(2, servers.length);
+      assertEqual(200, c.count());
+      assertEqual(200, c.toArray().length);
+
+      let total = 0;
+      getDBServers().forEach((server) => {
+        if (servers.indexOf(server.id) === -1) {
+          return;
+        }
+        let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+        assertEqual(200, result.status);
+        assertEqual(200, result.json.count);
+        total += result.json.count;
+      });
+      assertEqual(2 * 200, total);
+    },
+    
+    testWrongCountOnLeaderFullSync2 : function () {
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+
+      let servers = getDBServers();
+      let shardInfo = c.shards(true);
+      let shard = Object.keys(shardInfo)[0];
+      let leader = shardInfo[shard][0];
+      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+
+      // set a failure point to get the counts wrong on the leader
+      let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
+      assertEqual(200, result.status);
+      
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i }); 
+      }
+      
+      assertEqual(100, c.toArray().length);
+      assertNotEqual(100, c.count());
+
+      c.properties({ replicationFactor: 2 });
+
+      // wait until we have an in-sync follower
+      let tries = 0;
+      while (tries++ < 60) {
+        shardInfo = c.shards(true);
+        servers = shardInfo[shard];
+        if (servers.length === 2) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+      
+      assertEqual(2, servers.length);
+      assertEqual(100, c.count());
+      assertEqual(100, c.toArray().length);
+      
+      let total = 0;
+      getDBServers().forEach((server) => {
+        if (servers.indexOf(server.id) === -1) {
+          return;
+        }
+        let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+        assertEqual(200, result.status);
+        assertEqual(100, result.json.count);
+        total += result.json.count;
+      });
+      assertEqual(2 * 100, total);
+    },
+    
+    testWrongCountOnFollowerFullSync : function () {
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i }); 
+      }
+      assertEqual(100, c.count());
+      assertEqual(100, c.toArray().length);
+
+      let servers = getDBServers();
+      let shardInfo = c.shards(true);
+      let shard = Object.keys(shardInfo)[0];
+      let leader = shardInfo[shard][0];
+      // set failure points to get the counts wrong on the followers
+      servers.filter((server) => server.id !== leader).forEach((server) => {
+        let result = request({ method: "PUT", url: server.url + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
+        assertEqual(200, result.status);
+      });
+
+      c.properties({ replicationFactor: 2 });
+
+      // wait until we have an in-sync follower
+      let tries = 0;
+      while (tries++ < 60) {
+        shardInfo = c.shards(true);
+        servers = shardInfo[shard];
+        if (servers.length === 2) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+      assertEqual(2, servers.length);
+      assertEqual(100, c.count());
+      assertEqual(100, c.toArray().length);
+      
+      let total = 0;
+      getDBServers().forEach((server) => {
+        if (servers.indexOf(server.id) === -1) {
+          return;
+        }
+        let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+        assertEqual(200, result.status);
+        assertEqual(100, result.json.count);
+        total += result.json.count;
+      });
+      assertEqual(2 * 100, total);
+    },
+
+  };
+}
+
+jsunity.run(collectionCountsSuite);
+return jsunity.done();

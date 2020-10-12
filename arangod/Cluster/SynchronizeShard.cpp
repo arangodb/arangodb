@@ -180,10 +180,10 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
   }
 }
 
-static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollection> const& col,
+static arangodb::Result collectionCount(arangodb::LogicalCollection const& collection,
                                         uint64_t& c) {
-  std::string collectionName(col->name());
-  auto ctx = std::make_shared<transaction::StandaloneContext>(col->vocbase());
+  std::string collectionName(collection.name());
+  auto ctx = std::make_shared<transaction::StandaloneContext>(collection.vocbase());
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
 
   Result res = trx.begin();
@@ -209,10 +209,10 @@ static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollect
   return opResult.result;
 }
 
-arangodb::Result collectionReCount(std::shared_ptr<arangodb::LogicalCollection> const& col,
+arangodb::Result collectionReCount(LogicalCollection& collection,
                                    uint64_t& c) {
-  std::string collectionName(col->name());
-  auto ctx = std::make_shared<transaction::StandaloneContext>(col->vocbase());
+  std::string collectionName(collection.name());
+  auto ctx = std::make_shared<transaction::StandaloneContext>(collection.vocbase());
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
 
   Result res = trx.begin();
@@ -222,19 +222,12 @@ arangodb::Result collectionReCount(std::shared_ptr<arangodb::LogicalCollection> 
     return res;
   }
 
-  ResultT<std::uint64_t> result = col->getPhysical()->recalculateCounts(trx);
+  ResultT<std::uint64_t> result = collection.getPhysical()->recalculateCounts(trx);
   res = trx.finish(result.result());
-
-  if (result.fail()) {
-    LOG_TOPIC("263d1", ERR, Logger::MAINTENANCE)
-        << "Failed to recalculate count of local collection '" << col->name()
-        << "': " << result.result();
-    return result.result();
-  }
 
   if (res.fail()) {
     LOG_TOPIC("263d2", ERR, Logger::MAINTENANCE)
-        << "Failed to finish count transaction for '" << col->name() << "': " << res;
+        << "Failed to finish count transaction for '" << collection.name() << "': " << res;
     return res;
   }
 
@@ -243,14 +236,12 @@ arangodb::Result collectionReCount(std::shared_ptr<arangodb::LogicalCollection> 
   return result.result();
 }
 
-enum class ChecksumRecalculation { None, Self, Leader };
-
 arangodb::Result addShardFollower(network::ConnectionPool* pool,
                                   std::string const& endpoint, std::string const& database,
                                   std::string const& shard, uint64_t lockJobId,
                                   std::string const& clientId, SyncerId const syncerId,
                                   std::string const& clientInfoString,
-                                  ChecksumRecalculation recalc, double timeout = 120.0) {
+                                  double timeout = 120.0) {
   LOG_TOPIC("b982e", DEBUG, Logger::MAINTENANCE)
       << "addShardFollower: tell the leader to put us into the follower "
          "list for " << database << "/" << shard << "...";
@@ -274,64 +265,12 @@ arangodb::Result addShardFollower(network::ConnectionPool* pool,
     }
 
     uint64_t docCount;
-    if (recalc == ::ChecksumRecalculation::Self) {
-      // recalculate locally
-      LOG_TOPIC("29384", INFO, Logger::MAINTENANCE) 
-         << "recalculating collection count on follower for "
-         << database << "/" << shard;
-
-      Result res = collectionReCount(collection, docCount);
-      if (res.fail()) {
-        return res;
-      }
-    } else {
-      // use cached count
-      Result res = collectionCount(collection, docCount);
-      if (res.fail()) {
-        return res;
-      }
+    // use cached count
+    Result res = collectionCount(*collection.get(), docCount);
+    if (res.fail()) {
+      return res;
     }
 
-    uint64_t leaderCount = 0;
-    if (recalc == ::ChecksumRecalculation::Leader) {
-      // recalculate on leader
-      LOG_TOPIC("3dc64", INFO, Logger::MAINTENANCE) 
-         << "recalculating collection count on leader for "
-         << database << "/" << shard;
-  
-      VPackBuffer<uint8_t> buffer;
-      VPackBuilder tmp(buffer);
-      tmp.openObject();
-      tmp.close();
-
-      network::RequestOptions options;
-      options.database = database;
-      options.timeout = network::Timeout(timeout * 10);  // this can be slow!!!
-      options.skipScheduler = true;  // hack to speed up future.get()
-
-      std::string const url = "/_api/collection/" + collection->name() +
-                              "/recalculateCount?nonBlocking=true";
-
-      auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Put,
-                                           url, std::move(buffer), options)
-                          .get();
-      auto result = response.combinedResult();
-
-      if (result.fail()) {
-        std::string const errorMessage =
-            "addShardFollower: could not add us to the leader's follower "
-            "list for " + database + "/" + shard +
-            ", error while recalculating count on leader: " +
-            result.errorMessage();
-        LOG_TOPIC("22e0b", WARN, Logger::MAINTENANCE) << errorMessage;
-        return arangodb::Result(result.errorNumber(), errorMessage);
-      }
-
-      VPackSlice slice = response.slice();
-      if (slice.isObject() && slice.hasKey("count")) {
-        leaderCount = slice.get("count").getNumber<int64_t>();
-      }
-    }
 
     VPackBuilder body;
     {
@@ -345,10 +284,6 @@ arangodb::Result addShardFollower(network::ConnectionPool* pool,
       }
       if (!clientInfoString.empty()) {
         body.add("clientInfo", VPackValue(clientInfoString));
-      }
-      if (recalc == ::ChecksumRecalculation::Leader) {
-        // we recalculated the count on the leader. send its count to the job
-        body.add("leaderCount", VPackValue(leaderCount));
       }
       if (lockJobId != 0) {
         body.add("readLockId", VPackValue(std::to_string(lockJobId)));
@@ -891,7 +826,7 @@ bool SynchronizeShard::first() {
 
     auto ep = clusterInfo.getServerEndpoint(leader);
     uint64_t docCount;
-    if (!collectionCount(collection, docCount).ok()) {
+    if (!collectionCount(*collection.get(), docCount).ok()) {
       std::stringstream error;
       error << "failed to get a count on leader " << shard;
       LOG_TOPIC("da225", ERR, Logger::MAINTENANCE) << "SynchronizeShard " << error.str();
@@ -927,8 +862,7 @@ bool SynchronizeShard::first() {
         NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
         network::ConnectionPool* pool = nf.pool();
         auto asResult = addShardFollower(pool, ep, database, shard, 0, clientId,
-                                         SyncerId{}, _clientInfoString,
-                                         ::ChecksumRecalculation::None, 60.0);
+                                         SyncerId{}, _clientInfoString, 60.0);
 
         if (asResult.ok()) {
           if (Logger::isEnabled(LogLevel::DEBUG, Logger::MAINTENANCE)) {
@@ -978,7 +912,7 @@ bool SynchronizeShard::first() {
         VPackObjectBuilder o(&config);
         config.add(ENDPOINT, VPackValue(ep));
         config.add(INCREMENTAL,
-                   VPackValue(docCount > 0));  // use dump if possible
+                   VPackValue(docCount > 0));  // use incremental if possible
         config.add(KEEP_BARRIER, VPackValue(true));
         config.add(LEADER_ID, VPackValue(leader));
         config.add(SKIP_CREATE_DROP, VPackValue(true));
@@ -1054,7 +988,7 @@ bool SynchronizeShard::first() {
       }
       lastTick = tickResult.get();
 
-      // Now start a exclusive transaction to stop writes:
+      // Now start an exclusive transaction to stop writes:
       Result res = catchupWithExclusiveLock(ep, database, *collection, clientId, shard,
                                             leader, syncerId, lastTick, builder);
       if (!res.ok()) {
@@ -1196,7 +1130,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
 }
 
 Result SynchronizeShard::catchupWithExclusiveLock(
-    std::string const& ep, std::string const& database, LogicalCollection const& collection,
+    std::string const& ep, std::string const& database, LogicalCollection& collection,
     std::string const& clientId, std::string const& shard, std::string const& leader,
     SyncerId const syncerId, TRI_voc_tick_t lastLogTick, VPackBuilder& builder) {
   uint64_t lockJobId = 0;
@@ -1219,8 +1153,8 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     if (!res.ok()) {
       LOG_TOPIC("067a8", INFO, Logger::MAINTENANCE)
           << "Could not cancel hard read lock on leader: " << res.errorMessage();
-      }
-    });
+    }
+  });
 
   LOG_TOPIC("d76cb", DEBUG, Logger::MAINTENANCE) << "lockJobId: " << lockJobId;
 
@@ -1248,22 +1182,72 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   res = addShardFollower(pool, ep, database, shard, lockJobId, clientId, syncerId,
-                         _clientInfoString, ::ChecksumRecalculation::None, 60.0);
+                         _clientInfoString, 60.0);
 
-  // if we get a checksum mismatch, first try to recalculate it locally and then
-  // retry adding as follower
+  // if we get a checksum mismatch, first try to recalculate it locally
   if (res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM)) {
-    // recalculate count and try again
-    res = addShardFollower(pool, ep, database, shard, lockJobId, clientId, syncerId,
-                           _clientInfoString, ::ChecksumRecalculation::Self, 60.0);
-  }
+    // give up the lock on the leader, so writes aren't stopped unncessarily
+    readLockGuard.fire();
 
-  // if we still get a checksum mismatch, now try to recalculate the count on
-  // the leader, then retry to add as follower again
-  if (res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM)) {
-    // recalculate count and try again
-    res = addShardFollower(pool, ep, database, shard, lockJobId, clientId, syncerId,
-                           _clientInfoString, ::ChecksumRecalculation::Leader, 60.0);
+    // recalculate collection count on follower
+    LOG_TOPIC("29384", INFO, Logger::MAINTENANCE) 
+       << "recalculating collection count on follower for "
+       << database << "/" << shard;
+    
+    uint64_t docCount;
+    Result countRes = collectionCount(collection, docCount);
+    if (countRes.fail()) {
+      return countRes;
+    }
+    // store current count value
+    uint64_t oldCount = docCount;
+
+    // recalculate collection count value
+    countRes = collectionReCount(collection, docCount);
+    if (countRes.fail()) {
+      return countRes;
+    }
+
+    // check if we recalculation has made a difference
+    if (oldCount == docCount) {
+      // no change happened due to recalculation. now try recounting on leader too
+      LOG_TOPIC("3dc64", INFO, Logger::MAINTENANCE) 
+         << "recalculating collection count on leader for "
+         << database << "/" << shard;
+  
+      VPackBuffer<uint8_t> buffer;
+      VPackBuilder tmp(buffer);
+      tmp.add(VPackSlice::emptyObjectSlice());
+
+      network::RequestOptions options;
+      options.database = database;
+      options.timeout = network::Timeout(600.0);  // this can be slow!!!
+      options.skipScheduler = true;  // hack to speed up future.get()
+
+      std::string const url = "/_api/collection/" + collection.name() +
+                              "/recalculateCount?nonBlocking=true";
+
+      auto response = network::sendRequest(pool, ep, fuerte::RestVerb::Put,
+                                           url, std::move(buffer), options)
+                          .get();
+      auto result = response.combinedResult();
+
+      if (result.fail()) {
+        std::string const errorMessage =
+            "addShardFollower: could not add us to the leader's follower "
+            "list for " + database + "/" + shard +
+            ", error while recalculating count on leader: " +
+            result.errorMessage();
+        LOG_TOPIC("22e0b", WARN, Logger::MAINTENANCE) << errorMessage;
+        return arangodb::Result(result.errorNumber(), errorMessage);
+      }
+    }
+ 
+    // still let the operation fail here, because we gave up the lock 
+    // already and cannot be sure the data on the leader hasn't already changed
+    TRI_ASSERT(res.fail());
+    TRI_ASSERT(res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM));
+    return res;
   }
 
   // no more retrying...

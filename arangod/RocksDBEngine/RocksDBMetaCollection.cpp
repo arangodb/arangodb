@@ -224,7 +224,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   }
   auto collGuard =
   scopeGuard([&] { vocbase.releaseCollection(&_logicalCollection); });
-  
+
   uint64_t snapNumberOfDocuments = 0;
   {
     // fetch number docs and snapshot under exclusive lock
@@ -256,17 +256,26 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(ro, cf));
   std::size_t count = 0;
   
+  application_features::ApplicationServer& server = vocbase.server();
+  
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
     ++count;
+
+    if (count % 4096 == 0 &&
+        server.isStopping()) {
+      // check for server shutdown
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
   }
   
   int64_t adjustment = count - snapNumberOfDocuments;
   if (adjustment != 0) {
     auto seq = snapshot->GetSequenceNumber();
     LOG_TOPIC("ad613", WARN, Logger::REPLICATION)
-    << "inconsistent collection count detected, "
-    << "an offet of " << adjustment << " will be applied";
+        << "inconsistent collection count detected for " 
+        << vocbase.name() << "/" << _logicalCollection.name()
+        << ", an offet of " << adjustment << " will be applied";
     _meta.adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
   }
   
@@ -316,17 +325,27 @@ ResultT<std::uint64_t> RocksDBMetaCollection::recalculateCounts(transaction::Met
   std::unique_ptr<rocksdb::Iterator> it(mthds->NewIterator(ro, cf));
   std::int64_t count = 0;
   std::int64_t snapCount = numberDocuments(&trx);
+  
+  TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
+  application_features::ApplicationServer& server = vocbase.server();
 
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
     ++count;
+    
+    if (count % 4096 == 0 &&
+        server.isStopping()) {
+      // check for server shutdown
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
   }
 
   int64_t adjustment = count - snapCount;
   if (adjustment != 0) {
     LOG_TOPIC("ad6d3", WARN, Logger::REPLICATION)
-        << "inconsistent collection count detected, "
-        << "an offet of " << adjustment << " will be applied";
+        << "inconsistent collection count detected for " 
+        << vocbase.name() << "/" << _logicalCollection.name()
+        << ", an offet of " << adjustment << " will be applied";
     _meta.adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
   }
 

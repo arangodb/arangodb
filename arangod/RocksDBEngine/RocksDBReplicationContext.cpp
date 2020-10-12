@@ -383,7 +383,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
 
   b.openArray(true);
   while (cIter->hasMore()) {
-    // needs to be a strings because rocksdb::Slice gets invalidated
+    // needs to be strings because rocksdb::Slice gets invalidated
     std::string lowKey, highKey;
     uint64_t hashval = 0x012345678;
 
@@ -452,8 +452,9 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
     int64_t adjustment = snapNumDocs - cIter->numberDocuments;
     if (adjustment != 0) {
       LOG_TOPIC("4986d", WARN, Logger::REPLICATION)
-          << "inconsistent collection count detected, "
-          << "an offet of " << adjustment << " will be applied";
+          << "inconsistent collection count detected for "
+          << vocbase.name() << "/" << cIter->logical->name() 
+          << ", an offet of " << adjustment << " will be applied";
       auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
       auto seq = rocksutils::latestSequenceNumber();
       rcoll->meta().adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);

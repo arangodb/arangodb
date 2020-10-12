@@ -2462,14 +2462,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  std::string leaderChecksum = referenceChecksum.get();
+  std::string const leaderChecksum = referenceChecksum.get();
   
-  VPackSlice s = body.get("leaderCount");
-  if (s.isNumber()) {
-    // leader count was adjusted...
-    leaderChecksum = std::to_string(s.getNumber<uint64_t>());
-  }
-
   LOG_TOPIC("40b17", DEBUG, Logger::REPLICATION)
       << "Compare Leader: " << leaderChecksum
       << " == Follower: " << checksumSlice.copyString();
