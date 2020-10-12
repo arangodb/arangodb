@@ -1186,16 +1186,23 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   res = addShardFollower(pool, ep, database, shard, lockJobId, clientId, syncerId,
                          _clientInfoString, 60.0);
 
-  // if we get a checksum mismatch, first try to recalculate it locally
-  if (!wasIncremental && res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM)) {
+  // if we get a checksum mismatch, it means that we got different amounts
+  // of documents on the leader and the follower, which can happen if collection
+  // counts are off for whatever reason. 
+  // under many cicrumstances the counts will have been auto-healed by the initial
+  // or the incremental replication before, so in many cases we will not even get
+  // into this if case
+  if (res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM)) {
     // give up the lock on the leader, so writes aren't stopped unncessarily
+    // on the leader while we are recalculating the counts
     readLockGuard.fire();
 
     // recalculate collection count on follower
     LOG_TOPIC("29384", INFO, Logger::MAINTENANCE) 
        << "recalculating collection count on follower for "
        << database << "/" << shard;
-    
+  
+    // recalculate on follower. this can take a long time
     uint64_t docCount;
     Result countRes = collectionCount(collection, docCount);
     if (countRes.fail()) {
@@ -1212,11 +1219,12 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
     // check if we recalculation has made a difference
     if (oldCount == docCount) {
-      // no change happened due to recalculation. now try recounting on leader too
+      // no change happened due to recalculation. now try recounting on leader too.
+      // this is last resort and should not happen often!
       LOG_TOPIC("3dc64", INFO, Logger::MAINTENANCE) 
          << "recalculating collection count on leader for "
          << database << "/" << shard;
-  
+ 
       VPackBuffer<uint8_t> buffer;
       VPackBuilder tmp(buffer);
       tmp.add(VPackSlice::emptyObjectSlice());
@@ -1246,7 +1254,9 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     }
  
     // still let the operation fail here, because we gave up the lock 
-    // already and cannot be sure the data on the leader hasn't already changed
+    // already and cannot be sure the data on the leader hasn't changed in
+    // the meantime. we will sort this issue out during the next maintenance
+    // run
     TRI_ASSERT(res.fail());
     TRI_ASSERT(res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM));
     return res;

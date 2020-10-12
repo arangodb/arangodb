@@ -180,7 +180,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
       // enable patching of collection count for ShardSynchronization Job
       std::string patchCount = StaticStrings::Empty;
       std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
-      if (incremental && engineName == "rocksdb" && _config.applier._skipCreateDrop &&
+      if (engineName == "rocksdb" && _config.applier._skipCreateDrop &&
           _config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include &&
           _config.applier._restrictCollections.size() == 1) {
         patchCount = *_config.applier._restrictCollections.begin();
@@ -193,7 +193,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
 
       startRecurringBatchExtension();
     }
-
+      
     VPackSlice collections, views;
     if (dbInventory.isObject()) {
       collections = dbInventory.get("collections");  // required
