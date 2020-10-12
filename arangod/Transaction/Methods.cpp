@@ -2376,6 +2376,10 @@ Future<Result> Methods::replicateOperations(
         }
       }
 
+      TRI_IF_FAILURE("replicateOperationsDropFollower") {
+        replicationWorked = false;
+      }
+
       if (!replicationWorked) {
         ServerID const& deadFollower = (*followerList)[i];
         Result res = collection->followers()->remove(deadFollower);

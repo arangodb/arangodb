@@ -79,6 +79,9 @@ class PhysicalCollection {
 
   void drop();
 
+  /// recalculate counts for collection in case of failure, blocking
+  virtual uint64_t recalculateCounts();
+
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////

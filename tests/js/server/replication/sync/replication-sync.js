@@ -134,7 +134,7 @@ function BaseTestConfig () {
           arango.PUT_RAW("/_admin/debug/failat/RocksDBCommitCounts", "");
           c.insert({});
           arango.DELETE_RAW("/_admin/debug/failat", "");
-          assertEqual(5001, c.count());
+          assertEqual(5000, c.count());
           assertEqual(5001, c.toArray().length);
         },
         function (state) {
@@ -191,7 +191,7 @@ function BaseTestConfig () {
             c.insert({ _key: "testmann" + i });
           }
           arango.DELETE_RAW("/_admin/debug/failat", "");
-          assertEqual(9100, c.count());
+          assertEqual(9000, c.count());
           assertEqual(9100, c.toArray().length);
         },
         function (state) {
