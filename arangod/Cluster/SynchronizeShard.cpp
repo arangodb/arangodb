@@ -844,6 +844,12 @@ bool SynchronizeShard::first() {
           "/" + resolver.getCollectionName(collection->id());
     }
 
+
+    // old "shortcut" code for getting in sync. This code takes a shortcut if the
+    // shard in question is supposed to be empty. in this case it will simply try
+    // to add itself as an in-sync follower, without running the full replication
+    // protocol. this shortcut relies on the collection counts being correct, and
+    // as these can be at least temporarily off, we need to disable it.
 #if 0
     if (docCount == 0) {
       // We have a short cut:
