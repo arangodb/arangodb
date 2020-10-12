@@ -69,7 +69,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   int lockRead(double timeout = 0.0);
   void unlockRead();
 
-  /// recalculate counts for collection in case of failure, blocking
+  /// recalculate counts for collection in case of failure, blocks other writes for a short period
   uint64_t recalculateCounts() override;
 
   /// @brief compact-data operation
