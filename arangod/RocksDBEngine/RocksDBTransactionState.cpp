@@ -52,6 +52,10 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#include "Random/RandomGenerator.h"
+#endif
+
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
 #include <rocksdb/utilities/transaction.h>
@@ -278,6 +282,11 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       // index estimator updates are buffered
       TRI_IF_FAILURE("RocksDBCommitCounts") {
         continue;
+      }
+      TRI_IF_FAILURE("RocksDBCommitCountsRandom") {
+        if (RandomGenerator::interval(uint16_t(100)) >= 50) {
+          continue;
+        }
       }
       coll->commitCounts(id(), _lastWrittenOperationTick);
     }

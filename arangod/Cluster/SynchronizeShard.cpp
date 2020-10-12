@@ -833,6 +833,8 @@ bool SynchronizeShard::first() {
       _result.reset(TRI_ERROR_INTERNAL, error.str());
       return false;
     }
+                   
+    bool const useIncremental = docCount > 0; // use incremental if possible
 
     { // Initialize _clientInfoString
       CollectionNameResolver resolver(collection->vocbase());
@@ -911,8 +913,7 @@ bool SynchronizeShard::first() {
       {
         VPackObjectBuilder o(&config);
         config.add(ENDPOINT, VPackValue(ep));
-        config.add(INCREMENTAL,
-                   VPackValue(docCount > 0));  // use incremental if possible
+        config.add(INCREMENTAL, VPackValue(useIncremental));
         config.add(KEEP_BARRIER, VPackValue(true));
         config.add(LEADER_ID, VPackValue(leader));
         config.add(SKIP_CREATE_DROP, VPackValue(true));
@@ -990,7 +991,7 @@ bool SynchronizeShard::first() {
 
       // Now start an exclusive transaction to stop writes:
       Result res = catchupWithExclusiveLock(ep, database, *collection, clientId, shard,
-                                            leader, syncerId, lastTick, builder);
+                                            leader, syncerId, lastTick, builder, useIncremental);
       if (!res.ok()) {
         LOG_TOPIC("be85f", INFO, Logger::MAINTENANCE) << res.errorMessage();
         _result.reset(res);
@@ -1132,7 +1133,8 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
 Result SynchronizeShard::catchupWithExclusiveLock(
     std::string const& ep, std::string const& database, LogicalCollection& collection,
     std::string const& clientId, std::string const& shard, std::string const& leader,
-    SyncerId const syncerId, TRI_voc_tick_t lastLogTick, VPackBuilder& builder) {
+    SyncerId const syncerId, TRI_voc_tick_t lastLogTick, VPackBuilder& builder,
+    bool wasIncremental) {
   uint64_t lockJobId = 0;
   LOG_TOPIC("da129", DEBUG, Logger::MAINTENANCE)
       << "synchronizeOneShard: startReadLockOnLeader: " << ep << ":" << database
@@ -1185,7 +1187,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
                          _clientInfoString, 60.0);
 
   // if we get a checksum mismatch, first try to recalculate it locally
-  if (res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM)) {
+  if (!wasIncremental && res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM)) {
     // give up the lock on the leader, so writes aren't stopped unncessarily
     readLockGuard.fire();
 
