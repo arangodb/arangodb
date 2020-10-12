@@ -404,7 +404,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
 
       // enable patching of collection count for ShardSynchronization Job
       std::string patchCount = StaticStrings::Empty;
-      if (incremental && _config.applier._skipCreateDrop &&
+      if (_config.applier._skipCreateDrop &&
           _config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include &&
           _config.applier._restrictCollections.size() == 1) {
         patchCount = *_config.applier._restrictCollections.begin();

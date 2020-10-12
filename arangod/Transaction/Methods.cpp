@@ -2338,6 +2338,10 @@ Future<Result> Methods::replicateOperations(
         }
       }
 
+      TRI_IF_FAILURE("replicateOperationsDropFollower") {
+        replicationWorked = false;
+      }
+
       if (!replicationWorked) {
         LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
             << "synchronous replication: dropping follower "

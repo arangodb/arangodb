@@ -89,6 +89,11 @@ void PhysicalCollection::drop() {
   }
 }
 
+
+uint64_t PhysicalCollection::recalculateCounts() {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "recalculateCounts not implemented for this engine");
+}
+
 bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
   if (!slice.isString()) {
     return false;
