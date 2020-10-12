@@ -1088,6 +1088,7 @@ ArangoDatabase.prototype._useDatabase = function (name) {
     this._queryProperties(true);
     this._flushCache();
   } catch (err) {
+    this._flushCache();
     this._connection.setDatabaseName(old);
 
     if (err.hasOwnProperty('errorNum')) {

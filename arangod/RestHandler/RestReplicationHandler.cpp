@@ -2476,7 +2476,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
         VPackSlice nrSlice = countRes.slice();
         uint64_t nr = nrSlice.getNumber<uint64_t>();
         LOG_TOPIC("533c3", DEBUG, Logger::REPLICATION)
-            << "Compare with shortCut Leader: " << nr
+            << "Compare with shortcut Leader: " << nr
             << " == Follower: " << checksumSlice.copyString();
         if (nr == 0 && checksumSlice.isEqualString("0")) {
           res = col->followers()->add(followerId);
@@ -2539,12 +2539,13 @@ void RestReplicationHandler::handleCommandAddFollower() {
         << col->name();
     std::string const checksum = checksumSlice.copyString();
     LOG_TOPIC("592ef", WARN, Logger::REPLICATION)
-        << "Cannot add follower for shard " << shardSlice.copyString() 
-        << " in database " << _vocbase.name() << ", mismatching checksums. "
-        << "Expected: " << referenceChecksum.get() << ", actual: " << checksum;
+        << "Cannot add follower " << followerId << " for shard "
+        << _vocbase.name() << "/" << col->name() 
+        << ", mismatching checksums. "
+        << "Expected (leader): " << referenceChecksum.get() << ", actual (follower): " << checksum;
     generateError(rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-                  "'checksum' is wrong. Expected: " + referenceChecksum.get() +
-                      ". Actual: " + checksum);
+                  "'checksum' is wrong. Expected (leader): " + referenceChecksum.get() +
+                      ". actual (follower): " + checksum);
     return;
   }
 

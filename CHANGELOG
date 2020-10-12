@@ -7,6 +7,11 @@ devel
 * Added configuration option `--query.tracking-with-querystring` to decide whether
   the query string is shown.
 
+* Fix an issue in arangoimport improperly handling filenames with less than 3
+  characters. The specified input filename was checked for a potential ".gz"
+  ending, but the check required the filename to have at least 3 characters.
+  This is now fixed.
+
 * Added optional verbose logging for agency write operations. This logging
   is configurable by using the new log topic "agencystore".
 
