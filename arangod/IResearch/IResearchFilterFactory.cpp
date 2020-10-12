@@ -1053,7 +1053,7 @@ Result fromFuncGeoInRange(
     }
 
     if (argc > 5) {
-      rv = evaluateArg(includeMax, tmpValue, funcName, args, 4, buildFilter, ctx);
+      rv = evaluateArg(includeMax, tmpValue, funcName, args, 5, buildFilter, ctx);
 
       if (rv.fail()) {
         return rv;
@@ -1075,10 +1075,12 @@ Result fromFuncGeoInRange(
     setupGeoFilter(filterCtx.analyzer, options->options);
 
     options->origin = centroid.ToPoint();
-    options->range.min = minDistance;
-    options->range.min_type = includeMin
-      ? irs::BoundType::INCLUSIVE
-      : irs::BoundType::EXCLUSIVE;
+    if (minDistance != 0.) {
+      options->range.min = minDistance;
+      options->range.min_type = includeMin
+        ? irs::BoundType::INCLUSIVE
+        : irs::BoundType::EXCLUSIVE;
+    }
     options->range.max = maxDistance;
     options->range.max_type = includeMax
       ? irs::BoundType::INCLUSIVE

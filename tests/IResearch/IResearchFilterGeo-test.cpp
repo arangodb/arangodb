@@ -684,7 +684,7 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoInRange) {
       expected);
     assertFilterSuccess(
       vocbase(),
-      R"(FOR d IN myView FILTER GEO_IN_RANGE(d[_FORWARD_('name')], [ 0, 0 ], 0, 5000, true) <= 5000 RETURN d)",
+      R"(FOR d IN myView FILTER GEO_IN_RANGE(d[_FORWARD_('name')], [ 0, 0 ], 0, 5000, true) RETURN d)",
       expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
       vocbase(),
