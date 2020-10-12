@@ -36,19 +36,19 @@ namespace agency {
 namespace detail {
 template <typename T>
 struct moving_ptr {
-  moving_ptr(T* p) : _ptr(p) {}
+  explicit moving_ptr(T* p) : _ptr(p) {}
   ~moving_ptr() = default;
 
   moving_ptr& operator=(moving_ptr const&) = delete;
   moving_ptr(moving_ptr const&) = delete;
 
+  moving_ptr(moving_ptr&& o) { *this = std::move(o); }
   moving_ptr& operator=(moving_ptr&& o) {
     reset(o.release());
     return *this;
-  };
-  moving_ptr(moving_ptr&& o) { *this = std::move(o); }
+  }
 
-  T* release() {
+  T* release() noexcept {
     T* result = _ptr;
     _ptr = nullptr;
     return result;
@@ -158,10 +158,10 @@ struct envelope {
       return std::move(*this);
     }
     template <typename K, typename F>
-    write_trx&& emplace(K&& k, F f) {
+    write_trx&& emplace(K&& k, F&& f) {
       detail::add_to_builder(_builder.get(), std::forward<K>(k));
       _builder->openObject();
-      f(*_builder);
+      std::forward<F>(f)(*_builder);
       _builder->close();
       return std::move(*this);
     }
