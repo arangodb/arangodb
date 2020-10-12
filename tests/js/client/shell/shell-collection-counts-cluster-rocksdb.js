@@ -156,7 +156,7 @@ function collectionCountsSuite () {
       while (tries++ < 120) {
         shardInfo = c.shards(true);
         servers = shardInfo[shard];
-        if (servers.length === 2) {
+        if (servers.length === 2 && c.count() === 100) {
           break;
         }
         require("internal").sleep(0.5);
@@ -212,7 +212,7 @@ function collectionCountsSuite () {
       while (tries++ < 120) {
         shardInfo = c.shards(true);
         servers = shardInfo[shard];
-        if (servers.length === 2) {
+        if (servers.length === 2 && c.count() === 200) {
           break;
         }
         require("internal").sleep(0.5);
@@ -328,15 +328,22 @@ function collectionCountsSuite () {
       assertEqual(100, c.toArray().length);
       
       let total = 0;
-      getDBServers().forEach((server) => {
-        if (servers.indexOf(server.id) === -1) {
-          return;
+      tries = 0;
+      while (tries++ < 120) {
+        getDBServers().forEach((server) => {
+          if (servers.indexOf(server.id) === -1) {
+            return;
+          }
+          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+          assertEqual(200, result.status);
+          assertEqual(100, result.json.count);
+          total += result.json.count;
+        });
+        if (total === 2 * 100) {
+          break;
         }
-        let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-        assertEqual(200, result.status);
-        assertEqual(100, result.json.count);
-        total += result.json.count;
-      });
+        require("internal").sleep(0.5);
+      }
       assertEqual(2 * 100, total);
     },
     

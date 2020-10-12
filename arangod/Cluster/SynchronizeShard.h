@@ -73,7 +73,7 @@ class SynchronizeShard : public ActionBase {
       std::string const& ep, std::string const& database,
       LogicalCollection& collection, std::string const& clientId,
       std::string const& shard, std::string const& leader, SyncerId syncerId,
-      TRI_voc_tick_t lastLogTick, VPackBuilder& builder, bool wasIncremental);
+      TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
 
   /// @brief Short, informative description of the replication client, passed to the server
   std::string _clientInfoString;

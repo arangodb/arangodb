@@ -820,7 +820,6 @@ bool SynchronizeShard::first() {
       return false;
     }
                    
-    bool const useIncremental = docCount > 0; // use incremental if possible
 
     { // Initialize _clientInfoString
       CollectionNameResolver resolver(collection->vocbase());
@@ -905,7 +904,7 @@ bool SynchronizeShard::first() {
       {
         VPackObjectBuilder o(&config);
         config.add(ENDPOINT, VPackValue(ep));
-        config.add(INCREMENTAL, VPackValue(useIncremental));
+        config.add(INCREMENTAL, VPackValue(docCount > 0)); // use incremental if possible
         config.add(KEEP_BARRIER, VPackValue(true));
         config.add(LEADER_ID, VPackValue(leader));
         config.add(SKIP_CREATE_DROP, VPackValue(true));
@@ -983,7 +982,7 @@ bool SynchronizeShard::first() {
 
       // Now start an exclusive transaction to stop writes:
       Result res = catchupWithExclusiveLock(ep, database, *collection, clientId, shard,
-                                            leader, syncerId, lastTick, builder, useIncremental);
+                                            leader, syncerId, lastTick, builder);
       if (!res.ok()) {
         LOG_TOPIC("be85f", INFO, Logger::MAINTENANCE) << res.errorMessage();
         _result.reset(res);
@@ -1125,8 +1124,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
 Result SynchronizeShard::catchupWithExclusiveLock(
     std::string const& ep, std::string const& database, LogicalCollection& collection,
     std::string const& clientId, std::string const& shard, std::string const& leader,
-    SyncerId const syncerId, TRI_voc_tick_t lastLogTick, VPackBuilder& builder,
-    bool wasIncremental) {
+    SyncerId const syncerId, TRI_voc_tick_t lastLogTick, VPackBuilder& builder) {
   uint64_t lockJobId = 0;
   LOG_TOPIC("da129", DEBUG, Logger::MAINTENANCE)
       << "synchronizeOneShard: startReadLockOnLeader: " << ep << ":" << database
@@ -1226,7 +1224,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       options.skipScheduler = true;  // hack to speed up future.get()
 
       std::string const url = "/_api/collection/" + collection.name() +
-                              "/recalculateCount?nonBlocking=true";
+                              "/recalculateCount";
 
       auto response = network::sendRequest(pool, ep, fuerte::RestVerb::Put,
                                            url, std::move(buffer), options)
