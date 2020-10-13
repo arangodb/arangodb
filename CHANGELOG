@@ -1,6 +1,11 @@
 v3.6.8 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue BTS-212: Web UI doesn't let to make partial view update and fixed
+  link definition comparison logic. Equality didn't properly detect partial view
+  update should be audited (also reported as ES-700). That led to link
+  recreation.
+
 * Make sure the optimizer doesn't pick another index than the TTL index itself
   while fulfilling the expiry of TTL.
 

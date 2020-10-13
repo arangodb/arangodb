@@ -45,7 +45,8 @@ namespace {
 
 struct InvalidIndexFactory : public arangodb::IndexTypeFactory {
   bool equal(arangodb::velocypack::Slice const&,
-             arangodb::velocypack::Slice const&) const override {
+             arangodb::velocypack::Slice const&,
+             std::string const&) const override {
     return false;  // invalid definitions are never equal
   }
 

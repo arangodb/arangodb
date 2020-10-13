@@ -1018,7 +1018,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   arangodb::iresearch::IResearchLinkMeta linkMeta;
 
   std::string error;
-  ASSERT_TRUE(linkMeta.init(linkMetaJson->slice(), false, error, sysVocbase.get()));
+  ASSERT_TRUE(linkMeta.init(linkMetaJson->slice(), false,
+                            error, sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
