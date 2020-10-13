@@ -540,6 +540,7 @@ ArangoCollection.prototype.truncate = function (options) {
   }
 
   var append = (options.waitForSync ? '&waitForSync=true' : '');
+  append += (options.compact ? '&compact=true' : '&compact=false');
   var requestResult = this._database._connection.PUT(this._baseurl('truncate') + append, null, headers);
 
   arangosh.checkRequestResult(requestResult);
