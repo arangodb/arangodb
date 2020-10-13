@@ -72,10 +72,10 @@ RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
     createCache();
   }
 
-  RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
 
-  engine->addIndexMapping(_objectId.load(), collection.vocbase().id(),
-                          collection.id(), _iid);
+  engine.addIndexMapping(_objectId.load(), collection.vocbase().id(), collection.id(), _iid);
 }
 
 RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
@@ -93,14 +93,15 @@ RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
     createCache();
   }
 
-  RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  engine->addIndexMapping(_objectId.load(), collection.vocbase().id(),
-                          collection.id(), _iid);
+  auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  engine.addIndexMapping(_objectId.load(), collection.vocbase().id(), collection.id(), _iid);
 }
 
 RocksDBIndex::~RocksDBIndex() {
-  auto engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  engine->removeIndexMapping(_objectId.load());
+  auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  engine.removeIndexMapping(_objectId.load());
 
   if (useCache()) {
     try {
@@ -198,9 +199,10 @@ Result RocksDBIndex::drop() {
   bool const prefixSameAsStart = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
   bool const useRangeDelete = coll->meta().numberDocuments() >= 32 * 1024;
 
-  arangodb::Result r =
-      rocksutils::removeLargeRange(rocksutils::globalRocksDB(), this->getBounds(),
-                                   prefixSameAsStart, useRangeDelete);
+  RocksDBEngine& engine =
+      _collection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  arangodb::Result r = rocksutils::removeLargeRange(engine.db(), this->getBounds(),
+                                                    prefixSameAsStart, useRangeDelete);
 
   // Try to drop the cache as well.
   if (_cache) {
@@ -215,8 +217,8 @@ Result RocksDBIndex::drop() {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
-  size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(),
-                                             this->getBounds(), prefixSameAsStart);
+  size_t numDocs =
+      rocksutils::countKeyRange(engine.db(), this->getBounds(), prefixSameAsStart);
   if (numDocs > 0) {
     std::string errorMsg(
         "deletion check in index drop failed - not all documents in the index "
@@ -262,7 +264,9 @@ Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
 
 /// @brief return the memory usage of the index
 size_t RocksDBIndex::memory() const {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   RocksDBKeyBounds bounds = getBounds();
   TRI_ASSERT(_cf == bounds.columnFamily());
   rocksdb::Range r(bounds.start(), bounds.end());
@@ -276,7 +280,9 @@ size_t RocksDBIndex::memory() const {
 
 /// compact the index, should reduce read amplification
 void RocksDBIndex::compact() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   rocksdb::CompactRangeOptions opts;
   if (_cf != RocksDBColumnFamily::invalid()) {
     RocksDBKeyBounds bounds = this->getBounds();

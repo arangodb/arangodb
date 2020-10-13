@@ -20,6 +20,39 @@ devel
   prefixed with the value of the smart graph attribute". This should
   make it a lot easier to understand what the actual problem is.
 
+* Added configuration option `--query.tracking-slow-queries` to decide whether
+  slow queries are tracked extra.
+
+* Added configuration option `--query.tracking-with-querystring` to decide whether
+  the query string is shown.
+
+* Fix an issue in arangoimport improperly handling filenames with less than 3
+  characters. The specified input filename was checked for a potential ".gz"
+  ending, but the check required the filename to have at least 3 characters.
+  This is now fixed.
+
+* Added optional verbose logging for agency write operations. This logging
+  is configurable by using the new log topic "agencystore".
+
+  The following log levels can be used for for the "agencystore" log topic
+  to log writes to the agency:
+  - DEBUG: will log all writes on the leader
+  - TRACE: will log all writes on both leaders and followers
+  The default log level for the "agencystore" log topic is WARN, meaning no
+  agency writes will be logged.
+  Turning on this logging can be used for auditing and debugging, but it is
+  not recommended in the general case, as it can lead to large amounts of 
+  data being logged, which can have a performance impact and will lead to
+  higher disk space usage.
+  
+* Fix #12693: SORT inside a subquery could sometimes swallow part of its input
+  when it crossed boundaries of internal row batches.
+
+* Added configuration option `--rocksdb.sync-delay-threshold`.
+  This option can be used to track if any RocksDB WAL sync operations is 
+  delayed by more than the configured value (in milliseconds). The intention
+  is to get aware of severely delayed WAL sync operations.
+
 * Fix for BTS-191: Made transaction API database-aware.
 
 * Minor clean up of and less verbosity in agent callbacks. 
@@ -62,7 +95,7 @@ devel
 * Fix a performance regression when a LIMIT is combined with a COLLECT WITH
   COUNT INTO. Reported in ES-692.
 
-* Fixed issue ES-664: SEARCH vs FILTER lookup performance.
+* Fixed issue ES-696: SEARCH vs FILTER lookup performance.
   Consolidation functionality for ArangoSearch view links was able to hit non-
   mergable enormous amount of segments due to improper scheduling logic.
 

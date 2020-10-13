@@ -39,6 +39,7 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -1306,7 +1307,9 @@ void RocksDBVPackIndex::recalculateEstimates() {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
 
   auto bounds = getBounds();

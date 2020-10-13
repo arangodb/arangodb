@@ -50,8 +50,8 @@
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
-#include "Logger/Logger.h"
 #include "Indexes/Index.h"
+#include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
@@ -59,6 +59,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingInfo.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
@@ -3632,10 +3633,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
     return collectionFromPlan.state();
   }
 
+  auto& engine = _server.getFeature<EngineSelectorFeature>().engine();
   VPackSlice indexes = collectionFromPlan.indexes();
   for (auto const& other : VPackArrayIterator(indexes)) {
     TRI_ASSERT(other.isObject());
-    if (true == arangodb::Index::Compare(slice, other, collection.vocbase().name())) {
+    if (true == arangodb::Index::Compare(engine, slice, other, collection.vocbase().name())) {
       {  // found an existing index... Copy over all elements in slice.
         VPackObjectBuilder b(&resultBuilder);
         resultBuilder.add(VPackObjectIterator(other));

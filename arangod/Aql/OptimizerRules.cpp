@@ -1235,7 +1235,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
 
   bool modified = false;
 
-  for (auto const& n : nodes) {
+  for (ExecutionNode* n : nodes) {
     auto collectNode = ExecutionNode::castTo<CollectNode*>(n);
     TRI_ASSERT(collectNode != nullptr);
 
@@ -1342,8 +1342,8 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
 
     collectNode->clearAggregates(
         [&varsUsedLater, &modified](
-            std::pair<Variable const*, std::pair<Variable const*, std::string>> const& aggregate) -> bool {
-          if (varsUsedLater.find(aggregate.first) == varsUsedLater.end()) {
+            AggregateVarInfo const& aggregate) -> bool {
+          if (varsUsedLater.find(aggregate.outVar) == varsUsedLater.end()) {
             // result of aggregate function not used later
             modified = true;
             return true;
@@ -1835,7 +1835,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
           // add the post-SORT
           SortElementVector sortElements;
           for (auto const& v : collectNode->groupVariables()) {
-            sortElements.emplace_back(v.first, true);
+            sortElements.emplace_back(v.outVar, true);
           }
 
           auto sortNode = new SortNode(plan.get(), plan->nextId(), sortElements, false);
@@ -1872,7 +1872,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         // add the post-SORT
         SortElementVector sortElements;
         for (auto const& v : newCollectNode->groupVariables()) {
-          sortElements.emplace_back(v.first, true);
+          sortElements.emplace_back(v.outVar, true);
         }
 
         auto sortNode =
@@ -1916,7 +1916,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     if (!groupVariables.empty()) {
       SortElementVector sortElements;
       for (auto const& v : groupVariables) {
-        sortElements.emplace_back(v.second, true);
+        sortElements.emplace_back(v.inVar, true);
       }
 
       auto sortNode = new SortNode(plan.get(), plan->nextId(), sortElements, true);
@@ -2142,14 +2142,14 @@ class arangodb::aql::RedundantCalculationsReplacer final
       case EN::COLLECT: {
         auto node = ExecutionNode::castTo<CollectNode*>(en);
         for (auto& variable : node->_groupVariables) {
-          variable.second = Variable::replace(variable.second, _replacements);
+          variable.inVar = Variable::replace(variable.inVar, _replacements);
         }
         for (auto& variable : node->_keepVariables) {
           auto old = variable;
           variable = Variable::replace(old, _replacements);
         }
         for (auto& variable : node->_aggregateVariables) {
-          variable.second.first = Variable::replace(variable.second.first, _replacements);
+          variable.inVar = Variable::replace(variable.inVar, _replacements);
         }
         if (node->_expressionVariable != nullptr) {
           node->_expressionVariable =
@@ -4422,10 +4422,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
             // re-use the existing CollectNode on the coordinator to aggregate
             // the counts of the DB servers
-            std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
-            aggregateVariables.emplace_back(
-                std::make_pair(collectNode->outVariable(),
-                               std::make_pair(outVariable, "SUM")));
+            std::vector<AggregateVarInfo> aggregateVariables;
+            aggregateVariables.emplace_back(AggregateVarInfo{collectNode->outVariable(), outVariable, "SUM"});
 
             collectNode->aggregationMethod(CollectOptions::CollectMethod::SORTED);
             collectNode->count(false);
@@ -4444,8 +4442,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
             TRI_ASSERT(!groupVars.empty());
             auto out = plan->getAst()->variables()->createTemporaryVariable();
 
-            std::vector<std::pair<Variable const*, Variable const*>> const groupVariables{
-                std::make_pair(out, groupVars[0].second)};
+            std::vector<GroupVarInfo> const groupVariables{
+              GroupVarInfo{out, groupVars[0].inVar}};
 
             auto dbCollectNode =
                 new CollectNode(plan.get(), plan->nextId(), collectNode->getOptions(),
@@ -4466,8 +4464,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
             auto copy = collectNode->groupVariables();
             TRI_ASSERT(!copy.empty());
             std::unordered_map<Variable const*, Variable const*> replacements;
-            replacements.try_emplace(copy[0].second, out);
-            copy[0].second = out;
+            replacements.try_emplace(copy[0].inVar, out);
+            copy[0].inVar = out;
             collectNode->groupVariables(copy);
 
             replaceGatherNodeVariables(plan.get(), gatherNode, replacements);
@@ -4477,18 +4475,17 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
             // coordinator to the DB server(s), and leave an aggregate COLLECT
             // node on the coordinator for total aggregation
 
-            std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
+            std::vector<AggregateVarInfo> aggregateVariables;
             if (!collectNode->aggregateVariables().empty()) {
               for (auto const& it : collectNode->aggregateVariables()) {
-                std::string func = Aggregator::pushToDBServerAs(it.second.second);
+                std::string func = Aggregator::pushToDBServerAs(it.type);
                 if (func.empty()) {
                   eligible = false;
                   break;
                 }
                 // eligible!
                 auto outVariable = plan->getAst()->variables()->createTemporaryVariable();
-                aggregateVariables.emplace_back(
-                    std::make_pair(outVariable, std::make_pair(it.second.first, func)));
+                aggregateVariables.emplace_back(AggregateVarInfo{outVariable, it.inVar, func});
               }
             }
 
@@ -4503,15 +4500,15 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
             // create new group variables
             auto const& groupVars = collectNode->groupVariables();
-            std::vector<std::pair<Variable const*, Variable const*>> outVars;
+            std::vector<GroupVarInfo> outVars;
             outVars.reserve(groupVars.size());
             std::unordered_map<Variable const*, Variable const*> replacements;
 
             for (auto const& it : groupVars) {
               // create new out variables
               auto out = plan->getAst()->variables()->createTemporaryVariable();
-              replacements.try_emplace(it.second, out);
-              outVars.emplace_back(out, it.second);
+              replacements.try_emplace(it.inVar, out);
+              outVars.emplace_back(GroupVarInfo{out, it.inVar});
             }
 
             auto dbCollectNode =
@@ -4528,29 +4525,27 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
             dbCollectNode->aggregationMethod(collectNode->aggregationMethod());
             dbCollectNode->specialized();
 
-            std::vector<std::pair<Variable const*, Variable const*>> copy;
+            std::vector<GroupVarInfo> copy;
             size_t i = 0;
-            for (auto const& it : collectNode->groupVariables()) {
+            for (GroupVarInfo const& it : collectNode->groupVariables()) {
               // replace input variables
-              copy.emplace_back(std::make_pair(it.first, outVars[i].first));
+              copy.emplace_back(GroupVarInfo{/*outVar*/it.outVar, /*inVar*/outVars[i].outVar});
               ++i;
             }
             collectNode->groupVariables(copy);
 
             if (collectNode->count()) {
-              std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
-              aggregateVariables.emplace_back(
-                  std::make_pair(collectNode->outVariable(),
-                                 std::make_pair(outVariable, "SUM")));
+              std::vector<AggregateVarInfo> aggregateVariables;
+              aggregateVariables.emplace_back(AggregateVarInfo{collectNode->outVariable(), outVariable, "SUM"});
 
               collectNode->count(false);
               collectNode->setAggregateVariables(aggregateVariables);
               collectNode->clearOutVariable();
             } else {
               size_t i = 0;
-              for (auto& it : collectNode->aggregateVariables()) {
-                it.second.first = aggregateVariables[i].first;
-                it.second.second = Aggregator::runOnCoordinatorAs(it.second.second);
+              for (AggregateVarInfo& it : collectNode->aggregateVariables()) {
+                it.inVar = aggregateVariables[i].outVar;
+                it.type = Aggregator::runOnCoordinatorAs(it.type);
                 ++i;
               }
             }

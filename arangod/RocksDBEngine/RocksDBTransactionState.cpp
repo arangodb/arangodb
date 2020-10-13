@@ -113,7 +113,9 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     _cacheTx = CacheManagerFeature::MANAGER->beginTransaction(isReadOnlyTransaction());
   }
 
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   _rocksReadOptions.prefix_same_as_start = true;  // should always be true
 
   TRI_ASSERT(_readSnapshot == nullptr);
@@ -183,7 +185,9 @@ void RocksDBTransactionState::createTransaction() {
   TRI_ASSERT(!isReadOnlyTransaction());
 
   // start rocks transaction
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   rocksdb::TransactionOptions trxOpts;
   trxOpts.set_snapshot = true;
 
@@ -215,7 +219,9 @@ void RocksDBTransactionState::createTransaction() {
 }
 
 void RocksDBTransactionState::prepareCollections() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
   for (auto& trxColl : _collections) {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
@@ -253,7 +259,9 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
   if (_readSnapshot != nullptr) {
     TRI_ASSERT(isReadOnlyTransaction() ||
                hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS));
-    rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+    auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
+    auto& engine = selector.engine<RocksDBEngine>();
+    rocksdb::TransactionDB* db = engine.db();
     db->ReleaseSnapshot(_readSnapshot);  // calls delete
     _readSnapshot = nullptr;
   }
@@ -351,7 +359,9 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
   if (ADB_LIKELY(numOps > 0)) {
     postCommitSeq += numOps - 1;  // add to get to the next batch
   }
-  TRI_ASSERT(postCommitSeq <= rocksutils::globalRocksDB()->GetLatestSequenceNumber());
+  auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  TRI_ASSERT(postCommitSeq <= engine.db()->GetLatestSequenceNumber());
   _lastWrittenOperationTick = postCommitSeq;
 
   commitCounts();
@@ -360,16 +370,14 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
 #ifndef _WIN32
   // wait for sync if required, for all other platforms but Windows
   if (waitForSync()) {
-    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-    TRI_ASSERT(engine != nullptr);
-    if (engine->syncThread()) {
+    if (engine.syncThread()) {
       // we do have a sync thread
-      return engine->syncThread()->syncWal();
+      return engine.syncThread()->syncWal();
     } else {
       // no sync thread present... this may be the case if automatic
       // syncing is completely turned off. in this case, use the
       // static sync method
-      return RocksDBSyncThread::sync(engine->db()->GetBaseDB());
+      return RocksDBSyncThread::sync(engine.db()->GetBaseDB());
     }
   }
 #endif
@@ -557,7 +565,9 @@ uint64_t RocksDBTransactionState::sequenceNumber() const {
     return static_cast<uint64_t>(_readSnapshot->GetSequenceNumber());
   } 
   if (isReadOnlyTransaction() && isSingleOperation()) {
-    return rocksutils::latestSequenceNumber();
+    RocksDBEngine& engine =
+        vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+    return engine.db()->GetLatestSequenceNumber();
   }
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "No snapshot set");
@@ -568,7 +578,9 @@ bool RocksDBTransactionState::setSnapshotOnReadOnly() {
   if (_readSnapshot == nullptr && isReadOnlyTransaction()) {
     TRI_ASSERT(_rocksTransaction == nullptr);
     TRI_ASSERT(isSingleOperation());
-    _readSnapshot = rocksutils::globalRocksDB()->GetSnapshot();
+    auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
+    auto& engine = selector.engine<RocksDBEngine>();
+    _readSnapshot = engine.db()->GetSnapshot();
     return true;
   }
   return false;
@@ -700,7 +712,9 @@ rocksdb::SequenceNumber RocksDBTransactionState::beginSeq() const {
   } else if (_readSnapshot) {
     return _readSnapshot->GetSequenceNumber();
   }
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   return db->GetLatestSequenceNumber();
 }
 

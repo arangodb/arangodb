@@ -180,8 +180,10 @@ static void JS_EstimateCollectionSize(v8::FunctionCallbackInfo<v8::Value> const&
 static void JS_WaitForEstimatorSync(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  TRI_GET_GLOBALS();
 
-  EngineSelectorFeature::ENGINE->waitForEstimatorSync(std::chrono::seconds(10));
+  v8g->_server.getFeature<EngineSelectorFeature>().engine().waitForEstimatorSync(
+      std::chrono::seconds(10));
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END

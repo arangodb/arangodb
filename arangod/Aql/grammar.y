@@ -849,7 +849,7 @@ collect_statement:
       AstNode const* into = ::getIntoVariable(parser, $3);
       AstNode const* intoExpression = ::getIntoExpression($3);
 
-      auto node = parser->ast()->createNodeCollect(parser->ast()->createNodeArray(), $2, into, intoExpression, nullptr, $3);
+      auto node = parser->ast()->createNodeCollect(parser->ast()->createNodeArray(), $2, into, intoExpression, nullptr, $4);
       parser->ast()->addOperation(node);
     }
   | collect_variable_list aggregate collect_optional_into options {

@@ -1,4 +1,4 @@
-/* global ArangoServerState, ArangoClusterInfo, REPLICATION_SYNCHRONIZE_FINALIZE */
+/* global ArangoServerState, ArangoClusterInfo */
 'use strict';
 
 // /////////////////////////////////////////////////////////////////////////////
