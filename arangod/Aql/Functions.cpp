@@ -1740,17 +1740,8 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, AstNode const*,
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
   auto& analyzerFeature = server.getFeature<iresearch::IResearchAnalyzerFeature>();
-
-  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
-
-  if (ADB_UNLIKELY(nullptr == sysVocbase)) {
-    arangodb::aql::registerWarning(ctx, AFN, TRI_ERROR_INTERNAL);
-    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
-  }
   auto& trx = ctx->trx();
-  auto analyzer = analyzerFeature.get(analyzerId, ctx->vocbase(), *sysVocbase,
+  auto analyzer = analyzerFeature.get(analyzerId, ctx->vocbase(), 
                                       trx.state()->analyzersRevision());
   if (!analyzer) {
     arangodb::aql::registerWarning(

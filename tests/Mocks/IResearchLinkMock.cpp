@@ -80,9 +80,10 @@ void IResearchLinkMock::toVelocyPack(
 }
 
 bool IResearchLinkMock::isPersistent() const {
-  auto* engine = arangodb::EngineSelectorFeature::ENGINE;
+  auto& engine =
+      Index::collection().vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
-  if (engine && engine->inRecovery()) {
+  if (engine.inRecovery()) {
     return !IResearchLink::createdInRecovery();
   }
 

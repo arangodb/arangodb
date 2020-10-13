@@ -15,6 +15,13 @@ You should reference them via their names instead.
 @RESTURLPARAM{collection-name,string,required}
 The name of the collection.
 
+@RESTURLPARAM{details,boolean,required}
+Setting `details` to `true` will return extended storage engine-specific
+details to the figures. The details are intended for debugging ArangoDB itself
+and their format is subject to change. By default, `details` is set to `false`,
+so no details are returned and the behavior is identical to previous versions
+of ArangoDB.
+
 @RESTDESCRIPTION
 In addition to the above, the result also contains the number of documents
 and additional statistical information about the collection.
@@ -58,6 +65,22 @@ Using an identifier and requesting the figures of the collection:
     coll.save({"test":"hello"});
     require("internal").wal.flush(true, true);
     var url = "/_api/collection/"+ coll.name() + "/figures";
+
+    var response = logCurlRequest('GET', url);
+
+    assert(response.code === 200);
+
+    logJsonResponse(response);
+    db._drop(cn);
+@END_EXAMPLE_ARANGOSH_RUN
+
+@EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionFiguresDetails}
+    var cn = "products";
+    db._drop(cn);
+    var coll = db._create(cn);
+    coll.save({"test":"hello"});
+    require("internal").wal.flush(true, true);
+    var url = "/_api/collection/"+ coll.name() + "/figures?details=true";
 
     var response = logCurlRequest('GET', url);
 

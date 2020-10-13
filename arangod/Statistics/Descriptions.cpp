@@ -319,6 +319,22 @@ stats::Descriptions::Descriptions(application_features::ApplicationServer& serve
                                stats::FigureType::Accumulated,
                                stats::Unit::Number,
                                {}});
+  
+  _figures.emplace_back(Figure{stats::GroupType::Http,
+                               "requestsSuperuser",
+                               "Total superuser requests",
+                               "Total number of HTTP requests executed by superuser/JWT.",
+                               stats::FigureType::Accumulated,
+                               stats::Unit::Number,
+                               {}});
+  
+  _figures.emplace_back(Figure{stats::GroupType::Http,
+                               "requestsUser",
+                               "Total user requests",
+                               "Total number of HTTP requests executed by clients.",
+                               stats::FigureType::Accumulated,
+                               stats::Unit::Number,
+                               {}});
 
   _figures.emplace_back(
       Figure{stats::GroupType::Http,
@@ -502,6 +518,8 @@ void stats::Descriptions::httpStatistics(velocypack::Builder& b) const {
 
   // request counters
   b.add("requestsTotal", VPackValue(stats.totalRequests.get()));
+  b.add("requestsSuperuser", VPackValue(stats.totalRequestsSuperuser.get()));
+  b.add("requestsUser", VPackValue(stats.totalRequestsUser.get()));
   b.add("requestsAsync", VPackValue(stats.asyncRequests.get()));
   b.add("requestsGet", VPackValue(stats.methodRequests[(int)rest::RequestType::GET].get()));
   b.add("requestsHead", VPackValue(stats.methodRequests[(int)rest::RequestType::HEAD].get()));

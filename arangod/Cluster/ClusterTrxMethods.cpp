@@ -266,17 +266,19 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
                 << follower << " for all participating shards in"
                 << " transaction " << state->id().id() << " (status " 
                 << arangodb::transaction::statusString(status) 
-                << "), status code: " << static_cast<int>(resp.response->statusCode()) 
-                << ", message: " << network::fuerteToArangoErrorMessage(resp);
+                << "), status code: " << static_cast<int>(resp.statusCode()) 
+                << ", message: " << resp.combinedResult().errorMessage();
             state->allCollections([&](TransactionCollection& tc) {
               auto cc = tc.collection();
               if (cc) {
+                LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
+                    << "synchronous replication: dropping follower "
+                    << follower << " for shard " << tc.collectionName()
+                    << " in database " << cc->vocbase().name() 
+                    << ": " << resp.combinedResult().errorMessage();
+
                 Result r = cc->followers()->remove(follower);
-                if (r.ok()) {
-                  LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
-                      << "synchronous replication: dropped follower "
-                      << follower << " for shard " << tc.collectionName();
-                } else {
+                if (r.fail()) {
                   LOG_TOPIC("4971f", ERR, Logger::REPLICATION)
                       << "synchronous replication: could not drop follower "
                       << follower << " for shard " << tc.collectionName()
