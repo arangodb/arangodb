@@ -160,6 +160,12 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
   virtual void prepare(S2RegionTermIndexer::Options& opts) const;
   virtual bool reset(irs::string_ref const& value);
 
+  Type shapeType() const noexcept { return _type; }
+
+  S2RegionTermIndexer::Options const& options() const noexcept {
+    return _indexer.options();
+  }
+
  private:
   S2RegionTermIndexer _indexer;
   geo::ShapeContainer _shape;
