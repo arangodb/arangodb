@@ -1832,6 +1832,12 @@ Result RocksDBCollection::cleanupAfterUpgrade() {
                                         ::clearTemporaryObjectId, false);
 }
 
+bool RocksDBCollection::hasDocuments() {
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId());
+  return rocksutils::hasKeys(db, bounds, true);
+}
+
 /// @brief return engine-specific figures
 void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Builder& builder) {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
