@@ -1,6 +1,9 @@
 v3.6.8 (XXXX-XX-XX)
 -------------------
 
+* Make sure the optimizer doesn't pick another index than the TTL index itself
+  while fulfilling the expiry of TTL.
+
 * Fix an issue in arangoimport improperly handling filenames with less than 3
   characters. The specified input filename was checked for a potential ".gz"
   ending, but the check required the filename to have at least 3 characters.
