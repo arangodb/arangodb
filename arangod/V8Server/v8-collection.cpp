@@ -120,21 +120,6 @@ static inline bool ExtractBooleanArgument(v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract a string argument from the arguments
-/// must specify the argument index starting from 1
-////////////////////////////////////////////////////////////////////////////////
-
-static inline void ExtractStringArgument(v8::Isolate* isolate,
-                                         v8::FunctionCallbackInfo<v8::Value> const& args,
-                                         int index, std::string& ret) {
-  TRI_ASSERT(index > 0);
-
-  if (args.Length() >= index && args[index - 1]->IsString()) {
-    ret = TRI_ObjectToString(isolate, args[index - 1]);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a string value referencing a documents _id
 ///        If value is a string it is simply returned.
 ///        If value is an object and has a string _id attribute, this is
