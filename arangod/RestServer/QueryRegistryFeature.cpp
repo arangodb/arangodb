@@ -54,7 +54,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _trackSlowQueries(true),
       _trackQueryString(true),
       _trackBindVars(true),
-      _trackCollections(false),
+      _trackDataSources(false),
       _failOnWarning(aql::QueryOptions::defaultFailOnWarning),
       _queryCacheIncludeSystem(false),
 #ifdef USE_ENTERPRISE
@@ -131,8 +131,8 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "whether to track bind vars with AQL queries",
                      new BooleanParameter(&_trackBindVars));
   
-  options->addOption("--query.tracking-with-collections", "whether to track the query collection names",
-                     new BooleanParameter(&_trackCollections))
+  options->addOption("--query.tracking-with-datasources", "whether to track data sources with AQL queries",
+                     new BooleanParameter(&_trackDataSources))
                      .setIntroducedIn(30704);
 
   options->addOption("--query.fail-on-warning",

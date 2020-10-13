@@ -4,8 +4,17 @@ devel
 * Added configuration option `--query.tracking-slow-queries` to decide whether
   slow queries are tracked extra.
 
-* Added configuration option `--query.tracking-with-querystring` to decide whether
-  the query string is shown.
+* Added configuration option `--query.tracking-with-querystring` to decide
+  whether the query string is shown in the slow query log and the list of 
+  currently running queries. The option is true by default. 
+  When turned off, querystrings in the slow query log and the list of currently
+  running queries are just shown as "<hidden>".
+
+* Added configuration option `--query.tracking-with-datasources` to toggle
+  whether the names of data sources used by queries are shown in the slow query 
+  log and the list of currently running queries. The option is false by default. 
+  When turned on, the names of data sources used by the query will be shown in
+  the slow query log and the list of currently running queries.
 
 * Fix an issue in arangoimport improperly handling filenames with less than 3
   characters. The specified input filename was checked for a potential ".gz"
