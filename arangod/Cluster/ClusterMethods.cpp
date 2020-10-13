@@ -1609,6 +1609,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
   reqOpts.database = trx.vocbase().name();
   reqOpts.timeout = network::Timeout(600.0);
   reqOpts.retryNotFound = true;
+  reqOpts.param(StaticStrings::Compact, (options.truncateCompact ? "true" : "false"));
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
