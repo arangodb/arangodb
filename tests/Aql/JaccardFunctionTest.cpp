@@ -25,7 +25,9 @@
 
 #include "fakeit.hpp"
 
+#include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
@@ -68,7 +70,11 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs) {
   params.emplace_back(rhs);
   params.emplace_back(VPackSlice::nullSlice()); // redundant argument
 
-  return Functions::Jaccard(&expressionContext, nullptr, params);
+  arangodb::aql::Function f("JACCARD", &Functions::Jaccard);
+  arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+  node.setData(static_cast<void const*>(&f));
+
+  return Functions::Jaccard(&expressionContext, node, params);
 }
 
 AqlValue evaluate(char const* lhs, char const* rhs) {

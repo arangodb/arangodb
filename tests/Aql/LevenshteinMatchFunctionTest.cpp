@@ -25,7 +25,9 @@
 
 #include "fakeit.hpp"
 
+#include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
@@ -74,7 +76,11 @@ AqlValue evaluate(AqlValue const& lhs,
     params.emplace_back(VPackSlice::nullSlice()); // redundant argument
   }
 
-  AqlValue result = Functions::LevenshteinMatch(&expressionContext, nullptr, params);
+  arangodb::aql::Function f("LEVENSHTEIN_MATCH", &Functions::LevenshteinMatch);
+  arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+  node.setData(static_cast<void const*>(&f));
+
+  AqlValue result = Functions::LevenshteinMatch(&expressionContext, node, params);
 
   // explicitly call cleanup on the mocked transaction context because
   // for whatever reason the context's dtor does not fire and thus we

@@ -25,7 +25,9 @@
 
 #include "fakeit.hpp"
 
+#include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
@@ -86,7 +88,12 @@ class InRangeFunctionTest : public ::testing::Test {
     if (includeUpper) {
       params.emplace_back(*includeUpper);
     }
-    return Functions::InRange(&expressionContext, nullptr, params);
+  
+    arangodb::aql::Function f("IN_RANGE", &Functions::InRange);
+    arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+    node.setData(static_cast<void const*>(&f));
+
+    return Functions::InRange(&expressionContext, node, params);
   }
 
   void assertInRangeFail(size_t line,

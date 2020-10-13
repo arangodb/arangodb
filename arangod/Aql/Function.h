@@ -56,9 +56,6 @@ struct Function {
     /// @brief exclude the function from being evaluated during AST
     /// optimizations evaluation of function will only happen at query runtime
     NoEval = 8,
-    
-    /// @brief is this function position dependent
-    NonMoveable = 16
   };
 
   /// @brief helper for building flags
@@ -75,6 +72,11 @@ struct Function {
   Function(std::string const& name, char const* arguments,
            std::underlying_type<Flags>::type flags,
            FunctionImplementation implementation = nullptr);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  Function(std::string const& name,
+           FunctionImplementation implementation);
+#endif
 
   /// @brief return whether a specific flag is set for the function
   bool hasFlag(Flags flag) const;

@@ -50,6 +50,17 @@ Function::Function(std::string const& name, char const* arguments,
       << ", hasConversions: " << !conversions.empty();
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+// constructor to create a function stub. only used from tests
+Function::Function(std::string const& name, FunctionImplementation implementation) 
+    : name(name), 
+      arguments("."),
+      flags(makeFlags()), 
+      implementation(implementation) {
+  initializeArguments();
+}
+#endif
+
 /// @brief parse the argument list and set the minimum and maximum number of
 /// arguments
 void Function::initializeArguments() {

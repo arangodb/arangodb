@@ -463,7 +463,7 @@ REGISTER_ANALYZER_VPACK(irs::analysis::pipeline_token_stream, pipeline_vpack_bui
 } // namespace pipeline_vpack
 
 arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expressionContext,
-                                    arangodb::aql::AstNode const*,
+                                    arangodb::aql::AstNode const&,
                                     arangodb::aql::VPackFunctionParameters const& args) {
   if (ADB_UNLIKELY(args.empty() || args.size() > 2)) {
     irs::string_ref const message =

@@ -810,6 +810,7 @@ AqlValue Expression::executeSimpleExpressionFCall(AstNode const* node, bool& mus
 /// @brief execute an expression of type SIMPLE with FCALL, CXX version
 AqlValue Expression::executeSimpleExpressionFCallCxx(AstNode const* node,
                                                      bool& mustDestroy) {
+  TRI_ASSERT(node != nullptr);
   mustDestroy = false;
   auto func = static_cast<Function*>(node->getData());
   TRI_ASSERT(func->implementation != nullptr);
@@ -863,7 +864,7 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(AstNode const* node,
   TRI_ASSERT(params.parameters.size() == params.destroyParameters.size());
   TRI_ASSERT(params.parameters.size() == n);
 
-  AqlValue a = func->implementation(_expressionContext, node, params.parameters);
+  AqlValue a = func->implementation(_expressionContext, *node, params.parameters);
   mustDestroy = true;  // function result is always dynamic
 
   return a;

@@ -25,7 +25,9 @@
 
 #include "fakeit.hpp"
 
+#include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
@@ -78,7 +80,12 @@ class NgramPosSimilarityFunctionTest : public ::testing::Test {
     if (ngram_size) {
       params.emplace_back(*ngram_size);
     }
-    return Functions::NgramPositionalSimilarity(&expressionContext, nullptr, params);
+    
+    arangodb::aql::Function f("NGRAM_POSITIONAL_SIMILARITY", &Functions::NgramPositionalSimilarity);
+    arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+    node.setData(static_cast<void const*>(&f));
+    
+    return Functions::NgramPositionalSimilarity(&expressionContext, node, params);
   }
 
   void assertNgramSimilarityFail(size_t line,
