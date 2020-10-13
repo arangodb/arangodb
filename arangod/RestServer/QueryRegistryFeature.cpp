@@ -107,7 +107,7 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new BooleanParameter(&_trackBindVars));
   
   options->addOption("--query.tracking-with-datasources",
-                     "whether to track datasouces with AQL queries",
+                     "whether to track data sources with AQL queries",
                      new BooleanParameter(&_trackDataSources))
                      .setIntroducedIn(30608);
 
