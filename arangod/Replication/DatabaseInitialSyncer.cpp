@@ -1595,30 +1595,9 @@ Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
   return guard.collection()->properties(slice, false);  // always a full-update
 }
 
-/// @brief determine the number of documents in a collection
-int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection const& col) {
-  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase()),
-                                  col, AccessMode::Type::READ);
-  Result res = trx.begin();
-
-  if (res.fail()) {
-    return -1;
-  }
-
-  OperationOptions options(ExecContext::current());
-  auto result = trx.count(col.name(), transaction::CountType::Normal, options);
-
-  if (result.result.fail()) {
-    return -1;
-  }
-
-  VPackSlice s = result.slice();
-
-  if (!s.isNumber()) {
-    return -1;
-  }
-
-  return s.getNumber<int64_t>();
+/// @brief whether or not the collection has documents
+bool DatabaseInitialSyncer::hasDocuments(arangodb::LogicalCollection const& col) {
+  return col.getPhysical()->hasDocuments();
 }
 
 /// @brief handle the information about a collection
@@ -1815,7 +1794,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
     std::string const& leaderColl =
         !leaderUuid.empty() ? leaderUuid : itoa(leaderCid.id());
-    auto res = incremental && getSize(*col) > 0
+    auto res = incremental && hasDocuments(*col)
                    ? fetchCollectionSync(col, leaderColl, _config.leader.lastLogTick)
                    : fetchCollectionDump(col, leaderColl, _config.leader.lastLogTick);
 
