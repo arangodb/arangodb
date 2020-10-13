@@ -256,7 +256,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
                                        "invalid \"groups\" definition");
       }
 
-      std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
+      std::vector<GroupVarInfo> groupVariables;
       {
         groupVariables.reserve(groupsSlice.length());
         for (VPackSlice it : VPackArrayIterator(groupsSlice)) {
@@ -265,7 +265,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
           Variable* inVar =
               Variable::varFromVPack(plan->getAst(), it, "inVariable");
 
-          groupVariables.emplace_back(std::make_pair(outVar, inVar));
+          groupVariables.emplace_back(GroupVarInfo{outVar, inVar});
         }
       }
 
@@ -276,7 +276,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
                                        "invalid \"aggregates\" definition");
       }
 
-      std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
+      std::vector<AggregateVarInfo> aggregateVariables;
       {
         aggregateVariables.reserve(aggregatesSlice.length());
         for (VPackSlice it : VPackArrayIterator(aggregatesSlice)) {
@@ -286,8 +286,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
               Variable::varFromVPack(plan->getAst(), it, "inVariable");
 
           std::string const type = it.get("type").copyString();
-          aggregateVariables.emplace_back(
-              std::make_pair(outVar, std::make_pair(inVar, type)));
+          aggregateVariables.emplace_back(AggregateVarInfo{outVar, inVar, type});
         }
       }
 
@@ -366,7 +365,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
 /// @brief create an ExecutionNode from VPackSlice
 ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
     : _id(slice.get("id").getNumericValue<size_t>()),
-      _depth(slice.get("depth").getNumericValue<int>()),
+      _depth(slice.get("depth").getNumericValue<unsigned int>()),
       _varUsageValid(true),
       _isInSplicedSubquery(false),
       _plan(plan) {
