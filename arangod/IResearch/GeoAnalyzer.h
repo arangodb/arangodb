@@ -43,6 +43,10 @@ template<typename T> class Buffer;
 
 namespace iresearch {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class GeoAnalyzer
+/// @brief base class for other geo analyzers
+////////////////////////////////////////////////////////////////////////////////
 class GeoAnalyzer
   : public irs::frozen_attributes<2, irs::analysis::analyzer>,
     private irs::util::noncopyable {
@@ -69,6 +73,11 @@ class GeoAnalyzer
   irs::term_attribute _term;
 }; // GeoAnalyzer
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class GeoPointAnalyzer
+/// @brief an analyzer capable of breaking up a valid geo point input into a set
+///        of tokens for further indexing
+////////////////////////////////////////////////////////////////////////////////
 class GeoPointAnalyzer final : public GeoAnalyzer {
  public:
   struct Options {
@@ -102,13 +111,31 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
   std::string _longitude;
   S2LatLng _point;
   bool _fromArray;
-};
+}; // GeoPointAnalyzer
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class GeoJSONAnalyzer
+/// @brief an analyzer capable of breaking up a valid GEO JSON input into a set
+///        of tokens for further indexing
+////////////////////////////////////////////////////////////////////////////////
 class GeoJSONAnalyzer final : public GeoAnalyzer {
  public:
   enum class Type : uint32_t {
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief analyzer accepts any valid GEO JSON input and produces tokens
+    ///        denoting an approximation for a given shape
+    //////////////////////////////////////////////////////////////////////////////
     SHAPE = 0,
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief analyzer accepts any valid GEO JSON shape, but produces tokens
+    ///        denoting a centroid of a given shape
+    //////////////////////////////////////////////////////////////////////////////
     CENTROID,
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief analyzer accepts points only
+    //////////////////////////////////////////////////////////////////////////////
     POINT
   };
 
@@ -131,15 +158,13 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
   explicit GeoJSONAnalyzer(Options const& opts);
 
   virtual void prepare(S2RegionTermIndexer::Options& opts) const;
-
- protected:
   virtual bool reset(irs::string_ref const& value);
 
  private:
   S2RegionTermIndexer _indexer;
   geo::ShapeContainer _shape;
   Type _type;
-};
+}; // GeoJSONAnalyzer
 
 // FIXME remove kludge
 inline bool isGeoAnalyzer(irs::string_ref const& type) noexcept {
