@@ -343,6 +343,8 @@ class MMFilesCollection final : public PhysicalCollection {
 
   bool hasAllPersistentLocalIds() const;
 
+  bool hasDocuments() override;
+
  private:
   void sizeHint(transaction::Methods* trx, int64_t hint);
 

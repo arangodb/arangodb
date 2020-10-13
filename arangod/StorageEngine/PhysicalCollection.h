@@ -84,6 +84,10 @@ class PhysicalCollection {
   
   /// recalculate counts for collection in case of failure, blocking
   virtual uint64_t recalculateCounts();
+ 
+  /// @brief whether or not the collection contains any documents. this
+  /// function is allowed to return true even if there are no documents
+  virtual bool hasDocuments();
 
   ////////////////////////////////////
   // -- SECTION Indexes --

@@ -1571,6 +1571,15 @@ bool MMFilesCollection::applyForTickRange(
   return false;  // hasMore = false
 }
 
+bool MMFilesCollection::hasDocuments() {
+  TRY_READ_LOCKER(locker, _dataLock);
+
+  if (locker.isLocked()) {
+    return primaryIndex()->size() > 0;
+  }
+  return true;
+}
+
 // @brief Return the number of documents in this collection
 uint64_t MMFilesCollection::numberDocuments(transaction::Methods* trx) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
