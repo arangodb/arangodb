@@ -1665,8 +1665,8 @@ constexpr int TRI_ERROR_NO_SMART_GRAPH_ATTRIBUTE                                
 constexpr int TRI_ERROR_CANNOT_DROP_SMART_COLLECTION                            = 4002;
 
 /// 4003: ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE
-/// "in smart vertex collections _key must be prefixed with the value of the
-/// "smart graph attribute"
+/// "in smart vertex collections _key must be a string and prefixed with the
+/// "value of the smart graph attribute"
 /// In a smart vertex collection _key must be prefixed with the value of the
 /// SmartGraph attribute.
 constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE         = 4003;
