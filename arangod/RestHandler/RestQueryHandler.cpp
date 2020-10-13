@@ -113,10 +113,10 @@ bool RestQueryHandler::readQuery(bool slow) {
     } else {
       result.add("bindVars", arangodb::velocypack::Slice::emptyObjectSlice());
     }
-    if (!q.collections.empty()) {
-      result.add("collections", VPackValue(VPackValueType::Array));
-      for (auto const& cn : q.collections) {
-        result.add(VPackValue(cn));
+    if (!q.dataSources.empty()) {
+      result.add("dataSources", VPackValue(VPackValueType::Array));
+      for (auto const& dn : q.dataSources) {
+        result.add(VPackValue(dn));
       }
       result.close();
     }

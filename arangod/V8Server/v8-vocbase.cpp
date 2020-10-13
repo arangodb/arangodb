@@ -1022,13 +1022,13 @@ static void JS_QueriesCurrentAql(v8::FunctionCallbackInfo<v8::Value> const& args
       } else {
         obj->Set(TRI_V8_ASCII_STRING(isolate, "bindVars"), v8::Object::New(isolate));
       }
-      if (!q.collections.empty()) {
-        auto c = v8::Array::New(isolate);
+      if (!q.dataSources.empty()) {
+        auto d = v8::Array::New(isolate);
         uint32_t i = 0;
-        for (auto const& cn : q.collections) {
-          c->Set(i++, TRI_V8_STD_STRING(isolate, cn));
+        for (auto const& dn : q.dataSources) {
+          d->Set(i++, TRI_V8_STD_STRING(isolate, dn));
         }
-        obj->Set(TRI_V8_ASCII_STRING(isolate, "collections"), c);
+        obj->Set(TRI_V8_ASCII_STRING(isolate, "dataSources"), d);
       }
       obj->Set(TRI_V8_ASCII_STRING(isolate, "started"),
                TRI_V8_STD_STRING(isolate, timeString));
@@ -1090,13 +1090,13 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       } else {
         obj->Set(TRI_V8_ASCII_STRING(isolate, "bindVars"), v8::Object::New(isolate));
       }
-      if (!q.collections.empty()) {
-        auto c = v8::Array::New(isolate);
+      if (!q.dataSources.empty()) {
+        auto d = v8::Array::New(isolate);
         uint32_t i = 0;
-        for (auto const& cn : q.collections) {
-          c->Set(i++, TRI_V8_STD_STRING(isolate, cn));
+        for (auto const& dn : q.dataSources) {
+          d->Set(i++, TRI_V8_STD_STRING(isolate, dn));
         }
-        obj->Set(TRI_V8_ASCII_STRING(isolate, "collections"), c);
+        obj->Set(TRI_V8_ASCII_STRING(isolate, "dataSources"), d);
       }
       obj->Set(TRI_V8_ASCII_STRING(isolate, "started"),
                TRI_V8_STD_STRING(isolate, timeString));

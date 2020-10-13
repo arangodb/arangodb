@@ -49,7 +49,7 @@ struct QueryEntryCopy {
   QueryEntryCopy(TRI_voc_tick_t id, std::string const& database, 
                  std::string const& user, std::string&& queryString,
                  std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-                 std::vector<std::string> collections,
+                 std::vector<std::string> dataSources,
                  double started, double runTime,
                  QueryExecutionState::ValueType state, bool stream);
 
@@ -58,7 +58,7 @@ struct QueryEntryCopy {
   std::string const user;
   std::string const queryString;
   std::shared_ptr<arangodb::velocypack::Builder> const bindParameters;
-  std::vector<std::string> collections;
+  std::vector<std::string> dataSources;
   double const started;
   double const runTime;
   QueryExecutionState::ValueType const state;
@@ -256,8 +256,8 @@ class QueryList {
   /// @brief whether or not bind vars are also tracked with queries
   std::atomic<bool> _trackBindVars;
   
-  /// @brief whether or not collection names are also tracked with queries
-  std::atomic<bool> _trackCollections;
+  /// @brief whether or not data sources names are also tracked with queries
+  std::atomic<bool> _trackDataSources;
 
   /// @brief threshold for slow queries (in seconds)
   std::atomic<double> _slowQueryThreshold;
