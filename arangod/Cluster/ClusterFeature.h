@@ -90,8 +90,10 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::shared_ptr<HeartbeatThread> heartbeatThread();
 
   ClusterInfo& clusterInfo();
-
-  Counter& getDroppedFollowerCounter() { return _dropped_follower_counter->get(); }
+  
+  Counter& followersDroppedCounter() { return _followersDroppedCounter->get(); }
+  Counter& followersRefusedCounter() { return _followersRefusedCounter->get(); }
+  Counter& followersWrongChecksumCounter() { return _followersWrongChecksumCounter->get(); }
 
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
@@ -129,7 +131,9 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
   std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
-  std::optional<std::reference_wrapper<Counter>> _dropped_follower_counter;
+  std::optional<std::reference_wrapper<Counter>> _followersDroppedCounter;
+  std::optional<std::reference_wrapper<Counter>> _followersRefusedCounter;
+  std::optional<std::reference_wrapper<Counter>> _followersWrongChecksumCounter;
 };
 
 }  // namespace arangodb

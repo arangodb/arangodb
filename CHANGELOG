@@ -1,5 +1,13 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
+      
+* Added the following metrics for synchronous replication in the cluster:
+
+  - `arangodb_refused_followers_count`: Number of times a shard leader received 
+    a refusal answer from a follower during synchronous replication.
+  - `arangodb_sync_wrong_checksum`: Number of times a mismatching shard 
+    checksum was detected when syncing shards. In case this happens, a resync
+    will be triggered for the shard.
 
 * Added configuration option `--query.tracking-slow-queries` to decide whether
   slow queries are tracked extra.
