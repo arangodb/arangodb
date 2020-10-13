@@ -3,13 +3,13 @@ v3.6.8 (XXXX-XX-XX)
       
 * Added the following metrics for synchronous replication in the cluster:
 
-  - `arangodb_replication_leader_refused`: Number of times a leader received 
+  - `arangodb_refused_followers_count`: Number of times a shard leader received 
     a refusal answer from a follower during synchronous replication.
-  - `arangodb_replication_follower_dropped`: Number of times a follower was 
-    dropped during synchronous replication.
-  - `arangodb_replication_sync_wrong_checksum`: Number of times a wrong shard 
+  - `arangodb_sync_wrong_checksum`: Number of times a mismatching shard 
     checksum was detected when syncing shards. In case this happens, a resync
     will be triggered for the shard.
+  - `arangodb_dropped_followers_count`: Number of times a follower was 
+    dropped during synchronous replication.
 
 * Added optional verbose logging for agency write operations. This logging is
   configurable by using the new log topic "agencystore".
