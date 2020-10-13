@@ -181,7 +181,12 @@ bool FailedLeader::start(bool& aborts) {
   std::vector<std::string> planv;
   for (auto const& i : VPackArrayIterator(planned)) {
     auto s = i.copyString();
-    if (s != _from && s != _to) {
+    // _from and _to are added as first and last entries
+    // we can keep all others
+    // for security we will not use empty strings (empty servers should never happen)
+    // also we will not use any resigend servers in the list (this should never happen as well, but if it happens,
+    // this situation will repair itself by diverging replicationFactor.
+    if (s != _from && s != _to && !s.empty() && s[0] != '_') {
       planv.push_back(s);
     }
   }
@@ -245,9 +250,15 @@ bool FailedLeader::start(bool& aborts) {
             if (s.size() > 0 && s[0] == '_') {
               s = s.substr(1);
             }
-            if (s != _from && s != _to) {
-              TRI_ASSERT(std::find(planv.begin(), planv.end(), s) != planv.end());
-              // A server in Current ought to be in the Plan, if not, we want to know this.
+            // We need to make sure to only pick servers from the plan as followers.
+            // There is a chance, that a server is removed from the plan, but it is not yet taken out
+            // from the in-sync followers in current.
+            // e.g. User Reduces the ReplicationFactor => Follower F1 will be taken from the Plan
+            // Now F1 drops the shard.
+            // For some Reason Leader cannot report out-of-sync, and dies.
+            // => F1 will be readded in shard, as an early follower, and is considered to be in sync, until
+            // New Leader has updated sync information.
+            if (s != _from && s != _to && std::find(planv.begin(), planv.end(), s) != planv.end()) {
               ns.add(i);
               planv.erase(std::remove(planv.begin(), planv.end(), s), planv.end());
             }
