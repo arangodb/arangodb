@@ -336,7 +336,8 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(std::stri
 
   if (!_status.fail()) {  // directory is in a bad state?
     try {
-      bool gzFlag = (0 == filename.substr(filename.size() - 3).compare(".gz"));
+      bool gzFlag = filename.size() > 3 && 
+                    (0 == filename.substr(filename.size() - 3).compare(".gz"));
       file = std::make_unique<File>(*this, filename,
                                     (ManagedDirectory::DefaultReadFlags ^ flags), gzFlag);
     } catch (...) {
