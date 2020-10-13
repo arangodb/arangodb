@@ -1132,6 +1132,8 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     // give up the lock on the leader, so writes aren't stopped unncessarily
     // on the leader while we are recalculating the counts
     readLockGuard.fire();
+    
+    collection.vocbase().server().getFeature<ClusterFeature>().followersWrongChecksumCounter()++;
 
     // recalculate collection count on follower
     LOG_TOPIC("29384", INFO, Logger::MAINTENANCE) 
