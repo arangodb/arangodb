@@ -1852,8 +1852,8 @@ function ReplicationSuite () {
       } catch (e) { }
     }
   };
+  
   deriveTestSuite(BaseTestConfig(), suite, '_Repl');
-
   return suite;
 }
 

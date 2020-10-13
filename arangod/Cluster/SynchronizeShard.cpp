@@ -893,7 +893,7 @@ bool SynchronizeShard::first() {
       VPackSlice collections = sy.get(COLLECTIONS);
       if (collections.length() == 0 || collections[0].get("name").copyString() != shard) {
         std::stringstream error;
-        error << "shard " << shard << " seems to be gone from leader, this "
+        error << "shard " << database << "/" << shard << " seems to be gone from leader, this "
                "can happen if a collection was dropped during synchronization!";
         LOG_TOPIC("664ae", WARN, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());

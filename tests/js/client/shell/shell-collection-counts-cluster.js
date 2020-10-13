@@ -33,51 +33,41 @@ const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const request = require("@arangodb/request");
 const _ = require("lodash");
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+  
+const cn = "UnitTestsCollection";
 
-function collectionCountsSuite () {
-  const cn = "UnitTestsCollection";
-
-  let getDBServers = function() {
-    const isDBServer = (d) => (_.toLower(d.role) === 'dbserver');
-    const endpointToURL = (server) => {
-      let endpoint = server.endpoint;
-      if (endpoint.substr(0, 6) === 'ssl://') {
-        return 'https://' + endpoint.substr(6);
-      }
-      let pos = endpoint.indexOf('://');
-      if (pos === -1) {
-        return 'http://' + endpoint;
-      }
-      return 'http' + endpoint.substr(pos);
-    };
-
-    return global.instanceInfo.arangods.filter(isDBServer)
-                                .map((server) => { 
-                                  return { url: endpointToURL(server), id: server.id };
-                                });
+let getDBServers = function() {
+  const isDBServer = (d) => (_.toLower(d.role) === 'dbserver');
+  const endpointToURL = (server) => {
+    let endpoint = server.endpoint;
+    if (endpoint.substr(0, 6) === 'ssl://') {
+      return 'https://' + endpoint.substr(6);
+    }
+    let pos = endpoint.indexOf('://');
+    if (pos === -1) {
+      return 'http://' + endpoint;
+    }
+    return 'http' + endpoint.substr(pos);
   };
 
-  let clearFailurePoints = function () {
-    getDBServers().forEach((server) => {
-      // clear all failure points
-      request({ method: "DELETE", url: server.url + "/_admin/debug/failat" });
-    });
-  };
+  return global.instanceInfo.arangods.filter(isDBServer)
+                              .map((server) => { 
+                                return { url: endpointToURL(server), id: server.id };
+                              });
+};
+
+let clearFailurePoints = function () {
+  getDBServers().forEach((server) => {
+    // clear all failure points
+    request({ method: "DELETE", url: server.url + "/_admin/debug/failat" });
+  });
+};
+
+function BaseTestConfig () {
+  'use strict';
   
   return {
-    setUp : function () {
-      db._drop(cn);
-      getDBServers().forEach((server) => {
-        let result = request({ method: "PUT", url: server.url + "/_admin/debug/failat/disableRevisionsAsDocumentIds", body: {} });
-        assertEqual(200, result.status);
-      });
-    },
-
-    tearDown : function () {
-      clearFailurePoints();
-      db._drop(cn);
-    },
-
     testWrongCountOnLeaderFullSync : function () {
       let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
       for (let i = 0; i < 100; ++i) {
@@ -618,5 +608,49 @@ function collectionCountsSuite () {
   };
 }
 
-jsunity.run(collectionCountsSuite);
+function collectionCountsSuiteOldFormat () {
+  'use strict';
+
+  let suite = {
+    setUp : function () {
+      db._drop(cn);
+      clearFailurePoints();
+      getDBServers().forEach((server) => {
+        // this disables usage of the new collection format
+        let result = request({ method: "PUT", url: server.url + "/_admin/debug/failat/disableRevisionsAsDocumentIds", body: {} });
+        assertEqual(200, result.status);
+      });
+    },
+
+    tearDown : function () {
+      clearFailurePoints();
+      db._drop(cn);
+    }
+  };
+
+  deriveTestSuite(BaseTestConfig(), suite, '_OldFormat');
+  return suite;
+}
+
+function collectionCountsSuiteNewFormat () {
+  'use strict';
+
+  let suite = {
+    setUp : function () {
+      db._drop(cn);
+      clearFailurePoints();
+    },
+
+    tearDown : function () {
+      clearFailurePoints();
+      db._drop(cn);
+    }
+  };
+
+  deriveTestSuite(BaseTestConfig(), suite, '_NewFormat');
+  return suite;
+}
+
+jsunity.run(collectionCountsSuiteOldFormat);
+jsunity.run(collectionCountsSuiteNewFormat);
 return jsunity.done();
