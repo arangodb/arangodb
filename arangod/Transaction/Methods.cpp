@@ -696,7 +696,11 @@ static bool findRefusal(std::vector<futures::Try<network::Response>> const& resp
   for (auto const& it : responses) {
     if (it.hasValue() && it.get().ok() &&
         it.get().response->statusCode() == fuerte::StatusNotAcceptable) {
-      return true;
+      auto r = it.get().combinedResult();
+      bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+      if (followerRefused) {
+        return true;
+      }
     }
   }
   return false;
@@ -2487,6 +2491,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
              responses[i].get().response->statusCode() == fuerte::StatusOK);
         if (!replicationWorked) {
           auto const& followerInfo = collection->followers();
+          vocbase().server().getFeature<ClusterFeature>().trackFollowerDropped();
           Result res = followerInfo->remove((*followers)[i]);
           if (res.ok()) {
             _state->removeKnownServer((*followers)[i]);
@@ -2507,6 +2512,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       // error (note that we use the follower version, since we have
       // lost leadership):
       if (findRefusal(responses)) {
+        vocbase().server().getFeature<ClusterFeature>().trackFollowerRefusal();
         return futures::makeFuture(OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED));
       }
     }
@@ -3285,8 +3291,10 @@ Future<Result> Methods::replicateOperations(
         auto r = resp.combinedResult();
         bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
         didRefuse = didRefuse || followerRefused;
-
+  
         if (followerRefused) {
+          vocbase().server().getFeature<ClusterFeature>().trackFollowerRefusal();
+
           LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
               << "synchronous replication: follower "
               << (*followerList)[i] << " for shard " << collection->name()
@@ -3301,6 +3309,8 @@ Future<Result> Methods::replicateOperations(
 
       if (!replicationWorked) {
         ServerID const& deadFollower = (*followerList)[i];
+        
+        vocbase().server().getFeature<ClusterFeature>().trackFollowerDropped();
         Result res = collection->followers()->remove(deadFollower);
         if (res.ok()) {
           // TODO: what happens if a server is re-added during a transaction ?
