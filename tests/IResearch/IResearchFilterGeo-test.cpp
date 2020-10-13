@@ -552,7 +552,7 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoDistance) {
       expected);
     assertFilterSuccess(
       vocbase(),
-      R"(FOR d IN myView FILTER BOOST(GEO_DISTANCE(GEO_DISTANCE({ "type": "Point", "coordinates": [ 0, 0 ] }, d.name) > 5000, 1.5) RETURN d)",
+      R"(FOR d IN myView FILTER BOOST(GEO_DISTANCE({ "type": "Point", "coordinates": [ 0, 0 ] }, d.name) > 5000, 1.5) RETURN d)",
       expected);
     assertFilterSuccess(
       vocbase(),
@@ -743,19 +743,19 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoInRange) {
 
     assertFilterSuccess(
       vocbase(),
-      R"(FOR d IN myView FILTER GEO_DISTANCE(d.name, { "type": "Point", "coordinates": [ 0, 0 ] }, 0, 5000, false, false) RETURN d)",
+      R"(FOR d IN myView FILTER GEO_iN_RANGE(d.name, { "type": "Point", "coordinates": [ 0, 0 ] }, 0, 5000, false, false) RETURN d)",
       expected);
     assertFilterSuccess(
       vocbase(),
-      R"(FOR d IN myView FILTER GEO_DISTANCE(d.name, { "type": "Point", "coordinates": [ 0, 0 ] }, 0, 5000, false, false) RETURN d)",
+      R"(FOR d IN myView FILTER GEO_iN_RANGE(d.name, { "type": "Point", "coordinates": [ 0, 0 ] }, 0, 5000, false, false) RETURN d)",
       expected);
     assertFilterSuccess(
       vocbase(),
-      R"(FOR d IN myView FILTER GEO_DISTANCE(d[_FORWARD_('name')], [ 0, 0 ], 0, 5000, false, false) RETURN d)",
+      R"(FOR d IN myView FILTER GEO_iN_RANGE(d[_FORWARD_('name')], [ 0, 0 ], 0, 5000, false, false) RETURN d)",
       expected, &ExpressionContextMock::EMPTY);
     assertFilterSuccess(
       vocbase(),
-      R"(LET lat = 0 LET lng = 0 LET dist = 5000 FOR d IN myView FILTER GEO_DISTANCE(d[_FORWARD_('name')], [ lng, lat ], lat, dist, lat != lon, lat != lon) RETURN d)",
+      R"(LET lat = 0 LET lng = 0 LET dist = 5000 FOR d IN myView FILTER GEO_iN_RANGE(d[_FORWARD_('name')], [ lng, lat ], lat, dist, lat != lng, lat != lng) RETURN d)",
       expected, &ctx);
   }
 
@@ -837,10 +837,12 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoInRange) {
     R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0) RETURN d)");
   assertFilterParseFail(
     vocbase(),
-    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000) RETURN d)");
-  assertFilterParseFail(
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, true, false, "sphere", null) RETURN d)");
+
+  // ellipsoid is set
+  assertFilterFail(
     vocbase(),
-    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, true, false, null) RETURN d)");
+    R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, true, false, "sphere") RETURN d)");
 
   // non-deterministic arg
   assertFilterParseFail(
@@ -872,7 +874,7 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoInRange) {
     R"(FOR d IN myView FILTER GEO_IN_RANGE({ "type": "Point", "coordinates": [ 1, 2 ] },  [ 1, 2 ], 0, 5000, true, true) RETURN d)");
 
   // wrong second arg
-  assertFilterFail(
+  assertFilterExecutionFail(
     vocbase(),
     R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, d[*], 0, 5000, true, true) RETURN d)",
     &ExpressionContextMock::EMPTY);
@@ -911,7 +913,7 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoInRange) {
   assertFilterFail(
     vocbase(),
     R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], {}, 5000, true, true) RETURN d)");
-  assertFilterFail(
+  assertFilterExecutionFail(
     vocbase(),
     R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], d[*], 5000, true, true) RETURN d)",
     &ExpressionContextMock::EMPTY);
@@ -932,7 +934,7 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoInRange) {
   assertFilterFail(
     vocbase(),
     R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, {}, true, true) RETURN d)");
-  assertFilterFail(
+  assertFilterExecutionFail(
     vocbase(),
     R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, d[*], true, true) RETURN d)",
     &ExpressionContextMock::EMPTY);
@@ -953,7 +955,7 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoInRange) {
   assertFilterFail(
     vocbase(),
     R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, {}, true) RETURN d)");
-  assertFilterFail(
+  assertFilterExecutionFail(
     vocbase(),
     R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, d[*], true) RETURN d)",
     &ExpressionContextMock::EMPTY);
@@ -974,7 +976,7 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoInRange) {
   assertFilterFail(
     vocbase(),
     R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, true, {}) RETURN d)");
-  assertFilterFail(
+  assertFilterExecutionFail(
     vocbase(),
     R"(FOR d IN myView FILTER GEO_IN_RANGE(d.name, [1,2], 0, 5000, true, d[*]) RETURN d)",
     &ExpressionContextMock::EMPTY);

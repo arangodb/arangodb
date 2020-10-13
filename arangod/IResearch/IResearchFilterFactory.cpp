@@ -349,6 +349,10 @@ Result getLatLong(
       auto const latValue = value.at(1);
       auto const lonValue = value.at(0);
 
+      if (!latValue.isDouble() || !lonValue.isDouble()) {
+        return error::failedToEvaluate(funcName, argIdx);
+      }
+
       double_t lat, lon;
 
       if (!latValue.getDouble(lat) || !lonValue.getDouble(lon)) {
