@@ -2189,6 +2189,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shards_like_resigned_leader_no_
                     .setFailoverCandidates(distLike2, failovers)
                     .setFollowers(distLike2, followers)
                     .setDistributeShardsLike(distLike2, si)
+                    .setServerFailed(SHARD_FOLLOWER2) // disable this as randomly picked follower
                     .setJobInTodo(jobId)
                     .createNode();
 
