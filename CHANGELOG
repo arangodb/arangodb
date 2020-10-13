@@ -1,6 +1,12 @@
 v3.6.8 (XXXX-XX-XX)
 -------------------
 
+* Fixed handling of failedLeaderJob. In case of a plan modification, that
+  removes a server from the plan, e.g. reduce replication factor. Directly
+  followed by a failure of the current shard leader, would reinsert the just
+  removed server in the plan, which is undesired, we first need to have a full
+  "desync" cycle on this server to be reusable in the plan again.
+
 * Fixed issue BTS-212: Web UI doesn't let to make partial view update and fixed
   link definition comparison logic. Equality didn't properly detect partial view
   update should be audited (also reported as ES-700). That led to link
