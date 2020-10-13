@@ -233,7 +233,12 @@ bool FailedLeader::start(bool& aborts) {
   std::vector<std::string> planv;
   for (auto const& i : VPackArrayIterator(planned)) {
     auto s = i.copyString();
-    if (s != _from && s != _to) {
+    // _from and _to are added as first and last entries
+    // we can keep all others
+    // for security we will not use empty strings (empty servers should never happen)
+    // also we will not use any resigend servers in the list (this should never happen as well, but if it happens,
+    // this situation will repair itself by diverging replicationFactor.
+    if (s != _from && s != _to && !s.empty() && s[0] != '_') {
       planv.push_back(s);
     }
   }

@@ -150,6 +150,19 @@ class FailedLeaderTest
     transBuilder->add(VPackValue((uint64_t)1));
   }
 
+  auto resigned(std::string const& server) const -> std::string {
+    // Note a server as resigned
+    return "_" + server;
+  }
+
+  auto unresign(std::string const& server) const -> std::string {
+    // Remove the "is resigned" notation
+    if (server[0] == '_') {
+      return server.substr(1);
+    }
+    return server;
+  }
+
   void AssertTransactionFormat(query_t const& q) {
     auto slice = q->slice();
     ASSERT_TRUE(slice.isArray());
@@ -238,7 +251,9 @@ class FailedLeaderTest
       // Section: Locking, and server status.
       ASSERT_FALSE(lastGenPlan.empty());
       ASSERT_FALSE(expectedServers.empty());
-      auto const& oldLeader = lastGenPlan.front();
+      // Old leader value is used for lock-checking on the Server
+      // This cannot be done with a resigend leader value
+      auto const& oldLeader = unresign(lastGenPlan.front());
       auto const& newLeader = expectedServers.front();
       // Leader Shard is not locked
       if (!si.isFollower) {
@@ -261,7 +276,7 @@ class FailedLeaderTest
       {
         // Old leader is still failed
         auto path = "/arango/Supervision/Health/" + oldLeader + "/Status";
-        ASSERT_TRUE(pre.hasKey(path));
+        ASSERT_TRUE(pre.hasKey(path)) << " testing: " << oldLeader;
         AssertOldIsString(pre.get(path), "FAILED");
       }
     }
@@ -2135,6 +2150,212 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_no_common_candidate_
   When(Method(mockAgent, transact)).AlwaysDo([&](query_t const& q) -> trans_ret_t {
     // Impossible to transact
     EXPECT_TRUE(false);
+    return fakeTransResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface& agent = mockAgent.get();
+
+  // new server will randomly be selected...so seed the random number generator
+  srand(1);
+  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  failedLeader.start(aborts);
+}
+
+// Section Resigned Leader notation
+
+
+TEST_F(FailedLeaderTest, failedleader_distribute_shards_like_resigned_leader_no_current_reports) {
+  std::string jobId = "1";
+
+  std::string col1 = "shardLike1";
+  std::string shard1 = "s1001";
+  std::string col2 = "shardLike2";
+  std::string shard2 = "s2001";
+  ShardInfo si{DATABASE, COLLECTION, SHARD};
+  ShardInfo distLike1{DATABASE, col1, shard1, true};
+  ShardInfo distLike2{DATABASE, col2, shard2, true};
+  // Important here: SHARD_LEADER is NOT resigned in new plan!
+  std::vector<std::string> expected = {SHARD_FOLLOWER1, SHARD_LEADER, FREE_SERVER};
+
+  // We have planned to resign the leader, but it has not yet confirmed anywhere
+  std::vector<std::string> planned = {resigned(SHARD_LEADER), SHARD_FOLLOWER1};
+  std::vector<std::string> followers = {SHARD_LEADER, SHARD_FOLLOWER1};
+  std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1};
+
+  Node agency = AgencyBuilder(baseStructure.toBuilder())
+                    .setPlannedServers(si, planned)
+                    .setFailoverCandidates(si, failovers)
+                    .setFollowers(si, followers)
+                    .setPlannedServers(distLike1, planned)
+                    .setFailoverCandidates(distLike1, failovers)
+                    .setFollowers(distLike1, followers)
+                    .setDistributeShardsLike(distLike1, si)
+                    .setPlannedServers(distLike2, planned)
+                    .setFailoverCandidates(distLike2, failovers)
+                    .setFollowers(distLike2, followers)
+                    .setDistributeShardsLike(distLike2, si)
+                    .setJobInTodo(jobId)
+                    .createNode();
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, transact)).AlwaysDo([&](query_t const& q) -> trans_ret_t {
+    // Must be a valid transaction for the full group of distribute shards like
+    AssertIsValidTransaction(q, si, jobId, expected, planned, followers, failovers);
+    AssertIsValidTransaction(q, distLike1, jobId, expected, planned, followers, failovers);
+    AssertIsValidTransaction(q, distLike2, jobId, expected, planned, followers, failovers);
+    return fakeTransResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface& agent = mockAgent.get();
+
+  // new server will randomly be selected...so seed the random number generator
+  srand(1);
+  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  failedLeader.start(aborts);
+}
+
+TEST_F(FailedLeaderTest, failedleader_distribute_shards_like_resigned_leader_all_repoted_in_current) {
+  std::string jobId = "1";
+
+  std::string col1 = "shardLike1";
+  std::string shard1 = "s1001";
+  std::string col2 = "shardLike2";
+  std::string shard2 = "s2001";
+  ShardInfo si{DATABASE, COLLECTION, SHARD};
+  ShardInfo distLike1{DATABASE, col1, shard1, true};
+  ShardInfo distLike2{DATABASE, col2, shard2, true};
+  // Important here: SHARD_LEADER is NOT resigned in new plan!
+  std::vector<std::string> expected = {SHARD_FOLLOWER1, SHARD_LEADER, FREE_SERVER};
+
+  // We have planned to resign the leader, it was confirmed everywhere.
+  std::vector<std::string> planned = {resigned(SHARD_LEADER), SHARD_FOLLOWER1};
+  std::vector<std::string> followers = {resigned(SHARD_LEADER), SHARD_FOLLOWER1};
+  std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1};
+
+  Node agency = AgencyBuilder(baseStructure.toBuilder())
+                    .setPlannedServers(si, planned)
+                    .setFailoverCandidates(si, failovers)
+                    .setFollowers(si, followers)
+                    .setPlannedServers(distLike1, planned)
+                    .setFailoverCandidates(distLike1, failovers)
+                    .setFollowers(distLike1, followers)
+                    .setDistributeShardsLike(distLike1, si)
+                    .setPlannedServers(distLike2, planned)
+                    .setFailoverCandidates(distLike2, failovers)
+                    .setFollowers(distLike2, followers)
+                    .setDistributeShardsLike(distLike2, si)
+                    .setJobInTodo(jobId)
+                    .createNode();
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, transact)).AlwaysDo([&](query_t const& q) -> trans_ret_t {
+    // Must be a valid transaction for the full group of distribute shards like
+    AssertIsValidTransaction(q, si, jobId, expected, planned, followers, failovers);
+    AssertIsValidTransaction(q, distLike1, jobId, expected, planned, followers, failovers);
+    AssertIsValidTransaction(q, distLike2, jobId, expected, planned, followers, failovers);
+    return fakeTransResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface& agent = mockAgent.get();
+
+  // new server will randomly be selected...so seed the random number generator
+  srand(1);
+  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  failedLeader.start(aborts);
+}
+
+
+TEST_F(FailedLeaderTest, failedleader_distribute_shards_like_resigned_leader_leader_repoted_in_current) {
+  std::string jobId = "1";
+
+  std::string col1 = "shardLike1";
+  std::string shard1 = "s1001";
+  std::string col2 = "shardLike2";
+  std::string shard2 = "s2001";
+  ShardInfo si{DATABASE, COLLECTION, SHARD};
+  ShardInfo distLike1{DATABASE, col1, shard1, true};
+  ShardInfo distLike2{DATABASE, col2, shard2, true};
+  // Important here: SHARD_LEADER is NOT resigned in new plan!
+  std::vector<std::string> expected = {SHARD_FOLLOWER1, SHARD_LEADER, FREE_SERVER};
+
+  // We have planned to resign the leader, it was confirmed everywhere.
+  std::vector<std::string> planned = {resigned(SHARD_LEADER), SHARD_FOLLOWER1};
+  std::vector<std::string> resignedFollowers = {resigned(SHARD_LEADER), SHARD_FOLLOWER1};
+  std::vector<std::string> followers = {SHARD_LEADER, SHARD_FOLLOWER1};
+  std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1};
+
+  Node agency = AgencyBuilder(baseStructure.toBuilder())
+                    .setPlannedServers(si, planned)
+                    .setFailoverCandidates(si, failovers)
+                    .setFollowers(si, resignedFollowers)
+                    .setPlannedServers(distLike1, planned)
+                    .setFailoverCandidates(distLike1, failovers)
+                    .setFollowers(distLike1, followers)
+                    .setDistributeShardsLike(distLike1, si)
+                    .setPlannedServers(distLike2, planned)
+                    .setFailoverCandidates(distLike2, failovers)
+                    .setFollowers(distLike2, followers)
+                    .setDistributeShardsLike(distLike2, si)
+                    .setJobInTodo(jobId)
+                    .createNode();
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, transact)).AlwaysDo([&](query_t const& q) -> trans_ret_t {
+    // Must be a valid transaction for the full group of distribute shards like
+    AssertIsValidTransaction(q, si, jobId, expected, planned, resignedFollowers, failovers);
+    AssertIsValidTransaction(q, distLike1, jobId, expected, planned, followers, failovers);
+    AssertIsValidTransaction(q, distLike2, jobId, expected, planned, followers, failovers);
+    return fakeTransResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface& agent = mockAgent.get();
+
+  // new server will randomly be selected...so seed the random number generator
+  srand(1);
+  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  failedLeader.start(aborts);
+}
+
+TEST_F(FailedLeaderTest, failedleader_distribute_shards_like_resigned_leader_follower_repoted_in_current) {
+  std::string jobId = "1";
+
+  std::string col1 = "shardLike1";
+  std::string shard1 = "s1001";
+  std::string col2 = "shardLike2";
+  std::string shard2 = "s2001";
+  ShardInfo si{DATABASE, COLLECTION, SHARD};
+  ShardInfo distLike1{DATABASE, col1, shard1, true};
+  ShardInfo distLike2{DATABASE, col2, shard2, true};
+  // Important here: SHARD_LEADER is NOT resigned in new plan!
+  std::vector<std::string> expected = {SHARD_FOLLOWER1, SHARD_LEADER, FREE_SERVER};
+
+  // We have planned to resign the leader, it was confirmed everywhere.
+  std::vector<std::string> planned = {resigned(SHARD_LEADER), SHARD_FOLLOWER1};
+  std::vector<std::string> resignedFollowers = {resigned(SHARD_LEADER), SHARD_FOLLOWER1};
+  std::vector<std::string> followers = {SHARD_LEADER, SHARD_FOLLOWER1};
+  std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1};
+
+  Node agency = AgencyBuilder(baseStructure.toBuilder())
+                    .setPlannedServers(si, planned)
+                    .setFailoverCandidates(si, failovers)
+                    .setFollowers(si, followers)
+                    .setPlannedServers(distLike1, planned)
+                    .setFailoverCandidates(distLike1, failovers)
+                    .setFollowers(distLike1, followers)
+                    .setDistributeShardsLike(distLike1, si)
+                    .setPlannedServers(distLike2, planned)
+                    .setFailoverCandidates(distLike2, failovers)
+                    .setFollowers(distLike2, resignedFollowers)
+                    .setDistributeShardsLike(distLike2, si)
+                    .setJobInTodo(jobId)
+                    .createNode();
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, transact)).AlwaysDo([&](query_t const& q) -> trans_ret_t {
+    // Must be a valid transaction for the full group of distribute shards like
+    AssertIsValidTransaction(q, si, jobId, expected, planned, followers, failovers);
+    AssertIsValidTransaction(q, distLike1, jobId, expected, planned, followers, failovers);
+    AssertIsValidTransaction(q, distLike2, jobId, expected, planned, resignedFollowers, failovers);
     return fakeTransResult;
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
