@@ -2473,6 +2473,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       reqOpts.database = vocbase().name();
       reqOpts.timeout = network::Timeout(600);
       reqOpts.param(StaticStrings::IsSynchronousReplicationString, ServerState::instance()->getId());
+      reqOpts.param(StaticStrings::Compact, (options.truncateCompact ? "true" : "false"));
 
       for (auto const& f : *followers) {
         network::Headers headers;
