@@ -53,6 +53,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _trackSlowQueries(true),
       _trackQueryString(true),
       _trackBindVars(true),
+      _trackCollections(false),
       _failOnWarning(false),
       _queryCacheIncludeSystem(false),
       _smartJoins(true),
@@ -112,6 +113,10 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption("--query.tracking-with-bindvars",
                      "whether to track bind vars with AQL queries",
                      new BooleanParameter(&_trackBindVars));
+  
+  options->addOption("--query.tracking-with-collections", "whether to track the query collection names",
+                     new BooleanParameter(&_trackCollections))
+                     .setIntroducedIn(30704);
 
   options->addOption("--query.fail-on-warning",
                      "whether AQL queries should fail with errors even for "
