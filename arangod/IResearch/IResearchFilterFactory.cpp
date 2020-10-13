@@ -1156,12 +1156,20 @@ Result fromGeoDistanceInterval(
   ScopedAqlValue distanceValue(*node.value);
   if (filter || distanceValue.isConstant()) {
     if (!distanceValue.execute(ctx)) {
-      return error::failedToEvaluate(GEO_DISTANCE_FUNC, 3); // FIXME
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "Failed to evaluate an argument denoting a distance near '"s +
+        GEO_DISTANCE_FUNC + "' function"
+      };
     }
 
     if (SCOPED_VALUE_TYPE_DOUBLE != distanceValue.type() ||
         !distanceValue.getDouble(distance)) {
-      return error::failedToParse(GEO_DISTANCE_FUNC, 3, SCOPED_VALUE_TYPE_DOUBLE); // FIXME
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "Failed to parse an argument denoting a distance as a number near '"s +
+        GEO_DISTANCE_FUNC + "' function"
+      };
     }
   }
 
@@ -2002,7 +2010,7 @@ Result fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
 
     auto rv = ::filter(filter, ctx, subFilterCtx, *valueNode);
     if (rv.fail()) {
-      auto node = aql::AstNode::toString(valueNode);
+      //auto node = aql::AstNode::toString(valueNode);
       //return rv.reset(rv.errorNumber(), "error checking subNodes in node: " + node + ": " + rv.errorMessage());
       //probably too much for the user
       return rv;
