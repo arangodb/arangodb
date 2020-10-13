@@ -41,7 +41,8 @@ struct OperationOptions {
         returnOld(false),
         returnNew(false),
         isRestore(false),
-        overwrite(false) {}
+        overwrite(false),
+        truncateCompact(true) {}
   
   // original marker, set by an engine's recovery procedure only!
   void* recoveryData;
@@ -77,6 +78,10 @@ struct OperationOptions {
 
   // for insert operations: do not fail if _key exists but replace the document
   bool overwrite;
+
+  // when truncating - should we also run the compaction?
+  // defaults to true.
+  bool truncateCompact;
 
   // for synchronous replication operations, we have to mark them such that
   // we can deny them if we are a (new) leader, and that we can deny other

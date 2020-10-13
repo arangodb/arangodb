@@ -109,10 +109,15 @@ using namespace arangodb::rest;
 
 static inline bool ExtractBooleanArgument(v8::Isolate* isolate,
                                           v8::FunctionCallbackInfo<v8::Value> const& args,
-                                          int index) {
+                                          int index,
+                                          bool defaultVal) {
   TRI_ASSERT(index > 0);
 
-  return (args.Length() >= index && TRI_ObjectToBoolean(isolate, args[index - 1]));
+  if (args.Length() >= index) {
+    return TRI_ObjectToBoolean(isolate, args[index - 1]);
+  } else {
+    return defaultVal;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1927,7 +1932,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
           TRI_ObjectToString(isolate, optionsObject->Get(IsSynchronousReplicationKey));
     }
   } else {
-    options.waitForSync = ExtractBooleanArgument(isolate, args, optsIdx + 1);
+    options.waitForSync = ExtractBooleanArgument(isolate, args, optsIdx + 1, false);
   }
 
   if (!args[docIdx]->IsObject()) {
@@ -2116,8 +2121,10 @@ static void JS_TruncateVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
   v8::HandleScope scope(isolate);
 
   OperationOptions opOptions;
-  opOptions.waitForSync = ExtractBooleanArgument(isolate, args, 1);
-  ExtractStringArgument(isolate, args, 2, opOptions.isSynchronousReplicationFrom);
+
+  opOptions.waitForSync = false; // not specified anymore.
+  opOptions.isSynchronousReplicationFrom = ""; // not specified anymore.
+  opOptions.truncateCompact = ExtractBooleanArgument(isolate, args, 1, true);
 
   auto* collection = UnwrapCollection(isolate, args.Holder());
 
@@ -2145,12 +2152,13 @@ static void JS_TruncateVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
     }
   }
 
-  // wait for the transaction to finish first. only after that compact the
-  // data range(s) for the collection
-  // we shouldn't run compact() as part of the transaction, because the compact
-  // will be useless inside due to the snapshot the transaction has taken
-  collection->compact();
-
+  if (opOptions.truncateCompact) {
+    // wait for the transaction to finish first. only after that compact the
+    // data range(s) for the collection
+    // we shouldn't run compact() as part of the transaction, because the compact
+    // will be useless inside due to the snapshot the transaction has taken
+    collection->compact();
+  }
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
