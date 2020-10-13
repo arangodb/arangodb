@@ -99,7 +99,8 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new BooleanParameter(&_trackSlowQueries));
 
   options->addOption("--query.tracking-with-querystring", "whether to track the query string",
-                     new BooleanParameter(&_trackQueryString));
+                     new BooleanParameter(&_trackQueryString))
+                     .setIntroducedIn(30608);
   
   options->addOption("--query.tracking-with-bindvars",
                      "whether to track bind vars with AQL queries",
@@ -107,7 +108,8 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   
   options->addOption("--query.tracking-with-collections",
                      "whether to track collections with AQL queries",
-                     new BooleanParameter(&_trackCollections));
+                     new BooleanParameter(&_trackCollections))
+                     .setIntroducedIn(30608);
 
   options->addOption("--query.fail-on-warning",
                      "whether AQL queries should fail with errors even for "
