@@ -1531,8 +1531,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_good_case) {
   ShardInfo si{DATABASE, COLLECTION, SHARD};
   ShardInfo distLike1{DATABASE, col1, shard1, true};
   ShardInfo distLike2{DATABASE, col2, shard2, true};
-  // We only have Leader, F1, F2, Free healthy (we seeded the random number generate to have a consistent decission)
-  // If ever this is violated / inconsistent, we can just flag one server as BAD
+  // We only have Leader, F1, Free healthy
   std::vector<std::string> expected = {SHARD_FOLLOWER1, SHARD_LEADER, FREE_SERVER};
 
   std::vector<std::string> planned = {SHARD_LEADER, SHARD_FOLLOWER1};
@@ -1551,6 +1550,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_good_case) {
                     .setFailoverCandidates(distLike2, failovers)
                     .setFollowers(distLike2, followers)
                     .setDistributeShardsLike(distLike2, si)
+                    .setServerFailed(SHARD_FOLLOWER2) // disable this as randomly picked follower
                     .setJobInTodo(jobId)
                     .createNode();
 
@@ -1581,8 +1581,6 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_pick_common_candidat
   ShardInfo si{DATABASE, COLLECTION, SHARD};
   ShardInfo distLike1{DATABASE, col1, shard1, true};
   ShardInfo distLike2{DATABASE, col2, shard2, true};
-  // We only have Leader, F1, F2, Free healthy (we seeded the random number generate to have a consistent decission)
-  // If ever this is violated / inconsistent, we can just flag one server as BAD
   std::vector<std::string> expected = {SHARD_FOLLOWER1, SHARD_LEADER, FREE_SERVER};
 
   std::vector<std::string> planned = {SHARD_LEADER, SHARD_FOLLOWER1};
@@ -1604,6 +1602,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_pick_common_candidat
                     .setFailoverCandidates(distLike2, failovers)
                     .setFollowers(distLike2, reducedFollowers)
                     .setDistributeShardsLike(distLike2, si)
+                    .setServerFailed(SHARD_FOLLOWER2) // disable this as randomly picked follower
                     .setJobInTodo(jobId)
                     .createNode();
 
@@ -1634,8 +1633,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_pick_common_candidat
   ShardInfo si{DATABASE, COLLECTION, SHARD};
   ShardInfo distLike1{DATABASE, col1, shard1, true};
   ShardInfo distLike2{DATABASE, col2, shard2, true};
-  // We only have Leader, F1, F2, Free healthy (we seeded the random number generate to have a consistent decission)
-  // If ever this is violated / inconsistent, we can just flag one server as BAD
+
   std::vector<std::string> expected = {SHARD_FOLLOWER1, SHARD_LEADER, FREE_SERVER};
 
   std::vector<std::string> planned = {SHARD_LEADER, SHARD_FOLLOWER1};
@@ -1657,6 +1655,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_pick_common_candidat
                     .setFailoverCandidates(distLike2, failovers)
                     .setFollowers(distLike2, followers)
                     .setDistributeShardsLike(distLike2, si)
+                    .setServerFailed(SHARD_FOLLOWER2) // disable this as randomly picked follower
                     .setJobInTodo(jobId)
                     .createNode();
 
@@ -1786,8 +1785,6 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_good_case_no_candida
   ShardInfo si{DATABASE, COLLECTION, SHARD};
   ShardInfo distLike1{DATABASE, col1, shard1, true};
   ShardInfo distLike2{DATABASE, col2, shard2, true};
-  // We only have Leader, F1, F2, Free healthy (we seeded the random number generate to have a consistent decission)
-  // If ever this is violated / inconsistent, we can just flag one server as BAD
   std::vector<std::string> expected = {SHARD_FOLLOWER1, SHARD_LEADER, FREE_SERVER};
 
   std::vector<std::string> planned = {SHARD_LEADER, SHARD_FOLLOWER1};
@@ -1803,6 +1800,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_good_case_no_candida
                     .setPlannedServers(distLike2, planned)
                     .setFollowers(distLike2, followers)
                     .setDistributeShardsLike(distLike2, si)
+                    .setServerFailed(SHARD_FOLLOWER2) // disable this as randomly picked follower
                     .setJobInTodo(jobId)
                     .createNode();
 
@@ -1924,8 +1922,6 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_good_case_one_has_no
   ShardInfo si{DATABASE, COLLECTION, SHARD};
   ShardInfo distLike1{DATABASE, col1, shard1, true};
   ShardInfo distLike2{DATABASE, col2, shard2, true};
-  // We only have Leader, F1, F2, Free healthy (we seeded the random number generate to have a consistent decission)
-  // If ever this is violated / inconsistent, we can just flag one server as BAD
   std::vector<std::string> expected = {SHARD_FOLLOWER1, SHARD_LEADER, FREE_SERVER};
 
   std::vector<std::string> planned = {SHARD_LEADER, SHARD_FOLLOWER1};
@@ -1943,6 +1939,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_good_case_one_has_no
                     .setFailoverCandidates(distLike2, failovers)
                     .setFollowers(distLike2, followers)
                     .setDistributeShardsLike(distLike2, si)
+                    .setServerFailed(SHARD_FOLLOWER2) // disable this as randomly picked follower
                     .setJobInTodo(jobId)
                     .createNode();
 
@@ -1973,8 +1970,6 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_pick_common_candidat
   ShardInfo si{DATABASE, COLLECTION, SHARD};
   ShardInfo distLike1{DATABASE, col1, shard1, true};
   ShardInfo distLike2{DATABASE, col2, shard2, true};
-  // We only have Leader, F1, F2, Free healthy (we seeded the random number generate to have a consistent decission)
-  // If ever this is violated / inconsistent, we can just flag one server as BAD
   std::vector<std::string> expected = {SHARD_FOLLOWER1, SHARD_LEADER, FREE_SERVER};
 
   std::vector<std::string> planned = {SHARD_LEADER, SHARD_FOLLOWER1};
@@ -1995,6 +1990,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_pick_common_candidat
                     .setFailoverCandidates(distLike2, failovers)
                     .setFollowers(distLike2, reducedFollowers)
                     .setDistributeShardsLike(distLike2, si)
+                    .setServerFailed(SHARD_FOLLOWER2) // disable this as randomly picked follower
                     .setJobInTodo(jobId)
                     .createNode();
 
@@ -2025,8 +2021,6 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_pick_common_candidat
   ShardInfo si{DATABASE, COLLECTION, SHARD};
   ShardInfo distLike1{DATABASE, col1, shard1, true};
   ShardInfo distLike2{DATABASE, col2, shard2, true};
-  // We only have Leader, F1, F2, Free healthy (we seeded the random number generate to have a consistent decission)
-  // If ever this is violated / inconsistent, we can just flag one server as BAD
   std::vector<std::string> expected = {SHARD_FOLLOWER1, SHARD_LEADER, FREE_SERVER};
 
   std::vector<std::string> planned = {SHARD_LEADER, SHARD_FOLLOWER1};
@@ -2047,6 +2041,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_pick_common_candidat
                     .setFailoverCandidates(distLike2, failovers)
                     .setFollowers(distLike2, followers)
                     .setDistributeShardsLike(distLike2, si)
+                    .setServerFailed(SHARD_FOLLOWER2) // disable this as randomly picked follower
                     .setJobInTodo(jobId)
                     .createNode();
 
@@ -2244,6 +2239,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shards_like_resigned_leader_all
                     .setFailoverCandidates(distLike2, failovers)
                     .setFollowers(distLike2, followers)
                     .setDistributeShardsLike(distLike2, si)
+                    .setServerFailed(SHARD_FOLLOWER2) // disable this as randomly picked follower
                     .setJobInTodo(jobId)
                     .createNode();
 
@@ -2296,6 +2292,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shards_like_resigned_leader_lea
                     .setFailoverCandidates(distLike2, failovers)
                     .setFollowers(distLike2, followers)
                     .setDistributeShardsLike(distLike2, si)
+                    .setServerFailed(SHARD_FOLLOWER2) // disable this as randomly picked follower
                     .setJobInTodo(jobId)
                     .createNode();
 
@@ -2347,6 +2344,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shards_like_resigned_leader_fol
                     .setFailoverCandidates(distLike2, failovers)
                     .setFollowers(distLike2, resignedFollowers)
                     .setDistributeShardsLike(distLike2, si)
+                    .setServerFailed(SHARD_FOLLOWER2) // disable this as randomly picked follower
                     .setJobInTodo(jobId)
                     .createNode();
 
