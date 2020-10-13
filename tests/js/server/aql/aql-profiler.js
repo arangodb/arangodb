@@ -734,8 +734,8 @@ function ahuacatlProfilerTestSuite () {
         'COLLECT x = i % CEIL(@rows / 2) OPTIONS {method: "sorted"} ' +
         'RETURN x';
       const genNodeList = (rows, batches) => {
-        const rowsAfterCollect = 1;
-        const batchesAfterCollect = 1;
+        const rowsAfterCollect = Math.ceil(rows / 2);
+        const batchesAfterCollect = Math.ceil(rowsAfterCollect / defaultBatchSize);
 
         return [
           { type: SingletonBlock, calls: 1, items: 1 },
@@ -762,8 +762,8 @@ function ahuacatlProfilerTestSuite () {
         'COLLECT AGGREGATE y = MIN(i) OPTIONS {method: "sorted"} ' +
         'RETURN y';
       const genNodeList = (rows, batches) => {
-        const rowsAfterCollect = rows;
-        const batchesAfterCollect = Math.ceil(rowsAfterCollect / defaultBatchSize);
+        const rowsAfterCollect = 1;
+        const batchesAfterCollect = 1;
 
         return [
           { type: SingletonBlock, calls: 1, items: 1 },
