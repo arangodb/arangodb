@@ -11,12 +11,12 @@ v3.7.4 (XXXX-XX-XX)
 
 v3.7.3 (XXXX-XX-XX)
 -------------------
-      
+
 * Added the following metrics for synchronous replication in the cluster:
 
-  - `arangodb_refused_followers_count`: Number of times a shard leader received 
+  - `arangodb_refused_followers_count`: Number of times a shard leader received
     a refusal answer from a follower during synchronous replication.
-  - `arangodb_sync_wrong_checksum`: Number of times a mismatching shard 
+  - `arangodb_sync_wrong_checksum`: Number of times a mismatching shard
     checksum was detected when syncing shards. In case this happens, a resync
     will be triggered for the shard.
 
@@ -76,7 +76,7 @@ v3.7.3 (XXXX-XX-XX)
   led to link recreation.
 
 * Added configuration option `--rocksdb.sync-delay-threshold`.
-  This option can be used to track if any RocksDB WAL sync operations is 
+  This option can be used to track if any RocksDB WAL sync operations is
   delayed by more than the configured value (in milliseconds). The intention
   is to get aware of severely delayed WAL sync operations.
 
@@ -93,9 +93,6 @@ v3.7.3 (XXXX-XX-XX)
     requests executed by superuser/JWT
   - `arangodb_http_request_statistics_user_requests`: Total number of HTTP
     requests executed by clients
-
-* Make scheduler react and start new threads slightly faster in case a lot
-  of new work arrives.
 
 * Fixed a bug in handling of followers which refuse to replicate operations.
   In the case that the follower has simply been dropped in the meantime, we now

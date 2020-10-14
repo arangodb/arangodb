@@ -188,10 +188,11 @@ void AgencyCache::handleCallbacksNoLock(
       ++it;
     }
 
-    if (k.size() > 8) {
-      std::string_view r(k.c_str() + 8, k.size() - 8);
+    // Paths are normalized. We omit the first 8 characters for "/arango" + "/"
+    const static size_t offset = AgencyCommHelper::path(std::string()).size() + 1;
+    if (k.size() > offset) {
+      std::string_view r(k.c_str() + offset, k.size() - offset);
       auto rs = r.size();
-
       if (rs > strlen(PLAN) && r.compare(0, strlen(PLAN), PLAN) == 0) {
         if (rs >= strlen(PLAN_VERSION) &&                 // Plan/Version -> ignore
             r.compare(0, strlen(PLAN_VERSION), PLAN_VERSION) == 0) {
