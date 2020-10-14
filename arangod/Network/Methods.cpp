@@ -80,8 +80,6 @@ Result Response::combinedResult() const {
 
 auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
                     RequestOptions const& options, Headers headers) {
-  TRI_ASSERT(path.find("/_db/") == std::string::npos);
-  TRI_ASSERT(path.find('?') == std::string::npos);
 
   auto req = fuerte::createRequest(type, path, options.parameters, std::move(payload));
 
