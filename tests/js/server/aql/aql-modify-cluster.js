@@ -510,8 +510,8 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertDouble : function () {
-      c1.truncate();
-      c2.truncate();
+      c1.truncate({ compact: false });
+      c2.truncate({ compact: false });
 
       const query = `LET d1 = {name : 'foo'}
                      LET d2 = {name : 'bar'}
@@ -531,8 +531,8 @@ function ahuacatlInsertSuite () {
     },
 
     testInsertTripleWithSub : function () {
-      c1.truncate();
-      c2.truncate();
+      c1.truncate({ compact: false });
+      c2.truncate({ compact: false });
 
       c3.drop();
       c3 = db._createEdgeCollection(cn3);
@@ -1079,7 +1079,7 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertOverwrite : function () {
-      c1.truncate();
+      c1.truncate({ compact: false });
       assertEqual(0, c1.count());
 
       var rv1 = db._query(" INSERT { _key: '123', name: 'ulf' } IN @@cn OPTIONS { overwrite: false } RETURN NEW", { "@cn": cn1 });
@@ -1129,7 +1129,7 @@ function ahuacatlInsertSuite () {
     },
 
     testInsertOverwriteUpsert : function () {
-      c1.truncate();
+      c1.truncate({ compact: false });
       assertEqual(0, c1.count());
 
       var rv1 = db._query(" INSERT { _key: '123', name: 'ulf', drinks : { hard : 'korn' } } IN @@cn OPTIONS { overwrite: false } RETURN NEW", { "@cn": cn1 });
