@@ -462,8 +462,8 @@ REGISTER_ANALYZER_VPACK(irs::analysis::pipeline_token_stream, pipeline_vpack_bui
   pipeline_vpack_normalizer);
 } // namespace pipeline_vpack
 
-arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressionContext*/,
-                                    arangodb::transaction::Methods* trx,
+arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expressionContext,
+                                    arangodb::aql::AstNode const&,
                                     arangodb::aql::VPackFunctionParameters const& args) {
   if (ADB_UNLIKELY(args.empty() || args.size() > 2)) {
     irs::string_ref const message =
@@ -486,12 +486,13 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressi
     arangodb::iresearch::getStringRef(args[1].slice()) :
     irs::string_ref(arangodb::iresearch::IResearchAnalyzerFeature::identity()->name());
 
-  TRI_ASSERT(trx);
-  auto& server = trx->vocbase().server();
+  TRI_ASSERT(expressionContext);
+  auto& trx = expressionContext->trx();
+  auto& server = expressionContext->vocbase().server();
   if (args.size() > 1) {
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    pool = analyzers.get(name, trx->vocbase(),
-                         trx->state()->analyzersRevision());
+    pool = analyzers.get(name, trx.vocbase(),
+                         trx.state()->analyzersRevision());
   } else { //do not look for identity, we already have reference)
     pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
   }
@@ -833,7 +834,6 @@ arangodb::Result visitAnalyzers(
       builder.add("query", VPackValue(queryString.string()));
       builder.close();
     }
-
 
     for (auto const& coord : coords) {
       auto f = arangodb::network::sendRequest(
