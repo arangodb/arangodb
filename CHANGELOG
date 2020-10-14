@@ -1,6 +1,12 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed handling of failedLeaderJob. In case of a plan modification, that
+  removes a server from the plan, e.g. reduce replication factor. Directly
+  followed by a failure of the current shard leader, would reinsert the just
+  removed server in the plan, which is undesired, we first need to have a full
+  "desync" cycle on this server to be reusable in the plan again.
+
 * Make sure the optimizer doesn't pick another index than the TTL index itself
   while fulfilling the expiry of TTL.
 
