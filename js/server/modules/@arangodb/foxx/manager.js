@@ -354,15 +354,26 @@ function startup () {
     // but as all queries can run locally, it should always make progress
     selfHealAll();
   } else {
-    global.KEYSPACE_CREATE('FoxxFirstSelfHeal', 1, true);
+    let offset = 3; // start selfheal in x seconds
+    const period = 5 * 60; // repeat sealfheal all x seconds
+    if (global.FOXX_STARTUP_WAIT_FOR_SELF_HEAL) {
+      // Enforce a selfheal now.
+      selfHealAll();
+      // we just did a selfheal, can delay the first automatic one
+      offset = period;
+    } else {
+      // Delay the selfHeal
+      global.KEYSPACE_CREATE('FoxxFirstSelfHeal', 1, true);
+    }
+    
     // in a cluster, move the initial self-heal job to a backup thread,
     // so that we do not block on startup
     try {
       require('@arangodb/tasks').register({
         id: 'self-heal',
         isSystem: true,
-        offset: 3, // give it a bit of time
-        period: 5 * 60, // secs
+        offset,
+        period,
         command: function () {
           const FoxxManager = require('@arangodb/foxx/manager');
           FoxxManager.healAll();
