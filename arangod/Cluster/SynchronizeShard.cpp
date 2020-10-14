@@ -245,7 +245,7 @@ arangodb::Result addShardFollower(network::ConnectionPool* pool,
     if (collection == nullptr) {
       std::string errorMsg(
         "SynchronizeShard::addShardFollower: Failed to lookup collection ");
-      errorMsg += shard;
+      errorMsg += database + "/" + shard;
       LOG_TOPIC("4a8db", ERR, Logger::MAINTENANCE) << errorMsg;
       return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
     }
@@ -514,7 +514,7 @@ arangodb::Result SynchronizeShard::getReadLock(
     if (res.fail()) {
       LOG_TOPIC("4f34d", WARN, Logger::MAINTENANCE)
           << "startReadLockOnLeader: cancelation error for shard - "
-          << collection << ": " << res.errorMessage();
+          << database << "/" << collection << ": " << res.errorMessage();
     }
   } catch (std::exception const& e) {
     LOG_TOPIC("7fcc9", WARN, Logger::MAINTENANCE)
@@ -586,13 +586,13 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   SyncerId syncerId{syncer->syncerId()};
 
   try {
-    std::string const context = "synchronization of shard " + col->name() + " in database " + database;
+    std::string const context = "synchronization of shard " + database + "/" + col->name();
     Result r = syncer->run(configuration._incremental, context.c_str());
 
     if (r.fail()) {
       LOG_TOPIC("3efff", DEBUG, Logger::REPLICATION)
-          << "initial sync failed for database '" << database
-          << "': " << r.errorMessage();
+          << "initial sync failed for database " << database << "/" << col->name()
+          << ": " << r.errorMessage();
       THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
     }
 
@@ -659,7 +659,7 @@ static arangodb::Result replicationSynchronizeCatchup(VPackSlice const& conf, do
 
   Result r;
   try {
-    std::string const context = "catching up delta changes for shard " + collection + " in database " + database;
+    std::string const context = "catching up delta changes for shard " + database + "/" + collection;
     r = syncer.syncCollectionCatchup(collection, timeout, tickReached, didTimeout, context.c_str());
   } catch (arangodb::basics::Exception const& ex) {
     r = Result(ex.code(), ex.what());
@@ -698,7 +698,7 @@ static arangodb::Result replicationSynchronizeFinalize(VPackSlice const& conf) {
 
   Result r;
   try {
-    std::string const context = "final synchronization of shard " + collection + " in database " + database;
+    std::string const context = "final synchronization of shard " + database + "/" + collection;
     r = syncer.syncCollectionFinalize(collection, context.c_str());
   } catch (arangodb::basics::Exception const& ex) {
     r = Result(ex.code(), ex.what());
@@ -804,7 +804,7 @@ bool SynchronizeShard::first() {
     auto collection = vocbase->lookupCollection(shard);
     if (collection == nullptr) {
       std::stringstream error;
-      error << "failed to lookup local shard " << shard;
+      error << "failed to lookup local shard " << database << "/" << shard;
       LOG_TOPIC("06489", ERR, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
       _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
@@ -814,7 +814,7 @@ bool SynchronizeShard::first() {
     uint64_t docCount;
     if (!collectionCount(*collection.get(), docCount).ok()) {
       std::stringstream error;
-      error << "failed to get a count on leader " << shard;
+      error << "failed to get a count on leader " << database << "/" << shard;
       LOG_TOPIC("da225", ERR, Logger::MAINTENANCE) << "SynchronizeShard " << error.str();
       _result.reset(TRI_ERROR_INTERNAL, error.str());
       return false;
@@ -825,7 +825,7 @@ bool SynchronizeShard::first() {
       CollectionNameResolver resolver(collection->vocbase());
       _clientInfoString =
           std::string{"follower "} + ServerState::instance()->getPersistedId() +
-          " of shard " + collection->name() + " of collection " + database +
+          " of shard " + database + "/" + collection->name() + " of collection " + database +
           "/" + resolver.getCollectionName(collection->id());
     }
 
@@ -931,7 +931,7 @@ bool SynchronizeShard::first() {
       if (endTime - startTime > seconds(5)) {
         LOG_TOPIC("ca7e3", INFO, Logger::MAINTENANCE)
             << "synchronizeOneShard: long call to syncCollection for shard"
-            << shard << " " << syncRes.errorMessage()
+            << database << "/" << shard << " " << syncRes.errorMessage()
             << " start time: " << timepointToString(startTime)
             << ", end time: " << timepointToString(system_clock::now());
       }
@@ -939,7 +939,7 @@ bool SynchronizeShard::first() {
       // If this did not work, then we cannot go on:
       if (!syncRes.ok()) {
         std::stringstream error;
-        error << "could not initially synchronize shard " << shard << ": "
+        error << "could not initially synchronize shard " << database << "/" << shard << ": "
               << syncRes.errorMessage();
         LOG_TOPIC("c1b31", DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());
@@ -958,7 +958,7 @@ bool SynchronizeShard::first() {
 
       if (collections.length() == 0 || collections[0].get("name").copyString() != shard) {
         std::stringstream error;
-        error << "shard " << shard << " seems to be gone from leader, this "
+        error << "shard " << database << "/" << shard << " seems to be gone from leader, this "
                "can happen if a collection was dropped during synchronization!";
         LOG_TOPIC("664ae", WARN, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());
@@ -1207,6 +1207,10 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     if (countRes.fail()) {
       return countRes;
     }
+    
+    LOG_TOPIC("d2689", INFO, Logger::MAINTENANCE) 
+       << "recalculated collection count on follower for "
+       << database << "/" << shard << ", old: " << oldCount << ", new: " << docCount;
 
     // check if our recalculation has made a difference
     if (oldCount == docCount) {
@@ -1260,10 +1264,13 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     errorMessage += res.errorMessage();
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
+  
+  uint64_t finalDocCount;
+  collectionCount(collection, finalDocCount);
 
   // Report success:
-  LOG_TOPIC("3423d", DEBUG, Logger::MAINTENANCE)
-      << "synchronizeOneShard: synchronization worked for shard " << shard;
+  LOG_TOPIC("3423d", INFO, Logger::MAINTENANCE)
+      << "synchronizeOneShard: synchronization worked for shard " << database << "/" << shard << ", number of documents: " << finalDocCount;
   _result.reset(TRI_ERROR_NO_ERROR);
   return {TRI_ERROR_NO_ERROR};
 }
@@ -1272,8 +1279,9 @@ void SynchronizeShard::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
     auto const& shard = _description.get(SHARD);
     if (COMPLETE == state) {
+      std::string database = _description.get(DATABASE);
       LOG_TOPIC("50827", INFO, Logger::MAINTENANCE)
-        << "SynchronizeShard: synchronization completed for shard " << shard;
+        << "SynchronizeShard: synchronization completed for shard " << database << "/" << shard;
     }
     _feature.incShardVersion(shard);
     _feature.unlockShard(shard);
