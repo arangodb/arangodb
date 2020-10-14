@@ -26,8 +26,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "RocksDBEngine/RocksDBMetadata.h"
+#include "Cluster/ResultT.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBMetadata.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -67,10 +68,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
   void unlockWrite();
   int lockRead(double timeout = 0.0);
   void unlockRead();
-  
-  /// recalculte counts for collection in case of failure
-  uint64_t recalculateCounts();
-  
+
+  /// recalculate counts for collection in case of failure, blocks other writes for a short period
+  uint64_t recalculateCounts() override;
+
   /// @brief compact-data operation
   /// triggers rocksdb compaction for documentDB and indexes
   Result compact() override final;
@@ -93,6 +94,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   uint64_t const _objectId; /// rocksdb-specific object id for collection
   /// @brief collection lock used for write access
   mutable basics::ReadWriteLock _exclusiveLock;
+  mutable std::mutex _recalculationLock;
 };
 
 } // namespace arangodb

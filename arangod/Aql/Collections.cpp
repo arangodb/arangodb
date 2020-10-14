@@ -84,6 +84,10 @@ std::vector<std::string> Collections::collectionNames() const {
   result.reserve(_collections.size());
 
   for (auto const& it : _collections) {
+    if (!it.first.empty() && it.first[0] >= '0' && it.first[0] <= '9') {
+      // numeric collection id. don't return them
+      continue;
+    }
     result.emplace_back(it.first);
   }
   return result;

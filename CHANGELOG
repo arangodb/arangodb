@@ -1,5 +1,15 @@
 v3.6.8 (XXXX-XX-XX)
 -------------------
+      
+* Added the following metrics for synchronous replication in the cluster:
+
+  - `arangodb_refused_followers_count`: Number of times a shard leader received
+    a refusal answer from a follower during synchronous replication.
+  - `arangodb_sync_wrong_checksum`: Number of times a mismatching shard 
+    checksum was detected when syncing shards. In case this happens, a resync
+    will be triggered for the shard.
+  - `arangodb_dropped_followers_count`: Number of times a follower was dropped
+    during synchronous replication.
 
 * Fixed handling of failedLeaderJob. In case of a plan modification, that
   removes a server from the plan, e.g. reduce replication factor. Directly
@@ -38,7 +48,16 @@ v3.6.8 (XXXX-XX-XX)
   slow queries are tracked extra.
 
 * Added configuration option `--query.tracking-with-querystring` to decide
-  whether the query string is shown.
+  whether the query string is shown in the slow query log and the list of
+  currently running queries. The option is true by default.
+  When turned off, querystrings in the slow query log and the list of currently
+  running queries are just shown as "<hidden>".
+
+* Added configuration option `--query.tracking-with-datasources` to toggle
+  whether the names of data sources used by queries are shown in the slow query
+  log and the list of currently running queries. The option is false by default.
+  When turned on, the names of data sources used by the query will be shown in
+  the slow query log and the list of currently running queries.
 
 * Fixed handling of failoverCandidates. Sometimes, a server can still be a
   failoverCandidate even though it has been taken out of the Plan. With this
