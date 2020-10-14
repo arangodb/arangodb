@@ -19,12 +19,12 @@ The name of the collection.
 
 @RESTQUERYPARAM{waitForSync,boolean,optional,}
 If *true* then the data is synchronized to disk before returning from a
-document create, update, replace or removal operation. (default: false)
+document create, update, replace or removal operation (default: *false*)
 
 @RESTQUERYPARAM{compact,boolean,optional,}
-If *true* (default) the storage engine will be told to start a compaction
-in order to free up disk space. This can be resource intense, if the only 
-intention is to start over with an empty collection, specify *false*
+If *true* (default) then the storage engine is told to start a compaction
+in order to free up disk space. This can be resource intense. If the only 
+intention is to start over with an empty collection, specify *false*.
 
 @RESTDESCRIPTION
 Removes all documents from the collection, but leaves the indexes intact.
