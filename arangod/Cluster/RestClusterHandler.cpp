@@ -144,7 +144,7 @@ void RestClusterHandler::handleClusterInfo() {
     }
     if (lvl < auth::Level::RW) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to produce an agency dump");
+                    "you need admin rights to produce an cluster info dump");
       return;
     }
   }
