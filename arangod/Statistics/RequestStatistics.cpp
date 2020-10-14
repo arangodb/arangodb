@@ -124,9 +124,16 @@ void RequestStatistics::process(RequestStatistics* statistics) {
       } else {
         totalTime = statistics->_writeEnd - statistics->_readStart;
       }
+      
+      bool const isSuperuser = statistics->_superuser;
+      if (isSuperuser) {
+        statistics::TotalRequestsSuperuser.incCounter();
+      } else {
+        statistics::TotalRequestsUser.incCounter();
+      }
 
-      statistics::RequestFigures& figures = statistics->_superuser
-        ? statistics::GeneralRequestFigures
+      statistics::RequestFigures& figures = isSuperuser
+        ? statistics::SuperuserRequestFigures
         : statistics::UserRequestFigures;
 
       figures.totalTimeDistribution.addFigure(totalTime);
@@ -195,7 +202,7 @@ void RequestStatistics::getSnapshot(Snapshot& snapshot, stats::RequestStatistics
 
   statistics::RequestFigures& figures = source == stats::RequestStatisticsSource::USER
     ? statistics::UserRequestFigures
-    : statistics::GeneralRequestFigures;
+    : statistics::SuperuserRequestFigures;
 
   snapshot.totalTime = figures.totalTimeDistribution;
   snapshot.requestTime = figures.requestTimeDistribution;
@@ -205,6 +212,7 @@ void RequestStatistics::getSnapshot(Snapshot& snapshot, stats::RequestStatistics
   snapshot.bytesReceived = figures.bytesReceivedDistribution;
   
   if (source == stats::RequestStatisticsSource::ALL) {
+    TRI_ASSERT(&figures == &statistics::SuperuserRequestFigures);
     snapshot.totalTime.add(statistics::UserRequestFigures.totalTimeDistribution);
     snapshot.requestTime.add(statistics::UserRequestFigures.requestTimeDistribution);
     snapshot.queueTime.add(statistics::UserRequestFigures.queueTimeDistribution);

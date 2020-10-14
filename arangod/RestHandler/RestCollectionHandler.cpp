@@ -412,7 +412,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
 
     if (flush && TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED ==
                      coll->status()) {
-      EngineSelectorFeature::ENGINE->flushWal(false, false, false);
+      EngineSelectorFeature::ENGINE->flushWal(false, false);
     }
 
     res = methods::Collections::unload(&_vocbase, coll.get());

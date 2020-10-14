@@ -159,6 +159,14 @@ struct Job {
                                                                std::string const& shrd,
                                                                std::string const& serverToAvoid);
 
+  /// @brief The shard must be one of a collection without
+  /// `distributeShardsLike`. This returns all servers which 
+  /// are in `failoverCandidates` for this shard or for any of its clones.
+  static std::unordered_set<std::string> findAllFailoverCandidates(
+      Node const& snap,
+      std::string const& db,
+      std::vector<Job::shard_t> const& shardsLikeMe);
+
   JOB_STATUS _status;
   Node const& _snapshot;
   AgentInterface* _agent;

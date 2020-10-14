@@ -357,21 +357,21 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             // Wait for responses
             // First wait for Leader
             {
-              auto& res = leaderF.get();
+              auto const& res = leaderF.get();
               if (fuerteToArangoErrorCode(res) != TRI_ERROR_NO_ERROR || !res.response) {
                 // We did not even get count for leader, use defaults
                 continue;
               }
 
-              std::vector<VPackSlice> const& slices = res.response->slices();
-              if (slices.empty() || !slices[0].isObject()) {
+              VPackSlice slice = res.slice();
+              if (!slice.isObject()) {
                 LOG_TOPIC("c02b2", WARN, arangodb::Logger::CLUSTER)
                     << "Received invalid response for count. Shard "
                     << "distribution inaccurate";
                 continue;
               }
 
-              VPackSlice response = slices[0].get("count");
+              VPackSlice response = slice.get("count");
               if (!response.isNumber()) {
                 LOG_TOPIC("fe868", WARN, arangodb::Logger::CLUSTER)
                     << "Received invalid response for count. Shard "
@@ -395,16 +395,16 @@ void ShardDistributionReporter::helperDistributionForDatabase(
                   continue;
                 }
 
-                auto& res = response.get();
-                std::vector<VPackSlice> const& slices = res.response->slices();
-                if (slices.empty() || !slices[0].isObject()) {
+                auto const& res = response.get();
+                VPackSlice slice = res.slice();
+                if (!slice.isObject()) {
                   LOG_TOPIC("fcbb3", WARN, arangodb::Logger::CLUSTER)
                       << "Received invalid response for count. Shard "
                       << "distribution inaccurate";
                   continue;
                 }
 
-                VPackSlice answer = slices[0].get("count");
+                VPackSlice answer = slice.get("count");
                 if (!answer.isNumber()) {
                   LOG_TOPIC("8d7b0", WARN, arangodb::Logger::CLUSTER)
                       << "Received invalid response for count. Shard "

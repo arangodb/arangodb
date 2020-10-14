@@ -72,7 +72,7 @@ class AqlItemMatrix {
    *
    * @return True if empty
    */
-  bool empty() const noexcept;
+  bool blocksEmpty() const noexcept;
 
   void clear();
 
@@ -106,7 +106,7 @@ class AqlItemMatrix {
  private:
   std::vector<SharedAqlItemBlockPtr> _blocks;
 
-  uint64_t _size;
+  uint64_t _numDataRows;
 
   RegisterCount _nrRegs;
   size_t _startIndexInFirstBlock{0};

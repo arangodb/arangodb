@@ -64,9 +64,9 @@ class PhysicalCollectionTest
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // setup required application features
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>());  
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>());  // required for VocbaseContext
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>());
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>());  
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>());  // required for TRI_vocbase_t
 
 #if USE_ENTERPRISE

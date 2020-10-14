@@ -43,7 +43,7 @@ TEST_F(AqlItemMatrixTest, expose_size_of_data_only) {
   auto& manager = this->manager();
 
   AqlItemMatrix testee(1);
-  EXPECT_TRUE(testee.empty());
+  EXPECT_TRUE(testee.blocksEmpty());
   {
     // 12
     auto block =
@@ -51,14 +51,14 @@ TEST_F(AqlItemMatrixTest, expose_size_of_data_only) {
                       {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}});
     testee.addBlock(block);
   }
-  EXPECT_FALSE(testee.empty());
+  EXPECT_FALSE(testee.blocksEmpty());
   ASSERT_EQ(testee.size(), 12);
   {
     // 8
     auto block = buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}});
     testee.addBlock(block);
   }
-  EXPECT_FALSE(testee.empty());
+  EXPECT_FALSE(testee.blocksEmpty());
   ASSERT_EQ(testee.size(), 20);
 
   {
@@ -66,7 +66,7 @@ TEST_F(AqlItemMatrixTest, expose_size_of_data_only) {
     auto block = buildBlock<1>(manager, {{1}, {2}, {3}, {4}, {1}, {2}, {3}, {4}, {1}});
     testee.addBlock(block);
   }
-  EXPECT_FALSE(testee.empty());
+  EXPECT_FALSE(testee.blocksEmpty());
   ASSERT_EQ(testee.size(), 29);
 }
 
