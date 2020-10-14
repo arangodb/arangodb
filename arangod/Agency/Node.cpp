@@ -1199,6 +1199,7 @@ void Node::clear() {
 std::vector<std::string> Node::keys() const {
   std::vector<std::string> result;
   if (!_isArray) {
+    result.reserve(_children.size());
     for (auto const& i : _children) {
       result.emplace_back(i.first);
     }
