@@ -101,7 +101,7 @@ function BaseTestConfig () {
       while (tries++ < 120) {
         shardInfo = c.shards(true);
         servers = shardInfo[shard];
-        if (servers.length === 2) {
+        if (servers.length === 2 && c.count() === 200) {
           break;
         }
         require("internal").sleep(0.5);
@@ -110,16 +110,23 @@ function BaseTestConfig () {
       assertEqual(200, c.count());
       assertEqual(200, c.toArray().length);
 
-      let total = 0;
-      getDBServers().forEach((server) => {
-        if (servers.indexOf(server.id) === -1) {
-          return;
+      tries = 0;
+      let total;
+      while (tries++ < 120) {
+        total = 0;
+        getDBServers().forEach((server) => {
+          if (servers.indexOf(server.id) === -1) {
+            return;
+          }
+          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+          assertEqual(200, result.status);
+          total += result.json.count;
+        });
+        if (total === 2 * 200) {
+          break;
         }
-        let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-        assertEqual(200, result.status);
-        assertEqual(200, result.json.count);
-        total += result.json.count;
-      });
+        require("internal").sleep(0.5);
+      }
       assertEqual(2 * 200, total);
     },
     
@@ -159,17 +166,24 @@ function BaseTestConfig () {
       assertEqual(2, servers.length);
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
-      
-      let total = 0;
-      getDBServers().forEach((server) => {
-        if (servers.indexOf(server.id) === -1) {
-          return;
+     
+      tries = 0;
+      let total;
+      while (tries++ < 120) {
+        total = 0;
+        getDBServers().forEach((server) => {
+          if (servers.indexOf(server.id) === -1) {
+            return;
+          }
+          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+          assertEqual(200, result.status);
+          total += result.json.count;
+        });
+        if (total === 2 * 100) {
+          break;
         }
-        let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-        assertEqual(200, result.status);
-        assertEqual(100, result.json.count);
-        total += result.json.count;
-      });
+        require("internal").sleep(0.5);
+      }
       assertEqual(2 * 100, total);
     },
     
@@ -215,16 +229,23 @@ function BaseTestConfig () {
       assertEqual(200, c.count());
       assertEqual(200, c.toArray().length);
 
-      let total = 0;
-      getDBServers().forEach((server) => {
-        if (servers.indexOf(server.id) === -1) {
-          return;
+      tries = 0;
+      let total;
+      while (tries++ < 120) {
+        total = 0;
+        getDBServers().forEach((server) => {
+          if (servers.indexOf(server.id) === -1) {
+            return;
+          }
+          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+          assertEqual(200, result.status);
+          total += result.json.count;
+        });
+        if (total === 2 * 200) {
+          break;
         }
-        let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-        assertEqual(200, result.status);
-        assertEqual(200, result.json.count);
-        total += result.json.count;
-      });
+        require("internal").sleep(0.5);
+      }
       assertEqual(2 * 200, total);
     },
     
@@ -274,16 +295,16 @@ function BaseTestConfig () {
       assertEqual(100000, c.count());
       assertEqual(100000, c.toArray().length);
 
-      let total = 0;
       tries = 0;
+      let total;
       while (tries++ < 120) {
+        total = 0;
         getDBServers().forEach((server) => {
           if (servers.indexOf(server.id) === -1) {
             return;
           }
           let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
           assertEqual(200, result.status);
-          assertEqual(100000, result.json.count);
           total += result.json.count;
         });
         if (total === 2 * 100000) {
@@ -328,16 +349,16 @@ function BaseTestConfig () {
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
       
-      let total = 0;
       tries = 0;
+      let total;
       while (tries++ < 120) {
+        total = 0;
         getDBServers().forEach((server) => {
           if (servers.indexOf(server.id) === -1) {
             return;
           }
           let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
           assertEqual(200, result.status);
-          assertEqual(100, result.json.count);
           total += result.json.count;
         });
         if (total === 2 * 100) {
@@ -381,17 +402,24 @@ function BaseTestConfig () {
       assertEqual(2, servers.length);
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
-      
-      let total = 0;
-      getDBServers().forEach((server) => {
-        if (servers.indexOf(server.id) === -1) {
-          return;
+     
+      tries = 0;
+      let total;
+      while (tries++ < 120) {
+        total = 0;
+        getDBServers().forEach((server) => {
+          if (servers.indexOf(server.id) === -1) {
+            return;
+          }
+          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+          assertEqual(200, result.status);
+          total += result.json.count;
+        });
+        if (total === 2 * 100) {
+          break;
         }
-        let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-        assertEqual(200, result.status);
-        assertEqual(100, result.json.count);
-        total += result.json.count;
-      });
+        require("internal").sleep(0.5);
+      }
       assertEqual(2 * 100, total);
     },
     
@@ -450,16 +478,23 @@ function BaseTestConfig () {
       assertEqual(101, c.count());
       assertEqual(101, c.toArray().length);
       
-      let total = 0;
-      getDBServers().forEach((server) => {
-        if (servers.indexOf(server.id) === -1) {
-          return;
+      tries = 0;
+      let total;
+      while (tries++ < 120) {
+        total = 0;
+        getDBServers().forEach((server) => {
+          if (servers.indexOf(server.id) === -1) {
+            return;
+          }
+          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+          assertEqual(200, result.status);
+          total += result.json.count;
+        });
+        if (total === 2 * 101) {
+          break;
         }
-        let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-        assertEqual(200, result.status);
-        assertEqual(101, result.json.count);
-        total += result.json.count;
-      });
+        require("internal").sleep(0.5);
+      }
       assertEqual(2 * 101, total);
     },
     
@@ -518,16 +553,23 @@ function BaseTestConfig () {
       assertEqual(101, c.count());
       assertEqual(101, c.toArray().length);
       
-      let total = 0;
-      getDBServers().forEach((server) => {
-        if (servers.indexOf(server.id) === -1) {
-          return;
+      tries = 0;
+      let total;
+      while (tries++ < 120) {
+        total = 0;
+        getDBServers().forEach((server) => {
+          if (servers.indexOf(server.id) === -1) {
+            return;
+          }
+          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+          assertEqual(200, result.status);
+          total += result.json.count;
+        });
+        if (total === 2 * 101) {
+          break;
         }
-        let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-        assertEqual(200, result.status);
-        assertEqual(101, result.json.count);
-        total += result.json.count;
-      });
+        require("internal").sleep(0.5);
+      }
       assertEqual(2 * 101, total);
     },
     
@@ -591,17 +633,24 @@ function BaseTestConfig () {
       assertEqual(2, servers.length);
       assertEqual(101, c.count());
       assertEqual(101, c.toArray().length);
-      
-      let total = 0;
-      getDBServers().forEach((server) => {
-        if (servers.indexOf(server.id) === -1) {
-          return;
+     
+      tries = 0;
+      let total;
+      while (tries++ < 120) {
+        total = 0;
+        getDBServers().forEach((server) => {
+          if (servers.indexOf(server.id) === -1) {
+            return;
+          }
+          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+          assertEqual(200, result.status);
+          total += result.json.count;
+        });
+        if (total === 2 * 101) {
+          break;
         }
-        let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-        assertEqual(200, result.status);
-        assertEqual(101, result.json.count);
-        total += result.json.count;
-      });
+        require("internal").sleep(0.5);
+      }
       assertEqual(2 * 101, total);
     },
 
