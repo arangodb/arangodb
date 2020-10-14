@@ -27,6 +27,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
+#include "Aql/WalkerWorker.h"
 #include "Basics/Common.h"
 #include "Containers/SmallVector.h"
 
@@ -79,6 +80,10 @@ class ExecutionEngine {
     return _engineId;
   }
 
+
+  void setRoot(ExecutionBlock* newRoot) {
+    _root = newRoot; // TODO: remove me  - make all root related inside engine
+  }
   /// @brief get the root block
   TEST_VIRTUAL ExecutionBlock* root() const;
 
@@ -163,6 +168,22 @@ class ExecutionEngine {
   /// @brief whether or not initializeCursor was called
   bool _initializeCursorCalled;
 };
+
+struct SingleServerQueryInstanciator final
+  : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+  ExecutionEngine& engine;
+  ExecutionBlock* root{};
+  std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
+
+  explicit SingleServerQueryInstanciator(ExecutionEngine& engine) noexcept
+    : engine(engine) {}
+
+  void after(ExecutionNode* en) override;
+
+  // Override this method for DBServers, there it is now possible to visit the same block twice
+  bool done(ExecutionNode* en) override { return false; }
+};
+
 }  // namespace aql
 }  // namespace arangodb
 

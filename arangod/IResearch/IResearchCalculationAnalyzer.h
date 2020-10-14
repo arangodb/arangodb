@@ -25,11 +25,16 @@
 
 #include "RestServer/DatabaseFeature.h"
 #include "analysis/token_attributes.hpp"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 
 #include <string>
 
 namespace arangodb {
 namespace iresearch {
+
+class CalculationQueryContext;
 
 class CalculationAnalyzer final : public irs::analysis::analyzer{
  public:
@@ -77,15 +82,23 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   virtual bool next() override;
   virtual bool reset(irs::string_ref const& field) noexcept override;
 
-  static arangodb::DatabaseFeature* DB_FEATURE; // FIXME: implement properly. Just needed for expression db
+  static void initCalculationContext(arangodb::application_features::ApplicationServer& server);
+
+  static void shutdownCalculationContext();
  private:
   irs::term_attribute _term;
   irs::increment _inc;
-  arangodb::aql::QueryResult _queryResult;
-  std::unique_ptr<arangodb::aql::Query> _query;
   bool _has_data{ false };
   std::string _str;
   options_t _options;
+
+  std::unique_ptr<arangodb::aql::Ast> _ast;
+  std::unique_ptr<arangodb::aql::ExecutionEngine> _engine;
+  std::unique_ptr<CalculationQueryContext> _query;
+  std::unique_ptr<arangodb::aql::ExecutionPlan> _plan;
+  arangodb::aql::SharedAqlItemBlockPtr _queryResults;
+  /// @brief Artificial vocbase for executing calculation queries
+  static std::unique_ptr<TRI_vocbase_t> CalculationAnalyzer::_calculationVocbase;
 }; // CalculationAnalyzer
 }
 }

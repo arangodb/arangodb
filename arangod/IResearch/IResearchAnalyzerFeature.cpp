@@ -2663,8 +2663,6 @@ void IResearchAnalyzerFeature::prepare() {
 
   // load all static analyzers
   _analyzers = getStaticAnalyzers();
-  //TODO: remove kludge!
-  CalculationAnalyzer::DB_FEATURE = &server().getFeature<arangodb::DatabaseFeature>();
 }
 
 Result IResearchAnalyzerFeature::removeFromCollection(irs::string_ref const& name, irs::string_ref const& vocbase) {
@@ -2925,6 +2923,7 @@ void IResearchAnalyzerFeature::start() {
     return;
   }
 
+  CalculationAnalyzer::initCalculationContext(server());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // we rely on having a system database
   if (server().hasFeature<SystemDatabaseFeature>()) {
@@ -2969,6 +2968,7 @@ void IResearchAnalyzerFeature::stop() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
+  CalculationAnalyzer::shutdownCalculationContext();
 }
 
 Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {

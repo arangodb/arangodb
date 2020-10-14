@@ -40,7 +40,6 @@
 #include "Aql/ReturnExecutor.h"
 #include "Aql/SkipResult.h"
 #include "Aql/SharedQueryState.h"
-#include "Aql/WalkerWorker.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
@@ -212,70 +211,6 @@ ExecutionEngine::~ExecutionEngine() {
   }
 }
 
-struct SingleServerQueryInstanciator final
-    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
-  ExecutionEngine& engine;
-  ExecutionBlock* root{};
-  std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
-
-  explicit SingleServerQueryInstanciator(ExecutionEngine& engine) noexcept
-      : engine(engine) {}
-        
-  void after(ExecutionNode* en) override {
-    if (en->getType() == ExecutionNode::TRAVERSAL ||
-        en->getType() == ExecutionNode::SHORTEST_PATH ||
-        en->getType() == ExecutionNode::K_SHORTEST_PATHS) {
-      // We have to prepare the options before we build the block
-      ExecutionNode::castTo<GraphNode*>(en)->prepareOptions();
-    }
-
-    ExecutionBlock* block = nullptr;
-    if (!arangodb::ServerState::instance()->isDBServer()) {
-      auto const nodeType = en->getType();
-
-      if (nodeType == ExecutionNode::DISTRIBUTE ||
-          nodeType == ExecutionNode::SCATTER ||
-          (nodeType == ExecutionNode::GATHER &&
-           // simon: parallel traversals use a GatherNode
-           static_cast<GatherNode*>(en)->parallelism() != GatherNode::Parallelism::Parallel)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
-            "logic error, got cluster node in local query");
-      }
-    } else {
-      auto const& cached = cache.find(en);
-      if (cached != cache.end()) {
-        block = cached->second;
-        TRI_ASSERT(block != nullptr);
-      }
-    }
-
-    if (block == nullptr) {
-      block = engine.addBlock(en->createBlock(engine, cache));
-      TRI_ASSERT(block != nullptr);
-      // We have visited this node earlier, so we got its dependencies
-      // Now add dependencies:
-      for (auto const& it : en->getDependencies()) {
-        auto it2 = cache.find(it);
-        TRI_ASSERT(it2 != cache.end());
-        TRI_ASSERT(it2->second != nullptr);
-        block->addDependency(it2->second);
-      }
-
-      cache.try_emplace(en, block);
-    }
-    TRI_ASSERT(block != nullptr);
-      
-    // do we need to adjust the root node?
-    if (!en->hasParent()) {
-      // yes. found a new root!
-      root = block;
-    }
-  }
-
-  // Override this method for DBServers, there it is now possible to visit the same block twice
-  bool done(ExecutionNode* en) override { return false; }
-};
 
 // Here is a description of how the instantiation of an execution plan
 // works in the cluster. See below for a complete example
@@ -754,3 +689,56 @@ bool ExecutionEngine::waitForSatellites(QueryContext& /*query*/, Collection cons
   return true;
 }
 #endif
+
+void SingleServerQueryInstanciator::after(ExecutionNode* en) {
+  if (en->getType() == ExecutionNode::TRAVERSAL ||
+    en->getType() == ExecutionNode::SHORTEST_PATH ||
+    en->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+    // We have to prepare the options before we build the block
+    ExecutionNode::castTo<GraphNode*>(en)->prepareOptions();
+  }
+
+  ExecutionBlock* block = nullptr;
+  if (!arangodb::ServerState::instance()->isDBServer()) {
+    auto const nodeType = en->getType();
+
+    if (nodeType == ExecutionNode::DISTRIBUTE ||
+      nodeType == ExecutionNode::SCATTER ||
+      (nodeType == ExecutionNode::GATHER &&
+        // simon: parallel traversals use a GatherNode
+        static_cast<GatherNode*>(en)->parallelism() != GatherNode::Parallelism::Parallel)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "logic error, got cluster node in local query");
+    }
+  }
+  else {
+    auto const& cached = cache.find(en);
+    if (cached != cache.end()) {
+      block = cached->second;
+      TRI_ASSERT(block != nullptr);
+    }
+  }
+
+  if (block == nullptr) {
+    block = engine.addBlock(en->createBlock(engine, cache));
+    TRI_ASSERT(block != nullptr);
+    // We have visited this node earlier, so we got its dependencies
+    // Now add dependencies:
+    for (auto const& it : en->getDependencies()) {
+      auto it2 = cache.find(it);
+      TRI_ASSERT(it2 != cache.end());
+      TRI_ASSERT(it2->second != nullptr);
+      block->addDependency(it2->second);
+    }
+
+    cache.try_emplace(en, block);
+  }
+  TRI_ASSERT(block != nullptr);
+
+  // do we need to adjust the root node?
+  if (!en->hasParent()) {
+    // yes. found a new root!
+    root = block;
+  }
+}
