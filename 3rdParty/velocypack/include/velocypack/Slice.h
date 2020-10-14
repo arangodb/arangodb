@@ -43,6 +43,7 @@
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
+#include "velocypack/HashedStringRef.h"
 #include "velocypack/Options.h"
 #include "velocypack/SliceStaticData.h"
 #include "velocypack/StringRef.h"
@@ -539,11 +540,10 @@ class Slice {
   // look for the specified attribute path inside an Object
   // returns a Slice(ValueType::None) if not found
   template<typename ForwardIterator>
-  Slice get(ForwardIterator begin, ForwardIterator end,
-            bool resolveExternals = false) const {
-    static_assert(std::is_base_of<std::forward_iterator_tag,
-                                  typename std::iterator_traits<ForwardIterator>::iterator_category>::value, 
-                  "get(begin, end) must be used with a forward iterator");
+  typename std::enable_if<
+      std::is_base_of<std::forward_iterator_tag, typename std::iterator_traits<ForwardIterator>::iterator_category>::value, 
+      Slice>::type get(ForwardIterator begin, ForwardIterator end,
+                       bool resolveExternals = false) const {
 
     if (VELOCYPACK_UNLIKELY(begin == end)) {
       throw Exception(Exception::InvalidAttributePath);
@@ -570,7 +570,18 @@ class Slice {
   // look for the specified attribute path inside an Object
   // returns a Slice(ValueType::None) if not found
   template<typename T>
-  Slice get(T const& attributes, 
+  typename std::enable_if<
+      std::is_base_of<std::forward_iterator_tag, typename std::iterator_traits<typename T::iterator>::iterator_category>::value, 
+      Slice>::type get(T const& attributes, 
+                       bool resolveExternals = false) const {
+    // forward to the iterator-based lookup
+    return this->get(attributes.begin(), attributes.end(), resolveExternals);
+  }
+  
+  // look for the specified attribute path inside an Object
+  // returns a Slice(ValueType::None) if not found
+  template<typename T>
+  Slice get(std::initializer_list<T> const& attributes, 
             bool resolveExternals = false) const {
     // forward to the iterator-based lookup
     return this->get(attributes.begin(), attributes.end(), resolveExternals);
@@ -579,13 +590,21 @@ class Slice {
   // look for the specified attribute inside an Object
   // returns a Slice(ValueType::None) if not found
   Slice get(StringRef const& attribute) const;
+  
+  Slice get(HashedStringRef const& attribute) const {
+    return get(StringRef(attribute));
+  }
 
   Slice get(std::string const& attribute) const {
     return get(StringRef(attribute.data(), attribute.size()));
   }
 
   Slice get(char const* attribute) const {
-    return get(StringRef(attribute));
+#if __cplusplus >= 201703
+    return get(StringRef(attribute, std::char_traits<char>::length(attribute)));
+#else
+    return get(StringRef(attribute, strlen(attribute)));
+#endif
   }
 
   Slice get(char const* attribute, std::size_t length) const {
@@ -602,13 +621,26 @@ class Slice {
   
   // whether or not an Object has a specific sub-key
   template<typename T>
-  bool hasKey(T const& attributes) const {
-    return !get(attributes).isNone();
+  typename std::enable_if<
+      std::is_base_of<std::forward_iterator_tag, typename std::iterator_traits<typename T::iterator>::iterator_category>::value, 
+      bool>::type hasKey(T const& attributes) const {
+    return !this->get(attributes.begin(), attributes.end()).isNone();
+  }
+  
+  // whether or not an Object has a specific key
+  template<typename T>
+  bool hasKey(std::initializer_list<T> const& attributes) const {
+    return !this->get(attributes.begin(), attributes.end()).isNone();
   }
   
   // whether or not an Object has a specific key
   bool hasKey(StringRef const& attribute) const {
     return !get(attribute).isNone();
+  }
+  
+  // whether or not an Object has a specific key
+  bool hasKey(HashedStringRef const& attribute) const {
+    return hasKey(StringRef(attribute));
   }
 
   bool hasKey(std::string const& attribute) const {
@@ -616,7 +648,11 @@ class Slice {
   }
   
   bool hasKey(char const* attribute) const {
-    return hasKey(StringRef(attribute));
+#if __cplusplus >= 201703
+    return hasKey(StringRef(attribute, std::char_traits<char>::length(attribute)));
+#else
+    return hasKey(StringRef(attribute, std::strlen(attribute)));
+#endif
   }
   
   bool hasKey(char const* attribute, std::size_t length) const {
