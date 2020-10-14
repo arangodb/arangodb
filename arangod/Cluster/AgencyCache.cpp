@@ -574,13 +574,13 @@ AgencyCache::change_set_t AgencyCache::changedSince(
   std::string const& what, consensus::index_t const& last) const {
 
   static std::vector<std::string> const planGoodies ({
-      AgencyCommHelper::path(PLAN_ANALYZERS)
-      AgencyCommHelper::path(PLAN_COLLECTIONS),
-      AgencyCommHelper::path(PLAN_DATABASES),
-      AgencyCommHelper::path(PLAN_VIEWS)});
+      AgencyCommHelper::path(PLAN_ANALYZERS) + "/",
+      AgencyCommHelper::path(PLAN_COLLECTIONS) + "/",
+      AgencyCommHelper::path(PLAN_DATABASES) + "/",
+      AgencyCommHelper::path(PLAN_VIEWS) + "/"});
   static std::vector<std::string> const currentGoodies ({
-      AgencyCommHelper::path(CURRENT_COLLECTIONS),
-      AgencyCommHelper::path(CURRENT_DATABASES)});
+      AgencyCommHelper::path(CURRENT_COLLECTIONS) + "/",
+      AgencyCommHelper::path(CURRENT_DATABASES) + "/"});
 
   bool get_rest = false;
   std::unordered_map<std::string, query_t> db_res;
@@ -622,10 +622,10 @@ AgencyCache::change_set_t AgencyCache::changedSince(
     return change_set_t(_commitIndex, version, std::move(db_res), std::move(rest_res));
   }
 
+  auto query = std::make_shared<arangodb::velocypack::Builder>();
   {
     for (auto const& i : databases) {
       if (!i.empty()) { // actual database
-        auto query = std::make_shared<arangodb::velocypack::Builder>();
         { VPackArrayBuilder outer(query.get());
           { VPackArrayBuilder inner(query.get());
             for (auto const& g : goodies) { // Get goodies for database
@@ -642,6 +642,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
           FATAL_ERROR_EXIT();
         }
       }
+      query->clear();
     }
   }
 
@@ -653,9 +654,8 @@ AgencyCache::change_set_t AgencyCache::changedSince(
       std::remove_if(
         std::begin(keys), std::end(keys),
         [&] (auto const& x) {
-          return std::binary_search(std::begin(exc), std::end(exc),x);}),
+          return std::find(std::begin(exc), std::end(exc), x) != std::end(exc);}),
       std::end(keys));
-    auto query = std::make_shared<arangodb::velocypack::Builder>();
     {
       VPackArrayBuilder outer(query.get());
       for (auto const& i : keys) {
