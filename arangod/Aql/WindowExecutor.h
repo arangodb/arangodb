@@ -33,7 +33,7 @@
 #include "Aql/types.h"
 
 #include <memory>
-#include <vector>
+#include <deque>
 
 namespace arangodb {
 namespace aql {
@@ -87,10 +87,81 @@ class WindowExecutorInfos {
   RegisterId _rangeRegister;
 };
 
+class BaseWindowExecutor {
+ public:
+  using Infos = WindowExecutorInfos;
+
+  BaseWindowExecutor() = delete;
+  BaseWindowExecutor(BaseWindowExecutor&&) = default;
+  BaseWindowExecutor(BaseWindowExecutor const&) = delete;
+  BaseWindowExecutor(Infos&);
+  ~BaseWindowExecutor();
+
+  /**
+   * @brief This Executor does not know how many distinct rows will be fetched
+   * from upstream, it can only report how many it has found by itself, plus
+   * it knows that it can only create as many new rows as pulled from upstream.
+   * So it will overestimate.
+   */
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
+
+ protected:
+  using AggregatorList = std::vector<std::unique_ptr<Aggregator>>;
+
+  Infos const& infos() const noexcept;
+
+  static AggregatorList createAggregators(BaseWindowExecutor::Infos const& infos);
+
+  void applyAggregators(InputAqlItemRow& input);
+  void produceOutputRow(InputAqlItemRow& input, OutputAqlItemRow& output, bool reset);
+
+ protected:
+  Infos const& _infos;
+  AggregatorList _aggregators;
+};
+
+/**
+ * @brief Implementation of Window Executor, accumulates all rows it sees can be passthrough
+ */
+class AccuWindowExecutor : public BaseWindowExecutor {
+ public:
+  struct Properties {
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Enable;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
+  };
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
+  using Infos = WindowExecutorInfos;
+  using Stats = NoStats;
+
+  AccuWindowExecutor() = delete;
+  AccuWindowExecutor(AccuWindowExecutor&&) = default;
+  AccuWindowExecutor(AccuWindowExecutor const&) = delete;
+  AccuWindowExecutor(Fetcher& fetcher, Infos&);
+  ~AccuWindowExecutor();
+
+  /**
+   * @brief produce the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+};
+
 /**
  * @brief Implementation of Window Executor
  */
-class WindowExecutor {
+class WindowExecutor : public BaseWindowExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
@@ -123,38 +194,16 @@ class WindowExecutor {
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
-  /**
-   * @brief This Executor does not know how many distinct rows will be fetched
-   * from upstream, it can only report how many it has found by itself, plus
-   * it knows that it can only create as many new rows as pulled from upstream.
-   * So it will overestimate.
-   */
-  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                             AqlCall const& call) const noexcept -> size_t;
-
  private:
-  using AggregatorList = std::vector<std::unique_ptr<Aggregator>>;
-
-  Infos const& infos() const noexcept;
-
-  static AggregatorList createAggregators(WindowExecutor::Infos const& infos);
-
-  void applyAggregators(InputAqlItemRow& input);
-  void produceOutputRow(InputAqlItemRow& input, OutputAqlItemRow& output);
-
   ExecutorState consumeInputRange(AqlItemBlockInputRange& input);
 
  private:
-  Infos const& _infos;
-  AggregatorList _aggregators;
-
-  std::vector<InputAqlItemRow> _rows;
+  std::deque<InputAqlItemRow> _rows;
   AqlValue _lowestValue;  // cached lowest value
   int64_t _currentIdx = -1;
 
   const int64_t _numPrecedingRows;
   const int64_t _numFollowingRows;
-  const bool _simpleAccumulative;
 };
 
 }  // namespace aql

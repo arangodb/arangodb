@@ -29,12 +29,9 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/HashedCollectExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Aql/SortedCollectExecutor.h"
-#include "Aql/VariableGenerator.h"
 #include "Aql/WindowExecutor.h"
 #include "Transaction/Methods.h"
 
@@ -52,6 +49,14 @@ WindowRange::WindowRange()
 WindowRange::~WindowRange() {
   preceding.destroy();
   following.destroy();
+}
+
+bool WindowRange::unboundedPreceding() const {
+  if (preceding.isNumber() && following.isNumber()) {
+    return preceding.toInt64() == std::numeric_limits<int64_t>::max() &&
+           following.toInt64() == 0;
+  }
+  return false;
 }
 
 void WindowRange::toVelocyPack(VPackBuilder& b) const {
@@ -187,6 +192,10 @@ std::unique_ptr<ExecutionBlock> WindowNode::createBlock(
                           std::move(aggregateRegisters),
                           &_plan->getAst()->query().vpackOptions());
 
+  if (_rangeVariable == nullptr && _range.unboundedPreceding()) {
+    return std::make_unique<ExecutionBlockImpl<AccuWindowExecutor>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
+  }
   return std::make_unique<ExecutionBlockImpl<WindowExecutor>>(&engine, this,
                                                               std::move(registerInfos),
                                                               std::move(executorInfos));
@@ -209,7 +218,8 @@ ExecutionNode* WindowNode::clone(ExecutionPlan* plan, bool withDependencies,
     }
   }
 
-  auto c = std::make_unique<WindowNode>(plan, _id, WindowRange(_range), _rangeVariable, aggregateVariables);
+  auto c = std::make_unique<WindowNode>(plan, _id, WindowRange(_range),
+                                        _rangeVariable, aggregateVariables);
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }

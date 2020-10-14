@@ -54,6 +54,7 @@ struct WindowRange final {
   AqlValue following;
 
  public:
+  bool unboundedPreceding() const;
   void toVelocyPack(velocypack::Builder& options) const;
   void fromVelocyPack(velocypack::Slice slice);
 };
@@ -65,8 +66,8 @@ class WindowNode : public ExecutionNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  WindowNode(ExecutionPlan* plan, ExecutionNodeId id,
-             WindowRange&& options, Variable const* rangeVariable,
+  WindowNode(ExecutionPlan* plan, ExecutionNodeId id, WindowRange&& options,
+             Variable const* rangeVariable,
              std::vector<AggregateVarInfo> const& aggregateVariables);
 
   WindowNode(ExecutionPlan*, arangodb::velocypack::Slice const& base,

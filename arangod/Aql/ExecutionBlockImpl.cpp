@@ -537,7 +537,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
           (is_one_of_v<
               Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor, KShortestPathsExecutor, ParallelUnsortedGatherExecutor,
               IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>,
-              HashedCollectExecutor, WindowExecutor, IndexExecutor, EnumerateCollectionExecutor, DistinctCollectExecutor,
+              HashedCollectExecutor, AccuWindowExecutor, WindowExecutor, IndexExecutor, EnumerateCollectionExecutor, DistinctCollectExecutor,
               ConstrainedSortExecutor, CountCollectExecutor, SubqueryExecutor<true>,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               TestLambdaSkipExecutor,
@@ -1831,6 +1831,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<AccuWindowExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<WindowExecutor>;
 
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>>;

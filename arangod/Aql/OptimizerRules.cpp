@@ -7156,7 +7156,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::GATHER:
       // sorting gather is allowed
       return ExecutionNode::castTo<GatherNode*>(node)->isSortingGather();
-    case WindowNode::WINDOW:
+    case ExecutionNode::WINDOW:
       // if we do not look at following rows we can appyly limit to sort
       return !ExecutionNode::castTo<WindowNode*>(node)->needsFollowingRows();
     case ExecutionNode::SINGLETON:
