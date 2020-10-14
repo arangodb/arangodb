@@ -1363,6 +1363,33 @@ TEST_F(FailedLeaderTest, failedleader_must_not_take_follower_into_account_if_it_
   failedLeader.start(aborts);
 }
 
+TEST_F(FailedLeaderTest, failedleader_must_not_take_follower_into_account_that_is_not_in_plan) {
+  std::string jobId = "1";
+  ShardInfo si{DATABASE, COLLECTION, SHARD};
+
+  Node agency = AgencyBuilder(baseStructure.toBuilder())
+                    // Follower 1 planned
+                    .setPlannedServers(si, {SHARD_LEADER, SHARD_FOLLOWER1})
+                    // Follower 2 in followers
+                    .setFollowers(si, {SHARD_LEADER, SHARD_FOLLOWER2})
+                    .setJobInTodo(jobId)
+                    .createNode();
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, transact)).AlwaysDo([&](query_t const& q) -> trans_ret_t {
+    // must NOT be called!
+    EXPECT_TRUE(false);
+    return fakeTransResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface& agent = mockAgent.get();
+
+  // new server will randomly be selected...so seed the random number generator
+  srand(1);
+  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  failedLeader.start(aborts);
+}
+
 TEST_F(FailedLeaderTest, failedleader_must_not_take_a_candidate_into_account_that_is_not_in_plan) {
   std::string jobId = "1";
   ShardInfo si{DATABASE, COLLECTION, SHARD};
@@ -2156,6 +2183,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shards_like_resigned_leader_no_
                     .setFailoverCandidates(distLike2, failovers)
                     .setFollowers(distLike2, followers)
                     .setDistributeShardsLike(distLike2, si)
+                    .setServerFailed(SHARD_FOLLOWER2) // disable this as randomly picked follower
                     .setJobInTodo(jobId)
                     .createNode();
 
