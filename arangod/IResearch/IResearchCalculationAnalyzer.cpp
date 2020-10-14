@@ -57,7 +57,7 @@ using namespace arangodb::velocypack::deserializer;
 
 constexpr const char QUERY_STRING_PARAM_NAME[] = "queryString";
 constexpr const char COLLAPSE_ARRAY_POSITIONS_PARAM_NAME[] = "collapseArrayPos";
-constexpr const char DISCARD_NULLS_PARAM_NAME[] = "discardNulls";
+constexpr const char KEEP_NULL_PARAM_NAME[] = "keepNull";
 using Options = arangodb::iresearch::CalculationAnalyzer::options_t;
 
 struct OptionsValidator {
@@ -72,7 +72,7 @@ struct OptionsValidator {
 using OptionsDeserializer = utilities::constructing_deserializer<Options, parameter_list<
   factory_deserialized_parameter<QUERY_STRING_PARAM_NAME, values::value_deserializer<std::string>, true>,
   factory_simple_parameter<COLLAPSE_ARRAY_POSITIONS_PARAM_NAME, bool, false, values::numeric_value<bool, false>>,
-  factory_simple_parameter<DISCARD_NULLS_PARAM_NAME, bool, false, values::numeric_value<bool, true>>
+  factory_simple_parameter<KEEP_NULL_PARAM_NAME, bool, false, values::numeric_value<bool, true>>
   >>;
 
 using ValidatingOptionsDeserializer = validate<OptionsDeserializer, OptionsValidator>;
@@ -160,7 +160,7 @@ bool CalculationAnalyzer::parse_options(const irs::string_ref& args, options_t& 
       VPackObjectBuilder root(&builder);
       builder.add(QUERY_STRING_PARAM_NAME, VPackValue(options.queryString));
       builder.add(COLLAPSE_ARRAY_POSITIONS_PARAM_NAME, VPackValue(options.collapseArrayPositions));
-      builder.add(DISCARD_NULLS_PARAM_NAME, VPackValue(options.discardNulls));
+      builder.add(KEEP_NULL_PARAM_NAME, VPackValue(options.keepNull));
     }
     out.resize(builder.slice().byteSize());
     std::memcpy(&out[0], builder.slice().begin(), out.size());

@@ -36,9 +36,9 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   struct options_t {
     options_t() = default;
 
-    options_t(std::string&& query, bool collapse, bool discard)
+    options_t(std::string&& query, bool collapse, bool keep)
       : queryString(query), collapseArrayPositions(collapse),
-      discardNulls(discard) {}
+      keepNull(keep) {}
 
     /// @brief Query string to be executed for each document.
     /// Field value is set with @param binded parameter.
@@ -51,7 +51,7 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
 
     /// @brief do not emit empty token if query result is NULL
     /// this could be used fo index filtering.
-    bool discardNulls{ true };
+    bool keepNull{ true };
   };
 
   static bool parse_options(const irs::string_ref& args, options_t& options);
