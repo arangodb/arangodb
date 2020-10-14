@@ -1,4 +1,4 @@
-v3.6.8 (XXXX-XX-XX)
+v3.6.8 (2020-10-14)
 -------------------
       
 * Added the following metrics for synchronous replication in the cluster:
