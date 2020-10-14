@@ -570,6 +570,8 @@ ArangoCollection.prototype.truncate = function (options) {
       // ignore any WAL-flush related error (may be a privilege issue anyway)
     }
   }
+  return requestResult;
+
 };
 
 // //////////////////////////////////////////////////////////////////////////////
