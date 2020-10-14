@@ -277,7 +277,7 @@ transaction::Status transaction::Methods::status() const {
 }
 
 velocypack::Options const& transaction::Methods::vpackOptions() const {
-  return *_transactionContext->getVPackOptions();
+  return *transactionContextPtr()->getVPackOptions();
 }
 
 /// @brief Find out if any of the given requests has ended in a refusal
