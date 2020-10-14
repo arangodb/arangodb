@@ -54,6 +54,7 @@
 #include "Aql/TraversalConditionFinder.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
+#include "Aql/WindowNode.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/NumberUtils.h"
@@ -2238,6 +2239,15 @@ class arangodb::aql::RedundantCalculationsReplacer final
         }
         if (node->_inKeyVariable != nullptr) {
           node->_inKeyVariable = Variable::replace(node->_inKeyVariable, _replacements);
+        }
+        break;
+      }
+     
+      case EN::WINDOW: {
+        auto node = ExecutionNode::castTo<WindowNode*>(en);
+        node->_rangeVariable = Variable::replace(node->_rangeVariable, _replacements);
+        for (auto& variable : node->_aggregateVariables) {
+          variable.inVar = Variable::replace(variable.inVar, _replacements);
         }
         break;
       }
@@ -6273,13 +6283,20 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
     }
 
     // check if subquery contains a COLLECT node with an INTO variable
+    // or a WINDOW node in an inner loop
     bool eligible = true;
     bool containsLimitOrSort = false;
     auto current = subqueryNode->getSubquery();
     TRI_ASSERT(current != nullptr);
 
     while (current != nullptr) {
-      if (current->getType() == EN::COLLECT) {
+      if (current->getType() == EN::WINDOW &&
+          subqueryNode->isInInnerLoop()) {
+        // WINDOW captures all existing rows in the scope, moving WINDOW
+        // ends up with different rows captured
+        eligible = false;
+        break;
+      } else if (current->getType() == EN::COLLECT) {
         if (subqueryNode->isInInnerLoop()) {
           eligible = false;
           break;
@@ -7139,6 +7156,9 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::GATHER:
       // sorting gather is allowed
       return ExecutionNode::castTo<GatherNode*>(node)->isSortingGather();
+    case WindowNode::WINDOW:
+      // if we do not look at following rows we can appyly limit to sort
+      return !ExecutionNode::castTo<WindowNode*>(node)->needsFollowingRows();
     case ExecutionNode::SINGLETON:
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::ENUMERATE_LIST:
@@ -7167,8 +7187,8 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     // TODO: As soon as materialize does no longer have to filter out
     //  non-existent documents, move MATERIALIZE to the allowed nodes!
     case ExecutionNode::MATERIALIZE:
-      return false;
     case ExecutionNode::MUTEX:
+      return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -7941,55 +7961,6 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
 
 namespace {
 
-bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* node) {
-  switch (node->getType()) {
-    case ExecutionNode::CALCULATION:
-    case ExecutionNode::SUBQUERY:
-    case ExecutionNode::SINGLETON:
-    case ExecutionNode::ENUMERATE_COLLECTION:
-    case ExecutionNode::ENUMERATE_LIST:
-    case ExecutionNode::FILTER:
-    case ExecutionNode::SORT:
-    case ExecutionNode::TRAVERSAL:
-    case ExecutionNode::INDEX:
-    case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::K_SHORTEST_PATHS:
-    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-    case ExecutionNode::RETURN:
-    case ExecutionNode::DISTRIBUTE:
-    case ExecutionNode::SCATTER:
-    case ExecutionNode::GATHER:
-    case ExecutionNode::REMOTE:
-    case ExecutionNode::REMOTESINGLE:
-    case ExecutionNode::INSERT:
-    case ExecutionNode::REMOVE:
-    case ExecutionNode::REPLACE:
-    case ExecutionNode::UPDATE:
-    case ExecutionNode::UPSERT:
-    case ExecutionNode::MATERIALIZE:
-    case ExecutionNode::DISTRIBUTE_CONSUMER:
-    case ExecutionNode::SUBQUERY_START:
-    case ExecutionNode::SUBQUERY_END:
-    case ExecutionNode::ASYNC:
-      // These nodes do not initiate a skip themselves, and thus are fine.
-      return false;
-    case ExecutionNode::NORESULTS:
-    case ExecutionNode::LIMIT:
-    case ExecutionNode::COLLECT:
-      // These nodes are fine
-      return false;
-    case ExecutionNode::MUTEX:
-    case ExecutionNode::MAX_NODE_TYPE_VALUE:
-      break;
-  }
-  THROW_ARANGO_EXCEPTION_FORMAT(
-      TRI_ERROR_INTERNAL_AQL,
-      "Unhandled node type '%s' in splice-subqueries optimizer rule. Please "
-      "report this error. Try turning off the splice-subqueries rule to get "
-      "your query working.",
-      node->getTypeString().c_str());
-}  // namespace
-
 void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
                                        containers::SmallVector<SubqueryNode*>& result) {
   TRI_ASSERT(result.empty());
@@ -8003,9 +7974,7 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
   // and all nodes that are suitable for splicing to `suitableNodes`. Suitable
   // means that neither the containing subquery contains unsuitable nodes - at
   // least not in an ancestor of the subquery - nor the subquery contains
-  // unsuitable nodes (directly, not recursively). See
-  // nodeMakesThisQueryLevelUnsuitableForSubquerySplicing() for which nodes are
-  // unsuitable.
+  // unsuitable nodes (directly, not recursively).
   //
   // It will be used in a fashion where the recursive walk on subqueries is done
   // *before* the recursive walk on dependencies.
@@ -8030,9 +7999,7 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
     }
 
     bool before(ExecutionNode* node) final {
-      if (nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(node)) {
-        _isSuitableLevel.top() = false;
-      }
+      TRI_ASSERT(node->getType() != EN::MUTEX); // should never appear here
 
       if (node->getType() == ExecutionNode::SUBQUERY) {
         _result.emplace_back(ExecutionNode::castTo<SubqueryNode*>(node));

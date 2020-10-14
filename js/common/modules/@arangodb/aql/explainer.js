@@ -1880,6 +1880,20 @@ function processQuery(query, explain, planIndex) {
         return keyword('MUTEX') + '   ' + annotation('/* end async execution */');
       case 'AsyncNode':
         return keyword('ASYNC') + '   ' + annotation('/* begin async execution */');
+      case 'WindowNode': {
+        var window = keyword('WINDOW') + ' ';
+        if (node.rangeVariable) {
+          window += variableName(node.expressionVariable) + ' ' + keyword("WITH") + ' ';
+        }
+        window += `{ preceding: ${JSON.stringify(node.preceding)}, following: ${JSON.stringify(node.following)}} `;
+        if (node.hasOwnProperty('aggregates') && node.aggregates.length > 0) {
+          window += keyword('AGGREGATE') + ' ' +
+            node.aggregates.map(function (node) {
+              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + variableName(node.inVariable) + ')';
+            }).join(', ');
+        }
+        return window;
+      }
     }
 
     return 'unhandled node type (' + node.type + ')';

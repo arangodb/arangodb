@@ -156,9 +156,8 @@ struct AggregatorLength final : public Aggregator {
 
   void reduce(AqlValue const&) override { ++count; }
 
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     uint64_t value = count;
-    reset();
     return AqlValue(AqlValueHintUInt(value));
   }
 
@@ -183,12 +182,11 @@ struct AggregatorMin final : public Aggregator {
     }
   }
 
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     if (value.isEmpty()) {
       return AqlValue(AqlValueHintNull());
     }
     AqlValue copy = value;
-    value.erase();
     return copy;
   }
 
@@ -210,12 +208,11 @@ struct AggregatorMax final : public Aggregator {
     }
   }
 
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     if (value.isEmpty()) {
       return AqlValue(AqlValueHintNull());
     }
     AqlValue copy = value;
-    value.erase();
     return copy;
   }
 
@@ -251,13 +248,12 @@ struct AggregatorSum final : public Aggregator {
     invalid = true;
   }
 
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     if (invalid || !invoked || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
       return AqlValue(AqlValueHintNull());
     }
 
     double v = sum;
-    reset();
     return AqlValue(AqlValueHintDouble(v));
   }
 
@@ -296,7 +292,7 @@ struct AggregatorAverage : public Aggregator {
     invalid = true;
   }
 
-  virtual AqlValue stealValue() override {
+  virtual AqlValue get() const override {
     if (invalid || count == 0 || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
       return AqlValue(AqlValueHintNull());
     }
@@ -304,7 +300,6 @@ struct AggregatorAverage : public Aggregator {
     TRI_ASSERT(count > 0);
 
     double v = sum / count;
-    reset();
     return AqlValue(AqlValueHintDouble(v));
   }
 
@@ -319,7 +314,7 @@ struct AggregatorAverageStep1 final : public AggregatorAverage {
       : AggregatorAverage(opts) {}
 
   // special version that will produce an array with sum and count separately
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     builder.clear();
     builder.openArray();
     if (invalid || count == 0 || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
@@ -331,12 +326,10 @@ struct AggregatorAverageStep1 final : public AggregatorAverage {
       builder.add(VPackValue(count));
     }
     builder.close();
-    AqlValue temp(builder.slice());
-    reset();
-    return temp;
+    return AqlValue(builder.slice());
   }
 
-  arangodb::velocypack::Builder builder;
+  mutable arangodb::velocypack::Builder builder;
 };
 
 /// @brief the coordinator variant of AVERAGE, aggregating partial sums and
@@ -416,7 +409,7 @@ struct AggregatorVariance : public AggregatorVarianceBase {
   AggregatorVariance(velocypack::Options const* opts, bool population)
       : AggregatorVarianceBase(opts, population) {}
 
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     if (invalid || count == 0 || (count == 1 && !population) ||
         std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
       return AqlValue(AqlValueHintNull());
@@ -432,7 +425,6 @@ struct AggregatorVariance : public AggregatorVarianceBase {
       v = sum / count;
     }
 
-    reset();
     return AqlValue(AqlValueHintDouble(v));
   }
 };
@@ -442,7 +434,7 @@ struct AggregatorVarianceBaseStep1 final : public AggregatorVarianceBase {
   AggregatorVarianceBaseStep1(velocypack::Options const* opts, bool population)
       : AggregatorVarianceBase(opts, population) {}
 
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     builder.clear();
     builder.openArray();
     if (invalid || count == 0 || (count == 1 && !population) ||
@@ -459,12 +451,10 @@ struct AggregatorVarianceBaseStep1 final : public AggregatorVarianceBase {
     }
     builder.close();
 
-    AqlValue temp(builder.slice());
-    reset();
-    return temp;
+    return AqlValue(builder.slice());
   }
 
-  arangodb::velocypack::Builder builder;
+  mutable arangodb::velocypack::Builder builder;
 };
 
 /// @brief the coordinator variant of VARIANCE
@@ -516,7 +506,7 @@ struct AggregatorVarianceBaseStep2 : public AggregatorVarianceBase {
     values.emplace_back(std::make_tuple(v1 / c, v2, c));
   }
 
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     if (invalid || count == 0 || (count == 1 && !population)) {
       return AqlValue(AqlValueHintNull());
     }
@@ -536,7 +526,6 @@ struct AggregatorVarianceBaseStep2 : public AggregatorVarianceBase {
     } else {
       v /= count;
     }
-    reset();
     return AqlValue(AqlValueHintDouble(v));
   }
 
@@ -548,7 +537,7 @@ struct AggregatorStddev : public AggregatorVarianceBase {
   AggregatorStddev(velocypack::Options const* opts, bool population)
       : AggregatorVarianceBase(opts, population) {}
 
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     if (invalid || count == 0 || (count == 1 && !population) ||
         std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
       return AqlValue(AqlValueHintNull());
@@ -564,7 +553,6 @@ struct AggregatorStddev : public AggregatorVarianceBase {
       v = std::sqrt(sum / count);
     }
 
-    reset();
     return AqlValue(AqlValueHintDouble(v));
   }
 };
@@ -574,7 +562,7 @@ struct AggregatorStddevBaseStep2 final : public AggregatorVarianceBaseStep2 {
   AggregatorStddevBaseStep2(velocypack::Options const* opts, bool population)
       : AggregatorVarianceBaseStep2(opts, population) {}
 
-  AqlValue stealValue() override {
+  AqlValue get() const override {
     if (invalid || count == 0 || (count == 1 && !population)) {
       return AqlValue(AqlValueHintNull());
     }
@@ -596,7 +584,6 @@ struct AggregatorStddevBaseStep2 final : public AggregatorVarianceBaseStep2 {
     }
 
     v = std::sqrt(v);
-    reset();
     return AqlValue(AqlValueHintDouble(v));
   }
 };
@@ -639,7 +626,7 @@ struct AggregatorUnique : public Aggregator {
     builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(pos)));
   }
 
-  AqlValue stealValue() override final {
+  AqlValue get() const override final {
     // if not yet an array, start one
     if (builder.isClosed()) {
       builder.openArray();
@@ -647,14 +634,12 @@ struct AggregatorUnique : public Aggregator {
 
     // always close the Builder
     builder.close();
-    AqlValue result(builder.slice());
-    reset();
-    return result;
+    return AqlValue(builder.slice());
   }
 
   MemoryBlockAllocator allocator;
   std::unordered_set<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
-  arangodb::velocypack::Builder builder;
+  mutable arangodb::velocypack::Builder builder;
 };
 
 /// @brief the coordinator variant of UNIQUE
@@ -718,7 +703,7 @@ struct AggregatorSortedUnique : public Aggregator {
     seen.emplace(reinterpret_cast<uint8_t const*>(pos));
   }
 
-  AqlValue stealValue() override final {
+  AqlValue get() const override final {
     builder.openArray();
     for (auto const& it : seen) {
       builder.add(it);
@@ -726,14 +711,12 @@ struct AggregatorSortedUnique : public Aggregator {
 
     // always close the Builder
     builder.close();
-    AqlValue result(builder.slice());
-    reset();
-    return result;
+    return AqlValue(builder.slice());
   }
 
   MemoryBlockAllocator allocator;
   std::set<velocypack::Slice, basics::VelocyPackHelper::VPackLess<true>> seen;
-  arangodb::velocypack::Builder builder;
+  mutable arangodb::velocypack::Builder builder;
 };
 
 /// @brief the coordinator variant of SORTED_UNIQUE
@@ -775,7 +758,6 @@ struct AggregatorCountDistinct : public Aggregator {
   void reset() override final {
     seen.clear();
     allocator.clear();
-    builder.clear();
   }
 
   void reduce(AqlValue const& cmpValue) override {
@@ -792,15 +774,13 @@ struct AggregatorCountDistinct : public Aggregator {
     seen.emplace(reinterpret_cast<uint8_t const*>(pos));
   }
 
-  AqlValue stealValue() override final {
+  AqlValue get() const override final {
     uint64_t value = seen.size();
-    reset();
     return AqlValue(AqlValueHintUInt(value));
   }
 
   MemoryBlockAllocator allocator;
   std::unordered_set<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
-  arangodb::velocypack::Builder builder;
 };
 
 /// @brief the coordinator variant of COUNT_DISTINCT

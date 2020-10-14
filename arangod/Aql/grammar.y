@@ -234,6 +234,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_COLLECT "COLLECT declaration"
 %token T_SORT "SORT declaration"
 %token T_LIMIT "LIMIT declaration"
+%token T_WINDOW "WINDOW declaration"
 
 %token T_ASC "ASC keyword"
 %token T_DESC "DESC keyword"
@@ -489,6 +490,8 @@ statement_block_statement:
   | sort_statement {
     }
   | limit_statement {
+    }
+  | window_statement {
     }
   | remove_statement {
     }
@@ -1085,6 +1088,31 @@ limit_statement:
       auto node = parser->ast()->createNodeLimit($2, $4);
       parser->ast()->addOperation(node);
     }
+  ;
+
+window_statement:
+    T_WINDOW object aggregate {
+      /* WINDOW {preceding:2, following:2} AGGREGATE x = AVG(x) */
+      
+      // validate aggregates
+      if (!::validateAggregates(parser, $3, yylloc.first_line, yylloc.first_column)) {
+        YYABORT;
+      }
+      
+      auto node = parser->ast()->createNodeWindow(/*spec*/$2, /*range*/nullptr, /*aggrs*/$3);
+      parser->ast()->addOperation(node);
+    }
+  | T_WINDOW expression T_WITH object aggregate {
+    /* WINDOW rangeVar WITH {preceding:"1d", following:"1d"} AGGREGATE x = AVG(x) */
+    
+    // validate aggregates
+    if (!::validateAggregates(parser, $5, yylloc.first_line, yylloc.first_column)) {
+      YYABORT;
+    }
+    
+    auto node = parser->ast()->createNodeWindow(/*spec*/$4, /*range*/$2, /*aggrs*/$5);
+    parser->ast()->addOperation(node);
+  }
   ;
 
 return_statement:

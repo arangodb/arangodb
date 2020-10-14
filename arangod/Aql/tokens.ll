@@ -103,6 +103,10 @@ class Parser;
   return T_LIMIT;
 }
 
+(?i:WINDOW) {
+  return T_WINDOW;
+}
+
 (?i:DISTINCT) {
   return T_DISTINCT;
 }

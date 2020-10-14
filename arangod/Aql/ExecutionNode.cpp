@@ -65,6 +65,7 @@
 #include "Aql/SubqueryStartExecutionNode.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Aql/WindowNode.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-compiler.h"
 #include "Cluster/ServerState.h"
@@ -124,6 +125,7 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::MATERIALIZE), "MaterializeNode"},
     {static_cast<int>(ExecutionNode::ASYNC), "AsyncNode"},
     {static_cast<int>(ExecutionNode::MUTEX), "MutexNode"},
+    {static_cast<int>(ExecutionNode::WINDOW), "WindowNode"},
 };
 }  // namespace
 
@@ -354,6 +356,37 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new AsyncNode(plan, slice);
     case MUTEX:
       return new MutexNode(plan, slice);
+    case WINDOW:{
+      
+      Variable* rangeVar =
+          Variable::varFromVPack(plan->getAst(), slice, "rangeVariable", /*optional*/true);
+
+      // aggregates
+      VPackSlice aggregatesSlice = slice.get("aggregates");
+      if (!aggregatesSlice.isArray()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                       "invalid \"aggregates\" definition");
+      }
+
+      std::vector<AggregateVarInfo> aggregateVariables;
+      {
+        aggregateVariables.reserve(aggregatesSlice.length());
+        for (VPackSlice it : VPackArrayIterator(aggregatesSlice)) {
+          Variable* outVar =
+              Variable::varFromVPack(plan->getAst(), it, "outVariable");
+          Variable* inVar =
+              Variable::varFromVPack(plan->getAst(), it, "inVariable");
+
+          std::string const type = it.get("type").copyString();
+          aggregateVariables.emplace_back(AggregateVarInfo{outVar, inVar, type});
+        }
+      }
+      
+      WindowRange range;
+      range.fromVelocyPack(slice);
+      return new WindowNode(plan, slice, std::move(range),
+                            rangeVar, aggregateVariables);
+    }
     default: {
       // should not reach this point
       TRI_ASSERT(false);
@@ -1405,10 +1438,11 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case SUBQUERY:
     case SINGLETON:
     case LIMIT:
+    case WINDOW:
       return false;
     // It should be safe to return false for these, but is it necessary?
     // Returning true can lead to more efficient register usage.
-    case REMOTE:
+    case REMOTE: // simon: could probably return true
     case SCATTER:
     case GATHER:
     case ASYNC:
