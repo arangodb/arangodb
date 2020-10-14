@@ -153,7 +153,7 @@ struct MasterInfo {
   explicit MasterInfo(ReplicationApplierConfiguration const& applierConfig);
 
   /// @brief get master state
-  Result getState(Connection& connection, bool isChildSyncer);
+  Result getState(Connection& connection, bool isChildSyncer, char const* context);
 
   /// we need to act like a 3.2 client
   bool simulate32Client() const;

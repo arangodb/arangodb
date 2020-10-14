@@ -128,7 +128,9 @@ class AnalyzerPool : private irs::util::noncopyable {
   irs::flags _features;    // cached analyzer features
   irs::string_ref _key;    // the key of the persisted configuration for this pool,
                            // null == static analyzer
-  std::string _name;       // ArangoDB alias for an IResearch analyzer configuration
+  std::string _name;       // ArangoDB alias for an IResearch analyzer configuration.
+                           // Should be normalized name or static analyzer name see
+                           // assertion in ctor
   VPackSlice _properties;  // IResearch analyzer configuration
   irs::string_ref _type;   // IResearch analyzer name
   arangodb::AnalyzersRevision::Revision _revision{ arangodb::AnalyzersRevision::MIN };
@@ -199,14 +201,12 @@ class IResearchAnalyzerFeature final
   //////////////////////////////////////////////////////////////////////////////
   /// @param name analyzer name
   /// @param activeVocbase fallback vocbase if not part of name
-  /// @param systemVocbase the system vocbase for use with empty prefix
   /// @param expandVocbasePrefix use full vocbase name as prefix for
   ///                            active/system v.s. EMPTY/'::'
   /// @return normalized analyzer name, i.e. with vocbase prefix
   //////////////////////////////////////////////////////////////////////////////
   static std::string normalize(irs::string_ref const& name,
-                               TRI_vocbase_t const& activeVocbase,
-                               TRI_vocbase_t const& systemVocbase,
+                               irs::string_ref const& activeVocbase,
                                bool expandVocbasePrefix = true);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -313,13 +313,11 @@ class IResearchAnalyzerFeature final
   /// @brief find analyzer
   /// @param name analyzer name
   /// @param activeVocbase fallback vocbase if not part of name
-  /// @param systemVocbase the system vocbase for use with empty prefix
   /// @param onlyCached check only locally cached analyzers
   /// @return analyzer with the specified name or nullptr
   //////////////////////////////////////////////////////////////////////////////
   AnalyzerPool::ptr get(irs::string_ref const& name,
                         TRI_vocbase_t const& activeVocbase,
-                        TRI_vocbase_t const& systemVocbase,
                         arangodb::QueryAnalyzerRevisions const& revision,
                         bool onlyCached = false) const;
 

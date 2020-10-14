@@ -49,7 +49,9 @@ std::atomic<aql::QueryRegistry*> QueryRegistryFeature::QUERY_REGISTRY{nullptr};
 
 QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "QueryRegistry"),
+      _trackingEnabled(true),
       _trackSlowQueries(true),
+      _trackQueryString(true),
       _trackBindVars(true),
       _failOnWarning(false),
       _queryCacheIncludeSystem(false),
@@ -96,8 +98,16 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new DoubleParameter(&_queryMaxRuntime))
                      .setIntroducedIn(30607).setIntroducedIn(30703);
 
-  options->addOption("--query.tracking", "whether to track slow AQL queries",
-                     new BooleanParameter(&_trackSlowQueries));
+  options->addOption("--query.tracking", "whether to track queries",
+                     new BooleanParameter(&_trackingEnabled));
+
+  options->addOption("--query.tracking-slow-queries", "whether to track slow queries",
+                     new BooleanParameter(&_trackSlowQueries))
+                     .setIntroducedIn(30704);
+
+  options->addOption("--query.tracking-with-querystring", "whether to track the query string",
+                     new BooleanParameter(&_trackQueryString))
+                     .setIntroducedIn(30704);
 
   options->addOption("--query.tracking-with-bindvars",
                      "whether to track bind vars with AQL queries",

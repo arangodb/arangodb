@@ -975,7 +975,7 @@ static double chooseTimeout(size_t count, size_t totalBytes) {
   // Really big documents need additional adjustment. Using total size
   // of all messages to handle worst case scenario of constrained resource
   // processing all
-  timeout += (totalBytes / 4096) * ReplicationTimeoutFeature::timeoutPer4k;
+  timeout += (totalBytes / 4096.0) * ReplicationTimeoutFeature::timeoutPer4k;
 
   if (timeout < ReplicationTimeoutFeature::lowerLimit) {
     return ReplicationTimeoutFeature::lowerLimit * ReplicationTimeoutFeature::timeoutFactor;
@@ -1003,6 +1003,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
+      // This indicates that we believe to be the leader.
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
@@ -2336,9 +2337,14 @@ Future<Result> Methods::replicateOperations(
   // this operation to succeed, since the new leader is now responsible.
   // In case (2) we at least have to drop the follower such that it
   // resyncs and we can be sure that it is in sync again.
-  // Therefore, we drop the follower here (just in case), and refuse to
-  // return with a refusal error (note that we use the follower version,
-  // since we have lost leadership):
+  // We have some hint from the error message of the follower. If it is
+  // TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, we have reason
+  // to believe that the follower is now the new leader and we assume
+  // case (1).
+  // If the error is TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION,
+  // we continue with the operation, since most likely, the follower was
+  // simply dropped in the meantime.
+  // In any case, we drop the follower here (just in case).
   auto cb = [=](std::vector<futures::Try<network::Response>>&& responses) -> Result {
 
     bool didRefuse = false;
@@ -2357,7 +2363,17 @@ Future<Result> Methods::replicateOperations(
           resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
           replicationWorked = !found;
         }
-        didRefuse = didRefuse || resp.response->statusCode() == fuerte::StatusNotAcceptable;
+        auto r = resp.combinedResult();
+        bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+        didRefuse = didRefuse || followerRefused;
+
+        if (followerRefused) {
+          LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
+              << "synchronous replication: follower "
+              << (*followerList)[i] << " for shard " << collection->name()
+              << " in database " << collection->vocbase().name() 
+              << " refused the operation: " << r.errorMessage();
+        }
       }
 
       if (!replicationWorked) {
@@ -2368,12 +2384,19 @@ Future<Result> Methods::replicateOperations(
           _state->removeKnownServer(deadFollower);
           LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
               << "synchronous replication: dropping follower "
-              << deadFollower << " for shard " << collection->name();
+              << deadFollower << " for shard " << collection->name()
+              << " in database " << collection->vocbase().name();
+          LOG_TOPIC("a4c06", WARN, Logger::DEVEL)
+              << "synchronous replication: dropping follower "
+              << deadFollower << " for shard " << collection->name()
+              << " in database " << collection->vocbase().name()
+              << ": " << resp.combinedResult().errorMessage();
         } else {
           LOG_TOPIC("db473", ERR, Logger::REPLICATION)
               << "synchronous replication: could not drop follower "
-              << deadFollower << " for shard " << collection->name() << ": "
-              << res.errorMessage();
+              << deadFollower << " for shard " << collection->name() 
+              << " in database " << collection->vocbase().name() 
+              << ": " << res.errorMessage();
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
         }
       }

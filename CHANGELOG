@@ -4,12 +4,59 @@ v3.7.3 (XXXX-XX-XX)
 * Print image base address and CPU context (if available) in crash handler
   messages.
 
+* Added configuration option `--query.tracking-slow-queries` to decide whether
+  slow queries are tracked extra.
+
+* Added configuration option `--query.tracking-with-querystring` to decide
+  whether the query string is shown in the slow query log and the list of
+  currently running queries. The option is true by default.
+  When turned off, querystrings in the slow query log and the list of currently
+  running queries are just shown as "<hidden>".
+
+* Added configuration option `--query.tracking-with-datasources` to toggle
+  whether the names of data sources used by queries are shown in the slow query
+  log and the list of currently running queries. The option is false by default.
+  When turned on, the names of data sources used by the query will be shown in
+  the slow query log and the list of currently running queries.
+
+* Fixed handling of failoverCandidates. Sometimes, a server can still be a
+  failoverCandidate even though it has been taken out of the Plan. With this
+  fix, such a server is quickly taken out of failoverCandidates and it can never
+  be re-added to the Plan before this has happened.
+
+* Fix #12693: SORT inside a subquery could sometimes swallow part of its input
+  when it crossed boundaries of internal row batches.
+
+* Fixed issue BTS-212: Web UI doesn't let to make partial view update and
+  partial view update should be audited (also reported as ES-700).
+  Fixed link definition comparison logic: equality wasn`t properly detected and
+  led to link recreation.
+
+* Added configuration option `--rocksdb.sync-delay-threshold`.
+  This option can be used to track if any RocksDB WAL sync operations is 
+  delayed by more than the configured value (in milliseconds). The intention
+  is to get aware of severely delayed WAL sync operations.
+
+* Add database, shard name and error information to several shard-related log
+  messages.
+
+* Display shard names of a collection in the web interface when in the details
+  view of the collection.
+
+* Added HTTP requests metrics for tracking the number of superuser and normal
+  user requests separately:
+
+  - `arangodb_http_request_statistics_superuser_requests`: Total number of HTTP
+    requests executed by superuser/JWT
+  - `arangodb_http_request_statistics_user_requests`: Total number of HTTP
+    requests executed by clients
+
+* Fixed a bug in handling of followers which refuse to replicate operations.
+  In the case that the follower has simply been dropped in the meantime, we now
+  avoid an error reported by the shard leader.
+
 * Fix a performance regression when a LIMIT is combined with a COLLECT WITH
   COUNT INTO. Reported in ES-692.
-
-* Fixed issue ES-664: SEARCH vs FILTER lookup performance.
-  Consolidation functionality for ArangoSearch view links was able to hit non-
-  mergable enormous amount of segments due to improper scheduling logic.
 
 * Fix REST handler GET /_admin/status when called with URL parameter value
   `overview=true`. For generating the `hash` attribute in the response, the
@@ -188,26 +235,11 @@ v3.7.3 (XXXX-XX-XX)
   This command requires superuser access and is only available for the RocksDB
   storage engine.
 
-* Fix for issue BTS-183: added pending operations purging before ArangoSearch
-  index truncation.
-
-* Fixed: More cases in AQL can now react to a query being killed, so reaction
-  time to query abortion is now shortened. This was a regression in comparison
-  to 3.6 series.
-
 * Don't allow creation of smart satellite graphs or collections (i.e. using
   `"isSmart":true` together with `"replicationFactor":"satellite"` when creating
   graphs or collections. This combination of parameters makes no sense, so that
   the server will now respond with "bad parameter" and an HTTP status code of
   HTTP 400 ("Bad request").
-
-* Fixed internal issue #741: STARTS_WITH fails to accept 'array' as variable.
-
-* Fixed internal issue #738: PHRASE doesn't accept a reference to an array of
-  arguments.
-
-* Fixed internal issue #747: fixed possible dangling open files in ArangoSearch
-  index after remove operations.
 
 * Add exit code for ICU database loading startup errors.
 
@@ -250,6 +282,29 @@ v3.7.3 (XXXX-XX-XX)
 
 * Fixed issue BTS-169: cost estimation for LIMIT nodes showed wrong number of
   estimated items.
+
+
+v3.7.2.2 (2020-10-07)
+---------------------
+
+* Fixed issue ES-664: SEARCH vs FILTER lookup performance.
+  Consolidation functionality for ArangoSearch view links was able to hit non-
+  mergable enormous amount of segments due to improper scheduling logic.
+
+* Fix for issue BTS-183: added pending operations purging before ArangoSearch
+  index truncation.
+
+* Fixed: More cases in AQL can now react to a query being killed, so reaction
+  time to query abortion is now shortened. This was a regression in comparison
+  to 3.6 series.
+
+* Fixed internal issue #741: STARTS_WITH fails to accept 'array' as variable.
+
+* Fixed internal issue #738: PHRASE doesn't accept a reference to an array of
+  arguments.
+
+* Fixed internal issue #747: fixed possible dangling open files in ArangoSearch
+  index after remove operations.
 
 
 v3.7.2.1 (2020-09-02)
