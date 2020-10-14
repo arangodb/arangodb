@@ -211,14 +211,16 @@ RestStatus RestStatusHandler::executeOverview() {
 
       if (!plan.empty()) {
         auto planSlice = plan.begin()->second->slice();
-        if (planSlice.hasKey("Coordinators")) {
-          auto coordinators =  planSlice.get("Coordinators");
-          buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(coordinators).size()));
-          buffer.appendText("-");
-        }
-        if (planSlice.hasKey("DBServers")) {
-          auto dbservers = planSlice.get("DBServers");
-          buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(dbservers).size()));
+        if (planSlice.isObject()) {
+          if (planSlice.hasKey("Coordinators")) {
+            auto coordinators =  planSlice.get("Coordinators");
+            buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(coordinators).size()));
+            buffer.appendText("-");
+          }
+          if (planSlice.hasKey("DBServers")) {
+            auto dbservers = planSlice.get("DBServers");
+            buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(dbservers).size()));
+          }
         }
       } else {
         buffer.appendHex(static_cast<uint32_t>(0xFFFF));
