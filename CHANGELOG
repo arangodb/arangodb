@@ -1,4 +1,4 @@
-v3.7.4 (XXXX-XX-XX)
+v3.7.4 (2020-10-16)
 -------------------
 
 * Data definition reconsiliation in cluster has been modified
@@ -9,7 +9,8 @@ v3.7.4 (XXXX-XX-XX)
   - Maintenance uses local as well as agency change sets to limit
     the scope of every runtime to these change sets.
 
-v3.7.3 (XXXX-XX-XX)
+
+v3.7.3 (2020-10-14)
 -------------------
 
 * Added the following metrics for synchronous replication in the cluster:
