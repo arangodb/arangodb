@@ -115,12 +115,7 @@ ArangoCollection.prototype.truncate = function (options) {
       this.load();
     }
   }
-  var ret = this.TRUNCATE(options.compact);
-  // manually trigger compaction, otherwise the SST files stay large
-  if (this.compact && options.compact) {
-    this.compact();
-  }
-  return ret;
+  return this.TRUNCATE(options.waitForSync, options.compact);
 };
 
 // //////////////////////////////////////////////////////////////////////////////

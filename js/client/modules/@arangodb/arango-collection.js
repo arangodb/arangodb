@@ -549,10 +549,7 @@ ArangoCollection.prototype.truncate = function (options) {
   arangosh.checkRequestResult(requestResult);
   // invalidate cache
   this._status = null;
-
-  if (!options.compact) {
-    return;
-  }
+  return requestResult;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
