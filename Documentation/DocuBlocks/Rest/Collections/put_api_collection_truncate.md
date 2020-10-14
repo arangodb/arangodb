@@ -15,6 +15,17 @@ You should reference them via their names instead.
 @RESTURLPARAM{collection-name,string,required}
 The name of the collection.
 
+@RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{waitForSync,boolean,optional,}
+If *true* then the data is synchronized to disk before returning from a
+document create, update, replace or removal operation. (default: false)
+
+@RESTQUERYPARAM{compact,boolean,optional,}
+If *true* (default) the storage engine will be told to start a compaction
+in order to free up disk space. This can be resource intense, if the only 
+intention is to start over with an empty collection, specify *false*
+
 @RESTDESCRIPTION
 Removes all documents from the collection, but leaves the indexes intact.
 
