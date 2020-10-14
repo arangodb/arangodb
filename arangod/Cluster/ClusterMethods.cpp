@@ -378,6 +378,7 @@ OperationResult handleResponsesFromAllShards(
       result.reset(commError);
       break;
     } else {
+      TRI_ASSERT(res.response);
       std::vector<VPackSlice> const& slices = res.response->slices();
       if (!slices.empty()) {
         VPackSlice answer = slices[0];
