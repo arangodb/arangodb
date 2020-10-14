@@ -1,12 +1,8 @@
-v3.7.5 (XXXX-XX-XX)
+v3.7.3 (XXXX-XX-XX)
 -------------------
 
 * Print image base address and CPU context (if available) in crash handler
   messages.
-
-
-v3.7.3 (XXXX-XX-XX)
--------------------
 
 * Fix a performance regression when a LIMIT is combined with a COLLECT WITH
   COUNT INTO. Reported in ES-692.
