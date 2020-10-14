@@ -1,5 +1,68 @@
 v3.6.8 (XXXX-XX-XX)
 -------------------
+      
+* Added the following metrics for synchronous replication in the cluster:
+
+  - `arangodb_refused_followers_count`: Number of times a shard leader received
+    a refusal answer from a follower during synchronous replication.
+  - `arangodb_sync_wrong_checksum`: Number of times a mismatching shard 
+    checksum was detected when syncing shards. In case this happens, a resync
+    will be triggered for the shard.
+  - `arangodb_dropped_followers_count`: Number of times a follower was dropped
+    during synchronous replication.
+
+* Fixed handling of failedLeaderJob. In case of a plan modification, that
+  removes a server from the plan, e.g. reduce replication factor. Directly
+  followed by a failure of the current shard leader, would reinsert the just
+  removed server in the plan, which is undesired, we first need to have a full
+  "desync" cycle on this server to be reusable in the plan again.
+
+* Fixed issue BTS-212: Web UI doesn't let to make partial view update and fixed
+  link definition comparison logic. Equality didn't properly detect partial view
+  update should be audited (also reported as ES-700). That led to link
+  recreation.
+
+* Make sure the optimizer doesn't pick another index than the TTL index itself
+  while fulfilling the expiry of TTL.
+
+* Fix an issue in arangoimport improperly handling filenames with less than 3
+  characters. The specified input filename was checked for a potential ".gz"
+  ending, but the check required the filename to have at least 3 characters.
+  This is now fixed.
+
+* Added optional verbose logging for agency write operations. This logging is
+  configurable by using the new log topic "agencystore".
+
+  The following log levels can be used for for the "agencystore" log topic to
+  log writes to the agency:
+  - DEBUG: will log all writes on the leader
+  - TRACE: will log all writes on both leaders and followers
+  The default log level for the "agencystore" log topic is WARN, meaning no
+  agency writes will be logged.
+  Turning on this logging can be used for auditing and debugging, but it is not
+  recommended in the general case, as it can lead to large amounts of data being
+  logged, which can have a performance impact and will lead to higher disk space
+  usage.
+
+* Added configuration option `--query.tracking-slow-queries` to decide whether
+  slow queries are tracked extra.
+
+* Added configuration option `--query.tracking-with-querystring` to decide
+  whether the query string is shown in the slow query log and the list of
+  currently running queries. The option is true by default.
+  When turned off, querystrings in the slow query log and the list of currently
+  running queries are just shown as "<hidden>".
+
+* Added configuration option `--query.tracking-with-datasources` to toggle
+  whether the names of data sources used by queries are shown in the slow query
+  log and the list of currently running queries. The option is false by default.
+  When turned on, the names of data sources used by the query will be shown in
+  the slow query log and the list of currently running queries.
+
+* Fixed handling of failoverCandidates. Sometimes, a server can still be a
+  failoverCandidate even though it has been taken out of the Plan. With this
+  fix, such a server is quickly taken out of failoverCandidates and it can never
+  be re-added to the Plan before this has happened.
 
 * Added startup option `--foxx.force-update-on-startup` to toggle wait for all foxx services
   in all databases to be propagated to this coordinator before it completes the

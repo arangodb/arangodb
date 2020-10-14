@@ -35,7 +35,7 @@
 // --SECTION--                                                   std extensions
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(std)
+namespace std {
 
 // MSVC++ > v14.0 (Visual Studio >2015) already implements this in <xstring>
 // MacOS requires this definition to be before first usage (i.e. in bytes_ref)
@@ -119,9 +119,9 @@ struct char_traits<::iresearch::byte_type> {
 }; // char_traits
 #endif
 
-NS_END // std
+} // std
 
-NS_ROOT
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                               binary std::string
@@ -149,7 +149,7 @@ class basic_string_ref {
   }
 
   // Constructs a string reference object from a ref and a size.
-  basic_string_ref(const basic_string_ref& ref, size_t size) NOEXCEPT
+  constexpr basic_string_ref(const basic_string_ref& ref, size_t size) NOEXCEPT
     : data_(ref.data_), size_(size) {
     IRS_ASSERT(size <= ref.size_);
   }
@@ -193,11 +193,10 @@ class basic_string_ref {
   }
 
   // friends
-  friend int compare(
+  friend constexpr int compare(
       const basic_string_ref& lhs,
       const char_type* rhs,
-      size_t rhs_size
-  ) {
+      size_t rhs_size) {
     const size_t lhs_size = lhs.size();
     int r = traits_type::compare( 
       lhs.c_str(), rhs, 
@@ -211,56 +210,54 @@ class basic_string_ref {
     return r;
   }
 
-  friend int compare(
-      const basic_string_ref& lhs, const std::basic_string<char_type>& rhs
-  ) {
+  friend constexpr int compare(
+      const basic_string_ref& lhs,
+      const std::basic_string<char_type>& rhs) {
     return compare(lhs, rhs.c_str(), rhs.size());
   }
 
-  friend int compare(const basic_string_ref& lhs, const char_type* rhs) {
+  friend constexpr int compare(const basic_string_ref& lhs, const char_type* rhs) {
     return compare(lhs, rhs, traits_type::length(rhs));
   }
 
-  friend int compare(const basic_string_ref& lhs, const basic_string_ref& rhs) {
+  friend constexpr int compare(const basic_string_ref& lhs, const basic_string_ref& rhs) {
     return compare(lhs, rhs.c_str(), rhs.size());
   }
 
-  friend bool operator<(const basic_string_ref& lhs, const basic_string_ref& rhs) {
+  friend constexpr bool operator<(const basic_string_ref& lhs, const basic_string_ref& rhs) {
     return compare(lhs, rhs) < 0;
   }
 
   friend bool operator<(
       const std::basic_string<char_type>& lhs,
-      const basic_string_ref& rhs
-  ) {
+      const basic_string_ref& rhs) {
     return lhs.compare(0, std::basic_string<char_type>::npos, rhs.c_str(), rhs.size()) < 0;
   }
  
-  friend bool operator>=(const basic_string_ref& lhs, const basic_string_ref& rhs) {
+  friend constexpr bool operator>=(const basic_string_ref& lhs, const basic_string_ref& rhs) {
     return !(lhs < rhs);
   }
 
-  friend bool operator>(const basic_string_ref& lhs, const basic_string_ref& rhs) {
+  friend constexpr bool operator>(const basic_string_ref& lhs, const basic_string_ref& rhs) {
     return compare(lhs, rhs) > 0;
   }
 
-  friend bool operator<=(const basic_string_ref& lhs, const basic_string_ref& rhs) {
+  friend constexpr bool operator<=(const basic_string_ref& lhs, const basic_string_ref& rhs) {
     return !(lhs > rhs);
   }
 
-  friend bool operator==(const basic_string_ref& lhs, const basic_string_ref& rhs) {
+  friend constexpr bool operator==(const basic_string_ref& lhs, const basic_string_ref& rhs) {
     return 0 == compare(lhs, rhs);
   }
 
-  friend bool operator!=(const basic_string_ref& lhs, const basic_string_ref& rhs) {
+  friend constexpr bool operator!=(const basic_string_ref& lhs, const basic_string_ref& rhs) {
     return !(lhs == rhs);
   }
 
   friend std::basic_ostream<char_type, std::char_traits<char_type>>& operator<<(
       std::basic_ostream<char_type,
       std::char_traits<char_type>>& os,
-      const basic_string_ref& d
-  ) {
+      const basic_string_ref& d) {
     return os.write( d.c_str(), d.size() );
   }
 
@@ -283,7 +280,7 @@ template class IRESEARCH_API basic_string_ref<char>;
 template class IRESEARCH_API basic_string_ref<byte_type>;
 
 template< typename _Elem, typename _Traits >
-inline bool starts_with(
+inline constexpr bool starts_with(
     const basic_string_ref<_Elem, _Traits >& first,
     const _Elem* second, size_t second_size) {
   typedef typename basic_string_ref <
@@ -308,23 +305,24 @@ inline bool starts_with(
 }
 
 template< typename _Elem, typename _Traits >
-inline bool starts_with( const basic_string_ref< _Elem, _Traits >& first,
-                         const _Elem* second ) {
-  return starts_with( first, second, _Traits::length( second ) );
+inline constexpr bool starts_with(
+    const basic_string_ref< _Elem, _Traits >& first,
+    const _Elem* second ){
+  return starts_with(first, second, _Traits::length(second));
 }
 
 template<typename Elem, typename Traits>
 inline bool starts_with(
-  const basic_string_ref<Elem, Traits>& first,
-  const std::basic_string<Elem>& second
-) {
+    const basic_string_ref<Elem, Traits>& first,
+    const std::basic_string<Elem>& second) {
   return starts_with(first, second.c_str(), second.size());
 }
 
 template< typename _Elem, typename _Traits >
-inline bool starts_with( const basic_string_ref< _Elem, _Traits >& first,
-                         const basic_string_ref< _Elem, _Traits >& second ) {
-  return starts_with( first, second.c_str(), second.size() );
+inline constexpr bool starts_with(
+    const basic_string_ref< _Elem, _Traits >& first,
+    const basic_string_ref< _Elem, _Traits >& second ) {
+  return starts_with(first, second.c_str(), second.size());
 }
 
 typedef basic_string_ref<char> string_ref;
@@ -344,7 +342,7 @@ CONSTEXPR inline basic_string_ref<ElemDst> ref_cast(const std::basic_string<Elem
 // --SECTION--                                        String hashing algorithms
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(hash_utils)
+namespace hash_utils {
 
 IRESEARCH_API size_t hash(const irs::bstring& value);
 IRESEARCH_API size_t hash(const char* value);
@@ -352,15 +350,27 @@ IRESEARCH_API size_t hash(const wchar_t* value);
 IRESEARCH_API size_t hash(const bytes_ref& value);
 IRESEARCH_API size_t hash(const string_ref& value);
 
-NS_END // hash_utils
+} // hash_utils
 
-NS_END // NS_ROOT
+namespace literals {
+
+FORCE_INLINE constexpr irs::string_ref operator "" _sr(const char* src, size_t size) NOEXCEPT {
+  return irs::string_ref(src, size);
+}
+
+FORCE_INLINE constexpr irs::bytes_ref operator "" _bsr(const char* src, size_t size) NOEXCEPT {
+  return irs::ref_cast<irs::byte_type>(irs::string_ref(src, size));
+}
+
+} // literars
+
+} // namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                   std extensions
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<char*> {
@@ -397,6 +407,6 @@ struct hash<::iresearch::string_ref> {
   }
 }; // hash
 
-NS_END // std
+} // std
 
 #endif

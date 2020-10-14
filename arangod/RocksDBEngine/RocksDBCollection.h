@@ -131,6 +131,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                 std::function<void()> const& cbDuringLock) override;
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
+  
+  bool hasDocuments() override;
 
  private:
   /// @brief return engine-specific figures

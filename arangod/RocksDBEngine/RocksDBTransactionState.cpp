@@ -32,6 +32,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -278,6 +279,11 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       // index estimator updates are buffered
       TRI_IF_FAILURE("RocksDBCommitCounts") {
         continue;
+      }
+      TRI_IF_FAILURE("RocksDBCommitCountsRandom") {
+        if (RandomGenerator::interval(uint16_t(100)) >= 50) {
+          continue;
+        }
       }
       coll->commitCounts(id(), _lastWrittenOperationTick);
     }

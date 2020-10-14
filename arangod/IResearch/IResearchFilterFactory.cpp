@@ -162,7 +162,6 @@ arangodb::iresearch::FieldMeta::Analyzer extractAnalyzerFromArg(
     return invalid;
   }
   auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
-
   ScopedAqlValue analyzerValue(*analyzerArg);
 
   if (!filter && !analyzerValue.isConstant()) {
@@ -197,16 +196,10 @@ arangodb::iresearch::FieldMeta::Analyzer extractAnalyzerFromArg(
   auto& shortName = result._shortName;
 
   if (ctx.trx) {
-    auto& server = arangodb::application_features::ApplicationServer::server();
-    auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
-                          ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-                          : nullptr;
-
-    if (sysVocbase) {
-      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
-
-      shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-        analyzerId, ctx.trx->vocbase(), *sysVocbase, false); // args
+    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase());
+    if (analyzer) {
+      shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
+        analyzerId, ctx.trx->vocbase().name(), false);
     }
   } else {
     analyzer = analyzerFeature.get(analyzerId);  // verbatim
@@ -1568,17 +1561,10 @@ arangodb::Result fromFuncAnalyzer(irs::boolean_filter* filter, QueryContext cons
     shortName = analyzerIdValue;
 
     if (ctx.trx) {
-      auto& server = arangodb::application_features::ApplicationServer::server();
-      auto sysVocbase =
-          server.hasFeature<arangodb::SystemDatabaseFeature>()
-              ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-              : nullptr;
-
-      if (sysVocbase) {
-        analyzer = analyzerFeature.get(analyzerIdValue, ctx.trx->vocbase(), *sysVocbase);
-
-        shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-          analyzerIdValue, ctx.trx->vocbase(), *sysVocbase, false); // args
+      analyzer = analyzerFeature.get(analyzerIdValue, ctx.trx->vocbase());
+      if (analyzer) {
+        shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
+          analyzerIdValue, ctx.trx->vocbase().name(), false);  // args
       }
     } else {
       analyzer = analyzerFeature.get(analyzerIdValue);  // verbatim
