@@ -4,11 +4,37 @@ v3.7.3 (XXXX-XX-XX)
 * Make sure the optimizer doesn't pick another index than the TTL index itself
   while fulfilling the expiry of TTL.
 
+* Added optional verbose logging for agency write operations. This logging is
+  configurable by using the new log topic "agencystore".
+
+  The following log levels can be used for for the "agencystore" log topic to
+  log writes to the agency:
+  - DEBUG: will log all writes on the leader
+  - TRACE: will log all writes on both leaders and followers
+  The default log level for the "agencystore" log topic is WARN, meaning no
+  agency writes will be logged.
+  Turning on this logging can be used for auditing and debugging, but it is not
+  recommended in the general case, as it can lead to large amounts of data being
+  logged, which can have a performance impact and will lead to higher disk space
+  usage.
+
+* Print image base address and CPU context (if available) in crash handler
+  messages.
+
 * Added configuration option `--query.tracking-slow-queries` to decide whether
   slow queries are tracked extra.
 
 * Added configuration option `--query.tracking-with-querystring` to decide
-  whether the query string is shown.
+  whether the query string is shown in the slow query log and the list of
+  currently running queries. The option is true by default.
+  When turned off, querystrings in the slow query log and the list of currently
+  running queries are just shown as "<hidden>".
+
+* Added configuration option `--query.tracking-with-datasources` to toggle
+  whether the names of data sources used by queries are shown in the slow query
+  log and the list of currently running queries. The option is false by default.
+  When turned on, the names of data sources used by the query will be shown in
+  the slow query log and the list of currently running queries.
 
 * Fixed handling of failoverCandidates. Sometimes, a server can still be a
   failoverCandidate even though it has been taken out of the Plan. With this
