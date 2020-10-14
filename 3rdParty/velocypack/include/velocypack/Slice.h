@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library to build up VPack documents.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +20,6 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef VELOCYPACK_SLICE_H
@@ -31,7 +29,9 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <initializer_list>
 #include <iosfwd>
+#include <iterator>
 #include <algorithm>
 #include <functional>
 #include <type_traits>
@@ -538,34 +538,42 @@ class Slice {
 
   // look for the specified attribute path inside an Object
   // returns a Slice(ValueType::None) if not found
-  template<typename T>
-  Slice get(std::vector<T> const& attributes, 
+  template<typename ForwardIterator>
+  Slice get(ForwardIterator begin, ForwardIterator end,
             bool resolveExternals = false) const {
-    std::size_t const n = attributes.size();
-    if (n == 0) {
-      throw Exception(Exception::InvalidAttributePath);
-    }
+    static_assert(std::is_base_of<std::forward_iterator_tag,
+                                  typename std::iterator_traits<ForwardIterator>::iterator_category>::value, 
+                  "get(begin, end) must be used with a forward iterator");
 
+    if (VELOCYPACK_UNLIKELY(begin == end)) {
+      throw Exception(Exception::InvalidAttributePath);
+    }    
     // use ourselves as the starting point
     Slice last(start());
     if (resolveExternals) {
       last = last.resolveExternal();
     }
-    for (std::size_t i = 0; i < attributes.size(); ++i) {
+    do {
       // fetch subattribute
-      last = last.get(attributes[i]);
-
-      // abort as early as possible
+      last = last.get(*begin);      
       if (last.isExternal()) {
         last = last.resolveExternal();
-      }
-
-      if (last.isNone() || (i + 1 < n && !last.isObject())) {
+      }      
+      // abort as early as possible
+      if (last.isNone() || (++begin != end && !last.isObject())) {
         return Slice();
       }
-    }
-
+    } while (begin != end);
     return last;
+  }
+
+  // look for the specified attribute path inside an Object
+  // returns a Slice(ValueType::None) if not found
+  template<typename T>
+  Slice get(T const& attributes, 
+            bool resolveExternals = false) const {
+    // forward to the iterator-based lookup
+    return this->get(attributes.begin(), attributes.end(), resolveExternals);
   }
   
   // look for the specified attribute inside an Object
@@ -592,6 +600,12 @@ class Slice {
     return get(attribute.data(), attribute.size());
   }
   
+  // whether or not an Object has a specific sub-key
+  template<typename T>
+  bool hasKey(T const& attributes) const {
+    return !get(attributes).isNone();
+  }
+  
   // whether or not an Object has a specific key
   bool hasKey(StringRef const& attribute) const {
     return !get(attribute).isNone();
@@ -607,11 +621,6 @@ class Slice {
   
   bool hasKey(char const* attribute, std::size_t length) const {
     return hasKey(StringRef(attribute, length));
-  }
-
-  // whether or not an Object has a specific sub-key
-  bool hasKey(std::vector<std::string> const& attributes) const {
-    return !get(attributes).isNone();
   }
 
   // return the pointer to the data for an External object

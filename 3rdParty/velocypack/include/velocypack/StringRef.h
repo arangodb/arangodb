@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library to build up VPack documents.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +20,6 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef VELOCYPACK_STRINGREF_H
@@ -37,6 +35,7 @@
 
 namespace arangodb {
 namespace velocypack {
+class HashedStringRef;
 class Slice;
 
 class StringRef {
@@ -60,6 +59,9 @@ class StringRef {
   /// @brief create a StringRef from a VPack slice (must be of type String)
   explicit StringRef(Slice slice);
   
+  /// @brief create a StringRef from a HashedStringRef
+  explicit StringRef(HashedStringRef const& other) noexcept;
+  
   /// @brief create a StringRef from another StringRef
   constexpr StringRef(StringRef const& other) noexcept
       : _data(other._data), _length(other._length) {}
@@ -75,7 +77,7 @@ class StringRef {
     return *this;
   }
   
-  /// @brief move a StringRef from another StringRef
+  /// @brief create a StringRef from another StringRef
   StringRef& operator=(StringRef&& other) noexcept {
     _data = other._data;
     _length = other._length;
@@ -99,6 +101,9 @@ class StringRef {
   /// @brief create a StringRef from a VPack slice of type String
   StringRef& operator=(Slice slice);
   
+  /// @brief create a StringRef from another HashedStringRef
+  StringRef& operator=(HashedStringRef const& other) noexcept;
+  
   StringRef substr(std::size_t pos = 0, std::size_t count = std::string::npos) const;
   
   char at(std::size_t index) const;
@@ -109,17 +114,15 @@ class StringRef {
 
   int compare(StringRef const& other) const noexcept;
   
-  int compare(std::string const& other) const noexcept { return compare(StringRef(other)); }
+  template<typename OtherType>
+  int compare(OtherType const& other) const noexcept { return compare(StringRef(other)); }
   
-  int compare(char const* other) const noexcept { return compare(StringRef(other)); }
-
   bool equals(StringRef const& other) const noexcept;
   
-  bool equals(std::string const& other) const noexcept { return equals(StringRef(other)); }
+  template<typename OtherType>
+  bool equals(OtherType const& other) const noexcept { return equals(StringRef(other)); }
   
-  bool equals(char const* other) const noexcept { return equals(StringRef(other)); }
-
-  inline std::string toString() const {
+  std::string toString() const {
     return std::string(_data, _length);
   }
 
@@ -191,8 +194,7 @@ inline bool operator!=(arangodb::velocypack::StringRef const& lhs, std::string c
 }
 
 inline bool operator==(arangodb::velocypack::StringRef const& lhs, char const* rhs) {
-  std::size_t const len = strlen(rhs);
-  return (lhs.size() == len && memcmp(lhs.data(), rhs, lhs.size()) == 0);
+  return (lhs.size() == strlen(rhs) && memcmp(lhs.data(), rhs, lhs.size()) == 0);
 }
 
 inline bool operator!=(arangodb::velocypack::StringRef const& lhs, char const* rhs) {
