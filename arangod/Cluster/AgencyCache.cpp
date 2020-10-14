@@ -574,13 +574,13 @@ AgencyCache::change_set_t AgencyCache::changedSince(
   std::string const& what, consensus::index_t const& last) const {
 
   static std::vector<std::string> const planGoodies ({
-      AgencyCommHelper::path(PLAN_ANALYZERS) + "/",
-      AgencyCommHelper::path(PLAN_COLLECTIONS) + "/",
-      AgencyCommHelper::path(PLAN_DATABASES) + "/",
-      AgencyCommHelper::path(PLAN_VIEWS) + "/"});
+      AgencyCommHelper::path(PLAN_ANALYZERS)
+      AgencyCommHelper::path(PLAN_COLLECTIONS),
+      AgencyCommHelper::path(PLAN_DATABASES),
+      AgencyCommHelper::path(PLAN_VIEWS)});
   static std::vector<std::string> const currentGoodies ({
-      AgencyCommHelper::path(CURRENT_COLLECTIONS) + "/",
-      AgencyCommHelper::path(CURRENT_DATABASES) + "/"});
+      AgencyCommHelper::path(CURRENT_COLLECTIONS),
+      AgencyCommHelper::path(CURRENT_DATABASES)});
 
   bool get_rest = false;
   std::unordered_map<std::string, query_t> db_res;
@@ -652,7 +652,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
     keys.erase(
       std::remove_if(
         std::begin(keys), std::end(keys),
-        [&] (auto const& x) {
+        [&] (auto x) {
           return std::binary_search(std::begin(exc), std::end(exc),x);}),
       std::end(keys));
     auto query = std::make_shared<arangodb::velocypack::Builder>();

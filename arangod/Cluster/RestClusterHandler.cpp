@@ -152,7 +152,6 @@ void RestClusterHandler::handleClusterInfo() {
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   auto dump = ci.toVelocyPack();
 
-  LOG_DEVEL << dump.toJson();
   generateResult(rest::ResponseCode::OK, dump.slice());
 
 }
