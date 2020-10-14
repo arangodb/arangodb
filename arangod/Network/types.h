@@ -39,7 +39,6 @@ struct EndpointSpec {
   std::string shardId;
   std::string serverId;
   std::string endpoint;
-
 };
 
 }  // namespace network
