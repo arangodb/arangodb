@@ -535,16 +535,18 @@ ArangoCollection.prototype.truncate = function (options) {
   } else {
     options = options || {};
   }
-
+  if (!options.hasOwnProperty('compact')) {
+    options.compact = true;
+  }
+  print(options)
   let headers = {};
   if (options && options.transactionId) {
     headers['x-arango-trx-id'] = options.transactionId;
   }
 
   var append = (options.waitForSync ? '&waitForSync=true' : '');
-  append += (options.compact ? '&compact=true' : '&compact=false');
+  append += (append === '')? '?':'&' + (options.compact ? 'compact=true' : 'compact=false');
   var requestResult = this._database._connection.PUT(this._baseurl('truncate') + append, null, headers);
-
   arangosh.checkRequestResult(requestResult);
   // invalidate cache
   this._status = null;
