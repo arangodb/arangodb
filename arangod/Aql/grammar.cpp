@@ -421,7 +421,7 @@ bool validateAggregates(Parser* parser, AstNode const* aggregates,
       for (auto const& it : varsInAssignment) {
         if (variablesIntroduced.find(it) != variablesIntroduced.end()) {
           std::string msg("use of COLLECT variable '" + it->name + "' inside same COLLECT");
-          parser->registerParseError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, msg.c_str(), it->name.c_str(), line, column);
+          parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, msg.c_str(), it->name.c_str(), line, column);
           return false;
         }
       }
