@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/CollectionGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -397,7 +398,10 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
       _removedDocRid = RevisionId::none();
 
       uint64_t objectId = RocksDBKey::objectId(key);
-      auto dbCollPair = rocksutils::mapObjectToCollection(objectId);
+      auto dbCollPair = _vocbase->server()
+                            .getFeature<EngineSelectorFeature>()
+                            .engine<RocksDBEngine>()
+                            .mapObjectToCollection(objectId);
       TRI_voc_tick_t const dbid = dbCollPair.first;
       DataSourceId const cid = dbCollPair.second;
       if (!shouldHandleCollection(dbid, cid)) {
@@ -442,7 +446,10 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
     TRI_ASSERT(_state != SINGLE_REMOVE || _currentTrxId.empty());
 
     uint64_t objectId = RocksDBKey::objectId(key);
-    auto triple = rocksutils::mapObjectToIndex(objectId);
+    auto triple = _vocbase->server()
+                      .getFeature<EngineSelectorFeature>()
+                      .engine<RocksDBEngine>()
+                      .mapObjectToIndex(objectId);
     TRI_voc_tick_t const dbid = std::get<0>(triple);
     DataSourceId const cid = std::get<1>(triple);
     if (!shouldHandleCollection(dbid, cid)) {
@@ -638,7 +645,9 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase, uint64_t ti
   uint64_t lastScannedTick = tickStart;
 
   // prevent purging of WAL files while we are in here
-  RocksDBFilePurgePreventer purgePreventer(rocksutils::globalRocksEngine()->disallowPurging());
+  auto& engine =
+      vocbase->server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());
 
   // LOG_TOPIC("89157", WARN, Logger::FIXME) << "1. Starting tailing: tickStart " <<
   // tickStart << " tickEnd " << tickEnd << " chunkSize " << chunkSize;//*/
@@ -653,7 +662,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase, uint64_t ti
   }
 
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;
-  rocksdb::Status s = rocksutils::globalRocksDB()->GetUpdatesSince(since, &iterator, ro);
+  rocksdb::Status s = engine.db()->GetUpdatesSince(since, &iterator, ro);
 
   if (!s.ok()) {
     auto converted = convertStatus(s, rocksutils::StatusHint::wal);

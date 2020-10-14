@@ -83,7 +83,7 @@ void RocksDBBackgroundThread::run() {
       bool force = isStopping();
       _engine.replicationManager()->garbageCollect(force);
 
-      uint64_t minTick = rocksutils::latestSequenceNumber();
+      uint64_t minTick = _engine.db()->GetLatestSequenceNumber();
       auto cmTick = _engine.settingsManager()->earliestSeqNeeded();
 
       if (cmTick < minTick) {

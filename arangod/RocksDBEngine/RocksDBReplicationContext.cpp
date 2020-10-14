@@ -41,6 +41,7 @@
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Utils/DatabaseGuard.h"
@@ -71,8 +72,10 @@ DataSourceId normalizeIdentifier(TRI_vocbase_t& vocbase, std::string const& iden
 
 }  // namespace
 
-RocksDBReplicationContext::RocksDBReplicationContext(double ttl, SyncerId syncerId, ServerId clientId)
-    : _id{TRI_NewTickServer()},
+RocksDBReplicationContext::RocksDBReplicationContext(RocksDBEngine& engine, double ttl,
+                                                     SyncerId syncerId, ServerId clientId)
+    : _engine(engine),
+      _id{TRI_NewTickServer()},
       _syncerId{syncerId},
       // buggy clients may not send the serverId
       _clientId{clientId.isSet() ? clientId : ServerId(_id)},
@@ -89,7 +92,7 @@ RocksDBReplicationContext::~RocksDBReplicationContext() {
   MUTEX_LOCKER(guard, _contextLock);
   _iterators.clear();
   if (_snapshot != nullptr) {
-    globalRocksDB()->ReleaseSnapshot(_snapshot);
+    _engine.db()->ReleaseSnapshot(_snapshot);
     _snapshot = nullptr;
   }
 }
@@ -267,7 +270,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
 // creating a new iterator if one does not exist for this collection
 RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
     TRI_vocbase_t& vocbase, std::string const& cname,
-    basics::StringBuffer& buff, uint64_t chunkSize) {
+    basics::StringBuffer& buff, uint64_t chunkSize, bool useEnvelope) {
   TRI_ASSERT(_users > 0);
   CollectionIterator* cIter{nullptr};
   auto guard = scopeGuard([&] { releaseDumpIterator(cIter); });
@@ -291,12 +294,17 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
   VPackDumper dumper(&adapter, &cIter->vpackOptions);
   TRI_ASSERT(cIter->iter && !cIter->sorted());
   while (cIter->hasMore() && buff.length() < chunkSize) {
-    buff.appendText("{\"type\":");
-    buff.appendInteger(REPLICATION_MARKER_DOCUMENT);  // set type
-    buff.appendText(",\"data\":");
+    if (useEnvelope) {
+      buff.appendText("{\"type\":");
+      buff.appendInteger(REPLICATION_MARKER_DOCUMENT);  // set type
+      buff.appendText(",\"data\":");
+    }
     // printing the data, note: we need the CustomTypeHandler here
     dumper.dump(velocypack::Slice(reinterpret_cast<uint8_t const*>(cIter->iter->value().data())));
-    buff.appendText("}\n");
+    if (useEnvelope) {
+      buff.appendChar('}');
+    }
+    buff.appendChar('\n');
     cIter->iter->Next();
   }
 
@@ -311,7 +319,7 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
 // creating a new iterator if one does not exist for this collection
 RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
     TRI_vocbase_t& vocbase, std::string const& cname,
-    VPackBuffer<uint8_t>& buffer, uint64_t chunkSize) {
+    VPackBuffer<uint8_t>& buffer, uint64_t chunkSize, bool useEnvelope) {
   TRI_ASSERT(_users > 0 && chunkSize > 0);
 
   CollectionIterator* cIter{nullptr};
@@ -335,11 +343,15 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
   VPackBuilder builder(buffer, &cIter->vpackOptions);
   TRI_ASSERT(cIter->iter && !cIter->sorted());
   while (cIter->hasMore() && buffer.length() < chunkSize) {
-    builder.openObject();
-    builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
-    builder.add(VPackValue("data"));
+    if (useEnvelope) {
+      builder.openObject();
+      builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
+      builder.add(VPackValue("data"));
+    }
     builder.add(velocypack::Slice(reinterpret_cast<uint8_t const*>(cIter->iter->value().data())));
-    builder.close();
+    if (useEnvelope) {
+      builder.close();
+    }
     cIter->iter->Next();
   }
 
@@ -383,7 +395,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   char ridBuffer[21];  // temporary buffer for stringifying revision ids
   RocksDBKey docKey;
   VPackBuilder tmpHashBuilder;
-  rocksdb::TransactionDB* db = globalRocksDB();
+  rocksdb::TransactionDB* db = _engine.db();
   auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
   uint64_t snapNumDocs = 0;
@@ -463,7 +475,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
           << "inconsistent collection count detected, "
           << "an offet of " << adjustment << " will be applied";
       auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
-      auto seq = rocksutils::latestSequenceNumber();
+      auto seq = _engine.db()->GetLatestSequenceNumber();
       rcoll->meta().adjustNumberDocuments(seq, RevisionId::none(), adjustment);
     }
   }
@@ -541,7 +553,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
   char ridBuffer[21];  // temporary buffer for stringifying revision ids
-  rocksdb::TransactionDB* db = globalRocksDB();
+  rocksdb::TransactionDB* db = _engine.db();
   auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
 
@@ -655,7 +667,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
 
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
-  rocksdb::TransactionDB* db = globalRocksDB();
+  rocksdb::TransactionDB* db = _engine.db();
   auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
 
@@ -802,7 +814,7 @@ void RocksDBReplicationContext::extendLifetime(double ttl) {
 void RocksDBReplicationContext::lazyCreateSnapshot() {
   _contextLock.assertLockedByCurrentThread();
   if (_snapshot == nullptr) {
-    _snapshot = globalRocksDB()->GetSnapshot();
+    _snapshot = _engine.db()->GetSnapshot();
     TRI_ASSERT(_snapshot);
     _snapshotTick = _snapshot->GetSequenceNumber();
   }
@@ -879,7 +891,11 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
 
     TRI_ASSERT(_upperLimit.size() > 0);
     _readOptions.iterate_upper_bound = &_upperLimit;
-    iter.reset(rocksutils::globalRocksDB()->NewIterator(_readOptions, cf));
+    iter.reset(vocbase.server()
+                   .getFeature<EngineSelectorFeature>()
+                   .engine<RocksDBEngine>()
+                   .db()
+                   ->NewIterator(_readOptions, cf));
     TRI_ASSERT(iter);
     iter->Seek(bounds.start());
     currentTick = 1;

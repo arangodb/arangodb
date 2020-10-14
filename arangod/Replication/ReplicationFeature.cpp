@@ -177,8 +177,8 @@ void ReplicationFeature::prepare() {
 }
 
 void ReplicationFeature::start() {
-  _globalReplicationApplier.reset(
-      new GlobalReplicationApplier(GlobalReplicationApplier::loadConfiguration()));
+  _globalReplicationApplier.reset(new GlobalReplicationApplier(
+      GlobalReplicationApplier::loadConfiguration(server())));
 
   try {
     _globalReplicationApplier->loadState();

@@ -32,9 +32,10 @@ class Builder;
 class Slice;
 }
 namespace aql {
+struct Variable;
 
 /// @brief CollectOptions
-struct CollectOptions {
+struct CollectOptions final {
   /// @brief selected aggregation method
   enum class CollectMethod { UNDEFINED, HASH, SORTED, DISTINCT, COUNT };
 
@@ -64,6 +65,17 @@ struct CollectOptions {
   static std::string methodToString(CollectOptions::CollectMethod method);
 
   CollectMethod method;
+};
+
+struct GroupVarInfo final {
+  Variable const* outVar;
+  Variable const* inVar;
+};
+
+struct AggregateVarInfo final {
+  Variable const* outVar;
+  Variable const* inVar;
+  std::string type;
 };
 
 }  // namespace aql

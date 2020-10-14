@@ -44,7 +44,7 @@ class RocksDBReplicationManager {
   /// @brief create a contexts repository
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit RocksDBReplicationManager();
+  explicit RocksDBReplicationManager(RocksDBEngine&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy a contexts repository
@@ -59,7 +59,8 @@ class RocksDBReplicationManager {
   /// there are active contexts
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* createContext(double ttl, SyncerId syncerId, ServerId clientId);
+  RocksDBReplicationContext* createContext(RocksDBEngine&, double ttl,
+                                           SyncerId syncerId, ServerId clientId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a context by id

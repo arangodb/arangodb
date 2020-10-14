@@ -317,7 +317,7 @@
     "ERROR_NO_SMART_COLLECTION"    : { "code" : 4000, "message" : "collection is not smart" },
     "ERROR_NO_SMART_GRAPH_ATTRIBUTE" : { "code" : 4001, "message" : "smart graph attribute not given" },
     "ERROR_CANNOT_DROP_SMART_COLLECTION" : { "code" : 4002, "message" : "cannot drop this smart collection" },
-    "ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE" : { "code" : 4003, "message" : "in smart vertex collections _key must be prefixed with the value of the smart graph attribute" },
+    "ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE" : { "code" : 4003, "message" : "in smart vertex collections _key must be a string and prefixed with the value of the smart graph attribute" },
     "ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE" : { "code" : 4004, "message" : "attribute cannot be used as smart graph attribute" },
     "ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH" : { "code" : 4005, "message" : "smart graph attribute mismatch" },
     "ERROR_INVALID_SMART_JOIN_ATTRIBUTE" : { "code" : 4006, "message" : "invalid smart join attribute declaration" },

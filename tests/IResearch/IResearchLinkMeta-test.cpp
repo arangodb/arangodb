@@ -281,7 +281,7 @@ TEST_F(IResearchLinkMetaTest, test_readDefaults) {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string tmpString;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), false, tmpString, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), false, tmpString, vocbase.name()));
     EXPECT_TRUE(meta._fields.empty());
     EXPECT_FALSE(meta._includeAllFields);
     EXPECT_FALSE(meta._trackListPositions);
@@ -333,7 +333,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string tmpString;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), false, tmpString, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), false, tmpString, vocbase.name()));
     EXPECT_EQ(3U, meta._fields.size());
 
     for (auto& field : meta._fields) {
@@ -1282,7 +1282,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(std::string("analyzers.empty1"), errorField);
   }
 
@@ -1298,7 +1298,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(std::string("analyzers.empty1"), errorField);
   }
 
@@ -1311,7 +1311,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(std::string("analyzerDefinitions[0].name"), errorField);
   }
 
@@ -1324,7 +1324,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(std::string("analyzerDefinitions[0].type"), errorField);
   }
 
@@ -1336,7 +1336,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ("analyzers.missing0", errorField);
   }
 
@@ -1349,7 +1349,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_FALSE(meta.init(server.server(), json->slice(), false, errorField, &vocbase));
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), false, errorField, vocbase.name()));
     EXPECT_EQ("analyzers.missing0", errorField);
   }
 
@@ -1362,7 +1362,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(1, meta._analyzers.size());
     EXPECT_EQ(std::string("testVocbase::missing0"), meta._analyzers[0]._pool->name());
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._pool->type());
@@ -1385,7 +1385,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(2, meta._analyzerDefinitions.size());
     EXPECT_EQ(1, meta._analyzers.size());
     {
@@ -1429,7 +1429,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    ASSERT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    ASSERT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(2, meta._analyzerDefinitions.size());
     EXPECT_EQ(1, meta._analyzers.size());
     {
@@ -1477,7 +1477,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ("analyzers.missing1", errorField);
   }
 
@@ -1495,7 +1495,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ("fields.field.analyzers.missing1", errorField);
   }
 
@@ -1514,7 +1514,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(1, meta._analyzers.size());
     EXPECT_EQ("testVocbase::missing1", meta._analyzers[0]._pool->name());
     EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
@@ -1540,7 +1540,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_FALSE(meta.init(server.server(), json->slice(), false, errorField, &vocbase));
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), false, errorField, vocbase.name()));
     EXPECT_EQ("analyzers.missing1", errorField);
   }
 
@@ -1562,7 +1562,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(2, meta._analyzerDefinitions.size());
     EXPECT_EQ(1, meta._analyzers.size());
     {
@@ -1613,7 +1613,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(2, meta._analyzerDefinitions.size());
     EXPECT_EQ(1, meta._analyzers.size());
     {
@@ -1663,7 +1663,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(1, meta._analyzers.size());
     EXPECT_EQ("testVocbase::missing2", meta._analyzers[0]._pool->name());
     EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
@@ -1690,7 +1690,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_FALSE(meta.init(server.server(), json->slice(), false, errorField, &vocbase));
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), false, errorField, vocbase.name()));
     EXPECT_EQ("analyzers.missing2", errorField);
   }
 
@@ -1708,7 +1708,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ("analyzers.missing2", errorField);
   }
 
@@ -1730,7 +1730,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(2, meta._analyzerDefinitions.size());
     EXPECT_EQ(1, meta._analyzers.size());
     {
@@ -1781,7 +1781,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(2, meta._analyzerDefinitions.size());
     EXPECT_EQ(1, meta._analyzers.size());
     {
@@ -1829,7 +1829,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(1, meta._analyzers.size());
     EXPECT_EQ("testVocbase::missing3", meta._analyzers[0]._pool->name());
     EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
@@ -1853,7 +1853,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_FALSE(meta.init(server.server(), json->slice(), false, errorField, &vocbase));
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), false, errorField, vocbase.name()));
     EXPECT_EQ("analyzers.missing3", errorField);
   }
 
@@ -1869,7 +1869,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ("analyzers.missing3", errorField);
   }
 
@@ -1881,7 +1881,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(1, meta._analyzers.size());
     EXPECT_EQ(std::string("testVocbase::empty"), meta._analyzers[0]._pool->name());
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._pool->type());
@@ -1905,7 +1905,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(1, meta._analyzers.size());
     EXPECT_EQ(std::string("testVocbase::empty"), meta._analyzers[0]._pool->name());
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._pool->type());
@@ -1934,7 +1934,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(2, meta._analyzerDefinitions.size());
     EXPECT_EQ(1, meta._analyzers.size());
     {
@@ -1984,7 +1984,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(2, meta._analyzerDefinitions.size());
     EXPECT_EQ(1, meta._analyzers.size());
     {
@@ -2028,7 +2028,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(1, meta._analyzers.size());
     EXPECT_EQ(std::string("testVocbase::empty"), meta._analyzers[0]._pool->name());
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._pool->type());
@@ -2049,7 +2049,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_FALSE(meta.init(server.server(), json->slice(), false, errorField, &vocbase));
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), false, errorField, vocbase.name()));
     EXPECT_EQ(std::string("analyzers[0]"), errorField);
   }
 
@@ -2062,7 +2062,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(1, meta._analyzers.size());
     EXPECT_EQ(std::string("testVocbase::empty"), meta._analyzers[0]._pool->name());
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._pool->type());
@@ -2087,7 +2087,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(1, meta._analyzers.size());
     EXPECT_EQ("testVocbase::empty", meta._analyzers[0]._pool->name());
     EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
@@ -2108,7 +2108,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(1, meta._analyzers.size());
     EXPECT_EQ("testVocbase::empty", meta._analyzers[0]._pool->name());
     EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
@@ -2129,7 +2129,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), false, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), false, errorField, vocbase.name()));
     EXPECT_EQ(1, meta._analyzers.size());
     EXPECT_EQ("testVocbase::empty", meta._analyzers[0]._pool->name());
     EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
@@ -2155,7 +2155,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
     EXPECT_EQ(1, meta._analyzers.size());
     EXPECT_EQ("testVocbase::empty", meta._analyzers[0]._pool->name());
     EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
@@ -2181,7 +2181,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_TRUE(meta.init(server.server(), json->slice(), false, errorField, &vocbase));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), false, errorField, vocbase.name()));
     EXPECT_EQ(1, meta._analyzers.size());
     EXPECT_EQ("testVocbase::empty", meta._analyzers[0]._pool->name());
     EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
@@ -2192,6 +2192,28 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
     EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
+  }
+
+  // test analyzers with definitions and many fields
+  {
+    auto lhs = arangodb::velocypack::Parser::fromJson(
+      "{ \"view\": \"a/\", \"includeAllFields\": false, \"analyzers\":[\"testAnalyzer\", \"testAnalyzer2\"],"
+      "  \"fields\":{ \"owner\": {}, \"departments\": {}, \"id\": {}, \"permission\": {}, \"status\": {}, \"type\": {} },"
+      "  \"analyzerDefinitions\":[ "
+      "    {\"name\":\"testAnalyzer\", \"type\":\"ngram\", \"properties\":{\"min\":2, \"max\":2, \"preserveOriginal\": false}}, "
+      "    {\"name\":\"testAnalyzer2\", \"type\":\"ngram\", \"properties\":{\"min\":3, \"max\":3, \"preserveOriginal\": false}} "
+      "  ]}");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    ASSERT_TRUE(meta.init(server.server(), lhs->slice(), true, errorField, vocbase.name()));
+    arangodb::iresearch::IResearchLinkMeta meta2;
+    ASSERT_TRUE(meta2.init(server.server(), lhs->slice(), true, errorField, vocbase.name()));
+    ASSERT_EQ(meta, meta2);
+    arangodb::iresearch::IResearchLinkMeta meta_assigned;
+    meta_assigned = meta;
+    ASSERT_EQ(meta, meta_assigned);
+    arangodb::iresearch::IResearchLinkMeta meta_copied(meta);
+    ASSERT_EQ(meta_copied, meta);
   }
 }
 
@@ -2254,7 +2276,7 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
     auto json = VPackParser::fromJson(testJson);
     std::string errorField;
     EXPECT_TRUE(true ==
-                meta.init(server.server(), json->slice(), false, errorField, &vocbase,
+                meta.init(server.server(), json->slice(), false, errorField, vocbase.name(),
                           arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
     EXPECT_TRUE(mask._analyzers);
     EXPECT_TRUE(errorField.empty());
@@ -2266,5 +2288,925 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
       EXPECT_EQ(1, expectedAnalyzers.erase(analyzersItr->_pool->name()));
     }
     EXPECT_TRUE(expectedAnalyzers.empty());
+  }
+}
+
+// https://arangodb.atlassian.net/browse/ES-700
+// Arango View Definition Partial Edit leads to View Rebuild (on Web UI)
+// Reason: During server start SystemDatabaseFeature is not available
+// while initing links so analyzer names are not properly normalized
+class IResearchLinkMetaTestNoSystem
+  : public ::testing::Test,
+  public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCYCOMM, arangodb::LogLevel::FATAL>,
+  public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
+protected:
+  arangodb::tests::mocks::MockAqlServer server;
+
+  IResearchLinkMetaTestNoSystem() {
+    arangodb::tests::init();
+
+    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+    auto sysvocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+    std::shared_ptr<arangodb::LogicalCollection> unused;
+    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::methods::Collections::createSystem(*sysvocbase, options,
+      arangodb::tests::AnalyzerCollectionName,
+      false, unused);
+    unused = nullptr;
+
+    TRI_vocbase_t* vocbase;
+    dbFeature.createDatabase(testDBInfo(server.server()), vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    arangodb::methods::Collections::createSystem(*vocbase, options,
+      arangodb::tests::AnalyzerCollectionName,
+      false, unused);
+
+    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+
+    analyzers.emplace(result, "testVocbase::empty", "empty",
+      VPackParser::fromJson("{ \"args\": \"de\" }")->slice(),
+      irs::flags{irs::type<irs::frequency>::get()});  // cache the 'empty' analyzer for 'testVocbase'
+
+    // intentionally unprepare database feature to simulate server loading case where
+    // DatabaseFeature is starting and loading Links but SystemDatabaseFeature cannot provide system database
+    server.getFeature<arangodb::SystemDatabaseFeature>().unprepare();
+  }
+};
+
+TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+
+  ASSERT_EQ(nullptr, server.getFeature<arangodb::SystemDatabaseFeature>().use());
+  // this is copy of IResearchLinkMetaTest::test_readAnalyzerDefinitions
+  // main point here is name normalization checks!
+
+  // missing analyzer (name only)
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzers\": [ \"empty1\" ] \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(std::string("analyzers.empty1"), errorField);
+  }
+
+  // missing analyzer (name only) inRecovery
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzers\": [ \"empty1\" ] \
+    }");
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(std::string("analyzers.empty1"), errorField);
+  }
+
+  // missing analyzer (full) single-server
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"missing0\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"missing0\" ] \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(1, meta._analyzers.size());
+    // Name should be properly normalized!
+    EXPECT_EQ(std::string("testVocbase::missing0"), meta._analyzers[0]._pool->name());
+    EXPECT_EQ(std::string("empty"), meta._analyzers[0]._pool->type());
+    EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+      meta._analyzers[0]._pool->properties());
+    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ("missing0", meta._analyzers[0]._shortName);
+  }
+
+  // complex definition on single-server
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ \
+         { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] }, \
+         { \"name\": \"::empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } \
+      ], \
+      \"fields\" : { \"field\": { \"analyzers\": [ \"testVocbase::empty\", \"empty\", \"_system::empty\", \"::empty\" ] } } \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(2, meta._analyzerDefinitions.size());
+    EXPECT_EQ(1, meta._analyzers.size());
+    {
+      auto& analyzer = meta._analyzers[0];
+      EXPECT_EQ(arangodb::iresearch::IResearchAnalyzerFeature::identity(), analyzer._pool);
+    }
+    ASSERT_EQ(1, meta._fields.size());
+    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    {
+      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      EXPECT_EQ("testVocbase::empty", analyzer._pool->name());
+      EXPECT_EQ("empty", analyzer._pool->type());
+      EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+        analyzer._pool->properties());
+      EXPECT_EQ(1, analyzer._pool->features().size());
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ("empty", analyzer._shortName);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
+    }
+    {
+      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      EXPECT_EQ("_system::empty", analyzer._pool->name());
+      EXPECT_EQ("empty", analyzer._pool->type());
+      EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+        analyzer._pool->properties());
+      EXPECT_EQ(1, analyzer._pool->features().size());
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ("::empty", analyzer._shortName);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
+    }
+  }
+
+  // complex definition on single-server
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ \
+         { \"name\": \"::empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } \
+      ], \
+      \"fields\" : { \"field\": { \"analyzers\": [ \"testVocbase::empty\", \"empty\", \"_system::empty\", \"::empty\" ] } } \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    ASSERT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(2, meta._analyzerDefinitions.size());
+    EXPECT_EQ(1, meta._analyzers.size());
+    {
+      auto& analyzer = meta._analyzers[0];
+      EXPECT_EQ(arangodb::iresearch::IResearchAnalyzerFeature::identity(), analyzer._pool);
+    }
+    ASSERT_EQ(1, meta._fields.size());
+    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    {
+      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      EXPECT_EQ("testVocbase::empty", analyzer._pool->name());
+      EXPECT_EQ("empty", analyzer._pool->type());
+      // definition from cache since it's not presented "analyzerDefinitions"
+      EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
+        analyzer._pool->properties());
+      EXPECT_EQ(1, analyzer._pool->features().size());
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ("empty", analyzer._shortName);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
+    }
+    {
+      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      EXPECT_EQ("_system::empty", analyzer._pool->name());
+      EXPECT_EQ("empty", analyzer._pool->type());
+      EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+        analyzer._pool->properties());
+      EXPECT_EQ(1, analyzer._pool->features().size());
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ("::empty", analyzer._shortName);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
+    }
+  }
+
+  // missing analyzer definition coordinator
+  {
+    auto before = arangodb::ServerState::instance()->getRole();
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
+    auto restore = irs::make_finally([&before]() -> void {
+      arangodb::ServerState::instance()->setRole(before);
+      });
+
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzers\": [ \"missing1\" ] \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ("analyzers.missing1", errorField);
+  }
+
+  // missing analyzer definition coordinator
+  {
+    auto before = arangodb::ServerState::instance()->getRole();
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
+    auto restore = irs::make_finally([&before]() -> void {
+      arangodb::ServerState::instance()->setRole(before);
+      });
+
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"fields\" : { \"field\": { \"analyzers\": [ \"missing1\" ] } } \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ("fields.field.analyzers.missing1", errorField);
+  }
+
+  // missing analyzer (full) coordinator
+  {
+    auto before = arangodb::ServerState::instance()->getRole();
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
+    auto restore = irs::make_finally([&before]() -> void {
+      arangodb::ServerState::instance()->setRole(before);
+      });
+
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"missing1\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"missing1\" ] \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(1, meta._analyzers.size());
+    EXPECT_EQ("testVocbase::missing1", meta._analyzers[0]._pool->name());
+    EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
+    EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+      meta._analyzers[0]._pool->properties());
+    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ("missing1", meta._analyzers[0]._shortName);
+  }
+
+  // missing analyzer (full) coordinator (ignore analyzer definition)
+  {
+    auto before = arangodb::ServerState::instance()->getRole();
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
+    auto restore = irs::make_finally([&before]() -> void {
+      arangodb::ServerState::instance()->setRole(before);
+      });
+
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"missing1\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"missing1\" ] \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), false, errorField, vocbase.name()));
+    EXPECT_EQ("analyzers.missing1", errorField);
+  }
+
+  // complex definition on coordinator
+  {
+    auto before = arangodb::ServerState::instance()->getRole();
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
+    auto restore = irs::make_finally([&before]() -> void {
+      arangodb::ServerState::instance()->setRole(before);
+      });
+
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ \
+         { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] }, \
+         { \"name\": \"::empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } \
+      ], \
+      \"fields\" : { \"field\": { \"analyzers\": [ \"testVocbase::empty\", \"empty\", \"_system::empty\", \"::empty\" ] } } \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(2, meta._analyzerDefinitions.size());
+    EXPECT_EQ(1, meta._analyzers.size());
+    {
+      auto& analyzer = meta._analyzers[0];
+      EXPECT_EQ(arangodb::iresearch::IResearchAnalyzerFeature::identity(), analyzer._pool);
+    }
+
+    ASSERT_EQ(1, meta._fields.size());
+    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    {
+      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      EXPECT_EQ(std::string("testVocbase::empty"), analyzer._pool->name());
+      EXPECT_EQ(std::string("empty"), analyzer._pool->type());
+      EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+        analyzer._pool->properties());
+      EXPECT_EQ(1, analyzer._pool->features().size());
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ("empty", analyzer._shortName);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
+    }
+    {
+      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      EXPECT_EQ(std::string("_system::empty"), analyzer._pool->name());
+      EXPECT_EQ(std::string("empty"), analyzer._pool->type());
+      EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+        analyzer._pool->properties());
+      EXPECT_EQ(1, analyzer._pool->features().size());
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ("::empty", analyzer._shortName);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
+    }
+  }
+
+  // complex definition on coordinator
+  {
+    auto before = arangodb::ServerState::instance()->getRole();
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
+    auto restore = irs::make_finally([&before]() -> void {
+      arangodb::ServerState::instance()->setRole(before);
+      });
+
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ \
+         { \"name\": \"::empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } \
+      ], \
+      \"fields\" : { \"field\": { \"analyzers\": [ \"testVocbase::empty\", \"empty\", \"_system::empty\", \"::empty\" ] } } \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(2, meta._analyzerDefinitions.size());
+    EXPECT_EQ(1, meta._analyzers.size());
+    {
+      auto& analyzer = meta._analyzers[0];
+      EXPECT_EQ(arangodb::iresearch::IResearchAnalyzerFeature::identity(), analyzer._pool);
+    }
+
+    ASSERT_EQ(1, meta._fields.size());
+    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    {
+      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      EXPECT_EQ("testVocbase::empty", analyzer._pool->name());
+      EXPECT_EQ("empty", analyzer._pool->type());
+      // definition from cache since it's not presented "analyzerDefinitions"
+      EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
+        analyzer._pool->properties());
+      EXPECT_EQ(1, analyzer._pool->features().size());
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ("empty", analyzer._shortName);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
+    }
+    {
+      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      EXPECT_EQ("_system::empty", analyzer._pool->name());
+      EXPECT_EQ("empty", analyzer._pool->type());
+      EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+        analyzer._pool->properties());
+      EXPECT_EQ(1, analyzer._pool->features().size());
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ("::empty", analyzer._shortName);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
+    }
+  }
+
+  // missing analyzer (full) db-server
+  {
+    auto before = arangodb::ServerState::instance()->getRole();
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
+    auto restore = irs::make_finally([&before]() -> void {
+      arangodb::ServerState::instance()->setRole(before);
+      });
+
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"missing2\", \"type\": \"empty\", \"properties\": { \"args\": \"ru\" }, \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"missing2\" ] \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(1, meta._analyzers.size());
+    EXPECT_EQ("testVocbase::missing2", meta._analyzers[0]._pool->name());
+    EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
+    EXPECT_EQ(std::string("empty"), meta._analyzers[0]._pool->type());
+    EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+      meta._analyzers[0]._pool->properties());
+    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ("missing2", meta._analyzers[0]._shortName);
+  }
+
+  // missing analyzer (full) db-server (ignore analyzer definition)
+  {
+    auto before = arangodb::ServerState::instance()->getRole();
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
+    auto restore = irs::make_finally([&before]() -> void {
+      arangodb::ServerState::instance()->setRole(before);
+      });
+
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"missing2\", \"type\": \"empty\", \"properties\": { \"args\": \"ru\" }, \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"missing2\" ] \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), false, errorField, vocbase.name()));
+    EXPECT_EQ("analyzers.missing2", errorField);
+  }
+
+  // missing analyzer definition db-server
+  {
+    auto before = arangodb::ServerState::instance()->getRole();
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
+    auto restore = irs::make_finally([&before]() -> void {
+      arangodb::ServerState::instance()->setRole(before);
+      });
+
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzers\": [ \"missing2\" ] \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ("analyzers.missing2", errorField);
+  }
+
+  // complex definition on db-server
+  {
+    auto before = arangodb::ServerState::instance()->getRole();
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
+    auto restore = irs::make_finally([&before]() -> void {
+      arangodb::ServerState::instance()->setRole(before);
+      });
+
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ \
+         { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] }, \
+         { \"name\": \"::empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } \
+      ], \
+      \"fields\" : { \"field\": { \"analyzers\": [ \"testVocbase::empty\", \"empty\", \"_system::empty\", \"::empty\" ] } } \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(2, meta._analyzerDefinitions.size());
+    EXPECT_EQ(1, meta._analyzers.size());
+    {
+      auto& analyzer = meta._analyzers[0];
+      EXPECT_EQ(arangodb::iresearch::IResearchAnalyzerFeature::identity(), analyzer._pool);
+    }
+
+    ASSERT_EQ(1, meta._fields.size());
+    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    {
+      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      EXPECT_EQ(std::string("testVocbase::empty"), analyzer._pool->name());
+      EXPECT_EQ(std::string("empty"), analyzer._pool->type());
+      EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+        analyzer._pool->properties());
+      EXPECT_EQ(1, analyzer._pool->features().size());
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ("empty", analyzer._shortName);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
+    }
+    {
+      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      EXPECT_EQ(std::string("_system::empty"), analyzer._pool->name());
+      EXPECT_EQ(std::string("empty"), analyzer._pool->type());
+      EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+        analyzer._pool->properties());
+      EXPECT_EQ(1, analyzer._pool->features().size());
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ("::empty", analyzer._shortName);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
+    }
+  }
+
+  // complex definition on db-server
+  {
+    auto before = arangodb::ServerState::instance()->getRole();
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
+    auto restore = irs::make_finally([&before]() -> void {
+      arangodb::ServerState::instance()->setRole(before);
+      });
+
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ \
+         { \"name\": \"::empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } \
+      ], \
+      \"fields\" : { \"field\": { \"analyzers\": [ \"testVocbase::empty\", \"empty\", \"_system::empty\", \"::empty\" ] } } \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(2, meta._analyzerDefinitions.size());
+    EXPECT_EQ(1, meta._analyzers.size());
+    {
+      auto& analyzer = meta._analyzers[0];
+      EXPECT_EQ(arangodb::iresearch::IResearchAnalyzerFeature::identity(), analyzer._pool);
+    }
+
+    ASSERT_EQ(1, meta._fields.size());
+    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    {
+      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      EXPECT_EQ("testVocbase::empty", analyzer._pool->name());
+      EXPECT_EQ("empty", analyzer._pool->type());
+      // definition from cache since it's not presented "analyzerDefinitions"
+      EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
+        analyzer._pool->properties());
+      EXPECT_EQ(1, analyzer._pool->features().size());
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ("empty", analyzer._shortName);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
+    }
+    {
+      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      EXPECT_EQ("_system::empty", analyzer._pool->name());
+      EXPECT_EQ("empty", analyzer._pool->type());
+      EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+        analyzer._pool->properties());
+      EXPECT_EQ(1, analyzer._pool->features().size());
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ("::empty", analyzer._shortName);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
+    }
+  }
+
+  // missing analyzer (full) inRecovery
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"missing3\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"missing3\" ] \
+    }");
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(1, meta._analyzers.size());
+    EXPECT_EQ("testVocbase::missing3", meta._analyzers[0]._pool->name());
+    EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
+    EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+      meta._analyzers[0]._pool->properties());
+    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ("missing3", meta._analyzers[0]._shortName);
+  }
+
+  // missing analyzer (full) inRecovery (ignore analyzer definition)
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"missing3\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"missing3\" ] \
+    }");
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), false, errorField, vocbase.name()));
+    EXPECT_EQ("analyzers.missing3", errorField);
+  }
+
+  // missing analyzer definition inRecovery
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzers\": [ \"missing3\" ] \
+    }");
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ("analyzers.missing3", errorField);
+  }
+
+  // existing analyzer (name only)
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzers\": [ \"empty\" ] \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(1, meta._analyzers.size());
+    EXPECT_EQ(std::string("testVocbase::empty"), meta._analyzers[0]._pool->name());
+    EXPECT_EQ(std::string("empty"), meta._analyzers[0]._pool->type());
+    EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
+      meta._analyzers[0]._pool->properties());
+    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
+  }
+
+  // existing analyzer (name only) inRecovery
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzers\": [ \"empty\" ] \
+    }");
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(1, meta._analyzers.size());
+    EXPECT_EQ(std::string("testVocbase::empty"), meta._analyzers[0]._pool->name());
+    EXPECT_EQ(std::string("empty"), meta._analyzers[0]._pool->type());
+    EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
+      meta._analyzers[0]._pool->properties());
+    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
+  }
+
+  // complex definition inRecovery
+  {
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ \
+         { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] }, \
+         { \"name\": \"::empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } \
+      ], \
+      \"fields\" : { \"field\": { \"analyzers\": [ \"testVocbase::empty\", \"empty\", \"_system::empty\", \"::empty\" ] } } \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(2, meta._analyzerDefinitions.size());
+    EXPECT_EQ(1, meta._analyzers.size());
+    {
+      auto& analyzer = meta._analyzers[0];
+      EXPECT_EQ(arangodb::iresearch::IResearchAnalyzerFeature::identity(), analyzer._pool);
+    }
+
+    ASSERT_EQ(1, meta._fields.size());
+    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    {
+      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      EXPECT_EQ(std::string("testVocbase::empty"), analyzer._pool->name());
+      EXPECT_EQ(std::string("empty"), analyzer._pool->type());
+      EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+        analyzer._pool->properties());
+      EXPECT_EQ(1, analyzer._pool->features().size());
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ("empty", analyzer._shortName);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
+    }
+    {
+      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      EXPECT_EQ(std::string("_system::empty"), analyzer._pool->name());
+      EXPECT_EQ(std::string("empty"), analyzer._pool->type());
+      EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+        analyzer._pool->properties());
+      EXPECT_EQ(1, analyzer._pool->features().size());
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ("::empty", analyzer._shortName);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
+    }
+  }
+
+  // complex definition inRecovery
+  {
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ \
+         { \"name\": \"::empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } \
+      ], \
+      \"fields\" : { \"field\": { \"analyzers\": [ \"testVocbase::empty\", \"empty\", \"_system::empty\", \"::empty\" ] } } \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(2, meta._analyzerDefinitions.size());
+    EXPECT_EQ(1, meta._analyzers.size());
+    {
+      auto& analyzer = meta._analyzers[0];
+      EXPECT_EQ(arangodb::iresearch::IResearchAnalyzerFeature::identity(), analyzer._pool);
+    }
+
+    ASSERT_EQ(1, meta._fields.size());
+    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    {
+      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      EXPECT_EQ("testVocbase::empty", analyzer._pool->name());
+      EXPECT_EQ("empty", analyzer._pool->type());
+      // definition from cache since it's not presented "analyzerDefinitions"
+      EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
+        analyzer._pool->properties());
+      EXPECT_EQ(1, analyzer._pool->features().size());
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ("empty", analyzer._shortName);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
+    }
+    {
+      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      EXPECT_EQ("_system::empty", analyzer._pool->name());
+      EXPECT_EQ("empty", analyzer._pool->type());
+      EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+        analyzer._pool->properties());
+      EXPECT_EQ(1, analyzer._pool->features().size());
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
+      EXPECT_EQ("::empty", analyzer._shortName);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
+    }
+  }
+
+  // existing analyzer (full) analyzer creation not allowed (pass)
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"de\"}, \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"empty\" ] \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(1, meta._analyzers.size());
+    EXPECT_EQ(std::string("testVocbase::empty"), meta._analyzers[0]._pool->name());
+    EXPECT_EQ(std::string("empty"), meta._analyzers[0]._pool->type());
+    EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
+      meta._analyzers[0]._pool->properties());
+    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
+  }
+
+  // existing analyzer (full) analyzer definition not allowed
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzers\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"de\"}, \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"empty\" ] \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), false, errorField, vocbase.name()));
+    EXPECT_EQ(std::string("analyzers[0]"), errorField);
+  }
+
+  // existing analyzer (full)
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"de\"}, \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"empty\" ] \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(1, meta._analyzers.size());
+    EXPECT_EQ(std::string("testVocbase::empty"), meta._analyzers[0]._pool->name());
+    EXPECT_EQ(std::string("empty"), meta._analyzers[0]._pool->type());
+    EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
+      meta._analyzers[0]._pool->properties());
+    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
+  }
+
+  // existing analyzer (full) inRecovery
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"de\"}, \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"empty\" ] \
+    }");
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(1, meta._analyzers.size());
+    EXPECT_EQ("testVocbase::empty", meta._analyzers[0]._pool->name());
+    EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
+    EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
+      meta._analyzers[0]._pool->properties());
+    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ("empty", meta._analyzers[0]._shortName);
+  }
+
+  // existing analyzer (definition mismatch)
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"empty\" ] \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(1, meta._analyzers.size());
+    EXPECT_EQ("testVocbase::empty", meta._analyzers[0]._pool->name());
+    EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
+    EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+      meta._analyzers[0]._pool->properties());
+    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ("empty", meta._analyzers[0]._shortName);
+  }
+
+  // existing analyzer (definition mismatch), don't read definitions
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"empty\" ] \
+    }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), false, errorField, vocbase.name()));
+    EXPECT_EQ(1, meta._analyzers.size());
+    EXPECT_EQ("testVocbase::empty", meta._analyzers[0]._pool->name());
+    EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
+    // read definition from cache since we ignore "analyzerDefinitions"
+    EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
+      meta._analyzers[0]._pool->properties());
+    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ("empty", meta._analyzers[0]._shortName);
+  }
+
+  // existing analyzer (definition mismatch) inRecovery
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"empty\" ] \
+    }");
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), true, errorField, vocbase.name()));
+    EXPECT_EQ(1, meta._analyzers.size());
+    EXPECT_EQ("testVocbase::empty", meta._analyzers[0]._pool->name());
+    EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
+    // read definition from cache since we ignore "analyzerDefinitions"
+    EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+      meta._analyzers[0]._pool->properties());
+    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ("empty", meta._analyzers[0]._shortName);
+  }
+
+  // existing analyzer (definition mismatch) inRecovery, don't read definitions
+  {
+    auto json = VPackParser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
+      \"analyzers\": [ \"empty\" ] \
+    }");
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string errorField;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), false, errorField, vocbase.name()));
+    EXPECT_EQ(1, meta._analyzers.size());
+    EXPECT_EQ("testVocbase::empty", meta._analyzers[0]._pool->name());
+    EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
+    // read definition from cache since we ignore "analyzerDefinitions"
+    EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
+      meta._analyzers[0]._pool->properties());
+    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
+    EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 }

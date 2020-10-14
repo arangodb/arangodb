@@ -100,7 +100,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
 }
 
 Result upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
-  if (EngineSelectorFeature::engineName() != RocksDBEngine::EngineName) {
+  if (!vocbase.server().getFeature<EngineSelectorFeature>().isRocksDB()) {
     LOG_TOPIC("2cb46", DEBUG, Logger::STARTUP)
         << "No need to upgrade geo indexes!";
     return {};
@@ -555,10 +555,10 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
 
 bool UpgradeTasks::renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
                                                       arangodb::velocypack::Slice const& slice) {
-  TRI_ASSERT(EngineSelectorFeature::engineName() == RocksDBEngine::EngineName);
-  
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  std::string const path = engine->databasePath(&vocbase);
+  TRI_ASSERT(vocbase.server().getFeature<EngineSelectorFeature>().isRocksDB());
+
+  StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
+  std::string const path = engine.databasePath(&vocbase);
 
   std::string const source =
       arangodb::basics::FileUtils::buildFilename(path,

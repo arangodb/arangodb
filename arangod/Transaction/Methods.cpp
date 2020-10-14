@@ -277,7 +277,7 @@ transaction::Status transaction::Methods::status() const {
 }
 
 velocypack::Options const& transaction::Methods::vpackOptions() const {
-  return *_transactionContext->getVPackOptions();
+  return *transactionContextPtr()->getVPackOptions();
 }
 
 /// @brief Find out if any of the given requests has ended in a refusal
@@ -2312,6 +2312,7 @@ Future<Result> Methods::replicateOperations(
     // We drop all followers that were not successful:
     for (size_t i = 0; i < followerList->size(); ++i) {
       network::Response const& resp = responses[i].get();
+      ServerID const& follower = (*followerList)[i];
 
       bool replicationWorked = false;
       if (resp.error == fuerte::Error::NoError) {
@@ -2322,31 +2323,38 @@ Future<Result> Methods::replicateOperations(
           bool found;
           resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
           replicationWorked = !found;
+        } else {
+          auto r = resp.combinedResult();
+          bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+          didRefuse = didRefuse || followerRefused;
+
+          if (followerRefused) {
+            LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
+                << "synchronous replication: follower "
+                << follower << " for shard " << collection->name()
+                << " in database " << collection->vocbase().name() 
+                << " refused the operation: " << r.errorMessage();
+          }
         }
-        auto r = resp.combinedResult();
-        didRefuse = didRefuse || r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION;
       }
 
       if (!replicationWorked) {
-        ServerID const& deadFollower = (*followerList)[i];
-        LOG_TOPIC("20f31", INFO, Logger::REPLICATION)
+        LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
             << "synchronous replication: dropping follower "
-            << deadFollower << " for shard " << collection->name()
-            << ", status code: " << static_cast<int>(resp.statusCode())
-            << ", message: " << network::fuerteToArangoErrorMessage(resp);
+            << follower << " for shard " << collection->name()
+            << " in database " << collection->vocbase().name() 
+            << ": " << resp.combinedResult().errorMessage();
         
-        Result res = collection->followers()->remove(deadFollower);
+        Result res = collection->followers()->remove(follower);
         if (res.ok()) {
           // simon: follower cannot be re-added without lock on collection
-          _state->removeKnownServer(deadFollower);
-          LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
-              << "synchronous replication: dropped follower "
-              << deadFollower << " for shard " << collection->name();
+          _state->removeKnownServer(follower);
         } else {
           LOG_TOPIC("db473", ERR, Logger::REPLICATION)
               << "synchronous replication: could not drop follower "
-              << deadFollower << " for shard " << collection->name() << ": "
-              << res.errorMessage();
+              << follower << " for shard " << collection->name() 
+              << " in database " << collection->vocbase().name() 
+              << ": " << res.errorMessage();
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
         }
       }

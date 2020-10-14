@@ -78,6 +78,8 @@ class ConnectionStatistics {
   struct Snapshot {
     statistics::Counter httpConnections;
     statistics::Counter totalRequests;
+    statistics::Counter totalRequestsSuperuser;
+    statistics::Counter totalRequestsUser;
     statistics::MethodRequestCounters methodRequests;
     statistics::Counter asyncRequests;
     statistics::Distribution connectionTime;
