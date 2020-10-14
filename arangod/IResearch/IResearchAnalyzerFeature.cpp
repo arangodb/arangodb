@@ -819,7 +819,7 @@ arangodb::Result visitAnalyzers(
         continue;
       }
 
-      if (response.response->statusCode() == arangodb::fuerte::StatusNotFound) {
+      if (response.statusCode() == arangodb::fuerte::StatusNotFound) {
         return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
       }
 
@@ -827,7 +827,7 @@ arangodb::Result visitAnalyzers(
         return { arangodb::network::fuerteToArangoErrorCode(response) };
       }
     
-      VPackSlice answer = response.response->slice();
+      VPackSlice answer = response.slice();
       if (!answer.isObject()) {
         return {
           TRI_ERROR_INTERNAL,
