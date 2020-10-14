@@ -2170,9 +2170,9 @@ static void JS_TruncateVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
 
   OperationOptions opOptions;
 
-  opOptions.waitForSync = false; // not specified anymore.
+  opOptions.waitForSync = ExtractBooleanArgument(isolate, args, 1, false);
   opOptions.isSynchronousReplicationFrom = ""; // not specified anymore.
-  opOptions.truncateCompact = ExtractBooleanArgument(isolate, args, 1, true);
+  opOptions.truncateCompact = ExtractBooleanArgument(isolate, args, 2, true);
 
   auto* collection = UnwrapCollection(isolate, args.Holder());
 
