@@ -61,11 +61,6 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       _revisionTreeSerializedSeq(0),
       _revisionTreeSerializedTime(std::chrono::steady_clock::now()) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  VPackSlice s = info.get("isVolatile");
-  if (s.isBoolean() && s.getBoolean()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "volatile collections are unsupported in the RocksDB engine");
-  }
 
   TRI_ASSERT(_logicalCollection.isAStub() || _objectId.load() != 0);
   collection.vocbase()
