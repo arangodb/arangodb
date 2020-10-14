@@ -175,12 +175,8 @@ function CollectionSuite () {
       var cn = "example";
 
       db._drop(cn);
-      try {
-        db._create(cn, {isVolatile: true});
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-      }
+      let c1 = db._create(cn, {isVolatile: true});
+      assertUndefined(c1.isVolatile);
       db._drop(cn);
     },
 
