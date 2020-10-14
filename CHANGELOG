@@ -1,12 +1,3 @@
-v3.7.4 (XXXX-XX-XX)
--------------------
-
-* Fix an issue in arangoimport improperly handling filenames with less than 3
-  characters. The specified input filename was checked for a potential ".gz"
-  ending, but the check required the filename to have at least 3 characters.
-  This is now fixed.
-
-
 v3.7.3 (XXXX-XX-XX)
 -------------------
 
