@@ -118,6 +118,11 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
   try {
     auto res = newConnection->sendRequest(std::move(req));
 
+    if (!res) {
+      setCustomError(500, "unable to create connection");
+      return nullptr;
+    }
+
     _lastHttpReturnCode = res->statusCode();
 
     std::shared_ptr<VPackBuilder> parsedBody;
@@ -1992,6 +1997,8 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
 
     return result;
   }
+
+  TRI_ASSERT(res != nullptr);
 
   // complete
   _lastHttpReturnCode = res->statusCode();
