@@ -535,7 +535,6 @@ ArangoCollection.prototype.truncate = function (options) {
   if (!options.hasOwnProperty('compact')) {
     options.compact = true;
   }
-  print(options)
   let headers = {};
   if (options && options.transactionId) {
     headers['x-arango-trx-id'] = options.transactionId;
