@@ -709,7 +709,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
             std::string const& id = p.first;
             bool found = false;
             for (auto const& ind : VPackArrayIterator(indexes)) {
-              if (ind.get(ID).copyString() == id) {
+              if (ind.get(ID).stringView() == id) {
                 found = true;
                 break;
               }
