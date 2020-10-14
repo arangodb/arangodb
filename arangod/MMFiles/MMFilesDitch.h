@@ -24,6 +24,7 @@
 #ifndef ARANGOD_MMFILES_MMFILES_DITCH_H
 #define ARANGOD_MMFILES_MMFILES_DITCH_H 1
 
+#include <cstdint>
 #include <functional>
 
 #include "Basics/Common.h"
@@ -262,7 +263,7 @@ class MMFilesDitches {
   char const* head();
 
   /// @brief return the number of document ditches active
-  uint64_t numMMFilesDocumentMMFilesDitches();
+  std::uint64_t numMMFilesDocumentMMFilesDitches();
 
   /// @brief check whether the ditches contain a ditch of a certain type
   bool contains(MMFilesDitch::DitchType);
@@ -321,7 +322,7 @@ class MMFilesDitches {
   arangodb::Mutex _lock;
   MMFilesDitch* _begin;
   MMFilesDitch* _end;
-  uint64_t _numMMFilesDocumentMMFilesDitches;
+  std::uint64_t _numMMFilesDocumentMMFilesDitches;
 };
 }  // namespace arangodb
 

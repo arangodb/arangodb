@@ -47,10 +47,17 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Cluster") {
+    : ApplicationFeature(server, "Cluster"),
+      _followersRefused(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_refused_followers_count", 0, "number of times a leader received a refusal answer from a follower")),
+      _followersDropped(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_dropped_followers_count", 0, "number of times a follower was dropped")),
+      _addFollowerWrongChecksum(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_sync_wrong_checksum", 0, "number of times a wrong shard checksum was detected when syncing shards")) {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
+  startsAfter<MetricsFeature>();
 }
 
 ClusterFeature::~ClusterFeature() {

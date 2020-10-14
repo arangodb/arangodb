@@ -1154,6 +1154,12 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   return res;
 }
 
+bool RocksDBCollection::hasDocuments() {
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
+  return rocksutils::hasKeys(db, bounds, true);
+}
+
 /// @brief return engine-specific figures
 void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Builder& builder) {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();

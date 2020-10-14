@@ -1004,7 +1004,7 @@ static void JS_QueriesCurrentAql(v8::FunctionCallbackInfo<v8::Value> const& args
     uint32_t i = 0;
     auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
 
-    for (auto q : queries) {
+    for (auto const& q : queries) {
       auto timeString = TRI_StringTimeStamp(q.started, false);
 
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
@@ -1021,6 +1021,14 @@ static void JS_QueriesCurrentAql(v8::FunctionCallbackInfo<v8::Value> const& args
                  TRI_VPackToV8(isolate, q.bindParameters->slice()));
       } else {
         obj->Set(TRI_V8_ASCII_STRING(isolate, "bindVars"), v8::Object::New(isolate));
+      }
+      if (!q.dataSources.empty()) {
+        auto d = v8::Array::New(isolate);
+        uint32_t i = 0;
+        for (auto const& dn : q.dataSources) {
+          d->Set(i++, TRI_V8_STD_STRING(isolate, dn));
+        }
+        obj->Set(TRI_V8_ASCII_STRING(isolate, "dataSources"), d);
       }
       obj->Set(TRI_V8_ASCII_STRING(isolate, "started"),
                TRI_V8_STD_STRING(isolate, timeString));
@@ -1064,7 +1072,7 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     uint32_t i = 0;
     auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
 
-    for (auto q : queries) {
+    for (auto const& q : queries) {
       auto timeString = TRI_StringTimeStamp(q.started, false);
 
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
@@ -1081,6 +1089,14 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
                  TRI_VPackToV8(isolate, q.bindParameters->slice()));
       } else {
         obj->Set(TRI_V8_ASCII_STRING(isolate, "bindVars"), v8::Object::New(isolate));
+      }
+      if (!q.dataSources.empty()) {
+        auto d = v8::Array::New(isolate);
+        uint32_t i = 0;
+        for (auto const& dn : q.dataSources) {
+          d->Set(i++, TRI_V8_STD_STRING(isolate, dn));
+        }
+        obj->Set(TRI_V8_ASCII_STRING(isolate, "dataSources"), d);
       }
       obj->Set(TRI_V8_ASCII_STRING(isolate, "started"),
                TRI_V8_STD_STRING(isolate, timeString));

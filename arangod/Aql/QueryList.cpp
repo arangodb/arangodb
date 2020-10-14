@@ -28,6 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
+#include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
@@ -37,6 +38,8 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Sink.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/Value.h>
 
@@ -46,6 +49,7 @@ using namespace arangodb::aql;
 QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string const& database,
                                std::string const& user, std::string&& queryString,
                                std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
+                               std::vector<std::string> dataSources,
                                double started, double runTime,
                                QueryExecutionState::ValueType state, bool stream)
     : id(id),
@@ -53,6 +57,7 @@ QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string const& database,
       user(user),
       queryString(std::move(queryString)),
       bindParameters(bindParameters),
+      dataSources(std::move(dataSources)),
       started(started),
       runTime(runTime),
       state(state),
@@ -68,6 +73,7 @@ QueryList::QueryList(QueryRegistryFeature& feature, TRI_vocbase_t*)
       _trackSlowQueries(_enabled && feature.trackSlowQueries()),
       _trackQueryString(feature.trackQueryString()),
       _trackBindVars(feature.trackBindVars()),
+      _trackDataSources(feature.trackDataSources()),
       _slowQueryThreshold(feature.slowQueryThreshold()),
       _slowStreamingQueryThreshold(feature.slowStreamingQueryThreshold()),
       _maxSlowQueries(defaultMaxSlowQueries),
@@ -164,20 +170,41 @@ void QueryList::remove(Query* query) {
         }
       }
 
+      std::string dataSources;
+      if (_trackDataSources) {
+        auto const c = query->collectionNames();
+        if (!c.empty()) {
+          size_t i = 0;
+          dataSources = ", data sources: [";
+          arangodb::velocypack::StringSink sink(&dataSources);
+          arangodb::velocypack::Dumper dumper(&sink);
+          for (auto const& cn : c) {
+            if (i > 0) {
+              dataSources.push_back(',');
+            }
+            dumper.appendString(cn.data(), cn.size());
+            ++i;
+          }
+          dataSources.push_back(']');
+        }
+      }
+
       if (loadTime >= 0.1) {
         LOG_TOPIC("d728e", WARN, Logger::QUERIES)
-            << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q
-            << "'" << bindParameters << ", took: " << Logger::FIXED(now - started)
+            << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
+            << bindParameters << dataSources << ", database: " << query->vocbase().name()
+            << ", user: " << query->user() << ", took: " << Logger::FIXED(now - started) 
             << " s, loading took: " << Logger::FIXED(loadTime) << " s";
       } else {
         LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
             << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
-            << bindParameters << ", database: " << query->vocbase().name()
+            << bindParameters << dataSources << ", database: " << query->vocbase().name()
             << ", user: " << query->user() << ", took: " << Logger::FIXED(now - started) << " s";
       }
 
       _slow.emplace_back(query->id(), query->vocbase().name(), query->user(), std::move(q),
                          _trackBindVars ? query->bindParameters() : nullptr,
+                         _trackDataSources ? query->collectionNames() : std::vector<std::string>(),
                          started, now - started,
                          query->killed() ? QueryExecutionState::ValueType::KILLED : QueryExecutionState::ValueType::FINISHED, isStreaming);
 
@@ -268,8 +295,9 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
 
       result.emplace_back(query->id(), query->vocbase().name(), query->user(),
                           extractQueryString(query, maxLength),
-                          _trackBindVars ? query->bindParameters() : nullptr, started,
-                          now - started, 
+                          _trackBindVars ? query->bindParameters() : nullptr,
+                          _trackDataSources ? query->collectionNames() : std::vector<std::string>(),
+                          started, now - started, 
                           query->killed() ? QueryExecutionState::ValueType::KILLED : query->state(),
                           query->queryOptions().stream);
     }

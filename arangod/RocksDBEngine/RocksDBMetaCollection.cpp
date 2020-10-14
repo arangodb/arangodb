@@ -34,6 +34,7 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationOptions.h"
 
@@ -200,6 +201,7 @@ void RocksDBMetaCollection::trackWaitForSync(arangodb::transaction::Methods* trx
 
 // rescans the collection to update document count
 uint64_t RocksDBMetaCollection::recalculateCounts() {
+  std::unique_lock<std::mutex> guard(_recalculationLock);
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
   rocksdb::TransactionDB* db = engine->db();
   const rocksdb::Snapshot* snapshot = nullptr;
@@ -223,7 +225,14 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   }
   auto collGuard =
   scopeGuard([&] { vocbase.releaseCollection(&_logicalCollection); });
-  
+
+  TRI_voc_tid_t trxId = 0;
+  auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
+    if (trxId != 0) {
+      _meta.removeBlocker(trxId);
+    }
+  });
+
   uint64_t snapNumberOfDocuments = 0;
   {
     // fetch number docs and snapshot under exclusive lock
@@ -234,14 +243,40 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
       lockGuard.cancel();
       THROW_ARANGO_EXCEPTION(res);
     }
+  
+    // generate a unique transaction id for a blocker
+    trxId = transaction::Context::makeTransactionId();
+ 
+    // place a blocker. will be removed by blockerGuard automatically
+    _meta.placeBlocker(trxId, engine->db()->GetLatestSequenceNumber());
     
-    snapNumberOfDocuments = _meta.numberDocuments();
     snapshot = engine->db()->GetSnapshot();
+    snapNumberOfDocuments = _meta.numberDocuments();
     TRI_ASSERT(snapshot);
+  }
+
+  TRI_ASSERT(snapshot != nullptr);
+  
+  auto seq = snapshot->GetSequenceNumber();
+  
+  auto bounds = RocksDBKeyBounds::Empty();
+  bool set = false;
+  {
+    READ_LOCKER(guard, _indexesLock);
+    for (auto it : _indexes) {
+      if (it->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
+        bounds = RocksDBKeyBounds::PrimaryIndex(rix->objectId());
+        set = true;
+        break;
+      }
+    }
+  }
+  if (!set) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "did not find primary index");
   }
   
   // count documents
-  RocksDBKeyBounds bounds = this->bounds();
   rocksdb::Slice upper(bounds.end());
   
   rocksdb::ReadOptions ro;
@@ -255,17 +290,25 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(ro, cf));
   std::size_t count = 0;
   
+  application_features::ApplicationServer& server = vocbase.server();
+  
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
     ++count;
+
+    if (count % 4096 == 0 &&
+        server.isStopping()) {
+      // check for server shutdown
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
   }
   
   int64_t adjustment = count - snapNumberOfDocuments;
   if (adjustment != 0) {
-    auto seq = snapshot->GetSequenceNumber();
-    LOG_TOPIC("ad6d3", WARN, Logger::REPLICATION)
-    << "inconsistent collection count detected, "
-    << "an offet of " << adjustment << " will be applied";
+    LOG_TOPIC("ad613", WARN, Logger::REPLICATION)
+        << "inconsistent collection count detected for " 
+        << vocbase.name() << "/" << _logicalCollection.name()
+        << ", an offet of " << adjustment << " will be applied";
     _meta.adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
   }
   

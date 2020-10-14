@@ -95,9 +95,18 @@ Result RocksDBMetadata::placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumbe
     TRI_ASSERT(_blockersBySeq.end() == _blockersBySeq.find(std::make_pair(seq, trxId)));
 
     auto insert = _blockers.try_emplace(trxId, seq);
-    auto crosslist = _blockersBySeq.emplace(seq, trxId);
-    if (!insert.second || !crosslist.second) {
-      return res.reset(TRI_ERROR_INTERNAL);
+    try {
+      auto crosslist = _blockersBySeq.emplace(seq, trxId);
+      if (!insert.second || !crosslist.second) {
+        return res.reset(TRI_ERROR_INTERNAL);
+      }
+    } catch (...) {
+      if (insert.second) {
+        // successfully inserted the blocker. now remove it again to leave the structs
+        // in a consistent state
+        _blockers.erase(trxId);
+        throw;
+      }
     }
     return res;
   });

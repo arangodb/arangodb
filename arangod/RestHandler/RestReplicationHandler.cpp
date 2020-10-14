@@ -2462,10 +2462,12 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
+  std::string const leaderChecksum = referenceChecksum.get();
+  
   LOG_TOPIC("40b17", DEBUG, Logger::REPLICATION)
-      << "Compare Leader: " << referenceChecksum.get()
+      << "Compare Leader: " << leaderChecksum
       << " == Follower: " << checksumSlice.copyString();
-  if (!checksumSlice.isEqualString(referenceChecksum.get())) {
+  if (!checksumSlice.isEqualString(leaderChecksum)) {
     LOG_TOPIC("94ebe", DEBUG, Logger::REPLICATION)
         << followerId << " is not yet in sync with " << _vocbase.name() << "/"
         << col->name();
@@ -2474,9 +2476,9 @@ void RestReplicationHandler::handleCommandAddFollower() {
         << "Cannot add follower " << followerId << " for shard "
         << _vocbase.name() << "/" << col->name() 
         << ", mismatching checksums. "
-        << "Expected (leader): " << referenceChecksum.get() << ", actual (follower): " << checksum;
+        << "Expected (leader): " << leaderChecksum << ", actual (follower): " << checksum;
     generateError(rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-                  "'checksum' is wrong. Expected (leader): " + referenceChecksum.get() +
+                  "'checksum' is wrong. Expected (leader): " + leaderChecksum +
                       ". actual (follower): " + checksum);
     return;
   }

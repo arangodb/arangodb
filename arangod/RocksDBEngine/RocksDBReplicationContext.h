@@ -82,6 +82,8 @@ class RocksDBReplicationContext {
     /// @brief number of documents in this collection
     /// only set in a very specific use-case
     uint64_t numberDocuments;
+    /// @brief number of documents we iterated over in /dump
+    uint64_t numberDocumentsDumped;
     /// @brief snapshot and number documents were fetched exclusively
     bool isNumberDocumentsExclusive;
 
