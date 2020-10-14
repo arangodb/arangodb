@@ -63,9 +63,7 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   static bool normalize(const irs::string_ref& args, std::string& out);
   static irs::analysis::analyzer::ptr make(irs::string_ref const& args);
 
-  CalculationAnalyzer(options_t const& options)
-    : irs::analysis::analyzer(irs::type<CalculationAnalyzer>::get()), _options(options) {
-  }
+  CalculationAnalyzer(options_t const& options);
 
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     if (type == irs::type<irs::increment>::id()) {

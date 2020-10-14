@@ -35,6 +35,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
+#include "Aql/Ast.h"
 #include "Aql/QueryString.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -49,6 +50,7 @@
 
 #include <Containers/HashSet.h>
 #include "VPackDeserializer/deserializer.h"
+#include <frozen/unordered_set.h>
 
 namespace {
 using namespace arangodb::velocypack::deserializer;
@@ -74,6 +76,60 @@ using OptionsDeserializer = utilities::constructing_deserializer<Options, parame
   >>;
 
 using ValidatingOptionsDeserializer = validate<OptionsDeserializer, OptionsValidator>;
+
+frozen::unordered_set<irs::string_ref, 4> forbiddenFunctions {"TOKENS", "NGRAM_MATCH", "PHRASE", "ANALYZER"};
+
+arangodb::Result validateQuery(std::string const& query, TRI_vocbase_t& vocbase) {
+  auto parseQuery = std::make_unique<arangodb::aql::Query>(
+    std::make_shared<arangodb::transaction::StandaloneContext>(vocbase),
+    arangodb::aql::QueryString(query),
+    nullptr, nullptr);
+
+  auto res  = parseQuery->parse();
+  if (!res.ok()) {
+    return {TRI_ERROR_QUERY_PARSE , res.errorMessage()};
+  }
+  TRI_ASSERT(parseQuery->ast());
+
+  if (parseQuery->ast()->willUseV8()) {
+    return { TRI_ERROR_BAD_PARAMETER, "V8 usage is forbidden for calculation analyzer" };
+  }
+
+
+  std::string errorMessage;
+  // TODO: Forbid to use TOKENS DOCUMENT FULLTEXT,V8 related inside query -> problems on recovery as analyzers are not available for querying!
+  arangodb::aql::Ast::traverseReadOnly(parseQuery->ast()->root(), [&errorMessage](arangodb::aql::AstNode const* node) -> bool {
+    switch(node->type) {
+      case arangodb::aql::NODE_TYPE_FCALL:
+        {
+          auto func = static_cast<arangodb::aql::Function*>(node->getData());
+          if (!func->hasFlag(arangodb::aql::Function::Flags::CanRunOnDBServer) ||
+              forbiddenFunctions.find(func->name) != forbiddenFunctions.end()) {
+            errorMessage = "Function '";
+            errorMessage.append(func->name).append("' is forbidden for calculation analyzer");
+            return false;
+          }
+        }
+        break;
+      case arangodb::aql::NODE_TYPE_FCALL_USER:
+        errorMessage = "UDF functions is forbidden for calculation analyzer";
+        return false;
+      case arangodb::aql::NODE_TYPE_VIEW:
+      case arangodb::aql::NODE_TYPE_FOR_VIEW:
+        errorMessage = "View access is forbidden for calculation analyzer";
+        return false;
+      case arangodb::aql::NODE_TYPE_COLLECTION:
+        errorMessage = "Collection access is forbidden for calculation analyzer";
+        return false;
+      default:
+    }
+    return true;
+    });
+  if (!errorMessage.empty()) {
+    return { TRI_ERROR_BAD_PARAMETER, errorMessage };
+  }
+  return {};
+}
 
 }
 
@@ -121,6 +177,12 @@ bool CalculationAnalyzer::parse_options(const irs::string_ref& args, options_t& 
   return nullptr;
 }
 
+inline CalculationAnalyzer::CalculationAnalyzer(options_t const& options)
+  : irs::analysis::analyzer(irs::type<CalculationAnalyzer>::get()), _options(options) {
+  // TODO: check query somehow
+  validateQuery(_options.queryString, DB_FEATURE->getExpressionVocbase());
+}
+
 inline bool CalculationAnalyzer::next() {
   if (_queryResult.ok() && _has_data) {
     _has_data = false;
@@ -129,8 +191,7 @@ inline bool CalculationAnalyzer::next() {
       _str = value.copyString(); // TODO: maybe just process all with copyBinary?
       _term.value = irs::ref_cast<irs::byte_type>(irs::string_ref(_str));
       return true;
-    }
-    else { // TODO: remove me!!!
+    } else { // TODO: remove me!!!
       _str = _queryResult.data->slice().typeName();
       _term.value = irs::ref_cast<irs::byte_type>(irs::string_ref(_str));
       return true;
@@ -140,15 +201,14 @@ inline bool CalculationAnalyzer::next() {
 }
 
 inline bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
-  // FIXME: For now it is only strings. So make VPACK and set parameter
-  // FIXME: use VPAck buffer and never reallocate between queries
+  // FIXME: For now it is only strings. So make VPack and set parameter
+  // FIXME: use VPack buffer and never reallocate between queries
   auto vPackArgs = std::make_shared<arangodb::velocypack::Builder>();
   {
     VPackObjectBuilder o(vPackArgs.get());
     vPackArgs->add("field", VPackValue(field));
   }
-  // TODO: check query somehow
-  // TODO: Forbid to use TOKENS DOCUMENT FULLTEXT ,V8 related inside query -> problems on recovery as analyzers are not available for querying!
+
   // TODO: Position calculation as parameter
   // TODO: Filtering results
   // TODO: SetQuery quit option
@@ -158,7 +218,8 @@ inline bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
     arangodb::aql::QueryString(_options.queryString),
     vPackArgs, nullptr);
   _query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-  _query->execute(_queryResult);
+  
+  _queryResult = _query->executeSync();
   _has_data = true;
   return _queryResult.ok();
 }
