@@ -41,6 +41,8 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Sink.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
@@ -51,6 +53,7 @@ using namespace arangodb::aql;
 QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string const& database,
                                std::string const& user, std::string&& queryString,
                                std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
+                               std::vector<std::string> dataSources,
                                double started, double runTime,
                                QueryExecutionState::ValueType state, bool stream)
     : id(id),
@@ -58,6 +61,7 @@ QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string const& database,
       user(user),
       queryString(std::move(queryString)),
       bindParameters(bindParameters),
+      dataSources(std::move(dataSources)),
       started(started),
       runTime(runTime),
       state(state),
@@ -76,6 +80,13 @@ void QueryEntryCopy::toVelocyPack(velocypack::Builder& out) const {
   } else {
     out.add("bindVars", arangodb::velocypack::Slice::emptyObjectSlice());
   }
+  if (!dataSources.empty()) {
+    out.add("dataSources", VPackValue(VPackValueType::Array));
+    for (auto const& dn : dataSources) {
+      out.add(VPackValue(dn));
+    }
+    out.close();
+  }
   out.add("started", VPackValue(timeString));
   out.add("runTime", VPackValue(runTime));
   out.add("state", VPackValue(aql::QueryExecutionState::toString(state)));
@@ -90,6 +101,7 @@ QueryList::QueryList(QueryRegistryFeature& feature)
       _trackSlowQueries(_enabled && feature.trackSlowQueries()),
       _trackQueryString(feature.trackQueryString()),
       _trackBindVars(feature.trackBindVars()),
+      _trackDataSources(feature.trackDataSources()),
       _slowQueryThreshold(feature.slowQueryThreshold()),
       _slowStreamingQueryThreshold(feature.slowStreamingQueryThreshold()),
       _maxSlowQueries(defaultMaxSlowQueries),
@@ -185,14 +197,34 @@ void QueryList::remove(Query* query) {
           }
         }
       }
+      
+      std::string dataSources;
+      if (_trackDataSources) {
+        auto const d = query->collectionNames();
+        if (!d.empty()) {
+          size_t i = 0;
+          dataSources = ", data sources: [";
+          arangodb::velocypack::StringSink sink(&dataSources);
+          arangodb::velocypack::Dumper dumper(&sink);
+          for (auto const& dn : d) {
+            if (i > 0) {
+              dataSources.push_back(',');
+            }
+            dumper.appendString(dn.data(), dn.size());
+            ++i;
+          }
+          dataSources.push_back(']');
+        }
+      }
 
       LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
           << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
-          << bindParameters << ", database: " << query->vocbase().name()
+          << bindParameters << dataSources << ", database: " << query->vocbase().name()
           << ", user: " << query->user() << ", took: " << Logger::FIXED(elapsed) << " s";
 
       _slow.emplace_back(query->id(), query->vocbase().name(), query->user(), std::move(q),
                          _trackBindVars ? query->bindParameters() : nullptr,
+                         _trackDataSources ? query->collectionNames() : std::vector<std::string>(),
                          now - elapsed, /* start timestamp */ 
                          elapsed /* run time */,
                          query->killed() ? QueryExecutionState::ValueType::KILLED
@@ -291,6 +323,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
       result.emplace_back(query->id(), query->vocbase().name(), query->user(),
                           extractQueryString(query, maxLength),
                           _trackBindVars ? query->bindParameters() : nullptr,
+                          _trackDataSources ? query->collectionNames() : std::vector<std::string>(),
                           now - elapsed /* start timestamp */, 
                           elapsed /* run time */,
                           query->killed() ? QueryExecutionState::ValueType::KILLED

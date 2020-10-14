@@ -1,5 +1,13 @@
 v3.7.3 (XXXX-XX-XX)
 -------------------
+      
+* Added the following metrics for synchronous replication in the cluster:
+
+  - `arangodb_refused_followers_count`: Number of times a shard leader received 
+    a refusal answer from a follower during synchronous replication.
+  - `arangodb_sync_wrong_checksum`: Number of times a mismatching shard 
+    checksum was detected when syncing shards. In case this happens, a resync
+    will be triggered for the shard.
 
 * Fixed handling of failedLeaderJob. In case of a plan modification, that
   removes a server from the plan, e.g. reduce replication factor. Directly
@@ -33,6 +41,7 @@ v3.7.3 (XXXX-XX-XX)
 * Added configuration option `--query.tracking-with-querystring` to decide
   whether the query string is shown in the slow query log and the list of
   currently running queries. The option is true by default.
+
   When turned off, querystrings in the slow query log and the list of currently
   running queries are just shown as "<hidden>".
 
