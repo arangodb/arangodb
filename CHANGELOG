@@ -1,23 +1,19 @@
-v3.7.4 (XXXX-XX-XX)
+v3.7.3 (XXXX-XX-XX)
 -------------------
 
-* Added optional verbose logging for agency write operations. This logging
-  is configurable by using the new log topic "agencystore".
+* Added optional verbose logging for agency write operations. This logging is
+  configurable by using the new log topic "agencystore".
 
-  The following log levels can be used for for the "agencystore" log topic
-  to log writes to the agency:
+  The following log levels can be used for for the "agencystore" log topic to
+  log writes to the agency:
   - DEBUG: will log all writes on the leader
   - TRACE: will log all writes on both leaders and followers
   The default log level for the "agencystore" log topic is WARN, meaning no
   agency writes will be logged.
-  Turning on this logging can be used for auditing and debugging, but it is
-  not recommended in the general case, as it can lead to large amounts of 
-  data being logged, which can have a performance impact and will lead to
-  higher disk space usage.
-
-
-v3.7.3 (XXXX-XX-XX)
--------------------
+  Turning on this logging can be used for auditing and debugging, but it is not
+  recommended in the general case, as it can lead to large amounts of data being
+  logged, which can have a performance impact and will lead to higher disk space
+  usage.
 
 * Fixed handling of failoverCandidates. Sometimes, a server can still be a
   failoverCandidate even though it has been taken out of the Plan. With this
