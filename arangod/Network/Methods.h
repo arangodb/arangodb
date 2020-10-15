@@ -56,6 +56,13 @@ struct Response {
     }
     return velocypack::Slice();  // none slice
   }
+  
+  fuerte::StatusCode statusCode() const {
+    if (error == fuerte::Error::NoError && response) {
+      return response->statusCode();
+    }
+    return fuerte::StatusUndefined;
+  }
 
   /// @brief Build a Result that contains
   ///   - no error if everything went well, otherwise

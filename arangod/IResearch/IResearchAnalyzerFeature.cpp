@@ -819,16 +819,16 @@ arangodb::Result visitAnalyzers(
         continue;
       }
 
-      if (response.response->statusCode() == arangodb::fuerte::StatusNotFound) {
+      if (response.statusCode() == arangodb::fuerte::StatusNotFound) {
         return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
       }
 
       if (response.error != arangodb::fuerte::Error::NoError) {
         return { arangodb::network::fuerteToArangoErrorCode(response) };
       }
-
-      std::vector<VPackSlice> slices = response.response->slices();
-      if (slices.empty() || !slices[0].isObject()) {
+    
+      VPackSlice answer = response.slice();
+      if (!answer.isObject()) {
         return {
           TRI_ERROR_INTERNAL,
           "got misformed result while visiting Analyzer collection'" +
@@ -837,7 +837,6 @@ arangodb::Result visitAnalyzers(
         };
       }
 
-      VPackSlice answer = slices[0];
       auto result = arangodb::network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
       if (result.fail()) {
         return result;
