@@ -65,6 +65,7 @@
             revision: revision,
             model: this.model
           };
+
           window.modalView.show(
             'modalCollectionInfo.ejs',
             'Collection: ' + (this.model.get('name').length > 64 ? this.model.get('name').substr(0, 64) + "..." : this.model.get('name')),
@@ -85,7 +86,7 @@
         }
       }.bind(this);
 
-      this.model.getFigures(callback);
+      this.model.getFiguresCombined(callback, frontendConfig.isCluster);
     }
 
   });

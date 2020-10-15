@@ -27,6 +27,7 @@
 #include "Logger/LoggerStream.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 
 #include <rocksdb/db.h>
@@ -143,7 +144,9 @@ std::size_t RocksDBMethods::countInBounds(RocksDBKeyBounds const& bounds, bool i
 
 RocksDBReadOnlyMethods::RocksDBReadOnlyMethods(RocksDBTransactionState* state)
     : RocksDBMethods(state) {
-  _db = rocksutils::globalRocksDB();
+  auto& selector = state->vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  _db = engine.db();
 }
 
 rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
@@ -372,7 +375,9 @@ std::unique_ptr<rocksdb::Iterator> RocksDBBatchedMethods::NewIterator(
 RocksDBBatchedWithIndexMethods::RocksDBBatchedWithIndexMethods(RocksDBTransactionState* state,
                                                                rocksdb::WriteBatchWithIndex* wb)
     : RocksDBMethods(state), _wb(wb) {
-  _db = rocksutils::globalRocksDB();
+  auto& selector = state->vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  _db = engine.db();
 }
 
 rocksdb::Status RocksDBBatchedWithIndexMethods::Get(rocksdb::ColumnFamilyHandle* cf,

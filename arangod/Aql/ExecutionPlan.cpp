@@ -21,6 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Graph/TraverserOptions.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -159,7 +160,6 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
-
   auto steps = direction->getMember(1);
 
   bool invalidDepth = false;
@@ -185,8 +185,11 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
                                    "invalid traversal depth");
   }
 
+  // WTF this is the 10th place the deals with parsing of options
+  // how do you even maintain that?
   if (optionsNode != nullptr && optionsNode->type == NODE_TYPE_OBJECT) {
     size_t n = optionsNode->numMembers();
+    bool hasBFS = false;
 
     for (size_t i = 0; i < n; ++i) {
       auto member = optionsNode->getMemberUnchecked(i);
@@ -197,7 +200,10 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
         TRI_ASSERT(value->isConstant());
 
         if (name == "bfs") {
-          options->useBreadthFirst = value->isTrue();
+          options->mode = value->isTrue()
+                              ? arangodb::traverser::TraverserOptions::Order::BFS
+                              : arangodb::traverser::TraverserOptions::Order::DFS;
+          hasBFS = true;
         } else if (name == "uniqueVertices" && value->isStringValue()) {
           if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryPath)) {
             options->uniqueVertices =
@@ -222,6 +228,22 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
           parseGraphCollectionRestriction(options->edgeCollections, value);
         } else if (name == "vertexCollections") {
           parseGraphCollectionRestriction(options->vertexCollections, value);
+        } else if (name == StaticStrings::GraphQueryOrder && !hasBFS) {
+          // dfs is the default
+          if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryOrderBFS)) {
+            options->mode = traverser::TraverserOptions::Order::BFS;
+          } else if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryOrderWeighted)) {
+            options->mode = traverser::TraverserOptions::Order::WEIGHTED;
+          } else if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryOrderDFS)) {
+            options->mode = traverser::TraverserOptions::Order::DFS;
+          } else {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                           "order: unknown order");
+          }
+        } else if (name == "defaultWeight" && value->isNumericValue()) {
+          options->defaultWeight = value->getDoubleValue();
+        } else if (name == "weightAttribute" && value->isStringValue()) {
+          options->weightAttribute = value->getString();
         } else if (name == "parallelism") {
           if (ast->canApplyParallelism()) {
             // parallelism is only used when there is no usage of V8 in the
@@ -234,10 +256,10 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
   }
 
   if (options->uniqueVertices == arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL &&
-      !options->useBreadthFirst) {
+      !(options->isUniqueGlobalVerticesAllowed())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "uniqueVertices: 'global' is only "
-                                   "supported, with bfs: true due to "
+                                   "supported, with mode: bfs|weighted due to "
                                    "otherwise unpredictable results.");
   }
 
@@ -328,14 +350,14 @@ ExecutionPlan::~ExecutionPlan() {
   _ast->query().resourceMonitor().decreaseMemoryUsage(_ids.size() * sizeof(ExecutionNode));
 #endif
 #endif
-  
+
   for (auto& x : _ids) {
     delete x.second;
   }
 }
 
 /// @brief create an execution plan from an AST
-std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromAst(Ast* ast) {
+/*static*/ std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromAst(Ast* ast) {
   TRI_ASSERT(ast != nullptr);
 
   auto root = ast->root();
@@ -377,14 +399,14 @@ void ExecutionPlan::getCollectionsFromVelocyPack(aql::Collections& colls, VPackS
   if (slice.isObject()) {
     collectionsSlice = slice.get("collections");
   }
-  
+
   if (!collectionsSlice.isArray()) {
    THROW_ARANGO_EXCEPTION_MESSAGE(
        TRI_ERROR_INTERNAL,
        "json node \"collections\" not found or not an array");
   }
 
-  for (auto const& collection : VPackArrayIterator(collectionsSlice)) {
+  for (VPackSlice const collection : VPackArrayIterator(collectionsSlice)) {
     colls.add(
         basics::VelocyPackHelper::checkAndGetStringValue(collection, "name"),
         AccessMode::fromString(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
@@ -684,7 +706,7 @@ Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
   }
 
   if (node->getType() == ExecutionNode::COLLECT) {
-    // CollectNode has an outVariale() method, but we cannot use it.
+    // CollectNode has an outVariable() method, but we cannot use it.
     // for CollectNode, outVariable() will return the variable filled by INTO,
     // but INTO is an optional feature
     // so this will return the first result variable of the COLLECT
@@ -694,7 +716,7 @@ Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
     auto const& vars = en->groupVariables();
 
     TRI_ASSERT(vars.size() == 1);
-    auto v = vars[0].first;
+    auto v = vars[0].outVar;
     TRI_ASSERT(v != nullptr);
     return v;
   }
@@ -714,9 +736,8 @@ CollectNode* ExecutionPlan::createAnonymousCollect(CalculationNode const* previo
   auto out = _ast->variables()->createTemporaryVariable();
   TRI_ASSERT(out != nullptr);
 
-  std::vector<std::pair<Variable const*, Variable const*>> const groupVariables{
-      std::make_pair(out, previous->outVariable())};
-  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const aggregateVariables{};
+  std::vector<GroupVarInfo> const groupVariables{GroupVarInfo{out, previous->outVariable()}};
+  std::vector<AggregateVarInfo> const aggregateVariables{};
 
   auto en = new CollectNode(this, nextId(), CollectOptions(), groupVariables, aggregateVariables,
                             nullptr, nullptr, std::vector<Variable const*>(),
@@ -877,10 +898,10 @@ ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) 
   TRI_ASSERT(node->plan() == this);
   TRI_ASSERT(node->id() > ExecutionNodeId{0});
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
-  
+
   // may throw
   _ast->query().resourceMonitor().increaseMemoryUsage(sizeof(ExecutionNode));
- 
+
   try {
     auto emplaced = _ids.try_emplace(node->id(), node.get()).second;  // take ownership
     TRI_ASSERT(emplaced);
@@ -902,7 +923,7 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   try {
     // may throw
     _ast->query().resourceMonitor().increaseMemoryUsage(sizeof(ExecutionNode));
-    
+
     auto [it, emplaced] = _ids.try_emplace(node->id(), node);
     if (!emplaced) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1133,7 +1154,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
 
   auto options =
       createTraversalOptions(getAst(), direction, node->getMember(4));
-  
+
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
   direction = direction->getMember(0);
@@ -1452,7 +1473,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous, AstNode c
   auto groups = node->getMember(1);
   size_t const numVars = groups->numMembers();
 
-  std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
+  std::vector<GroupVarInfo> groupVariables;
   groupVariables.reserve(numVars);
 
   for (size_t i = 0; i < numVars; ++i) {
@@ -1473,17 +1494,17 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous, AstNode c
     if (expression->type == NODE_TYPE_REFERENCE) {
       // operand is a variable
       auto e = static_cast<Variable*>(expression->getData());
-      groupVariables.emplace_back(std::make_pair(v, e));
+      groupVariables.emplace_back(GroupVarInfo{v, e});
     } else {
       // operand is some misc expression
       auto calc = createTemporaryCalculation(expression, previous);
       previous = calc;
-      groupVariables.emplace_back(std::make_pair(v, getOutVariable(calc)));
+      groupVariables.emplace_back(GroupVarInfo{v, getOutVariable(calc)});
     }
   }
 
   // aggregate variables
-  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
+  std::vector<AggregateVarInfo> aggregateVariables;
   {
     auto list = node->getMember(2);
     TRI_ASSERT(list->type == NODE_TYPE_AGGREGATIONS);
@@ -1502,8 +1523,8 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous, AstNode c
       TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
       auto out = assigner->getMember(0);
       TRI_ASSERT(out != nullptr);
-      auto v = static_cast<Variable*>(out->getData());
-      TRI_ASSERT(v != nullptr);
+      auto outVar = static_cast<Variable*>(out->getData());
+      TRI_ASSERT(outVar != nullptr);
 
       auto expression = assigner->getMember(1);
 
@@ -1528,15 +1549,11 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous, AstNode c
       if (arg->type == NODE_TYPE_REFERENCE) {
         // operand is a variable
         auto e = static_cast<Variable*>(arg->getData());
-        aggregateVariables.emplace_back(
-            std::make_pair(v, std::make_pair(e, Aggregator::translateAlias(func->name))));
+        aggregateVariables.emplace_back(AggregateVarInfo{outVar, e, Aggregator::translateAlias(func->name)});
       } else {
         auto calc = createTemporaryCalculation(arg, previous);
         previous = calc;
-
-        aggregateVariables.emplace_back(
-            std::make_pair(v, std::make_pair(getOutVariable(calc),
-                                             Aggregator::translateAlias(func->name))));
+        aggregateVariables.emplace_back(AggregateVarInfo{outVar, getOutVariable(calc), Aggregator::translateAlias(func->name)});
       }
     }
   }
@@ -1612,7 +1629,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount(ExecutionNode* previous,
   auto list = node->getMember(1);
   size_t const numVars = list->numMembers();
 
-  std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
+  std::vector<GroupVarInfo> groupVariables;
   groupVariables.reserve(numVars);
   for (size_t i = 0; i < numVars; ++i) {
     auto assigner = list->getMember(i);
@@ -1632,12 +1649,12 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount(ExecutionNode* previous,
     if (expression->type == NODE_TYPE_REFERENCE) {
       // operand is a variable
       auto e = static_cast<Variable*>(expression->getData());
-      groupVariables.emplace_back(std::make_pair(v, e));
+      groupVariables.emplace_back(GroupVarInfo{v, e});
     } else {
       // operand is some misc expression
       auto calc = createTemporaryCalculation(expression, previous);
       previous = calc;
-      groupVariables.emplace_back(std::make_pair(v, getOutVariable(calc)));
+      groupVariables.emplace_back(GroupVarInfo{v, getOutVariable(calc)});
     }
   }
 
@@ -1648,7 +1665,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount(ExecutionNode* previous,
 
   TRI_ASSERT(outVariable != nullptr);
 
-  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const aggregateVariables{};
+  std::vector<AggregateVarInfo> const aggregateVariables{};
 
   auto collectNode =
       new CollectNode(this, nextId(), options, groupVariables, aggregateVariables,
@@ -2064,7 +2081,7 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         en = fromNodeLet(en, member);
         break;
       }
-      
+
       case NODE_TYPE_SORT: {
         en = fromNodeSort(en, member);
         break;
@@ -2392,7 +2409,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
   }
 
   // all nodes have been created. now add the dependencies
-  for (VPackSlice it : VPackArrayIterator(nodes)) {
+  for (VPackSlice const it : VPackArrayIterator(nodes)) {
     // read the node's own id
     auto thisId =
         ExecutionNodeId{it.get("id").getNumericValue<ExecutionNodeId::BaseType>()};
@@ -2401,7 +2418,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
     // now re-link the dependencies
     VPackSlice dependencies = it.get("dependencies");
     if (dependencies.isArray()) {
-      for (auto const& it2 : VPackArrayIterator(dependencies)) {
+      for (VPackSlice const it2 : VPackArrayIterator(dependencies)) {
         if (it2.isNumber()) {
           auto depId =
               ExecutionNodeId{it2.getNumericValue<ExecutionNodeId::BaseType>()};
@@ -2442,7 +2459,7 @@ bool ExecutionPlan::fullCount() const noexcept {
                                  : ExecutionNode::castTo<LimitNode*>(_lastLimitNode);
   return lastLimitNode != nullptr && lastLimitNode->fullCount();
 }
-  
+
 /// @brief find all variables that are populated with data from collections
 void ExecutionPlan::findCollectionAccessVariables() {
   _ast->variables()->visit([this](Variable* variable) {

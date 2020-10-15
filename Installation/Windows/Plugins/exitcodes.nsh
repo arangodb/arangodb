@@ -16,6 +16,7 @@
 !define ARANGO_EXIT_DB_NOT_EMPTY 24
 !define ARANGO_EXIT_UNSUPPORTED_STORAGE_ENGINE 25
 !define ARANGO_EXIT_ICU_INITIALIZATION_FAILED 26
+!define ARANGO_EXIT_TZDATA_INITIALIZATION_FAILED 27
 
 !macro printExitCode exitCode Message DetailMessage
   Push "${exitCode}"
@@ -92,6 +93,10 @@ ${Switch} $1
 
   ${Case} 26 # EXIT_ICU_INITIALIZATION_FAILED
     MessageBox MB_ICONEXCLAMATION '$2:$\r$\n>> failed to initialize ICU library <<$\r$\n"Will be returned if icudtl.dat is not found, of the wrong version or invalid. Check for an incorrectly set ICU_DATA environment variable"$\r$\n$3'
+  ${Break}
+
+  ${Case} 27 # EXIT_TZDATA_INITIALIZATION_FAILED
+    MessageBox MB_ICONEXCLAMATION '$2:$\r$\n>> failed to locate tzdata <<$\r$\n"Will be returned if tzdata is not found"$\r$\n$3'
   ${Break}
 
   ${Default}

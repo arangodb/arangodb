@@ -73,6 +73,15 @@ bool diffAsExpected(arangodb::containers::MerkleTree<3, 64>& t1,
 }
 }  // namespace
 
+class TestNodeCountAtDepth : public arangodb::containers::MerkleTree<3, 64> {
+  static_assert(nodeCountAtDepth(0) == 1);
+  static_assert(nodeCountAtDepth(1) == 8);
+  static_assert(nodeCountAtDepth(2) == 64);
+  static_assert(nodeCountAtDepth(3) == 512);
+  // ...
+  static_assert(nodeCountAtDepth(10) == 1073741824);
+};
+
 class InternalMerkleTreeTest : public ::arangodb::containers::MerkleTree<3, 64>,
                                public ::testing::Test {
  public:
@@ -460,4 +469,50 @@ TEST(MerkleTreeTest, test_serializePortable) {
   ASSERT_NE(t2, nullptr);
   ASSERT_TRUE(t1.diff(*t2).empty());
   ASSERT_TRUE(t2->diff(t1).empty());
+}
+
+TEST(MerkleTreeTest, test_deepen) {
+  ::arangodb::containers::MerkleTree<3, 64> t1(2, 0, 64);
+  ::arangodb::containers::MerkleTree<3, 64> t2(2, 0, 64);
+
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;  // empty
+  ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
+
+  std::vector<std::size_t> order = ::permutation(64);
+  for (std::uint64_t i : order) {
+    t1.insert(i, TRI_FnvHashPod(i));
+    t2.insert(i, TRI_FnvHashPod(i));
+    ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
+  }
+
+  order = ::permutation(64);
+  for (std::uint64_t i : order) {
+    t1.remove(i, TRI_FnvHashPod(i));
+    t2.remove(i, TRI_FnvHashPod(i));
+    ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
+  }
+
+  auto t3 = t2.cloneWithDepth(3);
+  ASSERT_TRUE(::diffAsExpected(t1, *t3, expected));
+  ASSERT_TRUE(::diffAsExpected(*t3, t1, expected));
+  ASSERT_TRUE(::diffAsExpected(t2, *t3, expected));
+  ASSERT_TRUE(::diffAsExpected(*t3, t2, expected));
+
+  auto t4 = t1.cloneWithDepth(3);
+  ASSERT_TRUE(::diffAsExpected(t1, *t4, expected));
+  ASSERT_TRUE(::diffAsExpected(*t4, t1, expected));
+  ASSERT_TRUE(::diffAsExpected(t2, *t4, expected));
+  ASSERT_TRUE(::diffAsExpected(*t4, t2, expected));
+  ASSERT_TRUE(::diffAsExpected(*t3, *t4, expected));
+  ASSERT_TRUE(::diffAsExpected(*t4, *t3, expected));
+
+  auto t5 = t1.cloneWithDepth(4);
+  ASSERT_TRUE(::diffAsExpected(t1, *t5, expected));
+  ASSERT_TRUE(::diffAsExpected(*t5, t1, expected));
+  ASSERT_TRUE(::diffAsExpected(t2, *t5, expected));
+  ASSERT_TRUE(::diffAsExpected(*t5, t2, expected));
+  ASSERT_TRUE(::diffAsExpected(*t3, *t5, expected));
+  ASSERT_TRUE(::diffAsExpected(*t5, *t3, expected));
+  ASSERT_TRUE(::diffAsExpected(*t4, *t5, expected));
+  ASSERT_TRUE(::diffAsExpected(*t5, *t4, expected));
 }

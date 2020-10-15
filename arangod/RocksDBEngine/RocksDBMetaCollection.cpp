@@ -67,8 +67,12 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
   }
 
   TRI_ASSERT(_logicalCollection.isAStub() || _objectId.load() != 0);
-  rocksutils::globalRocksEngine()->addCollectionMapping(
-      _objectId.load(), _logicalCollection.vocbase().id(), _logicalCollection.id());
+  collection.vocbase()
+      .server()
+      .getFeature<EngineSelectorFeature>()
+      .engine<RocksDBEngine>()
+      .addCollectionMapping(_objectId.load(), _logicalCollection.vocbase().id(),
+                            _logicalCollection.id());
 }
 
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
@@ -80,8 +84,12 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       _revisionTreeSerializedSeq(0),
       _revisionTreeSerializedTime(std::chrono::steady_clock::now()) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  rocksutils::globalRocksEngine()->addCollectionMapping(
-      _objectId.load(), _logicalCollection.vocbase().id(), _logicalCollection.id());
+  collection.vocbase()
+      .server()
+      .getFeature<EngineSelectorFeature>()
+      .engine<RocksDBEngine>()
+      .addCollectionMapping(_objectId.load(), _logicalCollection.vocbase().id(),
+                            _logicalCollection.id());
 }
 
 std::string const& RocksDBMetaCollection::path() const {
@@ -144,8 +152,9 @@ void RocksDBMetaCollection::trackWaitForSync(arangodb::transaction::Methods* trx
 
 // rescans the collection to update document count
 uint64_t RocksDBMetaCollection::recalculateCounts() {
-  RocksDBEngine* engine = rocksutils::globalRocksEngine();
-  rocksdb::TransactionDB* db = engine->db();
+  RocksDBEngine& engine =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   const rocksdb::Snapshot* snapshot = nullptr;
   // start transaction to get a collection lock
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
@@ -175,7 +184,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     }
     
     snapNumberOfDocuments = _meta.numberDocuments();
-    snapshot = engine->db()->GetSnapshot();
+    snapshot = engine.db()->GetSnapshot();
     TRI_ASSERT(snapshot);
   }
   
@@ -212,7 +221,10 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
 }
 
 Result RocksDBMetaCollection::compact() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   rocksdb::CompactRangeOptions opts;
   RocksDBKeyBounds bounds = this->bounds();
   rocksdb::Slice b = bounds.start(), e = bounds.end();
@@ -229,8 +241,11 @@ Result RocksDBMetaCollection::compact() {
 
 void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
   TRI_ASSERT(!builder.isOpenObject() && !builder.isOpenArray());
-  
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   RocksDBKeyBounds bounds = this->bounds();
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out = 0, total = 0;
@@ -274,8 +289,9 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
   }
 
   // first apply any updates that can be safely applied
-  RocksDBEngine* engine = rocksutils::globalRocksEngine();
-  rocksdb::DB* db = engine->db()->GetRootDB();
+  RocksDBEngine& engine =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  rocksdb::DB* db = engine.db()->GetRootDB();
   rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
@@ -320,8 +336,8 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
   EngineSelectorFeature& selector =
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
   // first apply any updates that can be safely applied
-  RocksDBEngine* engine = rocksutils::globalRocksEngine();
-  rocksdb::DB* db = engine->db()->GetRootDB();
+  RocksDBEngine& engine = selector.engine<RocksDBEngine>();
+  rocksdb::DB* db = engine.db()->GetRootDB();
   rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
@@ -339,7 +355,6 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
 
   {
     // apply any which are buffered and older than our ongoing transaction start
-    RocksDBEngine& engine = selector.engine<RocksDBEngine>();
     RocksDBReplicationManager* manager = engine.replicationManager();
     RocksDBReplicationContext* ctx = batchId == 0 ? nullptr : manager->find(batchId);
     if (!ctx) {
@@ -480,8 +495,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     }
     RevisionReplicationIterator& it =
         *static_cast<RevisionReplicationIterator*>(iter.get());
-    auto newTree = std::make_unique<containers::RevisionTree>(
-        revisionTreeDepth(), _logicalCollection.minRevision().id());
+    auto newTree = allocateEmptyRevisionTree();
     while (it.hasMore()) {
       revisions.emplace_back(it.revision().id());
       if (revisions.size() >= 5000) {  // arbitrary batch size
@@ -504,8 +518,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
 void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterator>& iter) {
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
 
-  _revisionTree = std::make_unique<containers::RevisionTree>(
-      revisionTreeDepth(), _logicalCollection.minRevision().id());
+  _revisionTree = allocateEmptyRevisionTree();
 
   // okay, we are in recovery and can't open a transaction, so we need to
   // read the raw RocksDB data; on the plus side, we are in recovery, so we
@@ -520,7 +533,10 @@ void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterato
   ro.fill_cache = false;
 
   std::vector<std::uint64_t> revisions;
-  auto* db = rocksutils::globalRocksDB();
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  auto* db = engine.db();
   for (iter->Seek(documentBounds.start());
        iter->Valid() && cmp->Compare(iter->key(), end) < 0; iter->Next()) {
     LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
@@ -553,7 +569,10 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder) {
 }
 
 void RocksDBMetaCollection::placeRevisionTreeBlocker(TransactionId transactionId) {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
   _meta.placeBlocker(transactionId, preSeq);
 }
@@ -869,10 +888,56 @@ bool RocksDBMetaCollection::haveBufferedOperations() const {
 }
 
 std::size_t RocksDBMetaCollection::revisionTreeDepth() const {
-  return 6;  // TODO make variable
+  std::size_t const treeCount = _revisionTree ? _revisionTree->count() : 0;
+  std::size_t bufferInserts = 0;
+  std::size_t bufferRemovals = 0;
+  {
+    std::unique_lock<std::mutex> guard(_revisionBufferLock);
+
+    rocksdb::SequenceNumber ignoreSeq = 0;
+    if (!_revisionTruncateBuffer.empty()) {
+      auto it = _revisionTruncateBuffer.rbegin();
+      if (it != _revisionTruncateBuffer.rend()) {
+        ignoreSeq = *it;
+      }
+    }
+
+    for (auto& pair : _revisionInsertBuffers) {
+      if (pair.first <= ignoreSeq) {
+        continue;
+      }
+
+      bufferInserts += pair.second.size();
+    }
+
+    for (auto& pair : _revisionRemovalBuffers) {
+      if (pair.first <= ignoreSeq) {
+        continue;
+      }
+
+      bufferRemovals += pair.second.size();
+    }
+  }
+
+  constexpr std::size_t minDepth = 3;
+  constexpr std::size_t maxDepth = 6;
+  std::size_t const treeDepth = _revisionTree ? _revisionTree->maxDepth() : minDepth;
+
+  if (treeDepth < maxDepth && bufferInserts > bufferRemovals) {
+    std::size_t const count = treeCount + bufferInserts - bufferRemovals;
+    std::size_t targetDepth = treeDepth;
+    while (targetDepth < maxDepth &&
+           count > 8 * containers::RevisionTree::nodeCountAtDepth(targetDepth)) {
+      ++targetDepth;
+    }
+    return targetDepth;
+  }
+
+  return treeDepth;
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::allocateEmptyRevisionTree() const {
+  // should have _revisionTreeLock held outside
   return std::make_unique<containers::RevisionTree>(
       revisionTreeDepth(), _logicalCollection.minRevision().id());
 }
@@ -880,9 +945,18 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::allocateEmptyRe
 bool RocksDBMetaCollection::ensureRevisionTree() {
   try {
     if (_revisionTree) {
+      std::size_t targetDepth = revisionTreeDepth();
+      if (_revisionTree->maxDepth() < targetDepth) {
+        // grow tree
+        auto newTree = _revisionTree->cloneWithDepth(targetDepth);
+        _revisionTree = std::move(newTree);
+      }
       return true;
     }
-    _revisionTreeCreationSeq = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
+    auto& selector =
+        _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+    auto& engine = selector.engine<RocksDBEngine>();
+    _revisionTreeCreationSeq = engine.db()->GetLatestSequenceNumber();
     _revisionTreeSerializedSeq = _revisionTreeCreationSeq;
     _revisionTree = allocateEmptyRevisionTree();
     return true;

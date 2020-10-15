@@ -159,7 +159,7 @@ class ClusterInfoTest : public ::testing::Test,
         agencyStore);  // need 2 connections or Agency callbacks will fail
     arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
 
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
+    server.getFeature<EngineSelectorFeature>().setEngineTesting(&engine);
 
     // setup required application features
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), false);  // required for ClusterFeature::prepare()
@@ -211,7 +211,7 @@ class ClusterInfoTest : public ::testing::Test,
     }
 
     ClusterCommControl::reset();
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+    server.getFeature<EngineSelectorFeature>().setEngineTesting(nullptr);
   }
 };
 

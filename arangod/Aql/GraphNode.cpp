@@ -81,9 +81,7 @@ TRI_edge_direction_e uint64ToDirection(uint64_t dirNum) {
 
 TRI_edge_direction_e parseDirection(AstNode const* node) {
   TRI_ASSERT(node->isIntValue());
-  auto dirNum = node->getIntValue();
-
-  return uint64ToDirection(dirNum);
+  return uint64ToDirection(uint64_t(node->getIntValue()));
 }
 
 }

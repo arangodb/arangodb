@@ -579,6 +579,12 @@ Run specific gtest tests:
     # equivalent to:
     ./build/bin/arangodbtests --gtest_filter="IResearchDocumentTest.*:*ReturnExecutor*"
 
+Controlling the place where the test-data is stored:
+
+    TMPDIR=/some/other/path ./scripts/unittest shell_server_aql
+
+(Linux/Mac case. On Windows `TMP` or `TEMP` - as returned by `GetTempPathW` are the way to go)
+
 Note that the `arangodbtests` executable is not compiled and shipped for
 production releases (`-DUSE_GOOGLE_TESTS=off`).
 

@@ -186,10 +186,14 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
+  LOG_TOPIC("56372", DEBUG, Logger::CLUSTER) << "createDatabase on coordinator: Starting, name: " << info.getName();
+
   // This operation enters the database as isBuilding into the agency
   // while the database is still building it is not visible.
   ClusterInfo& ci = info.server().getFeature<ClusterFeature>().clusterInfo();
   Result res = ci.createIsBuildingDatabaseCoordinator(info);
+
+  LOG_TOPIC("54322", DEBUG, Logger::CLUSTER) << "createDatabase on coordinator: have created isBuilding database, name: " << info.getName();
 
   // Even entering the database as building failed; This can happen
   // because a database with this name already exists, or because we could
@@ -217,6 +221,8 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return res;
   }
 
+  LOG_TOPIC("54323", DEBUG, Logger::CLUSTER) << "createDatabase on coordinator: have granted current user for database: " << info.getName();
+
   // This vocbase is needed for the call to methods::Upgrade::createDB, but
   // is just a placeholder
   CreateDatabaseInfo tempInfo = info;
@@ -230,16 +236,24 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   UpgradeResult upgradeRes = methods::Upgrade::createDB(vocbase, userBuilder.slice());
   failureGuard.cancel();
 
+  LOG_TOPIC("54324", DEBUG, Logger::CLUSTER) << "createDatabase on coordinator: have run Upgrade::createDB for database: " << info.getName();
+
   // If the creation of system collections was successful,
   // make the database visible, otherwise clean up what we can.
   if (upgradeRes.ok()) {
+    LOG_TOPIC("54325", DEBUG, Logger::CLUSTER) << "createDatabase on coordinator: finished, database: " << info.getName();
     return ci.createFinalizeDatabaseCoordinator(info);
   }
+
+  LOG_TOPIC("24653", DEBUG, Logger::CLUSTER) << "createDatabase on coordinator: cancelling, database: " << info.getName();
 
   // We leave this handling here to be able to capture
   // error messages and return
   // Cleanup entries in agency.
   res = ci.cancelCreateDatabaseCoordinator(info);
+  LOG_TOPIC("54327", DEBUG, Logger::CLUSTER)
+      << "createDatabase on coordinator: cancelled, database: " << info.getName()
+      << " result: " << res.errorNumber();
   if (!res.ok()) {
     // this should never happen as cancelCreateDatabaseCoordinator keeps retrying
     // until either cancellation is successful or the cluster is shut down.
@@ -317,8 +331,10 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   }
 
   if (res.fail()) {
-    LOG_TOPIC("1964a", ERR, Logger::FIXME)
-        << "Could not create database: " << res.errorMessage();
+    if (!res.is(TRI_ERROR_BAD_PARAMETER)) {
+      LOG_TOPIC("1964a", ERR, Logger::FIXME)
+          << "Could not create database: " << res.errorMessage();
+    }
     events::CreateDatabase(dbName, res, exec);
     return res;
   }
