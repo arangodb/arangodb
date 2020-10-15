@@ -17,7 +17,6 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ./IResearchFilterBoolean-test.cpp
   ./IResearchFilterCompare-test.cpp
   ./IResearchFilterFunction-test.cpp
-  ./IResearchFilterGeo-test.cpp
   ./IResearchFilterIn-test.cpp
   ./IResearchIndex-test.cpp
   ./IResearchLink-test.cpp
@@ -31,6 +30,10 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ./IResearchQueryComplexBoolean-test.cpp
   ./IResearchQueryExists-test.cpp
   ./IResearchQueryFilter-test.cpp
+  ./IResearchQueryGeoIntersects-test.cpp
+  ./IResearchQueryGeoContains-test.cpp
+  ./IResearchQueryGeoDistance-test.cpp
+  ./IResearchQueryGeoInRange-test.cpp
   ./IResearchQueryIn-test.cpp
   ./IResearchQueryInRange-test.cpp
   ./IResearchQueryJoin-test.cpp
