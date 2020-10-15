@@ -1,3 +1,58 @@
+v3.6.9 (XXXX-XX-XX)
+-------------------
+
+* Added startup option `--foxx.force-update-on-startup` to toggle wait for all foxx services
+  in all databases to be propagated to this coordinator before it completes the
+  boot sequence. In case we do not wait, the coordinator will complete the boot
+  sequence faster, and the foxx services will be propagated lazily. This can cause
+  slower response times on the first calls to foxx services.
+  If you are not using foxx you should keep this option false (default) to gain
+  faster startup.
+  If you rely on foxx to be fast as soon as a coordinator is integrated, you should
+  set this option to true.
+
+* Added startup option `--database.old-system-collections` to toggle automatic
+  creation of system collections `_modules` and `_fishbowl`, along with their
+  internal usage. These collections are useful only in very few cases, so it
+  is normally not worth to create them in all databases.
+  The `_modules` collection is only used to register custom JavaScript modules,
+  for which there exists no API, and `_fishbowl` is used to store the temporary
+  list of Foxx apps retrieved from the Github Foxx store.
+  If the option value is `false` (which is the default from v3.8 onwards, but
+  for v3.6 and 3.7 the default value is `true` for downwards-compatibility), the 
+  two collections will not be created for any new database. The `_fishbowl`
+  collection will still be created dynamically when needed. If the option value
+  is `true` (the default value in v3.6 and v3.7), the collections will be created
+  regularly as before.
+  The default value for the option is going to change to `false` in v3.8,
+  meaning the collections will not be created anymore there by default.
+
+  Any functionality related to the `_modules` system collection is deprecated
+  and will be removed in ArangoDB v3.9.
+
+  Two side effects of turning this option off are:
+  * there will be no iteration over all databases at server startup just to
+    check the contents of all `_modules` collections.
+  * less collections/shards will be around for deployments that create a large
+    number of databases.
+  Already existing `_modules` and `_fishbowl` system collections will not be
+  modified by this PR, even though they will likely be empty and unused.
+
+* Don't iterate over all databases at server startup in order to initialize the
+  routing information. This is not necessary, as the routing information is
+  global and not tied to a specific database.
+
+* Changed the server-side implementation of the following internal JavaScript 
+  APIs to no-ops:
+  * `internal.reloadAqlFunctions()`: this is a no-op function now
+  * `@arangodb/actions.buildRouting()`: this is a no-op function now
+  * `@arangodb/actions.routingTree`: will return an empty object
+  * `@arangodb/actions.routingList`: will return an empty object
+
+  All the above APIs were intended to be used for internal means only. These
+  APIs are deprecated now and will be removed in ArangoDB v3.9.
+
+
 v3.6.8 (XXXX-XX-XX)
 -------------------
       
@@ -63,57 +118,6 @@ v3.6.8 (XXXX-XX-XX)
   failoverCandidate even though it has been taken out of the Plan. With this
   fix, such a server is quickly taken out of failoverCandidates and it can never
   be re-added to the Plan before this has happened.
-
-* Added startup option `--foxx.force-update-on-startup` to toggle wait for all foxx services
-  in all databases to be propagated to this coordinator before it completes the
-  boot sequence. In case we do not wait, the coordinator will complete the boot
-  sequence faster, and the foxx services will be propagated lazily. This can cause
-  slower response times on the first calls to foxx services.
-  If you are not using foxx you should keep this option false (default) to gain
-  faster startup.
-  If you rely on foxx to be fast as soon as a coordinator is integrated, you should
-  set this option to true.
-
-* Added startup option `--database.old-system-collections` to toggle automatic
-  creation of system collections `_modules` and `_fishbowl`, along with their
-  internal usage. These collections are useful only in very few cases, so it
-  is normally not worth to create them in all databases.
-  The `_modules` collection is only used to register custom JavaScript modules,
-  for which there exists no API, and `_fishbowl` is used to store the temporary
-  list of Foxx apps retrieved from the Github Foxx store.
-  If the option value is `false` (which is the default from v3.8 onwards, but
-  for v3.6 and 3.7 the default value is `true` for downwards-compatibility), the 
-  two collections will not be created for any new database. The `_fishbowl`
-  collection will still be created dynamically when needed. If the option value
-  is `true` (the default value in v3.6 and v3.7), the collections will be created
-  regularly as before.
-  The default value for the option is going to change to `false` in v3.8,
-  meaning the collections will not be created anymore there by default.
-
-  Any functionality related to the `_modules` system collection is deprecated
-  and will be removed in ArangoDB v3.9.
-
-  Two side effects of turning this option off are:
-  * there will be no iteration over all databases at server startup just to
-    check the contents of all `_modules` collections.
-  * less collections/shards will be around for deployments that create a large
-    number of databases.
-  Already existing `_modules` and `_fishbowl` system collections will not be
-  modified by this PR, even though they will likely be empty and unused.
-
-* Don't iterate over all databases at server startup in order to initialize the
-  routing information. This is not necessary, as the routing information is
-  global and not tied to a specific database.
-
-* Changed the server-side implementation of the following internal JavaScript 
-  APIs to no-ops:
-  * `internal.reloadAqlFunctions()`: this is a no-op function now
-  * `@arangodb/actions.buildRouting()`: this is a no-op function now
-  * `@arangodb/actions.routingTree`: will return an empty object
-  * `@arangodb/actions.routingList`: will return an empty object
-
-  All the above APIs were intended to be used for internal means only. These
-  APIs are deprecated now and will be removed in ArangoDB v3.9.
 
 * Fixed a bug in handling of followers which refuse to replicate operations.
   In the case that the follower has simply been dropped in the meantime, we now

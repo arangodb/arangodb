@@ -314,7 +314,7 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "create and use deprecated system collection (_modules, _fishbowl)",
                      new BooleanParameter(&_useOldSystemCollections),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30608);
+                     .setIntroducedIn(30609);
 
   options->addOption(
       "--database.throw-collection-not-loaded-error",

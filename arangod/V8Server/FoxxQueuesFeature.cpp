@@ -51,10 +51,12 @@ void FoxxQueuesFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
   options->addOption("--foxx.queues-poll-interval",
                      "poll interval (in seconds) for Foxx queue manager",
                      new DoubleParameter(&_pollInterval));
+
   options->addOption("--foxx.force-update-on-startup",
                      "ensure all Foxx services are synchronized before "
                      "completeing the boot sequence",
-                     new BooleanParameter(&_startupWaitForSelfHeal));
+                     new BooleanParameter(&_startupWaitForSelfHeal))
+                     .setIntroducedIn(30609);
 }
 
 bool FoxxQueuesFeature::startupWaitForSelfHeal() const {
