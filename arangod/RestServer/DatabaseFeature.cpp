@@ -306,8 +306,8 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "create and use deprecated system collection (_modules, _fishbowl)",
       new BooleanParameter(&_useOldSystemCollections),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-      .setIntroducedIn(30608)
-      .setIntroducedIn(30704)
+      .setIntroducedIn(30609)
+      .setIntroducedIn(30705)
       .setDeprecatedIn(30800);
   
   // the following option was removed in 3.7

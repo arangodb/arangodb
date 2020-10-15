@@ -59,7 +59,8 @@ void FoxxQueuesFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                      arangodb::options::makeFlags(
                      arangodb::options::Flags::DefaultNoComponents,
                      arangodb::options::Flags::OnCoordinator,
-                     arangodb::options::Flags::OnSingle));
+                     arangodb::options::Flags::OnSingle))
+                     .setIntroducedIn(30609).setIntroducedIn(30705);
 }
 
 void FoxxQueuesFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
