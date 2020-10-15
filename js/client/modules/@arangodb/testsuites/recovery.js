@@ -60,6 +60,14 @@ function runArangodRecovery (params) {
     }
   }
 
+  // randomly turn on or off hardware-acceleration for encryption for both
+  // setup and the actual test. given enough tests, this will ensure that we run
+  // a good mix of accelerated and non-accelerated encryption code. in addition,
+  // we shuffle between the setup and the test phase, so if there is any
+  // incompatibility between the two modes, this will likely find it
+  const encryptionAcceleration = 
+    (useEncryption && Math.random() * 100 >= 50) ? "true" : "false";
+
   let argv = [];
 
   let binary = pu.ARANGOD_BIN;
@@ -138,7 +146,8 @@ function runArangodRecovery (params) {
       Object.assign(params.args,
                     {
                       'log.foreground-tty': 'true',
-                      'javascript.script-parameter': 'setup'
+                      'javascript.script-parameter': 'setup',
+                      'rocksdb.encryption-hardware-acceleration': encryptionAcceleration,
                     }
                    )
     );
@@ -148,7 +157,8 @@ function runArangodRecovery (params) {
                     {
                       'log.foreground-tty': 'true',
                       'database.ignore-datafile-errors': 'false', // intentionally false!
-                      'javascript.script-parameter': 'recovery'
+                      'javascript.script-parameter': 'recovery',
+                      'rocksdb.encryption-hardware-acceleration': encryptionAcceleration,
                     }
                    )
     );
