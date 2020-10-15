@@ -252,12 +252,13 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
     /// success?
     ///  (_waitForCV's mutex stops writes to _commitIndex)
     CONDITION_LOCKER(guard, _waitForCV);
+    auto ci = _commitIndex.load(std::memory_order_relaxed);
     if (leading()) {
-      if (lastCommitIndex != _commitIndex.load(std::memory_order_relaxed)) {
+      if (lastCommitIndex != ci) {
         // We restart the timeout computation if there has been progress:
         startTime = steady_clock::now();
       }
-      lastCommitIndex = _commitIndex.load(std::memory_order_relaxed);
+      lastCommitIndex = ci;
       if (lastCommitIndex >= index) {
         return Agent::raft_commit_t::OK;
       }
@@ -268,8 +269,7 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
     duration<double> d = steady_clock::now() - startTime;
 
     LOG_TOPIC("37e05", DEBUG, Logger::AGENCY)
-        << "waitFor: index: " << index
-        << " _commitIndex: " << _commitIndex.load(std::memory_order_relaxed)
+        << "waitFor: index: " << index << " _commitIndex: " << ci
         << " _lastCommitIndex: " << lastCommitIndex << " elapsedTime: " << d.count();
 
     if (d.count() >= timeout) {
@@ -332,7 +332,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     // This is only the empty case (=heartbeat)
     MUTEX_LOCKER(locker, _emptyAppendLock);
     auto n = steady_clock::now();
-    auto lastTime = _lastEmptyAcked[peerId];
+    auto lastTime = _lastEmptyAcked[peerId]; // intentional to add entry to map
     if (lastTime < n) {
       std::chrono::duration<double> d = n - lastTime;
       auto secsSince = d.count();
@@ -502,8 +502,9 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
           << " with term " << term;
       {
         WRITE_LOCKER(oLocker, _outputLock);
-        index_t const tmp = std::max(_commitIndex.load(std::memory_order_relaxed), std::min(leaderCommitIndex, lastIndex));
-        if (tmp > _commitIndex.load(std::memory_order_relaxed)) {
+        auto ci = _commitIndex.load(std::memory_order_relaxed);
+        index_t const tmp = std::max(ci , std::min(leaderCommitIndex, lastIndex));
+        if (tmp > ci) {
           logsForTrigger();
         }
         _commitIndex = tmp;
@@ -531,8 +532,9 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
   {
     WRITE_LOCKER(oLocker, _outputLock);
     CONDITION_LOCKER(guard, _waitForCV);
-    index_t const tmp = std::max(_commitIndex.load(std::memory_order_relaxed), std::min(leaderCommitIndex, lastIndex));
-    if (tmp > _commitIndex.load(std::memory_order_relaxed)) {
+    auto ci = _commitIndex.load(std::memory_order_relaxed);
+    index_t const tmp = std::max(ci, std::min(leaderCommitIndex, lastIndex));
+    if (tmp > ci) {
       logsForTrigger();
     }
     _commitIndex = tmp;
