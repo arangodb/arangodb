@@ -791,6 +791,7 @@ void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, 
     bool addedAny = false;
     for (auto const& database : databases) {
       if (_dirtyDatabases.emplace(database).second) {
+        addedAny = true;
         LOG_TOPIC("35b75", DEBUG, Logger::MAINTENANCE)
           << "adding " << database << " to dirty databases";
       }
