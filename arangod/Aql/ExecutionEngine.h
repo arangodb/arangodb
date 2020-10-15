@@ -72,6 +72,11 @@ class ExecutionEngine {
                                   ExecutionPlan& plan,
                                   bool planRegisters,
                                   SerializationFormat format);
+
+  /// @brief Prepares execution blocks for executing provided plan
+  /// @param plan plan to execute, should be without cluster nodes. Only local execution
+  /// without db-objects access!
+  void initFromPlanForCalculation(ExecutionPlan& plan);
   
   TEST_VIRTUAL Result createBlocks(std::vector<ExecutionNode*> const& nodes,
                                    MapRemoteToSnippet const& queryIds);
@@ -81,9 +86,6 @@ class ExecutionEngine {
   }
 
 
-  void setRoot(ExecutionBlock* newRoot) {
-    _root = newRoot; // TODO: remove me  - make all root related inside engine
-  }
   /// @brief get the root block
   TEST_VIRTUAL ExecutionBlock* root() const;
 
@@ -145,6 +147,11 @@ class ExecutionEngine {
 #endif
   
  private:
+
+  /// @brief  optimizes root node: in case of single RETURN statement 
+  /// makes it return value directly and not copy it to output register.
+  /// Also sets root execution block as engine root
+  void setupEngineRoot(ExecutionBlock& planRoot);
   
   const EngineId _engineId;
   
@@ -168,22 +175,6 @@ class ExecutionEngine {
   /// @brief whether or not initializeCursor was called
   bool _initializeCursorCalled;
 };
-
-struct SingleServerQueryInstanciator final
-  : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
-  ExecutionEngine& engine;
-  ExecutionBlock* root{};
-  std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
-
-  explicit SingleServerQueryInstanciator(ExecutionEngine& engine) noexcept
-    : engine(engine) {}
-
-  void after(ExecutionNode* en) override;
-
-  // Override this method for DBServers, there it is now possible to visit the same block twice
-  bool done(ExecutionNode* en) override { return false; }
-};
-
 }  // namespace aql
 }  // namespace arangodb
 

@@ -28,6 +28,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Aql/Ast.h"
 
 #include <string>
 
@@ -97,6 +98,8 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   std::unique_ptr<CalculationQueryContext> _query;
   std::unique_ptr<arangodb::aql::ExecutionPlan> _plan;
   arangodb::aql::SharedAqlItemBlockPtr _queryResults;
+  size_t _resultRowIdx{ 0 };
+  std::vector<arangodb::aql::AstNode*> _bindedNodes;
   /// @brief Artificial vocbase for executing calculation queries
   static std::unique_ptr<TRI_vocbase_t> CalculationAnalyzer::_calculationVocbase;
 }; // CalculationAnalyzer

@@ -62,6 +62,8 @@ using namespace arangodb::aql;
 constexpr const char QUERY_STRING_PARAM_NAME[] = "queryString";
 constexpr const char COLLAPSE_ARRAY_POSITIONS_PARAM_NAME[] = "collapseArrayPos";
 constexpr const char KEEP_NULL_PARAM_NAME[] = "keepNull";
+constexpr const char CALCULATION_PARAMETER_NAME[] = "field";
+
 using Options = arangodb::iresearch::CalculationAnalyzer::options_t;
 
 struct OptionsValidator {
@@ -118,6 +120,16 @@ arangodb::Result validateQuery(std::string const& query, TRI_vocbase_t& vocbase)
               forbiddenFunctions.find(func->name) != forbiddenFunctions.end()) {
             errorMessage = "Function '";
             errorMessage.append(func->name).append("' is forbidden for calculation analyzer");
+            return false;
+          }
+        }
+        break;
+      case arangodb::aql::NODE_TYPE_PARAMETER:
+        {
+          irs::string_ref parameterName(node->getStringValue(), node->getStringLength());
+          if (parameterName != CALCULATION_PARAMETER_NAME) {
+            errorMessage = "Invalid parameter found '";
+            errorMessage.append(parameterName).append("'");
             return false;
           }
         }
@@ -423,58 +435,63 @@ CalculationAnalyzer::CalculationAnalyzer(options_t const& options)
 }
 
 bool CalculationAnalyzer::next() {
-  if (_has_data) {
-    _has_data = false;
-    AqlValue const& value = _queryResults->getValueReference(0,  _engine->resultRegister());
-    if (value.isString()) {
-      arangodb::velocypack::Builder builder;
-      value.toVelocyPack(&arangodb::velocypack::Options::Defaults, builder, true, false);
-      _str = builder.slice().copyString();
-      _term.value = irs::ref_cast<irs::byte_type>(irs::string_ref(_str));
-      return true;
-    } else { // TODO: remove me!!!
-      _str = value.getTypeString();
-      _term.value = irs::ref_cast<irs::byte_type>(irs::string_ref(_str));
-      return true;
+  if (_queryResults.get()) {
+    // TODO: call engine refill!
+    while (_queryResults->numRows() > _resultRowIdx) {
+      AqlValue const& value = _queryResults->getValueReference(_resultRowIdx++, _engine->resultRegister());
+      if (value.isString()) {
+        arangodb::velocypack::Builder builder;
+        value.toVelocyPack(&arangodb::velocypack::Options::Defaults, builder, true, false);
+        _str = builder.slice().copyString();
+        _term.value = irs::ref_cast<irs::byte_type>(irs::string_ref(_str));
+        return true;
+      }
     }
   }
   return false;
 }
 
 bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
-  // FIXME: For now it is only strings. So make VPack and set parameter
-  // FIXME: use VPack buffer and never reallocate between queries
-  auto vPackArgs = std::make_shared<arangodb::velocypack::Builder>();
-  {
-    VPackObjectBuilder o(vPackArgs.get());
-    vPackArgs->add("field", VPackValue(field));
+  if (!_query) { // lazy initialization 
+    _query = std::make_unique<CalculationQueryContext>(*_calculationVocbase);
+    _ast = std::make_unique<Ast>(*_query);
+    // important to hold a copy here as parser accepts reference!
+    auto queryString = arangodb::aql::QueryString(_options.queryString);
+    Parser parser(*_query, *_ast, queryString);
+    parser.parse();
+    AstNode* astRoot = const_cast<AstNode*>(_ast->root());
+    TRI_ASSERT(astRoot);
+    Ast::traverseAndModify(astRoot, [this, field](AstNode * node) -> AstNode* {
+      if (node->type == NODE_TYPE_PARAMETER) {
+        // should be only our parameter name. see validation method!
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        TRI_ASSERT(irs::string_ref(node->getStringValue(), 
+                                   node->getStringLength()) == CALCULATION_PARAMETER_NAME);
+#endif
+        // FIXME: move to computed value once here could be not only strings
+        auto newNode = _ast->createNodeValueString(field.c_str(), field.size());
+        _bindedNodes.push_back(newNode);
+        return newNode;
+      } else {
+        return node;
+      }
+      });
+    _plan = ExecutionPlan::instantiateFromAst(_ast.get());
+  } else {
+    for (auto node : _bindedNodes) {
+      node->setStringValue(field.c_str(), field.size());
+    }
   }
-  // TODO: Do it only once (in ctor ? )
-  _query = std::make_unique<CalculationQueryContext>(*_calculationVocbase);
-  _ast = std::make_unique<Ast>(*_query);
-  _engine = std::make_unique<ExecutionEngine>(0, *_query, _query->itemBlockManager(),
-    SerializationFormat::SHADOWROWS, nullptr);
-  arangodb::aql::Parser parser(*_query, *_ast, arangodb::aql::QueryString(_options.queryString));
-  parser.parse();
 
-  // TODO: reimplement. Another member in Ast class ?
-  BindParameters parameters(vPackArgs);
-  _ast->injectBindParameters(parameters, _query->resolver());
-   
-  _plan = ExecutionPlan::instantiateFromAst(parser.ast());
-  _plan->findVarUsage();
-  _plan->planRegisters(ExplainRegisterPlan::No);
-  _plan->findCollectionAccessVariables();
-  SingleServerQueryInstanciator inst(*_engine);
-  _plan->root()->walk(inst);
-  _engine->setRoot(inst.root); // simon: otherwise it breaks
+  _engine = std::make_unique<ExecutionEngine>(0, *_query, _query->itemBlockManager(),
+                                              SerializationFormat::SHADOWROWS, nullptr);
+  _engine->initFromPlanForCalculation(*_plan);
   ExecutionState state = ExecutionState::HASMORE;
   std::tie(state, _queryResults) = _engine->getSome(1000); // TODO: configure batch size
   TRI_ASSERT(state != ExecutionState::WAITING);
   // TODO: Position calculation as parameter
   // TODO: Filtering results
-  // TODO: SetQuery quit option
-  _has_data = _queryResults->numRows() > 0;
+  _resultRowIdx = 0;
   return true;
 }
 
