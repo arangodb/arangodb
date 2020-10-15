@@ -378,6 +378,8 @@ void AqlItemBlock::shrink(size_t nrItems) {
     errorMessage.append(std::to_string(_nrRegs));
     errorMessage.append(". _maxModifiedRowIndex: ");
     errorMessage.append(std::to_string(_maxModifiedRowIndex));
+    errorMessage.append(". _rowIndex: ");
+    errorMessage.append(std::to_string(_rowIndex));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMessage);
   }
 
