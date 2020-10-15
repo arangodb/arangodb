@@ -82,8 +82,8 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
  public:
   struct Options {
     GeoOptions options;
-    std::string latitude;
-    std::string longitude;
+    std::vector<std::string> latitude;
+    std::vector<std::string> longitude;
   };
 
   static constexpr irs::string_ref type_name() noexcept { return "geopoint"; }
@@ -98,19 +98,24 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
 
   explicit GeoPointAnalyzer(Options const& opts);
 
-  virtual void prepare(S2RegionTermIndexer::Options& opts) const;
+  std::vector<std::string> const& latitude() const noexcept { return _latitude; }
+  std::vector<std::string> const& longitude() const noexcept { return _longitude; }
 
- protected:
+  S2RegionTermIndexer::Options const& options() const noexcept {
+    return _indexer.options();
+  }
+
+  virtual void prepare(S2RegionTermIndexer::Options& opts) const;
   virtual bool reset(irs::string_ref const& value);
 
  private:
   bool parsePoint(VPackSlice slice, S2LatLng& out) const;
 
   S2RegionTermIndexer _indexer;
-  std::string _latitude;
-  std::string _longitude;
-  S2LatLng _point;
   bool _fromArray;
+  std::vector<std::string> _latitude;
+  std::vector<std::string> _longitude;
+  S2LatLng _point;
 }; // GeoPointAnalyzer
 
 ////////////////////////////////////////////////////////////////////////////////
