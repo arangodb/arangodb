@@ -524,7 +524,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
   // Plan to local mismatch ----------------------------------------------------
   // Create or modify if local databases are affected
-  for (auto p : plan) {
+  for (auto const& p : plan) {
     auto const& dbname = p.first;
     auto pb = p.second->slice()[0];
     auto const& pdb = pb.get(
