@@ -79,7 +79,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
   // @brief #databases last time we checked allDatabases
-  size_t lastNumberOfDatabases();
+  size_t lastNumberOfDatabases() const;
 
   // Is maintenance paused?
   bool isPaused() const;

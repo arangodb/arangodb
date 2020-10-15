@@ -871,21 +871,22 @@ void Agent::advanceCommitIndex() {
   term_t t = _constituent.term();
   {
     WRITE_LOCKER(oLocker, _outputLock);
-    if (index > _commitIndex.load(std::memory_order_relaxed)) {
+    auto ci = _commitIndex.load(std::memory_order_relaxed);
+    if (index > ci) {
 
       CONDITION_LOCKER(guard, _waitForCV);
       LOG_TOPIC("e24a9", TRACE, Logger::AGENCY)
           << "Critical mass for commiting "
           << _commitIndex.load(std::memory_order_relaxed) + 1 << " through "
           << index << " to read db";
+      
       // Change _readDB and _commitIndex atomically together:
       _readDB.applyLogEntries(_state.slices(/* inform others by callbacks */
-                                            _commitIndex.load(std::memory_order_relaxed) + 1, index),
-                              _commitIndex.load(std::memory_order_relaxed), t, true);
+                                            ci + 1, index), ci, t, true);
 
       LOG_TOPIC("e24aa", DEBUG, Logger::AGENCY)
           << "Critical mass for commiting "
-          << _commitIndex.load(std::memory_order_relaxed) + 1 << " through "
+          << ci + 1 << " through "
           << index << " to read db, done";
 
       _commitIndex = index;
@@ -896,7 +897,7 @@ void Agent::advanceCommitIndex() {
 
       logsForTrigger();
 
-      if (_commitIndex.load(std::memory_order_relaxed) >= _state.nextCompactionAfter()) {
+      if (index >= _state.nextCompactionAfter()) {
         _compactor.wakeUp();
       }
 
@@ -937,8 +938,9 @@ futures::Future<query_t> Agent::poll(
       VPackObjectBuilder r(builder.get());
       builder->add(VPackValue("result"));
       VPackObjectBuilder r2(builder.get());
-      logs = _state.get(index, _commitIndex.load(std::memory_order_relaxed));
-      builder->add("commitIndex", VPackValue(_commitIndex.load(std::memory_order_relaxed)));
+      auto ci = _commitIndex.load(std::memory_order_relaxed);
+      logs = _state.get(index, ci);
+      builder->add("commitIndex", VPackValue(ci));
       builder->add("firstIndex", VPackValue(logs.front().index));
       builder->add(VPackValue("log"));
       VPackArrayBuilder ls(builder.get());
@@ -2293,10 +2295,11 @@ query_t Agent::buildDB(arangodb::consensus::index_t index) {
 
   {
     READ_LOCKER(oLocker, _outputLock);
-    if (index > _commitIndex.load(std::memory_order_relaxed)) {
+    auto ci = _commitIndex.load(std::memory_order_relaxed);
+    if (index > ci) {
       LOG_TOPIC("88754", INFO, Logger::AGENCY)
-          << "Cannot snapshot beyond leaderCommitIndex: " << _commitIndex.load(std::memory_order_relaxed);
-      index = _commitIndex.load(std::memory_order_relaxed);
+          << "Cannot snapshot beyond leaderCommitIndex: " << ci;
+      index = ci;
     } else if (index < oldIndex) {
       LOG_TOPIC("cb67b", INFO, Logger::AGENCY)
           << "Cannot snapshot before last compaction index: " << oldIndex;
