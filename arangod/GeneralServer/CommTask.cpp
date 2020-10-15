@@ -29,7 +29,6 @@
 #include "Basics/EncodingUtils.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/compile-time-strlen.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
