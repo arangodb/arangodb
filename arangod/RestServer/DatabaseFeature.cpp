@@ -89,11 +89,11 @@ DatabaseManagerThread::DatabaseManagerThread(ApplicationServer& server)
 DatabaseManagerThread::~DatabaseManagerThread() { shutdown(); }
 
 void DatabaseManagerThread::run() {
-  auto& databaseFeature = _server.getFeature<DatabaseFeature>();
-  auto& dealer = _server.getFeature<V8DealerFeature>();
+  auto& databaseFeature = server().getFeature<DatabaseFeature>();
+  auto& dealer = server().getFeature<V8DealerFeature>();
   int cleanupCycles = 0;
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
 
   while (true) {
     try {
@@ -178,7 +178,7 @@ void DatabaseManagerThread::run() {
           }
 
           try {
-            Result res = engine->dropDatabase(*database);
+            Result res = engine.dropDatabase(*database);
             if (res.fail()) {
               LOG_TOPIC("fb244", ERR, Logger::FIXME)
                 << "dropping database '" << database->name() << "' failed: " << res.errorMessage();
@@ -306,8 +306,8 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "create and use deprecated system collection (_modules, _fishbowl)",
       new BooleanParameter(&_useOldSystemCollections),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-      .setIntroducedIn(30608)
-      .setIntroducedIn(30704)
+      .setIntroducedIn(30609)
+      .setIntroducedIn(30705)
       .setDeprecatedIn(30800);
   
   // the following option was removed in 3.7
@@ -353,8 +353,8 @@ void DatabaseFeature::start() {
 
   // scan all databases
   VPackBuilder builder;
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->getDatabases(builder);
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  engine.getDatabases(builder);
 
   TRI_ASSERT(builder.slice().isArray());
 
@@ -424,8 +424,8 @@ void DatabaseFeature::stop() {
   arangodb::aql::QueryCache::instance()->properties(p);
   arangodb::aql::QueryCache::instance()->invalidate();
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->cleanupReplicationContexts();
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  engine.cleanupReplicationContexts();
 
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
@@ -525,9 +525,9 @@ void DatabaseFeature::unprepare() {
 /// and will execute engine-unspecific operations (such as starting
 /// the replication appliers) for all databases
 void DatabaseFeature::recoveryDone() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
 
-  TRI_ASSERT(engine && !engine->inRecovery());
+  TRI_ASSERT(!engine.inRecovery());
 
   // '_pendingRecoveryCallbacks' will not change because
   // !StorageEngine.inRecovery()
@@ -566,9 +566,9 @@ void DatabaseFeature::recoveryDone() {
 }
 
 Result DatabaseFeature::registerPostRecoveryCallback(std::function<Result()>&& callback) {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
 
-  if (!engine || !engine->inRecovery()) {
+  if (!engine.inRecovery()) {
     return callback();  // if no engine then can't be in recovery
   }
 
@@ -605,8 +605,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
   std::unique_ptr<TRI_vocbase_t> vocbase;
 
   // create database in storage engine
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
 
   // the create lock makes sure no one else is creating a database while we're
   // inside this function
@@ -626,7 +625,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
     // createDatabase must return a valid database or throw
     int status = TRI_ERROR_NO_ERROR;
 
-    vocbase = engine->createDatabase(std::move(info), status);
+    vocbase = engine.createDatabase(std::move(info), status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
     TRI_ASSERT(vocbase != nullptr);
 
@@ -660,7 +659,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
       }
     }
 
-    if (!engine->inRecovery()) {
+    if (!engine.inRecovery()) {
       if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
         if (server().hasFeature<ReplicationFeature>()) {
           server().getFeature<ReplicationFeature>().startApplier(vocbase.get());
@@ -695,8 +694,8 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
   // write marker into log
   Result res;
 
-  if (!engine->inRecovery()) {
-    res = engine->writeCreateDatabaseMarker(dbId, markerBuilder.slice());
+  if (!engine.inRecovery()) {
+    res = engine.writeCreateDatabaseMarker(dbId, markerBuilder.slice());
   }
 
   result = vocbase.release();
@@ -717,7 +716,7 @@ int DatabaseFeature::dropDatabase(std::string const& name,
     return TRI_ERROR_FORBIDDEN;
   }
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
   TRI_voc_tick_t id = 0;
   int res = TRI_ERROR_NO_ERROR;
   {
@@ -800,7 +799,7 @@ int DatabaseFeature::dropDatabase(std::string const& name,
       server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>().invalidate(*vocbase);
     }
 
-    res = engine->prepareDropDatabase(*vocbase).errorNumber();
+    res = engine.prepareDropDatabase(*vocbase).errorNumber();
   }
   // must not use the database after here, as it may now be
   // deleted by the DatabaseManagerThread!
@@ -1177,7 +1176,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
   std::string const appPath = dealer.appPath();
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -1218,7 +1217,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
-      auto database = engine->openDatabase(std::move(info), _upgrade);
+      auto database = engine.openDatabase(std::move(info), _upgrade);
 
       if (!ServerState::isCoordinator(role) && !ServerState::isAgent(role)) {
         try {

@@ -46,9 +46,7 @@ var arangodb = require('@arangodb');
 var FoxxManager = require('@arangodb/foxx/manager');
 var shallowCopy = require('@arangodb/util').shallowCopy;
 
-const AARDVARK_BASE = '/_admin/aardvark';
 const MIME_DEFAULT = 'text/plain; charset=utf-8';
-
 
 //
 // @brief current routing list
@@ -1157,24 +1155,36 @@ function firstRouting (type, parts, routes, rawParts) {
 function routeRequest (req, res, routes) {
   if (routes === undefined) {
     let internalRoute = false;
-    if (req.url.startsWith(AARDVARK_BASE) &&
-        (req.url.length === AARDVARK_BASE.length ||
-         req.url[AARDVARK_BASE.length] === '/')) {
-      internalRoute = true;
+    // systemServiceMounts contains the internal mount points, i.e.
+    // /_admin/aardvark and /_api/foxx
+    for (let mount of FoxxManager.systemServiceMounts) {
+      if (req.url.startsWith(mount) &&
+          (req.url.length === mount.length ||
+           ['/', '?'].indexOf(req.url[mount.length]) !== -1)) {
+        internalRoute = true;
+        break;
+      }
     }
 
     const dbname = arangodb.db._name();
-
     if (internalRoute) {
       // internal route, i.e. /_admin, /_api, etc.
       if (!InternalRoutingList[dbname]) {
-        InternalRoutingList[dbname] = buildRouting(dbname, true);
+        // Do not join these two lines. If so there is a chance
+        // the RoutingList will contain undefined afterwards.
+        // i have not found out why this is the case.
+        const r = buildRouting(dbname, true);
+        InternalRoutingList[dbname] = r;
       }
       routes = InternalRoutingList[dbname];
     } else {
       // user-defined, i.e. custom Foxx route
       if (!CustomRoutingList[dbname]) {
-        CustomRoutingList[dbname] = buildRouting(dbname, false);
+        // Do not join these two lines. If so there is a chance
+        // the RoutingList will contain undefined afterwards.
+        // i have not found out why this is the case.
+        const r = buildRouting(dbname, false);
+        CustomRoutingList[dbname] = r;
       }
 
       routes = CustomRoutingList[dbname];

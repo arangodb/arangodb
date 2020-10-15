@@ -522,7 +522,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
         {AgencyCommHelper::path(), "Current", "FoxxmasterQueueupdate"}));
 
     if (foxxmasterQueueupdateSlice.isBool() && foxxmasterQueueupdateSlice.getBool()) {
-      ServerState::instance()->setFoxxmasterQueueupdate();
+      ServerState::instance()->setFoxxmasterQueueupdate(true);
     }
 
     VPackSlice foxxmasterSlice = result[0].get(std::vector<std::string>(
@@ -825,7 +825,7 @@ void HeartbeatThread::runSingleServer() {
         }
         // we are leader now. make sure the applier drops its previous state
         applier->forget();
-        lastTick = EngineSelectorFeature::ENGINE->currentTick();
+        lastTick = _server.getFeature<EngineSelectorFeature>().engine().currentTick();
 
         // put the leader in optional read-only mode
         auto readOnlySlice = response.get(

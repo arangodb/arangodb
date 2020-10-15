@@ -33,6 +33,7 @@
 namespace arangodb {
 
 class LogicalCollection;
+class StorageEngine;
 
 namespace maintenance {
 
@@ -67,13 +68,14 @@ using Transactions = std::vector<std::pair<VPackBuilder, VPackBuilder>>;
  */
 
 arangodb::Result diffPlanLocal(
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
-  uint64_t planIndex, std::unordered_set<std::string> dirty,
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& local,
-  std::string const& serverId, MaintenanceFeature::errors_t& errors,
-  std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
-  std::vector<std::shared_ptr<ActionDescription>>& actions,
-  MaintenanceFeature::ShardActionMap const& shardActionMap);
+    StorageEngine& engine,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
+    uint64_t planIndex, std::unordered_set<std::string> dirty,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    std::string const& serverId, MaintenanceFeature::errors_t& errors,
+    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+    std::vector<std::shared_ptr<ActionDescription>>& actions,
+    MaintenanceFeature::ShardActionMap const& shardActionMap);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run
