@@ -63,13 +63,15 @@ HashedStringRef& HashedStringRef::operator=(Slice slice) {
 }
 
 HashedStringRef HashedStringRef::substr(std::size_t pos, std::size_t count) const {
-  if (pos > _length) {
+  if (VELOCYPACK_UNLIKELY(pos > _length)) {
     throw Exception(Exception::IndexOutOfBounds, "substr index out of bounds");
+  } else if (VELOCYPACK_UNLIKELY(count > std::numeric_limits<uint32_t>::max())) {
+    throw Exception(Exception::IndexOutOfBounds, "substr count out of bounds");
   }
   if (count == std::string::npos || (count + pos >= _length)) {
     count = _length - pos;
   }
-  return HashedStringRef(_data + pos, count);
+  return HashedStringRef(_data + pos, static_cast<uint32_t>(count));
 }
 
 char HashedStringRef::at(std::size_t index) const {
