@@ -56,6 +56,10 @@ set(ARANGODB_TESTS_COMMON_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Servers.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Basics/icu-helper.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/AgencyMock.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/common.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/ExpressionContextMock.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/RestHandlerMock.cpp
 )
 
 set(ARANGODB_TESTS_SOURCES
