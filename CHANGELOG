@@ -135,7 +135,7 @@ v3.7.3 (XXXX-XX-XX)
   and will be removed in ArangoDB v3.9.
 
   Two side effects of turning this option off are:
-  * there will no be iteration over all databases at server startup just to
+  * there will be no iteration over all databases at server startup just to
     check the contents of all `_modules` collections.
   * less collections/shards will be around for deployments that create a large
     number of databases.
