@@ -74,6 +74,8 @@ add_executable(
   ../main.cpp
 )
 
+set_target_properties(arangodbtests-iresearch PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
   target_compile_options(arangodbtests-iresearch PRIVATE -fno-devirtualize)
