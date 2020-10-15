@@ -235,7 +235,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   // we have to commit all counters in one batch
   auto s = _db->Write(wo, &batch);
   if (s.ok()) {
-    LOG_TOPIC("103ae", ERR, Logger::ENGINES) << "updating lastSync to " << minSeqNr;
+    LOG_TOPIC("103ae", TRACE, Logger::ENGINES) << "updating lastSync to " << minSeqNr;
     _lastSync.store(std::max(_lastSync.load(), minSeqNr));
   }
 

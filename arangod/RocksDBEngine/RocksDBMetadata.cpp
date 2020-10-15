@@ -178,6 +178,7 @@ bool RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumber commitSeq) {
     } else if (it->second.adjustment < 0) {
       _count._removed += -(it->second.adjustment);
     }
+    TRI_ASSERT(_count._added >= _count._removed);
     if (it->second.revisionId != 0) {
       _count._revisionId = it->second.revisionId;
     }
@@ -467,6 +468,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
 }
 
 void RocksDBMetadata::loadInitialNumberDocuments() {
+  TRI_ASSERT(_count._added >= _count._removed);
   _numberDocuments.store(_count._added - _count._removed);
   _revisionId.store(_count._revisionId);
 }
