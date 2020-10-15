@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -46,37 +45,22 @@ class HashedStringRef {
       _length(0), 
       _hash(hash("", 0)) {}
 
-  /// @brief create a HashedStringRef from an std::string
-  explicit HashedStringRef(std::string const& str) noexcept 
-    : HashedStringRef(str.data(), str.size()) {}
-  
   /// @brief create a HashedStringRef from a string plus length
-  HashedStringRef(char const* data, std::size_t length) noexcept 
+  HashedStringRef(char const* data, uint32_t length) noexcept 
     : _data(data), 
-      _length(static_cast<uint32_t>(length)), 
+      _length(length),
       _hash(hash(_data, _length)) {}
  
   /// @brief create a HashedStringRef from a string plus length and hash.
   /// note: the hash is *not* validated. it is the caller's responsibility
   /// to ensure the hash value is correct
-  HashedStringRef(char const* data, std::size_t length, uint32_t hash) noexcept 
+  HashedStringRef(char const* data, uint32_t length, uint32_t hash) noexcept 
     : _data(data), 
-      _length(static_cast<uint32_t>(length)), 
+      _length(length), 
       _hash(hash) {}
   
-  /// @brief create a HashedStringRef from a null-terminated C string
-  explicit HashedStringRef(char const* data) noexcept 
-#if __cplusplus >= 201703
-    : HashedStringRef(data, std::char_traits<char>::length(data)) {}
-#else
-    : HashedStringRef(data, strlen(data)) {}
-#endif
-   
   /// @brief create a HashedStringRef from a VPack slice (must be of type String)
   explicit HashedStringRef(Slice slice);
-  
-  /// @brief create a HashedStringRef from anther StringRef
-  explicit HashedStringRef(StringRef const& other) noexcept;
   
   /// @brief create a HashedStringRef from another HashedStringRef
   constexpr HashedStringRef(HashedStringRef const& other) noexcept
@@ -106,27 +90,8 @@ class HashedStringRef {
     return *this;
   }
   
-  /// @brief create a HashedStringRef from an std::string
-  HashedStringRef& operator=(std::string const& other) noexcept {
-    _data = other.data();
-    _length = static_cast<uint32_t>(other.size());
-    _hash = hash(other.data(), static_cast<uint32_t>(other.size()));
-    return *this;
-  }
-  
-  /// @brief create a HashedStringRef from a null-terminated C string
-  HashedStringRef& operator=(char const* other) noexcept {
-    _data = other;
-    _length = static_cast<uint32_t>(strlen(other));
-    _hash = hash(_data, _length);
-    return *this;
-  }
-  
   /// @brief create a HashedStringRef from a VPack slice of type String
   HashedStringRef& operator=(Slice slice);
-  
-  /// @brief create a HashedStringRef from a StringRef
-  HashedStringRef& operator=(StringRef const& other) noexcept;
   
   HashedStringRef substr(std::size_t pos = 0, std::size_t count = std::string::npos) const;
   
@@ -229,14 +194,6 @@ inline bool operator==(arangodb::velocypack::HashedStringRef const& lhs, std::st
 }
 
 inline bool operator!=(arangodb::velocypack::HashedStringRef const& lhs, std::string const& rhs) noexcept {
-  return !(lhs == rhs);
-}
-
-inline bool operator==(arangodb::velocypack::HashedStringRef const& lhs, char const* rhs) noexcept {
-  return lhs == arangodb::velocypack::HashedStringRef(rhs);
-}
-
-inline bool operator!=(arangodb::velocypack::HashedStringRef const& lhs, char const* rhs) noexcept {
   return !(lhs == rhs);
 }
 
