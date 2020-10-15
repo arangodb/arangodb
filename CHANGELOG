@@ -131,7 +131,7 @@ devel
   and will be removed in ArangoDB v3.9.
 
   Two side effects of turning this option off (which is the default) are:
-  * there will no be iteration over all databases at server startup just to check
+  * there will be no iteration over all databases at server startup just to check
     the contents of all `_modules` collections.
   * less collections/shards will be around for deployments that create a large
     number of databases.
