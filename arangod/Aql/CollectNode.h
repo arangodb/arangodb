@@ -52,8 +52,8 @@ class CollectNode : public ExecutionNode {
 
  public:
   CollectNode(ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
-              std::vector<std::pair<Variable const*, Variable const*>> const& groupVariables,
-              std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
+              std::vector<GroupVarInfo> const& groupVariables,
+              std::vector<AggregateVarInfo> const& aggregateVariables,
               Variable const* expressionVariable, Variable const* outVariable,
               std::vector<Variable const*> const& keepVariables,
               std::unordered_map<VariableId, std::string const> const& variableMap,
@@ -63,8 +63,8 @@ class CollectNode : public ExecutionNode {
               Variable const* expressionVariable, Variable const* outVariable,
               std::vector<Variable const*> const& keepVariables,
               std::unordered_map<VariableId, std::string const> const& variableMap,
-              std::vector<std::pair<Variable const*, Variable const*>> const& collectVariables,
-              std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
+              std::vector<GroupVarInfo> const& collectVariables,
+              std::vector<AggregateVarInfo> const& aggregateVariables,
               bool count, bool isDistinctCommand);
 
   ~CollectNode() override;
@@ -148,11 +148,11 @@ class CollectNode : public ExecutionNode {
   void clearKeepVariables();
 
   void setAggregateVariables(
-      std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables);
+      std::vector<AggregateVarInfo> const& aggregateVariables);
 
   /// @brief clear one of the aggregates
   void clearAggregates(
-      std::function<bool(std::pair<Variable const*, std::pair<Variable const*, std::string>> const&)> cb);
+      std::function<bool(AggregateVarInfo const&)> cb);
 
   /// @brief whether or not the node has an expression variable (i.e. INTO ...
   /// = expr)
@@ -175,16 +175,16 @@ class CollectNode : public ExecutionNode {
   std::unordered_map<VariableId, std::string const> const& variableMap() const;
 
   /// @brief get all group variables (out, in)
-  std::vector<std::pair<Variable const*, Variable const*>> const& groupVariables() const;
+  std::vector<GroupVarInfo> const& groupVariables() const;
 
   /// @brief set all group variables (out, in)
-  void groupVariables(std::vector<std::pair<Variable const*, Variable const*>> const& vars);
+  void groupVariables(std::vector<GroupVarInfo> const& vars);
 
   /// @brief get all aggregate variables (out, in)
-  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables() const;
+  std::vector<AggregateVarInfo> const& aggregateVariables() const;
 
   /// @brief get all aggregate variables (out, in)
-  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>>& aggregateVariables();
+  std::vector<AggregateVarInfo>& aggregateVariables();
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const final;
@@ -200,10 +200,10 @@ class CollectNode : public ExecutionNode {
   CollectOptions _options;
 
   /// @brief input/output variables for the collection (out, in)
-  std::vector<std::pair<Variable const*, Variable const*>> _groupVariables;
+  std::vector<GroupVarInfo> _groupVariables;
 
   /// @brief input/output variables for the aggregation (out, in)
-  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> _aggregateVariables;
+  std::vector<AggregateVarInfo> _aggregateVariables;
 
   /// @brief input expression variable (might be null)
   Variable const* _expressionVariable;

@@ -1,6 +1,36 @@
 devel
 -----
 
+* Don't respond with misleading error in smart vertex collections.
+
+  When inserting a document with a non-conforming key pattern into
+  a smart vertex collection, the response error code and message are
+  1466 (ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY) and "must not specify _key
+  for this collection".
+  This is misleading, because it is actually allowed to specify a key
+  value for documents in such collection. However, there are some
+  restrictions for valid key values (e.g. the key must be a string and
+  contain the smart graph attribute value at the front, followed by a
+  colon.
+  If any of these restrictions are not met, the server currently
+  responds with "must not specify key for this collection", which is
+  misleading. This change rectifies it so that the server responds with
+  error 4003 (ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE)
+  and message "in smart vertex collections _key must be a string and
+  prefixed with the value of the smart graph attribute". This should
+  make it a lot easier to understand what the actual problem is.
+
+* Added configuration option `--query.tracking-slow-queries` to decide whether
+  slow queries are tracked extra.
+
+* Added configuration option `--query.tracking-with-querystring` to decide whether
+  the query string is shown.
+
+* Fix an issue in arangoimport improperly handling filenames with less than 3
+  characters. The specified input filename was checked for a potential ".gz"
+  ending, but the check required the filename to have at least 3 characters.
+  This is now fixed.
+
 * Added optional verbose logging for agency write operations. This logging
   is configurable by using the new log topic "agencystore".
 
@@ -472,11 +502,11 @@ devel
   This will change the contents of replication log messages as well the string
   contents of replication-related error messages.
 
-The messages of the error codes 1402, 1403 and 1404 were also changed accordingly,
-as well as the identifiers:
-- `TRI_ERROR_REPLICATION_MASTER_ERROR` renamed to `TRI_ERROR_REPLICATION_LEADER_ERROR`
-- `TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE` renamed to `TRI_ERROR_REPLICATION_LEADER_INCOMPATIBLE`
-- `TRI_ERROR_REPLICATION_MASTER_CHANGE` renamed to `TRI_ERROR_REPLICATION_LEADER_CHANGE`
+  The messages of the error codes 1402, 1403 and 1404 were also changed accordingly,
+  as well as the identifiers:
+  - `TRI_ERROR_REPLICATION_MASTER_ERROR` renamed to `TRI_ERROR_REPLICATION_LEADER_ERROR`
+  - `TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE` renamed to `TRI_ERROR_REPLICATION_LEADER_INCOMPATIBLE`
+  - `TRI_ERROR_REPLICATION_MASTER_CHANGE` renamed to `TRI_ERROR_REPLICATION_LEADER_CHANGE`
 
   This change also renames the API endpoint `/_api/replication/make-slave` to
   `/_api/replication/make-follower`. The API is still available under the old
