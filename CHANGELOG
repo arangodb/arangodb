@@ -8,7 +8,8 @@ v3.7.4 (XXXX-XX-XX)
   * `@arangodb/actions.routingTree`: will return an empty object
   * `@arangodb/actions.routingList`: will return an empty object
 
-  All the above APIs were intended to be used for internal means only.
+  All the above APIs were intended to be used for internal means only. These
+  APIs are deprecated now and will be removed in ArangoDB v3.9.
 
 
 v3.7.3 (XXXX-XX-XX)
