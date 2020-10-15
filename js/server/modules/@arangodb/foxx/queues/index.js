@@ -214,7 +214,7 @@ function asNumber (num) {
 
 function updateQueueDelayClusterAware () {
   if (isCluster && !isAgent) {
-    global.ArangoAgency.set('Current/FoxxmasterQueueupdate', true);
+    global.ArangoServerState.setFoxxmasterQueueupdate(true);
   }
   updateQueueDelay();
 }

@@ -570,7 +570,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
         {AgencyCommHelper::path(), "Current", "FoxxmasterQueueupdate"}));
 
     if (foxxmasterQueueupdateSlice.isBool() && foxxmasterQueueupdateSlice.getBool()) {
-      ServerState::instance()->setFoxxmasterQueueupdate();
+      ServerState::instance()->setFoxxmasterQueueupdate(true);
     }
 
     VPackSlice foxxmasterSlice = result[0].get(std::vector<std::string>(

@@ -258,9 +258,7 @@ class ServerState {
 
   void setFoxxmaster(std::string const&);
 
-  void clearFoxxmasterQueueupdate() noexcept;
-  
-  void setFoxxmasterQueueupdate() noexcept;
+  void setFoxxmasterQueueupdate(bool value) noexcept;
 
   bool getFoxxmasterQueueupdate() const noexcept;
 
