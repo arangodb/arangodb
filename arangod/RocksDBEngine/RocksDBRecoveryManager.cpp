@@ -432,8 +432,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       }
 
       uint64_t currentCount = coll->meta().numberDocuments();
-      coll->meta().adjustNumberDocumentsInRecovery(_currentSequence, 0,
-                                                   -static_cast<int64_t>(currentCount));
+      if (currentCount != 0) {
+        coll->meta().adjustNumberDocumentsInRecovery(_currentSequence, 0,
+                                                    -static_cast<int64_t>(currentCount));
+      }
       for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
         RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
         RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
