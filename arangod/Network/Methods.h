@@ -42,11 +42,13 @@ class ConnectionPool;
 /// Response data structure
 struct Response {
   DestinationId destination;
-  fuerte::Error error;  /// connectivity error
-  std::unique_ptr<arangodb::fuerte::Response> response;
+  fuerte::Error error = fuerte::Error::Canceled;
   std::unique_ptr<arangodb::fuerte::Request> request;
+  std::unique_ptr<arangodb::fuerte::Response> response;
 
-  [[nodiscard]] bool ok() const { return fuerte::Error::NoError == this->error; }
+  [[nodiscard]] bool ok() const {
+    return fuerte::Error::NoError == this->error;
+  }
 
   [[nodiscard]] bool fail() const { return !ok(); }
 
@@ -83,14 +85,14 @@ using FutureRes = arangodb::futures::Future<Response>;
 // Container for optional (often defaulted) parameters
 struct RequestOptions {
   std::string database;
-  std::string contentType; // uses vpack by default
-  std::string acceptType; // uses vpack by default
+  std::string contentType;  // uses vpack by default
+  std::string acceptType;   // uses vpack by default
   fuerte::StringMap parameters;
   Timeout timeout = Timeout(120.0);
   bool retryNotFound = false; // retry if answers is "datasource not found"
   bool skipScheduler = false; // do not use Scheduler queue
 
-  template<typename K, typename V>
+  template <typename K, typename V>
   RequestOptions& param(K&& key, V&& val) {
     this->parameters.insert_or_assign(std::forward<K>(key), std::forward<V>(val));
     return *this;
@@ -102,23 +104,20 @@ struct RequestOptions {
 FutureRes sendRequest(ConnectionPool* pool, DestinationId destination,
                       arangodb::fuerte::RestVerb type, std::string path,
                       velocypack::Buffer<uint8_t> payload = {},
-                      RequestOptions const& options = {},
-                      Headers headers = {});
+                      RequestOptions const& options = {}, Headers headers = {});
 
 /// @brief send a request to a given destination, retry under certain conditions
-/// a retry will be triggered if the connection was lost our could not be established
-/// optionally a retry will be performed in the case of until timeout is exceeded
-/// This method must not throw under penalty of ...
+/// a retry will be triggered if the connection was lost our could not be
+/// established optionally a retry will be performed in the case of until
+/// timeout is exceeded This method must not throw under penalty of ...
 FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
                            arangodb::fuerte::RestVerb type, std::string path,
                            velocypack::Buffer<uint8_t> payload = {},
-                           RequestOptions const& options = {},
-                           Headers headers = {});
+                           RequestOptions const& options = {}, Headers headers = {});
 
 using Sender =
     std::function<FutureRes(DestinationId const&, arangodb::fuerte::RestVerb, std::string const&,
-                            velocypack::Buffer<uint8_t>, RequestOptions const& options,
-                            Headers)>;
+                            velocypack::Buffer<uint8_t>, RequestOptions const& options, Headers)>;
 
 }  // namespace network
 }  // namespace arangodb

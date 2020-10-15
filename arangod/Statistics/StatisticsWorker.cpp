@@ -909,6 +909,12 @@ std::map<std::string, std::vector<std::string>> statStrings{
   {"httpReqsTotal",
    {"arangodb_http_request_statistics_total_requests", "gauge",
     "Total number of HTTP requests"}},
+  {"httpReqsSuperuser",
+   {"arangodb_http_request_statistics_superuser_requests", "gauge",
+    "Total number of HTTP requests executed by superuser/JWT"}},
+  {"httpReqsUser",
+   {"arangodb_http_request_statistics_user_requests", "gauge",
+    "Total number of HTTP requests executed by clients"}},
   {"httpReqsAsync",
    {"arangodb_http_request_statistics_async_requests", "gauge",
     "Number of asynchronously executed HTTP requests"}},
@@ -1020,6 +1026,8 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
   appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::PUT].get()), "httpReqsPut");
   appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::ILLEGAL].get()), "httpReqsOther");
   appendMetric(result, std::to_string(connectionStats.totalRequests.get()), "httpReqsTotal");
+  appendMetric(result, std::to_string(connectionStats.totalRequestsSuperuser.get()), "httpReqsSuperuser");
+  appendMetric(result, std::to_string(connectionStats.totalRequestsUser.get()), "httpReqsUser");
 
   V8DealerFeature::Statistics v8Counters{};
   if (_server.hasFeature<V8DealerFeature>()) {
@@ -1146,6 +1154,8 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   using rest::RequestType;
   builder.add("http", VPackValue(VPackValueType::Object));
   builder.add("requestsTotal", VPackValue(connectionStats.totalRequests.get()));
+  builder.add("requestsSuperuser", VPackValue(connectionStats.totalRequestsSuperuser.get()));
+  builder.add("requestsUser", VPackValue(connectionStats.totalRequestsUser.get()));
   builder.add("requestsAsync", VPackValue(connectionStats.asyncRequests.get()));
   builder.add("requestsGet",
               VPackValue(connectionStats.methodRequests[(int)RequestType::GET].get()));

@@ -52,9 +52,12 @@ namespace {
 /// @brief handle the state response of the master
 arangodb::Result handleMasterStateResponse(arangodb::replutils::Connection& connection,
                                            arangodb::replutils::MasterInfo& master,
-                                           arangodb::velocypack::Slice const& slice) {
+                                           arangodb::velocypack::Slice const& slice,
+                                           char const* context) {
   using arangodb::Result;
   using arangodb::velocypack::Slice;
+
+  // note: context can be a nullptr
 
   std::string const endpointString = " from endpoint '" + master.endpoint + "'";
 
@@ -157,11 +160,13 @@ arangodb::Result handleMasterStateResponse(arangodb::replutils::Connection& conn
   master.engine = engineString;
 
   LOG_TOPIC("6c920", INFO, arangodb::Logger::REPLICATION)
-      << "connected to master at " << master.endpoint << ", id "
+      << "connected to leader at " << master.endpoint << ", id "
       << master.serverId.id() << ", version " << master.majorVersion << "."
       << master.minorVersion << ", last log tick " << master.lastLogTick
       << ", last uncommitted log tick " << master.lastUncommittedLogTick
-      << ", engine " << master.engine;
+      << ", engine " << master.engine
+      << (context != nullptr ? ", context: " : "")
+      << (context != nullptr ? context : "");
 
   return Result();
 }
@@ -545,7 +550,7 @@ MasterInfo::MasterInfo(ReplicationApplierConfiguration const& applierConfig) {
 }
 
 /// @brief get master state
-Result MasterInfo::getState(replutils::Connection& connection, bool isChildSyncer) {
+Result MasterInfo::getState(replutils::Connection& connection, bool isChildSyncer, char const* context) {
   if (isChildSyncer) {
     TRI_ASSERT(endpoint.empty());
     TRI_ASSERT(serverId.isSet());
@@ -593,7 +598,7 @@ Result MasterInfo::getState(replutils::Connection& connection, bool isChildSynce
                       endpoint + ": invalid JSON");
   }
 
-  return ::handleMasterStateResponse(connection, *this, slice);
+  return ::handleMasterStateResponse(connection, *this, slice, context);
 }
 
 bool MasterInfo::simulate32Client() const {

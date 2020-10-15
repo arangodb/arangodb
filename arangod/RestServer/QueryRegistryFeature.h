@@ -48,8 +48,11 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   // tracks a slow query by increasing the counter
   void trackSlowQuery() { ++_slowQueriesCounter; }
 
+  bool trackingEnabled() const { return _trackingEnabled; }
   bool trackSlowQueries() const { return _trackSlowQueries; }
+  bool trackQueryString() const { return _trackQueryString; }
   bool trackBindVars() const { return _trackBindVars; }
+  bool trackDataSources() const { return _trackDataSources; }
   double slowQueryThreshold() const { return _slowQueryThreshold; }
   double slowStreamingQueryThreshold() const {
     return _slowStreamingQueryThreshold;
@@ -64,8 +67,11 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   uint64_t maxParallelism() const { return _maxParallelism; }
 
  private:
+  bool _trackingEnabled;
   bool _trackSlowQueries;
+  bool _trackQueryString;
   bool _trackBindVars;
+  bool _trackDataSources;
   bool _failOnWarning;
   bool _queryCacheIncludeSystem;
   bool _smartJoins;

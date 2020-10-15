@@ -204,7 +204,7 @@ bool ClusterIndex::hasCoveringIterator() const {
 
 bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
   // TODO implement faster version of this
-  return Index::Compare(_info.slice(), info);
+  return Index::Compare(_info.slice(), info, _collection.vocbase().name());
 }
 
 Index::FilterCosts ClusterIndex::supportsFilterCondition(

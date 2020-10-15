@@ -178,6 +178,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<V8FeaturePhase>();
 
     // Adding the features
+    server.addFeature<MetricsFeature>();
     server.addFeature<ActionFeature>();
     server.addFeature<AgencyFeature>();
     server.addFeature<AqlFeature>();
@@ -209,7 +210,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<LoggerFeature>(true);
     server.addFeature<MaintenanceFeature>();
     server.addFeature<MaxMapCountFeature>();
-    server.addFeature<MetricsFeature>();
     server.addFeature<NetworkFeature>();
     server.addFeature<NonceFeature>();
     server.addFeature<PrivilegeFeature>();
