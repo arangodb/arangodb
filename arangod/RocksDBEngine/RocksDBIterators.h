@@ -101,7 +101,7 @@ typedef std::function<bool(rocksdb::Slice const& key, rocksdb::Slice const& valu
 
 class RocksDBGenericIterator {
  public:
-  RocksDBGenericIterator(rocksdb::ReadOptions& options,
+  RocksDBGenericIterator(rocksdb::TransactionDB* db, rocksdb::ReadOptions& options,
                          RocksDBKeyBounds const& bounds);
   RocksDBGenericIterator(RocksDBGenericIterator&&) = default;
 

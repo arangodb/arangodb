@@ -52,6 +52,7 @@ class Snapshot;
 
 namespace arangodb {
 class LogicalCollection;
+class RocksDBEngine;
 
 namespace basics {
 class StringBuffer;
@@ -123,7 +124,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  RocksDBReplicationContext(double ttl, SyncerId syncerId, ServerId clientId);
+  RocksDBReplicationContext(RocksDBEngine&, double ttl, SyncerId syncerId, ServerId clientId);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const;  // batchId
@@ -173,12 +174,14 @@ class RocksDBReplicationContext {
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
   DumpResult dumpJson(TRI_vocbase_t& vocbase, std::string const& cname,
-                      basics::StringBuffer&, uint64_t chunkSize);
+                      basics::StringBuffer&, uint64_t chunkSize,
+                      bool useEnvelope);
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
   DumpResult dumpVPack(TRI_vocbase_t& vocbase, std::string const& cname,
-                       velocypack::Buffer<uint8_t>& buffer, uint64_t chunkSize);
+                       velocypack::Buffer<uint8_t>& buffer, uint64_t chunkSize,
+                       bool useEnvelope);
 
   // ==================== Incremental Sync ===========================
 
@@ -229,6 +232,7 @@ class RocksDBReplicationContext {
   void releaseDumpIterator(CollectionIterator*);
 
  private:
+  RocksDBEngine& _engine;
   TRI_voc_tick_t const _id;  // batch id
   mutable Mutex _contextLock;
   SyncerId const _syncerId;

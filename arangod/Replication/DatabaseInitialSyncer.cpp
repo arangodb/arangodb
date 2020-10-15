@@ -66,9 +66,6 @@
 #include <array>
 #include <cstring>
 
-// lets keep this experimental until we make it faster
-#define VPACK_DUMP 0
-
 namespace {
 
 /// @brief maximum internal value for chunkSize
@@ -359,7 +356,8 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
 }
 
 /// @brief run method, performs a full synchronization
-Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbInventory) {
+Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbInventory,
+                                               char const* context) {
   if (!_config.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
@@ -379,7 +377,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
 
     Result r;
     if (!_config.isChild()) {
-      r = _config.leader.getState(_config.connection, _config.isChild());
+      r = _config.leader.getState(_config.connection, _config.isChild(), context);
 
       if (r.fail()) {
         return r;
@@ -528,35 +526,46 @@ void DatabaseInitialSyncer::setProgress(std::string const& msg) {
 /// @brief handle a single dump marker
 Result DatabaseInitialSyncer::parseCollectionDumpMarker(transaction::Methods& trx,
                                                         LogicalCollection* coll,
-                                                        VPackSlice const& marker) {
-  if (!marker.isObject()) {
+                                                        VPackSlice marker,
+                                                        FormatHint& hint) {
+  if (!ADB_LIKELY(marker.isObject())) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  TRI_replication_operation_e type = REPLICATION_INVALID;
+  // format auto-detection. this is executed only once per batch
+  if (hint == FormatHint::AutoDetect) {
+    if (marker.get(StaticStrings::KeyString).isString()) {
+      // _key present
+      hint = FormatHint::NoEnvelope;
+    } else if (marker.get(kDataString).isObject()) {
+      hint = FormatHint::Envelope;
+    } else {
+      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    }
+  }
+  
+  TRI_ASSERT(hint == FormatHint::Envelope || hint == FormatHint::NoEnvelope);
+  
   VPackSlice doc;
+  TRI_replication_operation_e type = REPLICATION_INVALID;
 
-  for (auto it : VPackObjectIterator(marker, true)) {
-    if (it.key.isEqualString(kTypeString)) {
-      if (it.value.isNumber()) {
-        type = static_cast<TRI_replication_operation_e>(it.value.getNumber<int>());
-      }
-    } else if (it.key.isEqualString(kDataString)) {
-      if (it.value.isObject()) {
-        doc = it.value;
-      }
+  if (hint == FormatHint::Envelope) {
+    // input is wrapped in a {"type":2300,"data":{...}} envelope
+    VPackSlice s = marker.get(kTypeString);
+    if (s.isNumber()) {
+      type = static_cast<TRI_replication_operation_e>(s.getNumber<int>());
     }
-    if (type != REPLICATION_INVALID && doc.isObject()) {
-      break;
+    doc = marker.get(kDataString);
+    if (!doc.isObject()) {
+      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
-  }
-
-  if (!doc.isObject()) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-  }
-  // key must not be empty, but doc can otherwise be empty
-  VPackSlice key = doc.get(StaticStrings::KeyString);
-  if (!key.isString() || key.getStringLength() == 0) {
+  } else if (hint == FormatHint::NoEnvelope) {
+    // input is just a document, without any {"type":2300,"data":{...}} envelope
+    type = REPLICATION_MARKER_DOCUMENT;
+    doc = marker;
+  } 
+  
+  if (!ADB_LIKELY(doc.isObject())) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
@@ -570,6 +579,8 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
                                                   uint64_t& markersProcessed) {
   TRI_ASSERT(!trx.isSingleOperationTransaction());
 
+  FormatHint hint = FormatHint::AutoDetect;
+
   basics::StringBuffer const& data = response->getBody();
   char const* p = data.begin();
   char const* end = p + data.length();
@@ -577,7 +588,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
   bool found = false;
   std::string const& cType =
       response->getHeaderField(StaticStrings::ContentTypeHeader, found);
-  if (found && (cType == StaticStrings::MimeTypeVPack)) {
+  if (found && cType == StaticStrings::MimeTypeVPack) {
     LOG_TOPIC("b9f4d", DEBUG, Logger::REPLICATION) << "using vpack for chunk contents";
     
     VPackValidator validator(&basics::VelocyPackHelper::strictRequestValidationOptions);
@@ -589,7 +600,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
         validator.validate(p, remaining, /*isSubPart*/ true);
 
         VPackSlice marker(reinterpret_cast<uint8_t const*>(p));
-        Result r = parseCollectionDumpMarker(trx, coll, marker);
+        Result r = parseCollectionDumpMarker(trx, coll, marker, hint);
         
         TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
         if (r.fail()) {
@@ -639,7 +650,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
 
       p = q + 1;
 
-      Result r = parseCollectionDumpMarker(trx, coll, builder.slice());
+      Result r = parseCollectionDumpMarker(trx, coll, builder.slice(), hint);
       TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
       if (r.fail()) {
         return r;
@@ -686,12 +697,13 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
     }
 
     auto headers = replutils::createHeaders();
-#if VPACK_DUMP
     int vv = _config.leader.majorVersion * 1000000 + _config.leader.minorVersion * 1000;
-    if (vv >= 3003009) {
+    if (vv >= 3008000) {
+      // from 3.8 onwards, it is safe and also faster to retrieve vpack-encoded dumps.
+      // in previous versions there may be vpack encoding issues for the /_api/replication/dump
+      // responses.
       headers[StaticStrings::Accept] = StaticStrings::MimeTypeVPack;
     }
-#endif
 
     _config.progress.set(
         std::string("fetching leader collection dump for collection '") +
@@ -754,10 +766,17 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
   TRI_ASSERT(_config.batch.id);  // should not be equal to 0
 
   // assemble base URL
+  // note: the "useEnvelope" URL parameter is sent to signal the leader that
+  // we don't need the dump data packaged in an extra {"type":2300,"data":{...}}
+  // envelope per document.
+  // older, incompatible leaders will simply ignore this parameter and will still
+  // send the documents inside these envelopes. that means when we receive the
+  // documents, we need to disambiguate the two different formats.
   std::string baseUrl =
       replutils::ReplicationUrl + "/dump?collection=" + urlEncode(leaderColl) +
       "&batchId=" + std::to_string(_config.batch.id) +
       "&includeSystem=" + std::string(_config.applier._includeSystem ? "true" : "false") +
+      "&useEnvelope=false" +
       "&serverId=" + _state.localServerIdString;
 
   if (maxTick > 0) {
@@ -860,12 +879,6 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
 
     // do not index the operations in our own transaction
     trx.addHint(transaction::Hints::Hint::NO_INDEXING);
-
-    // smaller batch sizes should work better here
-#if VPACK_DUMP
-//    trx.state()->options().intermediateCommitCount = 128;
-//    trx.state()->options().intermediateCommitSize = 16 * 1024 * 1024;
-#endif
 
     res = trx.begin();
 
@@ -1144,7 +1157,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 
   // now we can fetch the complete chunk information from the leader
   try {
-    return EngineSelectorFeature::ENGINE->handleSyncKeys(*this, *coll, keysId.copyString());
+    return coll->vocbase().server().getFeature<EngineSelectorFeature>().engine().handleSyncKeys(
+        *this, *coll, keysId.copyString());
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {

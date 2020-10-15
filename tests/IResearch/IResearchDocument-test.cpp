@@ -1102,7 +1102,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
   std::string error;
   ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), false,
-                            error, sysVocbase.get()));
+                            error, sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
@@ -1447,7 +1447,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   std::string error;
   ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), false,
-                            error, sysVocbase.get()));
+                            error, sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
@@ -1798,6 +1798,8 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
   EXPECT_EQ(1, reader->size());
   EXPECT_EQ(size, reader->docs_count());
 
+  auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
+
   size_t found = 0;
   for (auto const docSlice : arangodb::velocypack::ArrayIterator(dataSlice)) {
     auto const ridSlice = docSlice.get("rid");
@@ -1813,8 +1815,8 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
 
     arangodb::iresearch::PrimaryKeyFilterContainer filters;
     EXPECT_TRUE(filters.empty());
-    auto& filter = filters.emplace(arangodb::LocalDocumentId(rid));
-    ASSERT_EQ(filter.type(), arangodb::iresearch::PrimaryKeyFilter::type());
+    auto& filter = filters.emplace(engine, arangodb::LocalDocumentId(rid));
+    ASSERT_EQ(filter.type(engine), arangodb::iresearch::PrimaryKeyFilter::type(engine));
     EXPECT_FALSE(filters.empty());
 
     // first execution
@@ -1974,6 +1976,8 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
   EXPECT_EQ(expectedDocs + 1, store.reader->docs_count());  // +1 for keep-alive doc
   EXPECT_EQ(expectedLiveDocs + 1, store.reader->live_docs_count());  // +1 for keep-alive doc
 
+  auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
+
   // check regular filter case (unique rid)
   {
     size_t actualDocs = 0;
@@ -1985,8 +1989,8 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       auto rid = ridSlice.getNumber<uint64_t>();
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
       EXPECT_TRUE(filters.empty());
-      auto& filter = filters.emplace(arangodb::LocalDocumentId(rid));
-      ASSERT_EQ(filter.type(), arangodb::iresearch::PrimaryKeyFilter::type());
+      auto& filter = filters.emplace(engine, arangodb::LocalDocumentId(rid));
+      ASSERT_EQ(filter.type(engine), arangodb::iresearch::PrimaryKeyFilter::type(engine));
       EXPECT_FALSE(filters.empty());
 
       auto prepared = filter.prepare(*store.reader);
@@ -2041,7 +2045,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     {
       auto ctx = store.writer->documents();
       ctx.remove(std::make_shared<arangodb::iresearch::PrimaryKeyFilter>(
-          arangodb::LocalDocumentId(rid)));
+          engine, arangodb::LocalDocumentId(rid)));
       auto doc = ctx.insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
       EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
@@ -2085,8 +2089,8 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       auto rid = ridSlice.getNumber<uint64_t>();
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
       EXPECT_TRUE(filters.empty());
-      auto& filter = filters.emplace(arangodb::LocalDocumentId(rid));
-      ASSERT_EQ(filter.type(), arangodb::iresearch::PrimaryKeyFilter::type());
+      auto& filter = filters.emplace(engine, arangodb::LocalDocumentId(rid));
+      ASSERT_EQ(filter.type(engine), arangodb::iresearch::PrimaryKeyFilter::type(engine));
       EXPECT_FALSE(filters.empty());
 
       auto prepared = filter.prepare(*store.reader);
@@ -2142,7 +2146,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     {
       auto ctx = store.writer->documents();
       ctx.remove(std::make_shared<arangodb::iresearch::PrimaryKeyFilter>(
-          arangodb::LocalDocumentId(rid)));
+          engine, arangodb::LocalDocumentId(rid)));
       auto doc = ctx.insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
       EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
@@ -2186,8 +2190,8 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       auto rid = ridSlice.getNumber<uint64_t>();
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
       EXPECT_TRUE(filters.empty());
-      auto& filter = filters.emplace(arangodb::LocalDocumentId(rid));
-      ASSERT_EQ(filter.type(), arangodb::iresearch::PrimaryKeyFilter::type());
+      auto& filter = filters.emplace(engine, arangodb::LocalDocumentId(rid));
+      ASSERT_EQ(filter.type(engine), arangodb::iresearch::PrimaryKeyFilter::type(engine));
       EXPECT_FALSE(filters.empty());
 
       auto prepared = filter.prepare(*store.reader);
