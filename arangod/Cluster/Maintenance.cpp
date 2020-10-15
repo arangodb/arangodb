@@ -1349,8 +1349,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             continue;            // thus no shardMap exists for it
           }
           if (servers.isArray() && servers.length() > 0  // servers in current
-              && servers[0].copyString() == serverId     // we are leading
-              && !ldb.hasKey(std::vector<std::string>{shName})  // no local collection
+              && servers[0].stringRef() == serverId     // we are leading
+              && !ldb.hasKey(shName)  // no local collection
               && !shardMap.slice().hasKey(shName)) {  // no such shard in plan
             report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName + "/" + shName));
             {
