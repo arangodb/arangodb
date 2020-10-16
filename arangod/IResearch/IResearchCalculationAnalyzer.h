@@ -84,8 +84,8 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   virtual bool reset(irs::string_ref const& field) noexcept override;
 
   static void initCalculationContext(arangodb::application_features::ApplicationServer& server);
-
   static void shutdownCalculationContext();
+
  private:
   irs::term_attribute _term;
   irs::increment _inc;
@@ -100,8 +100,6 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   arangodb::aql::SharedAqlItemBlockPtr _queryResults;
   size_t _resultRowIdx{ 0 };
   std::vector<arangodb::aql::AstNode*> _bindedNodes;
-  /// @brief Artificial vocbase for executing calculation queries
-  static std::unique_ptr<TRI_vocbase_t> CalculationAnalyzer::_calculationVocbase;
 }; // CalculationAnalyzer
 }
 }

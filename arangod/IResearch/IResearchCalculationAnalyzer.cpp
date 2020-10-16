@@ -64,6 +64,9 @@ constexpr const char COLLAPSE_ARRAY_POSITIONS_PARAM_NAME[] = "collapseArrayPos";
 constexpr const char KEEP_NULL_PARAM_NAME[] = "keepNull";
 constexpr const char CALCULATION_PARAMETER_NAME[] = "field";
 
+/// @brief Artificial vocbase for executing calculation queries
+std::unique_ptr<TRI_vocbase_t> _calculationVocbase;
+
 using Options = arangodb::iresearch::CalculationAnalyzer::options_t;
 
 struct OptionsValidator {
@@ -262,8 +265,6 @@ bool CalculationAnalyzer::parse_options(const irs::string_ref& args, options_t& 
   return nullptr;
 }
 
-std::unique_ptr<TRI_vocbase_t> CalculationAnalyzer::_calculationVocbase;
-
 CalculationAnalyzer::CalculationAnalyzer(options_t const& options)
   : irs::analysis::analyzer(irs::type<CalculationAnalyzer>::get()), _options(options) {
   // TODO: move this to normalize?? As here is too late to report
@@ -440,10 +441,7 @@ bool CalculationAnalyzer::next() {
     while (_queryResults->numRows() > _resultRowIdx) {
       AqlValue const& value = _queryResults->getValueReference(_resultRowIdx++, _engine->resultRegister());
       if (value.isString()) {
-        arangodb::velocypack::Builder builder;
-        value.toVelocyPack(&arangodb::velocypack::Options::Defaults, builder, true, false);
-        _str = builder.slice().copyString();
-        _term.value = irs::ref_cast<irs::byte_type>(irs::string_ref(_str));
+        _term.value = irs::ref_cast<irs::byte_type>(arangodb::iresearch::getStringRef(value.slice()));
         return true;
       }
     }
@@ -470,12 +468,14 @@ bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
 #endif
         // FIXME: move to computed value once here could be not only strings
         auto newNode = _ast->createNodeValueString(field.c_str(), field.size());
+        // finally note that the node was created from a bind parameter
+        newNode->setFlag(FLAG_BIND_PARAMETER);
+        newNode->setFlag(DETERMINED_NONDETERMINISTIC);
         _bindedNodes.push_back(newNode);
         return newNode;
       } else {
         return node;
-      }
-      });
+      }});
     _plan = ExecutionPlan::instantiateFromAst(_ast.get());
   } else {
     for (auto node : _bindedNodes) {
