@@ -355,19 +355,15 @@ ArangoCollection.prototype.type = function () {
 
 ArangoCollection.prototype.properties = function (properties) {
   var attributes = {
-    'doCompact': true,
-    'journalSize': true,
     'globallyUniqueId': false,
     'isSmart': false,
     'isSystem': false,
-    'isVolatile': false,
     'waitForSync': true,
     'shardKeys': false,
     'smartGraphAttribute': false,
     'smartJoinAttribute': false,
     'numberOfShards': false,
     'keyOptions': false,
-    'indexBuckets': true,
     'replicationFactor': true,
     'minReplicationFactor': true,
     'writeConcern': true,
