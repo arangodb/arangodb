@@ -6,10 +6,10 @@ v3.6.9 (XXXX-XX-XX)
   it completes the boot sequence. In case we do not wait, the coordinator will 
   complete the boot sequence faster, and the Foxx services will be propagated 
   lazily. This can cause slower response times on the first calls to Foxx services.
-  When not using Foxx this option should be kept to `false` (default) to benefit
+  When not using Foxx, this option should be set to `false` in order to benefit
   from a faster coordinator startup.
   Deployments relying on Foxx starting up as soon as a coordinator is integrated
-  should set this option to `true`.
+  should set this option to `true` (which is also the default value).
 
 * Added startup option `--database.old-system-collections` to toggle automatic
   creation of system collections `_modules` and `_fishbowl`, along with their
