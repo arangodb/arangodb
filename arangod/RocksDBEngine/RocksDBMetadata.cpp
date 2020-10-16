@@ -294,7 +294,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
           << "' for collection with objectId '" << rcoll->objectId() << "'";
     }
   } else {
-    LOG_TOPIC("1e7f3", WARN, Logger::ENGINES)
+    LOG_TOPIC("1e7f3", TRACE, Logger::ENGINES)
         << "[" << this << "] not writing counter for collection with "
         << "objectId '" << rcoll->objectId() << "', no updates applied";
   }
