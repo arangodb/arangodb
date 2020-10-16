@@ -2099,7 +2099,7 @@ static void JS_TruncateVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
   v8::HandleScope scope(isolate);
 
   OperationOptions options;
-  if (args[0]->IsObject()) {
+  if ((args.Length() >= 1) && args[0]->IsObject()) {
     v8::Handle<v8::Object> optionsObject = args[0].As<v8::Object>();
     getOperationOptionsFromObject(isolate, options, optionsObject);
   }
