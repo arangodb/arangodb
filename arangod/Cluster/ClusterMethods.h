@@ -61,15 +61,6 @@ struct ClusterCommResult;
 class ClusterFeature;
 struct OperationOptions;
 
-/// @brief convert ClusterComm error into arango error code
-int handleGeneralCommErrors(arangodb::ClusterCommResult const* res);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a copy of all HTTP headers to forward
-////////////////////////////////////////////////////////////////////////////////
-
-network::Headers getForwardableRequestHeaders(GeneralRequest*);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a list of attributes have the same values in two vpack
 /// documents
