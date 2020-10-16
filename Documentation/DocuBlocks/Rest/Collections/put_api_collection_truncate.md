@@ -18,8 +18,8 @@ The name of the collection.
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{waitForSync,boolean,optional,}
-If *true* then the data is synchronized to disk before returning from a
-document create, update, replace or removal operation (default: *false*)
+If *true* then the data is synchronized to disk before returning from the
+truncate operation (default: *false*)
 
 @RESTQUERYPARAM{compact,boolean,optional,}
 If *true* (default) then the storage engine is told to start a compaction
