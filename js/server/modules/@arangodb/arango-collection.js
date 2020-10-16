@@ -97,28 +97,6 @@ ArangoCollection.prototype.toArray = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionTruncate
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.truncate = function (options) {
-  if (typeof options === 'boolean') {
-    options = { waitForSync: options || false };
-  } else {
-    options = options || {};
-  }
-  if (!options.hasOwnProperty('compact')) {
-    options.compact = true;
-  }
-  var cluster = require('@arangodb/cluster');
-  if (cluster.isCoordinator()) {
-    if (this.status() === ArangoCollection.STATUS_UNLOADED) {
-      this.load();
-    }
-  }
-  return this.TRUNCATE(options.waitForSync, options.compact);
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief finds an index of a collection
 // /
 // / @FUN{@FA{collection}.index(@FA{index-id})}
