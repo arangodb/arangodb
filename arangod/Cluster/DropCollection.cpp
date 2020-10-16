@@ -25,7 +25,7 @@
 #include "DropCollection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
@@ -100,7 +100,7 @@ bool DropCollection::first() {
         std::stringstream error;
 
         error << "action " << _description << " failed with exception " << e.what();
-        LOG_TOPIC("9dbd8", ERR, Logger::MAINTENANCE) << error.str();
+        LOG_TOPIC("761d2", ERR, Logger::MAINTENANCE) << error.str();
         _result.reset(e.code(), error.str());
 
         return false;
