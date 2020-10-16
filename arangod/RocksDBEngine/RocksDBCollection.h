@@ -132,6 +132,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
+  bool hasDocuments() override;
+
   void adjustNumberDocuments(transaction::Methods&, int64_t) override;
 
  protected:

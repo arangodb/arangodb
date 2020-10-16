@@ -64,14 +64,8 @@ ClusterCollection::ClusterCollection(LogicalCollection& collection, ClusterEngin
       _engineType(engineType),
       _info(info),
       _selectivityEstimates(collection) {
-  if (_engineType == ClusterEngineType::RocksDBEngine) {
-    VPackSlice s = info.get("isVolatile");
-    if (s.isBoolean() && s.getBoolean()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "volatile collections are unsupported in the RocksDB engine");
-    }
-  } else if (_engineType != ClusterEngineType::MockEngine) {
+  if (_engineType != ClusterEngineType::RocksDBEngine &&
+      _engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
   }
