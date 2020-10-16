@@ -453,7 +453,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           est->clearInRecovery(_currentSequence);
         }
       }
-      // TODO buffer truncate for revision tree
+      coll->bufferTruncate(_currentSequence);
     }
 
     return rocksdb::Status();  // make WAL iterator happy

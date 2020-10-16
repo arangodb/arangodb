@@ -426,7 +426,16 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
           LOG_TOPIC("ff234", WARN, Logger::ENGINES)
               << "writing revision tree failed";
           return res.reset(rocksutils::convertStatus(s));
+        } else {
+          LOG_TOPIC("92a08", TRACE, Logger::ENGINES)
+              << "[" << this << "] serialized revision tree for "
+              << "collection with objectId '" << rcoll->objectId() << "' "
+              << "through sequence number " << seq;
         }
+      } else {
+        LOG_TOPIC("92b07", TRACE, Logger::ENGINES)
+            << "[" << this << "] skipping serialization of revision tree for "
+            << "collection with objectId '" << rcoll->objectId() << "'";
       }
     } else {
       output.clear();
@@ -436,13 +445,21 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
       TRI_ASSERT(output.empty());
       key.constructRevisionTreeValue(rcoll->objectId());
       rocksdb::Status s = batch.Delete(cf, key.string());
-      if (!s.ok() && !s.IsNotFound()) {
+      if (s.ok()) {
+        LOG_TOPIC("92a17", TRACE, Logger::ENGINES)
+            << "[" << this << "] deleted revision tree for "
+            << "collection with objectId '" << rcoll->objectId() << "', as it "
+            << "is not configured to sync by revision";
+      } else if (!s.IsNotFound()) {
         LOG_TOPIC("ff235", WARN, Logger::ENGINES)
             << "deleting revision tree failed";
         return res.reset(rocksutils::convertStatus(s));
       }
     }
   } else {
+    LOG_TOPIC("92ba9", TRACE, Logger::ENGINES)
+        << "[" << this << "] no need to serialize revision tree for "
+        << "collection with objectId '" << rcoll->objectId() << "'";
     rocksdb::SequenceNumber seq = rcoll->lastSerializedRevisionTree(maxCommitSeq);
     appliedSeq = std::min(appliedSeq, seq);
   }
@@ -541,8 +558,8 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
 
       auto est = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(estimateInput);
       LOG_TOPIC("63f3b", DEBUG, Logger::ENGINES)
-          << "[" << this << "] found index estimator for objectId '" +
-          << idx->objectId() << "' committed seqNr '" << est->appliedSeq() +
+          << "[" << this << "] found index estimator for objectId '"
+          << idx->objectId() << "' committed seqNr '" << est->appliedSeq()
           << "' with estimate " << est->computeEstimate();
 
       idx->setEstimator(std::move(est));
@@ -558,6 +575,10 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
     key.constructRevisionTreeValue(rcoll->objectId());
     s = db->Get(ro, cf, key.string(), &value);
     if (!s.ok() && !s.IsNotFound()) {
+      LOG_TOPIC("92caa", TRACE, Logger::ENGINES)
+          << "[" << this << "] error while recovering revision tree for "
+          << "collection with objectId '" << rcoll->objectId()
+          << "': " << rocksutils::convertStatus(s).errorMessage();
       return rocksutils::convertStatus(s);
     } else if (s.IsNotFound()) {
       LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
@@ -579,6 +600,10 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
         // seq anyway, so take the max
         rocksdb::SequenceNumber useSeq = std::max(globalSeq, seq);
         rcoll->setRevisionTree(std::move(tree), useSeq);
+        LOG_TOPIC("92cab", TRACE, Logger::ENGINES)
+            << "[" << this << "] recovered revision tree for "
+            << "collection with objectId '" << rcoll->objectId() << "', "
+            << "valid through " << useSeq;
       } else {
         LOG_TOPIC("dcd99", ERR, Logger::ENGINES)
             << "unsupported revision tree format in collection "
@@ -590,6 +615,11 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
         }
       }
     }
+  } else {
+    LOG_TOPIC("92ca9", TRACE, Logger::ENGINES)
+        << "[" << this << "] no need to recover revision tree for "
+        << "collection with objectId '" << rcoll->objectId() << "', "
+        << "it is not configured to sync by revision";
   }
 
   return Result();
