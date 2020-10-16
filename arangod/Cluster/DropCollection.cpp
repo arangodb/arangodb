@@ -94,11 +94,22 @@ bool DropCollection::first() {
 
         return false;
       }
+    } catch (basics::Exception const& e) {
+      if (e.code() != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+        // any error but database not found will be reported properly
+        std::stringstream error;
 
+        error << "action " << _description << " failed with exception " << e.what();
+        LOG_TOPIC("9dbd8", ERR, Logger::MAINTENANCE) << error.str();
+        _result.reset(e.code(), error.str());
+
+        return false;
+      }
+      // TRI_ERROR_ARANGO_DATABASE_NOT_FOUND will fallthrough here, intentionally
     } catch (std::exception const& e) {
       std::stringstream error;
 
-      error << " action " << _description << " failed with exception " << e.what();
+      error << "action " << _description << " failed with exception " << e.what();
       LOG_TOPIC("9dbd8", ERR, Logger::MAINTENANCE) << error.str();
       _result.reset(TRI_ERROR_INTERNAL, error.str());
 
