@@ -190,7 +190,7 @@ rocksdb::SequenceNumber RocksDBMetadata::committableSeq(rocksdb::SequenceNumber 
     auto it = _blockersBySeq.begin();
     committable = std::min(it->first, maxCommitSeq);
   }
-  LOG_TOPIC("1587c", TRACE, Logger::ENGINES)
+  LOG_TOPIC("1587d", TRACE, Logger::ENGINES)
       << "[" << this << "] committableSeq determined to be " << committable;
   return committable;
 }
@@ -238,7 +238,7 @@ void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
   TRI_ASSERT(seq > _count._committedSeq);
   std::lock_guard<std::mutex> guard(_bufferLock);
   _bufferedAdjs.try_emplace(seq, Adjustment{revId, adj});
-  LOG_TOPIC("1587d", TRACE, Logger::ENGINES)
+  LOG_TOPIC("1587e", TRACE, Logger::ENGINES)
       << "[" << this << "] buffered adjustment (" << seq << ", " << adj << ", "
       << revId << ")";
 
@@ -280,7 +280,7 @@ void RocksDBMetadata::adjustNumberDocumentsInRecovery(rocksdb::SequenceNumber se
       _bufferedAdjs.erase(old);
     }
   }
-  LOG_TOPIC("1587e", TRACE, Logger::ENGINES)
+  LOG_TOPIC("1587f", TRACE, Logger::ENGINES)
       << "[" << this << "] buffered adjustment (" << seq << ", " << adj << ", "
       << revId << ") in recovery";
 
