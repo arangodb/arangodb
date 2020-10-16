@@ -166,7 +166,7 @@ static std::string ExtractIdString(v8::Isolate* isolate, v8::Handle<v8::Value> c
 }
 
 static void getOperationOptionsFromObject(v8::Isolate* isolate,
-                                          OperationOptions &options,
+                                          OperationOptions& options,
                                           v8::Handle<v8::Object>& optionsObject,
                                           bool getUpdateFlags = false) {
   auto context = TRI_IGETC;
