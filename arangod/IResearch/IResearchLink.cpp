@@ -58,11 +58,6 @@ using namespace std::literals;
 
 namespace {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the storage format used with IResearch writers
-////////////////////////////////////////////////////////////////////////////////
-const irs::string_ref IRESEARCH_STORE_FORMAT("1_3simd");
-
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
@@ -1053,11 +1048,11 @@ Result IResearchLink::initDataStore(
   auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
   auto& flushFeature = server.getFeature<FlushFeature>();
 
-  auto format = irs::formats::get(IRESEARCH_STORE_FORMAT);
+  auto format = irs::formats::get(LATEST_FORMAT);
 
   if (!format) {
     return {TRI_ERROR_INTERNAL,
-            "failed to get data store codec '"s + IRESEARCH_STORE_FORMAT.c_str() +
+            "failed to get data store codec '"s + LATEST_FORMAT.data() +
                 "' while initializing link '" + std::to_string(_id.id()) + "'"};
   }
 

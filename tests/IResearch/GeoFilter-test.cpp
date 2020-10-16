@@ -22,21 +22,26 @@
 
 #include "gtest/gtest.h"
 
+#include <set>
+
 #include "s2/s2point_region.h"
 #include "s2/s2polygon.h"
 
-#include "index/index_reader.hpp"
+#include "index/directory_reader.hpp"
+#include "index/index_writer.hpp"
+#include "store/memory_directory.hpp"
 
 #include "IResearch/GeoFilter.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchFields.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
-extern const char* ARGV0;  // defined in main.cpp
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::iresearch;
+using namespace arangodb::tests;
 
 TEST(GeoFilterTest, options) {
   S2RegionTermIndexer::Options const s2opts;
@@ -147,228 +152,123 @@ TEST(GeoFilterTest, boost) {
   }
 }
 
-//#include "tests_shared.hpp"
-//
-//#include "rapidjson/document.h"
-//#include "s2/s2latlng.h"
-//#include "s2/s2text_format.h"
-//#include <s2/s2earth.h>
-//#include <s2/s2cap.h>
-//
-//#include "index/doc_generator.hpp"
-//#include "filter_test_case_base.hpp"
-//
-//#include "analysis/geo_token_stream.hpp"
-//#include "search/geo_filter.hpp"
-//
-//NS_LOCAL
-//
-//struct geo_point_field final : tests::field_base {
-//  virtual irs::token_stream& get_tokens() const override {
-//    stream.reset(point);
-//    return stream;
-//  }
-//
-//  virtual bool write(irs::data_output& out) const override {
-//    const auto str = s2textformat::ToString(point);
-//    irs::write_string(out, str);
-//    return true;
-//  }
-//
-//  mutable irs::analysis::geo_token_stream stream{{}, ""};
-//  S2Point point;
-//};
-//
-//struct geo_region_field final : tests::field_base {
-//  virtual irs::token_stream& get_tokens() const override {
-//    stream.reset(*region);
-//    return stream;
-//  }
-//
-//  virtual bool write(irs::data_output&) const override {
-//    return false;
-//  }
-//
-//  mutable irs::analysis::geo_token_stream stream{{}, ""};
-//  std::unique_ptr<S2Region> region;
-//};
-//
-//class geo_terms_filter_test_case : public tests::filter_test_case_base { };
-//
-//TEST_P(geo_terms_filter_test_case, test_region) {
-//  // add segment
-//  double_t lnglat[2];
-//  double_t* coord = lnglat;
-//
-//  tests::json_doc_generator gen(
-//    resource("simple_sequential_geo.json"),
-//    [&](tests::document& doc,
-//       const std::string& name,
-//       const tests::json_doc_generator::json_value& data) {
-//     if (name == "type") {
-//       coord = lnglat;
-//       ASSERT_TRUE(data.is_string());
-//       ASSERT_EQ(data.str, irs::string_ref("Point"));
-//     } else if (name == "coordinates") {
-//       ASSERT_TRUE(data.is_number());
-//       *coord++ = data.dbl;
-//     } else if (name == "name") {
-//       auto geo_field = std::make_shared<::geo_point_field>();
-//       geo_field->name("point");
-//       geo_field->point = S2Point(S2LatLng::FromDegrees(lnglat[1], lnglat[0]));
-//       auto name_field = std::make_shared<tests::templates::string_field>("name");
-//       name_field->value(data.str);
-//
-//       doc.insert(geo_field, true, true);
-//       doc.insert(name_field, true, true);
-//     }
-//  });
-//
-//  add_segment(gen);
-//
-//  auto reader = open_reader();
-//  ASSERT_EQ(1, reader.size());
-//  auto& segment = reader[0];
-//  auto* column = segment.column_reader("name");
-//  ASSERT_NE(nullptr, column);
-//  auto values = column->values();
-//
-//  const double_t distance = 0.000005;
-//  const S1ChordAngle radius(S1Angle::Radians(S2Earth::MetersToRadians(distance)));
-//
-//  gen.reset();
-//  irs::doc_id_t doc_id = irs::doc_limits::min();
-//  while (auto* doc = gen.next()) {
-//    auto& geo_field = static_cast<const geo_point_field&>(doc->indexed.front());
-//    auto& name_field = static_cast<const tests::templates::string_field&>(doc->indexed.back());
-//
-//    irs::by_geo_terms q;
-//    *q.mutable_field() = "point";
-//    q.mutable_options()->reset(irs::GeoFilterType::INTERSECTS, S2Cap(geo_field.point, radius));
-//
-//    auto prepared = q.prepare(reader);
-//    ASSERT_NE(nullptr, prepared);
-//    auto docs = prepared->execute(segment);
-//    ASSERT_NE(nullptr, docs);
-//    ASSERT_TRUE(docs->next());
-//    ASSERT_EQ(doc_id, docs->value());
-//    ASSERT_FALSE(docs->next());
-//    ASSERT_TRUE(irs::doc_limits::eof(docs->value()));
-//
-//    irs::bytes_ref value;
-//    ASSERT_TRUE(values(doc_id, value));
-//    ASSERT_EQ(name_field.value(), irs::to_string<irs::string_ref>(value.c_str()));
-//    ++doc_id;
-//  }
-//}
-//
-//TEST_P(geo_terms_filter_test_case, test_point) {
-//  // add segment
-//  double_t lnglat[2];
-//  double_t* coord = lnglat;
-//
-//  tests::json_doc_generator gen(
-//    resource("simple_sequential_geo.json"),
-//    [&](tests::document& doc,
-//       const std::string& name,
-//       const tests::json_doc_generator::json_value& data) {
-//     if (name == "type") {
-//       coord = lnglat;
-//       ASSERT_TRUE(data.is_string());
-//       ASSERT_EQ(data.str, irs::string_ref("Point"));
-//     } else if (name == "coordinates") {
-//       ASSERT_TRUE(data.is_number());
-//       *coord++ = data.dbl;
-//     } else if (name == "name") {
-//       auto geo_field = std::make_shared<::geo_point_field>();
-//       geo_field->name("point");
-//       geo_field->point = S2Point(S2LatLng::FromDegrees(lnglat[1], lnglat[0]));
-//       auto name_field = std::make_shared<tests::templates::string_field>("name");
-//       name_field->value(data.str);
-//
-//       doc.insert(geo_field, true, true);
-//       doc.insert(name_field, true, true);
-//     }
-//  });
-//
-//  add_segment(gen);
-//
-//  auto reader = open_reader();
-//  ASSERT_EQ(1, reader.size());
-//  auto& segment = reader[0];
-//  auto* column = segment.column_reader("name");
-//  ASSERT_NE(nullptr, column);
-//  auto values = column->values();
-//
-//  gen.reset();
-//  irs::doc_id_t doc_id = irs::doc_limits::min();
-//  while (auto* doc = gen.next()) {
-//    auto& geo_field = static_cast<const geo_point_field&>(doc->indexed.front());
-//    auto& name_field = static_cast<const tests::templates::string_field&>(doc->indexed.back());
-//
-//    irs::by_geo_terms q;
-//    *q.mutable_field() = "point";
-//    q.mutable_options()->mutable_options()->set_index_contains_points_only(true);
-//    q.mutable_options()->reset(geo_field.point);
-//
-//    auto prepared = q.prepare(reader);
-//    ASSERT_NE(nullptr, prepared);
-//    auto docs = prepared->execute(segment);
-//    ASSERT_NE(nullptr, docs);
-//    ASSERT_TRUE(docs->next());
-//    ASSERT_EQ(doc_id, docs->value());
-//    ASSERT_FALSE(docs->next());
-//    ASSERT_TRUE(irs::doc_limits::eof(docs->value()));
-//
-//    irs::bytes_ref value;
-//    ASSERT_TRUE(values(doc_id, value));
-//    ASSERT_EQ(name_field.value(), irs::to_string<irs::string_ref>(value.c_str()));
-//    ++doc_id;
-//  }
-//}
-//
-////#ifndef IRESEARCH_DLL
-////TEST_P(term_filter_test_case, visit) {
-////  // add segment
-////  {
-////    tests::json_doc_generator gen(
-////      resource("simple_sequential.json"),
-////      &tests::generic_json_field_factory);
-////    add_segment(gen);
-////  }
-////  tests::empty_filter_visitor visitor;
-////  std::string fld = "prefix";
-////  irs::string_ref field = irs::string_ref(fld);
-////  auto term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-////  // read segment
-////  auto index = open_reader();
-////  for (const auto& segment : index) {
-////    // get term dictionary for field
-////    const auto* reader = segment.field(field);
-////    ASSERT_TRUE(reader != nullptr);
-////
-////    irs::term_query::visit(*reader, term, visitor);
-////    ASSERT_EQ(1, visitor.prepare_calls_counter());
-////    ASSERT_EQ(1, visitor.visit_calls_counter());
-////    visitor.reset();
-////  }
-////}
-////#endif
-////
-//
-//
-//INSTANTIATE_TEST_CASE_P(
-//  geo_terms_filter_test,
-//  geo_terms_filter_test_case,
-//  ::testing::Combine(
-//    ::testing::Values(
-//      &tests::memory_directory,
-//      &tests::fs_directory,
-//      &tests::mmap_directory
-//    ),
-//    ::testing::Values("1_0")
-//  ),
-//  tests::to_string
-//);
-//
-//NS_END
+TEST(GeoFilterTest, query) {
+  auto docs = VPackParser::fromJson(R"([
+    { "name": "A", "geometry": { "type": "Point", "coordinates": [ 37.615895, 55.7039   ] } },
+    { "name": "B", "geometry": { "type": "Point", "coordinates": [ 37.615315, 55.703915 ] } },
+    { "name": "C", "geometry": { "type": "Point", "coordinates": [ 37.61509, 55.703537  ] } },
+    { "name": "D", "geometry": { "type": "Point", "coordinates": [ 37.614183, 55.703806 ] } },
+    { "name": "E", "geometry": { "type": "Point", "coordinates": [ 37.613792, 55.704405 ] } },
+    { "name": "F", "geometry": { "type": "Point", "coordinates": [ 37.614956, 55.704695 ] } },
+    { "name": "G", "geometry": { "type": "Point", "coordinates": [ 37.616297, 55.704831 ] } },
+    { "name": "H", "geometry": { "type": "Point", "coordinates": [ 37.617053, 55.70461  ] } },
+    { "name": "I", "geometry": { "type": "Point", "coordinates": [ 37.61582, 55.704459  ] } },
+    { "name": "J", "geometry": { "type": "Point", "coordinates": [ 37.614634, 55.704338 ] } },
+    { "name": "K", "geometry": { "type": "Point", "coordinates": [ 37.613121, 55.704193 ] } },
+    { "name": "L", "geometry": { "type": "Point", "coordinates": [ 37.614135, 55.703298 ] } },
+    { "name": "M", "geometry": { "type": "Point", "coordinates": [ 37.613663, 55.704002 ] } },
+    { "name": "N", "geometry": { "type": "Point", "coordinates": [ 37.616522, 55.704235 ] } },
+    { "name": "O", "geometry": { "type": "Point", "coordinates": [ 37.615508, 55.704172 ] } },
+    { "name": "P", "geometry": { "type": "Point", "coordinates": [ 37.614629, 55.704081 ] } },
+    { "name": "Q", "geometry": { "type": "Point", "coordinates": [ 37.610235, 55.709754 ] } },
+    { "name": "R", "geometry": { "type": "Point", "coordinates": [ 37.605,    55.707917 ] } },
+    { "name": "S", "geometry": { "type": "Point", "coordinates": [ 37.545776, 55.722083 ] } },
+    { "name": "T", "geometry": { "type": "Point", "coordinates": [ 37.559509, 55.715895 ] } },
+    { "name": "U", "geometry": { "type": "Point", "coordinates": [ 37.701645, 55.832144 ] } },
+    { "name": "V", "geometry": { "type": "Point", "coordinates": [ 37.73735,  55.816715 ] } },
+    { "name": "W", "geometry": { "type": "Point", "coordinates": [ 37.75589,  55.798193 ] } },
+    { "name": "X", "geometry": { "type": "Point", "coordinates": [ 37.659073, 55.843711 ] } },
+    { "name": "Y", "geometry": { "type": "Point", "coordinates": [ 37.778549, 55.823659 ] } },
+    { "name": "Z", "geometry": { "type": "Point", "coordinates": [ 37.729797, 55.853733 ] } },
+    { "name": "1", "geometry": { "type": "Point", "coordinates": [ 37.608261, 55.784682 ] } },
+    { "name": "2", "geometry": { "type": "Point", "coordinates": [ 37.525177, 55.802825 ] } }
+  ])");
+
+  irs::memory_directory dir;
+
+  // index data
+  {
+    auto codec = irs::formats::get(arangodb::iresearch::LATEST_FORMAT);
+    ASSERT_NE(nullptr, codec);
+    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+    GeoField geoField;
+    geoField.fieldName = "geometry";
+    StringField nameField;
+    nameField.fieldName = "name";
+    {
+      auto segment0 = writer->documents();
+      auto segment1 = writer->documents();
+      {
+        size_t i = 0;
+        for (auto docSlice: VPackArrayIterator(docs->slice())) {
+          geoField.shapeSlice = docSlice.get("geometry");
+          nameField.value = getStringRef(docSlice.get("name"));
+
+          auto doc = (i++ % 2 ? segment0 : segment1).insert();
+          ASSERT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(nameField));
+          ASSERT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(geoField));
+        }
+      }
+    }
+    writer->commit();
+  }
+
+  auto reader = irs::directory_reader::open(dir);
+  ASSERT_NE(nullptr, reader);
+  ASSERT_EQ(2, reader->size());
+  ASSERT_EQ(docs->slice().length(), reader->docs_count());
+  ASSERT_EQ(docs->slice().length(), reader->live_docs_count());
+
+  auto executeQuery = [&reader](irs::filter const& q) {
+    std::set<std::string> actualResults;
+
+    auto prepared = q.prepare(*reader);
+    EXPECT_NE(nullptr, prepared);
+    for (auto& segment : *reader) {
+      auto column = segment.column_reader("name");
+      EXPECT_NE(nullptr, column);
+      auto values = column->values();
+      auto it = prepared->execute(segment);
+      EXPECT_NE(nullptr, it);
+
+      while (it->next()) {
+        auto docId = it->value();
+        irs::bytes_ref value;
+        EXPECT_TRUE(values(docId, value));
+        EXPECT_FALSE(value.null());
+
+        actualResults.emplace(irs::to_string<std::string>(value.c_str()));
+      }
+    }
+
+    return actualResults;
+  };
+
+  {
+    std::set<std::string> const expected{
+      "Q", "R"
+    };
+
+    auto json = VPackParser::fromJson(R"({
+      "type": "Polygon",
+      "coordinates": [
+          [
+              [37.602682, 55.706853],
+              [37.613025, 55.706853],
+              [37.613025, 55.711906],
+              [37.602682, 55.711906],
+              [37.602682, 55.706853]
+          ]
+      ]
+    })");
+
+    GeoFilter q;
+    q.mutable_options()->type = GeoFilterType::INTERSECTS;
+    ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape).ok());
+    ASSERT_EQ(geo::ShapeContainer::Type::S2_LATLNGRECT, q.mutable_options()->shape.type());
+    *q.mutable_field() = "geometry";
+
+    ASSERT_EQ(expected, executeQuery(q));
+  }
+}

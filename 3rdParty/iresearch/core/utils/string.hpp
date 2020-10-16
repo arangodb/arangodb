@@ -169,6 +169,11 @@ class basic_string_ref {
     : data_(s.c_str()), size_(s.size()) {
   }
 
+  // Constructs a string reference object from a std::basic_string_view<Elem>$
+  constexpr basic_string_ref(const std::basic_string_view<Elem>& str) noexcept
+    : data_(str.data()), size_(str.size()) {
+  }
+
   constexpr basic_string_ref(const std::basic_string<char_type>& str, size_t size) noexcept
     : data_(str.c_str()), size_(size) {
   }
