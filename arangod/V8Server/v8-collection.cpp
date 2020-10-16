@@ -1245,7 +1245,7 @@ static void parseReplaceAndUpdateOptions(v8::Isolate* isolate,
                                          v8::FunctionCallbackInfo<v8::Value> const& args,
                                          OperationOptions& options,
                                          TRI_voc_document_operation_e operation) { 
- TRI_ASSERT(args.Length() > 2);
+  TRI_ASSERT(args.Length() > 2);
   if (args[2]->IsObject()) {
     v8::Handle<v8::Object> optionsObject = args[2].As<v8::Object>();
     getOperationOptionsFromObject(isolate, options, optionsObject,
