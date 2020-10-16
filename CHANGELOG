@@ -10,6 +10,8 @@ devel
   from a faster coordinator startup.
   Deployments relying on Foxx starting up as soon as a coordinator is integrated
   should set this option to `true`.
+  Note: ArangoDB 3.6 and 3.7 also introduced this option, but with a default
+  value of `true`. ArangoDB 3.8 changes the default to `false`.
 
 * Changed the server-side implementation of the following internal JavaScript 
   APIs to no-ops:

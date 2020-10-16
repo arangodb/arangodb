@@ -44,9 +44,12 @@ class FoxxQueuesFeature final : public application_features::ApplicationFeature 
     return _pollInterval;
   }
 
+  bool startupWaitForSelfHeal() const;
+
  private:
   double _pollInterval;
   bool _enabled;
+  bool _startupWaitForSelfHeal;
 };
 
 }  // namespace arangodb
