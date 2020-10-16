@@ -141,6 +141,14 @@ void BaseWindowExecutor::produceOutputRow(InputAqlItemRow& input,
   output.advanceRow();
 }
 
+void BaseWindowExecutor::produceInvalidOutputRow(InputAqlItemRow& input, OutputAqlItemRow& output) {
+  for (auto const& regId : _infos.getAggregatedRegisters()) {
+    AqlValue r(AqlValueHintNull{});
+    AqlValueGuard guard{r, true};
+    output.moveValueInto(/*outRegister*/ regId.first, input, guard);
+  }
+}
+
 // -------------- AccuWindowExecutor --------------
 
 AccuWindowExecutor::AccuWindowExecutor(Fetcher& fetcher, Infos& infos)
@@ -226,7 +234,6 @@ void WindowExecutor::trimBounds() {
       _currentIdx -= toRemove;
     }
     TRI_ASSERT(_currentIdx <= numPreceding || _rows.empty());
-    TRI_ASSERT(_currentIdx >= 0 || _rows.empty());
 
   } else {
     TRI_ASSERT(_rows.size() == _windowRows.size());
@@ -235,8 +242,8 @@ void WindowExecutor::trimBounds() {
     WindowBounds::Row& row =
         _currentIdx == _rows.size() ? _windowRows.back() : _windowRows[_currentIdx];
     for (size_t i = 0; i < _windowRows.size(); i++) {
-      if (row.lowBound < _windowRows[i].value) {
-        TRI_ASSERT(row.highBound >= _windowRows[i].value);
+      if (row.lowBound < _windowRows[i].value || !row.valid) {
+        TRI_ASSERT(row.highBound >= _windowRows[i].value || !row.valid);
         _rows.erase(_rows.begin() + decltype(_rows)::difference_type(i));
         _windowRows.erase(_windowRows.begin() + decltype(_windowRows)::difference_type(i));
         i--;
@@ -300,23 +307,28 @@ std::tuple<ExecutorState, NoStats, AqlCall> WindowExecutor::produceRows(
 
     while (!output.isFull() && _currentIdx < _rows.size()) {
       auto const& row = _windowRows[_currentIdx];
-      // bit of a shitty aggregation, i should probably not always be 0
-      for (size_t i = 0; i < _windowRows.size(); i++) {
-        if (row.lowBound <= _windowRows[i].value) {
-          if (_windowRows[i].value > row.highBound) {
-            break;  // do not consider higher values
+      
+      if (row.valid) {
+        // bit of a shitty aggregation, i should probably not always be 0
+        for (size_t i = 0; i < _windowRows.size(); i++) {
+          if (row.valid && row.lowBound <= _windowRows[i].value) {
+            if (_windowRows[i].value > row.highBound) {
+              break;  // do not consider higher values
+            }
+            applyAggregators(_rows[size_t(i)]);
           }
-          applyAggregators(_rows[size_t(i)]);
         }
+        produceOutputRow(_rows[_currentIdx], output, /*reset*/ true);
+      } else {
+        produceInvalidOutputRow(_rows[_currentIdx], output);
       }
-      produceOutputRow(_rows[_currentIdx], output, /*reset*/ true);
+      
       if (++_currentIdx == _rows.size()) {
         break;
       }
     }
 
     trimBounds();
-    TRI_ASSERT(_currentIdx >= 0 || _rows.empty());
   }
 
   // Just fetch everything from above, allow overfetching
@@ -334,7 +346,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> WindowExecutor::produceRows(
  */
 std::tuple<ExecutorState, NoStats, size_t, AqlCall> WindowExecutor::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
-  TRI_ASSERT(_currentIdx >= 0 && size_t(_currentIdx) < _rows.size());
+  TRI_ASSERT(_currentIdx < _rows.size());
 
   std::ignore = consumeInputRange(inputRange);
 

@@ -648,8 +648,8 @@ void CollectNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 void CollectNode::setAggregateVariables(
-    std::vector<AggregateVarInfo> const& aggregateVariables) {
-  _aggregateVariables = aggregateVariables;
+    std::vector<AggregateVarInfo>&& aggregateVariables) {
+  _aggregateVariables = std::move(aggregateVariables);
 }
 
 /// @brief estimateCost

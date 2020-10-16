@@ -405,6 +405,9 @@ ExecutionNode* WindowNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 /// @brief getVariablesUsedHere, modifying the set in-place
 void WindowNode::getVariablesUsedHere(VarSet& vars) const {
+  if (_rangeVariable) {
+    vars.emplace(_rangeVariable);
+  }
   for (auto const& p : _aggregateVariables) {
     vars.emplace(p.inVar);
   }

@@ -117,6 +117,7 @@ class BaseWindowExecutor {
 
   void applyAggregators(InputAqlItemRow& input);
   void produceOutputRow(InputAqlItemRow& input, OutputAqlItemRow& output, bool reset);
+  void produceInvalidOutputRow(InputAqlItemRow& input, OutputAqlItemRow& output);
 
  protected:
   Infos const& _infos;

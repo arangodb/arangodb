@@ -4437,7 +4437,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
             collectNode->aggregationMethod(CollectOptions::CollectMethod::SORTED);
             collectNode->count(false);
-            collectNode->setAggregateVariables(aggregateVariables);
+            collectNode->setAggregateVariables(std::move(aggregateVariables));
             collectNode->clearOutVariable();
 
             removeGatherNodeSort = true;
@@ -4485,18 +4485,16 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
             // coordinator to the DB server(s), and leave an aggregate COLLECT
             // node on the coordinator for total aggregation
 
-            std::vector<AggregateVarInfo> aggregateVariables;
-            if (!collectNode->aggregateVariables().empty()) {
-              for (auto const& it : collectNode->aggregateVariables()) {
-                std::string func = Aggregator::pushToDBServerAs(it.type);
-                if (func.empty()) {
-                  eligible = false;
-                  break;
-                }
-                // eligible!
-                auto outVariable = plan->getAst()->variables()->createTemporaryVariable();
-                aggregateVariables.emplace_back(AggregateVarInfo{outVariable, it.inVar, func});
+            std::vector<AggregateVarInfo> dbServerAggVars;
+            for (auto const& it : collectNode->aggregateVariables()) {
+              std::string func = Aggregator::pushToDBServerAs(it.type);
+              if (func.empty()) {
+                eligible = false;
+                break;
               }
+              // eligible!
+              auto outVariable = plan->getAst()->variables()->createTemporaryVariable();
+              dbServerAggVars.emplace_back(AggregateVarInfo{outVariable, it.inVar, func});
             }
 
             if (!eligible) {
@@ -4523,7 +4521,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
             auto dbCollectNode =
                 new CollectNode(plan.get(), plan->nextId(), collectNode->getOptions(),
-                                outVars, aggregateVariables, nullptr,
+                                outVars, dbServerAggVars, nullptr,
                                 outVariable, std::vector<Variable const*>(),
                                 collectNode->variableMap(), collectNode->count(), false);
 
@@ -4544,19 +4542,19 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
             }
             collectNode->groupVariables(copy);
 
-            if (collectNode->count()) {
-              std::vector<AggregateVarInfo> aggregateVariables;
-              aggregateVariables.emplace_back(AggregateVarInfo{collectNode->outVariable(), outVariable, "SUM"});
+            if (collectNode->count()) { // just sum the counts of the DBServers
+              std::vector<AggregateVarInfo> aggVars;
+              aggVars.emplace_back(AggregateVarInfo{collectNode->outVariable(), outVariable, "SUM"});
 
               collectNode->count(false);
-              collectNode->setAggregateVariables(aggregateVariables);
+              collectNode->setAggregateVariables(std::move(aggVars));
               collectNode->clearOutVariable();
             } else {
-              size_t i = 0;
+              size_t j = 0;
               for (AggregateVarInfo& it : collectNode->aggregateVariables()) {
-                it.inVar = aggregateVariables[i].outVar;
+                it.inVar = dbServerAggVars[j].outVar;
                 it.type = Aggregator::runOnCoordinatorAs(it.type);
-                ++i;
+                ++j;
               }
             }
 
@@ -4668,6 +4666,7 @@ void arangodb::aql::distributeFilterCalcToClusterRule(Optimizer* opt,
         case EN::SHORTEST_PATH:
         case EN::SUBQUERY:
         case EN::ENUMERATE_IRESEARCH_VIEW:
+        case EN::WINDOW:
           // do break
           stopSearching = true;
           break;
@@ -4803,6 +4802,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::SHORTEST_PATH:
         case EN::REMOTESINGLE:
         case EN::ENUMERATE_IRESEARCH_VIEW:
+        case EN::WINDOW:
 
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -4836,7 +4836,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::SUBQUERY_START:
         case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:
-        case EN::ASYNC: // should be added much later
+        case EN::ASYNC:
         case EN::MUTEX:
         case EN::MAX_NODE_TYPE_VALUE: {
           // should not reach this point
