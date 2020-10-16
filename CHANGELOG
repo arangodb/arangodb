@@ -21,6 +21,14 @@ devel
   All the above APIs were intended to be used for internal means only. These
   APIs are deprecated now and will be removed in ArangoDB v3.9.
 
+* Added the following metrics for synchronous replication in the cluster:
+
+  - `arangodb_refused_followers_count`: Number of times a shard leader received 
+    a refusal answer from a follower during synchronous replication.
+  - `arangodb_sync_wrong_checksum`: Number of times a mismatching shard 
+    checksum was detected when syncing shards. In case this happens, a resync
+    will be triggered for the shard.
+
 * Don't respond with misleading error in smart vertex collections.
 
   When inserting a document with a non-conforming key pattern into
@@ -43,8 +51,17 @@ devel
 * Added configuration option `--query.tracking-slow-queries` to decide whether
   slow queries are tracked extra.
 
-* Added configuration option `--query.tracking-with-querystring` to decide whether
-  the query string is shown.
+* Added configuration option `--query.tracking-with-querystring` to decide
+  whether the query string is shown in the slow query log and the list of 
+  currently running queries. The option is true by default. 
+  When turned off, querystrings in the slow query log and the list of currently
+  running queries are just shown as "<hidden>".
+
+* Added configuration option `--query.tracking-with-datasources` to toggle
+  whether the names of data sources used by queries are shown in the slow query 
+  log and the list of currently running queries. The option is false by default. 
+  When turned on, the names of data sources used by the query will be shown in
+  the slow query log and the list of currently running queries.
 
 * Fix an issue in arangoimport improperly handling filenames with less than 3
   characters. The specified input filename was checked for a potential ".gz"
