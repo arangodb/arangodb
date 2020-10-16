@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "FoxxQueuesFeature.h"
+#include "FoxxFeature.h"
 
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -31,7 +31,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-FoxxQueuesFeature::FoxxQueuesFeature(application_features::ApplicationServer& server)
+FoxxFeature::FoxxFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "FoxxQueues"),
       _pollInterval(1.0),
       _enabled(true),
@@ -40,7 +40,7 @@ FoxxQueuesFeature::FoxxQueuesFeature(application_features::ApplicationServer& se
   startsAfter<ServerFeaturePhase>();
 }
 
-void FoxxQueuesFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void FoxxFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("foxx", "Configure Foxx");
 
   options->addOldOption("server.foxx-queues", "foxx.queues");
@@ -73,11 +73,11 @@ void FoxxQueuesFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                      .setIntroducedIn(30705);
 }
 
-bool FoxxQueuesFeature::startupWaitForSelfHeal() const {
+bool FoxxFeature::startupWaitForSelfHeal() const {
   return _startupWaitForSelfHeal;
 }
 
-void FoxxQueuesFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void FoxxFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // use a minimum for the interval
   if (_pollInterval < 0.1) {
     _pollInterval = 0.1;
