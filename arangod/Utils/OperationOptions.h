@@ -59,8 +59,8 @@ struct OperationOptions {
         returnOld(false),
         returnNew(false),
         isRestore(false),
-        truncateCompact(true),
-        ignoreUniqueConstraints(false) {}
+        ignoreUniqueConstraints(false),
+        truncateCompact(true) {}
 
 // The following code does not work with VisualStudi 2019's `cl`
 // Lets keep it for debugging on linux.
