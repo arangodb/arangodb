@@ -3,6 +3,8 @@ const { expect } = require("chai");
 const Auth = require("@arangodb/foxx/auth");
 const crypto = require("@arangodb/crypto");
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 describe("@arangodb/foxx/auth", () => {
   it("uses sha256 by default", () => {
     const auth = Auth();

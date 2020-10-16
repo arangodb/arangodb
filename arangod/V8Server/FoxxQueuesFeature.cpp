@@ -34,7 +34,7 @@ FoxxQueuesFeature::FoxxQueuesFeature(application_features::ApplicationServer& se
     : application_features::ApplicationFeature(server, "FoxxQueues"),
       _pollInterval(1.0),
       _enabled(true),
-      _startupWaitForSelfHeal(false) {
+      _startupWaitForSelfHeal(true) {
   setOptional(true);
   startsAfter<ServerFeaturePhase>();
 }
@@ -69,7 +69,7 @@ void FoxxQueuesFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                      arangodb::options::Flags::DefaultNoComponents,
                      arangodb::options::Flags::OnCoordinator,
                      arangodb::options::Flags::OnSingle))
-                     .setIntroducedIn(30704);
+                     .setIntroducedIn(30705);
 }
 
 bool FoxxQueuesFeature::startupWaitForSelfHeal() const {

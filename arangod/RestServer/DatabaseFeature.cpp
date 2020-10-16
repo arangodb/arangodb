@@ -157,27 +157,43 @@ void DatabaseManagerThread::run() {
 
           TRI_ASSERT(!database->isSystem());
 
-          // remove apps directory for database
-          auto appPath = dealer.appPath();
+          {
+            // remove apps directory for database
+            std::string const& appPath = dealer.appPath();
+            if (database->isOwnAppsDirectory() && !appPath.empty()) {
+              // but only if nobody re-created a database with the same name!
+              MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
+              
+              TRI_vocbase_t* newInstance = databaseFeature.lookupDatabase(database->name());
+              TRI_ASSERT(newInstance == nullptr || newInstance->id() != database->id());
 
-          if (database->isOwnAppsDirectory() && !appPath.empty()) {
-            std::string path = arangodb::basics::FileUtils::buildFilename(
-                arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
-                database->name());
+              if (newInstance == nullptr) {
+                std::string path = arangodb::basics::FileUtils::buildFilename(
+                    arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
+                    database->name());
 
-            if (TRI_IsDirectory(path.c_str())) {
-              LOG_TOPIC("041b1", TRACE, arangodb::Logger::FIXME)
-                  << "removing app directory '" << path << "' of database '"
-                  << database->name() << "'";
+                if (TRI_IsDirectory(path.c_str())) {
+                  LOG_TOPIC("041b1", TRACE, arangodb::Logger::FIXME)
+                    << "removing app directory '" << path << "' of database '"
+                    << database->name() << "'";
 
-              TRI_RemoveDirectory(path.c_str());
+                  TRI_RemoveDirectory(path.c_str());
+                }
+              }
             }
           }
 
+          // destroy all items in the QueryRegistry for this database
           auto queryRegistry = QueryRegistryFeature::registry();
           if (queryRegistry != nullptr) {
-            // destroy all items in the QueryRegistry for this database
-            queryRegistry->destroy(database->name());
+            // but only if nobody re-created a database with the same name!
+            MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
+            TRI_vocbase_t* newInstance = databaseFeature.lookupDatabase(database->name());
+            TRI_ASSERT(newInstance == nullptr || newInstance->id() != database->id());
+
+            if (newInstance == nullptr) {
+              queryRegistry->destroy(database->name());
+            }
           }
 
           try {
@@ -769,7 +785,7 @@ int DatabaseFeature::dropDatabase(std::string const& name,
 
         if (!result.ok()) {
           res = result.errorNumber();
-          LOG_TOPIC("c44cb", FATAL, arangodb::Logger::FIXME)
+          LOG_TOPIC("c44cb", ERR, arangodb::Logger::FIXME)
               << "failed to drop DataSource '" << dataSource.name()
               << "' while dropping database '" << vocbase->name()
               << "': " << result.errorNumber() << " " << result.errorMessage();
@@ -814,6 +830,11 @@ int DatabaseFeature::dropDatabase(std::string const& name,
 
     if (server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
       server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>().invalidate(*vocbase);
+    }
+          
+    auto queryRegistry = QueryRegistryFeature::registry();
+    if (queryRegistry != nullptr) {
+      queryRegistry->destroy(vocbase->name());
     }
 
     res = engine->prepareDropDatabase(*vocbase).errorNumber();

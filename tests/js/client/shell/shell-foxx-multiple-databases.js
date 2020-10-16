@@ -32,6 +32,8 @@ const FoxxManager = require('@arangodb/foxx/manager');
 const basePath1 = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'perdb1');
 const basePath2 = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'perdb2');
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 function multipleDatabasesSuite () {
   'use strict';
   const mount1 = '/test1';
@@ -92,7 +94,7 @@ function multipleDatabasesSuite () {
 
       FoxxManager.install(basePath1, mount1);
       try {
-        FoxxManager.install(basePath2, mount2);
+        FoxxManager.install(basePath2, mount2); // issue
         try {
           let res = arango.GET(`/_db/UnitTestsFoxx/${mount1}/echo`);
           assertEqual("UnitTestsFoxx", res.db);
@@ -108,7 +110,7 @@ function multipleDatabasesSuite () {
           assertEqual(404, res.errorNum);
           
           res = arango.GET(`/_db/UnitTestsFoxx/${mount2}/echo`);
-          assertTrue(res.echo);
+          assertTrue(res.echo); // issue
           
           res = arango.GET(`/_db/UnitTestsFoxx/${mount2}/echo-piff`);
           assertTrue(res.piff);
