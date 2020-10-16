@@ -1734,7 +1734,7 @@ Future<OperationResult> transaction::Methods::truncateAsync(std::string const& c
 #ifndef USE_ENTERPRISE
 Future<OperationResult> transaction::Methods::truncateCoordinator(std::string const& collectionName,
                                                                   OperationOptions& options) {
-  return arangodb::truncateCollectionOnCoordinator(*this, collectionName);
+  return arangodb::truncateCollectionOnCoordinator(*this, collectionName, options);
 }
 #endif
 
