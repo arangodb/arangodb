@@ -803,7 +803,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
 
@@ -998,15 +998,17 @@ function BaseTestConfig () {
             incremental: false
           });
           var c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
+          let docs = [];
           for (var i = 0; i < 100; ++i) {
-            c.save(cn + '/test' + i, cn + '/test' + (i % 10), {
+            docs.push(cn + '/test' + i, cn + '/test' + (i % 10), {
               _key: 'test' + i,
               'value1': i,
               'value2': 'test' + i
             });
           }
+          c.save(docs);
         },
         function (state) {
           assertEqual(state.count, collectionCount(cn));
@@ -1060,8 +1062,9 @@ function BaseTestConfig () {
           var c = db._collection(cn);
           c.truncate(); // but empty it
 
+          let docs = [];
           for (var i = 0; i < 200; ++i) {
-            c.save(
+            docs.push(
               cn + '/test' + (i + 1),
               cn + '/test' + (i % 11), {
                 _key: 'test' + i,
@@ -1070,6 +1073,7 @@ function BaseTestConfig () {
               }
             );
           }
+          c.save(docs);
         },
         function (state) {
           assertEqual(state.count, collectionCount(cn));
@@ -1511,7 +1515,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
 
@@ -1562,7 +1566,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
 
@@ -1612,7 +1616,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
 
@@ -1661,7 +1665,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
 
@@ -1712,7 +1716,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
           for (let i = 0; i < 5000; ++i) {
@@ -1764,7 +1768,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
           for (let i = 0; i < 5000; ++i) {
