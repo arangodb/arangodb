@@ -1861,6 +1861,7 @@ function arangoErrorToHttpCode (num) {
     case arangodb.ERROR_ARANGO_COLLECTION_NOT_LOADED:
     case arangodb.ERROR_ARANGO_DOCUMENT_REV_BAD:
       return exports.HTTP_BAD;
+    case arangodb.ERROR_HTTP_SERVICE_UNAVAILABLE:
     case arangodb.ERROR_CLUSTER_BACKEND_UNAVAILABLE:
     case arangodb.ERROR_CLUSTER_SHARD_LEADER_RESIGNED:
       return exports.HTTP_SERVICE_UNAVAILABLE;

@@ -206,6 +206,16 @@ function selfHealAll (skipReloadRouting) {
       } catch (e) {
         console.debugStack(e);
       }
+      if (global.KEYSPACE_EXISTS('FoxxFirstSelfHeal')) {
+        // drop the keyspace that indicates we still need to run an initial
+        // self-heal in this database
+        try {
+          global.KEYSPACE_DROP('FoxxFirstSelfHeal');
+        } catch (err) {
+          // potential races can be ignored here, as long as the key space
+          // is gone in the end
+        }
+      }
     }
   } finally {
     db._useDatabase(dbName);
@@ -354,7 +364,7 @@ function startup () {
     // but as all queries can run locally, it should always make progress
     selfHealAll();
   } else {
-    let offset = 3; // start selfheal in x seconds
+    let offset = 1; // start selfheal in x seconds
     const period = 5 * 60; // repeat sealfheal all x seconds
     if (global.FOXX_STARTUP_WAIT_FOR_SELF_HEAL) {
       // Enforce a selfheal now.
@@ -362,11 +372,20 @@ function startup () {
       // we just did a selfheal, can delay the first automatic one
       offset = period;
     } else {
-      // Delay the selfHeal
-      global.KEYSPACE_CREATE('FoxxFirstSelfHeal', 1, true);
+      // for all databases that exist at startup, create a per-database 
+      // keyspace that indicates we still need to run the initial self-heal in it
+      let dbName = db._name();
+      try {
+        db._databases().forEach(function(database) {
+          db._useDatabase(dbName);
+          global.KEYSPACE_CREATE('FoxxFirstSelfHeal', 1, true);
+        });
+      } finally {
+        db._useDatabase(dbName);
+      }
     }
     
-    // in a cluster, move the initial self-heal job to a backup thread,
+    // in a cluster, move the initial self-heal job to a background thread,
     // so that we do not block on startup
     try {
       require('@arangodb/tasks').register({
@@ -377,9 +396,6 @@ function startup () {
         command: function () {
           const FoxxManager = require('@arangodb/foxx/manager');
           FoxxManager.healAll();
-          if (global.KEYSPACE_EXISTS('FoxxFirstSelfHeal')) {
-            global.KEYSPACE_DROP('FoxxFirstSelfHeal');
-          }
         }
       });
     } catch (ee) {
@@ -529,10 +545,14 @@ function ensureFoxxInitialized (internalOnly) {
   }
 
   if (!GLOBAL_SERVICE_MAP.has(db._name())) {
-//TODO we can also add a key for every DB we have healed here.
     if (global.KEYSPACE_EXISTS('FoxxFirstSelfHeal')) {
-      triggerSelfHeal();
+      // still waiting for initial selfHeal to execute
+      throw new ArangoError({
+        errorNum: errors.ERROR_HTTP_SERVICE_UNAVAILABLE.code,
+        errorMessage: "waiting for initialization of Foxx services in this database"
+      });
     }
+
     initLocalServiceMap();
   }
 }

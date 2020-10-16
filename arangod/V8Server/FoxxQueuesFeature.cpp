@@ -34,7 +34,7 @@ FoxxQueuesFeature::FoxxQueuesFeature(application_features::ApplicationServer& se
     : application_features::ApplicationFeature(server, "FoxxQueues"),
       _pollInterval(1.0),
       _enabled(true),
-      _startupWaitForSelfHeal(false) {
+      _startupWaitForSelfHeal(true) {
   setOptional(true);
   startsAfter<ServerFeaturePhase>();
 }
