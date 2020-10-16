@@ -216,12 +216,9 @@ class StaticStrings {
   // collection attributes
   static std::string const CacheEnabled;
   static std::string const DistributeShardsLike;
-  static std::string const DoCompact;
-  static std::string const IndexBuckets;
   static std::string const Indexes;
   static std::string const IsSmart;
   static std::string const IsSmartChild;
-  static std::string const JournalSize;
   static std::string const MinReplicationFactor;
   static std::string const MinRevision;
   static std::string const NumberOfShards;

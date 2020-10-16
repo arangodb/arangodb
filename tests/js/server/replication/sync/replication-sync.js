@@ -715,9 +715,7 @@ function BaseTestConfig () {
           var c = db._create(cn);
 
           c.properties({
-            indexBuckets: 32,
             waitForSync: true,
-            journalSize: 16 * 1024 * 1024
           });
         },
         function (state) {
@@ -744,9 +742,7 @@ function BaseTestConfig () {
           var c = db._create(cn);
 
           c.properties({
-            indexBuckets: 32,
             waitForSync: true,
-            journalSize: 16 * 1024 * 1024
           });
         },
         function (state) {

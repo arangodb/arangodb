@@ -1057,12 +1057,9 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
 
 arangodb::velocypack::Builder Collections::filterInput(arangodb::velocypack::Slice properties) {
   return velocypack::Collection::keep(properties,
-      std::unordered_set<std::string>{StaticStrings::DoCompact,
+      std::unordered_set<std::string>{
                                       StaticStrings::DataSourceSystem,
                                       StaticStrings::DataSourceId,
-                                      "isVolatile",
-                                      StaticStrings::JournalSize,
-                                      StaticStrings::IndexBuckets,
                                       "keyOptions",
                                       StaticStrings::WaitForSyncString,
                                       StaticStrings::CacheEnabled,

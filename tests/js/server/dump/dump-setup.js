@@ -43,7 +43,7 @@
   db._useDatabase("UnitTestsDumpSrc");
 
   // this remains empty
-  db._create("UnitTestsDumpEmpty", { waitForSync: true, indexBuckets: 256 });
+  db._create("UnitTestsDumpEmpty", { waitForSync: true });
 
   // create lots of documents
   c = db._create("UnitTestsDumpMany");
@@ -64,7 +64,7 @@
   }
 
   // we update & modify the order
-  c = db._create("UnitTestsDumpOrder", { indexBuckets: 16 });
+  c = db._create("UnitTestsDumpOrder");
   c.save({ _key: "one", value: 1 });
   c.save({ _key: "two", value: 2 });
   c.save({ _key: "three", value: 3 });
@@ -84,7 +84,7 @@
   c.remove(Array(1000).fill().map((e, i, a) => "test" + (i * 10)));
 
   // we create a lot of (meaningless) indexes here
-  c = db._create("UnitTestsDumpIndexes", { indexBuckets: 32 });
+  c = db._create("UnitTestsDumpIndexes");
   c.ensureUniqueConstraint("a_uc");
   c.ensureSkiplist("a_s1", "a_s2");
 

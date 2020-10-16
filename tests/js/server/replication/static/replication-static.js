@@ -1213,8 +1213,6 @@ function BaseTestConfig () {
         function (state) {
           var c = db._create(cn, {
             waitForSync: false,
-            doCompact: false,
-            journalSize: 1048576,
             keyOptions: {
               allowUserKeys: false
             }
@@ -1279,8 +1277,6 @@ function BaseTestConfig () {
         function (state) {
           var c = db._create(cn, {
             waitForSync: false,
-            doCompact: false,
-            journalSize: 1048576
           });
 
           var properties = c.properties();
@@ -1288,8 +1284,6 @@ function BaseTestConfig () {
 
           properties = c.properties({
             waitForSync: true,
-            doCompact: true,
-            journalSize: 2097152
           });
           assertTrue(properties.waitForSync);
 
@@ -1313,8 +1307,6 @@ function BaseTestConfig () {
         function (state) {
           var c = db._create(cn, {
             waitForSync: true,
-            doCompact: true,
-            journalSize: 2097152
           });
 
           var properties = c.properties();
@@ -1322,8 +1314,6 @@ function BaseTestConfig () {
 
           properties = c.properties({
             waitForSync: false,
-            doCompact: false,
-            journalSize: 1048576
           });
           assertFalse(properties.waitForSync);
 
@@ -1347,8 +1337,6 @@ function BaseTestConfig () {
         function (state) {
           var c = db._create(cn, {
             waitForSync: false,
-            doCompact: false,
-            journalSize: 1048576
           });
 
           state.cid = c._id;
@@ -1377,10 +1365,7 @@ function BaseTestConfig () {
               type: 'autoincrement',
               allowUserKeys: false
             },
-            isVolatile: false,
             waitForSync: true,
-            doCompact: true,
-            journalSize: 2097152
           });
 
           state.cid = c._id;
@@ -1389,7 +1374,6 @@ function BaseTestConfig () {
         function (state) {
           var properties = db._collection(cn).properties();
           assertEqual(cn, db._collection(cn).name());
-          assertFalse(properties.isVolatile);
           assertTrue(properties.waitForSync);
           assertFalse(properties.deleted);
           assertFalse(properties.keyOptions.allowUserKeys);
