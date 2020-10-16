@@ -198,35 +198,35 @@ void addTransactionHeaderForShard(transaction::Methods const& trx, ShardMap cons
 OperationResult handleResponsesFromAllShards(
     OperationOptions const& options,
     std::vector<futures::Try<arangodb::network::Response>>& responses,
-    std::function<void(Result&, VPackBuilder&, ShardID&, VPackSlice)> handler,
-    std::function<void(Result&, VPackBuilder&)> pre = [](Result&, VPackBuilder&) -> void {},
-    std::function<void(Result&, VPackBuilder&)> post = [](Result&, VPackBuilder&) -> void {}) {
+    std::function<void(Result&, VPackBuilder&, ShardID const&, VPackSlice)> const& handler,
+    std::function<void(Result&, VPackBuilder&)> const& pre = [](Result&, VPackBuilder&) -> void {},
+    std::function<void(Result&, VPackBuilder&)> const& post = [](Result&, VPackBuilder&) -> void {}) {
   // If none of the shards responds we return a SERVER_ERROR;
   Result result;
   VPackBuilder builder;
+  
   pre(result, builder);
-  if (result.fail()) {
-    return OperationResult(result, builder.steal(), options);
-  }
-  for (Try<arangodb::network::Response> const& tryRes : responses) {
-    network::Response const& res = tryRes.get();  // throws exceptions upwards
-    ShardID sId = res.destinationShard();
-    int commError = network::fuerteToArangoErrorCode(res);
-    if (commError != TRI_ERROR_NO_ERROR) {
-      result.reset(commError);
-      break;
-    } else {
-      std::vector<VPackSlice> const& slices = res.response->slices();
-      if (!slices.empty()) {
-        VPackSlice answer = slices[0];
+
+  if (!result.fail()) {
+    for (Try<arangodb::network::Response> const& tryRes : responses) {
+      network::Response const& res = tryRes.get();  // throws exceptions upwards
+      ShardID sId = res.destinationShard();
+      int commError = network::fuerteToArangoErrorCode(res);
+      if (commError != TRI_ERROR_NO_ERROR) {
+        result.reset(commError);
+      } else {
+        TRI_ASSERT(res.error == fuerte::Error::NoError);
+        VPackSlice answer = res.slice();
         handler(result, builder, sId, answer);
-        if (result.fail()) {
-          break;
-        }
+      }
+
+      if (result.fail()) {
+        break;
       }
     }
+    post(result, builder);
   }
-  post(result, builder);
+
   return OperationResult(result, builder.steal(), options);
 }
 
@@ -966,7 +966,7 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature& feature,
   auto cb = [options](std::vector<Try<network::Response>>&& results) -> OperationResult {
     return handleResponsesFromAllShards(
         options, results,
-        [](Result& result, VPackBuilder& builder, ShardID&, VPackSlice answer) -> void {
+        [](Result& result, VPackBuilder& builder, ShardID const&, VPackSlice answer) -> void {
           if (answer.isObject()) {
             VPackSlice r = answer.get("revision");
             if (r.isString()) {
@@ -1030,7 +1030,7 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
 
   auto cb = [options](std::vector<Try<network::Response>>&& results) -> OperationResult {
     return handleResponsesFromAllShards(options, results,
-                                        [](Result&, VPackBuilder&, ShardID&, VPackSlice) -> void {
+                                        [](Result&, VPackBuilder&, ShardID const&, VPackSlice) -> void {
                                           // we don't care about response bodies, just that the requests succeeded
                                         });
   };
@@ -1079,7 +1079,7 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
   }
 
   auto cb = [details, options](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
-    auto handler = [details](Result& result, VPackBuilder& builder, ShardID&,
+    auto handler = [details](Result& result, VPackBuilder& builder, ShardID const&,
                              VPackSlice answer) mutable -> void {
       if (answer.isObject()) {
         VPackSlice figures = answer.get("figures");
@@ -1149,7 +1149,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   }
 
   auto cb = [options](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
-    auto handler = [](Result& result, VPackBuilder& builder, ShardID& shardId,
+    auto handler = [](Result& result, VPackBuilder& builder, ShardID const& shardId,
                       VPackSlice answer) mutable -> void {
       if (answer.isObject()) {
         // add to the total
@@ -1634,7 +1634,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
   auto cb = [options](std::vector<Try<network::Response>>&& results) -> OperationResult {
     return handleResponsesFromAllShards(
         options, results,
-        [](Result& result, VPackBuilder&, ShardID&, VPackSlice answer) -> void {
+        [](Result& result, VPackBuilder&, ShardID const&, VPackSlice answer) -> void {
           if (Helper::getBooleanValue(answer, StaticStrings::Error, false)) {
             result = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
           }

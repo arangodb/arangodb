@@ -835,6 +835,10 @@ add_library(arango_rocksdb STATIC
   ${ADDITIONAL_LIB_ARANGO_ROCKSDB_SOURCES}
 )
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  target_compile_options(arango_rocksdb PUBLIC "-maes")
+endif ()
+
 add_library(arango_cluster_engine STATIC
   ${CLUSTER_ENGINE_SOURCES}
 )

@@ -18,31 +18,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lauri Keel
+/// @author Max Neunhoeffer
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_MEMORY_H
-#define VELOCYPACK_MEMORY_H 1
+#include <cstring>
 
-#include <cstdint>
-#include <memory>
+namespace arangodb {
+namespace velocypack {
 
-// memory management definitions
+void* memrchr(void const* block, int c, std::size_t size) {
+#ifdef __linux__
+  return const_cast<void*>(::memrchr(block, c, size));
+#else
+  /// naive memrchr overlay for Windows or other platforms, which don't implement it
+  if (size) {
+    unsigned char const* p = static_cast<unsigned char const*>(block);
 
-extern "C" {
-
-extern void* velocypack_malloc(std::size_t size);
-extern void* velocypack_realloc(void* ptr, std::size_t size);
-extern void velocypack_free(void* ptr);
-
-#ifndef velocypack_malloc
-
-#define velocypack_malloc(size) malloc(size)
-#define velocypack_realloc(ptr, size) realloc(ptr, size)
-#define velocypack_free(ptr) free(ptr)
-
+    for (p += size - 1; size; p--, size--) {
+      if (*p == c) {
+        return const_cast<void*>(static_cast<void const*>(p));
+      }
+    }
+  }
+  return nullptr;
 #endif
-
 }
 
-#endif
+} // namespace velocypack
+} // namespace arangodb
