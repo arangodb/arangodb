@@ -203,10 +203,11 @@ function recovery (options) {
       count += 1;
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running setup of test " + count + " - " + test + RESET);
+      let rootDir = fs.join(fs.getTempPath(), 'recovery', count.toString());
       let params = {
         tempDir: tempDir,
         instanceInfo: {
-          rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString())
+          rootDir
         },
         options: _.cloneDeep(options),
         script: test,
@@ -228,21 +229,36 @@ function recovery (options) {
           duration: -1
         });
       } catch (er) {}
-      runArangodRecovery(params);
+     
+      while (true) {
+        let continueFile = fs.join(params.args['temp.path'], "CONTINUE");
+        // very likely the CONTINUE file does not exist.
 
-      results[test] = tu.readTestResult(
-        params.args['temp.path'],
-        {
-          status: false
-        },
-        test
-      );
-      if (!results[test].status) {
-        print("Not cleaning up " + params.testDir);
-        results.status = false;
-      }
-      else {
+        // the test we now run _may_ write a CONTINUE file.
+        // if it does, we keep looping here until the test fails
+        // or we don't have any CONTINUE file
+        runArangodRecovery(params);
+        
+        if (fs.exists(continueFile)) {
+          // if we find such CONTINUE file, go on _unconditionally_
+          continue;
+        }
+
+        results[test] = tu.readTestResult(
+          params.args['temp.path'],
+          {
+            status: false
+          },
+          test
+        );
+        if (!results[test].status) {
+          print("Not cleaning up " + params.testDir);
+          results.status = false;
+          break;
+        }
+        
         pu.cleanupLastDirectory(params.options);
+        break;
       }
     } else {
       if (options.extremeVerbosity) {
