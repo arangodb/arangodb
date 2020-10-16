@@ -43,7 +43,7 @@ struct OperationOptions {
         isRestore(false),
         overwrite(false),
         truncateCompact(true) {}
-  
+
   // original marker, set by an engine's recovery procedure only!
   void* recoveryData;
   

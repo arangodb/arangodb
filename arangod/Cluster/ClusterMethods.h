@@ -210,7 +210,8 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Methods& trx,
-                                                                 std::string const& collname);
+                                                                 std::string const& collname,
+                                                                 OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush Wal on all DBservers

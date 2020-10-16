@@ -1664,7 +1664,8 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Methods& trx,
-                                                                 std::string const& collname) {
+                                                                 std::string const& collname,
+                                                                 OperationOptions const& options) {
   Result res;
   // Set a few variables needed for our work:
   ClusterInfo& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
