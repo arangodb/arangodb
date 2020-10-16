@@ -32,8 +32,8 @@
 #include "Aql/WindowNode.h"
 #include "Aql/types.h"
 
-#include <memory>
 #include <deque>
+#include <memory>
 
 namespace arangodb {
 namespace aql {
@@ -44,7 +44,6 @@ class OutputAqlItemRow;
 class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
-struct Aggregator;
 
 class WindowExecutorInfos {
  public:
@@ -55,10 +54,10 @@ class WindowExecutorInfos {
    * @param aggregateRegisters Input and output Register for Aggregation
    * @param options The AQL transaction, as it might be needed for aggregates
    */
-  WindowExecutorInfos(WindowRange const& range, RegisterId rangeRegister,
+  WindowExecutorInfos(WindowBounds const& b, RegisterId rangeRegister,
                       std::vector<std::string>&& aggregateTypes,
                       std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-                      velocypack::Options const* options);
+                      QueryWarnings& warnings, velocypack::Options const* options);
 
   WindowExecutorInfos() = delete;
   WindowExecutorInfos(WindowExecutorInfos&&) = default;
@@ -66,14 +65,17 @@ class WindowExecutorInfos {
   ~WindowExecutorInfos() = default;
 
  public:
-  WindowRange const& range() const;
+  WindowBounds const& bounds() const;
   RegisterId rangeRegister() const;
   std::vector<std::pair<RegisterId, RegisterId>> getAggregatedRegisters() const;
   std::vector<std::string> getAggregateTypes() const;
+  QueryWarnings& warnings() const;
   velocypack::Options const* getVPackOptions() const;
 
  private:
-  WindowRange _range;
+  WindowBounds const& _bounds;
+
+  RegisterId _rangeRegister;
 
   /// @brief aggregate types
   std::vector<std::string> _aggregateTypes;
@@ -81,10 +83,10 @@ class WindowExecutorInfos {
   /// @brief pairs, consisting of out register and in register
   std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;
 
+  QueryWarnings& _warnings;
+
   /// @brief the transaction for this query
   velocypack::Options const* _vpackOptions;
-
-  RegisterId _rangeRegister;
 };
 
 class BaseWindowExecutor {
@@ -196,14 +198,15 @@ class WindowExecutor : public BaseWindowExecutor {
 
  private:
   ExecutorState consumeInputRange(AqlItemBlockInputRange& input);
+  void trimBounds();
 
  private:
+  /// @brief consumed rows that we need to keep track of
   std::deque<InputAqlItemRow> _rows;
-  AqlValue _lowestValue;  // cached lowest value
-  int64_t _currentIdx = -1;
-
-  const int64_t _numPrecedingRows;
-  const int64_t _numFollowingRows;
+  /// @brief cached row value, used for range based windowing
+  std::deque<WindowBounds::Row> _windowRows;
+  /// @brief index of row we need to copy to output next
+  size_t _currentIdx = 0;
 };
 
 }  // namespace aql

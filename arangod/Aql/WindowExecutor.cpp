@@ -37,21 +37,24 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
 static const AqlValue EmptyValue;
+}
 
-WindowExecutorInfos::WindowExecutorInfos(WindowRange const& range, RegisterId rangeRegister,
+WindowExecutorInfos::WindowExecutorInfos(WindowBounds const& bounds, RegisterId rangeRegister,
                                          std::vector<std::string>&& aggregateTypes,
                                          std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-                                         velocypack::Options const* opts)
-    : _range(range),
+                                         QueryWarnings& w, velocypack::Options const* opts)
+    : _bounds(bounds),
+      _rangeRegister(rangeRegister),
       _aggregateTypes(aggregateTypes),
       _aggregateRegisters(aggregateRegisters),
-      _vpackOptions(opts),
-      _rangeRegister(rangeRegister) {
+      _warnings(w),
+      _vpackOptions(opts) {
   TRI_ASSERT(!aggregateRegisters.empty());
 }
 
-WindowRange const& WindowExecutorInfos::range() const { return _range; }
+WindowBounds const& WindowExecutorInfos::bounds() const { return _bounds; }
 
 RegisterId WindowExecutorInfos::rangeRegister() const { return _rangeRegister; }
 
@@ -62,6 +65,8 @@ std::vector<std::pair<RegisterId, RegisterId>> WindowExecutorInfos::getAggregate
 std::vector<std::string> WindowExecutorInfos::getAggregateTypes() const {
   return _aggregateTypes;
 }
+
+QueryWarnings& WindowExecutorInfos::warnings() const { return _warnings; }
 
 velocypack::Options const* WindowExecutorInfos::getVPackOptions() const {
   return _vpackOptions;
@@ -112,7 +117,7 @@ void BaseWindowExecutor::applyAggregators(InputAqlItemRow& input) {
   size_t j = 0;
   for (auto const& r : _infos.getAggregatedRegisters()) {
     if (r.second == RegisterPlan::MaxRegisterId) {  // e.g. LENGTH / COUNT
-      _aggregators[j]->reduce(EmptyValue);
+      _aggregators[j]->reduce(::EmptyValue);
     } else {
       _aggregators[j]->reduce(input.getValue(/*inRegister*/ r.second));
     }
@@ -121,7 +126,8 @@ void BaseWindowExecutor::applyAggregators(InputAqlItemRow& input) {
 }
 
 // produce output row, reset aggregator
-void BaseWindowExecutor::produceOutputRow(InputAqlItemRow& input, OutputAqlItemRow& output, bool reset) {
+void BaseWindowExecutor::produceOutputRow(InputAqlItemRow& input,
+                                          OutputAqlItemRow& output, bool reset) {
   size_t j = 0;
   auto const& registers = _infos.getAggregatedRegisters();
   for (std::unique_ptr<Aggregator> const& agg : _aggregators) {
@@ -139,9 +145,7 @@ void BaseWindowExecutor::produceOutputRow(InputAqlItemRow& input, OutputAqlItemR
 
 AccuWindowExecutor::AccuWindowExecutor(Fetcher& fetcher, Infos& infos)
     : BaseWindowExecutor(infos) {
-  if (infos.rangeRegister() != RegisterPlan::MaxRegisterId) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+  TRI_ASSERT(_infos.bounds().unboundedPreceding());
 };
 
 AccuWindowExecutor::~AccuWindowExecutor() {}
@@ -161,7 +165,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> AccuWindowExecutor::produceRows(
     auto [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
     applyAggregators(input);
-    produceOutputRow(input, output, /*reset*/false);
+    produceOutputRow(input, output, /*reset*/ false);
   }
 
   // Just fetch everything from above, allow overfetching
@@ -187,33 +191,59 @@ auto AccuWindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCa
 // -------------- WindowExecutor --------------
 
 WindowExecutor::WindowExecutor(Fetcher& fetcher, Infos& infos)
-    : BaseWindowExecutor(infos),
-      _numPrecedingRows(infos.rangeRegister() == RegisterPlan::MaxRegisterId
-                            ? infos.range().preceding.toInt64()
-                            : 0),
-      _numFollowingRows(infos.rangeRegister() == RegisterPlan::MaxRegisterId
-                            ? infos.range().following.toInt64()
-                            : 0) {
-  TRI_ASSERT(_numPrecedingRows >= 0);
-  TRI_ASSERT(_numFollowingRows >= 0);
-  if (infos.rangeRegister() != RegisterPlan::MaxRegisterId) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-};
+    : BaseWindowExecutor(infos){};
 
 WindowExecutor::~WindowExecutor() {}
 
 ExecutorState WindowExecutor::consumeInputRange(AqlItemBlockInputRange& inputRange) {
+  const RegisterId rangeRegister = _infos.rangeRegister();
+  QueryWarnings& qc = _infos.warnings();
+  WindowBounds const& b = _infos.bounds();
+
   ExecutorState state = ExecutorState::DONE;
   while (inputRange.hasDataRow() /* && !output.isFull()*/) {
     auto [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
     _rows.push_back(input);
-    if (_currentIdx < 0) {
-      _currentIdx = 0;
+
+    if (rangeRegister != RegisterPlan::MaxRegisterId) {
+      AqlValue val = input.getValue(rangeRegister);
+      _windowRows.emplace_back(b.calcRow(val, qc));
     }
   }
   return state;
+}
+
+void WindowExecutor::trimBounds() {
+  TRI_ASSERT(!_rows.empty());
+
+  if (_infos.rangeRegister() == RegisterPlan::MaxRegisterId) {
+    const size_t numPreceding = size_t(_infos.bounds().numPrecedingRows());
+    // trim out of bound rows, _currentIdx may eq _rows.size()
+    if (_currentIdx > numPreceding) {
+      auto toRemove = _currentIdx - numPreceding;
+      _rows.erase(_rows.begin(), _rows.begin() + decltype(_rows)::difference_type(toRemove));
+      _currentIdx -= toRemove;
+    }
+    TRI_ASSERT(_currentIdx <= numPreceding || _rows.empty());
+    TRI_ASSERT(_currentIdx >= 0 || _rows.empty());
+
+  } else {
+    TRI_ASSERT(_rows.size() == _windowRows.size());
+
+    // trim out of bound rows
+    WindowBounds::Row& row =
+        _currentIdx == _rows.size() ? _windowRows.back() : _windowRows[_currentIdx];
+    for (size_t i = 0; i < _windowRows.size(); i++) {
+      if (row.lowBound < _windowRows[i].value) {
+        TRI_ASSERT(row.highBound >= _windowRows[i].value);
+        _rows.erase(_rows.begin() + decltype(_rows)::difference_type(i));
+        _windowRows.erase(_windowRows.begin() + decltype(_windowRows)::difference_type(i));
+        i--;
+        _currentIdx--;
+      }
+    }
+  }
 }
 
 /**
@@ -229,40 +259,63 @@ std::tuple<ExecutorState, NoStats, AqlCall> WindowExecutor::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   ExecutorState state = consumeInputRange(inputRange);
 
+  if (_rows.empty()) {
+    // Just fetch everything from above, allow overfetching
+    AqlCall upstreamCall{};
+    return {inputRange.upstreamState(), NoStats{}, upstreamCall};
+  }
+
   if (_infos.rangeRegister() == RegisterPlan::MaxRegisterId) {
-    if (!_rows.empty()) {
-      TRI_ASSERT(_currentIdx >= 0);
-      TRI_ASSERT(_numPrecedingRows >= 0);
-      TRI_ASSERT(_numFollowingRows >= 0);
+    // row based WINDOW
 
-      auto haveRows = [&]() -> bool {
-        return state == ExecutorState::DONE ||
-               (_numPrecedingRows <= _currentIdx &&
-                int64_t(_rows.size()) - _currentIdx < _numFollowingRows);
-      };
+    const size_t numPreceding = size_t(_infos.bounds().numPrecedingRows());
+    const size_t numFollowing = size_t(_infos.bounds().numFollowingRows());
 
-      while (!output.isFull() && haveRows()) {
-        int64_t start = std::max(int64_t(0), _currentIdx - _numPrecedingRows);
-        int64_t end =
-            std::min(int64_t(_rows.size()), _currentIdx + _numFollowingRows + 1);
+    auto haveRows = [&]() -> bool {
+      return (state == ExecutorState::DONE && _currentIdx < _rows.size()) ||
+             (numPreceding <= _currentIdx &&
+              size_t(numFollowing + _currentIdx) < _rows.size());
+    };
 
-        while (start != end) {
-          applyAggregators(_rows[size_t(start)]);
-          start++;
-        }
-        produceOutputRow(_rows[size_t(_currentIdx)], output, /*reset*/true);
-        if (size_t(++_currentIdx) == _rows.size()) {
-          break;
-        }
+    while (!output.isFull() && haveRows()) {
+      size_t start = _currentIdx > numPreceding ? _currentIdx - numPreceding : 0;
+      size_t end = std::min(_rows.size(), _currentIdx + numFollowing + 1);
+
+      while (start != end) {
+        applyAggregators(_rows[start]);
+        start++;
       }
-
-      // trim out of bound rows
-      while (_currentIdx > _numPrecedingRows) {
-        _rows.pop_front();
-        _currentIdx--;
+      produceOutputRow(_rows[_currentIdx], output, /*reset*/ true);
+      if (++_currentIdx == _rows.size()) {
+        break;
       }
     }
 
+    trimBounds();
+
+  } else {  // range based WINDOW
+
+    TRI_ASSERT(_rows.size() == _windowRows.size());
+    TRI_ASSERT(_currentIdx >= 0);
+
+    while (!output.isFull() && _currentIdx < _rows.size()) {
+      auto const& row = _windowRows[_currentIdx];
+      // bit of a shitty aggregation, i should probably not always be 0
+      for (size_t i = 0; i < _windowRows.size(); i++) {
+        if (row.lowBound <= _windowRows[i].value) {
+          if (_windowRows[i].value > row.highBound) {
+            break;  // do not consider higher values
+          }
+          applyAggregators(_rows[size_t(i)]);
+        }
+      }
+      produceOutputRow(_rows[_currentIdx], output, /*reset*/ true);
+      if (++_currentIdx == _rows.size()) {
+        break;
+      }
+    }
+
+    trimBounds();
     TRI_ASSERT(_currentIdx >= 0 || _rows.empty());
   }
 
@@ -279,25 +332,23 @@ std::tuple<ExecutorState, NoStats, AqlCall> WindowExecutor::produceRows(
  * @param call Call from client
  * @return std::tuple<ExecutorState, NoStats, size_t, AqlCall>
  */
-auto WindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
-    -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
+std::tuple<ExecutorState, NoStats, size_t, AqlCall> WindowExecutor::skipRowsRange(
+    AqlItemBlockInputRange& inputRange, AqlCall& call) {
   TRI_ASSERT(_currentIdx >= 0 && size_t(_currentIdx) < _rows.size());
 
   std::ignore = consumeInputRange(inputRange);
 
-  // FIXME probably does not really need to be a loop
-  while (call.needSkipMore() && !_rows.empty()) {
-    if (_currentIdx > _numPrecedingRows) {
-      _rows.pop_front();
-      _currentIdx--;
+  if (!_rows.empty()) {
+    // TODO a bit loopy
+    while (call.needSkipMore() && _currentIdx < _windowRows.size()) {
+      _currentIdx++;
+      call.didSkip(1);
     }
-    _currentIdx++;
-    call.didSkip(1);
-  }
-  if (_rows.empty()) {
-    _currentIdx = -1;
+
+    trimBounds();
   }
 
+  // Just fetch everything from above, allow overfetching
   AqlCall upstreamCall{};
   return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(), upstreamCall};
 }

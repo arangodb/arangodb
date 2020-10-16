@@ -1883,7 +1883,7 @@ function processQuery(query, explain, planIndex) {
       case 'WindowNode': {
         var window = keyword('WINDOW') + ' ';
         if (node.rangeVariable) {
-          window += variableName(node.expressionVariable) + ' ' + keyword("WITH") + ' ';
+          window += variableName(node.rangeVariable) + ' ' + keyword("WITH") + ' ';
         }
         window += `{ preceding: ${JSON.stringify(node.preceding)}, following: ${JSON.stringify(node.following)}} `;
         if (node.hasOwnProperty('aggregates') && node.aggregates.length > 0) {

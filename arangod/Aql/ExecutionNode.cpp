@@ -382,9 +382,9 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
         }
       }
       
-      WindowRange range;
-      range.fromVelocyPack(slice);
-      return new WindowNode(plan, slice, std::move(range),
+      WindowBounds bounds;
+      bounds.fromVelocyPack(slice);
+      return new WindowNode(plan, slice, std::move(bounds),
                             rangeVar, aggregateVariables);
     }
     default: {

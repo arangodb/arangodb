@@ -1985,7 +1985,7 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous, AstNode co
   auto rangeExpr = node->getMember(1);
   auto aggregates = node->getMember(2);
   
-  WindowRange range;
+  WindowBounds bounds;
   TRI_ASSERT(spec->type == NODE_TYPE_OBJECT);
   
   AqlFunctionsInternalCache cache;
@@ -2018,54 +2018,34 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous, AstNode co
     }
     VPackStringRef const name = member->getStringRef();
     AstNode* value = member->getMember(0);
+    if (!value->isConstant()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS,
+                                     "WINDOW spec must be determined at compile time");
+    }
     
     bool mustDestroy = false;
     if (name == "preceding") {
-      if (!value->isConstant()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "WINDOW spec 'preceding' must  be determined at compile time");
-      }
       Expression expr(_ast, value);
       AqlValue val = expr.execute(&exprContext, mustDestroy);
       if (!mustDestroy && val.isPointer()) { // force a copy
-        range.preceding = AqlValue(val.slice());
+        bounds.preceding = AqlValue(val.slice());
       } else {
-        range.preceding = val.clone();
+        bounds.preceding = val.clone();
       }
     } else if (name == "following") {
-      if (!value->isConstant()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "WINDOW spec 'following' must  be determined at compile time");
-      }
       Expression expr(_ast, value);
       AqlValue val = expr.execute(&exprContext, mustDestroy);
       if (!mustDestroy && val.isPointer()) { // force a copy
-        range.following = AqlValue(val.slice());
+        bounds.following = AqlValue(val.slice());
       } else {
-        range.following = val.clone();
+        bounds.following = val.clone();
       }
     }
   }
   
-  auto validate = [&](AqlValue& val) {
-    if (rangeVariable == nullptr) {
-      if (val.isNumber()) {
-        if (val.toInt64() < 0) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "WINDOW bound is invalid");
-        }
-        return;
-      }
-      if (val.isString() && val.slice().isEqualString("unbounded")) {
-        val = AqlValue(AqlValueHintInt(std::numeric_limits<int64_t>::max()));
-        return;
-      }
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "WINDOW spec is invalid");
-    }
-  };
-  validate(range.following);
-  validate(range.preceding);
-  
   // aggregate variables
   std::vector<AggregateVarInfo> aggregateVariables = prepareAggregateVars(previous, aggregates);
-  auto en = registerNode(std::make_unique<WindowNode>(this, nextId(), std::move(range), rangeVariable, aggregateVariables));
+  auto en = registerNode(std::make_unique<WindowNode>(this, nextId(), std::move(bounds), rangeVariable, aggregateVariables));
   return addDependency(previous, en);
 }
 

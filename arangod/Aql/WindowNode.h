@@ -27,6 +27,7 @@
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
+#include "Basics/datetime.h"
 
 #include <cstdint>
 #include <functional>
@@ -39,39 +40,76 @@ namespace velocypack {
 class Slice;
 }
 namespace aql {
+
+struct Aggregator;
 class ExecutionBlock;
 class ExecutionPlan;
-struct Aggregator;
+class QueryWarnings;
 
-struct WindowRange final {
-  ~WindowRange();
-
+/// utility class to calculate window bounds for Row / Range based windows
+/// could probably also be part of the executor
+class WindowBounds final {
  public:
-  WindowRange();
+  enum class Type { Undefined, Row, Range };
+  /// range based WINDOW row values
+  struct Row {
+    double value;
+    double lowBound;
+    double highBound;
+    bool valid;
+  };
+
+  WindowBounds();
+  ~WindowBounds();
 
  public:
   AqlValue preceding;
   AqlValue following;
 
+  int64_t numPrecedingRows() const;
+  int64_t numFollowingRows() const;
+
+  bool needsFollowingRows() const;
+
+  // determine window bounds
+  void determineBounds(Type t);
+
+  Row calcRow(AqlValue const& input, QueryWarnings& q) const;
+
  public:
   bool unboundedPreceding() const;
   void toVelocyPack(velocypack::Builder& options) const;
   void fromVelocyPack(velocypack::Slice slice);
+
+ private:
+  enum class RangeType { Numeric, Date };
+
+  int64_t _numPrecedingRows = 0;
+  int64_t _numFollowingRows = 0;
+  Type _type = Type::Undefined;
+  RangeType _rangeType = RangeType::Numeric;
+
+  // contains calendar aware year + month
+  arangodb::basics::ParsedDuration _precedingDuration;
+  arangodb::basics::ParsedDuration _followingDuration;
+
+  double _precedingNumber = 0.0;
+  double _followingNumber = 0.0;
 };
 
 /// @brief class CollectNode
 class WindowNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class RedundantCalculationsReplacer;
+  friend class RedundantCalculationsReplacer;  // TODO: remove
 
  public:
-  WindowNode(ExecutionPlan* plan, ExecutionNodeId id, WindowRange&& options,
+  WindowNode(ExecutionPlan* plan, ExecutionNodeId id, WindowBounds&& b,
              Variable const* rangeVariable,
              std::vector<AggregateVarInfo> const& aggregateVariables);
 
   WindowNode(ExecutionPlan*, arangodb::velocypack::Slice const& base,
-             WindowRange&& options, Variable const* rangeVariable,
+             WindowBounds&& b, Variable const* rangeVariable,
              std::vector<AggregateVarInfo> const& aggregateVariables);
 
   ~WindowNode() override;
@@ -104,15 +142,6 @@ class WindowNode : public ExecutionNode {
 
   void setAggregateVariables(std::vector<AggregateVarInfo> const& aggregateVariables);
 
-  /// @brief clear one of the aggregates
-  void clearAggregates(std::function<bool(AggregateVarInfo const&)> cb);
-
-  /// @brief get all aggregate variables (out, in)
-  std::vector<AggregateVarInfo> const& aggregateVariables() const;
-
-  /// @brief get all aggregate variables (out, in)
-  std::vector<AggregateVarInfo>& aggregateVariables();
-
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const final;
 
@@ -123,7 +152,7 @@ class WindowNode : public ExecutionNode {
   bool needsFollowingRows() const;
 
  private:
-  WindowRange _range;
+  WindowBounds _bounds;
 
   Variable const* _rangeVariable;
 
