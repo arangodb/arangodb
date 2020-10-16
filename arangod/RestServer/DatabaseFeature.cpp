@@ -73,6 +73,14 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace {
+arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(arangodb::application_features::ApplicationServer& server) {
+  arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
+  auto rv = info.load("_expression_vocbase", std::numeric_limits<uint64_t>::max());
+  return info;
+}
+}
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // i am here for debugging only.
 TRI_vocbase_t* DatabaseFeature::CURRENT_VOCBASE = nullptr;
@@ -351,6 +359,10 @@ void DatabaseFeature::start() {
 
   verifyAppPaths();
 
+  // need this to make calculation analyzer available in database links
+  _calculationVocbase = std::make_unique<TRI_vocbase_t>(
+    TRI_VOCBASE_TYPE_NORMAL, createExpressionVocbaseInfo(server()));
+
   // scan all databases
   VPackBuilder builder;
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
@@ -476,6 +488,7 @@ void DatabaseFeature::stop() {
 #endif
   }
 
+  _calculationVocbase.reset();
   // flush again so we are sure no query is left in the cache here
   arangodb::aql::QueryCache::instance()->invalidate();
 }
@@ -1048,6 +1061,13 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t& vocba
     TRI_ASSERT(vocbase != nullptr);
     func(*vocbase);
   }
+}
+
+std::unique_ptr<TRI_vocbase_t> arangodb::DatabaseFeature::_calculationVocbase;
+
+TRI_vocbase_t& arangodb::DatabaseFeature::getCalculationVocbase() {
+  TRI_ASSERT(_calculationVocbase);
+  return *_calculationVocbase;
 }
 
 void DatabaseFeature::stopAppliers() {

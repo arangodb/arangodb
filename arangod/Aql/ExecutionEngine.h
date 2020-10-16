@@ -121,6 +121,9 @@ class ExecutionEngine {
   /// @returns added block
   ExecutionBlock* addBlock(std::unique_ptr<ExecutionBlock>);
 
+  /// @brief clears all blocks and root in Engine
+  void reset();
+
   /// @brief set the register the final result of the query is stored in
   void resultRegister(RegisterId resultRegister);
 
@@ -141,7 +144,7 @@ class ExecutionEngine {
 #endif
   
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  std::vector<ExecutionBlock*> const& blocksForTesting() const {
+  std::vector<std::unique_ptr<ExecutionBlock>> const& blocksForTesting() const {
     return _blocks;
   }
 #endif
@@ -164,7 +167,7 @@ class ExecutionEngine {
   std::shared_ptr<SharedQueryState> _sharedState;
 
   /// @brief all blocks registered, used for memory management
-  std::vector<ExecutionBlock*> _blocks;
+  std::vector<std::unique_ptr<ExecutionBlock>> _blocks;
 
   /// @brief root block of the engine
   ExecutionBlock* _root;

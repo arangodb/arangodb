@@ -2922,8 +2922,6 @@ void IResearchAnalyzerFeature::start() {
   if (!isEnabled()) {
     return;
   }
-
-  CalculationAnalyzer::initCalculationContext(server());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // we rely on having a system database
   if (server().hasFeature<SystemDatabaseFeature>()) {
@@ -2968,7 +2966,6 @@ void IResearchAnalyzerFeature::stop() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
-  CalculationAnalyzer::shutdownCalculationContext();
 }
 
 Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {

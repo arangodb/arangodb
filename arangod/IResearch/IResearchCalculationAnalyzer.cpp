@@ -39,7 +39,6 @@
 #include "Aql/Parser.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -47,9 +46,9 @@
 #include "IResearchCommon.h"
 #include "IResearchCalculationAnalyzer.h"
 #include "Logger/LogMacros.h"
-#include "Transaction/StandaloneContext.h"
 #include "VelocyPackHelper.h"
 #include "VocBase/vocbase.h"
+#include "RestServer/DatabaseFeature.h"
 
 #include <Containers/HashSet.h>
 #include "VPackDeserializer/deserializer.h"
@@ -64,8 +63,7 @@ constexpr const char COLLAPSE_ARRAY_POSITIONS_PARAM_NAME[] = "collapseArrayPos";
 constexpr const char KEEP_NULL_PARAM_NAME[] = "keepNull";
 constexpr const char CALCULATION_PARAMETER_NAME[] = "field";
 
-/// @brief Artificial vocbase for executing calculation queries
-std::unique_ptr<TRI_vocbase_t> _calculationVocbase;
+
 
 using Options = arangodb::iresearch::CalculationAnalyzer::options_t;
 
@@ -86,11 +84,6 @@ using OptionsDeserializer = utilities::constructing_deserializer<Options, parame
 
 using ValidatingOptionsDeserializer = validate<OptionsDeserializer, OptionsValidator>;
 
-arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(arangodb::application_features::ApplicationServer& server) {
-  arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
-  auto rv = info.load("_expression_vocbase", std::numeric_limits<uint64_t>::max()); // TODO: create constant for AqlFeature::lease kludge
-  return info;
-}
 
 frozen::set<irs::string_ref, 4> forbiddenFunctions {"TOKENS", "NGRAM_MATCH", "PHRASE", "ANALYZER"};
 
@@ -266,180 +259,20 @@ bool CalculationAnalyzer::parse_options(const irs::string_ref& args, options_t& 
 }
 
 CalculationAnalyzer::CalculationAnalyzer(options_t const& options)
-  : irs::analysis::analyzer(irs::type<CalculationAnalyzer>::get()), _options(options) {
+  : irs::analysis::analyzer(irs::type<CalculationAnalyzer>::get()),
+    _options(options),
+    _query(arangodb::DatabaseFeature::getCalculationVocbase()),
+    _ast(_query), _engine(0, _query, _query.itemBlockManager(),
+                          SerializationFormat::SHADOWROWS, nullptr) {
   // TODO: move this to normalize?? As here is too late to report
   //TRI_ASSERT(validateQuery(_options.queryString, *_calculationVocbase).ok());
-  
-  // inject bind parameters into query AST
-  //auto func = [&](AstNode* node) -> AstNode* {
-  //  if (node->type == NODE_TYPE_PARAMETER || node->type == NODE_TYPE_PARAMETER_DATASOURCE) {
-  //    // found a bind parameter in the query string
-  //    std::string const param = node->getString();
-
-  //    if (param.empty()) {
-  //      // parameter name must not be empty
-  //      ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
-  //    }
-
-  //    auto const& it = p.find(param);
-
-  //    if (it == p.end()) {
-  //      // query uses a bind parameter that was not defined by the user
-  //      ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
-  //    }
-
-  //    // mark the bind parameter as being used
-  //    (*it).second.second = true;
-
-  //    auto const& value = (*it).second.first;
-
-  //    if (node->type == NODE_TYPE_PARAMETER) {
-  //      // bind parameter containing a value literal
-  //      node = nodeFromVPack(value, true);
-
-  //      if (node != nullptr) {
-  //        // already mark node as constant here
-  //        node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-  //        // mark node as simple
-  //        node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-  //        // mark node as executable on db-server
-  //        node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-  //        // mark node as deterministic
-  //        node->setFlag(DETERMINED_NONDETERMINISTIC);
-
-  //        // finally note that the node was created from a bind parameter
-  //        node->setFlag(FLAG_BIND_PARAMETER);
-  //      }
-  //    } else {
-  //      TRI_ASSERT(node->type == NODE_TYPE_PARAMETER_DATASOURCE);
-
-  //      if (!value.isString()) {
-  //        // we can get here in case `WITH @col ...` when the value of @col
-  //        // is not a string
-  //        ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, param.c_str());
-  //        // query will have been aborted here
-  //      }
-
-  //      // bound data source parameter
-  //      TRI_ASSERT(value.isString());
-  //      VPackValueLength l;
-  //      char const* name = value.getString(l);
-
-  //      // check if the collection was used in a data-modification query
-  //      bool isWriteCollection = false;
-
-  //      arangodb::velocypack::StringRef paramRef(param);
-  //      arangodb::velocypack::StringRef nameRef(name, l);
-
-  //      AstNode* newNode = nullptr;
-  //      for (auto const& it : _writeCollections) {
-  //        auto const& c = it.first;
-
-  //        if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
-  //          paramRef == arangodb::velocypack::StringRef(c->getStringValue(),
-  //            c->getStringLength())) {
-  //          // bind parameter still present in _writeCollections
-  //          TRI_ASSERT(newNode == nullptr);
-  //          isWriteCollection = true;
-  //          break;
-  //        } else if (c->type == NODE_TYPE_COLLECTION &&
-  //          nameRef == arangodb::velocypack::StringRef(c->getStringValue(),
-  //            c->getStringLength())) {
-  //          // bind parameter was already replaced with a proper collection node 
-  //          // in _writeCollections
-  //          TRI_ASSERT(newNode == nullptr);
-  //          isWriteCollection = true;
-  //          newNode = const_cast<AstNode*>(c);
-  //          break;
-  //        }
-  //      }
-
-  //      TRI_ASSERT(newNode == nullptr || isWriteCollection);
-
-  //      if (newNode == nullptr) {
-  //        newNode = createNodeDataSource(resolver, name, l,
-  //          isWriteCollection ? AccessMode::Type::WRITE
-  //          : AccessMode::Type::READ,
-  //          false, true);
-  //        TRI_ASSERT(newNode != nullptr);
-
-  //        if (isWriteCollection) {
-  //          // must update AST info now for all nodes that contained this
-  //          // parameter
-  //          for (auto& it : _writeCollections) {
-  //            auto& c = it.first;
-
-  //            if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
-  //              paramRef == arangodb::velocypack::StringRef(c->getStringValue(),
-  //                c->getStringLength())) {
-  //              c = newNode;
-  //              // no break here. replace all occurrences
-  //            }
-  //          }
-  //        }
-  //      }
-  //      node = newNode;
-  //    }
-  //  } else if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
-  //    // look at second sub-node. this is the (replaced) bind parameter
-  //    auto name = node->getMember(1);
-
-  //    if (name->type == NODE_TYPE_VALUE) {
-  //      if (name->value.type == VALUE_TYPE_STRING && name->value.length != 0) {
-  //        // convert into a regular attribute access node to simplify handling
-  //        // later
-  //        return createNodeAttributeAccess(node->getMember(0), name->getStringValue(),
-  //          name->getStringLength());
-  //      }
-  //    } else if (name->type == NODE_TYPE_ARRAY) {
-  //      // bind parameter is an array (e.g. ["a", "b", "c"]. now build the
-  //      // attribute accesses for the array members recursively
-  //      size_t const n = name->numMembers();
-
-  //      AstNode* result = nullptr;
-  //      if (n > 0) {
-  //        result = node->getMember(0);
-  //      }
-
-  //      for (size_t i = 0; i < n; ++i) {
-  //        auto part = name->getMember(i);
-  //        if (part->value.type != VALUE_TYPE_STRING || part->value.length == 0) {
-  //          // invalid attribute name part
-  //          result = nullptr;
-  //          break;
-  //        }
-
-  //        result = createNodeAttributeAccess(result, part->getStringValue(),
-  //          part->getStringLength());
-  //      }
-
-  //      if (result != nullptr) {
-  //        return result;
-  //      }
-  //    }
-  //    // fallthrough to exception
-
-  //    // if no string value was inserted for the parameter name, this is an
-  //    // error
-  //    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
-  //      node->getString().c_str());
-  //  } else if (node->type == NODE_TYPE_TRAVERSAL) {
-  //    extractCollectionsFromGraph(node->getMember(2));
-  //  } else if (node->type == NODE_TYPE_SHORTEST_PATH ||
-  //    node->type == NODE_TYPE_K_SHORTEST_PATHS) {
-  //    extractCollectionsFromGraph(node->getMember(3));
-  //  }
-
-  //  return node;
-  //};
-  //Ast::traverseAndModify(_ast->root(), func);
 }
 
 bool CalculationAnalyzer::next() {
   if (_queryResults.get()) {
     // TODO: call engine refill!
     while (_queryResults->numRows() > _resultRowIdx) {
-      AqlValue const& value = _queryResults->getValueReference(_resultRowIdx++, _engine->resultRegister());
+      AqlValue const& value = _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister());
       if (value.isString()) {
         _term.value = irs::ref_cast<irs::byte_type>(arangodb::iresearch::getStringRef(value.slice()));
         return true;
@@ -450,14 +283,12 @@ bool CalculationAnalyzer::next() {
 }
 
 bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
-  if (!_query) { // lazy initialization 
-    _query = std::make_unique<CalculationQueryContext>(*_calculationVocbase);
-    _ast = std::make_unique<Ast>(*_query);
+  if (!_plan) { // lazy initialization 
     // important to hold a copy here as parser accepts reference!
     auto queryString = arangodb::aql::QueryString(_options.queryString);
-    Parser parser(*_query, *_ast, queryString);
+    Parser parser(_query, _ast, queryString);
     parser.parse();
-    AstNode* astRoot = const_cast<AstNode*>(_ast->root());
+    AstNode* astRoot = const_cast<AstNode*>(_ast.root());
     TRI_ASSERT(astRoot);
     Ast::traverseAndModify(astRoot, [this, field](AstNode * node) -> AstNode* {
       if (node->type == NODE_TYPE_PARAMETER) {
@@ -467,7 +298,7 @@ bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
                                    node->getStringLength()) == CALCULATION_PARAMETER_NAME);
 #endif
         // FIXME: move to computed value once here could be not only strings
-        auto newNode = _ast->createNodeValueString(field.c_str(), field.size());
+        auto newNode = _ast.createNodeValueString(field.c_str(), field.size());
         // finally note that the node was created from a bind parameter
         newNode->setFlag(FLAG_BIND_PARAMETER);
         newNode->setFlag(DETERMINED_NONDETERMINISTIC);
@@ -476,18 +307,16 @@ bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
       } else {
         return node;
       }});
-    _plan = ExecutionPlan::instantiateFromAst(_ast.get());
+    _plan = ExecutionPlan::instantiateFromAst(&_ast);
   } else {
     for (auto node : _bindedNodes) {
       node->setStringValue(field.c_str(), field.size());
     }
   }
-
-  _engine = std::make_unique<ExecutionEngine>(0, *_query, _query->itemBlockManager(),
-                                              SerializationFormat::SHADOWROWS, nullptr);
-  _engine->initFromPlanForCalculation(*_plan);
+  _engine.reset();
+  _engine.initFromPlanForCalculation(*_plan);
   ExecutionState state = ExecutionState::HASMORE;
-  std::tie(state, _queryResults) = _engine->getSome(1000); // TODO: configure batch size
+  std::tie(state, _queryResults) = _engine.getSome(1000); // TODO: configure batch size
   TRI_ASSERT(state != ExecutionState::WAITING);
   // TODO: Position calculation as parameter
   // TODO: Filtering results
@@ -495,12 +324,21 @@ bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
   return true;
 }
 
-void CalculationAnalyzer::initCalculationContext(arangodb::application_features::ApplicationServer& server) {
-  _calculationVocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, createExpressionVocbaseInfo(server));
+CalculationAnalyzer::CalculationQueryContext::CalculationQueryContext(TRI_vocbase_t& vocbase)
+  : QueryContext(vocbase), _resolver(vocbase),
+  _transactionContext(vocbase),
+  _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS) {
+  _trx = AqlTransaction::create(newTrxContext(), _collections,
+    _queryOptions.transactionOptions,
+    std::unordered_set<std::string>{});
+  _trx->addHint(arangodb::transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
+  _trx->begin();
 }
 
-void CalculationAnalyzer::shutdownCalculationContext() {
-  _calculationVocbase.reset();
+std::shared_ptr<arangodb::transaction::Context> CalculationAnalyzer::CalculationQueryContext::newTrxContext() const {
+  return std::shared_ptr<arangodb::transaction::Context>(
+    std::shared_ptr<arangodb::transaction::Context>(),
+    &_transactionContext);
 }
 
 } // iresearch

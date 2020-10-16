@@ -23,12 +23,16 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_CALCULATION_ANALYZER
 #define ARANGOD_IRESEARCH__IRESEARCH_CALCULATION_ANALYZER 1
 
-#include "RestServer/DatabaseFeature.h"
 #include "analysis/token_attributes.hpp"
+#include "Aql/Ast.h"
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/QueryContext.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
-#include "Aql/Ast.h"
+#include "RestServer/DatabaseFeature.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/CollectionNameResolver.h"
 
 #include <string>
 
@@ -83,9 +87,6 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   virtual bool next() override;
   virtual bool reset(irs::string_ref const& field) noexcept override;
 
-  static void initCalculationContext(arangodb::application_features::ApplicationServer& server);
-  static void shutdownCalculationContext();
-
  private:
   irs::term_attribute _term;
   irs::increment _inc;
@@ -93,9 +94,55 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   std::string _str;
   options_t _options;
 
-  std::unique_ptr<arangodb::aql::Ast> _ast;
-  std::unique_ptr<arangodb::aql::ExecutionEngine> _engine;
-  std::unique_ptr<CalculationQueryContext> _query;
+  class CalculationQueryContext : public arangodb::aql:: QueryContext{
+   public:
+    CalculationQueryContext(TRI_vocbase_t& vocbase);
+
+    virtual arangodb::aql::QueryOptions const& queryOptions() const override {
+      return _queryOptions;
+    }
+
+    /// @brief pass-thru a resolver object from the transaction context
+    virtual arangodb::CollectionNameResolver const& resolver() const override {
+      return _resolver;
+    }
+
+    virtual arangodb::velocypack::Options const& vpackOptions() const override {
+      return arangodb::velocypack::Options::Defaults;
+    }
+
+    /// @brief create a transaction::Context
+    virtual std::shared_ptr<arangodb::transaction::Context> newTrxContext() const override;
+
+    virtual arangodb::transaction::Methods& trxForOptimization() override {
+      return *_trx;
+    }
+
+    virtual bool killed() const override { return false; }
+
+    /// @brief whether or not a query is a modification query
+    virtual bool isModificationQuery() const noexcept override { return false; }
+
+    virtual bool isAsyncQuery() const noexcept override { return false; }
+
+    virtual void enterV8Context() override { TRI_ASSERT(FALSE); }
+
+    arangodb::aql::AqlItemBlockManager& itemBlockManager() noexcept {
+      return _itemBlockManager;
+    }
+
+   private:
+    arangodb::aql::QueryOptions _queryOptions;
+    arangodb::CollectionNameResolver _resolver;
+    mutable arangodb::transaction::StandaloneContext _transactionContext;
+    std::unique_ptr<arangodb::transaction::Methods> _trx;
+    arangodb::aql::ResourceMonitor _resourceMonitor;
+    arangodb::aql::AqlItemBlockManager _itemBlockManager;
+  };
+
+  CalculationQueryContext _query;
+  arangodb::aql::Ast _ast;
+  arangodb::aql::ExecutionEngine _engine;
   std::unique_ptr<arangodb::aql::ExecutionPlan> _plan;
   arangodb::aql::SharedAqlItemBlockPtr _queryResults;
   size_t _resultRowIdx{ 0 };

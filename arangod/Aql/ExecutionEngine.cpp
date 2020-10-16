@@ -205,10 +205,6 @@ ExecutionEngine::~ExecutionEngine() {
   if (_sharedState) {  // ensure no async task is working anymore
     _sharedState->invalidate();
   }
-
-  for (auto& it : _blocks) {
-    delete it;
-  }
 }
 
 
@@ -730,6 +726,15 @@ ExecutionBlock* ExecutionEngine::addBlock(std::unique_ptr<ExecutionBlock> block)
   return block.release();
 }
 
+void arangodb::aql::ExecutionEngine::reset()
+{
+  _root = nullptr;
+  _blocks.clear();
+  _resultRegister = 0;
+  _initializeCursorCalled = false;
+  _sharedState.reset();
+}
+
 ExecutionBlock* ExecutionEngine::root() const {
   TRI_ASSERT(_root != nullptr);
   return _root;
@@ -758,7 +763,7 @@ AqlItemBlockManager& ExecutionEngine::itemBlockManager() {
 
 ///  @brief collected execution stats
 void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
-  for (ExecutionBlock* block : _blocks) {
+  for (auto& block : _blocks) {
     block->collectExecStats(stats);
   }
 }
