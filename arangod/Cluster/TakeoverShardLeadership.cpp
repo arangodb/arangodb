@@ -288,7 +288,6 @@ bool TakeoverShardLeadership::first() {
                              _description.get(SERVER_ID), _result);
   }
 
-  notify();
   return false;
 }
 
