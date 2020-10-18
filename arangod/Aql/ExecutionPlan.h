@@ -376,7 +376,7 @@ class ExecutionPlan {
   /// @brief create an vertex element for graph nodes
   AstNode const* parseTraversalVertexNode(ExecutionNode*&, AstNode const*);
   
-  std::vector<AggregateVarInfo> prepareAggregateVars(ExecutionNode* previous, AstNode const* node);
+  std::vector<AggregateVarInfo> prepareAggregateVars(ExecutionNode** previous, AstNode const* node);
 
  private:
   /// @brief map from node id to the actual node

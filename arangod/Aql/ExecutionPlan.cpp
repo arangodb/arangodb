@@ -1505,7 +1505,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous, AstNode c
 
   // aggregate variables
   AstNode* aggregates = node->getMember(2);
-  std::vector<AggregateVarInfo> aggregateVars = prepareAggregateVars(previous, aggregates);
+  std::vector<AggregateVarInfo> aggregateVars = prepareAggregateVars(&previous, aggregates);
 
   // handle out variable
   Variable const* outVariable = nullptr;
@@ -2044,7 +2044,7 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous, AstNode co
   }
   
   // aggregate variables
-  std::vector<AggregateVarInfo> aggregateVariables = prepareAggregateVars(previous, aggregates);
+  std::vector<AggregateVarInfo> aggregateVariables = prepareAggregateVars(&previous, aggregates);
   auto en = registerNode(std::make_unique<WindowNode>(this, nextId(), std::move(bounds), rangeVariable, aggregateVariables));
   return addDependency(previous, en);
 }
@@ -2530,7 +2530,7 @@ void ExecutionPlan::prepareTraversalOptions() {
   }
 }
 
-std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(ExecutionNode* previous, AstNode const* node) {
+std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(ExecutionNode** previous, AstNode const* node) {
   std::vector<AggregateVarInfo> aggregateVariables;
 
   TRI_ASSERT(node->type == NODE_TYPE_AGGREGATIONS);
@@ -2577,8 +2577,8 @@ std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(ExecutionNode*
       auto e = static_cast<Variable*>(arg->getData());
       aggregateVariables.emplace_back(AggregateVarInfo{outVar, e, Aggregator::translateAlias(func->name)});
     } else {
-      auto calc = createTemporaryCalculation(arg, previous);
-      previous = calc;
+      auto calc = createTemporaryCalculation(arg, *previous);
+      *previous = calc;
       aggregateVariables.emplace_back(AggregateVarInfo{outVar, getOutVariable(calc), Aggregator::translateAlias(func->name)});
     }
   }

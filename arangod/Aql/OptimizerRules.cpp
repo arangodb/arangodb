@@ -4840,8 +4840,8 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::MUTEX:
         case EN::MAX_NODE_TYPE_VALUE: {
           // should not reach this point
-          TRI_ASSERT(false);
           stopSearching = true;
+          TRI_ASSERT(false);
           break;
         }
       }
