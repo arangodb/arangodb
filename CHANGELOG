@@ -1,3 +1,9 @@
+v3.7.5 (XXXX-XX-XX)
+-------------------
+
+* Fixed collection count which could be off after a server crash.
+
+
 v3.7.4 (2020-10-16)
 -------------------
 
