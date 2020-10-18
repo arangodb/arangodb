@@ -303,7 +303,6 @@ std::tuple<ExecutorState, NoStats, AqlCall> WindowExecutor::produceRows(
   } else {  // range based WINDOW
 
     TRI_ASSERT(_rows.size() == _windowRows.size());
-    TRI_ASSERT(_currentIdx >= 0);
 
     while (!output.isFull() && _currentIdx < _rows.size()) {
       auto const& row = _windowRows[_currentIdx];
