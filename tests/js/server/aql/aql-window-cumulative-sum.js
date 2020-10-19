@@ -60,9 +60,7 @@ FOR i IN @from .. @to
   };
   
   let cumulativeSumTests = function(preceding, following) {
-    const sizes = [ 5, 10, 50, 250, 999 ]; 
-    // TODO: results are currently wrong for sizes >= 1000 
-    // const sizes = [ 5, 10, 50, 250, 999, 1000, 1001, 5000 ];
+    const sizes = [ 5, 10, 50, 250, 999, 1000, 1001, 5000 ];
 
     sizes.forEach((size) => sizedCumulativeSumTest(size, 0, preceding, following));
     sizes.forEach((size) => sizedCumulativeSumTest(size, 1, preceding, following));

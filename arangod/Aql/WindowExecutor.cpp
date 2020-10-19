@@ -98,16 +98,6 @@ BaseWindowExecutor::BaseWindowExecutor(Infos& infos)
 
 BaseWindowExecutor::~BaseWindowExecutor() {}
 
-[[nodiscard]] auto BaseWindowExecutor::expectedNumberOfRowsNew(
-    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
-  if (input.finalState() == ExecutorState::DONE) {
-    return std::min(call.getLimit(), input.countDataRows());
-  }
-  // We do not know how many more rows will be returned from upstream.
-  // So we can only overestimate
-  return call.getLimit();
-}
-
 const BaseWindowExecutor::Infos& BaseWindowExecutor::infos() const noexcept {
   return _infos;
 }
@@ -122,6 +112,12 @@ void BaseWindowExecutor::applyAggregators(InputAqlItemRow& input) {
       _aggregators[j]->reduce(input.getValue(/*inRegister*/ r.second));
     }
     ++j;
+  }
+}
+
+void BaseWindowExecutor::resetAggregators() {
+  for (auto& agg : _aggregators) {
+    agg->reset();
   }
 }
 
@@ -196,6 +192,18 @@ auto AccuWindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCa
   return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(), upstreamCall};
 }
 
+[[nodiscard]] auto AccuWindowExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  if (input.finalState() == ExecutorState::DONE) {
+    // For every input row we produce a new row.
+    auto estOnInput = input.countDataRows();
+    return std::min(call.getLimit(), estOnInput);
+  }
+  // We do not know how many more rows will be returned from upstream.
+  // So we can only overestimate
+  return call.getLimit();
+}
+
 // -------------- WindowExecutor --------------
 
 WindowExecutor::WindowExecutor(Fetcher& fetcher, Infos& infos)
@@ -208,8 +216,7 @@ ExecutorState WindowExecutor::consumeInputRange(AqlItemBlockInputRange& inputRan
   QueryWarnings& qc = _infos.warnings();
   WindowBounds const& b = _infos.bounds();
 
-  ExecutorState state = ExecutorState::DONE;
-  while (inputRange.hasDataRow() /* && !output.isFull()*/) {
+  while (inputRange.hasDataRow()) {
     auto [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
     _rows.push_back(input);
@@ -218,8 +225,11 @@ ExecutorState WindowExecutor::consumeInputRange(AqlItemBlockInputRange& inputRan
       AqlValue val = input.getValue(rangeRegister);
       _windowRows.emplace_back(b.calcRow(val, qc));
     }
+    if (state == ExecutorState::DONE) {
+      return state;
+    }
   }
-  return state;
+  return inputRange.finalState();
 }
 
 void WindowExecutor::trimBounds() {
@@ -230,6 +240,7 @@ void WindowExecutor::trimBounds() {
     // trim out of bound rows, _currentIdx may eq _rows.size()
     if (_currentIdx > numPreceding) {
       auto toRemove = _currentIdx - numPreceding;
+      // remove elements [0, numPreceding), excluding elem at idx numPreceding
       _rows.erase(_rows.begin(), _rows.begin() + decltype(_rows)::difference_type(toRemove));
       _currentIdx -= toRemove;
     }
@@ -244,8 +255,8 @@ void WindowExecutor::trimBounds() {
     for (size_t i = 0; i < _windowRows.size(); i++) {
       if (row.lowBound < _windowRows[i].value || !row.valid) {
         TRI_ASSERT(row.highBound >= _windowRows[i].value || !row.valid);
-        _rows.erase(_rows.begin() + decltype(_rows)::difference_type(i));
-        _windowRows.erase(_windowRows.begin() + decltype(_windowRows)::difference_type(i));
+        _rows.erase(_rows.begin() + decltype(_rows)::difference_type(i + 1));
+        _windowRows.erase(_windowRows.begin() + decltype(_windowRows)::difference_type(i + 1));
         i--;
         _currentIdx--;
       }
@@ -267,9 +278,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> WindowExecutor::produceRows(
   ExecutorState state = consumeInputRange(inputRange);
 
   if (_rows.empty()) {
-    // Just fetch everything from above, allow overfetching
-    AqlCall upstreamCall{};
-    return {inputRange.upstreamState(), NoStats{}, upstreamCall};
+    return {state, NoStats{}, AqlCall{}};
   }
 
   if (_infos.rangeRegister() == RegisterPlan::MaxRegisterId) {
@@ -281,10 +290,12 @@ std::tuple<ExecutorState, NoStats, AqlCall> WindowExecutor::produceRows(
     auto haveRows = [&]() -> bool {
       return (state == ExecutorState::DONE && _currentIdx < _rows.size()) ||
              (numPreceding <= _currentIdx &&
-              size_t(numFollowing + _currentIdx) < _rows.size());
+              numFollowing + _currentIdx < _rows.size());
     };
 
-    while (!output.isFull() && haveRows()) {
+    // simon; Fairly inefficient aggregation loop, would need a better
+    // Aggregation API allowing removal of values to avoid re-scanning entire range
+    while (!output.isFull() > 0 && haveRows()) {
       size_t start = _currentIdx > numPreceding ? _currentIdx - numPreceding : 0;
       size_t end = std::min(_rows.size(), _currentIdx + numFollowing + 1);
 
@@ -293,46 +304,58 @@ std::tuple<ExecutorState, NoStats, AqlCall> WindowExecutor::produceRows(
         start++;
       }
       produceOutputRow(_rows[_currentIdx], output, /*reset*/ true);
-      if (++_currentIdx == _rows.size()) {
-        break;
-      }
+      _currentIdx++;
     }
 
     trimBounds();
-
+    
   } else {  // range based WINDOW
 
     TRI_ASSERT(_rows.size() == _windowRows.size());
 
+    // fairly inefficient loop, see comment above
+    size_t firstI = 0;
     while (!output.isFull() && _currentIdx < _rows.size()) {
       auto const& row = _windowRows[_currentIdx];
-      
-      if (row.valid) {
-        // bit of a shitty aggregation, i should probably not always be 0
-        for (size_t i = 0; i < _windowRows.size(); i++) {
-          if (row.valid && row.lowBound <= _windowRows[i].value) {
-            if (_windowRows[i].value > row.highBound) {
-              break;  // do not consider higher values
-            }
-            applyAggregators(_rows[size_t(i)]);
-          }
-        }
-        produceOutputRow(_rows[_currentIdx], output, /*reset*/ true);
-      } else {
+      if (!row.valid) {
         produceInvalidOutputRow(_rows[_currentIdx], output);
+        _currentIdx++;
+        continue;
       }
       
-      if (++_currentIdx == _rows.size()) {
-        break;
+      size_t i = firstI;
+      bool foundLimit = false;
+      for (; i < _windowRows.size(); i++) {
+        if (row.valid && row.lowBound <= _windowRows[i].value) {
+          if (firstI == 0) {
+            firstI = i;
+          }
+          if (row.highBound < _windowRows[i].value) {
+            foundLimit = true;
+            break;  // do not consider higher values
+          }
+          applyAggregators(_rows[size_t(i)]);
+        }
       }
+      
+      if (foundLimit || state == ExecutorState::DONE) {
+        produceOutputRow(_rows[_currentIdx], output, /*reset*/ true);
+        _currentIdx++;
+        continue;
+      }
+      TRI_ASSERT(state == ExecutorState::HASMORE);
+      resetAggregators();
+      break; // need more data from upstream
     }
 
     trimBounds();
   }
+  
+  if (_currentIdx < _rows.size()) {
+    state = ExecutorState::HASMORE;
+  }
 
-  // Just fetch everything from above, allow overfetching
-  AqlCall upstreamCall{};
-  return {inputRange.upstreamState(), NoStats{}, upstreamCall};
+  return {state, NoStats{}, AqlCall{}};
 }
 
 /**
@@ -359,7 +382,24 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> WindowExecutor::skipRowsRang
     trimBounds();
   }
 
+  ExecutorState state = inputRange.upstreamState();
+  if (_currentIdx < _rows.size()) {
+    state = ExecutorState::HASMORE;
+  }
+  
   // Just fetch everything from above, allow overfetching
   AqlCall upstreamCall{};
-  return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(), upstreamCall};
+  return {state, NoStats{}, call.getSkipCount(), upstreamCall};
+}
+
+[[nodiscard]] auto WindowExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  if (input.finalState() == ExecutorState::DONE) {
+    size_t remain = _currentIdx < _rows.size() ? _rows.size() - _currentIdx : 0;
+    remain += input.countDataRows();
+    return std::min(call.getLimit(), remain);
+  }
+  // We do not know how many more rows will be returned from upstream.
+  // So we can only overestimate
+  return call.getLimit();
 }

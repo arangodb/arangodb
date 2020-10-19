@@ -99,15 +99,6 @@ class BaseWindowExecutor {
   BaseWindowExecutor(Infos&);
   ~BaseWindowExecutor();
 
-  /**
-   * @brief This Executor does not know how many distinct rows will be fetched
-   * from upstream, it can only report how many it has found by itself, plus
-   * it knows that it can only create as many new rows as pulled from upstream.
-   * So it will overestimate.
-   */
-  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                             AqlCall const& call) const noexcept -> size_t;
-
  protected:
   using AggregatorList = std::vector<std::unique_ptr<Aggregator>>;
 
@@ -116,6 +107,7 @@ class BaseWindowExecutor {
   static AggregatorList createAggregators(BaseWindowExecutor::Infos const& infos);
 
   void applyAggregators(InputAqlItemRow& input);
+  void resetAggregators();
   void produceOutputRow(InputAqlItemRow& input, OutputAqlItemRow& output, bool reset);
   void produceInvalidOutputRow(InputAqlItemRow& input, OutputAqlItemRow& output);
 
@@ -159,6 +151,15 @@ class AccuWindowExecutor : public BaseWindowExecutor {
    */
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+  
+  /**
+   * @brief This Executor does not know how many distinct rows will be fetched
+   * from upstream, it can only report how many it has found by itself, plus
+   * it knows that it can only create as many new rows as pulled from upstream.
+   * So it will overestimate.
+   */
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 };
 
 /**
@@ -196,6 +197,15 @@ class WindowExecutor : public BaseWindowExecutor {
    */
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+  
+  /**
+   * @brief This Executor does not know how many distinct rows will be fetched
+   * from upstream, it can only report how many it has found by itself, plus
+   * it knows that it can only create as many new rows as pulled from upstream.
+   * So it will overestimate.
+   */
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
  private:
   ExecutorState consumeInputRange(AqlItemBlockInputRange& input);
