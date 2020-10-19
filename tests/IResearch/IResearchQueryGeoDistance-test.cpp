@@ -60,11 +60,38 @@ TEST_F(IResearchQueryGeoDistanceTest, test) {
   }
 
   // create collection
+  std::shared_ptr<arangodb::LogicalCollection> collection;
   {
     auto createJson = VPackParser::fromJson("{ \"name\": \"testCollection0\" }");
-    auto collection = vocbase.createCollection(createJson->slice());
+    collection = vocbase.createCollection(createJson->slice());
     ASSERT_NE(nullptr, collection);
+  }
 
+  // create view
+  arangodb::iresearch::IResearchView* impl{};
+  {
+    auto createJson = VPackParser::fromJson(R"({ "name": "testView", "type": "arangosearch" })");
+    auto logicalView = vocbase.createView(createJson->slice());
+    ASSERT_FALSE(!logicalView);
+
+    view = logicalView.get();
+    impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
+    ASSERT_NE(nullptr, impl);
+
+    auto updateJson = VPackParser::fromJson(R"({
+      "links" : { "testCollection0" : { "fields" : { "geometry" : { "analyzers": ["mygeojson"] } } } }
+    })");
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
+    std::set<arangodb::DataSourceId> cids;
+    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
+      cids.emplace(cid);
+      return true;
+    });
+    EXPECT_EQ(1, cids.size());
+  }
+
+  // populate collection
+  {
     auto docs = VPackParser::fromJson(R"([
         { "geometry": { "type": "Point", "coordinates": [ 37.615895, 55.7039   ] } },
         { "geometry": { "type": "Point", "coordinates": [ 37.615315, 55.703915 ] } },
@@ -110,29 +137,103 @@ TEST_F(IResearchQueryGeoDistanceTest, test) {
     }
 
     EXPECT_TRUE(trx.commit().ok());
+
+    // sync view
+    ASSERT_TRUE(arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView OPTIONS { waitForSync: true } RETURN d").result.ok());
   }
 
-  // create view
+  // ensure presence of special a column for geo indices
   {
-    auto createJson = VPackParser::fromJson(R"({ "name": "testView", "type": "arangosearch" })");
-    auto logicalView = vocbase.createView(createJson->slice());
-    ASSERT_FALSE(!logicalView);
+    arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      *collection,
+      arangodb::AccessMode::Type::READ);
+    ASSERT_TRUE(trx.begin().ok());
 
-    view = logicalView.get();
-    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
-    ASSERT_FALSE(!impl);
+    auto snapshot = impl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    ASSERT_NE(nullptr, snapshot);
+    ASSERT_EQ(1, snapshot->size());
+    ASSERT_EQ(insertedDocs.size(), snapshot->docs_count());
+    ASSERT_EQ(insertedDocs.size(), snapshot->live_docs_count());
 
-    auto updateJson = VPackParser::fromJson(R"({
-      "links" : { "testCollection0" : { "fields" : { "geometry" : { "analyzers": ["mygeojson"] } } } }
-    })");
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
-    std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
-      cids.emplace(cid);
-      return true;
-    });
-    EXPECT_EQ(1, cids.size());
-    ASSERT_TRUE(arangodb::tests::executeQuery(vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d").result.ok());
+    auto& segment = (*snapshot)[0];
+
+    auto const columnName = mangleString("geometry", "mygeojson");
+    auto* columnReader = segment.column_reader(columnName);
+    ASSERT_NE(nullptr, columnReader);
+    auto it = columnReader->iterator();
+    ASSERT_NE(nullptr, it);
+    auto* payload = irs::get<irs::payload>(*it);
+    ASSERT_NE(nullptr, payload);
+
+    auto doc = insertedDocs.begin();
+    for (; it->next(); ++doc) {
+      EXPECT_EQUAL_SLICES(doc->slice().get("geometry"), arangodb::iresearch::slice(payload->value));
+    }
+
+    ASSERT_TRUE(trx.commit().ok());
+  }
+
+  // EXISTS will also work
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(FOR d IN testView
+           SEARCH EXISTS(d.geometry)
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(insertedDocs.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, insertedDocs.size());
+      EXPECT_EQUAL_SLICES(insertedDocs[i++].slice(), resolved);
+    }
+    EXPECT_EQ(i, insertedDocs.size());
+  }
+
+  // EXISTS will also work
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(FOR d IN testView
+           SEARCH EXISTS(d.geometry, 'string')
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(insertedDocs.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, insertedDocs.size());
+      EXPECT_EQUAL_SLICES(insertedDocs[i++].slice(), resolved);
+    }
+    EXPECT_EQ(i, insertedDocs.size());
+  }
+
+  // EXISTS will also work
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(FOR d IN testView
+           SEARCH EXISTS(d.geometry, 'analyzer', "mygeojson")
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(insertedDocs.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, insertedDocs.size());
+      EXPECT_EQUAL_SLICES(insertedDocs[i++].slice(), resolved);
+    }
+    EXPECT_EQ(i, insertedDocs.size());
   }
 
   // test missing field
