@@ -29,6 +29,7 @@
 
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
+#include "search/cost.hpp"
 #include "search/score.hpp"
 #include "store/memory_directory.hpp"
 
@@ -386,17 +387,25 @@ TEST(GeoFilterTest, query) {
   ASSERT_EQ(docs->slice().length(), reader->docs_count());
   ASSERT_EQ(docs->slice().length(), reader->live_docs_count());
 
-  auto executeQuery = [&reader](irs::filter const& q) {
+  auto executeQuery = [&reader](
+      irs::filter const& q,
+      std::vector<irs::cost::cost_t> const& costs) {
     std::set<std::string> actualResults;
 
     auto prepared = q.prepare(*reader);
     EXPECT_NE(nullptr, prepared);
+    auto expectedCost = costs.begin();
     for (auto& segment : *reader) {
       auto column = segment.column_reader("name");
       EXPECT_NE(nullptr, column);
       auto values = column->values();
       auto it = prepared->execute(segment);
       EXPECT_NE(nullptr, it);
+      auto* cost = irs::get<irs::cost>(*it);
+      EXPECT_NE(nullptr, cost);
+
+      EXPECT_NE(expectedCost, costs.end());
+      EXPECT_EQ(*expectedCost, cost->estimate());
 
       while (it->next()) {
         auto docId = it->value();
@@ -406,7 +415,10 @@ TEST(GeoFilterTest, query) {
 
         actualResults.emplace(irs::to_string<std::string>(value.c_str()));
       }
+
+      ++expectedCost;
     }
+    EXPECT_EQ(expectedCost, costs.end());
 
     return actualResults;
   };
@@ -435,7 +447,7 @@ TEST(GeoFilterTest, query) {
     ASSERT_EQ(geo::ShapeContainer::Type::S2_LATLNGRECT, q.mutable_options()->shape.type());
     *q.mutable_field() = "geometry";
 
-    ASSERT_EQ(expected, executeQuery(q));
+    ASSERT_EQ(expected, executeQuery(q, {2, 2}));
   }
 }
 

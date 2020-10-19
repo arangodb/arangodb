@@ -47,8 +47,6 @@ using namespace arangodb::iresearch;
 
 using Disjunction = irs::disjunction_iterator<irs::doc_iterator::ptr>;
 
-constexpr double_t EXTRA_COST = 1.5;
-
 irs::filter::prepared::ptr match_all(
     irs::index_reader const& index,
     irs::order::prepared const& order,
@@ -61,11 +59,17 @@ irs::filter::prepared::ptr match_all(
   return filter.prepare(index, order, boost);
 }
 
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @class GeoIterator
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 template<typename Acceptor>
 class GeoIterator : public irs::doc_iterator {
+ private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief two phase iterator is heavier than a usual disjunction
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr irs::cost::cost_t EXTRA_COST = 2;
+
  public:
   GeoIterator(
       doc_iterator::ptr&& approx,
@@ -81,8 +85,7 @@ class GeoIterator : public irs::doc_iterator {
       _storedValue(irs::get<irs::payload>(*_columnIt)),
       _doc(irs::get_mutable<irs::document>(_approx.get())),
       _cost([this](){
-        // FIXME find a better estimation
-        return static_cast<irs::cost::cost_t>(EXTRA_COST*irs::cost::extract(*_approx));
+        return EXTRA_COST*irs::cost::extract(*_approx);
       }),
       _attrs{{
         { irs::type<irs::document>::id(),  _doc    },

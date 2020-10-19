@@ -30,6 +30,7 @@
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "search/score.hpp"
+#include "search/cost.hpp"
 #include "store/memory_directory.hpp"
 
 #include "IResearch/GeoFilter.h"
@@ -469,17 +470,25 @@ TEST(GeoDistanceFilterTest, query) {
   ASSERT_EQ(docs->slice().length(), reader->docs_count());
   ASSERT_EQ(docs->slice().length(), reader->live_docs_count());
 
-  auto executeQuery = [&reader](irs::filter const& q, irs::order::prepared const& ord) {
+  auto executeQuery = [&reader](
+      irs::filter const& q,
+      std::vector<irs::cost::cost_t> const& costs) {
     std::set<std::string> actualResults;
 
-    auto prepared = q.prepare(*reader, ord);
+    auto prepared = q.prepare(*reader);
     EXPECT_NE(nullptr, prepared);
+    auto expectedCost = costs.begin();
     for (auto& segment : *reader) {
       auto column = segment.column_reader("name");
       EXPECT_NE(nullptr, column);
       auto values = column->values();
       auto it = prepared->execute(segment);
       EXPECT_NE(nullptr, it);
+      auto* cost = irs::get<irs::cost>(*it);
+      EXPECT_NE(nullptr, cost);
+
+      EXPECT_NE(expectedCost, costs.end());
+      EXPECT_EQ(*expectedCost, cost->estimate());
 
       while (it->next()) {
         auto docId = it->value();
@@ -489,7 +498,10 @@ TEST(GeoDistanceFilterTest, query) {
 
         actualResults.emplace(irs::to_string<std::string>(value.c_str()));
       }
+
+      ++expectedCost;
     }
+    EXPECT_EQ(expectedCost, costs.end());
 
     return actualResults;
   };
@@ -504,7 +516,7 @@ TEST(GeoDistanceFilterTest, query) {
     range.max_type = irs::BoundType::INCLUSIVE;
     range.max = 300;
 
-    ASSERT_EQ(expected, executeQuery(q, irs::order::prepared::unordered()));
+    ASSERT_EQ(expected, executeQuery(q, {2, 2}));
   }
 }
 
