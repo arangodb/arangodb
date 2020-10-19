@@ -18,21 +18,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Max Neunhoeffer
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_COMPILE_TIME_STRLEN_H
-#define ARANGODB_BASICS_COMPILE_TIME_STRLEN_H 1
-
-#include <cstdlib>
+#include <cstring>
 
 namespace arangodb {
+namespace velocypack {
 
-template<typename T>
-constexpr static inline size_t compileTimeStrlen(T str) {
-  return *str ? 1U + compileTimeStrlen(str + 1) : 0U;
-}
+void* memrchr(void const* block, int c, std::size_t size) {
+#ifdef __linux__
+  return const_cast<void*>(::memrchr(block, c, size));
+#else
+  /// naive memrchr overlay for Windows or other platforms, which don't implement it
+  if (size) {
+    unsigned char const* p = static_cast<unsigned char const*>(block);
 
-}
-
+    for (p += size - 1; size; p--, size--) {
+      if (*p == c) {
+        return const_cast<void*>(static_cast<void const*>(p));
+      }
+    }
+  }
+  return nullptr;
 #endif
+}
+
+} // namespace velocypack
+} // namespace arangodb

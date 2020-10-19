@@ -3549,7 +3549,7 @@ ResultT<bool> RestReplicationHandler::isLockHeld(TransactionId id) const {
   transaction::Status stats = mgr->getManagedTrxStatus(id, _vocbase.name());
   if (stats == transaction::Status::UNDEFINED) {
     return ResultT<bool>::error(TRI_ERROR_HTTP_NOT_FOUND,
-                                "no hold read lock job found for 'id'");
+                                "no hold read lock job found for id " + std::to_string(id.id()));
   }
   
   return ResultT<bool>::success(true);

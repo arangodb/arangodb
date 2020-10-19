@@ -180,8 +180,8 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result parseCollectionDump(transaction::Methods&, LogicalCollection* col,
                              httpclient::SimpleHttpResult*, uint64_t&);
 
-  /// @brief determine the number of documents in a collection
-  int64_t getSize(arangodb::LogicalCollection const& col);
+  /// @brief whether or not the collection has documents
+  bool hasDocuments(arangodb::LogicalCollection const& col);
 
   /// @brief incrementally fetch data from a collection
   // TODO worker safety

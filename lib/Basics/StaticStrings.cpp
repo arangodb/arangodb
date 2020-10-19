@@ -67,6 +67,7 @@ std::string const StaticStrings::Prefix("prefix");
 std::string const StaticStrings::Overwrite("overwrite");
 std::string const StaticStrings::OverwriteMode("overwriteMode");
 std::string const StaticStrings::PreserveRevisionIds("preserveRevisionIds");
+std::string const StaticStrings::Compact("compact");
 
 // replication headers
 std::string const StaticStrings::ReplicationHeaderCheckMore(

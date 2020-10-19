@@ -29,7 +29,6 @@
 #include "Basics/EncodingUtils.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/compile-time-strlen.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
@@ -60,7 +59,7 @@ std::string const ApiUser("/_api/user/");
 std::string const Open("/_open/");
 
 inline bool startsWith(std::string const& path, char const* other) {
-  size_t const size = arangodb::compileTimeStrlen(other);
+  size_t const size = std::char_traits<char>::length(other);
 
   return (size <= path.size() &&
           path.compare(0, size, other, size) == 0);

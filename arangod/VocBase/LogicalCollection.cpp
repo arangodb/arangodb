@@ -179,7 +179,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 #endif
       _physical(vocbase.server().getFeature<EngineSelectorFeature>().engine().createPhysicalCollection(
           *this, info)) {
-
+  
+  TRI_IF_FAILURE("disableRevisionsAsDocumentIds") { 
+    _usesRevisionsAsDocumentIds.store(false);
+    _syncByRevision.store(false);
+  }
+  
   TRI_ASSERT(info.isObject());
 
   if (!TRI_vocbase_t::IsAllowedName(info)) {
@@ -477,8 +482,6 @@ RevisionId LogicalCollection::revision(transaction::Methods* trx) const {
 }
 
 bool LogicalCollection::usesRevisionsAsDocumentIds() const {
-  // TODO: switch off for now to lower memory consumption:
-  // return false;
   return _usesRevisionsAsDocumentIds.load();
 }
 
