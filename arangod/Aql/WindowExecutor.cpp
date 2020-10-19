@@ -320,7 +320,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> WindowExecutor::produceRows(
 
     // simon; Fairly inefficient aggregation loop, would need a better
     // Aggregation API allowing removal of values to avoid re-scanning entire range
-    while (!output.isFull() > 0 && haveRows()) {
+    while (!output.isFull() && haveRows()) {
       size_t start = _currentIdx > numPreceding ? _currentIdx - numPreceding : 0;
       size_t end = std::min(_rows.size(), _currentIdx + numFollowing + 1);
 

@@ -848,7 +848,6 @@ bool arangodb::basics::parseIsoDuration(arangodb::velocypack::StringRef duration
   begin = duration.data() + durationParts.position(4);
   ret.months = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(4));
 
-  milliseconds ms{0};
   begin = duration.data() + durationParts.position(6);
   ret.weeks = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(6));
 
