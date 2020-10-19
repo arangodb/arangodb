@@ -252,7 +252,7 @@ static bool CreatePipes(int* pipe_server_to_child, int* pipe_child_to_server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void StartExternalProcess(ExternalProcess* external, bool usePipes,
-                                 std::vector<std::string> additionalEnv) {
+                                 std::vector<std::string> const& additionalEnv) {
   int pipe_server_to_child[2];
   int pipe_child_to_server[2];
 
@@ -294,7 +294,7 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
     }
 
     // add environment variables
-    for (auto it : additionalEnv) {
+    for (auto const& it : additionalEnv) {
       putenv(TRI_DuplicateString(it.c_str()));
     }
 
@@ -547,7 +547,7 @@ static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
 }
 
 static void StartExternalProcess(ExternalProcess* external, bool usePipes,
-                                 std::vector<std::string> additionalEnv) {
+                                 std::vector<std::string> const& additionalEnv) {
   HANDLE hChildStdinRd = NULL, hChildStdinWr = NULL;
   HANDLE hChildStdoutRd = NULL, hChildStdoutWr = NULL;
   bool fSuccess;
@@ -896,7 +896,7 @@ void TRI_SetProcessTitle(char const* title) {
 
 void TRI_CreateExternalProcess(char const* executable,
                                std::vector<std::string> const& arguments,
-                               std::vector<std::string> additionalEnv,
+                               std::vector<std::string> const& additionalEnv,
                                bool usePipes, ExternalId* pid) {
   size_t const n = arguments.size();
   // create the external structure
