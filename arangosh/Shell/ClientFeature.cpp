@@ -236,6 +236,13 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(_endpoint));
+
+  if (endpoint.get() == nullptr) {
+    LOG_TOPIC("2fac9", ERR, arangodb::Logger::FIXME)
+        << "invalid value for --server.endpoint ('" << _endpoint << "')";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+
   if (endpoint.get()->isBroadcastBind()) {
     LOG_TOPIC("701fb", ERR, arangodb::Logger::FIXME)
         << "invalid value for --server.endpoint ('" << _endpoint <<
