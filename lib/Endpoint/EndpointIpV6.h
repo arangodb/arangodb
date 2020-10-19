@@ -36,6 +36,7 @@ class EndpointIpV6 final : public EndpointIp {
 
  public:
   int domain() const override { return AF_INET6; }
+  virtual bool isBroadcastBind();
 
   std::string hostAndPort() const override {
     return '[' + host() + "]:" + arangodb::basics::StringUtils::itoa(port());

@@ -76,6 +76,7 @@ class Endpoint {
   virtual bool isConnected() const { return _connected; }
   virtual bool setSocketFlags(TRI_socket_t);
   virtual DomainType domainType() const { return _domainType; }
+  virtual bool isBroadcastBind() const { return true; }
 
   virtual int domain() const = 0;
   virtual int port() const = 0;
