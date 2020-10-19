@@ -173,9 +173,9 @@ size_t AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
     return 0;
   }
   advanceBlockIndexAndShadowRow();
-  // If we advance here, we are either at the end of the query.
+  // If we advance here, we either need more input (no shadowRow)
   // Or we have a relevant shadowRow and only skipped the dataset
-  TRI_ASSERT((!hasShadowRow() && _finalState == ExecutorState::DONE) || _shadowRow.isRelevant());
+  TRI_ASSERT(!hasShadowRow() || _shadowRow.isRelevant());
 
   // Else we did already skip once.
   // nothing to do
