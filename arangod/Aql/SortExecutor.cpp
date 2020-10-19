@@ -151,7 +151,6 @@ std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
     AqlItemBlockInputMatrix& inputMatrix, OutputAqlItemRow& output) {
   AqlCall upstreamCall{};
 
-  // if (inputMatrix.upstreamState() == ExecutorState::HASMORE) {
   if (!inputMatrix.hasDataRow()) {
     // If our inputMatrix does not contain all upstream rows
     return {inputMatrix.upstreamState(), NoStats{}, upstreamCall};

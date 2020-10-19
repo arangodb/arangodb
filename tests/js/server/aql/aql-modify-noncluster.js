@@ -347,7 +347,7 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpsertEmptyCollection : function () {
-      c1.truncate();
+      c1.truncate({ compact: false });
 
       var expected = { writesExecuted: 1, writesIgnored: 0 };
       var actual = AQL_EXECUTE("UPSERT { } INSERT { bar: 'baz' } UPDATE { bark: 'bart' } IN " + cn1, {});
@@ -366,7 +366,7 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpsertEmptyCollectionBind : function () {
-      c1.truncate();
+      c1.truncate({ compact: false });
 
       var expected = { writesExecuted: 1, writesIgnored: 0 };
       var actual = AQL_EXECUTE("UPSERT @what INSERT { bar: 'baz' } UPDATE { bark: 'bart' } IN " + cn1, { what: { } });
@@ -655,7 +655,7 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpsertInvalidSearchDocument : function () {
-      c1.truncate();
+      c1.truncate({ compact: false });
 
       var queries = [
         [ "UPSERT 'test1' INSERT { } UPDATE { } INTO @@cn", { } ],
@@ -681,7 +681,7 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpsertInvalidDocumentsInsert : function () {
-      c1.truncate();
+      c1.truncate({ compact: false });
 
       var queries = [
         [ "UPSERT { } INSERT null UPDATE { } INTO @@cn", { } ],

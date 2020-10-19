@@ -36,6 +36,7 @@
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
+#include "ApplicationFeatures/TimeZoneFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
@@ -179,6 +180,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<V8FeaturePhase>();
 
     // Adding the features
+    server.addFeature<MetricsFeature>();
     server.addFeature<ActionFeature>();
     server.addFeature<AgencyFeature>();
     server.addFeature<AqlFeature>();
@@ -205,12 +207,12 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<InitDatabaseFeature>(nonServerFeatures);
     server.addFeature<LanguageCheckFeature>();
     server.addFeature<LanguageFeature>();
+    server.addFeature<TimeZoneFeature>();
     server.addFeature<LockfileFeature>();
     server.addFeature<LogBufferFeature>();
     server.addFeature<LoggerFeature>(true);
     server.addFeature<MaintenanceFeature>();
     server.addFeature<MaxMapCountFeature>();
-    server.addFeature<MetricsFeature>();
     server.addFeature<NetworkFeature>();
     server.addFeature<NonceFeature>();
     server.addFeature<PrivilegeFeature>();

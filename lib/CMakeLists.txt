@@ -36,6 +36,11 @@ set(LIB_ARANGO_LINENOISE
   Utilities/LinenoiseShell.cpp
 )
 
+set(LIB_ARANGO_DATE
+  ${PROJECT_SOURCE_DIR}/3rdParty/date/src/tz.cpp
+)
+add_definitions("-DHAS_REMOTE_API=0")
+
 set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/AttributeTranslator.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Builder.cpp
@@ -43,6 +48,7 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Compare.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Dumper.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Exception.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/HashedStringRef.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/HexDump.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Iterator.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Options.cpp
@@ -60,6 +66,7 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/asm-functions.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/asm-utf8check.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/fpconv.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/string-functions.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/velocypack-common.cpp
   ${PROJECT_SOURCE_DIR}/lib/Basics/xxhash.cpp
   )
@@ -89,6 +96,7 @@ add_library(arango STATIC
   ${LIB_ARANGO_MSVC}
   ${LIB_ARANGO_POSIX}
   ${LIB_ARANGO_LINENOISE}
+  ${LIB_ARANGO_DATE}
   ${LIB_ARANGO_VPACK}
   ${LIB_CLOCK_GETTIME}
   ${LIB_ASM_SOURCES}
@@ -101,6 +109,7 @@ add_library(arango STATIC
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/GreetingsFeaturePhase.cpp
   ApplicationFeatures/LanguageFeature.cpp
+  ApplicationFeatures/TimeZoneFeature.cpp
   ApplicationFeatures/MaxMapCountFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp

@@ -18,45 +18,39 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Andreas Dominik Jung
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_TIMED_ACTION_H
-#define ARANGODB_BASICS_TIMED_ACTION_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_TIMEZONE_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_TIMEZONE_FEATURE_H 1
 
-#include "Basics/Common.h"
-#include "Basics/system-functions.h"
+#include <memory>
+#include <string>
+
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+namespace options {
+class ProgramOptions;
+}
 
-class TimedAction {
+class TimeZoneFeature final : public application_features::ApplicationFeature {
  public:
-  TimedAction(TimedAction const&) = delete;
-  TimedAction& operator=(TimedAction const&) = delete;
+  explicit TimeZoneFeature(application_features::ApplicationServer& server);
+  ~TimeZoneFeature();
 
-  TimedAction(std::function<void(double)> const& callback, double threshold)
-      : _callback(callback), _threshold(threshold), _start(TRI_microtime()), _done(false) {}
+  void prepare() override final;
+  void start() override final;
 
-  ~TimedAction() = default;
-
- public:
-  double elapsed() const { return (TRI_microtime() - _start); }
-  bool tick() {
-    if (!_done) {
-      if (elapsed() >= _threshold) {
-        _done = true;
-        _callback(_threshold);
-        return true;
-      }
-    }
-    return false;
-  }
-
+  static void prepareTimeZoneData(std::string const& binaryPath,
+                                  std::string const& binaryExecutionPath,
+                                  std::string const& binaryName);
+  static TimeZoneFeature* instance();
  private:
-  std::function<void(double)> const _callback;
-  double const _threshold;
-  double _start;
-  bool _done;
+  char const* _binaryPath;
 };
 
 }  // namespace arangodb

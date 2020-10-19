@@ -750,6 +750,149 @@ function ahuacatlProfilerTestSuite () {
       profHelper.runDefaultChecks({query, genNodeList});
     },
 
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test SortedCollectBlock
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testSortedCollectBlock4 : function () {
+      // example:
+      // for @rows = 5,  x is [1,2,0,1,2]
+      // for @rows = 12, x is [1,2,3,4,5,0,1,2,3,4,5,0]
+      const query = 'FOR i IN 1..@rows ' +
+        'COLLECT AGGREGATE y = MIN(i) OPTIONS {method: "sorted"} ' +
+        'RETURN y';
+      const genNodeList = (rows, batches) => {
+        const rowsAfterCollect = 1;
+        const batchesAfterCollect = 1;
+
+        return [
+          { type: SingletonBlock, calls: 1, items: 1 },
+          { type: CalculationBlock, calls: 1, items: 1 },
+          { type: EnumerateListBlock, calls: batches, items: rows },
+          { type: SortedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+          { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+        ];
+      };
+      profHelper.runDefaultChecks({query, genNodeList});
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test LimitBlock + CountCollectBlock
+/// This is a regression test for ES-692.
+/// Introduced and fixed in https://github.com/arangodb/arangodb/pull/12719.
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitBlockWithCountCollectBlock : function () {
+      const query = `
+        FOR i IN 1..@rows
+          LIMIT @offset, @limit
+          COLLECT WITH COUNT INTO c
+          RETURN c
+      `;
+      const genNodeList = (rows) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        { type : EnumerateListBlock, calls : 1, items : limit(rows) },
+        { type : LimitBlock, calls : 1, items : limitMinusSkip(rows) },
+        { type : CountCollectBlock, calls : 1, items : 1 },
+        { type : ReturnBlock, calls : 1, items : 1 }
+      ];
+      const bind = rows => ({
+        rows,
+        // ~1/4 of rows:
+        offset: offset(rows),
+        // ~1/2 of rows:
+        limit: limitMinusSkip(rows),
+      });
+      profHelper.runDefaultChecks({query, bind, genNodeList});
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test LimitBlock with fullCount + CountCollectBlock
+/// This is a regression test for ES-692.
+/// Introduced and fixed in https://github.com/arangodb/arangodb/pull/12719.
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitBlockWithCountCollectBlockAndFullCount : function () {
+      const query = `
+        FOR i IN 1..@rows
+          LIMIT @offset, @limit
+          COLLECT WITH COUNT INTO c
+          RETURN c
+      `;
+      const genNodeList = (rows) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        { type : EnumerateListBlock, calls : 1, items : rows },
+        { type : LimitBlock, calls : 1, items : limitMinusSkip(rows) },
+        { type : CountCollectBlock, calls : 1, items : 1 },
+        { type : ReturnBlock, calls : 1, items : 1 }
+      ];
+      const bind = rows => ({
+        rows,
+        // ~1/4 of rows:
+        offset: offset(rows),
+        // ~1/2 of rows:
+        limit: limitMinusSkip(rows),
+      });
+      const genStats = rows => ({
+        fullCount: rows
+      });
+      profHelper.runDefaultChecks({query, bind, genNodeList, genStats, options: {fullCount: true}});
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test two adjacent LimitBlocks with fullCount.
+/// NOTE That this is currently suboptimal! Currently, fullCount is passed
+/// through the upper limit block, forcing upstream blocks to iterate everything.
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitBlockWithLimitAndFullCount : function () {
+      const query = `
+        FOR i IN 1..@rows
+          LIMIT @upperOffset, @upperLimit
+          LIMIT @lowerOffset, @lowerLimit
+          RETURN i
+      `;
+
+      // The lower limit works with the rows passing through the upper limit,
+      // so rows are divided roughly like this:
+      // |                                rows                           |
+      // | upperOffset |               upperLimit             |
+      // |             | lowerOffset | lowerLimit |
+      const upperOffset = rows => offset(rows);
+      const upperLimit = rows => limitMinusSkip(rows);
+      const lowerOffset = rows => offset(limitMinusSkip(rows));
+      const lowerLimit = rows => limitMinusSkip(limitMinusSkip(rows));
+      const batches = rows => Math.ceil(rows / defaultBatchSize);
+
+      const genNodeList = (rows) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        // NOTE: `items: rows` should *really* be upperOffset(rows) + upperLimit(rows).
+        //       That still needs to be implemented.
+        { type : EnumerateListBlock, calls : batches(lowerLimit(rows)), items : rows },
+        { type : LimitBlock, calls : batches(lowerLimit(rows)), items : upperLimit(rows) },
+        { type : LimitBlock, calls : batches(lowerLimit(rows)), items : lowerLimit(rows) },
+        { type : ReturnBlock, calls : batches(lowerLimit(rows)), items : lowerLimit(rows) }
+      ];
+
+      const bind = rows => ({
+        rows,
+        // ~1/4 of rows:
+        upperOffset: upperOffset(rows),
+        // ~1/2 of rows:
+        upperLimit: upperLimit(rows),
+        // ~1/8 of rows:
+        lowerOffset: lowerOffset(rows),
+        // ~1/4 of rows:
+        lowerLimit: lowerLimit(rows),
+      });
+      const genStats = rows => ({
+        fullCount: Math.min(rows, upperLimit(rows)),
+      });
+      profHelper.runDefaultChecks({query, bind, genNodeList, genStats, options: {fullCount: true}});
+    },
 
 // TODO Every block must be tested separately. Here follows the list of blocks
 // (partly grouped due to the inheritance hierarchy). Intermediate blocks

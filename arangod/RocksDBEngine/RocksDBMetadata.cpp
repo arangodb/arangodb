@@ -102,11 +102,19 @@ Result RocksDBMetadata::placeBlocker(TransactionId trxId, rocksdb::SequenceNumbe
     TRI_ASSERT(_blockersBySeq.end() == _blockersBySeq.find(std::make_pair(seq, trxId)));
 
     auto insert = _blockers.try_emplace(trxId, seq);
-    auto crosslist = _blockersBySeq.emplace(seq, trxId);
-    if (!insert.second || !crosslist.second) {
+    if (!insert.second) {
       return res.reset(TRI_ERROR_INTERNAL);
     }
-    return res;
+    try {
+      auto crosslist = _blockersBySeq.emplace(seq, trxId);
+      if (!crosslist.second) {
+        return res.reset(TRI_ERROR_INTERNAL);
+      }
+      return res;
+    } catch (...) {
+      _blockers.erase(trxId);
+      throw;
+    }
   });
 }
 

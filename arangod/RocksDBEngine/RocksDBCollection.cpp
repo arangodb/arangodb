@@ -222,14 +222,16 @@ RocksDBKeyBounds RocksDBCollection::bounds() const  {
 void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice) {
   TRI_ASSERT(indexesSlice.isArray());
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
   std::vector<std::shared_ptr<Index>> indexes;
   {
     READ_LOCKER(guard, _indexesLock);  // link creation needs read-lock too
     if (indexesSlice.length() == 0 && _indexes.empty()) {
-      engine->indexFactory().fillSystemIndexes(_logicalCollection, indexes);
+      engine.indexFactory().fillSystemIndexes(_logicalCollection, indexes);
     } else {
-      engine->indexFactory().prepareIndexes(_logicalCollection, indexesSlice, indexes);
+      engine.indexFactory().prepareIndexes(_logicalCollection, indexesSlice, indexes);
     }
   }
 
@@ -328,14 +330,16 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     }
   }
 
-  RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
 
   // Step 2. We are sure that we do not have an index of this type.
   // We also hold the lock. Create it
   bool const generateKey = !restore;
   try {
-    idx = engine->indexFactory().prepareIndexFromSlice(info, generateKey,
-                                                       _logicalCollection, false);
+    idx = engine.indexFactory().prepareIndexFromSlice(info, generateKey,
+                                                      _logicalCollection, false);
   } catch (std::exception const& ex) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED, ex.what());
   }
@@ -372,15 +376,15 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     // Step 3. add index to collection entry (for removal after a crash)
     auto buildIdx =
     std::make_shared<RocksDBBuilderIndex>(std::static_pointer_cast<RocksDBIndex>(idx));
-    if (!engine->inRecovery()) {  // manually modify collection entry, other
+    if (!engine.inRecovery()) {  // manually modify collection entry, other
       // methods need lock
       RocksDBKey key;             // read collection info from database
       key.constructCollection(_logicalCollection.vocbase().id(),
                               _logicalCollection.id());
       rocksdb::PinnableSlice ps;
-      rocksdb::Status s = engine->db()->Get(rocksdb::ReadOptions(),
-                                            RocksDBColumnFamily::definitions(),
-                                            key.string(), &ps);
+      rocksdb::Status s =
+          engine.db()->Get(rocksdb::ReadOptions(),
+                           RocksDBColumnFamily::definitions(), key.string(), &ps);
       if (!s.ok()) {
         res.reset(rocksutils::convertStatus(s));
         break;
@@ -399,9 +403,9 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
         builder.add(pair.value);
       }
       builder.close();
-      res = engine->writeCreateCollectionMarker(_logicalCollection.vocbase().id(),
-                                                _logicalCollection.id(), builder.slice(),
-                                                RocksDBLogValue::Empty());
+      res = engine.writeCreateCollectionMarker(_logicalCollection.vocbase().id(),
+                                               _logicalCollection.id(), builder.slice(),
+                                               RocksDBLogValue::Empty());
       if (res.fail()) {
         break;
       }
@@ -444,20 +448,20 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
     // inBackground index might not recover selectivity estimate w/o sync
     if (inBackground && !idx->unique() && idx->hasSelectivityEstimate()) {
-      engine->settingsManager()->sync(false);
+      engine.settingsManager()->sync(false);
     }
 
     // Step 6. persist in rocksdb
-    if (!engine->inRecovery()) {  // write new collection marker
+    if (!engine.inRecovery()) {  // write new collection marker
       auto builder = _logicalCollection.toVelocyPackIgnore(
           {"path", "statusString"},
           LogicalDataSource::Serialization::PersistenceWithInProgress);
       VPackBuilder indexInfo;
       idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::Internals));
-      res = engine->writeCreateCollectionMarker(_logicalCollection.vocbase().id(),
-                                                _logicalCollection.id(), builder.slice(),
-                                                RocksDBLogValue::IndexCreate(_logicalCollection.vocbase().id(),
-                                                                             _logicalCollection.id(), indexInfo.slice()));
+      res = engine.writeCreateCollectionMarker(
+          _logicalCollection.vocbase().id(), _logicalCollection.id(), builder.slice(),
+          RocksDBLogValue::IndexCreate(_logicalCollection.vocbase().id(),
+                                       _logicalCollection.id(), indexInfo.slice()));
     }
   } while(false);
 
@@ -523,9 +527,11 @@ bool RocksDBCollection::dropIndex(IndexId iid) {
 
   cindex->compact(); // trigger compaction before deleting the object
 
-  auto* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
 
-  if (!engine || engine->inRecovery()) {
+  if (engine.inRecovery()) {
     return true; // skip writing WAL marker if inRecovery()
   }
 
@@ -535,14 +541,13 @@ bool RocksDBCollection::dropIndex(IndexId iid) {
           LogicalDataSource::Serialization::PersistenceWithInProgress);
 
   // log this event in the WAL and in the collection meta-data
-  res = engine->writeCreateCollectionMarker( // write marker
-    _logicalCollection.vocbase().id(), // vocbase id
-    _logicalCollection.id(), // collection id
-    builder.slice(), // RocksDB path
-    RocksDBLogValue::IndexDrop( // marker
-      _logicalCollection.vocbase().id(), _logicalCollection.id(), iid // args
-    )
-  );
+  res = engine.writeCreateCollectionMarker(  // write marker
+      _logicalCollection.vocbase().id(),     // vocbase id
+      _logicalCollection.id(),               // collection id
+      builder.slice(),                       // RocksDB path
+      RocksDBLogValue::IndexDrop(            // marker
+          _logicalCollection.vocbase().id(), _logicalCollection.id(), iid  // args
+          ));
 
   return res.ok();
 }
@@ -608,15 +613,18 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
       return Result(TRI_ERROR_DEBUG);
     }
 
-    RocksDBEngine* engine = rocksutils::globalRocksEngine();
-    rocksdb::DB* db = engine->db()->GetRootDB();
+    RocksDBEngine& engine = _logicalCollection.vocbase()
+                                .server()
+                                .getFeature<EngineSelectorFeature>()
+                                .engine<RocksDBEngine>();
+    rocksdb::DB* db = engine.db()->GetRootDB();
 
     TRI_IF_FAILURE("RocksDBCollection::truncate::forceSync") {
-      engine->settingsManager()->sync(false);
+      engine.settingsManager()->sync(false);
     }
 
     // pre commit sequence needed to place a blocker
-    rocksdb::SequenceNumber seq = rocksutils::latestSequenceNumber();
+    rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
     auto guard = scopeGuard([&] {  // remove blocker afterwards
       _meta.removeBlocker(state->id());
     });
@@ -1264,13 +1272,25 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
 }
 
 void RocksDBCollection::adjustNumberDocuments(transaction::Methods& trx, int64_t diff) {
-  auto seq = rocksutils::latestSequenceNumber();
+  RocksDBEngine& engine =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  auto seq = engine.db()->GetLatestSequenceNumber();
   meta().adjustNumberDocuments(seq, RevisionId::none(), diff);
+}
+
+bool RocksDBCollection::hasDocuments() {
+  RocksDBEngine& engine =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId());
+  return rocksutils::hasKeys(engine.db(), bounds, true);
 }
 
 /// @brief return engine-specific figures
 void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Builder& builder) {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId());
   rocksdb::Range r(bounds.start(), bounds.end());
 
@@ -1300,11 +1320,13 @@ void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Buil
 
   if (details) {
     // engine-specific stuff here
-    rocksdb::DB* db = rocksutils::globalRocksDB()->GetRootDB();
+    rocksdb::DB* rootDB = db->GetRootDB();
 
     builder.add("engine", VPackValue(VPackValueType::Object));
-    
-    builder.add("documents", VPackValue(rocksutils::countKeyRange(db, RocksDBKeyBounds::CollectionDocuments(objectId()), true)));
+
+    builder.add("documents",
+                VPackValue(rocksutils::countKeyRange(
+                    rootDB, RocksDBKeyBounds::CollectionDocuments(objectId()), true)));
     builder.add("indexes", VPackValue(VPackValueType::Array));
     {
       READ_LOCKER(guard, _indexesLock);

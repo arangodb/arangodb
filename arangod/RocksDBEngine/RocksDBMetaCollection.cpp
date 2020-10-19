@@ -40,6 +40,7 @@
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
@@ -60,15 +61,14 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       _revisionTreeSerializedSeq(0),
       _revisionTreeSerializedTime(std::chrono::steady_clock::now()) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  VPackSlice s = info.get("isVolatile");
-  if (s.isBoolean() && s.getBoolean()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "volatile collections are unsupported in the RocksDB engine");
-  }
 
   TRI_ASSERT(_logicalCollection.isAStub() || _objectId.load() != 0);
-  rocksutils::globalRocksEngine()->addCollectionMapping(
-      _objectId.load(), _logicalCollection.vocbase().id(), _logicalCollection.id());
+  collection.vocbase()
+      .server()
+      .getFeature<EngineSelectorFeature>()
+      .engine<RocksDBEngine>()
+      .addCollectionMapping(_objectId.load(), _logicalCollection.vocbase().id(),
+                            _logicalCollection.id());
 }
 
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
@@ -80,8 +80,12 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       _revisionTreeSerializedSeq(0),
       _revisionTreeSerializedTime(std::chrono::steady_clock::now()) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  rocksutils::globalRocksEngine()->addCollectionMapping(
-      _objectId.load(), _logicalCollection.vocbase().id(), _logicalCollection.id());
+  collection.vocbase()
+      .server()
+      .getFeature<EngineSelectorFeature>()
+      .engine<RocksDBEngine>()
+      .addCollectionMapping(_objectId.load(), _logicalCollection.vocbase().id(),
+                            _logicalCollection.id());
 }
 
 std::string const& RocksDBMetaCollection::path() const {
@@ -144,8 +148,11 @@ void RocksDBMetaCollection::trackWaitForSync(arangodb::transaction::Methods* trx
 
 // rescans the collection to update document count
 uint64_t RocksDBMetaCollection::recalculateCounts() {
-  RocksDBEngine* engine = rocksutils::globalRocksEngine();
-  rocksdb::TransactionDB* db = engine->db();
+  std::unique_lock<std::mutex> guard(_recalculationLock);
+
+  RocksDBEngine& engine =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   const rocksdb::Snapshot* snapshot = nullptr;
   // start transaction to get a collection lock
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
@@ -161,8 +168,15 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   });
 
   // makes sure collection doesn't get unloaded
-  CollectionGuard guard(&vocbase, _logicalCollection.id());
-  
+  CollectionGuard collGuard(&vocbase, _logicalCollection.id());
+
+  TransactionId trxId{0};
+  auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
+    if (trxId.isSet()) {
+      _meta.removeBlocker(trxId);
+    }
+  });
+
   uint64_t snapNumberOfDocuments = 0;
   {
     // fetch number docs and snapshot under exclusive lock
@@ -173,14 +187,38 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
       lockGuard.cancel();
       THROW_ARANGO_EXCEPTION(res);
     }
-    
+ 
+    // generate a unique transaction id for a blocker
+    trxId = TransactionId(transaction::Context::makeTransactionId());
+
+    // place a blocker. will be removed by blockerGuard automatically
+    _meta.placeBlocker(trxId, engine.db()->GetLatestSequenceNumber());
+
+    snapshot = engine.db()->GetSnapshot();
     snapNumberOfDocuments = _meta.numberDocuments();
-    snapshot = engine->db()->GetSnapshot();
     TRI_ASSERT(snapshot);
+  }
+
+  auto seq = snapshot->GetSequenceNumber();
+
+  auto bounds = RocksDBKeyBounds::Empty();
+  bool set = false;
+  {
+    READ_LOCKER(guard, _indexesLock);
+    for (auto it : _indexes) {
+      if (it->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
+        bounds = RocksDBKeyBounds::PrimaryIndex(rix->objectId());
+        set = true;
+        break;
+      }
+    }
+  }
+  if (!set) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "did not find primary index");
   }
   
   // count documents
-  RocksDBKeyBounds bounds = this->bounds();
   rocksdb::Slice upper(bounds.end());
   
   rocksdb::ReadOptions ro;
@@ -193,18 +231,27 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(ro, cf));
   std::size_t count = 0;
-  
+ 
+
+  application_features::ApplicationServer& server = vocbase.server();
+
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
     ++count;
+
+    if (count % 4096 == 0 &&
+        server.isStopping()) {
+      // check for server shutdown
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
   }
   
   int64_t adjustment = count - snapNumberOfDocuments;
   if (adjustment != 0) {
-    auto seq = snapshot->GetSequenceNumber();
-    LOG_TOPIC("ad6d3", WARN, Logger::REPLICATION)
-    << "inconsistent collection count detected, "
-    << "an offet of " << adjustment << " will be applied";
+    LOG_TOPIC("ad613", WARN, Logger::REPLICATION)
+      << "inconsistent collection count detected for "
+      << vocbase.name() << "/" << _logicalCollection.name()
+      << ", an offet of " << adjustment << " will be applied";
     _meta.adjustNumberDocuments(seq, RevisionId::none(), adjustment);
   }
   
@@ -212,7 +259,10 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
 }
 
 Result RocksDBMetaCollection::compact() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   rocksdb::CompactRangeOptions opts;
   RocksDBKeyBounds bounds = this->bounds();
   rocksdb::Slice b = bounds.start(), e = bounds.end();
@@ -229,8 +279,11 @@ Result RocksDBMetaCollection::compact() {
 
 void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
   TRI_ASSERT(!builder.isOpenObject() && !builder.isOpenArray());
-  
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   RocksDBKeyBounds bounds = this->bounds();
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out = 0, total = 0;
@@ -274,8 +327,9 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
   }
 
   // first apply any updates that can be safely applied
-  RocksDBEngine* engine = rocksutils::globalRocksEngine();
-  rocksdb::DB* db = engine->db()->GetRootDB();
+  RocksDBEngine& engine =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  rocksdb::DB* db = engine.db()->GetRootDB();
   rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
@@ -320,8 +374,8 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
   EngineSelectorFeature& selector =
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
   // first apply any updates that can be safely applied
-  RocksDBEngine* engine = rocksutils::globalRocksEngine();
-  rocksdb::DB* db = engine->db()->GetRootDB();
+  RocksDBEngine& engine = selector.engine<RocksDBEngine>();
+  rocksdb::DB* db = engine.db()->GetRootDB();
   rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
@@ -339,7 +393,6 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
 
   {
     // apply any which are buffered and older than our ongoing transaction start
-    RocksDBEngine& engine = selector.engine<RocksDBEngine>();
     RocksDBReplicationManager* manager = engine.replicationManager();
     RocksDBReplicationContext* ctx = batchId == 0 ? nullptr : manager->find(batchId);
     if (!ctx) {
@@ -518,7 +571,10 @@ void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterato
   ro.fill_cache = false;
 
   std::vector<std::uint64_t> revisions;
-  auto* db = rocksutils::globalRocksDB();
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  auto* db = engine.db();
   for (iter->Seek(documentBounds.start());
        iter->Valid() && cmp->Compare(iter->key(), end) < 0; iter->Next()) {
     LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
@@ -551,7 +607,10 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder) {
 }
 
 void RocksDBMetaCollection::placeRevisionTreeBlocker(TransactionId transactionId) {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
   _meta.placeBlocker(transactionId, preSeq);
 }
@@ -932,7 +991,10 @@ bool RocksDBMetaCollection::ensureRevisionTree() {
       }
       return true;
     }
-    _revisionTreeCreationSeq = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
+    auto& selector =
+        _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+    auto& engine = selector.engine<RocksDBEngine>();
+    _revisionTreeCreationSeq = engine.db()->GetLatestSequenceNumber();
     _revisionTreeSerializedSeq = _revisionTreeCreationSeq;
     _revisionTree = allocateEmptyRevisionTree();
     return true;

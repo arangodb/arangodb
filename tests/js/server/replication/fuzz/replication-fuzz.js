@@ -436,7 +436,7 @@ function ReplicationSuite() {
           let truncateCollection = function() {
             let collection = pickCollection();
             emit("truncateCollection " + db._name() + " " + collection.name());
-            collection.truncate();
+            collection.truncate({ compact: false });
           };
 
           let createIndex = function () {
