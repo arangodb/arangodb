@@ -364,9 +364,6 @@ struct AqlValue final {
   /// @brief compare function for two values
   static int Compare(velocypack::Options const*, AqlValue const& left,
                      AqlValue const& right, bool useUtf8);
-  [[deprecated("Pass VPackOptions instead of the transaction")]]
-  static int Compare(transaction::Methods*, AqlValue const& left,
-                     AqlValue const& right, bool useUtf8);
 
   /// @brief Returns the type of this value. If true it uses an external pointer
   /// if false it uses the internal data structure

@@ -740,7 +740,8 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
   int64_t numReadForThisCollection = 0;
   int64_t numReadSinceLastReport = 0;
 
-  bool const isGzip = (0 == datafile->path().substr(datafile->path().size() - 3).compare(".gz"));
+  bool const isGzip = datafile->path().size() > 3 &&
+                      (0 == datafile->path().substr(datafile->path().size() - 3).compare(".gz"));
 
   size_t datafileReadOffset = 0;
   if (currentStatus.state == arangodb::RestoreFeature::RESTORING) {
