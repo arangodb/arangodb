@@ -37,12 +37,28 @@ function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
-  db._drop('UnitTestsRecovery');
-  let c = db._create('UnitTestsRecovery');
+  if (!fs.exists(continueFile)) {
+    // phase one of setUp
+    require("console").info("counts test, phase 1");
 
-  internal.debugSetFailAt('RocksDBSettingsManagerSync');
+    db._drop('UnitTestsRecovery');
+    let c = db._create('UnitTestsRecovery');
 
-  c.insert({ _key: "test" }, { waitForSync: true });
+    internal.debugSetFailAt('RocksDBSettingsManagerSync');
+
+    c.insert({ _key: "test" }, { waitForSync: true });
+    
+    // we want to run setUp just once more
+    fs.write(continueFile, "1");
+  } else {
+    // phase two of setUp
+    require("console").info("counts test, phase 2");
+
+    fs.remove(continueFile);
+      
+    internal.waitForEstimatorSync();
+  }
+    
   internal.debugTerminate('crashing server');
 }
 
@@ -55,35 +71,10 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
       
   return {
-    testRestart1: function () {
-      if (fs.exists(continueFile)) {
-        // skip this phase if we have already been here
-        return;
-      }
-      require("console").info("counts test, phase 1");
-      assertFalse(fs.exists(continueFile));
-
+    testCountsAfterRestart: function () {
       let c = db._collection('UnitTestsRecovery');
       assertEqual(1, c.count());
       assertEqual(1, c.toArray().length);
-      
-      internal.waitForEstimatorSync();
-
-      fs.write(continueFile, "1");
-      internal.debugTerminate('crashing server');
-    },
-
-    testRestart2: function () {
-      try {
-        assertTrue(fs.exists(continueFile));
-        require("console").info("counts test, phase 2");
-
-        let c = db._collection('UnitTestsRecovery');
-        assertEqual(1, c.count());
-        assertEqual(1, c.toArray().length);
-      } finally {
-        fs.remove(continueFile);
-      }
     }
 
   };
