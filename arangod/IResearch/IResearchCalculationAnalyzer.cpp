@@ -61,6 +61,7 @@ using namespace arangodb::aql;
 constexpr const char QUERY_STRING_PARAM_NAME[] = "queryString";
 constexpr const char COLLAPSE_ARRAY_POSITIONS_PARAM_NAME[] = "collapseArrayPos";
 constexpr const char KEEP_NULL_PARAM_NAME[] = "keepNull";
+constexpr const char BATCH_SIZE_PARAM_NAME[] = "batchSize";
 constexpr const char CALCULATION_PARAMETER_NAME[] = "field";
 
 
@@ -72,6 +73,10 @@ struct OptionsValidator {
     if (opts.queryString.empty()) {
       return deserialize_error{std::string("Value of '").append(QUERY_STRING_PARAM_NAME).append("' should be non empty string")};
     }
+    if (opts.batchSize == 0) {
+      return deserialize_error{
+          std::string("Value of '").append(BATCH_SIZE_PARAM_NAME).append("' should be greater than 0")};
+    }
     return {};
   }
 };
@@ -79,7 +84,8 @@ struct OptionsValidator {
 using OptionsDeserializer = utilities::constructing_deserializer<Options, parameter_list<
   factory_deserialized_parameter<QUERY_STRING_PARAM_NAME, values::value_deserializer<std::string>, true>,
   factory_simple_parameter<COLLAPSE_ARRAY_POSITIONS_PARAM_NAME, bool, false, values::numeric_value<bool, false>>,
-  factory_simple_parameter<KEEP_NULL_PARAM_NAME, bool, false, values::numeric_value<bool, true>>
+  factory_simple_parameter<KEEP_NULL_PARAM_NAME, bool, false, values::numeric_value<bool, true>>,
+  factory_simple_parameter<BATCH_SIZE_PARAM_NAME, uint32_t, false, values::numeric_value<uint32_t, 1>>
   >>;
 
 using ValidatingOptionsDeserializer = validate<OptionsDeserializer, OptionsValidator>;
@@ -244,6 +250,7 @@ bool CalculationAnalyzer::parse_options(const irs::string_ref& args, options_t& 
       builder.add(QUERY_STRING_PARAM_NAME, VPackValue(options.queryString));
       builder.add(COLLAPSE_ARRAY_POSITIONS_PARAM_NAME, VPackValue(options.collapseArrayPositions));
       builder.add(KEEP_NULL_PARAM_NAME, VPackValue(options.keepNull));
+      builder.add(BATCH_SIZE_PARAM_NAME, VPackValue(options.batchSize));
     }
     out.resize(builder.slice().byteSize());
     std::memcpy(&out[0], builder.slice().begin(), out.size());
@@ -271,16 +278,30 @@ CalculationAnalyzer::CalculationAnalyzer(options_t const& options)
 }
 
 bool CalculationAnalyzer::next() {
-  if (_queryResults.get()) {
-    // TODO: call engine refill!
-    while (_queryResults->numRows() > _resultRowIdx) {
-      AqlValue const& value = _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister());
-      if (value.isString()) {
-        _term.value = irs::ref_cast<irs::byte_type>(arangodb::iresearch::getStringRef(value.slice()));
-        return true;
+  do {
+    if (_queryResults.get()) {
+      while (_queryResults->numRows() > _resultRowIdx) {
+        AqlValue const& value =
+            _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister());
+        if (value.isString() || (value.isNull(true) && _options.keepNull)) {
+          if (value.isString()) {
+            _term.value = irs::ref_cast<irs::byte_type>(arangodb::iresearch::getStringRef(value.slice()));
+          } else {
+            _term.value = irs::bytes_ref::EMPTY;
+          }
+          _inc.value = _next_inc_val;
+          _next_inc_val = !_options.collapseArrayPositions;
+          return true;
+        }
       }
     }
-  }
+    if (_executionState == ExecutionState::HASMORE) {
+      std::tie(_executionState, _queryResults) = _engine.getSome(_options.batchSize);
+      TRI_ASSERT(_executionState != ExecutionState::WAITING);
+      _resultRowIdx = 0;
+    }
+  } while (_executionState != ExecutionState::DONE || (_queryResults.get() &&
+                                                       _queryResults->numRows() > _resultRowIdx));
   return false;
 }
 
@@ -322,12 +343,9 @@ bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
   _queryResults = nullptr;
   _plan->clearVarUsageComputed();
   _engine.initFromPlanForCalculation(*_plan);
-  ExecutionState state = ExecutionState::HASMORE;
-  std::tie(state, _queryResults) = _engine.getSome(1000); // TODO: configure batch size
-  TRI_ASSERT(state != ExecutionState::WAITING);
-  // TODO: Position calculation as parameter
-  // TODO: Filtering results
+  _executionState = ExecutionState::HASMORE;
   _resultRowIdx = 0;
+  _next_inc_val = 1; // first increment always 1 to move from -1 to 0
   return true;
 }
 

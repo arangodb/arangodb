@@ -44,9 +44,9 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   struct options_t {
     options_t() = default;
 
-    options_t(std::string&& query, bool collapse, bool keep)
+    options_t(std::string&& query, bool collapse, bool keep, uint32_t batch)
       : queryString(query), collapseArrayPositions(collapse),
-      keepNull(keep) {}
+      keepNull(keep), batchSize(batch) {}
 
     /// @brief Query string to be executed for each document.
     /// Field value is set with @param binded parameter.
@@ -60,6 +60,10 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
     /// @brief do not emit empty token if query result is NULL
     /// this could be used fo index filtering.
     bool keepNull{ true };
+
+    /// @brief  batch size for running query. Set to 1 as most of the cases
+    /// we expect just 1 to 1 modification query.
+    uint32_t batchSize{ 1 };
   };
 
   static bool parse_options(const irs::string_ref& args, options_t& options);
@@ -86,11 +90,6 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   virtual bool reset(irs::string_ref const& field) noexcept override;
 
  private:
-  irs::term_attribute _term;
-  irs::increment _inc;
-  bool _has_data{ false };
-  std::string _str;
-  options_t _options;
 
   class CalculationQueryContext : public arangodb::aql:: QueryContext{
    public:
@@ -138,12 +137,18 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
     arangodb::aql::AqlItemBlockManager _itemBlockManager;
   };
 
+  irs::term_attribute _term;
+  irs::increment _inc;
+  std::string _str;
+  options_t _options;
   CalculationQueryContext _query;
   arangodb::aql::ExecutionEngine _engine;
   std::unique_ptr<arangodb::aql::ExecutionPlan> _plan;
   arangodb::aql::SharedAqlItemBlockPtr _queryResults;
   size_t _resultRowIdx{ 0 };
   std::vector<arangodb::aql::AstNode*> _bindedNodes;
+  arangodb::aql::ExecutionState _executionState{arangodb::aql::ExecutionState::DONE};
+  uint32_t _next_inc_val{0};
 }; // CalculationAnalyzer
 }
 }
