@@ -37,7 +37,7 @@ class EndpointIpV4 final : public EndpointIp {
 
  public:
   int domain() const override { return AF_INET; }
-  virtual bool isBroadcastBind();
+  bool isBroadcastBind() override const;
 
   std::string hostAndPort() const override {
     return host() + ':' + arangodb::basics::StringUtils::itoa(port());
