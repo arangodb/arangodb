@@ -42,7 +42,6 @@ struct AsioSocket<SocketType::Tcp> {
   explicit AsioSocket(arangodb::rest::IoContext& ctx)
       : context(ctx), socket(ctx.io_context), timer(ctx.io_context) {
     context.incClients();
-    socket.set_option(asio_ns::ip::tcp::no_delay(true));
   }
 
   ~AsioSocket() {
