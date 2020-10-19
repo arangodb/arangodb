@@ -296,9 +296,22 @@ bool CalculationAnalyzer::next() {
       }
     }
     if (_executionState == ExecutionState::HASMORE) {
-      std::tie(_executionState, _queryResults) = _engine.getSome(_options.batchSize);
-      TRI_ASSERT(_executionState != ExecutionState::WAITING);
-      _resultRowIdx = 0;
+      try {
+        _executionState == ExecutionState::DONE; // set to done to terminate in case of exception
+        _resultRowIdx = 0;
+        _queryResults = nullptr;
+        std::tie(_executionState, _queryResults) = _engine.getSome(_options.batchSize);
+        TRI_ASSERT(_executionState != ExecutionState::WAITING);
+      } catch (basics::Exception const& e) {
+        LOG_TOPIC("b0026", ERR, iresearch::TOPIC)
+            << "error executing calculation query: " << e.message();
+      } catch (std::exception const& e) {
+        LOG_TOPIC("c92eb", ERR, iresearch::TOPIC)
+            << "error executing calculation query: " << e.what();
+      } catch (...) {
+        LOG_TOPIC("bf89b", ERR, iresearch::TOPIC)
+            << "error executing calculation query";
+      }
     }
   } while (_executionState != ExecutionState::DONE || (_queryResults.get() &&
                                                        _queryResults->numRows() > _resultRowIdx));
@@ -306,47 +319,60 @@ bool CalculationAnalyzer::next() {
 }
 
 bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
-  if (!_plan) { // lazy initialization 
-    // important to hold a copy here as parser accepts reference!
-    auto queryString = arangodb::aql::QueryString(_options.queryString);
-    auto ast = _query.ast();
-    TRI_ASSERT(ast);
-    Parser parser(_query, *ast, queryString);
-    parser.parse();
-    AstNode* astRoot = const_cast<AstNode*>(ast->root());
-    TRI_ASSERT(astRoot);
-    Ast::traverseAndModify(astRoot, [this, field, ast](AstNode * node) -> AstNode* {
-      if (node->type == NODE_TYPE_PARAMETER) {
-        // should be only our parameter name. see validation method!
+  try {
+    if (!_plan) {  // lazy initialization
+      // important to hold a copy here as parser accepts reference!
+      auto queryString = arangodb::aql::QueryString(_options.queryString);
+      auto ast = _query.ast();
+      TRI_ASSERT(ast);
+      Parser parser(_query, *ast, queryString);
+      parser.parse();
+      AstNode* astRoot = const_cast<AstNode*>(ast->root());
+      TRI_ASSERT(astRoot);
+      Ast::traverseAndModify(astRoot, [this, field, ast](AstNode* node) -> AstNode* {
+        if (node->type == NODE_TYPE_PARAMETER) {
+          // should be only our parameter name. see validation method!
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        TRI_ASSERT(irs::string_ref(node->getStringValue(), 
-                                   node->getStringLength()) == CALCULATION_PARAMETER_NAME);
+          TRI_ASSERT(irs::string_ref(node->getStringValue(), node->getStringLength()) ==
+                     CALCULATION_PARAMETER_NAME);
 #endif
-        // FIXME: move to computed value once here could be not only strings
-        auto newNode = ast->createNodeValueString(field.c_str(), field.size());
-        // finally note that the node was created from a bind parameter
-        newNode->setFlag(FLAG_BIND_PARAMETER);
-        newNode->setFlag(DETERMINED_CONSTANT); // keep value as non-constant to prevent optimizations
-        newNode->setFlag(DETERMINED_NONDETERMINISTIC, VALUE_NONDETERMINISTIC);
-        _bindedNodes.push_back(newNode);
-        return newNode;
-      } else {
-        return node;
-      }});
-    _plan = ExecutionPlan::instantiateFromAst(ast);
-  } else {
-    for (auto node : _bindedNodes) {
-      node->setStringValue(field.c_str(), field.size());
+          // FIXME: move to computed value once here could be not only strings
+          auto newNode = ast->createNodeValueString(field.c_str(), field.size());
+          // finally note that the node was created from a bind parameter
+          newNode->setFlag(FLAG_BIND_PARAMETER);
+          newNode->setFlag(DETERMINED_CONSTANT);  // keep value as non-constant to prevent optimizations
+          newNode->setFlag(DETERMINED_NONDETERMINISTIC, VALUE_NONDETERMINISTIC);
+          _bindedNodes.push_back(newNode);
+          return newNode;
+        } else {
+          return node;
+        }
+      });
+      _plan = ExecutionPlan::instantiateFromAst(ast);
+    } else {
+      for (auto node : _bindedNodes) {
+        node->setStringValue(field.c_str(), field.size());
+      }
+      _engine.reset();
     }
-    _engine.reset();
+    _queryResults = nullptr;
+    _plan->clearVarUsageComputed();
+    _engine.initFromPlanForCalculation(*_plan);
+    _executionState = ExecutionState::HASMORE;
+    _resultRowIdx = 0;
+    _next_inc_val = 1;  // first increment always 1 to move from -1 to 0
+    return true;
+  } catch (basics::Exception const& e) {
+    LOG_TOPIC("8ee1a", ERR, iresearch::TOPIC)
+        << "error creating calculation query: " << e.message();
+  } catch (std::exception const& e) {
+    LOG_TOPIC("d2223", ERR, iresearch::TOPIC)
+        << "error creating calculation query: " << e.what();
+  } catch (...) {
+    LOG_TOPIC("5ad87", ERR, iresearch::TOPIC)
+        << "error creating calculation query";
   }
-  _queryResults = nullptr;
-  _plan->clearVarUsageComputed();
-  _engine.initFromPlanForCalculation(*_plan);
-  _executionState = ExecutionState::HASMORE;
-  _resultRowIdx = 0;
-  _next_inc_val = 1; // first increment always 1 to move from -1 to 0
-  return true;
+  return false;
 }
 
 CalculationAnalyzer::CalculationQueryContext::CalculationQueryContext(TRI_vocbase_t& vocbase)
