@@ -1,15 +1,30 @@
 v3.6.9 (XXXX-XX-XX)
 -------------------
 
-* Added startup option `--foxx.force-update-on-startup` to toggle waiting for 
-  all Foxx services in all databases to be propagated to this coordinator before 
-  it completes the boot sequence. In case we do not wait, the coordinator will 
-  complete the boot sequence faster, and the Foxx services will be propagated 
-  lazily. This can cause slower response times on the first calls to Foxx services.
-  When not using Foxx, this option should be set to `false` in order to benefit
-  from a faster coordinator startup.
-  Deployments relying on Foxx starting up as soon as a coordinator is integrated
-  should set this option to `true` (which is also the default value).
+* Added startup option `--foxx.force-update-on-startup` to toggle waiting 
+  for all Foxx services in all databases to be propagated to a coordinator 
+  before it completes the boot sequence. 
+  In case the option is set to `false` (i.e. no waiting), the coordinator 
+  will complete the boot sequence faster, and the Foxx services will be 
+  propagated lazily. Until the initialization procedure has completed for
+  the local Foxx apps, any request to a Foxx app will be responded to with
+  an HTTP 500 error and message 
+
+    waiting for initialization of Foxx services in this database 
+
+  This can cause an unavailability window for Foxx services on coordinator
+  startup for the initial requests to Foxx apps until the app propagation 
+  has completed.
+  
+  When not using Foxx, this option should be set to `false` to benefit from 
+  a faster coordinator startup.
+  Deployments relying on Foxx apps being available as soon as a coordinator 
+  is integrated or responding should set this option to `true` (which is 
+  the default value).
+  The option only has an effect for setups with multiple coordinators. 
+  On single servers and in active failover mode, all Foxx apps will be 
+  available from the very beginning.
+  Note: ArangoDB 3.8 changes the default value to `false` for this option.
 
 * Added startup option `--database.old-system-collections` to toggle automatic
   creation of system collections `_modules` and `_fishbowl`, along with their
@@ -27,9 +42,6 @@ v3.6.9 (XXXX-XX-XX)
   The default value for the option is going to change to `false` in v3.8,
   meaning the collections will not be created anymore there by default.
 
-  Any functionality related to the `_modules` system collection is deprecated
-  and will be removed in ArangoDB v3.9.
-
   Two side effects of turning this option off are:
   * there will be no iteration over all databases at server startup just to
     check the contents of all `_modules` collections.
@@ -37,6 +49,9 @@ v3.6.9 (XXXX-XX-XX)
     number of databases.
   Already existing `_modules` and `_fishbowl` system collections will not be
   modified by this PR, even though they will likely be empty and unused.
+  
+  Any functionality related to the `_modules` system collection is deprecated
+  and will be removed in ArangoDB v3.9.
 
 * Don't iterate over all databases at server startup in order to initialize the
   routing information. This is not necessary, as the routing information is
@@ -53,7 +68,7 @@ v3.6.9 (XXXX-XX-XX)
   APIs are deprecated now and will be removed in ArangoDB v3.9.
 
 
-v3.6.8 (XXXX-XX-XX)
+v3.6.8 (2020-10-14)
 -------------------
       
 * Added the following metrics for synchronous replication in the cluster:
@@ -118,10 +133,6 @@ v3.6.8 (XXXX-XX-XX)
   failoverCandidate even though it has been taken out of the Plan. With this
   fix, such a server is quickly taken out of failoverCandidates and it can never
   be re-added to the Plan before this has happened.
-
-* Fixed a bug in handling of followers which refuse to replicate operations.
-  In the case that the follower has simply been dropped in the meantime, we now
-  avoid an error reported by the shard leader.
 
 * Added configuration option `--rocksdb.sync-delay-threshold`.
   This option can be used to track if any RocksDB WAL sync operations is 
