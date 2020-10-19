@@ -29,5 +29,6 @@ The option only has an effect for cluster setups. On single servers and in
 active failover mode, all Foxx apps will be available from the very beginning.
 
 Note: ArangoDB 3.8 changes the default value to *false* for this option.
+In previous versions this option had a default value of *true*.
 @endDocuBlock
 
