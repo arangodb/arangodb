@@ -20,7 +20,7 @@ devel
   benefit from a faster coordinator startup.
   Deployments relying on Foxx apps being available as soon as a coordinator 
   is integrated or responding should set this option to `true`.
-  The option only has an effect for setups with multiple coordinators. 
+  The option only has an effect for cluster setups. 
   On single servers and in active failover mode, all Foxx apps will be 
   available from the very beginning.
   Note: ArangoDB 3.6 and 3.7 also introduced this option, but with a default
