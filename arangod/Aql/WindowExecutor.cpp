@@ -245,22 +245,47 @@ void WindowExecutor::trimBounds() {
       _currentIdx -= toRemove;
     }
     TRI_ASSERT(_currentIdx <= numPreceding || _rows.empty());
+    return;
 
-  } else {
-    TRI_ASSERT(_rows.size() == _windowRows.size());
+  }
+  
+  TRI_ASSERT(_rows.size() == _windowRows.size());
 
-    // trim out of bound rows
-    WindowBounds::Row& row =
-        _currentIdx == _rows.size() ? _windowRows.back() : _windowRows[_currentIdx];
-    for (size_t i = 0; i < _windowRows.size(); i++) {
-      if (row.lowBound < _windowRows[i].value || !row.valid) {
-        TRI_ASSERT(row.highBound >= _windowRows[i].value || !row.valid);
-        _rows.erase(_rows.begin() + decltype(_rows)::difference_type(i + 1));
-        _windowRows.erase(_windowRows.begin() + decltype(_windowRows)::difference_type(i + 1));
-        i--;
-        _currentIdx--;
-      }
+  // trim out of bound rows
+  while (_currentIdx < _rows.size() &&
+         !_windowRows[_currentIdx].valid) {
+    _currentIdx++;
+  }
+  
+  if (_currentIdx >= _rows.size() &&
+      _windowRows.back().lowBound == _windowRows.back().value) {
+    // processed all rows, do not need preceding values
+    _rows.clear();
+    _windowRows.clear();
+    _currentIdx = 0;
+    return;
+  }
+  
+  if (_currentIdx == 0) { // nothing lower to remove
+    return;
+  }
+  
+  WindowBounds::Row row = _windowRows[_currentIdx];
+  bool foundLimit = false;
+  size_t i = _currentIdx - 1;
+  do {
+    if (_windowRows[i].value < row.lowBound && _windowRows[i].valid) {
+      TRI_ASSERT(_windowRows[i].value < row.highBound);
+      foundLimit = true;
+      break;
     }
+  } while (i-- > 0); // i might underflow, but thats ok
+  
+  if (foundLimit) {
+    TRI_ASSERT(i < _currentIdx);
+    _rows.erase(_rows.begin(), _rows.begin() + decltype(_rows)::difference_type(i + 1));
+    _windowRows.erase(_windowRows.begin(), _windowRows.begin() + decltype(_windowRows)::difference_type(i + 1));
+    _currentIdx -= (i + 1);
   }
 }
 
@@ -314,7 +339,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> WindowExecutor::produceRows(
     TRI_ASSERT(_rows.size() == _windowRows.size());
 
     // fairly inefficient loop, see comment above
-    size_t firstI = 0;
+    size_t offset = 0;
     while (!output.isFull() && _currentIdx < _rows.size()) {
       auto const& row = _windowRows[_currentIdx];
       if (!row.valid) {
@@ -323,18 +348,22 @@ std::tuple<ExecutorState, NoStats, AqlCall> WindowExecutor::produceRows(
         continue;
       }
       
-      size_t i = firstI;
+      size_t i = offset;
       bool foundLimit = false;
       for (; i < _windowRows.size(); i++) {
-        if (row.valid && row.lowBound <= _windowRows[i].value) {
-          if (firstI == 0) {
-            firstI = i;
-          }
+        if (!row.valid) {
+          continue; // skip
+        }
+        
+        if (row.lowBound <= _windowRows[i].value) {
           if (row.highBound < _windowRows[i].value) {
             foundLimit = true;
             break;  // do not consider higher values
           }
           applyAggregators(_rows[size_t(i)]);
+        } else {
+          // lower index have _windowRows[i].value < row.lowBound
+          offset = i + 1;
         }
       }
       

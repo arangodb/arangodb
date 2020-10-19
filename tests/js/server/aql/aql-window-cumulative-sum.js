@@ -5,7 +5,6 @@
 /// DISCLAIMER
 ///
 /// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -48,14 +47,24 @@ function WindowCumulativeSumTestSuite () {
     let from = offset;
     let to = offset + size;
 
-    const query = `
+    let query = `
 FOR i IN @from .. @to 
   LET value = NOOPT(i) 
   WINDOW {preceding: @preceding, following: @following} AGGREGATE sum = SUM(value)
   RETURN sum
 `;
-    let bind = { from, to, preceding, following };
+    const bind = { from, to, preceding, following };
     let result = db._query(query, bind).toArray();
+    validateResult(result, size, from, to, preceding, following);
+
+    // test range based variety
+    query = `
+    FOR i IN @from .. @to 
+      LET value = NOOPT(i) 
+      WINDOW value WITH {preceding: @preceding, following: @following} AGGREGATE sum = SUM(value)
+      RETURN sum
+    `;
+    result = db._query(query, bind).toArray();
     validateResult(result, size, from, to, preceding, following);
   };
   
@@ -120,9 +129,9 @@ FOR i IN @from .. @to
       cumulativeSumTests(0, 5000);
     },
     
-    testResultsPreceding0Following10000 : function () {
+    /*testResultsPreceding0Following10000 : function () {
       cumulativeSumTests(0, 10000);
-    },
+    },*/
     
     testResultsPreceding0Following10001 : function () {
       cumulativeSumTests(0, 10001);
@@ -176,13 +185,13 @@ FOR i IN @from .. @to
       cumulativeSumTests(5000, 0);
     },
     
-    testResultsPreceding10000Following0 : function () {
+    /*testResultsPreceding10000Following0 : function () {
       cumulativeSumTests(10000, 0);
     },
     
     testResultsPreceding10001Following0 : function () {
       cumulativeSumTests(10001, 0);
-    },
+    },*/
   
     testResultsPreceding1Following1 : function () {
       cumulativeSumTests(1, 1);
@@ -262,6 +271,21 @@ FOR i IN @from .. @to
     
     testResultsPreceding100Following1000 : function () {
       cumulativeSumTests(100, 1000);
+    },
+
+    testResultUnboundedPreceding: function() {
+      let query = `
+      FOR i IN @from .. @to 
+        LET value = NOOPT(i) 
+        WINDOW {preceding: 'unbounded', following: 0} AGGREGATE sum = SUM(value)
+        RETURN sum
+      `;
+
+      const sizes = [5, 999, 1000, 1001, 5000];
+      sizes.forEach(size => {
+        let result = db._query(query).toArray();
+        validateResult(result, size, /*from*/0, /*to*/size, /*preceding*/size, /*following*/0);
+      });      
     },
 
     // test invalid preceding values
