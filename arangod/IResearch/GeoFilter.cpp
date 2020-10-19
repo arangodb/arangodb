@@ -412,6 +412,8 @@ irs::filter::prepared::ptr prepareInterval(
   // FIXME or Difference?
   minBound = minBound.Complement();
   auto const ring = coverer.GetCovering(maxBound).Intersection(coverer.GetCovering(maxBound));
+
+  // FIXME sort terms?
   auto const geoTerms = indexer.GetQueryTermsForCanonicalCovering(ring, opts.prefix);
 
   if (geoTerms.empty()) {
