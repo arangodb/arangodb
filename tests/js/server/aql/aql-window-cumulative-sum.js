@@ -286,7 +286,7 @@ FOR i IN @from .. @to
       sizes.forEach(size => {
         const froms = [0, 1, 42, 1000, 1001, 5000];
         froms.forEach(from => {
-          const bind = {from, to: size + from}
+          const bind = {from, to: size + from};
           let result = db._query(query, bind).toArray();
           validateResult(result, size, /*from*/from, /*to*/size + from, /*preceding*/size, /*following*/0);
         });
