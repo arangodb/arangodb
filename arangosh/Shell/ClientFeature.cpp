@@ -235,6 +235,23 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
+  if (_endpoint.find("0.0.0.0") != std::string::npos) {
+    LOG_TOPIC("701fb", ERR, arangodb::Logger::FIXME)
+        << "invalid value for --server.endpoint ('" << _endpoint <<
+      "') - 0.0.0.0 is only allowed for servers binding any." <<
+      " See https://en.wikipedia.org/wiki/0.0.0.0 for more details.";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+  
+  if (_endpoint.find("//:::") != std::string::npos) {
+    LOG_TOPIC("701fc", ERR, arangodb::Logger::FIXME)
+        << "invalid value for --server.endpoint ('" << _endpoint <<
+      "') - :: is only allowed for servers binding any." <<
+      " See https://en.wikipedia.org/wiki/0.0.0.0 for more details.";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+  
+
   SimpleHttpClientParams::setDefaultMaxPacketSize(_maxPacketSize);
 }
 
