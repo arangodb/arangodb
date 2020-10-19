@@ -31,7 +31,7 @@ v3.7.5 (XXXX-XX-XX)
   Deployments relying on Foxx apps being available as soon as a coordinator 
   is integrated or responding should set this option to `true` (which is the
   default value).
-  The option only has an effect for setups with multiple coordinators. 
+  The option only has an effect for cluster setups. 
   On single servers and in active failover mode, all Foxx apps will be 
   available from the very beginning.
   Note: ArangoDB 3.6 and 3.7 introduce this option with a default value of 
