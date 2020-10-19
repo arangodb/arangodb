@@ -65,6 +65,14 @@ struct Variable;
 
 typedef std::unordered_map<Variable const*, std::unordered_set<std::string>> TopLevelAttributes;
 
+/// @brief type for Ast flags
+using AstFlagsType = uint32_t;
+
+/// @brief flags for customizing Ast building process
+enum AstFlagType : AstFlagsType {
+  NON_CONST_PARAMETERS = 0x00000001  // Parameters are considered non-const
+};
+
 /// @brief the AST
 class Ast {
   friend class Condition;
@@ -74,7 +82,7 @@ class Ast {
   Ast& operator=(Ast const&) = delete;
 
   /// @brief create the AST
-  explicit Ast(QueryContext&);
+  explicit Ast(QueryContext&, AstFlagsType flags = 0);
 
   /// @brief destroy the AST
   ~Ast();
@@ -569,6 +577,11 @@ class Ast {
   /// the subnodes
   void copyPayload(AstNode const* node, AstNode* copy) const;
 
+  bool hasFlag(AstFlagType flag) const noexcept {
+    return ((_astFlags & static_cast<decltype(_astFlags)>(flag)) != 0);
+  }
+
+
  public:
   /// @brief negated comparison operators
   static std::unordered_map<int, AstNodeType> const NegatedOperators;
@@ -648,6 +661,9 @@ class Ast {
   };
 
   SpecialNodes const _specialNodes;
+    
+  /// @brief ast flags
+  AstFlagsType _astFlags;
 };
 
 }  // namespace aql

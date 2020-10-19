@@ -39,8 +39,6 @@
 namespace arangodb {
 namespace iresearch {
 
-class CalculationQueryContext;
-
 class CalculationAnalyzer final : public irs::analysis::analyzer{
  public:
   struct options_t {
@@ -141,7 +139,6 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   };
 
   CalculationQueryContext _query;
-  arangodb::aql::Ast _ast;
   arangodb::aql::ExecutionEngine _engine;
   std::unique_ptr<arangodb::aql::ExecutionPlan> _plan;
   arangodb::aql::SharedAqlItemBlockPtr _queryResults;

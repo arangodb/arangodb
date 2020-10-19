@@ -204,7 +204,7 @@ Ast::SpecialNodes::SpecialNodes()
 }
 
 /// @brief create the AST
-Ast::Ast(QueryContext& query)
+Ast::Ast(QueryContext& query, AstFlagsType flags /* = 0 */)
     : _query(query),
       _resources(&query.resourceMonitor()),
       _root(nullptr),
@@ -213,7 +213,8 @@ Ast::Ast(QueryContext& query)
       _containsBindParameters(false),
       _containsModificationNode(false),
       _containsParallelNode(false),
-      _willUseV8(false) {
+      _willUseV8(false),
+      _astFlags(flags) {
   startSubQuery();
 
   TRI_ASSERT(_root != nullptr);
@@ -828,6 +829,9 @@ AstNode* Ast::createNodeParameter(char const* name, size_t length) {
 
   AstNode* node = createNode(NODE_TYPE_PARAMETER);
   node->setStringValue(name, length);
+  if (hasFlag(NON_CONST_PARAMETERS)) {
+    node->setFlag(DETERMINED_CONSTANT);
+  }
 
   // insert bind parameter name into list of found parameters
   _bindParameters.emplace(name, length);
@@ -1614,12 +1618,15 @@ void Ast::injectBindParameters(BindParameters& parameters,
         auto const& value = (*it).second.first;
 
         if (node->type == NODE_TYPE_PARAMETER) {
+          auto const constantParameter = node->isConstant();
           // bind parameter containing a value literal
           node = nodeFromVPack(value, true);
 
           if (node != nullptr) {
-            // already mark node as constant here
-            node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+            if (constantParameter) {
+              // already mark node as constant here if parameters are constant
+              node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+            }
             // mark node as simple
             node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
             // mark node as executable on db-server

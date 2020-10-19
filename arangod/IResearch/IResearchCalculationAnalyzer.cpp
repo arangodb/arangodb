@@ -164,6 +164,8 @@ class CalculationQueryContext: public QueryContext {
     : QueryContext(vocbase), _resolver(vocbase),
     _transactionContext(vocbase),
     _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS) {
+    // we need non const parameters as we will inject multiple times
+    _ast = std::make_unique<Ast>(*this, NON_CONST_PARAMETERS);
     _trx = AqlTransaction::create(newTrxContext(), _collections,
       _queryOptions.transactionOptions,
       std::unordered_set<std::string>{});
@@ -262,8 +264,8 @@ CalculationAnalyzer::CalculationAnalyzer(options_t const& options)
   : irs::analysis::analyzer(irs::type<CalculationAnalyzer>::get()),
     _options(options),
     _query(arangodb::DatabaseFeature::getCalculationVocbase()),
-    _ast(_query), _engine(0, _query, _query.itemBlockManager(),
-                          SerializationFormat::SHADOWROWS, nullptr) {
+    _engine(0, _query, _query.itemBlockManager(),
+            SerializationFormat::SHADOWROWS, nullptr) {
   // TODO: move this to normalize?? As here is too late to report
   //TRI_ASSERT(validateQuery(_options.queryString, *_calculationVocbase).ok());
 }
@@ -286,11 +288,13 @@ bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
   if (!_plan) { // lazy initialization 
     // important to hold a copy here as parser accepts reference!
     auto queryString = arangodb::aql::QueryString(_options.queryString);
-    Parser parser(_query, _ast, queryString);
+    auto ast = _query.ast();
+    TRI_ASSERT(ast);
+    Parser parser(_query, *ast, queryString);
     parser.parse();
-    AstNode* astRoot = const_cast<AstNode*>(_ast.root());
+    AstNode* astRoot = const_cast<AstNode*>(ast->root());
     TRI_ASSERT(astRoot);
-    Ast::traverseAndModify(astRoot, [this, field](AstNode * node) -> AstNode* {
+    Ast::traverseAndModify(astRoot, [this, field, ast](AstNode * node) -> AstNode* {
       if (node->type == NODE_TYPE_PARAMETER) {
         // should be only our parameter name. see validation method!
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -298,22 +302,25 @@ bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
                                    node->getStringLength()) == CALCULATION_PARAMETER_NAME);
 #endif
         // FIXME: move to computed value once here could be not only strings
-        auto newNode = _ast.createNodeValueString(field.c_str(), field.size());
+        auto newNode = ast->createNodeValueString(field.c_str(), field.size());
         // finally note that the node was created from a bind parameter
         newNode->setFlag(FLAG_BIND_PARAMETER);
-        newNode->setFlag(DETERMINED_NONDETERMINISTIC);
+        newNode->setFlag(DETERMINED_CONSTANT); // keep value as non-constant to prevent optimizations
+        newNode->setFlag(DETERMINED_NONDETERMINISTIC, VALUE_NONDETERMINISTIC);
         _bindedNodes.push_back(newNode);
         return newNode;
       } else {
         return node;
       }});
-    _plan = ExecutionPlan::instantiateFromAst(&_ast);
+    _plan = ExecutionPlan::instantiateFromAst(ast);
   } else {
     for (auto node : _bindedNodes) {
       node->setStringValue(field.c_str(), field.size());
     }
+    _engine.reset();
   }
-  _engine.reset();
+  _queryResults = nullptr;
+  _plan->clearVarUsageComputed();
   _engine.initFromPlanForCalculation(*_plan);
   ExecutionState state = ExecutionState::HASMORE;
   std::tie(state, _queryResults) = _engine.getSome(1000); // TODO: configure batch size
@@ -328,6 +335,7 @@ CalculationAnalyzer::CalculationQueryContext::CalculationQueryContext(TRI_vocbas
   : QueryContext(vocbase), _resolver(vocbase),
   _transactionContext(vocbase),
   _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS) {
+  _ast = std::make_unique<Ast>(*this, NON_CONST_PARAMETERS);
   _trx = AqlTransaction::create(newTrxContext(), _collections,
     _queryOptions.transactionOptions,
     std::unordered_set<std::string>{});
