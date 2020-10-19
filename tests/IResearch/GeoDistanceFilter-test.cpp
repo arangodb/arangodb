@@ -29,6 +29,7 @@
 
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
+#include "search/score.hpp"
 #include "store/memory_directory.hpp"
 
 #include "IResearch/GeoFilter.h"
@@ -42,6 +43,171 @@
 using namespace arangodb;
 using namespace arangodb::iresearch;
 using namespace arangodb::tests;
+
+namespace {
+
+struct custom_sort : public irs::sort {
+  static constexpr irs::string_ref type_name() noexcept {
+    return "custom_sort";
+  }
+
+  class prepared : public irs::prepared_sort_base<irs::doc_id_t, void> {
+   public:
+    class field_collector : public irs::sort::field_collector {
+     public:
+      field_collector(const custom_sort& sort) : sort_(sort) {}
+
+      virtual void collect(const irs::sub_reader& segment,
+                           const irs::term_reader& field) override {
+        if (sort_.field_collector_collect) {
+          sort_.field_collector_collect(segment, field);
+        }
+      }
+
+      virtual void collect(const irs::bytes_ref& in) override {}
+
+      virtual void reset() override { }
+
+      virtual void write(irs::data_output& out) const override {}
+
+     private:
+      const custom_sort& sort_;
+    };
+
+    class term_collector : public irs::sort::term_collector {
+     public:
+      term_collector(const custom_sort& sort) : sort_(sort) {}
+
+      virtual void collect(const irs::sub_reader& segment, const irs::term_reader& field,
+                           const irs::attribute_provider& term_attrs) override {
+        if (sort_.term_collector_collect) {
+          sort_.term_collector_collect(segment, field, term_attrs);
+        }
+      }
+
+      virtual void collect(const irs::bytes_ref& in) override {}
+
+      virtual void reset() override { }
+
+      virtual void write(irs::data_output& out) const override {}
+
+     private:
+      const custom_sort& sort_;
+    };
+
+    struct scorer : public irs::score_ctx {
+      scorer(const custom_sort& sort, const irs::sub_reader& segment_reader,
+             const irs::term_reader& term_reader, const irs::byte_type* stats,
+             irs::byte_type* score_buf, const irs::attribute_provider& document_attrs)
+          : document_attrs_(document_attrs),
+            stats_(stats),
+            score_buf_(score_buf),
+            segment_reader_(segment_reader),
+            sort_(sort),
+            term_reader_(term_reader) {}
+
+      const irs::attribute_provider& document_attrs_;
+      const irs::byte_type* stats_;
+      irs::byte_type* score_buf_;
+      const irs::sub_reader& segment_reader_;
+      const custom_sort& sort_;
+      const irs::term_reader& term_reader_;
+    };
+
+    DECLARE_FACTORY(prepared);
+
+    prepared(const custom_sort& sort) : sort_(sort) {}
+
+    virtual void collect(irs::byte_type* filter_attrs, const irs::index_reader& index,
+                         const irs::sort::field_collector* field,
+                         const irs::sort::term_collector* term) const override {
+      if (sort_.collector_finish) {
+        sort_.collector_finish(filter_attrs, index, field, term);
+      }
+    }
+
+    virtual const irs::flags& features() const override {
+      return irs::flags::empty_instance();
+    }
+
+    virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
+      if (sort_.prepare_field_collector) {
+        return sort_.prepare_field_collector();
+      }
+
+      return irs::memory::make_unique<custom_sort::prepared::field_collector>(sort_);
+    }
+
+    virtual irs::score_function prepare_scorer(
+        irs::sub_reader const& segment_reader, irs::term_reader const& term_reader,
+        irs::byte_type const* filter_node_attrs, irs::byte_type* score_buf,
+        irs::attribute_provider const& document_attrs, irs::boost_t boost) const override {
+      if (sort_.prepare_scorer) {
+        sort_.prepare_scorer(segment_reader, term_reader,
+                             filter_node_attrs, score_buf, document_attrs, boost);
+      }
+
+      return {
+        std::make_unique<custom_sort::prepared::scorer>(sort_, segment_reader, term_reader,
+                                                        filter_node_attrs, score_buf, document_attrs),
+              [](irs::score_ctx* ctx) -> const irs::byte_type* {
+                auto& ctxImpl =
+                    *reinterpret_cast<const custom_sort::prepared::scorer*>(ctx);
+
+                EXPECT_TRUE(ctxImpl.score_buf_);
+                auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(ctxImpl.score_buf_);
+
+                doc_id = irs::get<irs::document>(ctxImpl.document_attrs_)->value;
+
+                if (ctxImpl.sort_.scorer_score) {
+                  ctxImpl.sort_.scorer_score(doc_id);
+                }
+
+                return ctxImpl.score_buf_;
+              }};
+    }
+
+    virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+      if (sort_.prepare_term_collector) {
+        return sort_.prepare_term_collector();
+      }
+
+      return irs::memory::make_unique<custom_sort::prepared::term_collector>(sort_);
+    }
+
+    virtual bool less(irs::byte_type const* lhs, const irs::byte_type* rhs) const override {
+      return sort_.scorer_less ? sort_.scorer_less(traits_t::score_cast(lhs), traits_t::score_cast(rhs)) : false;
+    }
+
+   private:
+    const custom_sort& sort_;
+  };
+
+  std::function<void(const irs::sub_reader&, const irs::term_reader&)> field_collector_collect;
+  std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_provider&)> term_collector_collect;
+  std::function<void(irs::byte_type*, const irs::index_reader&,
+                     const irs::sort::field_collector*,
+                     const irs::sort::term_collector*)> collector_finish;
+  std::function<irs::sort::field_collector::ptr()> prepare_field_collector;
+  std::function<void(
+      const irs::sub_reader&, const irs::term_reader&,
+      const irs::byte_type*, irs::byte_type*,
+      const irs::attribute_provider&, irs::boost_t)> prepare_scorer;
+  std::function<irs::sort::term_collector::ptr()> prepare_term_collector;
+  std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
+  std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
+  std::function<void(irs::doc_id_t&)> scorer_score;
+
+  DECLARE_FACTORY();
+  custom_sort() : sort(irs::type<custom_sort>::get()) {}
+  virtual prepared::ptr prepare() const override {
+    return std::make_unique<custom_sort::prepared>(*this);
+  }
+};
+
+DEFINE_FACTORY_DEFAULT(custom_sort)
+
+}  // namespace
 
 TEST(GeoDistanceFilterTest, options) {
   S2RegionTermIndexer::Options const s2opts;
@@ -303,10 +469,10 @@ TEST(GeoDistanceFilterTest, query) {
   ASSERT_EQ(docs->slice().length(), reader->docs_count());
   ASSERT_EQ(docs->slice().length(), reader->live_docs_count());
 
-  auto executeQuery = [&reader](irs::filter const& q) {
+  auto executeQuery = [&reader](irs::filter const& q, irs::order::prepared const& ord) {
     std::set<std::string> actualResults;
 
-    auto prepared = q.prepare(*reader);
+    auto prepared = q.prepare(*reader, ord);
     EXPECT_NE(nullptr, prepared);
     for (auto& segment : *reader) {
       auto column = segment.column_reader("name");
@@ -338,6 +504,226 @@ TEST(GeoDistanceFilterTest, query) {
     range.max_type = irs::BoundType::INCLUSIVE;
     range.max = 300;
 
-    ASSERT_EQ(expected, executeQuery(q));
+    ASSERT_EQ(expected, executeQuery(q, irs::order::prepared::unordered()));
+  }
+}
+
+TEST(GeoDistanceFilterTest, checkScorer) {
+  auto docs = VPackParser::fromJson(R"([
+    { "name": "A", "geometry": { "type": "Point", "coordinates": [ 37.615895, 55.7039   ] } },
+    { "name": "B", "geometry": { "type": "Point", "coordinates": [ 37.615315, 55.703915 ] } },
+    { "name": "C", "geometry": { "type": "Point", "coordinates": [ 37.61509, 55.703537  ] } },
+    { "name": "D", "geometry": { "type": "Point", "coordinates": [ 37.614183, 55.703806 ] } },
+    { "name": "E", "geometry": { "type": "Point", "coordinates": [ 37.613792, 55.704405 ] } },
+    { "name": "F", "geometry": { "type": "Point", "coordinates": [ 37.614956, 55.704695 ] } },
+    { "name": "G", "geometry": { "type": "Point", "coordinates": [ 37.616297, 55.704831 ] } },
+    { "name": "H", "geometry": { "type": "Point", "coordinates": [ 37.617053, 55.70461  ] } },
+    { "name": "I", "geometry": { "type": "Point", "coordinates": [ 37.61582, 55.704459  ] } },
+    { "name": "J", "geometry": { "type": "Point", "coordinates": [ 37.614634, 55.704338 ] } },
+    { "name": "K", "geometry": { "type": "Point", "coordinates": [ 37.613121, 55.704193 ] } },
+    { "name": "L", "geometry": { "type": "Point", "coordinates": [ 37.614135, 55.703298 ] } },
+    { "name": "M", "geometry": { "type": "Point", "coordinates": [ 37.613663, 55.704002 ] } },
+    { "name": "N", "geometry": { "type": "Point", "coordinates": [ 37.616522, 55.704235 ] } },
+    { "name": "O", "geometry": { "type": "Point", "coordinates": [ 37.615508, 55.704172 ] } },
+    { "name": "P", "geometry": { "type": "Point", "coordinates": [ 37.614629, 55.704081 ] } },
+    { "name": "Q", "geometry": { "type": "Point", "coordinates": [ 37.610235, 55.709754 ] } },
+    { "name": "R", "geometry": { "type": "Point", "coordinates": [ 37.605,    55.707917 ] } },
+    { "name": "S", "geometry": { "type": "Point", "coordinates": [ 37.545776, 55.722083 ] } },
+    { "name": "T", "geometry": { "type": "Point", "coordinates": [ 37.559509, 55.715895 ] } },
+    { "name": "U", "geometry": { "type": "Point", "coordinates": [ 37.701645, 55.832144 ] } },
+    { "name": "V", "geometry": { "type": "Point", "coordinates": [ 37.73735,  55.816715 ] } },
+    { "name": "W", "geometry": { "type": "Point", "coordinates": [ 37.75589,  55.798193 ] } },
+    { "name": "X", "geometry": { "type": "Point", "coordinates": [ 37.659073, 55.843711 ] } },
+    { "name": "Y", "geometry": { "type": "Point", "coordinates": [ 37.778549, 55.823659 ] } },
+    { "name": "Z", "geometry": { "type": "Point", "coordinates": [ 37.729797, 55.853733 ] } },
+    { "name": "1", "geometry": { "type": "Point", "coordinates": [ 37.608261, 55.784682 ] } },
+    { "name": "2", "geometry": { "type": "Point", "coordinates": [ 37.525177, 55.802825 ] } }
+  ])");
+
+  irs::memory_directory dir;
+
+  // index data
+  {
+    auto codec = irs::formats::get(arangodb::iresearch::LATEST_FORMAT);
+    ASSERT_NE(nullptr, codec);
+    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+    GeoField geoField;
+    geoField.fieldName = "geometry";
+    StringField nameField;
+    nameField.fieldName = "name";
+    {
+      auto segment0 = writer->documents();
+      auto segment1 = writer->documents();
+      {
+        size_t i = 0;
+        for (auto docSlice: VPackArrayIterator(docs->slice())) {
+          geoField.shapeSlice = docSlice.get("geometry");
+          nameField.value = getStringRef(docSlice.get("name"));
+
+          auto doc = (i++ % 2 ? segment0 : segment1).insert();
+          ASSERT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(nameField));
+          ASSERT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(geoField));
+        }
+      }
+    }
+    writer->commit();
+  }
+
+  auto reader = irs::directory_reader::open(dir);
+  ASSERT_NE(nullptr, reader);
+  ASSERT_EQ(2, reader->size());
+  ASSERT_EQ(docs->slice().length(), reader->docs_count());
+  ASSERT_EQ(docs->slice().length(), reader->live_docs_count());
+
+  auto executeQuery = [&reader](irs::filter const& q, irs::order::prepared const& ord) {
+    std::map<std::string, irs::bstring> actualResults;
+
+    auto prepared = q.prepare(*reader, ord);
+    EXPECT_NE(nullptr, prepared);
+    for (auto& segment : *reader) {
+      auto column = segment.column_reader("name");
+      EXPECT_NE(nullptr, column);
+      auto column_it = column->iterator();
+      EXPECT_NE(nullptr, column_it);
+      auto* payload = irs::get<irs::payload>(*column_it);
+      EXPECT_NE(nullptr, payload);
+      auto it = prepared->execute(segment, ord);
+      EXPECT_NE(nullptr, it);
+      auto* score = irs::get<irs::score>(*it);
+      EXPECT_NE(nullptr, score);
+
+      while (it->next()) {
+        auto const docId = it->value();
+        EXPECT_EQ(docId, column_it->seek(docId));
+        EXPECT_FALSE(payload->value.null());
+
+        actualResults.emplace(irs::to_string<std::string>(payload->value.c_str()),
+                              irs::bytes_ref(score->evaluate(), ord.score_size()));
+      }
+    }
+
+    return actualResults;
+  };
+
+  auto encodeDocId = [](irs::doc_id_t id) {
+    irs::bstring str(sizeof(id), 0);
+    *reinterpret_cast<irs::doc_id_t*>(&str[0]) = id;
+    return str;
+  };
+
+  {
+    GeoDistanceFilter q;
+    *q.mutable_field() = "geometry";
+    q.mutable_options()->origin = S2LatLng::FromDegrees(55.70892, 37.607768).ToPoint();
+    auto& range = q.mutable_options()->range;
+    range.max_type = irs::BoundType::INCLUSIVE;
+    range.max = 300;
+
+    irs::order order;
+    size_t collector_collect_field_count = 0;
+    size_t collector_collect_term_count = 0;
+    size_t collector_finish_count = 0;
+    size_t scorer_score_count = 0;
+    size_t prepare_scorer_count = 0;
+    auto& sort = order.add<::custom_sort>(false);
+
+    sort.field_collector_collect = [&collector_collect_field_count, &q](
+        const irs::sub_reader&,
+        const irs::term_reader& field)->void {
+      collector_collect_field_count += (q.field() == field.meta().name);
+    };
+    sort.term_collector_collect = [&collector_collect_term_count, &q](
+        const irs::sub_reader&,
+        const irs::term_reader& field,
+        const irs::attribute_provider&)->void {
+      collector_collect_term_count += (q.field() == field.meta().name);
+    };
+    sort.collector_finish = [&collector_finish_count](
+        irs::byte_type*,
+        const irs::index_reader&,
+        const irs::sort::field_collector*,
+        const irs::sort::term_collector*)->void {
+      ++collector_finish_count;
+    };
+    sort.prepare_scorer = [&prepare_scorer_count, &q](
+        const irs::sub_reader&, const irs::term_reader&,
+        const irs::byte_type*, irs::byte_type*,
+        const irs::attribute_provider&, irs::boost_t boost) {
+      EXPECT_EQ(q.boost(), boost);
+      ++prepare_scorer_count;
+    };
+    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
+    sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA); };
+    sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
+
+    std::map<std::string, irs::bstring> const expected {
+      { "Q", encodeDocId(9) },
+      { "R", encodeDocId(9) }
+    };
+
+    ASSERT_EQ(expected, executeQuery(q, order.prepare()));
+    ASSERT_EQ(2, collector_collect_field_count); // 2 segments
+    ASSERT_EQ(0, collector_collect_term_count);
+    ASSERT_EQ(1, collector_finish_count);
+    ASSERT_EQ(2, scorer_score_count);
+  }
+
+  {
+    GeoDistanceFilter q;
+    q.boost(1.5f);
+    *q.mutable_field() = "geometry";
+    q.mutable_options()->origin = S2LatLng::FromDegrees(55.70892, 37.607768).ToPoint();
+    auto& range = q.mutable_options()->range;
+    range.max_type = irs::BoundType::INCLUSIVE;
+    range.max = 300;
+
+    irs::order order;
+    size_t collector_collect_field_count = 0;
+    size_t collector_collect_term_count = 0;
+    size_t collector_finish_count = 0;
+    size_t scorer_score_count = 0;
+    size_t prepare_scorer_count = 0;
+    auto& sort = order.add<::custom_sort>(false);
+
+    sort.field_collector_collect = [&collector_collect_field_count, &q](
+        const irs::sub_reader&,
+        const irs::term_reader& field)->void {
+      collector_collect_field_count += (q.field() == field.meta().name);
+    };
+    sort.term_collector_collect = [&collector_collect_term_count, &q](
+        const irs::sub_reader&,
+        const irs::term_reader& field,
+        const irs::attribute_provider&)->void {
+      collector_collect_term_count += (q.field() == field.meta().name);
+    };
+    sort.collector_finish = [&collector_finish_count](
+        irs::byte_type*,
+        const irs::index_reader&,
+        const irs::sort::field_collector*,
+        const irs::sort::term_collector*)->void {
+      ++collector_finish_count;
+    };
+    sort.prepare_scorer = [&prepare_scorer_count, &q](
+        const irs::sub_reader&, const irs::term_reader&,
+        const irs::byte_type*, irs::byte_type*,
+        const irs::attribute_provider&, irs::boost_t boost) {
+      EXPECT_EQ(q.boost(), boost);
+      ++prepare_scorer_count;
+    };
+    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
+    sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA); };
+    sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
+
+    std::map<std::string, irs::bstring> const expected {
+      { "Q", encodeDocId(9) },
+      { "R", encodeDocId(9) }
+    };
+
+    ASSERT_EQ(expected, executeQuery(q, order.prepare()));
+    ASSERT_EQ(2, collector_collect_field_count); // 2 segments
+    ASSERT_EQ(0, collector_collect_term_count);
+    ASSERT_EQ(1, collector_finish_count);
+    ASSERT_EQ(2, scorer_score_count);
   }
 }
