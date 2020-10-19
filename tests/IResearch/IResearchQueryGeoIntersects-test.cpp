@@ -340,7 +340,7 @@ TEST_F(IResearchQueryGeoIntersectsTest, test) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(2, slice.length());
+    ASSERT_EQ(expected.size(), slice.length());
     size_t i = 0;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
@@ -370,7 +370,7 @@ TEST_F(IResearchQueryGeoIntersectsTest, test) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(2, slice.length());
+    ASSERT_EQ(expected.size(), slice.length());
     size_t i = 0;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
