@@ -125,11 +125,11 @@ FOR i IN @from .. @to
       cumulativeSumTests(0, 1001);
     },
     
-    testResultsPreceding0Following5000 : function () {
+    /*testResultsPreceding0Following5000 : function () {
       cumulativeSumTests(0, 5000);
     },
     
-    /*testResultsPreceding0Following10000 : function () {
+    testResultsPreceding0Following10000 : function () {
       cumulativeSumTests(0, 10000);
     },*/
     
@@ -181,11 +181,11 @@ FOR i IN @from .. @to
       cumulativeSumTests(1001, 0);
     },
     
-    testResultsPreceding5000Following0 : function () {
+    /*testResultsPreceding5000Following0 : function () {
       cumulativeSumTests(5000, 0);
     },
     
-    /*testResultsPreceding10000Following0 : function () {
+    testResultsPreceding10000Following0 : function () {
       cumulativeSumTests(10000, 0);
     },
     
@@ -282,9 +282,14 @@ FOR i IN @from .. @to
       `;
 
       const sizes = [5, 999, 1000, 1001, 5000];
+
       sizes.forEach(size => {
-        let result = db._query(query).toArray();
-        validateResult(result, size, /*from*/0, /*to*/size, /*preceding*/size, /*following*/0);
+        const froms = [0, 1, 42, 1000, 1001, 5000];
+        froms.forEach(from => {
+          const bind = {from, to: size + from}
+          let result = db._query(query, bind).toArray();
+          validateResult(result, size, /*from*/from, /*to*/size + from, /*preceding*/size, /*following*/0);
+        });
       });      
     },
 
