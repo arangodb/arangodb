@@ -34,6 +34,7 @@
 
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
+#include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>

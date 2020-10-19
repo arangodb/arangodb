@@ -3181,8 +3181,8 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
     std::vector<std::string>{
       AgencyCommHelper::path("Plan/Views/" + databaseName + "/" + viewID)});
 
-  if (!acb->slice()[0].hasKey(
-        {AgencyCommHelper::path(), "Plan", "Views", databaseName, viewID})) {
+  if (!acb->slice()[0].hasKey(std::vector<std::string>{
+        AgencyCommHelper::path(), "Plan", "Views", databaseName, viewID})) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 

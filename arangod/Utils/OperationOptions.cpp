@@ -41,6 +41,7 @@ OperationOptions::OperationOptions()
   returnNew(false),
   isRestore(false),
   ignoreUniqueConstraints(false),
+  truncateCompact(true),
   _context(nullptr) {}
 
 OperationOptions::OperationOptions(ExecContext const& context)

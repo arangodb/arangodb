@@ -92,7 +92,7 @@ function ahuacatlProfilerTestSuite () {
       const query = `FOR i IN 1..@listRows FOR d IN @@col RETURN d.value`;
 
       for (const collectionRows of collectionRowCounts) {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, collectionRows + 1).map((i) => ({value: i})));
         for (const listRows of listRowCounts) {
           // forbid reordering of the enumeration nodes
@@ -162,7 +162,7 @@ function ahuacatlProfilerTestSuite () {
       const query = `FOR i IN 1..@listRows FOR k IN 1..@collectionRows FOR d IN @@col FILTER d.value == k RETURN d.value`;
 
       for (const collectionRows of collectionRowCounts) {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, collectionRows + 1).map((i) => ({value: i})));
         for (const listRows of listRowCounts) {
           // forbid reordering of the enumeration nodes as well as removal

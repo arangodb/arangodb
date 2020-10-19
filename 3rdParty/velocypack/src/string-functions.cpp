@@ -18,47 +18,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Max Neunhoeffer
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_TIMED_ACTION_H
-#define ARANGODB_BASICS_TIMED_ACTION_H 1
-
-#include "Basics/Common.h"
-#include "Basics/system-functions.h"
+#include <cstring>
 
 namespace arangodb {
+namespace velocypack {
 
-class TimedAction {
- public:
-  TimedAction(TimedAction const&) = delete;
-  TimedAction& operator=(TimedAction const&) = delete;
+void* memrchr(void const* block, int c, std::size_t size) {
+#ifdef __linux__
+  return const_cast<void*>(::memrchr(block, c, size));
+#else
+  /// naive memrchr overlay for Windows or other platforms, which don't implement it
+  if (size) {
+    unsigned char const* p = static_cast<unsigned char const*>(block);
 
-  TimedAction(std::function<void(double)> const& callback, double threshold)
-      : _callback(callback), _threshold(threshold), _start(TRI_microtime()), _done(false) {}
-
-  ~TimedAction() = default;
-
- public:
-  double elapsed() const { return (TRI_microtime() - _start); }
-  bool tick() {
-    if (!_done) {
-      if (elapsed() >= _threshold) {
-        _done = true;
-        _callback(_threshold);
-        return true;
+    for (p += size - 1; size; p--, size--) {
+      if (*p == c) {
+        return const_cast<void*>(static_cast<void const*>(p));
       }
     }
-    return false;
   }
-
- private:
-  std::function<void(double)> const _callback;
-  double const _threshold;
-  double _start;
-  bool _done;
-};
-
-}  // namespace arangodb
-
+  return nullptr;
 #endif
+}
+
+} // namespace velocypack
+} // namespace arangodb

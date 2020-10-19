@@ -97,7 +97,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test existing collection
     // //////////////////////////////////////////////////////////////////////////////
-
+    
     testExistingPatchBrokenSlaveCounters1: function () {
       // can only use this with failure tests enabled
       let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
@@ -109,6 +109,8 @@ function BaseTestConfig () {
 
       compare(
         function (state) {
+          arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
+
           let c = db._create(cn);
           let docs = [];
 
@@ -122,6 +124,8 @@ function BaseTestConfig () {
           assertEqual(5000, state.count);
         },
         function (state) {
+          arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
+
           //  already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -134,7 +138,7 @@ function BaseTestConfig () {
           arango.PUT_RAW("/_admin/debug/failat/RocksDBCommitCounts", "");
           c.insert({});
           arango.DELETE_RAW("/_admin/debug/failat", "");
-          assertEqual(5001, c.count());
+          assertEqual(5000, c.count());
           assertEqual(5001, c.toArray().length);
         },
         function (state) {
@@ -160,6 +164,7 @@ function BaseTestConfig () {
 
       compare(
         function (state) {
+          arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
           let c = db._create(cn);
           let docs = [];
 
@@ -173,6 +178,8 @@ function BaseTestConfig () {
           assertEqual(10000, state.count);
         },
         function (state) {
+          arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
+
           //  already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -191,7 +198,7 @@ function BaseTestConfig () {
             c.insert({ _key: "testmann" + i });
           }
           arango.DELETE_RAW("/_admin/debug/failat", "");
-          assertEqual(9100, c.count());
+          assertEqual(9000, c.count());
           assertEqual(9100, c.toArray().length);
         },
         function (state) {
@@ -796,7 +803,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
 
@@ -991,15 +998,17 @@ function BaseTestConfig () {
             incremental: false
           });
           var c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
+          let docs = [];
           for (var i = 0; i < 100; ++i) {
-            c.save(cn + '/test' + i, cn + '/test' + (i % 10), {
+            docs.push(cn + '/test' + i, cn + '/test' + (i % 10), {
               _key: 'test' + i,
               'value1': i,
               'value2': 'test' + i
             });
           }
+          c.save(docs);
         },
         function (state) {
           assertEqual(state.count, collectionCount(cn));
@@ -1053,8 +1062,9 @@ function BaseTestConfig () {
           var c = db._collection(cn);
           c.truncate(); // but empty it
 
+          let docs = [];
           for (var i = 0; i < 200; ++i) {
-            c.save(
+            docs.push(
               cn + '/test' + (i + 1),
               cn + '/test' + (i % 11), {
                 _key: 'test' + i,
@@ -1063,6 +1073,7 @@ function BaseTestConfig () {
               }
             );
           }
+          c.save(docs);
         },
         function (state) {
           assertEqual(state.count, collectionCount(cn));
@@ -1504,7 +1515,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
 
@@ -1555,7 +1566,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
 
@@ -1605,7 +1616,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
 
@@ -1654,7 +1665,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
 
@@ -1705,7 +1716,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
           for (let i = 0; i < 5000; ++i) {
@@ -1757,7 +1768,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
           for (let i = 0; i < 5000; ++i) {
@@ -1794,6 +1805,7 @@ function ReplicationSuite () {
 
     setUp: function () {
       connectToMaster();
+      arango.DELETE_RAW("/_admin/debug/failat", "");
       try {
         db._dropView(cn + 'View');
       } catch (ignored) {}
@@ -1810,6 +1822,7 @@ function ReplicationSuite () {
 
     tearDown: function () {
       connectToMaster();
+      arango.DELETE_RAW("/_admin/debug/failat", "");
       try {
         db._dropView(cn + 'View');
       } catch (ignored) {}
@@ -1826,6 +1839,7 @@ function ReplicationSuite () {
       } catch (e) { }
 
       connectToSlave();
+      arango.DELETE_RAW("/_admin/debug/failat", "");
       try {
         db._dropView(cn + 'View');
       } catch (ignored) {}
@@ -1842,8 +1856,8 @@ function ReplicationSuite () {
       } catch (e) { }
     }
   };
+  
   deriveTestSuite(BaseTestConfig(), suite, '_Repl');
-
   return suite;
 }
 
