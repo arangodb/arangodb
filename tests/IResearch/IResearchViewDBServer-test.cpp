@@ -80,7 +80,6 @@ class IResearchViewDBServerTest : public ::testing::Test {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
-
 TEST_F(IResearchViewDBServerTest, test_drop) {
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature

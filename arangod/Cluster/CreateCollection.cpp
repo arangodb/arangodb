@@ -209,8 +209,6 @@ bool CreateCollection::first() {
   LOG_TOPIC("4562c", DEBUG, Logger::MAINTENANCE)
       << "Create collection done, notifying Maintenance";
 
-  notify();
-
   return false;
 }
 

@@ -22,8 +22,10 @@
 
 #include "AgencyCache.h"
 #include "Agency/AsyncAgencyComm.h"
+#include "Agency/AgencyStrings.h"
 #include "Agency/Node.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/application-exit.h"
 #include "GeneralServer/RestHandler.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -35,7 +37,8 @@ AgencyCache::AgencyCache(
   application_features::ApplicationServer& server,
   AgencyCallbackRegistry& callbackRegistry)
   : Thread(server, "AgencyCache"), _commitIndex(0),
-    _readDB(server, nullptr, "readDB"), _callbackRegistry(callbackRegistry) {}
+    _readDB(server, nullptr, "readDB"), _callbackRegistry(callbackRegistry),
+    _lastSnapshot(0) {}
 
 
 AgencyCache::~AgencyCache() {
@@ -51,10 +54,11 @@ bool AgencyCache::start() {
   return true;
 }
 
+
 // Fill existing Builder from readDB, mainly /Plan /Current
 index_t AgencyCache::get(VPackBuilder& result, std::string const& path) const {
   result.clear();
-  std::lock_guard g(_storeLock);
+  std::shared_lock g(_storeLock);
   if (_commitIndex > 0) {
     _readDB.get("arango/" + path, result, false);
   }
@@ -78,9 +82,8 @@ query_t AgencyCache::dump() const {
   }
 
   auto ret = std::make_shared<VPackBuilder>();
-  { 
-    VPackObjectBuilder o(ret.get());
-    std::lock_guard g(_storeLock);
+  { VPackObjectBuilder o(ret.get());
+    std::shared_lock g(_storeLock);
     ret->add("index", VPackValue(_commitIndex));
     ret->add(VPackValue("cache"));
     _readDB.read(query, ret);
@@ -100,7 +103,7 @@ std::tuple<query_t, index_t> AgencyCache::read(std::vector<std::string> const& p
   }
 
   auto result = std::make_shared<arangodb::velocypack::Builder>();
-  std::lock_guard g(_storeLock);
+  std::shared_lock g(_storeLock);
 
   if (_commitIndex > 0) {
     _readDB.read(query, result);
@@ -109,7 +112,7 @@ std::tuple<query_t, index_t> AgencyCache::read(std::vector<std::string> const& p
 }
 
 futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
-  std::lock_guard s(_storeLock);
+  std::shared_lock s(_storeLock);
   if (index <= _commitIndex) {
     return futures::makeFuture(arangodb::Result());
   }
@@ -119,11 +122,30 @@ futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
 }
 
 index_t AgencyCache::index() const {
-  std::lock_guard g(_storeLock);
+  std::shared_lock g(_storeLock);
   return _commitIndex;
 }
 
-void AgencyCache::handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uint64_t>& uniq, std::vector<uint64_t>& toCall) {
+// If a "arango/Plan/Databases" key is set, all databases in the Plan are completely
+// replaced. This means that loadPlan and the maintenance thread have to revisit everything.
+// In particular, we have to visit all databases in the new Plan as well as all currently
+// existing databases locally! Therefore we fake all of these databases as if they were
+// changed in this raft index.
+std::unordered_set<std::string> AgencyCache::reInitPlan() {
+  std::unordered_set<std::string> planChanges =
+      server().getFeature<ClusterFeature>().allDatabases();  // local databases
+  // And everything under /arango/Plan/Databases:
+  auto keys = _readDB.nodePtr(AgencyCommHelper::path(PLAN) + "/" + DATABASES)->keys();
+  for (auto const& dbname : keys) {
+    planChanges.emplace(dbname);
+  }
+  planChanges.emplace();  // and the rest
+  return planChanges;
+}
+
+void AgencyCache::handleCallbacksNoLock(
+  VPackSlice slice, std::unordered_set<uint64_t>& uniq, std::vector<uint64_t>& toCall,
+  std::unordered_set<std::string>& planChanges, std::unordered_set<std::string>& currentChanges) {
 
   if (!slice.isObject()) {
     LOG_TOPIC("31514", DEBUG, Logger::CLUSTER) <<
@@ -151,8 +173,13 @@ void AgencyCache::handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uin
       }
     }
   }
+
+  std::unordered_set<std::string> dbs;
+  const char SLASH ('/');
+
   // Find keys, which are a prefix of a callback:
   for (auto const& k : keys) {
+
     auto it = _callbacks.lower_bound(k);
     while (it != _callbacks.end() && it->first.compare(0, k.size(), k) == 0) {
       if (uniq.emplace(it->second).second) {
@@ -160,8 +187,61 @@ void AgencyCache::handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uin
       }
       ++it;
     }
+
+    // Paths are normalized. We omit the first 8 characters for "/arango" + "/"
+    const static size_t offset = AgencyCommHelper::path(std::string()).size() + 1;
+    if (k.size() > offset) {
+      std::string_view r(k.c_str() + offset, k.size() - offset);
+      auto rs = r.size();
+      if (rs > strlen(PLAN) && r.compare(0, strlen(PLAN), PLAN) == 0) {
+        if (rs >= strlen(PLAN_VERSION) &&                 // Plan/Version -> ignore
+            r.compare(0, strlen(PLAN_VERSION), PLAN_VERSION) == 0) {
+          continue;
+        } else if (rs > strlen(PLAN_COLLECTIONS) &&       // Plan/Collections
+                   r.compare(0, strlen(PLAN_COLLECTIONS), PLAN_COLLECTIONS) == 0) {
+          auto tmp = r.substr(strlen(PLAN_COLLECTIONS));
+          planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
+        } else if (rs > strlen(PLAN_DATABASES) &&         // Plan/Databases
+                   r.compare(0, strlen(PLAN_DATABASES), PLAN_DATABASES) == 0) {
+          auto tmp = r.substr(strlen(PLAN_DATABASES));
+          planChanges.emplace(tmp);
+        } else if (rs > strlen(PLAN_VIEWS) &&             // Plan/Views
+                   r.compare(0, strlen(PLAN_VIEWS), (PLAN_VIEWS)) == 0) {
+          auto tmp = r.substr(strlen(PLAN_VIEWS));
+          planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
+        } else if (rs > strlen(PLAN_ANALYZERS) &&         // Plan/Analyzers
+                   r.compare(0, strlen(PLAN_ANALYZERS), PLAN_ANALYZERS)==0) {
+          auto tmp = r.substr(strlen(PLAN_ANALYZERS));
+          planChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
+        } else if (r == "Plan/Databases" || r == "Plan/Collections" ||
+                   r == "Plan/Views" || r == "Plan/Analyzers" ||
+                   r == "Plan") {
+          // !! Check documentation of the function before making changes here !!
+          planChanges = reInitPlan();
+        } else {
+          planChanges.emplace();             // "" to indicate non database
+        }
+      } else if (rs > strlen(CURRENT) && r.compare(0, strlen(CURRENT), CURRENT) == 0) {
+        if (rs >= strlen(CURRENT_VERSION) &&              // Current/Version is ignored
+            r.compare(0, strlen(CURRENT_VERSION), CURRENT_VERSION) == 0) {
+          continue;
+        } else if (rs > strlen(CURRENT_COLLECTIONS) &&    // Current/Collections
+                   r.compare(0, strlen(CURRENT_COLLECTIONS), CURRENT_COLLECTIONS) == 0) {
+          auto tmp = r.substr(strlen(CURRENT_COLLECTIONS));
+          currentChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
+        } else if (rs > strlen(CURRENT_DATABASES) &&      // Current/Databases
+                   r.compare(0, strlen(CURRENT_DATABASES), CURRENT_DATABASES) == 0) {
+          auto tmp = r.substr(strlen(CURRENT_DATABASES));
+          currentChanges.emplace(tmp.substr(0,tmp.find(SLASH)));
+        } else {
+          currentChanges.emplace();          // "" to indicate non database
+        }
+      }
+    }
   }
 }
+
+
 
 void AgencyCache::run() {
 
@@ -183,7 +263,7 @@ void AgencyCache::run() {
     [&]() {
       index_t commitIndex = 0;
       {
-        std::lock_guard g(_storeLock);
+        std::shared_lock g(_storeLock);
         commitIndex = _commitIndex + 1;
       }
       LOG_TOPIC("afede", TRACE, Logger::CLUSTER)
@@ -241,10 +321,12 @@ void AgencyCache::run() {
                 if (firstIndex > 0) {
                   // Do incoming logs match our cache's index?
                   if (firstIndex != curIndex + 1) {
-                    LOG_TOPIC("a9a09", WARN, Logger::CLUSTER) <<
-                      "Logs from poll start with index " << firstIndex <<
-                      " we requested logs from and including " << curIndex << " retrying.";
-                    LOG_TOPIC("457e9", TRACE, Logger::CLUSTER) << "Incoming: " << rs.toJson();
+                    LOG_TOPIC("a9a09", WARN, Logger::CLUSTER)
+                      << "Logs from poll start with index " << firstIndex
+                      << " we requested logs from and including " << curIndex
+                      << " retrying.";
+                    LOG_TOPIC("457e9", TRACE, Logger::CLUSTER)
+                      << "Incoming: " << rs.toJson();
                     increaseWaitTime();
                   } else {
                     TRI_ASSERT(rs.hasKey("log"));
@@ -256,10 +338,19 @@ void AgencyCache::run() {
                         std::lock_guard g(_storeLock);
                         _readDB.applyTransaction(i); // apply logs
                         _commitIndex = i.get("index").getNumber<uint64_t>();
-                      }
-                      {
-                        std::lock_guard g(_callbacksLock);
-                        handleCallbacksNoLock(i.get("query"), uniq, toCall);
+
+                        std::unordered_set<std::string> pc, cc;
+                        {
+                          std::lock_guard g(_callbacksLock);
+                          handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
+                        }
+
+                        for (auto const& i : pc) {
+                          _planChanges.emplace(_commitIndex, i);
+                        }
+                        for (auto const& i : cc) {
+                          _currentChanges.emplace(_commitIndex, i);
+                        }
                       }
                     }
                   }
@@ -269,7 +360,13 @@ void AgencyCache::run() {
                   LOG_TOPIC("4579f", TRACE, Logger::CLUSTER) <<
                     "Fresh start: overwriting agency cache with " << rs.toJson();
                   _readDB = rs;                  // overwrite
+                  std::unordered_set<std::string> pc = reInitPlan();
+                  for (auto const& i : pc) {
+                    _planChanges.emplace(_commitIndex, i);
+                  }
+                  // !! Check documentation of the function before making changes here !!
                   _commitIndex = commitIndex;
+                  _lastSnapshot = commitIndex;
                 }
                 triggerWaiting(commitIndex);
                 if (firstIndex > 0) {
@@ -314,8 +411,10 @@ void AgencyCache::run() {
         "Caught an error while polling agency updates";
       increaseWaitTime();
     }
+
     // off to next round we go...
   }
+
 }
 
 void AgencyCache::triggerWaiting(index_t commitIndex) {
@@ -425,14 +524,14 @@ void AgencyCache::beginShutdown() {
 }
 
 bool AgencyCache::has(std::string const& path) const {
-  std::lock_guard g(_storeLock);
+  std::shared_lock g(_storeLock);
   return _readDB.has(AgencyCommHelper::path(path));
 }
 
 std::vector<bool> AgencyCache::has(std::vector<std::string> const& paths) const {
   std::vector<bool> ret;
   ret.reserve(paths.size());
-  std::lock_guard g(_storeLock);
+  std::shared_lock g(_storeLock);
   for (auto const& i : paths) {
     ret.push_back(_readDB.has(i));
   }
@@ -468,4 +567,131 @@ void AgencyCache::invokeAllCallbacks() const {
     }
   }
   invokeCallbacks(toCall);
+}
+
+
+AgencyCache::change_set_t AgencyCache::changedSince(
+  std::string const& what, consensus::index_t const& last) const {
+
+  static std::vector<std::string> const planGoodies ({
+      AgencyCommHelper::path(PLAN_ANALYZERS) + "/",
+      AgencyCommHelper::path(PLAN_COLLECTIONS) + "/",
+      AgencyCommHelper::path(PLAN_DATABASES) + "/",
+      AgencyCommHelper::path(PLAN_VIEWS) + "/"});
+  static std::vector<std::string> const currentGoodies ({
+      AgencyCommHelper::path(CURRENT_COLLECTIONS) + "/",
+      AgencyCommHelper::path(CURRENT_DATABASES) + "/"});
+
+  bool get_rest = false;
+  std::unordered_map<std::string, query_t> db_res;
+  query_t rest_res = nullptr;
+
+  decltype(_planChanges) const& changes = (what == PLAN) ? _planChanges : _currentChanges;
+  std::vector<std::string> const& goodies = (what == PLAN) ? planGoodies : currentGoodies;
+
+  std::unordered_set<std::string> databases;
+  std::shared_lock g(_storeLock);
+
+  auto tmp = _readDB.nodePtr()->hasAsUInt(AgencyCommHelper::path(what) + "/" + VERSION);
+  uint64_t version = tmp.second ? tmp.first : 0;
+
+  if (last < _lastSnapshot) {
+    get_rest = true;
+    auto keys = _readDB.nodePtr(AgencyCommHelper::path(what) + "/" + DATABASES)->keys();
+    databases.reserve(keys.size());
+    for (auto& i : keys) {
+      databases.emplace(std::move(i));
+    }
+  } else {
+    auto it = changes.lower_bound(last+1);
+    if (it != changes.end()) {
+      for (; it != changes.end(); ++it) {
+        if (it->second.empty()) { // Need to get rest
+          get_rest = true;
+        }
+        databases.emplace(it->second);
+      }
+      LOG_TOPIC("d5743", TRACE, Logger::CLUSTER)
+        << "collecting " << databases << " from agency cache";
+    } else {
+      LOG_TOPIC("d5734", DEBUG, Logger::CLUSTER) << "no changed databases since " << last;
+      return change_set_t(_commitIndex, version, std::move(db_res), std::move(rest_res));
+    }
+  }
+
+  if (databases.empty()) {
+    return change_set_t(_commitIndex, version, std::move(db_res), std::move(rest_res));
+  }
+
+  auto query = std::make_shared<arangodb::velocypack::Builder>();
+  {
+    for (auto const& i : databases) {
+      if (!i.empty()) { // actual database
+        { VPackArrayBuilder outer(query.get());
+          { VPackArrayBuilder inner(query.get());
+            for (auto const& g : goodies) { // Get goodies for database
+              query->add(VPackValue(g + i));
+            }
+          }}
+        auto [entry,created] = db_res.try_emplace(i, std::make_shared<VPackBuilder>());
+        if (created) {
+          _readDB.read(query, entry->second);
+        } else {
+          LOG_TOPIC("31ae3", ERR, Logger::CLUSTER)
+            << "Failed to communicate updated database " << i
+            << " in AgencyCache with maintenance.";
+          FATAL_ERROR_EXIT();
+        }
+      }
+      query->clear();
+    }
+  }
+
+  if (get_rest) { // All the rest, i.e. All keys excluding the usual suspects
+    static std::vector<std::string> const exc {
+      "Analyzers", "Collections", "Databases", "Views"};
+    auto keys = _readDB.nodePtr(AgencyCommHelper::path(what))->keys();
+    keys.erase(
+      std::remove_if(
+        std::begin(keys), std::end(keys),
+        [&] (auto const& x) {
+          return std::find(std::begin(exc), std::end(exc), x) != std::end(exc);}),
+      std::end(keys));
+    {
+      VPackArrayBuilder outer(query.get());
+      for (auto const& i : keys) {
+        VPackArrayBuilder inner(query.get());
+        query->add(VPackValue(AgencyCommHelper::path(what) + "/" + i));
+      }
+    }
+    if (_commitIndex > 0) { // Databases
+      rest_res = std::make_shared<VPackBuilder>();
+      _readDB.read(query, rest_res);
+    }
+  }
+
+  return change_set_t(_commitIndex, version, std::move(db_res), std::move(rest_res));
+
+}
+
+namespace std {
+ostream& operator<<(ostream& o, AgencyCache::change_set_t const& c) {
+  o << c.ind;
+  return o;
+}
+
+ostream& operator<<(ostream& o, AgencyCache::databases_t const& dbs) {
+  o << "{";
+  bool first = true;
+  for (auto const& db : dbs) {
+    if (!first) {
+      o << ", ";
+    } else {
+      first = false;
+    }
+    o << '"' << db.first << "\": " << db.second->toJson();
+  }
+  o << "}";
+  return o;
+}
 }

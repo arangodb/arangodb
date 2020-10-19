@@ -23,6 +23,7 @@
 #include <algorithm>
 
 #include "Agency/AsyncAgencyComm.h"
+#include "Agency/AgencyStrings.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -92,6 +93,7 @@
 
 #include <boost/core/demangle.hpp>
 using namespace arangodb;
+using namespace arangodb::consensus;
 using namespace arangodb::tests;
 using namespace arangodb::tests::mocks;
 
@@ -365,6 +367,7 @@ std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::
 
   std::unordered_set<uint64_t> uniq;
   std::vector<uint64_t> toCall;
+  std::unordered_set<std::string> pc, cc;
   std::pair<std::vector<consensus::apply_ret_t>,consensus::index_t> res;
 
   {
@@ -376,7 +379,16 @@ std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::
   {
     std::lock_guard g(_callbacksLock);
     for (auto const& trx : VPackArrayIterator(trxs->slice())) {
-      handleCallbacksNoLock(trx[0], uniq, toCall);
+      handleCallbacksNoLock(trx[0], uniq, toCall, pc, cc);
+    }
+    {
+      std::lock_guard g(_storeLock);
+      for (auto const& i : pc) {
+        _planChanges.emplace(_commitIndex, i);
+      }
+      for (auto const& i : cc) {
+        _currentChanges.emplace(_commitIndex, i);
+      }
     }
   }
   invokeCallbacks(toCall);

@@ -64,6 +64,9 @@ RestStatus RestClusterHandler::execute() {
     } else if (suffixes[0] == "agency-cache") {
       handleAgencyCache();
       return RestStatus::DONE;
+    } else if (suffixes[0] == "cluster-info") {
+      handleClusterInfo();
+      return RestStatus::DONE;
     }
   }
 
@@ -124,8 +127,32 @@ void RestClusterHandler::handleAgencyCache() {
 
   auto& ac = server().getFeature<ClusterFeature>().agencyCache();
   auto acb = ac.dump();
-  
+
   generateResult(rest::ResponseCode::OK, acb->slice());
+
+}
+
+void RestClusterHandler::handleClusterInfo() {
+
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  if (af->isActive() && !_request->user().empty()) {
+    auth::Level lvl;
+    if (af->userManager() != nullptr) {
+      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", true);
+    } else {
+      lvl = auth::Level::RW;
+    }
+    if (lvl < auth::Level::RW) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights to produce an cluster info dump");
+      return;
+    }
+  }
+
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  auto dump = ci.toVelocyPack();
+
+  generateResult(rest::ResponseCode::OK, dump.slice());
 
 }
 

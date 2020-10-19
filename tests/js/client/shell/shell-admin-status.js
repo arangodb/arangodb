@@ -64,7 +64,6 @@ function adminStatusSuite () {
     
     testOverview: function () {
       let result = arango.GET('/_admin/status?overview=true');
-
       assertTrue(result.hasOwnProperty("version"));
       assertTrue(result.hasOwnProperty("platform"));
       assertTrue(result.hasOwnProperty("license"));

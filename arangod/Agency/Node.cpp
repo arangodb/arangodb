@@ -1196,6 +1196,17 @@ void Node::clear() {
   }
 }
 
+std::vector<std::string> Node::keys() const {
+  std::vector<std::string> result;
+  if (!_isArray) {
+    result.reserve(_children.size());
+    for (auto const& i : _children) {
+      result.emplace_back(i.first);
+    }
+  }
+  return result;
+}
+
 auto Node::getIntWithDefault(Slice slice, std::string_view key, std::int64_t def)
     -> std::int64_t {
   return arangodb::basics::VelocyPackHelper::getNumericValue<std::int64_t>(
