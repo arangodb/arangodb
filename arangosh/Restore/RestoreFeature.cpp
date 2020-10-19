@@ -399,7 +399,7 @@ void getDBProperties(arangodb::ManagedDirectory& directory, VPackBuilder& builde
   try {
     fileContentBuilder = directory.vpackFromJsonFile("dump.json");
   } catch (...) {
-    LOG_TOPIC("3a5a4", WARN, arangodb::Logger::RESTORE) 
+    LOG_TOPIC("3a5a4", WARN, arangodb::Logger::RESTORE)
         << "could not read dump.json file: "
         << directory.status().errorMessage();
     builder.add(slice);
@@ -412,7 +412,7 @@ void getDBProperties(arangodb::ManagedDirectory& directory, VPackBuilder& builde
       slice = props;
     }
   } catch (...) {
-    LOG_TOPIC("3b6a4", INFO, arangodb::Logger::RESTORE) 
+    LOG_TOPIC("3b6a4", INFO, arangodb::Logger::RESTORE)
         << "no properties object found in dump.json file";
   }
   builder.add(slice);
@@ -651,9 +651,9 @@ arangodb::Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& httpClie
   // re-create indexes
   if (indexes.length() > 0) {
     // we actually have indexes
-  
+
     VPackSlice const parameters = jobData.collection.get("parameters");
-      
+
     std::string const cname =
         arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name",
                                                              "");
@@ -701,7 +701,7 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
   auto&& currentStatus = jobData.progressTracker.getStatus(cname);
 
   if (currentStatus.state >= arangodb::RestoreFeature::RESTORED) {
-    LOG_TOPIC("94913", INFO, Logger::RESTORE)
+    LOG_TOPIC("9a814", INFO, Logger::RESTORE)
         << "# skipping restoring " << collectionType << " collection '" << cname
         << "', as it was restored previously";
     return result;
@@ -732,7 +732,7 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
   int64_t const fileSize = TRI_SizeFile(datafile->path().c_str());
 
   if (jobData.options.progress) {
-    LOG_TOPIC("94913", INFO, Logger::RESTORE)
+    LOG_TOPIC("95913", INFO, Logger::RESTORE)
         << "# Loading data into " << collectionType << " collection '" << cname
         << "', data size: " << fileSize << " byte(s)";
   }
@@ -1056,7 +1056,7 @@ arangodb::Result processInputDirectory(
             rewritten.add("indexes", parameters.get("indexes"));
             rewritten.add("parameters", parametersWithoutIndexes.slice());
             rewritten.close();
-          
+
             collections.emplace_back(std::move(rewritten));
           } else {
             // new format
@@ -1082,7 +1082,7 @@ arangodb::Result processInputDirectory(
         FATAL_ERROR_EXIT();
       }
     }
-    
+
     if (!options.views.empty()) {
       bool found = false;
       for (auto const& it : restrictViews) {
