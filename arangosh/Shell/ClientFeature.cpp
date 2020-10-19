@@ -247,7 +247,7 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     LOG_TOPIC("701fb", ERR, arangodb::Logger::FIXME)
         << "invalid value for --server.endpoint ('" << _endpoint <<
       "') - 0.0.0.0 and :: are only allowed for servers binding - not for clients connecting." <<
-      " Choose a public IP address of your machine instead." <<
+      " Choose an IP address of your machine instead." <<
       " See https://en.wikipedia.org/wiki/0.0.0.0 for more details.";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
