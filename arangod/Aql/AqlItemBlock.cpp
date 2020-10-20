@@ -368,8 +368,18 @@ void AqlItemBlock::shrink(size_t numRows) {
 
   if (ADB_UNLIKELY(numRows > _numRows)) {
     // cannot use shrink() to increase the size of the block
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot use shrink() to increase block");
+    std::string errorMessage("cannot use shrink() to increase block");
+    errorMessage.append(". numRows: ");
+    errorMessage.append(std::to_string(numRows));
+    errorMessage.append(". _numRows: ");
+    errorMessage.append(std::to_string(_numRows));
+    errorMessage.append(". _numRegisters: ");
+    errorMessage.append(std::to_string(_numRegisters));
+    errorMessage.append(". _numEffectiveRows: ");
+    errorMessage.append(std::to_string(_numEffectiveRows));
+    errorMessage.append(". _rowIndex: ");
+    errorMessage.append(std::to_string(_rowIndex));
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMessage);
   }
 
   decreaseMemoryUsage(sizeof(AqlValue) * (_numRows - numRows) * _numRegisters);
