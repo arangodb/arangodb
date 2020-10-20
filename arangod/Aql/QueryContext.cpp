@@ -80,7 +80,6 @@ Collections const& QueryContext::collections() const {
 
 /// @brief return the names of collections used in the query
 std::vector<std::string> QueryContext::collectionNames() const {
-  TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
   return _collections.collectionNames();
 }
   
