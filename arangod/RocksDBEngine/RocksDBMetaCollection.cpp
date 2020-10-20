@@ -57,12 +57,12 @@ namespace {
 rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
   auto* sm = engine.settingsManager();
   if (sm) {
-    sm->sync(true); // force
+    sm->sync(true);  // force
   }
   return engine.db()->GetLatestSequenceNumber();
 }
 
-}
+}  // namespace
 
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              VPackSlice const& info)
