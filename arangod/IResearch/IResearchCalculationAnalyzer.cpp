@@ -285,7 +285,7 @@ bool CalculationAnalyzer::next() {
             _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister());
         if (value.isString() || (value.isNull(true) && _options.keepNull)) {
           if (value.isString()) {
-            _term.value = irs::ref_cast<irs::byte_type>(arangodb::iresearch::getStringRef(value.slice()));
+            _term.value = arangodb::iresearch::getBytesRef(value.slice()));
           } else {
             _term.value = irs::bytes_ref::EMPTY;
           }
