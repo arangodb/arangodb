@@ -1104,9 +1104,13 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
 std::tuple<AnalyzerValueType, AnalyzerValueType, AnalyzerPool::StoreFunc>
 getAnalyzerMeta(irs::type_info::type_id type) noexcept {
   if (type == irs::type<GeoJSONAnalyzer>::id()) {
-    return { AnalyzerValueType::Object, AnalyzerValueType::String, &GeoJSONAnalyzer::store };
+    return { AnalyzerValueType::Object | AnalyzerValueType::Array,
+             AnalyzerValueType::String,
+             &GeoJSONAnalyzer::store };
   } else if (type == irs::type<GeoPointAnalyzer>::id()) {
-    return { AnalyzerValueType::Object, AnalyzerValueType::String, &GeoPointAnalyzer::store };
+    return { AnalyzerValueType::Object | AnalyzerValueType::Array,
+             AnalyzerValueType::String,
+             &GeoPointAnalyzer::store };
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
