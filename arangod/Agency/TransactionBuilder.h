@@ -73,6 +73,16 @@ template <>
 inline void add_to_builder(VPackBuilder* b, VPackSlice const& v) {
   b->add(v);
 }
+
+template <typename K, typename V>
+void add_to_builder(VPackBuilder* b, K const& key, V const& v) {
+  b->add(key, VPackValue(v));
+}
+
+template <typename K>
+inline void add_to_builder(VPackBuilder* b, K const& key, VPackSlice const& v) {
+  b->add(key, v);
+}
 }  // namespace detail
 
 struct envelope {
@@ -127,6 +137,7 @@ struct envelope {
     envelope end() {
       _builder->close();
       _builder->add(VPackValue(AgencyWriteTransaction::randomClientId()));
+      _builder->close();
       return envelope(_builder.release());
     }
     ~precs_trx() try {
@@ -149,6 +160,7 @@ struct envelope {
       _builder->close();
       _builder->add(VPackSlice::emptyObjectSlice());
       _builder->add(VPackValue(AgencyWriteTransaction::randomClientId()));
+      _builder->close();
       return envelope(_builder.release());
     }
     template <typename K, typename V>
@@ -171,7 +183,7 @@ struct envelope {
       detail::add_to_builder(_builder.get(), std::forward<K>(k));
       _builder->openObject();
       _builder->add("op", VPackValue("set"));
-      this->set("new", std::forward<V>(v));
+      detail::add_to_builder(_builder.get(), "new", std::forward<V>(v));
       _builder->close();
       return std::move(*this);
     }
@@ -204,12 +216,12 @@ struct envelope {
     write_trx(write_trx&&) = default;
     write_trx& operator=(write_trx&&) = default;
 
-
     precs_trx precs() { return precs_trx(std::move(_builder)); }
 
    private:
     friend envelope;
     write_trx(builder_ptr b) : _builder(std::move(b)) {
+      _builder->openArray();
       _builder->openObject();
     }
     builder_ptr _builder;
