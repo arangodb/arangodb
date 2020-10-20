@@ -120,7 +120,14 @@ TEST_F(IResearchQueryGeoContainsTest, test) {
         { "geometry": { "type": "Point", "coordinates": [ 37.778549, 55.823659 ] } },
         { "geometry": { "type": "Point", "coordinates": [ 37.729797, 55.853733 ] } },
         { "geometry": { "type": "Point", "coordinates": [ 37.608261, 55.784682 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.525177, 55.802825 ] } }
+        { "geometry": { "type": "Point", "coordinates": [ 37.525177, 55.802825 ] } },
+        { "geometry": { "type": "Polygon", "coordinates": [
+          [[ 37.614323, 55.705898 ],
+           [ 37.615825, 55.705898 ],
+           [ 37.615825, 55.70652  ],
+           [ 37.614323, 55.70652  ],
+           [ 37.614323, 55.705898 ]]
+        ]}}
       ])");
 
     arangodb::OperationOptions options;

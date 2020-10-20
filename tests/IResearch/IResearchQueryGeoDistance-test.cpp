@@ -44,7 +44,7 @@ static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 class IResearchQueryGeoDistanceTest : public IResearchQueryTest {};
 
-TEST_F(IResearchQueryGeoDistanceTest, test) {
+TEST_F(IResearchQueryGeoDistanceTest, testGeoJson) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;

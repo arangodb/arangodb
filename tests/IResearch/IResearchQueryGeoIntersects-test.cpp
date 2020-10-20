@@ -120,7 +120,14 @@ TEST_F(IResearchQueryGeoIntersectsTest, test) {
         { "geometry": { "type": "Point", "coordinates": [ 37.778549, 55.823659 ] } },
         { "geometry": { "type": "Point", "coordinates": [ 37.729797, 55.853733 ] } },
         { "geometry": { "type": "Point", "coordinates": [ 37.608261, 55.784682 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.525177, 55.802825 ] } }
+        { "geometry": { "type": "Point", "coordinates": [ 37.525177, 55.802825 ] } },
+        { "geometry": { "type": "Polygon", "coordinates": [
+           [[37.602682, 55.706853],
+            [37.613025, 55.706853],
+            [37.613025, 55.711906],
+            [37.602682, 55.711906],
+            [37.602682, 55.706853]]
+        ]}}
       ])");
 
     arangodb::OperationOptions options;
@@ -322,7 +329,7 @@ TEST_F(IResearchQueryGeoIntersectsTest, test) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[16].slice(), insertedDocs[17].slice()
+      insertedDocs[16].slice(), insertedDocs[17].slice(), insertedDocs[28].slice()
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -352,7 +359,7 @@ TEST_F(IResearchQueryGeoIntersectsTest, test) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[16].slice(), insertedDocs[17].slice()
+      insertedDocs[16].slice(), insertedDocs[17].slice(), insertedDocs[28].slice()
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -362,6 +369,36 @@ TEST_F(IResearchQueryGeoIntersectsTest, test) {
              [37.613025, 55.711906],
              [37.602682, 55.711906],
              [37.602682, 55.706853]
+           ])
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_INTERSECTS(box, d.geometry), 'mygeojson')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, expected.size());
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+    }
+    EXPECT_EQ(i, expected.size());
+  }
+
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[28].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET box = GEO_POLYGON([
+             [37.613025, 55.709029],
+             [37.618818, 55.709029],
+             [37.618818, 55.711906],
+             [37.613025, 55.711906],
+             [37.613025, 55.709029]
            ])
            FOR d IN testView
            SEARCH ANALYZER(GEO_INTERSECTS(box, d.geometry), 'mygeojson')
