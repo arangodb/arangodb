@@ -37,6 +37,8 @@ v3.7.5 (XXXX-XX-XX)
   Note: ArangoDB 3.6 and 3.7 introduce this option with a default value of 
   `true`. ArangoDB 3.8 changes the default value to `false`.
 
+* Fixed collection count which could be off after a server crash.
+
 
 v3.7.4 (2020-10-16)
 -------------------
