@@ -154,6 +154,10 @@ AccuWindowExecutor::AccuWindowExecutor(Fetcher& fetcher, Infos& infos)
 
 AccuWindowExecutor::~AccuWindowExecutor() {}
 
+void AccuWindowExecutor::initializeCursor() {
+  resetAggregators();
+}
+
 std::tuple<ExecutorState, NoStats, AqlCall> AccuWindowExecutor::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   // This block is passhthrough.

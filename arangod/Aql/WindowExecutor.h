@@ -136,6 +136,9 @@ class AccuWindowExecutor : public BaseWindowExecutor {
   AccuWindowExecutor(Fetcher& fetcher, Infos&);
   ~AccuWindowExecutor();
 
+  
+  void initializeCursor();
+  
   /**
    * @brief produce the next Row of Aql Values.
    *
