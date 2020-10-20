@@ -89,76 +89,6 @@ using OptionsDeserializer = utilities::constructing_deserializer<Options, parame
   >>;
 
 using ValidatingOptionsDeserializer = validate<OptionsDeserializer, OptionsValidator>;
-
-
-frozen::set<irs::string_ref, 4> forbiddenFunctions {"TOKENS", "NGRAM_MATCH", "PHRASE", "ANALYZER"};
-
-arangodb::Result validateQuery(std::string const& query, TRI_vocbase_t& vocbase) {
-  auto parseQuery = std::make_unique<arangodb::aql::Query>(
-    std::make_shared<arangodb::transaction::StandaloneContext>(vocbase),
-    arangodb::aql::QueryString(query),
-    nullptr, nullptr);
-
-  auto res  = parseQuery->parse();
-  if (!res.ok()) {
-    return {TRI_ERROR_QUERY_PARSE , res.errorMessage()};
-  }
-  TRI_ASSERT(parseQuery->ast());
-
-  // Forbid all V8 related stuff as it is not available on DBServers where analyzers run.
-  if (parseQuery->ast()->willUseV8()) {
-    return { TRI_ERROR_BAD_PARAMETER, "V8 usage is forbidden for calculation analyzer" };
-  }
-
-  std::string errorMessage;
-  // Forbid to use functions that reference analyzers -> problems on recovery as analyzers are not available for querying.
-  // Forbid all non-Dbserver runable functions as it is not available on DBServers where analyzers run.
-  arangodb::aql::Ast::traverseReadOnly(parseQuery->ast()->root(), [&errorMessage](arangodb::aql::AstNode const* node) -> bool {
-    switch(node->type) {
-      case arangodb::aql::NODE_TYPE_FCALL:
-        {
-          auto func = static_cast<arangodb::aql::Function*>(node->getData());
-          if (!func->hasFlag(arangodb::aql::Function::Flags::CanRunOnDBServer) ||
-              forbiddenFunctions.find(func->name) != forbiddenFunctions.end()) {
-            errorMessage = "Function '";
-            errorMessage.append(func->name).append("' is forbidden for calculation analyzer");
-            return false;
-          }
-        }
-        break;
-      case arangodb::aql::NODE_TYPE_PARAMETER:
-        {
-          irs::string_ref parameterName(node->getStringValue(), node->getStringLength());
-          if (parameterName != CALCULATION_PARAMETER_NAME) {
-            errorMessage = "Invalid parameter found '";
-            errorMessage.append(parameterName).append("'");
-            return false;
-          }
-        }
-        break;
-      case arangodb::aql::NODE_TYPE_PARAMETER_DATASOURCE:
-        errorMessage = "Datasource acces is forbidden for calculation analyzer";
-        return false;
-      case arangodb::aql::NODE_TYPE_FCALL_USER:
-        errorMessage = "UDF functions is forbidden for calculation analyzer";
-        return false;
-      case arangodb::aql::NODE_TYPE_VIEW:
-      case arangodb::aql::NODE_TYPE_FOR_VIEW:
-        errorMessage = "View access is forbidden for calculation analyzer";
-        return false;
-      case arangodb::aql::NODE_TYPE_COLLECTION:
-        errorMessage = "Collection access is forbidden for calculation analyzer";
-        return false;
-      default:
-        break;
-    }
-    return true;
-    });
-  if (!errorMessage.empty()) {
-    return { TRI_ERROR_BAD_PARAMETER, errorMessage };
-  }
-  return {};
-}
 }
 
 namespace arangodb {
@@ -225,6 +155,84 @@ private:
   AqlItemBlockManager _itemBlockManager;
 };
 
+frozen::set<irs::string_ref, 4> forbiddenFunctions{"TOKENS", "NGRAM_MATCH",
+                                                   "PHRASE", "ANALYZER"};
+
+arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t& vocbase) {
+  try {
+    CalculationQueryContext queryContext(vocbase);
+    auto queryString = arangodb::aql::QueryString(queryStringRaw);
+    auto ast = queryContext.ast();
+    TRI_ASSERT(ast);
+    Parser parser(queryContext, *ast, queryString);
+    parser.parse();
+    AstNode* astRoot = const_cast<AstNode*>(ast->root());
+    TRI_ASSERT(astRoot);
+    // Forbid all V8 related stuff as it is not available on DBServers where analyzers run.
+    if (ast->willUseV8()) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "V8 usage is forbidden for calculation analyzer"};
+    }
+
+    std::string errorMessage;
+    // Forbid to use functions that reference analyzers -> problems on recovery as analyzers are not available for querying.
+    // Forbid all non-Dbserver runable functions as it is not available on DBServers where analyzers run.
+    arangodb::aql::Ast::traverseReadOnly(
+        ast->root(), [&errorMessage](arangodb::aql::AstNode const* node) -> bool {
+          switch (node->type) {
+            case arangodb::aql::NODE_TYPE_FCALL: {
+              auto func = static_cast<arangodb::aql::Function*>(node->getData());
+              if (!func->hasFlag(arangodb::aql::Function::Flags::CanRunOnDBServer) ||
+                  forbiddenFunctions.find(func->name) != forbiddenFunctions.end()) {
+                errorMessage = "Function '";
+                errorMessage.append(func->name)
+                    .append("' is forbidden for calculation analyzer");
+                return false;
+              }
+            } break;
+            case arangodb::aql::NODE_TYPE_PARAMETER: {
+              irs::string_ref parameterName(node->getStringValue(), node->getStringLength());
+              if (parameterName != CALCULATION_PARAMETER_NAME) {
+                errorMessage = "Invalid parameter found '";
+                errorMessage.append(parameterName).append("'");
+                return false;
+              }
+            } break;
+            case arangodb::aql::NODE_TYPE_PARAMETER_DATASOURCE:
+              errorMessage =
+                  "Datasource acces is forbidden for calculation analyzer";
+              return false;
+            case arangodb::aql::NODE_TYPE_FCALL_USER:
+              errorMessage =
+                  "UDF functions is forbidden for calculation analyzer";
+              return false;
+            case arangodb::aql::NODE_TYPE_VIEW:
+            case arangodb::aql::NODE_TYPE_FOR_VIEW:
+              errorMessage =
+                  "View access is forbidden for calculation analyzer";
+              return false;
+            case arangodb::aql::NODE_TYPE_COLLECTION:
+              errorMessage =
+                  "Collection access is forbidden for calculation analyzer";
+              return false;
+            default:
+              break;
+          }
+          return true;
+        });
+    if (!errorMessage.empty()) {
+      return {TRI_ERROR_BAD_PARAMETER, errorMessage};
+    }
+  } catch (arangodb::basics::Exception const& e) {
+    return {TRI_ERROR_QUERY_PARSE, e.message()};
+  } catch (std::exception const& e) {
+    return {TRI_ERROR_QUERY_PARSE, e.what()};
+  } catch (...) {
+    TRI_ASSERT(FALSE);
+    return {TRI_ERROR_QUERY_PARSE, "Unexpected"};
+  }
+  return {};
+}
 
 
 bool CalculationAnalyzer::parse_options(const irs::string_ref& args, options_t& options) {
@@ -262,7 +270,14 @@ bool CalculationAnalyzer::parse_options(const irs::string_ref& args, options_t& 
 /*static*/ irs::analysis::analyzer::ptr CalculationAnalyzer::make(irs::string_ref const& args) {
   options_t options;
   if (parse_options(args, options)) {
-    return std::make_shared<CalculationAnalyzer>(options);
+    auto validationRes = validateQuery(options.queryString,
+                                       arangodb::DatabaseFeature::getCalculationVocbase());
+    if (validationRes.ok()) {
+      return std::make_shared<CalculationAnalyzer>(options);
+    } else {
+      LOG_TOPIC("f775e", WARN, iresearch::TOPIC)
+          << "error validating calculation query: " << validationRes.errorMessage();
+    }
   }
   return nullptr;
 }
@@ -273,8 +288,10 @@ CalculationAnalyzer::CalculationAnalyzer(options_t const& options)
     _query(arangodb::DatabaseFeature::getCalculationVocbase()),
     _engine(0, _query, _query.itemBlockManager(),
             SerializationFormat::SHADOWROWS, nullptr) {
-  // TODO: move this to normalize?? As here is too late to report
-  //TRI_ASSERT(validateQuery(_options.queryString, *_calculationVocbase).ok());
+
+  TRI_ASSERT(validateQuery(_options.queryString,
+                           arangodb::DatabaseFeature::getCalculationVocbase())
+                 .ok());
 }
 
 bool CalculationAnalyzer::next() {
@@ -285,7 +302,7 @@ bool CalculationAnalyzer::next() {
             _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister());
         if (value.isString() || (value.isNull(true) && _options.keepNull)) {
           if (value.isString()) {
-            _term.value = arangodb::iresearch::getBytesRef(value.slice()));
+            _term.value = arangodb::iresearch::getBytesRef(value.slice());
           } else {
             _term.value = irs::bytes_ref::EMPTY;
           }
@@ -297,7 +314,7 @@ bool CalculationAnalyzer::next() {
     }
     if (_executionState == ExecutionState::HASMORE) {
       try {
-        _executionState == ExecutionState::DONE; // set to done to terminate in case of exception
+        _executionState = ExecutionState::DONE; // set to done to terminate in case of exception
         _resultRowIdx = 0;
         _queryResults = nullptr;
         std::tie(_executionState, _queryResults) = _engine.getSome(_options.batchSize);
