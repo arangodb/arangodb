@@ -67,6 +67,8 @@ v3.6.9 (XXXX-XX-XX)
   All the above APIs were intended to be used for internal means only. These
   APIs are deprecated now and will be removed in ArangoDB v3.9.
 
+* Fixed collection count which could be off after a server crash.
+
 
 v3.6.8 (2020-10-14)
 -------------------
