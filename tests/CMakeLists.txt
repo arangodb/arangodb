@@ -206,6 +206,7 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/GeoFilter-test.cpp
   IResearch/GeoDistanceFilter-test.cpp
   IResearch/IResearchAnalyzerFeature-test.cpp
+  IResearch/IResearchCalculationAnalyzer-test.cpp
   IResearch/IResearchComparer-test.cpp
   IResearch/IResearchDocument-test.cpp
   IResearch/IResearchFeature-test.cpp

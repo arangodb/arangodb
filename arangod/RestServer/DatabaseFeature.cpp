@@ -353,6 +353,12 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 }
 
+void DatabaseFeature::initCalculationVocbase(application_features::ApplicationServer& server) {
+  _calculationVocbase =
+      std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL,
+                                      createExpressionVocbaseInfo(server));
+}
+
 void DatabaseFeature::start() {
   // set singleton
   DATABASE = this;
@@ -360,8 +366,7 @@ void DatabaseFeature::start() {
   verifyAppPaths();
 
   // need this to make calculation analyzer available in database links
-  _calculationVocbase = std::make_unique<TRI_vocbase_t>(
-    TRI_VOCBASE_TYPE_NORMAL, createExpressionVocbaseInfo(server()));
+  initCalculationVocbase(server());
 
   // scan all databases
   VPackBuilder builder;
