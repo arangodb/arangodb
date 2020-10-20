@@ -1098,7 +1098,7 @@ Result fromFuncGeoInRange(
   return {};
 }
 
-// GEO_DISTANCE(.. , ..) <|<=|>|>= Distance
+// GEO_DISTANCE(.. , ..) <|<=|==|>|>= Distance
 Result fromGeoDistanceInterval(
     irs::boolean_filter* filter,
     arangodb::iresearch::NormalizedCmpNode const& node,
@@ -1180,7 +1180,10 @@ Result fromGeoDistanceInterval(
       return error::failedToGenerateName(GEO_DISTANCE_FUNC, fieldNodeIdx);
     }
 
-    auto& geo_filter = filter->add<GeoDistanceFilter>();
+    auto& geo_filter = (aql::NODE_TYPE_OPERATOR_BINARY_NE == node.cmp
+                       ? filter->add<irs::Not>().filter<GeoDistanceFilter>()
+                       : filter->add<GeoDistanceFilter>());
+
     geo_filter.boost(filterCtx.boost);
 
     auto* options = geo_filter.mutable_options();
