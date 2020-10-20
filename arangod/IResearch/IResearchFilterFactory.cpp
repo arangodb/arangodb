@@ -1188,18 +1188,31 @@ Result fromGeoDistanceInterval(
 
     options->origin = centroid.ToPoint();
 
-    auto const type = (aql::NODE_TYPE_OPERATOR_BINARY_GE == node.cmp ||
-                       aql::NODE_TYPE_OPERATOR_BINARY_LE == node.cmp)
-      ? irs::BoundType::INCLUSIVE
-      : irs::BoundType::EXCLUSIVE;
-
-    if (aql::NODE_TYPE_OPERATOR_BINARY_GT == node.cmp ||
-        aql::NODE_TYPE_OPERATOR_BINARY_GE == node.cmp) {
-      options->range.min = distance;
-      options->range.min_type = type;
-    } else {
-      options->range.max = distance;
-      options->range.max_type = type;
+    switch (node.cmp) {
+      case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+      case aql::NODE_TYPE_OPERATOR_BINARY_NE:
+        options->range.min= distance;
+        options->range.min_type = irs::BoundType::INCLUSIVE;
+        options->range.max = distance;
+        options->range.max_type = irs::BoundType::INCLUSIVE;
+        break;
+      case aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      case aql::NODE_TYPE_OPERATOR_BINARY_LE:
+        options->range.max = distance;
+        options->range.max_type = aql::NODE_TYPE_OPERATOR_BINARY_LE == node.cmp
+          ? irs::BoundType::INCLUSIVE
+          : irs::BoundType::EXCLUSIVE;
+        break;
+      case aql::NODE_TYPE_OPERATOR_BINARY_GT:
+      case aql::NODE_TYPE_OPERATOR_BINARY_GE:
+        options->range.min = distance;
+        options->range.min_type = aql::NODE_TYPE_OPERATOR_BINARY_GE == node.cmp
+          ? irs::BoundType::INCLUSIVE
+          : irs::BoundType::EXCLUSIVE;
+        break;
+      default:
+        TRI_ASSERT(false);
+        return {TRI_ERROR_BAD_PARAMETER};
     }
 
     TRI_ASSERT(filterCtx.analyzer);
@@ -1247,6 +1260,12 @@ Result fromBinaryEq(irs::boolean_filter* filter, QueryContext const& ctx,
   arangodb::iresearch::NormalizedCmpNode normalized;
 
   if (!arangodb::iresearch::normalizeCmpNode(node, *ctx.ref, normalized)) {
+    if (arangodb::iresearch::normalizeGeoDistanceCmpNode(node, *ctx.ref, normalized)) {
+      if (fromGeoDistanceInterval(filter, normalized, ctx, filterCtx).ok()) {
+        return {};
+      }
+    }
+
     auto rv = fromExpression(filter, ctx, filterCtx, node);
     return rv.reset(rv.errorNumber(), "in from binary equation" + rv.errorMessage());
   }

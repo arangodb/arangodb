@@ -17,6 +17,7 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ./IResearchFilterBoolean-test.cpp
   ./IResearchFilterCompare-test.cpp
   ./IResearchFilterFunction-test.cpp
+  ./IResearchFilterGeo-test.cpp
   ./IResearchFilterIn-test.cpp
   ./IResearchIndex-test.cpp
   ./IResearchLink-test.cpp

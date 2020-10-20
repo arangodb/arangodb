@@ -41,6 +41,7 @@
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Cluster/ClusterFeature.h"
@@ -99,7 +100,7 @@ class IResearchFilterGeoFunctionsTest
         arangodb::aql::Function::makeFlags(
             // fake non-deterministic
             arangodb::aql::Function::Flags::CanRunOnDBServer),
-        [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+        [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
            arangodb::aql::VPackFunctionParameters const& params) {
           TRI_ASSERT(!params.empty());
           return params[0];
@@ -112,7 +113,7 @@ class IResearchFilterGeoFunctionsTest
             // fake deterministic
             arangodb::aql::Function::Flags::Deterministic, arangodb::aql::Function::Flags::Cacheable,
             arangodb::aql::Function::Flags::CanRunOnDBServer),
-        [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+        [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
            arangodb::aql::VPackFunctionParameters const& params) {
           TRI_ASSERT(!params.empty());
           return params[0];
@@ -597,6 +598,42 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoDistance) {
       expected, &ctx);
   }
 
+  {
+    irs::Or expected;
+    auto& filter = expected.add<arangodb::iresearch::GeoDistanceFilter>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->origin = S2LatLng::FromDegrees(0., 0.).Normalized().ToPoint();
+    opts->range.min = 5000;
+    opts->range.min_type = irs::BoundType::INCLUSIVE;
+    opts->range.max = 5000;
+    opts->range.max_type = irs::BoundType::INCLUSIVE;
+    opts->prefix = "";
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("lat", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("lng", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 5000 }));
+
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE(d.name, { "type": "Point", "coordinates": [ 0, 0 ] }) == 5000 RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE({ "type": "Point", "coordinates": [ 0, 0 ] }, d.name) == 5000 RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_DISTANCE(d[_FORWARD_('name')], [ 0, 0 ]) == 5000 RETURN d)",
+      expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess(
+      vocbase(),
+      R"(LET lat = 0 LET lng = 0 LET dist = 5000 FOR d IN myView FILTER GEO_DISTANCE([ 0, 0 ], d[_FORWARD_('name')]) == dist RETURN d)",
+      expected, &ctx);
+  }
+
+
   // wrong number of arguments
   assertFilterParseFail(
     vocbase(),
@@ -797,6 +834,41 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoInRange) {
     assertFilterSuccess(
       vocbase(),
       R"(LET lat = 0 LET lng = 0 LET dist = 5000 FOR d IN myView FILTER GEO_iN_RANGE(d[_FORWARD_('name')], [ lng, lat ], 1000 + lat, dist, lat == lng, lat != lng) RETURN d)",
+      expected, &ctx);
+  }
+
+  {
+    irs::Or expected;
+    auto& filter = expected.add<arangodb::iresearch::GeoDistanceFilter>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->origin = S2LatLng::FromDegrees(0., 0.).Normalized().ToPoint();
+    opts->range.min = 5000;
+    opts->range.min_type = irs::BoundType::INCLUSIVE;
+    opts->range.max = 5000;
+    opts->range.max_type = irs::BoundType::INCLUSIVE;
+    opts->prefix = "";
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("lat", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("lng", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 0 }));
+    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{ 5000 }));
+
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_iN_RANGE(d.name, { "type": "Point", "coordinates": [ 0, 0 ] }, 5000, 5000, true, true) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_iN_RANGE(d.name, { "type": "Point", "coordinates": [ 0, 0 ] }, 5000, 5000, true, true) RETURN d)",
+      expected);
+    assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER GEO_iN_RANGE(d[_FORWARD_('name')], [ 0, 0 ], 5000, 5000, true, true) RETURN d)",
+      expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess(
+      vocbase(),
+      R"(LET lat = 0 LET lng = 0 LET dist = 5000 FOR d IN myView FILTER GEO_iN_RANGE(d[_FORWARD_('name')], [ lng, lat ], dist, dist, lat == lng, lat == lng) RETURN d)",
       expected, &ctx);
   }
 

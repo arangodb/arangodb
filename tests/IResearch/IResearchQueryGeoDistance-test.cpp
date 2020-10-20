@@ -120,7 +120,14 @@ TEST_F(IResearchQueryGeoDistanceTest, test) {
         { "geometry": { "type": "Point", "coordinates": [ 37.778549, 55.823659 ] } },
         { "geometry": { "type": "Point", "coordinates": [ 37.729797, 55.853733 ] } },
         { "geometry": { "type": "Point", "coordinates": [ 37.608261, 55.784682 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.525177, 55.802825 ] } }
+        { "geometry": { "type": "Point", "coordinates": [ 37.525177, 55.802825 ] } },
+        { "geometry": { "type": "Polygon", "coordinates": [
+          [[ 37.614323, 55.705898 ],
+           [ 37.615825, 55.705898 ],
+           [ 37.615825, 55.70652  ],
+           [ 37.614323, 55.70652  ],
+           [ 37.614323, 55.705898 ]]
+        ]}}
       ])");
 
     arangodb::OperationOptions options;
@@ -322,6 +329,30 @@ TEST_F(IResearchQueryGeoDistanceTest, test) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[16].slice(), insertedDocs[17].slice(), insertedDocs[28].slice(),
+    };
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) < 550, 'mygeojson')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, expected.size());
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+    }
+    EXPECT_EQ(i, expected.size());
+  }
+
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
       insertedDocs[16].slice()
     };
     auto result = arangodb::tests::executeQuery(
@@ -353,6 +384,54 @@ TEST_F(IResearchQueryGeoDistanceTest, test) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) < 180.24, 'mygeojson')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, expected.size());
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+    }
+    EXPECT_EQ(i, expected.size());
+  }
+
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[12].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.613663, 55.704002)
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) == 0, 'mygeojson')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, expected.size());
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+    }
+    EXPECT_EQ(i, expected.size());
+  }
+
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[12].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.613663, 55.704002)
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_DISTANCE(origin, d.geometry) == 0, 'mygeojson')
            SORT d._key ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());

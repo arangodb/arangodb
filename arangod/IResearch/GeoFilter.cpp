@@ -375,7 +375,7 @@ std::pair<S2Cap, bool> getBound(irs::BoundType type,
 
   return {
     (0. == distance
-      ? S2Cap::Empty()
+      ? S2Cap::FromPoint(origin)
       : S2Cap(origin, S1Angle::Radians(S2Earth::MetersToRadians(distance)))),
     irs::BoundType::INCLUSIVE == type
   };

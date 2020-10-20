@@ -393,7 +393,8 @@ bool normalizeGeoDistanceCmpNode(
     NormalizedCmpNode& out) {
   static_assert(adjacencyChecker<aql::AstNodeType>::checkAdjacency<
                 aql::NODE_TYPE_OPERATOR_BINARY_GE, aql::NODE_TYPE_OPERATOR_BINARY_GT,
-                aql::NODE_TYPE_OPERATOR_BINARY_LE, aql::NODE_TYPE_OPERATOR_BINARY_LT>(),
+                aql::NODE_TYPE_OPERATOR_BINARY_LE, aql::NODE_TYPE_OPERATOR_BINARY_LT,
+                aql::NODE_TYPE_OPERATOR_BINARY_NE, aql::NODE_TYPE_OPERATOR_BINARY_EQ>(),
                 "Values are not adjacent");
 
   auto checkFCallGeoDistance = [](aql::AstNode const* node, aql::Variable const& ref) {
@@ -418,7 +419,7 @@ bool normalizeGeoDistanceCmpNode(
 
   auto cmp = in.type;
 
-  if (cmp < aql::NODE_TYPE_OPERATOR_BINARY_LT ||
+  if (cmp < aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
       cmp > aql::NODE_TYPE_OPERATOR_BINARY_GE ||
       in.numMembers() != 2) {
     // wrong `in` type
