@@ -55,8 +55,23 @@ TEST_F(IResearchQueryGeoInRangeTest, test) {
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
-    auto json = VPackParser::fromJson(R"({})");
-    ASSERT_TRUE(analyzers.emplace(result, vocbase.name() + "::mygeojson", "geojson", json->slice(), { }).ok());
+    // shape
+    {
+      auto json = VPackParser::fromJson(R"({})");
+      ASSERT_TRUE(analyzers.emplace(result, vocbase.name() + "::mygeojson", "geojson", json->slice(), { }).ok());
+    }
+
+    // centroid
+    {
+      auto json = VPackParser::fromJson(R"({"type": "centroid"})");
+      ASSERT_TRUE(analyzers.emplace(result, vocbase.name() + "::mygeocentroid", "geojson", json->slice(), { }).ok());
+    }
+
+    // point
+    {
+      auto json = VPackParser::fromJson(R"({"type": "point"})");
+      ASSERT_TRUE(analyzers.emplace(result, vocbase.name() + "::mygeopoint", "geojson", json->slice(), { }).ok());
+    }
   }
 
   // create collection
@@ -79,7 +94,9 @@ TEST_F(IResearchQueryGeoInRangeTest, test) {
     ASSERT_NE(nullptr, impl);
 
     auto updateJson = VPackParser::fromJson(R"({
-      "links" : { "testCollection0" : { "fields" : { "geometry" : { "analyzers": ["mygeojson"] } } } }
+      "links" : { "testCollection0" : { "fields" : {
+        "geometry" : { "analyzers": ["mygeojson", "mygeocentroid", "mygeopoint"] } }
+      } }
     })");
     EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
     std::set<arangodb::DataSourceId> cids;
@@ -352,6 +369,92 @@ TEST_F(IResearchQueryGeoInRangeTest, test) {
         vocbase,
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
+           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeocentroid')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, expected.size());
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+    }
+    EXPECT_EQ(i, expected.size());
+  }
+
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[16].slice(), insertedDocs[17].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeopoint')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, expected.size());
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+    }
+    EXPECT_EQ(i, expected.size());
+  }
+
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[12].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.613663, 55.704002)
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0), 'mygeojson')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, expected.size());
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+    }
+    EXPECT_EQ(i, expected.size());
+  }
+
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.613663, 55.704002)
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0, false, false), 'mygeojson')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(0, slice.length());
+  }
+
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[16].slice(), insertedDocs[17].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
+           FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 100, 300), 'mygeojson')
            SORT d._key ASC
            RETURN d)");
@@ -425,6 +528,31 @@ TEST_F(IResearchQueryGeoInRangeTest, test) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 206, 207), 'mygeojson')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, expected.size());
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+    }
+    EXPECT_EQ(i, expected.size());
+  }
+
+  {
+    std::vector<arangodb::velocypack::Slice> expected {
+      insertedDocs[23].slice(), insertedDocs[24].slice(), insertedDocs[25].slice(),
+    };
+
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 15000, 20000), 'mygeojson')
            SORT d._key ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
