@@ -2466,7 +2466,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       if (!res.ok()) {
         LOG_TOPIC("7cc7f", ERR, arangodb::iresearch::TOPIC)
             << "analyzer '" << name
-            << "' ignored as empace failed with reson:" << res.errorMessage();
+            << "' ignored as empace failed with reason:" << res.errorMessage();
         return {};  // caught error emplacing analyzer  - skip it
       }
 

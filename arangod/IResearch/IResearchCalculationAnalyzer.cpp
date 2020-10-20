@@ -89,14 +89,14 @@ using OptionsDeserializer = utilities::constructing_deserializer<Options, parame
   >>;
 
 using ValidatingOptionsDeserializer = validate<OptionsDeserializer, OptionsValidator>;
-}
+} // namespace
 
 namespace arangodb {
 namespace iresearch {
 
 class CalculationQueryContext: public QueryContext {
  public:
-  CalculationQueryContext(TRI_vocbase_t& vocbase)
+  explicit CalculationQueryContext(TRI_vocbase_t& vocbase)
     : QueryContext(vocbase), _resolver(vocbase),
     _transactionContext(vocbase),
     _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS) {
@@ -146,7 +146,7 @@ class CalculationQueryContext: public QueryContext {
     return _itemBlockManager;
   }
 
-private:
+ private:
   QueryOptions _queryOptions;
   arangodb::CollectionNameResolver _resolver;
   mutable arangodb::transaction::StandaloneContext _transactionContext;
@@ -288,7 +288,6 @@ CalculationAnalyzer::CalculationAnalyzer(options_t const& options)
     _query(arangodb::DatabaseFeature::getCalculationVocbase()),
     _engine(0, _query, _query.itemBlockManager(),
             SerializationFormat::SHADOWROWS, nullptr) {
-
   TRI_ASSERT(validateQuery(_options.queryString,
                            arangodb::DatabaseFeature::getCalculationVocbase())
                  .ok());
@@ -410,5 +409,5 @@ std::shared_ptr<arangodb::transaction::Context> CalculationAnalyzer::Calculation
     &_transactionContext);
 }
 
-} // iresearch
-} // arangodb
+} // namespace iresearch
+} // namespace arangodb

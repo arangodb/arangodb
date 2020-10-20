@@ -75,7 +75,7 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   static bool normalize(const irs::string_ref& args, std::string& out);
   static irs::analysis::analyzer::ptr make(irs::string_ref const& args);
 
-  CalculationAnalyzer(options_t const& options);
+  explicit CalculationAnalyzer(options_t const& options);
 
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     if (type == irs::type<irs::increment>::id()) {
@@ -90,10 +90,9 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   virtual bool reset(irs::string_ref const& field) noexcept override;
 
  private:
-
   class CalculationQueryContext : public arangodb::aql:: QueryContext{
    public:
-    CalculationQueryContext(TRI_vocbase_t& vocbase);
+    explicit CalculationQueryContext(TRI_vocbase_t& vocbase);
 
     virtual arangodb::aql::QueryOptions const& queryOptions() const override {
       return _queryOptions;
@@ -150,7 +149,6 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   arangodb::aql::ExecutionState _executionState{arangodb::aql::ExecutionState::DONE};
   uint32_t _nextIncVal{0};
 }; // CalculationAnalyzer
-}
-}
-
+} // namespace iresearch
+} // namespace arangodb
 #endif // ARANGOD_IRESEARCH__IRESEARCH_CALCULATION_ANALYZER
