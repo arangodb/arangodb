@@ -37,7 +37,7 @@ namespace detail {
 template <typename T>
 struct moving_ptr {
   explicit moving_ptr(T* p) : _ptr(p) {}
-  ~moving_ptr() = default;
+  ~moving_ptr() noexcept = default;
 
   moving_ptr& operator=(moving_ptr const&) = delete;
   moving_ptr(moving_ptr const&) = delete;
@@ -98,7 +98,7 @@ struct envelope {
       detail::add_to_builder(_builder.get(), std::forward<K>(k));
       return *this;
     }
-    ~read_trx() try {
+    ~read_trx() noexcept try {
       if (_builder) {
         end();
       }
@@ -140,7 +140,7 @@ struct envelope {
       _builder->close();
       return envelope(_builder.release());
     }
-    ~precs_trx() try {
+    ~precs_trx() noexcept try {
       if (_builder) {
         end();
       }
@@ -207,7 +207,7 @@ struct envelope {
       return std::move(*this);
     }
 
-    ~write_trx() try {
+    ~write_trx() noexcept try {
       if (_builder) {
         end();
       }
@@ -234,7 +234,7 @@ struct envelope {
     _builder->close();
     _builder.release();
   }
-  ~envelope() try {
+  ~envelope() noexcept try {
     if (_builder) {
       done();
     }
