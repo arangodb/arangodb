@@ -93,7 +93,7 @@ var runInDatabase = function () {
             const updateQuery = global.aqlQuery`
             UPDATE ${job} WITH ${update} IN _jobs
             `;
-            updateQuery.options = { ttl: 5 };
+            updateQuery.options = { ttl: 5, maxRuntime: 5 };
 
             db._query(updateQuery);
             // db._jobs.update(job, update);
@@ -145,7 +145,7 @@ const resetDeadJobs = function () {
           UPDATE doc
         WITH { status: 'pending' }
         IN _jobs`;
-  query.options = { ttl: 5 };
+  query.options = { ttl: 5, maxRuntime: 5 };
 
   const initialDatabase = db._name();
   db._databases().forEach(function (name) {
