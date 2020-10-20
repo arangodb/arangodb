@@ -1166,6 +1166,10 @@ function routeRequest (req, res, routes) {
       }
     }
 
+    if (!internalRoute && req.url.match(/^\/_(admin|api)\//)) {
+      internalRoute = true;
+    }
+
     const dbname = arangodb.db._name();
     if (internalRoute) {
       // internal route, i.e. /_admin, /_api, etc.
@@ -1180,6 +1184,13 @@ function routeRequest (req, res, routes) {
     } else {
       // user-defined, i.e. custom Foxx route
       if (!CustomRoutingList[dbname]) {
+        if (global.KEYSPACE_EXISTS('FoxxFirstSelfHeal')) {
+          // still waiting for initial selfHeal to execute
+          throw new internal.ArangoError({
+            errorNum: internal.errors.ERROR_HTTP_SERVICE_UNAVAILABLE.code,
+            errorMessage: "waiting for initialization of Foxx services in this database"
+          });
+        }
         // Do not join these two lines. If so there is a chance
         // the RoutingList will contain undefined afterwards.
         // i have not found out why this is the case.
