@@ -1801,7 +1801,7 @@ void RestoreFeature::start() {
       FATAL_ERROR_EXIT();
     }
 
-    _progressTracker = std::make_unique<RestoreProgressTracker>(*_directory, _options.continueRestore);
+    _progressTracker = std::make_unique<RestoreProgressTracker>(*_directory, !_options.continueRestore);
 
     // run the actual restore
     try {
