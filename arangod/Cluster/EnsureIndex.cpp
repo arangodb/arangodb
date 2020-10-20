@@ -132,7 +132,8 @@ bool EnsureIndex::first() {
       error << "failed to ensure index " << body.slice().toJson() << " "
             << _result.errorMessage();
 
-      if (!_result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+      if (!_result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
+          !_result.is(TRI_ERROR_BAD_PARAMETER)) {
         // "unique constraint violated" is an expected error that can happen at any time.
         // it does not justify logging and alerting DBAs. The error will be passed back
         // to the caller anyway, so not logging it seems to be good.

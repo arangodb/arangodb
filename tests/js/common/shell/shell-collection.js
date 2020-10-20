@@ -193,7 +193,7 @@ function CollectionSuite () {
       var r4 = c1.revision();
       assertEqual(1, testHelper.compareStringIds(r4, r3));
 
-      c1.truncate();
+      c1.truncate({ compact: false });
       var r5 = c1.revision();
       assertEqual(1, testHelper.compareStringIds(r5, r4));
 
@@ -223,7 +223,7 @@ function CollectionSuite () {
       var r7 = c1.revision();
       assertEqual(0, testHelper.compareStringIds(r7, r6));
 
-      c1.truncate();
+      c1.truncate({ compact: false });
       var r8 = c1.revision();
 
       // unload
