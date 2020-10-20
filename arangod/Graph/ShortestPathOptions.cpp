@@ -192,7 +192,8 @@ void ShortestPathOptions::fetchVerticesCoordinator(
 
   std::unordered_set<arangodb::velocypack::HashedStringRef> fetch;
   for (auto const& it : vertexIds) {
-    arangodb::velocypack::HashedStringRef hashedId(it);
+    arangodb::velocypack::HashedStringRef hashedId(it.data(),
+                                                   static_cast<uint32_t>(it.length()));
     if (cache.find(hashedId) == cache.end()) {
       // We do not have this vertex
       fetch.emplace(hashedId);

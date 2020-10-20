@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -50,11 +49,6 @@ HashedStringRef::HashedStringRef(Slice slice) {
   _hash = hash(_data, _length);
 }
 
-HashedStringRef::HashedStringRef(StringRef const& other) noexcept 
-  : _data(other.data()),
-    _length(static_cast<uint32_t>(other.size())),
-    _hash(hash(_data, _length)) {}
-  
 /// @brief create a HashedStringRef from a VPack slice of type String
 HashedStringRef& HashedStringRef::operator=(Slice slice) {
   VELOCYPACK_ASSERT(slice.isString());
@@ -68,16 +62,8 @@ HashedStringRef& HashedStringRef::operator=(Slice slice) {
   return *this;
 }
 
-/// @brief create a HashedStringRef from another StringRef
-HashedStringRef& HashedStringRef::operator=(StringRef const& other) noexcept {
-  _data = other.data();
-  _length = static_cast<uint32_t>(other.size());
-  _hash = hash(_data, _length);
-  return *this;
-}
-  
 HashedStringRef HashedStringRef::substr(std::size_t pos, std::size_t count) const {
-  if (pos > _length) {
+  if (VELOCYPACK_UNLIKELY(pos > _length)) {
     throw Exception(Exception::IndexOutOfBounds, "substr index out of bounds");
   } else if (VELOCYPACK_UNLIKELY(count > std::numeric_limits<uint32_t>::max())) {
     throw Exception(Exception::IndexOutOfBounds, "substr count out of bounds");

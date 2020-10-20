@@ -62,7 +62,9 @@ aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(arangodb::velocypack::
   // FIXME: this is only used for ShortestPath, where the shortestpath stuff
   // uses _edges to store its vertices
 
-  auto it = _cache.find(arangodb::velocypack::HashedStringRef(id));
+  // There will be no idString of length above uint32_t
+  auto it = _cache.find(
+      arangodb::velocypack::HashedStringRef(id.data(), static_cast<uint32_t>(id.length())));
 
   if (it != _cache.end()) {
     // FIXME: the ClusterTraverserCache lifetime is shorter then the query
@@ -83,7 +85,9 @@ void ClusterTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& token,
 }
 
 void ClusterTraverserCache::insertVertexIntoResult(arangodb::velocypack::StringRef id, VPackBuilder& result) {
-  auto it = _cache.find(arangodb::velocypack::HashedStringRef(id));
+  // There will be no idString of length above uint32_t
+  auto it = _cache.find(
+      arangodb::velocypack::HashedStringRef(id.data(), static_cast<uint32_t>(id.length())));
 
   if (it != _cache.end()) {
     // FIXME: fix TraverserCache lifetime and use addExternal

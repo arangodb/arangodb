@@ -58,7 +58,8 @@ ClusterTraverser::ClusterTraverser(arangodb::traverser::TraverserOptions* opts,
 }
 
 void ClusterTraverser::setStartVertex(std::string const& vid) {
-  arangodb::velocypack::HashedStringRef const s(vid);
+  // There will be no idString of length above uint32_t
+  arangodb::velocypack::HashedStringRef const s(vid.c_str(), static_cast<uint32_t>(vid.length()));
 
   auto it = _vertices.find(s);
   if (it == _vertices.end()) {
@@ -95,7 +96,10 @@ bool ClusterTraverser::getVertex(VPackSlice edge,
                                  std::vector<arangodb::velocypack::StringRef>& result) {
   bool res = _vertexGetter->getVertex(edge, result);
   if (res) {
-    arangodb::velocypack::HashedStringRef other(result.back());
+    auto const& last = result.back();
+    // There will be no idString of length above uint32_t
+    arangodb::velocypack::HashedStringRef other(last.data(),
+                                                static_cast<uint32_t>(last.length()));
     if (_vertices.find(other) == _vertices.end()) {
       // Vertex not yet cached. Prepare it.
       _verticesToFetch.emplace(other);
@@ -110,7 +114,10 @@ bool ClusterTraverser::getSingleVertex(arangodb::velocypack::Slice edge,
                                        arangodb::velocypack::StringRef& targetVertexId) {
   bool res = _vertexGetter->getSingleVertex(edge, sourceVertexId, depth, targetVertexId);
   if (res) {
-    arangodb::velocypack::HashedStringRef other(targetVertexId);
+    // There will be no idString of length above uint32_t
+    arangodb::velocypack::HashedStringRef other(targetVertexId.data(),
+                                                static_cast<uint32_t>(
+                                                    targetVertexId.length()));
     if (_vertices.find(other) == _vertices.end()) {
       // Vertex not yet cached. Prepare it.
       _verticesToFetch.emplace(other);
@@ -135,16 +142,19 @@ void ClusterTraverser::fetchVertices() {
 }
 
 aql::AqlValue ClusterTraverser::fetchVertexData(arangodb::velocypack::StringRef idString) {
-  arangodb::velocypack::HashedStringRef hashedIdString(idString);
-  auto cached = _vertices.find(hashedIdString);
-  if (cached == _vertices.end()) {
-    // Vertex not yet cached. Prepare for load.
+    // There will be no idString of length above uint32_t
+    arangodb::velocypack::HashedStringRef hashedIdString(idString.data(),
+                                                         static_cast<uint32_t>(
+                                                             idString.length()));
+    auto cached = _vertices.find(hashedIdString);
+    if (cached == _vertices.end()) {
+      // Vertex not yet cached. Prepare for load.
 
-    // we need to make sure the idString remains valid afterwards
-    hashedIdString = _opts->cache()->persistString(hashedIdString);
-    _verticesToFetch.emplace(hashedIdString);
-    fetchVertices();
-    cached = _vertices.find(hashedIdString);
+      // we need to make sure the idString remains valid afterwards
+      hashedIdString = _opts->cache()->persistString(hashedIdString);
+      _verticesToFetch.emplace(hashedIdString);
+      fetchVertices();
+      cached = _vertices.find(hashedIdString);
   }
   // Now all vertices are cached!!
   TRI_ASSERT(cached != _vertices.end());
@@ -157,7 +167,9 @@ aql::AqlValue ClusterTraverser::fetchVertexData(arangodb::velocypack::StringRef 
 //////////////////////////////////////////////////////////////////////////////
 
 void ClusterTraverser::addVertexToVelocyPack(arangodb::velocypack::StringRef vid, VPackBuilder& result) {
-  arangodb::velocypack::HashedStringRef hashedIdString(vid);
+  // There will be no idString of length above uint32_t
+  arangodb::velocypack::HashedStringRef hashedIdString(vid.data(),
+                                                       static_cast<uint32_t>(vid.length()));
   auto cached = _vertices.find(hashedIdString);
   if (cached == _vertices.end()) {
     // Vertex not yet cached. Prepare for load.
@@ -227,7 +239,10 @@ void ClusterTraverser::createEnumerator() {
 bool ClusterTraverser::getVertex(arangodb::velocypack::StringRef vertex, size_t depth) {
   bool res = _vertexGetter->getVertex(vertex, depth);
   if (res) {
-    arangodb::velocypack::HashedStringRef hashedIdString(vertex);
+    // There will be no idString of length above uint32_t
+    arangodb::velocypack::HashedStringRef hashedIdString(vertex.data(),
+                                                         static_cast<uint32_t>(
+                                                             vertex.length()));
     if (_vertices.find(hashedIdString) == _vertices.end()) {
       // Vertex not yet cached. Prepare it.
       _verticesToFetch.emplace(hashedIdString);

@@ -181,7 +181,7 @@ inline bool operator==(arangodb::velocypack::StringRef const& lhs, arangodb::vel
   return (lhs.size() == rhs.size() && std::memcmp(lhs.data(), rhs.data(), lhs.size()) == 0);
 }
 
-inline bool operator!=(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) noexcept {
+inline bool operator!=(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) {
   return !(lhs == rhs);
 }
 
@@ -189,7 +189,7 @@ inline bool operator==(arangodb::velocypack::StringRef const& lhs, std::string c
   return (lhs.size() == rhs.size() && std::memcmp(lhs.data(), rhs.c_str(), lhs.size()) == 0);
 }
 
-inline bool operator!=(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) noexcept {
+inline bool operator!=(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) {
   return !(lhs == rhs);
 }
 
@@ -197,15 +197,15 @@ inline bool operator==(arangodb::velocypack::StringRef const& lhs, char const* r
   return (lhs.size() == std::strlen(rhs) && std::memcmp(lhs.data(), rhs, lhs.size()) == 0);
 }
 
-inline bool operator!=(arangodb::velocypack::StringRef const& lhs, char const* rhs) noexcept {
+inline bool operator!=(arangodb::velocypack::StringRef const& lhs, char const* rhs) {
   return !(lhs == rhs);
 }
 
-inline bool operator<(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) noexcept {
+inline bool operator<(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) {
   return (lhs.compare(rhs) < 0);
 }
 
-inline bool operator>(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) noexcept {
+inline bool operator>(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) {
   return (lhs.compare(rhs) > 0);
 }
 
