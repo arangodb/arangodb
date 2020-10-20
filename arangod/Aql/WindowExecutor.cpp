@@ -270,9 +270,10 @@ void WindowExecutor::trimBounds() {
     return;
   }
   
-  WindowBounds::Row row = _windowRows[_currentIdx];
+  size_t i = std::min(_currentIdx, _rows.size() - 1);
+  WindowBounds::Row row = _windowRows[i];
   bool foundLimit = false;
-  size_t i = _currentIdx - 1;
+  i--;
   do {
     if (_windowRows[i].value < row.lowBound && _windowRows[i].valid) {
       TRI_ASSERT(_windowRows[i].value < row.highBound);
