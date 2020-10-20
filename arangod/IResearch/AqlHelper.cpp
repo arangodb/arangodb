@@ -367,7 +367,6 @@ bool ScopedAqlValue::execute(iresearch::QueryContext const& ctx) {
     return false;
   }
 
-  // don't really understand why we need `ExecutionPlan` and `Ast` here
   aql::Expression expr(ctx.ast, const_cast<aql::AstNode*>(_node));
 
   destroy();
