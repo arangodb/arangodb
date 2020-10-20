@@ -712,31 +712,6 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
 namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a copy of all HTTP headers to forward
-////////////////////////////////////////////////////////////////////////////////
-
-network::Headers getForwardableRequestHeaders(arangodb::GeneralRequest* request) {
-  network::Headers result;
-
-  for (auto const& it : request->headers()) {
-    std::string const& key = it.first;
-
-    // ignore the following headers
-    if (key != "x-arango-async" && key != "authorization" &&
-        key != "content-length" && key != "connection" && key != "expect" &&
-        key != "host" && key != "origin" && key != StaticStrings::HLCHeader &&
-        key != StaticStrings::ErrorCodes &&
-        key.compare(0, 14, "access-control", 14) != 0) {
-      result.try_emplace(key, it.second);
-    }
-  }
-
-  result["content-length"] = StringUtils::itoa(request->contentLength());
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a list of attributes have the same values in two vpack
 /// documents
 ////////////////////////////////////////////////////////////////////////////////
