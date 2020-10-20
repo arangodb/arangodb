@@ -148,7 +148,7 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   size_t _resultRowIdx{ 0 };
   std::vector<arangodb::aql::AstNode*> _bindedNodes;
   arangodb::aql::ExecutionState _executionState{arangodb::aql::ExecutionState::DONE};
-  uint32_t _next_inc_val{0};
+  uint32_t _nextIncVal{0};
 }; // CalculationAnalyzer
 }
 }

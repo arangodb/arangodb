@@ -289,8 +289,8 @@ bool CalculationAnalyzer::next() {
           } else {
             _term.value = irs::bytes_ref::EMPTY;
           }
-          _inc.value = _next_inc_val;
-          _next_inc_val = !_options.collapseArrayPositions;
+          _inc.value = _nextIncVal;
+          _nextIncVal = !_options.collapseArrayPositions;
           return true;
         }
       }
@@ -360,13 +360,13 @@ bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
     _engine.initFromPlanForCalculation(*_plan);
     _executionState = ExecutionState::HASMORE;
     _resultRowIdx = 0;
-    _next_inc_val = 1;  // first increment always 1 to move from -1 to 0
+    _nextIncVal = 1;  // first increment always 1 to move from -1 to 0
     return true;
   } catch (basics::Exception const& e) {
     LOG_TOPIC("8ee1a", ERR, iresearch::TOPIC)
         << "error creating calculation query: " << e.message();
   } catch (std::exception const& e) {
-    LOG_TOPIC("d2223", ERR, iresearch::TOPIC)
+    LOG_TOPIC("d2223", ERR, iresearch::TOPIC)s
         << "error creating calculation query: " << e.what();
   } catch (...) {
     LOG_TOPIC("5ad87", ERR, iresearch::TOPIC)
