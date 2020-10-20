@@ -366,7 +366,7 @@ bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
     LOG_TOPIC("8ee1a", ERR, iresearch::TOPIC)
         << "error creating calculation query: " << e.message();
   } catch (std::exception const& e) {
-    LOG_TOPIC("d2223", ERR, iresearch::TOPIC)s
+    LOG_TOPIC("d2223", ERR, iresearch::TOPIC)
         << "error creating calculation query: " << e.what();
   } catch (...) {
     LOG_TOPIC("5ad87", ERR, iresearch::TOPIC)
