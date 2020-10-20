@@ -174,7 +174,7 @@ function testSuite() {
        
         // we expect this to run into a timeout
         let aliveStatus = waitForAlive(20, coordinator.url, {});
-        assertTrue([500, 503].indexOf(aliveStatus) !== -1, aliveStatus);
+        assertEqual(200, aliveStatus);
       } finally {
         // make db servers available again
         coordinator.suspended = false; 
