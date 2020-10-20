@@ -91,6 +91,11 @@ function testSuite() {
   const mount = '/test';
 
   return {
+    setUp : function() {
+      // make sure self heal has run
+      arango.POST(`/_admin/execute`, "require('@arangodb/foxx/manager').healAll(); return 1");
+    },
+
     /*
       install A Foxx App.
       Suspend DBServers
