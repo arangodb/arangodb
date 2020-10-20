@@ -133,10 +133,10 @@ class RestAnalyzerHandlerTest
     // create system vocbase
     {
       std::shared_ptr<arangodb::LogicalCollection> unused;
-      arangodb::methods::Collections::createSystem(server.getSystemDatabase(),
+      arangodb::OperationOptions options(arangodb::ExecContext::current());
+      arangodb::methods::Collections::createSystem(server.getSystemDatabase(), options,
                                                    arangodb::tests::AnalyzerCollectionName,
-                                                   false,
-                                                   unused);
+                                                   false, unused);
     }
     createAnalyzers();
 
@@ -178,8 +178,10 @@ class RestAnalyzerHandlerTest
                {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW}});
 
     std::shared_ptr<arangodb::LogicalCollection> ignored;
-    arangodb::Result res = arangodb::methods::Collections::createSystem(*dbFeature.useDatabase(name),
-                                                     arangodb::tests::AnalyzerCollectionName,
+    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::Result res =
+        arangodb::methods::Collections::createSystem(*dbFeature.useDatabase(name),
+                                                     options, arangodb::tests::AnalyzerCollectionName,
                                                      false, ignored);
 
     ASSERT_TRUE(res.ok());

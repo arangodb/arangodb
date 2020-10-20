@@ -181,7 +181,7 @@ class GraphNode : public ExecutionNode {
   /// collection!
   Collection const* collection() const;
 
-  void injectVertexCollection(aql::Collection* other);
+  void injectVertexCollection(aql::Collection& other);
 
   std::vector<aql::Collection const*> collections() const;
   void setCollectionToShard(std::map<std::string, std::string> const& map) {
@@ -197,8 +197,10 @@ class GraphNode : public ExecutionNode {
   graph::Graph const* graph() const noexcept;
 
  private:
-  void addEdgeCollection(aql::Collection* collection, TRI_edge_direction_e dir);
-  void addVertexCollection(aql::Collection* collection);
+  void addEdgeCollection(aql::Collections const& collections, std::string const& name, TRI_edge_direction_e dir);
+  void addEdgeCollection(aql::Collection& collection, TRI_edge_direction_e dir);
+  void addVertexCollection(aql::Collections const& collections, std::string const& name);
+  void addVertexCollection(aql::Collection& collection);
 
   void setGraphInfoAndCopyColls(std::vector<Collection*> const& edgeColls,
                                 std::vector<Collection*> const& vertexColls);

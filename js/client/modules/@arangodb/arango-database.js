@@ -346,11 +346,10 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
   };
 
   if (properties !== undefined) {
-    [ 'waitForSync', 'journalSize', 'isSystem', 'isVolatile',
-      'doCompact', 'keyOptions', 'shardKeys', 'numberOfShards',
-      'distributeShardsLike', 'indexBuckets', 'id', 'isSmart',
-      'replicationFactor', 'minReplicationFactor', 'writeConcern', 'shardingStrategy', 'smartGraphAttribute',
-      'smartJoinAttribute', 'avoidServers', 'cacheEnabled', 'schema'].forEach(function (p) {
+    [ 'waitForSync', 'isSystem', 'keyOptions', 'shardKeys', 'numberOfShards',
+      'distributeShardsLike', 'id', 'isSmart', 'replicationFactor', 'minReplicationFactor', 
+      'writeConcern', 'shardingStrategy', 'smartGraphAttribute', 'smartJoinAttribute', 
+      'avoidServers', 'cacheEnabled', 'schema'].forEach(function (p) {
       if (properties.hasOwnProperty(p)) {
         body[p] = properties[p];
       }
@@ -1088,6 +1087,7 @@ ArangoDatabase.prototype._useDatabase = function (name) {
     this._queryProperties(true);
     this._flushCache();
   } catch (err) {
+    this._flushCache();
     this._connection.setDatabaseName(old);
 
     if (err.hasOwnProperty('errorNum')) {

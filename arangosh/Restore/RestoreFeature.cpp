@@ -588,12 +588,8 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
     bufferSize = cleaned.length();
   }
 
-  std::string const url =
-      "/_api/replication/restore-data?collection=" + urlEncode(cname) +
-      "&force=" + (options.force ? "true" : "false") +
-      (options.preserveRevisionIds
-           ? ("&" + arangodb::StaticStrings::PreserveRevisionIds + "=true")
-           : "");
+  std::string const url = "/_api/replication/restore-data?collection=" + urlEncode(cname) +
+                          "&force=" + (options.force ? "true" : "false");
 
   std::unordered_map<std::string, std::string> headers;
   headers.emplace(arangodb::StaticStrings::ContentTypeHeader,
@@ -732,7 +728,8 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
   int64_t numReadForThisCollection = 0;
   int64_t numReadSinceLastReport = 0;
 
-  bool const isGzip = (0 == datafile->path().substr(datafile->path().size() - 3).compare(".gz"));
+  bool const isGzip = datafile->path().size() > 3 &&
+                      (0 == datafile->path().substr(datafile->path().size() - 3).compare(".gz"));
 
   buffer.clear();
   while (true) {
@@ -1436,14 +1433,6 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
           arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setDeprecatedIn(30322)
       .setDeprecatedIn(30402);
-
-  options
-      ->addOption(
-          "--preserve-revision-ids",
-          "preserve `_rev` values for the documents (potentially unsafe)",
-          new BooleanParameter(&_options.preserveRevisionIds),
-          arangodb::options::makeDefaultFlags(options::Flags::Hidden))
-      .setIntroducedIn(30700);
 }
 
 void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {

@@ -31,7 +31,7 @@ class CrashHandler {
   [[noreturn]] static void crash(char const* context);
 
   /// @brief logs an assertion failure and crashes the program
-  [[noreturn]] static void assertionFailure(char const* file, int line, char const* context);
+  [[noreturn]] static void assertionFailure(char const* file, int line, char const* func, char const* context);
 
   /// @brief set flag to kill process hard using SIGKILL, in order to circumvent core
   /// file generation etc.

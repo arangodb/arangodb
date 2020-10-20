@@ -196,6 +196,8 @@ class AqlItemBlock {
 
   /// @brief getter for _numRows
   size_t numRows() const noexcept;
+  size_t numEffectiveRows() const noexcept;
+
 
   /// @brief get the relevant consumable range of the block
   std::tuple<size_t, size_t> getRelevantRange() const;

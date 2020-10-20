@@ -53,7 +53,7 @@ class StringRef {
 #if __cplusplus >= 201703
   constexpr explicit StringRef(char const* data) noexcept : StringRef(data, std::char_traits<char>::length(data)) {}
 #else
-  explicit StringRef(char const* data) noexcept : StringRef(data, strlen(data)) {}
+  explicit StringRef(char const* data) noexcept : StringRef(data, std::strlen(data)) {}
 #endif
    
   /// @brief create a StringRef from a VPack slice (must be of type String)
@@ -94,7 +94,7 @@ class StringRef {
   /// @brief create a StringRef from a null-terminated C string
   StringRef& operator=(char const* other) noexcept {
     _data = other;
-    _length = strlen(other);
+    _length = std::strlen(other);
     return *this;
   }
   
@@ -177,24 +177,24 @@ std::ostream& operator<<(std::ostream& stream, StringRef const& ref);
 } // namespace velocypack
 } // namespace arangodb
 
-inline bool operator==(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) noexcept {
-  return (lhs.size() == rhs.size() && memcmp(lhs.data(), rhs.data(), lhs.size()) == 0);
+inline bool operator==(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) {
+  return (lhs.size() == rhs.size() && std::memcmp(lhs.data(), rhs.data(), lhs.size()) == 0);
 }
 
 inline bool operator!=(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) noexcept {
   return !(lhs == rhs);
 }
 
-inline bool operator==(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) noexcept {
-  return (lhs.size() == rhs.size() && memcmp(lhs.data(), rhs.c_str(), lhs.size()) == 0);
+inline bool operator==(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) {
+  return (lhs.size() == rhs.size() && std::memcmp(lhs.data(), rhs.c_str(), lhs.size()) == 0);
 }
 
 inline bool operator!=(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) noexcept {
   return !(lhs == rhs);
 }
 
-inline bool operator==(arangodb::velocypack::StringRef const& lhs, char const* rhs) noexcept {
-  return (lhs.size() == strlen(rhs) && memcmp(lhs.data(), rhs, lhs.size()) == 0);
+inline bool operator==(arangodb::velocypack::StringRef const& lhs, char const* rhs) {
+  return (lhs.size() == std::strlen(rhs) && std::memcmp(lhs.data(), rhs, lhs.size()) == 0);
 }
 
 inline bool operator!=(arangodb::velocypack::StringRef const& lhs, char const* rhs) noexcept {
@@ -223,7 +223,7 @@ struct equal_to<arangodb::velocypack::StringRef> {
   bool operator()(arangodb::velocypack::StringRef const& lhs,
                   arangodb::velocypack::StringRef const& rhs) const noexcept {
     return (lhs.size() == rhs.size() &&
-            (memcmp(lhs.data(), rhs.data(), lhs.size()) == 0));
+            (std::memcmp(lhs.data(), rhs.data(), lhs.size()) == 0));
   }
 };
 

@@ -25,7 +25,9 @@
 
 #include "fakeit.hpp"
 
+#include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
@@ -53,8 +55,10 @@ class NgramMatchFunctionTest : public ::testing::Test {
     arangodb::tests::init();
 
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::methods::Collections::createSystem(server.getSystemDatabase(), arangodb::tests::AnalyzerCollectionName,
-      false, unused);
+    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::methods::Collections::createSystem(server.getSystemDatabase(), options,
+                                                 arangodb::tests::AnalyzerCollectionName,
+                                                 false, unused);
 
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -81,6 +85,8 @@ class NgramMatchFunctionTest : public ::testing::Test {
         warnings->insert(c);
       }});
     auto trx = server.createFakeTransaction();
+    fakeit::When(Method(expressionContextMock, trx)).AlwaysReturn(*trx);
+    fakeit::When(Method(expressionContextMock, vocbase)).AlwaysReturn(trx->vocbase());
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{ arena };
     if (Attribute) {
@@ -95,7 +101,12 @@ class NgramMatchFunctionTest : public ::testing::Test {
     if (analyzer) {
       params.emplace_back(*analyzer);
     }
-    return Functions::NgramMatch(&expressionContext, trx.get(), params);
+  
+    arangodb::aql::Function f("NGRAM_MATCH", &Functions::NgramMatch);
+    arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+    node.setData(static_cast<void const*>(&f));
+
+    return Functions::NgramMatch(&expressionContext, node, params);
   }
 
   void assertNgramMatchFail(size_t line,

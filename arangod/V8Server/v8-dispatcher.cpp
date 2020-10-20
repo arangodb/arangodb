@@ -445,13 +445,3 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context)
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_GET_TASK"), JS_GetTask);
 }
-
-void TRI_ShutdownV8Dispatcher() {
-  using arangodb::Task;
-  Task::shutdownTasks();
-}
-
-void TRI_RemoveDatabaseTasksV8Dispatcher(std::string const& name) {
-  using arangodb::Task;
-  Task::removeTasksForDatabase(name);
-}

@@ -262,9 +262,9 @@ static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
-  Result res = engine->compactAll(changeLevel, compactBottomMostLevel);
+  TRI_GET_GLOBALS();
+  StorageEngine& engine = v8g->_server.getFeature<EngineSelectorFeature>().engine();
+  Result res = engine.compactAll(changeLevel, compactBottomMostLevel);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION_FULL(res.errorNumber(), res.errorMessage());
@@ -1058,7 +1058,6 @@ static void JS_QueriesPropertiesAql(v8::FunctionCallbackInfo<v8::Value> const& a
 static void JS_QueriesCurrentAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  auto context = TRI_IGETC;
   auto& vocbase = GetContextVocBase(isolate);
 
   if (args.Length() != 0) {
@@ -1068,53 +1067,15 @@ static void JS_QueriesCurrentAql(v8::FunctionCallbackInfo<v8::Value> const& args
   auto* queryList = vocbase.queryList();
   TRI_ASSERT(queryList != nullptr);
 
-  try {
-    auto queries = queryList->listCurrent();
-
-    uint32_t i = 0;
-    auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
-
-    for (auto q : queries) {
-      auto timeString = TRI_StringTimeStamp(q.started, false);
-
-      v8::Handle<v8::Object> obj = v8::Object::New(isolate);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "id"),
-               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, q.id)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "database"),
-               TRI_V8_STD_STRING(isolate, q.database)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "user"),
-               TRI_V8_STD_STRING(isolate, q.user)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "query"),
-               TRI_V8_STD_STRING(isolate, q.queryString)).FromMaybe(false);
-      if (q.bindParameters != nullptr) {
-        obj->Set(context,
-                 TRI_V8_ASCII_STRING(isolate, "bindVars"),
-                 TRI_VPackToV8(isolate, q.bindParameters->slice())).FromMaybe(false);
-      } else {
-        obj->Set(context,
-                 TRI_V8_ASCII_STRING(isolate, "bindVars"), v8::Object::New(isolate)).FromMaybe(false);
-      }
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "started"),
-               TRI_V8_STD_STRING(isolate, timeString)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "runTime"), v8::Number::New(isolate, q.runTime)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "state"),
-               TRI_V8_STD_STRING(isolate, aql::QueryExecutionState::toString(q.state))).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "stream"), v8::Boolean::New(isolate, q.stream)).FromMaybe(false);
-      result->Set(context, i++, obj).FromMaybe(false);
-    }
-
-    TRI_V8_RETURN(result);
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
+  VPackBuilder b;
+  b.openArray();
+  for (auto const& q : queryList->listCurrent()) {
+    q.toVelocyPack(b);
   }
+  b.close();
+              
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, b.slice()));
+  
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1125,7 +1086,6 @@ static void JS_QueriesCurrentAql(v8::FunctionCallbackInfo<v8::Value> const& args
 static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  auto context = TRI_IGETC;
   auto& vocbase = GetContextVocBase(isolate);
   auto* queryList = vocbase.queryList();
   TRI_ASSERT(queryList != nullptr);
@@ -1139,53 +1099,15 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_SLOW()");
   }
 
-  try {
-    auto queries = queryList->listSlow();
-
-    uint32_t i = 0;
-    auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
-
-    for (auto q : queries) {
-      auto timeString = TRI_StringTimeStamp(q.started, false);
-
-      v8::Handle<v8::Object> obj = v8::Object::New(isolate);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "id"),
-               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, q.id)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "database"),
-               TRI_V8_STD_STRING(isolate, q.database)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "user"),
-               TRI_V8_STD_STRING(isolate, q.user)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "query"),
-               TRI_V8_STD_STRING(isolate, q.queryString)).FromMaybe(false);
-      if (q.bindParameters != nullptr) {
-        obj->Set(context,
-                 TRI_V8_ASCII_STRING(isolate, "bindVars"),
-                 TRI_VPackToV8(isolate, q.bindParameters->slice())).FromMaybe(false);
-      } else {
-        obj->Set(context,
-                 TRI_V8_ASCII_STRING(isolate, "bindVars"), v8::Object::New(isolate)).FromMaybe(false);
-      }
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "started"),
-               TRI_V8_STD_STRING(isolate, timeString)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "runTime"), v8::Number::New(isolate, q.runTime)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "state"),
-               TRI_V8_STD_STRING(isolate, aql::QueryExecutionState::toString(q.state))).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "stream"), v8::Boolean::New(isolate, q.stream)).FromMaybe(false);
-      result->Set(context, i++, obj).FromMaybe(false);
-    }
-
-    TRI_V8_RETURN(result);
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
+  VPackBuilder b;
+  b.openArray();
+  for (auto const& q : queryList->listSlow()) {
+    q.toVelocyPack(b);
   }
+  b.close();
+              
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, b.slice()));
+  
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1479,9 +1401,10 @@ static void JS_Engine(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // return engine data
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_GET_GLOBALS();
+  StorageEngine& engine = v8g->_server.getFeature<EngineSelectorFeature>().engine();
   VPackBuilder builder;
-  engine->getCapabilities(builder);
+  engine.getCapabilities(builder);
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
 
@@ -1497,9 +1420,10 @@ static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // return engine data
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_GET_GLOBALS();
+  StorageEngine& engine = v8g->_server.getFeature<EngineSelectorFeature>().engine();
   VPackBuilder builder;
-  engine->getStatistics(builder);
+  engine.getStatistics(builder);
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
   TRI_V8_RETURN(result);
@@ -1542,9 +1466,10 @@ static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_GET_GLOBALS();
+  StorageEngine& engine = v8g->_server.getFeature<EngineSelectorFeature>().engine();
 
-  TRI_V8_RETURN_STD_STRING(engine->databasePath(&vocbase));
+  TRI_V8_RETURN_STD_STRING(engine.databasePath(&vocbase));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1552,9 +1477,10 @@ static void JS_VersionFilenameDatabase(v8::FunctionCallbackInfo<v8::Value> const
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_GET_GLOBALS();
+  StorageEngine& engine = v8g->_server.getFeature<EngineSelectorFeature>().engine();
 
-  TRI_V8_RETURN_STD_STRING(engine->versionFilename(vocbase.id()));
+  TRI_V8_RETURN_STD_STRING(engine.versionFilename(vocbase.id()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1704,7 +1630,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto context = TRI_IGETC;
 
   if (args.Length() < 1 || args.Length() > 3) {
-    events::CreateDatabase("", TRI_ERROR_BAD_PARAMETER);
+    events::CreateDatabase("", Result(TRI_ERROR_BAD_PARAMETER), ExecContext::current());
     TRI_V8_THROW_EXCEPTION_USAGE(
         "db._createDatabase(<name>, <options>, <users>)");
   }
@@ -1714,7 +1640,8 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(!vocbase.isDangling());
 
   if (!vocbase.isSystem()) {
-    events::CreateDatabase("", TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    events::CreateDatabase("", Result(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
+                           ExecContext::current());
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
@@ -1734,7 +1661,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Value> user = ar->Get(context, i).FromMaybe(v8::Local<v8::Value>());
 
       if (!user->IsObject()) {
-        events::CreateDatabase("", TRI_ERROR_BAD_PARAMETER);
+        events::CreateDatabase("", Result(TRI_ERROR_BAD_PARAMETER), ExecContext::current());
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "user is not an object");
       }
@@ -1744,8 +1671,8 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const dbName = TRI_ObjectToString(isolate, args[0]);
-  Result res = methods::Databases::create(vocbase.server(), dbName,
-                                          users.slice(), options.slice());
+  Result res = methods::Databases::create(vocbase.server(), ExecContext::current(),
+                                          dbName, users.slice(), options.slice());
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1764,19 +1691,20 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
-    events::DropDatabase("", TRI_ERROR_BAD_PARAMETER);
+    events::DropDatabase("", Result(TRI_ERROR_BAD_PARAMETER), ExecContext::current());
     TRI_V8_THROW_EXCEPTION_USAGE("db._dropDatabase(<name>)");
   }
 
   auto& vocbase = GetContextVocBase(isolate);
 
   if (!vocbase.isSystem()) {
-    events::DropDatabase("", TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    events::DropDatabase("", Result(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
+                         ExecContext::current());
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
   std::string const name = TRI_ObjectToString(isolate, args[0]);
-  auto res = methods::Databases::drop(&vocbase, name);
+  auto res = methods::Databases::drop(ExecContext::current(), &vocbase, name);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1986,8 +1914,9 @@ static void JS_CurrentWalFiles(v8::FunctionCallbackInfo<v8::Value> const& args) 
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  std::vector<std::string> names = engine->currentWalFiles();
+  TRI_GET_GLOBALS();
+  StorageEngine& engine = v8g->_server.getFeature<EngineSelectorFeature>().engine();
+  std::vector<std::string> names = engine.currentWalFiles();
   std::sort(names.begin(), names.end());
 
   // already create an array of the correct size
@@ -2048,13 +1977,15 @@ static void JS_EncryptionKeyReload(v8::FunctionCallbackInfo<v8::Value> const& ar
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("encryptionKeyReload()");
   }
-  
-  if (!EngineSelectorFeature::isRocksDB()) {
+
+  TRI_GET_GLOBALS();
+  auto& selector = v8g->_server.getFeature<EngineSelectorFeature>();
+  if (!selector.isRocksDB()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
-  
-  auto* engine = EngineSelectorFeature::ENGINE;
-  auto res = static_cast<RocksDBEngine*>(engine)->rotateUserEncryptionKeys();
+
+  auto& engine = selector.engine<RocksDBEngine>();
+  auto res = engine.rotateUserEncryptionKeys();
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -2078,9 +2009,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_GET_GLOBALS();
 
   TRI_ASSERT(v8g->_transactionContext == nullptr);
-  v8g->_transactionContext = new transaction::V8Context(vocbase, true);
-  static_cast<transaction::V8Context*>(v8g->_transactionContext)->makeGlobal();
-
   // register the database
   v8g->_vocbase = &vocbase;
 
@@ -2150,9 +2078,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_InitV8cursor(context, v8g);
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
-  engine->addV8Functions();
+  StorageEngine& engine = v8g->_server.getFeature<EngineSelectorFeature>().engine();
+  engine.addV8Functions();
 
   // .............................................................................
   // generate global functions

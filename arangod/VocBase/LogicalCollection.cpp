@@ -141,7 +141,7 @@ arangodb::LogicalDataSource::Type const& readType(arangodb::velocypack::Slice in
 
 // The Slice contains the part of the plan that
 // is relevant for this collection.
-LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& info, bool isAStub) 
+LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& info, bool isAStub)
     : LogicalDataSource(
           LogicalCollection::category(),
           ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN), vocbase,
@@ -177,8 +177,14 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       _smartJoinAttribute(
           Helper::getStringValue(info, StaticStrings::SmartJoinAttribute, "")),
 #endif
-      _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)) {
-
+      _physical(vocbase.server().getFeature<EngineSelectorFeature>().engine().createPhysicalCollection(
+          *this, info)) {
+  
+  TRI_IF_FAILURE("disableRevisionsAsDocumentIds") { 
+    _usesRevisionsAsDocumentIds.store(false);
+    _syncByRevision.store(false);
+  }
+  
   TRI_ASSERT(info.isObject());
 
   if (!TRI_vocbase_t::IsAllowedName(info)) {
@@ -269,10 +275,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   TRI_ASSERT(_physical != nullptr);
   // This has to be called AFTER _phyiscal and _logical are properly linked
   // together.
-
-  if (_physical->didPartialUpgrade()) {
-    _physical->cleanupAfterUpgrade();
-  }
 
   prepareIndexes(info.get("indexes"));
 }
@@ -381,6 +383,12 @@ int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
                                            bool docComplete, std::string& shardID) {
   bool usesDefaultShardKeys;
   return getResponsibleShard(slice, docComplete, shardID, usesDefaultShardKeys);
+}
+
+int LogicalCollection::getResponsibleShard(std::string_view key, std::string& shardID) {
+  bool usesDefaultShardKeys;
+  return getResponsibleShard(VPackSlice::emptyObjectSlice(), false, shardID, usesDefaultShardKeys,
+                             VPackStringRef(key.data(), key.size()));
 }
 
 int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
@@ -1038,8 +1046,8 @@ void LogicalCollection::persistPhysicalCollection() {
   // Coordinators are not allowed to have local collections!
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->createCollection(vocbase(), *this);
+  StorageEngine& engine = vocbase().server().getFeature<EngineSelectorFeature>().engine();
+  engine.createCollection(vocbase(), *this);
 }
 
 basics::ReadWriteLock& LogicalCollection::statusLock() {

@@ -67,6 +67,7 @@ std::string const StaticStrings::Prefix("prefix");
 std::string const StaticStrings::Overwrite("overwrite");
 std::string const StaticStrings::OverwriteMode("overwriteMode");
 std::string const StaticStrings::PreserveRevisionIds("preserveRevisionIds");
+std::string const StaticStrings::Compact("compact");
 
 // replication headers
 std::string const StaticStrings::ReplicationHeaderCheckMore(
@@ -251,7 +252,6 @@ std::string const StaticStrings::Sharding("sharding");
 std::string const StaticStrings::ShardingStrategy("shardingStrategy");
 std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
 std::string const StaticStrings::SyncByRevision("syncByRevision");
-std::string const StaticStrings::TempObjectId("tempObjectId");
 std::string const StaticStrings::UsesRevisionsAsDocumentIds(
     "usesRevisionsAsDocumentIds");
 std::string const StaticStrings::Schema("schema");
@@ -285,6 +285,11 @@ std::string const StaticStrings::GraphQueryVertices("vertices");
 std::string const StaticStrings::GraphQueryPath("path");
 std::string const StaticStrings::GraphQueryGlobal("global");
 std::string const StaticStrings::GraphQueryNone("none");
+std::string const StaticStrings::GraphQueryWeights("weights");
+std::string const StaticStrings::GraphQueryOrder("order");
+std::string const StaticStrings::GraphQueryOrderBFS("bfs");
+std::string const StaticStrings::GraphQueryOrderDFS("dfs");
+std::string const StaticStrings::GraphQueryOrderWeighted("weighted");
 
 // rest query parameter
 std::string const StaticStrings::GraphDropCollections("dropCollections");

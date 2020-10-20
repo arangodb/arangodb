@@ -98,6 +98,24 @@ struct StringSinkImpl final : public Sink {
 
 typedef StringSinkImpl<std::string> StringSink;
 
+struct StringLengthSink final : public Sink {
+  StringLengthSink() : length(0) {}
+
+  void push_back(char) override final { ++length; }
+
+  void append(std::string const& p) override final { length += p.size(); }
+
+  void append(char const* p) override final { length += strlen(p); }
+
+  void append(char const*, ValueLength len) override final {
+    length += len;
+  }
+
+  void reserve(ValueLength) override final {}
+
+  ValueLength length;
+};
+
 template <typename T>
 struct StreamSinkImpl final : public Sink {
   explicit StreamSinkImpl(T* stream) : stream(stream) {}

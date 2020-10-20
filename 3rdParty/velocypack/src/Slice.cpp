@@ -31,6 +31,7 @@
 #include "velocypack/HexDump.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
+#include "velocypack/Sink.h"
 #include "velocypack/Slice.h"
 #include "velocypack/ValueType.h"
 

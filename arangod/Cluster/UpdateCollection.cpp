@@ -112,7 +112,8 @@ bool UpdateCollection::first() {
           followers->remove(s);
         }
       }
-      _result = Collections::updateProperties(*coll, props);
+      OperationOptions options(ExecContext::current());
+      _result = Collections::updateProperties(*coll, props, options);
 
       if (!_result.ok()) {
         LOG_TOPIC("c3733", ERR, Logger::MAINTENANCE)
@@ -140,8 +141,6 @@ bool UpdateCollection::first() {
     _feature.storeShardError(database, collection, shard,
                              _description.get(SERVER_ID), _result);
   }
-
-  notify();
 
   return false;
 }

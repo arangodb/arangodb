@@ -366,10 +366,20 @@ void AqlItemBlock::shrink(size_t numRows) {
     return;
   }
 
-  if (numRows > _numRows) {
+  if (ADB_UNLIKELY(numRows > _numRows)) {
     // cannot use shrink() to increase the size of the block
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot use shrink() to increase block");
+    std::string errorMessage("cannot use shrink() to increase block");
+    errorMessage.append(". numRows: ");
+    errorMessage.append(std::to_string(numRows));
+    errorMessage.append(". _numRows: ");
+    errorMessage.append(std::to_string(_numRows));
+    errorMessage.append(". _numRegisters: ");
+    errorMessage.append(std::to_string(_numRegisters));
+    errorMessage.append(". _numEffectiveRows: ");
+    errorMessage.append(std::to_string(_numEffectiveRows));
+    errorMessage.append(". _rowIndex: ");
+    errorMessage.append(std::to_string(_rowIndex));
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMessage);
   }
 
   decreaseMemoryUsage(sizeof(AqlValue) * (_numRows - numRows) * _numRegisters);
@@ -1118,6 +1128,7 @@ AqlValue AqlItemBlock::stealAndEraseValue(size_t index, RegisterId varNr) {
 RegisterCount AqlItemBlock::numRegisters() const noexcept { return _numRegisters; }
 
 size_t AqlItemBlock::numRows() const noexcept { return _numRows; }
+size_t AqlItemBlock::numEffectiveRows() const noexcept { return _numEffectiveRows; }
 
 std::tuple<size_t, size_t> AqlItemBlock::getRelevantRange() const {
   // NOTE:

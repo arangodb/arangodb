@@ -24,6 +24,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <limits>
 
 #include "velocypack/Exception.h"
 #include "velocypack/Slice.h"
@@ -42,6 +43,9 @@ HashedStringRef::HashedStringRef(Slice slice) {
   VELOCYPACK_ASSERT(slice.isString());
   ValueLength l;
   _data = slice.getString(l);
+  if (l > std::numeric_limits<uint32_t>::max()) {
+    throw Exception(Exception::IndexOutOfBounds, "string value too long for HashedStringRef");
+  }
   _length = static_cast<uint32_t>(l);
   _hash = hash(_data, _length);
 }
@@ -56,6 +60,9 @@ HashedStringRef& HashedStringRef::operator=(Slice slice) {
   VELOCYPACK_ASSERT(slice.isString());
   ValueLength l;
   _data = slice.getString(l);
+  if (l > std::numeric_limits<uint32_t>::max()) {
+    throw Exception(Exception::IndexOutOfBounds, "string value too long for HashedStringRef");
+  }
   _length = static_cast<uint32_t>(l);
   _hash = hash(_data, _length);
   return *this;
@@ -72,11 +79,13 @@ HashedStringRef& HashedStringRef::operator=(StringRef const& other) noexcept {
 HashedStringRef HashedStringRef::substr(std::size_t pos, std::size_t count) const {
   if (pos > _length) {
     throw Exception(Exception::IndexOutOfBounds, "substr index out of bounds");
+  } else if (VELOCYPACK_UNLIKELY(count > std::numeric_limits<uint32_t>::max())) {
+    throw Exception(Exception::IndexOutOfBounds, "substr count out of bounds");
   }
   if (count == std::string::npos || (count + pos >= _length)) {
     count = _length - pos;
   }
-  return HashedStringRef(_data + pos, count);
+  return HashedStringRef(_data + pos, static_cast<uint32_t>(count));
 }
 
 char HashedStringRef::at(std::size_t index) const {

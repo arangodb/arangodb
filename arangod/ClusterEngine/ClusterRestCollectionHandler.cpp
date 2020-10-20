@@ -36,8 +36,9 @@ Result ClusterRestCollectionHandler::handleExtraCommandPut(std::shared_ptr<Logic
                                                            std::string const& suffix,
                                                            velocypack::Builder& builder) {
   if (suffix == "recalculateCount") {
-    Result res = arangodb::rocksdb::recalculateCountsOnAllDBServers(_vocbase.name(),
-                                                                    coll->name());
+    Result res =
+        arangodb::rocksdb::recalculateCountsOnAllDBServers(server(), _vocbase.name(),
+                                                           coll->name());
     if (res.ok()) {
       VPackObjectBuilder guard(&builder);
       builder.add("result", VPackValue(true));
