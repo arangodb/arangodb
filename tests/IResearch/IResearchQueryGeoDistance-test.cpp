@@ -352,7 +352,7 @@ TEST_F(IResearchQueryGeoDistanceTest, test) {
         vocbase,
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
-           SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) < 180.25, 'mygeojson')
+           SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) < 180.24, 'mygeojson')
            SORT d._key ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
