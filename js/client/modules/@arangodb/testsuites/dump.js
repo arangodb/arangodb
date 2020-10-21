@@ -5,24 +5,24 @@
 
 // /////////////////////////////////////////////////////////////////////////////
 // DISCLAIMER
-// 
+//
 // Copyright 2016-2019 ArangoDB GmbH, Cologne, Germany
 // Copyright 2014 triagens GmbH, Cologne, Germany
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //      http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// 
+//
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-// 
+//
 // @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -62,6 +62,7 @@ const testPaths = {
   'dump_encrypted': [tu.pathForTesting('server/dump')],
   'dump_maskings': [tu.pathForTesting('server/dump')],
   'dump_multiple': [tu.pathForTesting('server/dump')],
+  'dump_with_crashes': [tu.pathForTesting('server/dump')],
   'hot_backup': [tu.pathForTesting('server/dump')]
 };
 
@@ -115,6 +116,14 @@ class DumpRestoreHelper {
     } else {
       this.restoreOldConfig.setDatabase('_system');
     }
+    if (restoreOptions.activateFailurePoint) {
+      print("Activating failure point");
+      this.restoreConfig.activateFailurePoint();
+      this.restoreOldConfig.deactivateFailurePoint();
+    } else {
+      this.restoreConfig.deactivateFailurePoint();
+      this.restoreOldConfig.deactivateFailurePoint();
+    }
 
     this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir, this.options.coreCheck);
     this.arangorestoreOld = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.restoreOptions, this.instanceInfo.rootDir, this.options.coreCheck);
@@ -151,7 +160,7 @@ class DumpRestoreHelper {
     phaseInfo.failed = (phaseInfo.status !== true || !this.isAlive() ? 1 : 0);
     return phaseInfo.failed === 0;
   };
- 
+
   extractResults() {
     if (this.fn !== undefined) {
       fs.remove(this.fn);
@@ -215,7 +224,15 @@ class DumpRestoreHelper {
     if (!this.restoreConfig.haveSetAllDatabases()) {
       this.restoreConfig.setDatabase(database);
     }
-    this.results.restore = this.arangorestore();
+    this.restoreConfig.disableContinue();
+    do {
+      this.results.restore = this.arangorestore();
+      if (this.results.restore.exitCode === 38) {
+        print("Failure point has terminated the application, restarting");
+        this.restoreConfig.enableContinue();
+      }
+    } while(this.results.restore.exitCode === 38);
+    this.restoreConfig.disableContinue();
     return this.validate(this.results.restore);
   }
 
@@ -307,7 +324,7 @@ class DumpRestoreHelper {
     this.results.testFoxxFoxxAppBundles = this.arangosh(file, {'server.database': database});
     return this.validate(this.results.testFoxxAppBundles);
   }
-  
+
   createHotBackup() {
     this.print("creating backup");
     let cmds = {
@@ -390,7 +407,7 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
     return rc;
   }
   const helper = new DumpRestoreHelper(instanceInfo, options, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
- 
+
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const cleanupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCleanup));
   const checkDumpFiles = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckDumpFiles));
@@ -476,10 +493,30 @@ function dumpMultiple (options) {
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
     dumpCheckGraph: 'check-graph-multiple.js'
   };
-  
+
   let dumpOptions = {
     allDatabases: true,
     deactivateCompression: true
+  };
+  _.defaults(dumpOptions, options);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){});
+}
+
+function dumpWithCrashes (options) {
+  let c = getClusterStrings(options);
+  let tstFiles = {
+    dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-uncompressed.js',
+    dumpCleanup: 'cleanup-multiple.js',
+    dumpAgain: 'dump' + c.cluster + '.js',
+    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
+    dumpCheckGraph: 'check-graph-multiple.js'
+  };
+
+  let dumpOptions = {
+    allDatabases: true,
+    deactivateCompression: true,
+    activateFailurePoint: true
   };
   _.defaults(dumpOptions, options);
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){});
@@ -554,7 +591,7 @@ function dumpEncrypted (options) {
   let dumpOptions = _.clone(options);
   dumpOptions.encrypted = true;
   dumpOptions.compressed = true; // Should be overruled by 'encrypted'
-  
+
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
     dumpCheckDumpFiles: 'dump-check-dump-files-encrypted.js',
@@ -636,7 +673,7 @@ function hotBackup (options) {
       fs.makeDirectory(keyDir);
     }
     pu.cleanupDBDirectoriesAppend(keyDir);
-  
+
     let keyfile = fs.join(keyDir, 'secret');
     fs.write(keyfile, encryptionKey);
 
@@ -705,6 +742,8 @@ function hotBackup (options) {
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
 
+  const internal = require('internal');
+
   testFns['dump'] = dump;
   defaultFns.push('dump');
 
@@ -719,6 +758,9 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
 
   testFns['dump_multiple'] = dumpMultiple;
   defaultFns.push('dump_multiple');
+
+  testFns['dump_with_crashes'] = dumpWithCrashes;
+  defaultFns.push('dump_with_crashes');
 
   testFns['hot_backup'] = hotBackup;
   defaultFns.push('hot_backup');

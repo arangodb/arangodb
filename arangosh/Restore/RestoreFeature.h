@@ -30,6 +30,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 #include "Utils/ClientManager.h"
 #include "Utils/ClientTaskQueue.h"
 #include "Utils/ManagedDirectory.h"
@@ -94,6 +95,9 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     bool includeSystemCollections{false};
     bool overwrite{true};
     bool continueRestore{false};
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    bool failOnUpdateContinueFile{false};
+#endif
     bool cleanupDuplicateAttributes{false};
     bool progress{true};
   };

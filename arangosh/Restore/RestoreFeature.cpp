@@ -820,7 +820,12 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
       jobData.progressTracker.updateStatus(
           cname, arangodb::RestoreFeature::CollectionStatus{arangodb::RestoreFeature::RESTORING,
                                                             datafileReadOffset});
-
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+      if (jobData.options.failOnUpdateContinueFile && length != 0) {
+        LOG_TOPIC("a89bf", WARN, Logger::RESTORE) << "triggered failure point at offset " << datafileReadOffset << "!";
+        std::exit(38); // exit with exit code 38 to report to the test frame work that this was an intentional crash
+      }
+#endif
       buffer.erase_front(length);
 
       if (jobData.options.progress && fileSize > 0 &&
@@ -1437,6 +1442,12 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption("--continue", "continue restore operation",
                      new BooleanParameter(&_options.continueRestore));
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  options->addOption("--fail-after-update-continue-file", "",
+                     new BooleanParameter(&_options.failOnUpdateContinueFile),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+#endif
+
   options
       ->addOption(
           "--number-of-shards",
@@ -1801,6 +1812,7 @@ void RestoreFeature::start() {
       FATAL_ERROR_EXIT();
     }
 
+    LOG_TOPIC_IF("52b23", INFO, arangodb::Logger::RESTORE, _options.continueRestore) << "try to continue old restore";
     _progressTracker = std::make_unique<RestoreProgressTracker>(*_directory, !_options.continueRestore);
 
     // run the actual restore
