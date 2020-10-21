@@ -416,6 +416,30 @@ TEST_F(IResearchQueryGeoIntersectsTest, test) {
     }
     EXPECT_EQ(i, expected.size());
   }
+
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[21].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET point = GEO_POINT(37.73735,  55.816715)
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_INTERSECTS(point, d.geometry), 'mygeojson')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, expected.size());
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+    }
+    EXPECT_EQ(i, expected.size());
+  }
 }
 
 }

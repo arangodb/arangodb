@@ -122,11 +122,11 @@ TEST_F(IResearchQueryGeoContainsTest, test) {
         { "geometry": { "type": "Point", "coordinates": [ 37.608261, 55.784682 ] } },
         { "geometry": { "type": "Point", "coordinates": [ 37.525177, 55.802825 ] } },
         { "geometry": { "type": "Polygon", "coordinates": [
-          [[ 37.614323, 55.705898 ],
-           [ 37.615825, 55.705898 ],
-           [ 37.615825, 55.70652  ],
-           [ 37.614323, 55.70652  ],
-           [ 37.614323, 55.705898 ]]
+           [[37.602682, 55.706853],
+            [37.613025, 55.706853],
+            [37.613025, 55.711906],
+            [37.602682, 55.711906],
+            [37.602682, 55.706853]]
         ]}}
       ])");
 
@@ -329,7 +329,7 @@ TEST_F(IResearchQueryGeoContainsTest, test) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[16].slice(), insertedDocs[17].slice()
+      insertedDocs[16].slice(), insertedDocs[17].slice(), insertedDocs[28].slice()
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -358,6 +358,9 @@ TEST_F(IResearchQueryGeoContainsTest, test) {
   }
 
   {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[28].slice()
+    };
     auto result = arangodb::tests::executeQuery(
         vocbase,
         R"(LET box = GEO_POLYGON([
@@ -369,6 +372,153 @@ TEST_F(IResearchQueryGeoContainsTest, test) {
            ])
            FOR d IN testView
            SEARCH ANALYZER(GEO_CONTAINS(d.geometry, box), 'mygeojson')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, expected.size());
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+    }
+    EXPECT_EQ(i, expected.size());
+  }
+
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[21].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET point = GEO_POINT(37.73735,  55.816715)
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_CONTAINS(point, d.geometry), 'mygeojson')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, expected.size());
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+    }
+    EXPECT_EQ(i, expected.size());
+  }
+
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[21].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET point = GEO_POINT(37.73735,  55.816715)
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_CONTAINS(d.geometry, point), 'mygeojson')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, expected.size());
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+    }
+    EXPECT_EQ(i, expected.size());
+  }
+
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET box = GEO_POLYGON([
+             [37.613025, 55.709029],
+             [37.618818, 55.709029],
+             [37.618818, 55.711906],
+             [37.613025, 55.711906],
+             [37.613025, 55.709029]
+           ])
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_CONTAINS(box, d.geometry), 'mygeojson')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(0, slice.length());
+  }
+
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET box = GEO_POLYGON([
+             [37.613025, 55.709029],
+             [37.618818, 55.709029],
+             [37.618818, 55.711906],
+             [37.613025, 55.711906],
+             [37.613025, 55.709029]
+           ])
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_CONTAINS(d.geometry, box), 'mygeojson')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(0, slice.length());
+  }
+
+
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[28].slice()
+    };
+
+    // box lies within an indexed polygon
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET box = GEO_POLYGON([
+             [37.602682, 55.711906],
+             [37.603412, 55.71164],
+             [37.604227, 55.711906],
+             [37.602682, 55.711906]
+           ])
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_CONTAINS(d.geometry, box), 'mygeojson')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, expected.size());
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+    }
+    EXPECT_EQ(i, expected.size());
+  }
+
+  {
+    // box lies within an indexed polygon
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET box = GEO_POLYGON([
+             [37.602682, 55.711906],
+             [37.603412, 55.71164],
+             [37.604227, 55.711906],
+             [37.602682, 55.711906]
+           ])
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_CONTAINS(box, d.geometry), 'mygeojson')
            SORT d._key ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
