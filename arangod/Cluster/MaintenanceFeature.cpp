@@ -996,7 +996,7 @@ std::unordered_set<std::string> MaintenanceFeature::dirty(
     _firstRun = false;
   } else {
     if (!more.empty()) {
-      ret.insert(std::make_move_iterator(more.begin()),std::make_move_iterator(more.end()));
+      ret.insert(more.begin(), more.end());
     }
   }
   return ret;
