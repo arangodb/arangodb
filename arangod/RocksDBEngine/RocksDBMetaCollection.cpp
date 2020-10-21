@@ -38,6 +38,7 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -50,6 +51,18 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+
+namespace {
+
+rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
+  auto* sm = engine.settingsManager();
+  if (sm) {
+    sm->sync(true);  // force
+  }
+  return engine.db()->GetLatestSequenceNumber();
+}
+
+}  // namespace
 
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              VPackSlice const& info)
@@ -213,7 +226,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     TRI_ASSERT(snapshot);
   }
 
-  auto seq = snapshot->GetSequenceNumber();
+  auto snapSeq = snapshot->GetSequenceNumber();
 
   auto bounds = RocksDBKeyBounds::Empty();
   bool set = false;
@@ -265,7 +278,12 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
       << "inconsistent collection count detected for "
       << vocbase.name() << "/" << _logicalCollection.name()
       << ", an offet of " << adjustment << " will be applied";
-    _meta.adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
+    auto adjustSeq = engine->db()->GetLatestSequenceNumber();
+    if (adjustSeq <= snapSeq) {
+      adjustSeq = ::forceWrite(*engine);
+      TRI_ASSERT(adjustSeq > snapSeq);
+    }
+    _meta.adjustNumberDocuments(adjustSeq, static_cast<TRI_voc_rid_t>(0), adjustment);
   }
   
   return _meta.numberDocuments();
