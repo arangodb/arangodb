@@ -1,6 +1,21 @@
 devel
 -----
 
+* Added new graph method K_PATHS to AQL. This will enumerate all paths between a
+  source and a target vertex that match the given length.
+  e.g.
+  ```
+    FOR path IN 2..4 OUTBOUND "v/source" TO "v/target" GRAPH "g"
+      RETURN path
+  ```
+  Will yield all paths in format
+    {
+      vertices: [v/source, ... , v/target],
+      edges: [v/source -> v/1, ...,  v/n -> v/target
+    }
+  that have length exactly 2 or 3 or 4, start at v/source and end at v/target.
+  The ordering of those paths is not guaranteed.
+
 * Added the following metrics for synchronous replication in the cluster:
 
   - `arangodb_refused_followers_count`: Number of times a shard leader received 
