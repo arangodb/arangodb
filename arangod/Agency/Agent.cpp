@@ -230,12 +230,13 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
     /// success?
     ///  (_waitForCV's mutex stops writes to _commitIndex)
     CONDITION_LOCKER(guard, _waitForCV);
+    auto ci = _commitIndex.load(std::memory_order_relaxed);
     if (leading()) {
-      if (lastCommitIndex != _commitIndex.load(std::memory_order_relaxed)) {
+      if (lastCommitIndex != ci) {
         // We restart the timeout computation if there has been progress:
         startTime = steady_clock::now();
       }
-      lastCommitIndex = _commitIndex.load(std::memory_order_relaxed);
+      lastCommitIndex = ci;
       if (lastCommitIndex >= index) {
         return Agent::raft_commit_t::OK;
       }
