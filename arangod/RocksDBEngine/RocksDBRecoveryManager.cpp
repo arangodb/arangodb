@@ -309,9 +309,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
       auto coll = findCollection(RocksDBKey::objectId(key));
       if (coll) {
-        coll->adjustNumberDocuments(transaction::helpers::extractRevFromDocument(
-                                                         RocksDBValue::data(value)),
-                                                     1);
         coll->meta().adjustNumberDocumentsInRecovery(_currentSequence,
                                                      transaction::helpers::extractRevFromDocument(
                                                          RocksDBValue::data(value)),
@@ -358,7 +355,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
       auto coll = findCollection(RocksDBKey::objectId(key));
       if (coll) {
-        coll->adjustNumberDocuments(_lastRemovedDocRid, -1);
         coll->meta().adjustNumberDocumentsInRecovery(_currentSequence,
                                                      _lastRemovedDocRid, -1);
       }
@@ -435,7 +431,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
       uint64_t currentCount = coll->numberDocuments();
       if (currentCount != 0) {
-        coll->adjustNumberDocuments(0, -static_cast<int64_t>(currentCount));
         coll->meta().adjustNumberDocumentsInRecovery(_currentSequence, 0,
                                                     -static_cast<int64_t>(currentCount));
       }
