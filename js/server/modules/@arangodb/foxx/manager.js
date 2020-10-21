@@ -1206,7 +1206,6 @@ exports.installedServices = installedServices;
 // Exported internals
 // -------------------------------------------------
 
-exports.systemServiceMounts = SYSTEM_SERVICE_MOUNTS;
 exports.isFoxxmaster = isFoxxmaster;
 exports._reloadRouting = reloadRouting;
 exports.reloadInstalledService = reloadInstalledService;

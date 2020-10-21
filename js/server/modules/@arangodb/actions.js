@@ -1154,21 +1154,7 @@ function firstRouting (type, parts, routes, rawParts) {
 
 function routeRequest (req, res, routes) {
   if (routes === undefined) {
-    let internalRoute = false;
-    // systemServiceMounts contains the internal mount points, i.e.
-    // /_admin/aardvark and /_api/foxx
-    for (let mount of FoxxManager.systemServiceMounts) {
-      if (req.url.startsWith(mount) &&
-          (req.url.length === mount.length ||
-           ['/', '?'].indexOf(req.url[mount.length]) !== -1)) {
-        internalRoute = true;
-        break;
-      }
-    }
-
-    if (!internalRoute && req.url.match(/^\/_(admin|api)\//)) {
-      internalRoute = true;
-    }
+    let internalRoute = req.url.match(/^\/_(admin|api)\//);
 
     const dbname = arangodb.db._name();
     if (internalRoute) {
