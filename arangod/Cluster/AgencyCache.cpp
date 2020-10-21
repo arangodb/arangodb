@@ -627,10 +627,10 @@ AgencyCache::change_set_t AgencyCache::changedSince(
     return change_set_t(_commitIndex, version, std::move(db_res), std::move(rest_res));
   }
 
+  auto query = std::make_shared<arangodb::velocypack::Builder>();
   {
     for (auto const& i : databases) {
       if (!i.empty()) { // actual database
-        auto query = std::make_shared<arangodb::velocypack::Builder>();
         { VPackArrayBuilder outer(query.get());
           { VPackArrayBuilder inner(query.get());
             for (auto const& g : goodies) { // Get goodies for database
@@ -647,6 +647,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
           FATAL_ERROR_EXIT();
         }
       }
+      query->clear();
     }
   }
 
