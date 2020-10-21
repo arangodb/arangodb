@@ -121,7 +121,7 @@ void RestClusterHandler::handleAgencyCache() {
     }
     if (lvl < auth::Level::RW) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to produce an agency dump");
+                    "you need admin rights to produce an agency cache dump");
       return;
     }
   }
@@ -145,7 +145,7 @@ void RestClusterHandler::handleClusterInfo() {
     }
     if (lvl < auth::Level::RW) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to produce an agency dump");
+                    "you need admin rights to produce a cluster info dump");
       return;
     }
   }
