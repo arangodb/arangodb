@@ -756,7 +756,7 @@ function ClusterCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateProperties3 : function () {
-      var c = db._create("UnitTestsClusterCrud", { journalSize: 1048576 });
+      var c = db._create("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
       assertEqual(3, c.status());

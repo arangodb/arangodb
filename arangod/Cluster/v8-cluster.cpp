@@ -655,7 +655,6 @@ static void JS_GetCollectionInfoClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
                                              "globallyUniqueId",
                                              "count",
                                              "distributeShardsLike",
-                                             "indexBuckets",
                                              "keyOptions",
                                              "numberOfShards",
                                              "path",
