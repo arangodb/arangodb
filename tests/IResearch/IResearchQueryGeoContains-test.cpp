@@ -26,6 +26,8 @@
 
 #include "IResearch/IResearchView.h"
 #include "Transaction/StandaloneContext.h"
+#include "Geo/GeoJson.h"
+#include "Geo/ShapeContainer.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -55,8 +57,23 @@ TEST_F(IResearchQueryGeoContainsTest, test) {
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
-    auto json = VPackParser::fromJson(R"({})");
-    ASSERT_TRUE(analyzers.emplace(result, vocbase.name() + "::mygeojson", "geojson", json->slice(), { }).ok());
+    // shape
+    {
+      auto json = VPackParser::fromJson(R"({})");
+      ASSERT_TRUE(analyzers.emplace(result, vocbase.name() + "::mygeojson", "geojson", json->slice(), { }).ok());
+    }
+
+    // centroid
+    {
+      auto json = VPackParser::fromJson(R"({"type": "centroid"})");
+      ASSERT_TRUE(analyzers.emplace(result, vocbase.name() + "::mygeocentroid", "geojson", json->slice(), { }).ok());
+    }
+
+    // point
+    {
+      auto json = VPackParser::fromJson(R"({"type": "point"})");
+      ASSERT_TRUE(analyzers.emplace(result, vocbase.name() + "::mygeopoint", "geojson", json->slice(), { }).ok());
+    }
   }
 
   // create collection
@@ -79,7 +96,7 @@ TEST_F(IResearchQueryGeoContainsTest, test) {
     ASSERT_NE(nullptr, impl);
 
     auto updateJson = VPackParser::fromJson(R"({
-      "links" : { "testCollection0" : { "fields" : { "geometry" : { "analyzers": ["mygeojson"] } } } }
+      "links" : { "testCollection0" : { "fields" : { "geometry" : { "analyzers": ["mygeojson", "mygeocentroid", "mygeopoint"] } } } }
     })");
     EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
     std::set<arangodb::DataSourceId> cids;
@@ -167,17 +184,60 @@ TEST_F(IResearchQueryGeoContainsTest, test) {
 
     auto& segment = (*snapshot)[0];
 
-    auto const columnName = mangleString("geometry", "mygeojson");
-    auto* columnReader = segment.column_reader(columnName);
-    ASSERT_NE(nullptr, columnReader);
-    auto it = columnReader->iterator();
-    ASSERT_NE(nullptr, it);
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_NE(nullptr, payload);
+    {
+      auto const columnName = mangleString("geometry", "mygeojson");
+      auto* columnReader = segment.column_reader(columnName);
+      ASSERT_NE(nullptr, columnReader);
+      auto it = columnReader->iterator();
+      ASSERT_NE(nullptr, it);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
 
-    auto doc = insertedDocs.begin();
-    for (; it->next(); ++doc) {
-      EXPECT_EQUAL_SLICES(doc->slice().get("geometry"), arangodb::iresearch::slice(payload->value));
+      auto doc = insertedDocs.begin();
+      for (; it->next(); ++doc) {
+        EXPECT_EQUAL_SLICES(doc->slice().get("geometry"), arangodb::iresearch::slice(payload->value));
+      }
+      ASSERT_EQ(doc, insertedDocs.end());
+    }
+
+    {
+      auto const columnName = mangleString("geometry", "mygeocentroid");
+      auto* columnReader = segment.column_reader(columnName);
+      ASSERT_NE(nullptr, columnReader);
+      auto it = columnReader->iterator();
+      ASSERT_NE(nullptr, it);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+
+      auto doc = insertedDocs.begin();
+      arangodb::geo::ShapeContainer shape;
+      for (; it->next(); ++doc) {
+        ASSERT_TRUE(arangodb::geo::geojson::parseRegion(doc->slice().get("geometry"), shape).ok());
+        S2LatLng const centroid(shape.centroid());
+
+        auto const storedValue = arangodb::iresearch::slice(payload->value);
+        ASSERT_TRUE(storedValue.isArray());
+        ASSERT_EQ(2, storedValue.length());
+        EXPECT_DOUBLE_EQ(centroid.lng().degrees(), storedValue.at(0).getDouble());
+        EXPECT_DOUBLE_EQ(centroid.lat().degrees(), storedValue.at(1).getDouble());
+      }
+      ASSERT_EQ(doc, insertedDocs.end());
+    }
+
+    {
+      auto const columnName = mangleString("geometry", "mygeopoint");
+      auto* columnReader = segment.column_reader(columnName);
+      ASSERT_NE(nullptr, columnReader);
+      auto it = columnReader->iterator();
+      ASSERT_NE(nullptr, it);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+
+      auto doc = insertedDocs.begin();
+      for (; it->next(); ++doc) {
+        EXPECT_EQUAL_SLICES(doc->slice().get("geometry"), arangodb::iresearch::slice(payload->value));
+      }
+      ASSERT_EQ(doc, insertedDocs.end()-1);
     }
 
     ASSERT_TRUE(trx.commit().ok());
@@ -359,6 +419,66 @@ TEST_F(IResearchQueryGeoContainsTest, test) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[16].slice(), insertedDocs[17].slice(), insertedDocs[28].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET box = GEO_POLYGON([
+             [37.602682, 55.706853],
+             [37.613025, 55.706853],
+             [37.613025, 55.711906],
+             [37.602682, 55.711906],
+             [37.602682, 55.706853]
+           ])
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_CONTAINS(box, d.geometry), 'mygeocentroid')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, expected.size());
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+    }
+    EXPECT_EQ(i, expected.size());
+  }
+
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[16].slice(), insertedDocs[17].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET box = GEO_POLYGON([
+             [37.602682, 55.706853],
+             [37.613025, 55.706853],
+             [37.613025, 55.711906],
+             [37.602682, 55.711906],
+             [37.602682, 55.706853]
+           ])
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_CONTAINS(box, d.geometry), 'mygeopoint')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_LT(i, expected.size());
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+    }
+    EXPECT_EQ(i, expected.size());
+  }
+
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
       insertedDocs[28].slice()
     };
     auto result = arangodb::tests::executeQuery(
@@ -505,6 +625,65 @@ TEST_F(IResearchQueryGeoContainsTest, test) {
       EXPECT_EQUAL_SLICES(expected[i++], resolved);
     }
     EXPECT_EQ(i, expected.size());
+  }
+
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET box = GEO_POLYGON([
+             [37.602682, 55.711906],
+             [37.603412, 55.71164],
+             [37.604227, 55.711906],
+             [37.602682, 55.711906]
+           ])
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_CONTAINS(box, d.geometry), 'mygeocentroid')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(0, slice.length());
+  }
+
+  {
+    // box lies within an indexed polygon
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET box = GEO_POLYGON([
+             [37.602682, 55.711906],
+             [37.603412, 55.71164],
+             [37.604227, 55.711906],
+             [37.602682, 55.711906]
+           ])
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_CONTAINS(d.geometry, box), 'mygeocentroid')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(0, slice.length());
+  }
+
+  {
+    // box lies within an indexed polygon
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET box = GEO_POLYGON([
+             [37.602682, 55.711906],
+             [37.603412, 55.71164],
+             [37.604227, 55.711906],
+             [37.602682, 55.711906]
+           ])
+           FOR d IN testView
+           SEARCH ANALYZER(GEO_CONTAINS(d.geometry, box), 'mygeopoint')
+           SORT d._key ASC
+           RETURN d)");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(0, slice.length());
   }
 
   {

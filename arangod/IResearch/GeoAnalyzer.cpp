@@ -285,6 +285,32 @@ void GeoAnalyzer::reset(std::vector<std::string>&& terms) noexcept {
   return ::make<GeoJSONAnalyzer>(args);
 }
 
+/*static*/ VPackSlice GeoJSONAnalyzer::store(
+    irs::token_stream const* ctx,
+    VPackSlice slice,
+    velocypack::Buffer<uint8_t>& buf) noexcept {
+  TRI_ASSERT(ctx);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* impl = dynamic_cast<GeoJSONAnalyzer const*>(ctx);
+  TRI_ASSERT(impl);
+#else
+  auto* impl = static_cast<GeoPointAnalyzer const*>(ctx);
+#endif
+
+  if (Type::CENTROID == impl->shapeType()) {
+    TRI_ASSERT(!impl->_shape.empty());
+    S2LatLng const centroid(impl->_shape.centroid());
+
+    VPackBuilder array(buf);
+    toVelocyPack(array, centroid);
+
+    return array.slice();
+  }
+
+  return slice;
+}
+
 GeoJSONAnalyzer::GeoJSONAnalyzer(Options const& opts)
   : GeoAnalyzer(irs::type<GeoJSONAnalyzer>::get()),
     _indexer(S2Options(opts.options)),
@@ -403,10 +429,7 @@ bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
   }
 
   VPackBuilder array(buf);
-  array.openArray();
-  array.add(VPackValue(point.lng().degrees()));
-  array.add(VPackValue(point.lat().degrees()));
-  array.close();
+  toVelocyPack(array, point);
 
   return array.slice();
 }

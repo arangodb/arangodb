@@ -156,9 +156,7 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
   static VPackSlice store(
       irs::token_stream const*,
       VPackSlice slice,
-      velocypack::Buffer<uint8_t>&) noexcept {
-    return slice;
-  }
+      velocypack::Buffer<uint8_t>&) noexcept;
 
   explicit GeoJSONAnalyzer(Options const& opts);
 
