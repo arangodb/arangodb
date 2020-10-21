@@ -39,7 +39,7 @@ const _ = require('lodash');
 const replication = require('@arangodb/replication');
 const internal = require('internal');
 const masterEndpoint = arango.getEndpoint();
-const slaveEndpoint = ARGUMENTS[0];
+const slaveEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
 const cn = 'UnitTestsReplication';
 const sysCn = '_UnitTestsReplication';
