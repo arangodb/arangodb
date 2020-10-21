@@ -211,7 +211,7 @@ function CollectionSuite () {
       assertNotEqual(r4.checksum, r5.checksum);
 
       // test after truncation
-      c1.truncate();
+      c1.truncate({ compact: false });
       var r6 = c1.checksum(true);
       assertTypeOf("string", r6.revision);
       assertTypeOf("string", r6.checksum);
@@ -273,7 +273,7 @@ function CollectionSuite () {
       assertNotEqual(r4.checksum, r5.checksum);
 
       // test after truncation
-      c1.truncate();
+      c1.truncate({ compact: false });
       var r6 = c1.checksum(true);
       assertTypeOf("string", r6.revision);
       assertTypeOf("string", r6.checksum);

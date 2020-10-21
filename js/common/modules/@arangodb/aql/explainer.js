@@ -2320,10 +2320,17 @@ function inspectDump(filename, outfile) {
   if (data.database) {
     print("/* original data gathered from database '" + data.database + "' */");
   }
-  if (db._engine().name !== data.engine.name) {
-    print("/* using different storage engine (' " + db._engine().name + "') than in debug information ('" + data.engine.name + "') */");
+
+  try {
+    if (db._engine().name !== data.engine.name) {
+      print("/* using different storage engine (' " + db._engine().name + "') than in debug information ('" + data.engine.name + "') */");
+    }
+    print();
+  } catch (err) {
+    // ignore errors here. db._engine() will fail if we are not connected
+    // to a server instance. swallowing the error here allows us to continue
+    // and analyze the dump offline
   }
-  print();
 
   print("/* graphs */");
   let graphs = data.graphs || {};

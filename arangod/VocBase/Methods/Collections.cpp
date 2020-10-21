@@ -871,7 +871,11 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
 
-  LOG_TOPIC_IF("1bf4d", INFO, Logger::ENGINES, res.fail() && res.isNot(TRI_ERROR_FORBIDDEN))
+  LOG_TOPIC_IF("1bf4d", WARN, Logger::ENGINES, 
+               res.fail() && 
+               res.isNot(TRI_ERROR_FORBIDDEN) && 
+               res.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
+               res.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))
     << "error while dropping collection: '" << collName
     << "' error: '" << res.errorMessage() << "'";
 

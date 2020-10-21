@@ -25,7 +25,9 @@
 
 #include "fakeit.hpp"
 
+#include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
@@ -47,17 +49,20 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
   fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](int, char const*){ });
-
+  
+  VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
-  fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysDo([](){
-    static VPackOptions options;
-    return &options;
-  });
+  fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysReturn(&options);
   transaction::Context& trxCtx = trxCtxMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&trxCtx);
+  fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
   transaction::Methods& trx = trxMock.get();
+  
+  fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&trx]() -> transaction::Methods& {
+    return trx;
+  });
 
   SmallVector<AqlValue>::allocator_type::arena_type arena;
   SmallVector<AqlValue> params{arena};
@@ -65,7 +70,11 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs) {
   params.emplace_back(rhs);
   params.emplace_back(VPackSlice::nullSlice()); // redundant argument
 
-  return Functions::Jaccard(&expressionContext, &trx, params);
+  arangodb::aql::Function f("JACCARD", &Functions::Jaccard);
+  arangodb::aql::AstNode node(NODE_TYPE_FCALL);
+  node.setData(static_cast<void const*>(&f));
+
+  return Functions::Jaccard(&expressionContext, node, params);
 }
 
 AqlValue evaluate(char const* lhs, char const* rhs) {

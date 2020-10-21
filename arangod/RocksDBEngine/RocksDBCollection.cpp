@@ -1278,6 +1278,13 @@ void RocksDBCollection::adjustNumberDocuments(transaction::Methods& trx, int64_t
   meta().adjustNumberDocuments(seq, RevisionId::none(), diff);
 }
 
+bool RocksDBCollection::hasDocuments() {
+  RocksDBEngine& engine =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId());
+  return rocksutils::hasKeys(engine.db(), bounds, true);
+}
+
 /// @brief return engine-specific figures
 void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Builder& builder) {
   auto& selector =
