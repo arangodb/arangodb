@@ -100,6 +100,29 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
     assert_analyzer(ptr.get(), "2", {{"2", 0}});
   }
 
+  // calculation
+  {
+    auto ptr = irs::analysis::analyzers::get(
+        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN TO_STRING(TO_NUMBER(@field)+1)\"}")->slice()),
+        false);
+    ASSERT_NE(nullptr, ptr);
+    assert_analyzer(ptr.get(), "2", {{"3", 0}});
+  }
+  // object
+  {
+    auto ptr =
+        irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+                                      irs::type<irs::text_format::vpack>::get(),
+                                      arangodb::iresearch::ref<char>(
+                                        VPackParser::fromJson("{\"queryString\": \"LET a = [{f:@field, c:NOOPT('test')}] FOR d IN a RETURN CONCAT(d.f, d.c)\"}")
+                                          ->slice()),
+                                      false);
+    ASSERT_NE(nullptr, ptr);
+    assert_analyzer(ptr.get(), "2", {{"2test", 0}});
+    assert_analyzer(ptr.get(), "3", {{"3test", 0}});
+  }
   // cycle 
   {
     auto ptr = irs::analysis::analyzers::get(
@@ -110,6 +133,8 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
     ASSERT_NE(nullptr, ptr);
     assert_analyzer(ptr.get(), "a",
                     {{"A1", 0}, {"A2", 1}, {"A3", 2}, {"A4", 3}, {"A5", 4}});
+    assert_analyzer(ptr.get(), "b",
+                    {{"B1", 0}, {"B2", 1}, {"B3", 2}, {"B4", 3}, {"B5", 4}});
   }
   // cycle with collapse
   {
@@ -136,6 +161,8 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
     ASSERT_NE(nullptr, ptr);
     assert_analyzer(ptr.get(), "ArangoDB",
                     {{"ARANGODB", 0}, {"ArangoDB", 1}, {"arangodb", 2}});
+    assert_analyzer(ptr.get(), "TeST",
+                    {{"TEST", 0}, {"TeST", 1}, {"test", 2}});
   }
   // nested cycles
   {
@@ -166,5 +193,91 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
                                       false);
     ASSERT_NE(nullptr, ptr);
     assert_analyzer(ptr.get(), "4", {{"43", 0}});
+    assert_analyzer(ptr.get(), "5", {{"53", 0}});
   }
+
+  // filter nulls
+  {
+    auto ptr =
+        irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+                                      irs::type<irs::text_format::vpack>::get(),
+                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"keepNull\":false, \"queryString\": \"FOR d IN 1..5 LET t = d%2==0?  CONCAT(UPPER(@field), d) : NULL RETURN t \"}")
+                                                                         ->slice()),
+                                      false);
+    ASSERT_NE(nullptr, ptr);
+    assert_analyzer(ptr.get(), "a", {{"A2", 0}, {"A4", 1}});
+  }
+
+  // keep nulls
+  {
+    auto ptr =
+        irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+                                      irs::type<irs::text_format::vpack>::get(),
+                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"keepNull\":true, \"queryString\": \"FOR d IN 1..5 LET t = d%2==0?  CONCAT(UPPER(@field), d) : NULL RETURN t \"}")
+                                                                         ->slice()),
+                                      false);
+    ASSERT_NE(nullptr, ptr);
+    assert_analyzer(ptr.get(), "a", {{"", 0}, {"A2", 1}, {"", 2}, {"A4", 3}, {"", 4}});
+  }
+
+  // non string
+  {
+    auto ptr = irs::analysis::analyzers::get(
+        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN 1\"}")->slice()),
+        false);
+    ASSERT_NE(nullptr, ptr);
+    ASSERT_TRUE(ptr->reset("2"));
+    ASSERT_FALSE(ptr->next());
+  }
+
+  // type mix
+  {
+    auto ptr = irs::analysis::analyzers::get(
+        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"FOR d IN ['e', 1, ['v', 'w'], null, true, @field, 'b'] RETURN d\"}")->slice()),
+        false);
+    ASSERT_NE(nullptr, ptr);
+    assert_analyzer(ptr.get(), "a", {{"e", 0}, {"", 1}, {"a", 2}, {"b", 3}});
+  }
+}
+
+TEST_F(IResearchCalculationAnalyzerTest, test_create_invalid) {
+  // Forbidden function TOKENS
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+                                    irs::type<irs::text_format::vpack>::get(),
+                                    arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN TOKENS(@field, 'identity')\"}")
+                                                                       ->slice()),
+                                    false));
+  // Forbidden function NGRAM_MATCH
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+                                    irs::type<irs::text_format::vpack>::get(),
+                                    arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN NGRAM_MATCH(@field, 'test', 0.5, 'identity')\"}")
+                                                                       ->slice()),
+                                    false));
+  // Forbidden function PHRASE
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+                                    irs::type<irs::text_format::vpack>::get(),
+                                    arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN PHRASE(@field, 'test', 'text_en')\"}")
+                                                                       ->slice()),
+                                    false));
+  // Forbidden function ANALYZER
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+                                    irs::type<irs::text_format::vpack>::get(),
+                                    arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN ANALYZER(@field, 'text_en')\"}")
+                                                                       ->slice()),
+                                    false));
+  // UDF function 
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+                                    irs::type<irs::text_format::vpack>::get(),
+                                    arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN MY::SOME_UDF_FUNCTION(@field, 'text_en')\"}")
+                                                                       ->slice()),
+                                    false));
 }

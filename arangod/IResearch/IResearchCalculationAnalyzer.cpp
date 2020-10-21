@@ -174,6 +174,18 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
               "V8 usage is forbidden for calculation analyzer"};
     }
 
+    // no modification (as data access is forbidden) but to give more clear error message
+    if (ast->containsModificationNode()) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "DML is forbidden for calculation analyzer"};
+    }
+
+    // no traversal (also data access is forbidden) but to give mo clear error message
+    if (ast->containsTraversal()) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "Traversal usage is forbidden for calculation analyzer"};
+    }
+
     std::string errorMessage;
     // Forbid to use functions that reference analyzers -> problems on recovery as analyzers are not available for querying.
     // Forbid all non-Dbserver runable functions as it is not available on DBServers where analyzers run.
@@ -190,7 +202,7 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
                 return false;
               }
             } break;
-            case arangodb::aql::NODE_TYPE_COLLECT: // COLLECT nodes requires optimizer rule to work properly,
+            case arangodb::aql::NODE_TYPE_COLLECT: // COLLECT nodes requires optimizer rule to work properly
               errorMessage = "COLLECT is forbidden";
               return false;
             case arangodb::aql::NODE_TYPE_PARAMETER: {
