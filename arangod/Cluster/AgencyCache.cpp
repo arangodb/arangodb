@@ -603,6 +603,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
   if (last < _lastSnapshot) {
     get_rest = true;
     auto keys = _readDB.nodePtr(AgencyCommHelper::path(what) + "/" + DATABASES)->keys();
+    databases.reserve(keys.size());
     for (auto& i : keys) {
       databases.emplace(std::move(i));
     }
