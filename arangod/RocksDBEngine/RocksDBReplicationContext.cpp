@@ -24,6 +24,7 @@
 
 #include "RocksDBReplicationContext.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -39,6 +40,8 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Utils/DatabaseGuard.h"
@@ -65,6 +68,14 @@ TRI_voc_cid_t normalizeIdentifier(TRI_vocbase_t& vocbase, std::string const& ide
   }
 
   return id;
+}
+
+rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
+  auto* sm = engine.settingsManager();
+  if (sm) {
+    sm->sync(true);  // force
+  }
+  return engine.db()->GetLatestSequenceNumber();
 }
 
 }  // namespace
@@ -265,6 +276,18 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
 
   TRI_ASSERT(cIter->bounds.columnFamily() == RocksDBColumnFamily::documents());
 
+  auto& engine = *static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
+  TRI_voc_tid_t trxId{0};
+  auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
+    if (trxId != 0) {
+      rcoll->meta().removeBlocker(trxId);
+    }
+  });
+  auto blockerSeq = engine.db()->GetLatestSequenceNumber();
+  trxId = transaction::Context::makeTransactionId();
+  rcoll->meta().placeBlocker(trxId, blockerSeq);
+
   arangodb::basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
   VPackDumper dumper(&adapter, &cIter->vpackOptions);
   TRI_ASSERT(cIter->iter && !cIter->sorted());
@@ -290,9 +313,12 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
           << "inconsistent collection count detected for "
           << vocbase.name() << "/" << cIter->logical->name() 
           << ", an offet of " << adjustment << " will be applied";
-      auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
-      auto seq = rocksutils::latestSequenceNumber();
-      rcoll->meta().adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
+      auto adjustSeq = engine.db()->GetLatestSequenceNumber();
+      if (adjustSeq <= blockerSeq) {
+        adjustSeq = ::forceWrite(engine);
+        TRI_ASSERT(adjustSeq > blockerSeq);
+      }
+      rcoll->meta().adjustNumberDocuments(adjustSeq, 0, adjustment);
       rcoll->adjustNumberDocuments(0, adjustment);
     }
 
@@ -327,6 +353,18 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
 
   TRI_ASSERT(cIter->bounds.columnFamily() == RocksDBColumnFamily::documents());
 
+  auto& engine = *static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
+  TRI_voc_tid_t trxId{0};
+  auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
+    if (trxId != 0) {
+      rcoll->meta().removeBlocker(trxId);
+    }
+  });
+  auto blockerSeq = engine.db()->GetLatestSequenceNumber();
+  trxId = transaction::Context::makeTransactionId();
+  rcoll->meta().placeBlocker(trxId, blockerSeq);
+
   VPackBuilder builder(buffer, &cIter->vpackOptions);
   TRI_ASSERT(cIter->iter && !cIter->sorted());
   while (cIter->hasMore() && buffer.length() < chunkSize) {
@@ -350,9 +388,12 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
           << "inconsistent collection count detected for "
           << vocbase.name() << "/" << cIter->logical->name() 
           << ", an offet of " << adjustment << " will be applied";
-      auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
-      auto seq = rocksutils::latestSequenceNumber();
-      rcoll->meta().adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
+      auto adjustSeq = engine.db()->GetLatestSequenceNumber();
+      if (adjustSeq <= blockerSeq) {
+        adjustSeq = ::forceWrite(engine);
+        TRI_ASSERT(adjustSeq > blockerSeq);
+      }
+      rcoll->meta().adjustNumberDocuments(adjustSeq, 0, adjustment);
       rcoll->adjustNumberDocuments(0, adjustment);
     }
 
@@ -390,13 +431,24 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   TRI_ASSERT(cIter->lastSortedIteratorOffset == 0);
   TRI_ASSERT(cIter->bounds.columnFamily() == RocksDBColumnFamily::primary());
 
+  auto& engine = *static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
+  TRI_voc_tid_t trxId{0};
+  auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
+    if (trxId != 0) {
+      rcoll->meta().removeBlocker(trxId);
+    }
+  });
+  auto blockerSeq = engine.db()->GetLatestSequenceNumber();
+  trxId = transaction::Context::makeTransactionId();
+  rcoll->meta().placeBlocker(trxId, blockerSeq);
+
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
   char ridBuffer[21];  // temporary buffer for stringifying revision ids
   RocksDBKey docKey;
   VPackBuilder tmpHashBuilder;
   rocksdb::TransactionDB* db = globalRocksDB();
-  auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
   uint64_t snapNumDocs = 0;
 
@@ -474,9 +526,12 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
           << "inconsistent collection count detected for "
           << vocbase.name() << "/" << cIter->logical->name() 
           << ", an offet of " << adjustment << " will be applied";
-      auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
-      auto seq = rocksutils::latestSequenceNumber();
-      rcoll->meta().adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
+      auto adjustSeq = engine.db()->GetLatestSequenceNumber();
+      if (adjustSeq <= blockerSeq) {
+        adjustSeq = ::forceWrite(engine);
+        TRI_ASSERT(adjustSeq > blockerSeq);
+      }
+      rcoll->meta().adjustNumberDocuments(adjustSeq, 0, adjustment);
       rcoll->adjustNumberDocuments(0, adjustment);
     }
   }

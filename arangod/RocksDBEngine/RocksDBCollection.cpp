@@ -70,6 +70,18 @@
 
 using namespace arangodb;
 
+namespace {
+
+rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
+  auto* sm = engine.settingsManager();
+  if (sm) {
+    sm->sync(true);  // force
+  }
+  return engine.db()->GetLatestSequenceNumber();
+}
+
+}  // namespace
+
 RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                                      arangodb::velocypack::Slice const& info)
     : PhysicalCollection(collection, info),
@@ -1732,7 +1744,7 @@ uint64_t RocksDBCollection::recalculateCounts() {
     TRI_ASSERT(snapshot);
   }
 
-  auto seq = snapshot->GetSequenceNumber();
+  auto snapSeq = snapshot->GetSequenceNumber();
   auto bounds = RocksDBKeyBounds::Empty();
   bool set = false;
   {
@@ -1781,7 +1793,12 @@ uint64_t RocksDBCollection::recalculateCounts() {
         << "inconsistent collection count detected for "
         << vocbase.name() << "/" << _logicalCollection.name()
         << ", an offet of " << adjustment << " will be applied";
-    _meta.adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
+    auto adjustSeq = engine->db()->GetLatestSequenceNumber();
+    if (adjustSeq <= snapSeq) {
+      adjustSeq = ::forceWrite(*engine);
+      TRI_ASSERT(adjustSeq > snapSeq);
+    }
+    _meta.adjustNumberDocuments(adjustSeq, static_cast<TRI_voc_rid_t>(0), adjustment);
     adjustNumberDocuments(static_cast<TRI_voc_rid_t>(0), adjustment);
   }
 

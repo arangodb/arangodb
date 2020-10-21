@@ -332,16 +332,6 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         // we need this in case of an intermediate commit. The number of
         // initial documents is adjusted and numInserts / removes is set to 0
         // index estimator updates are buffered
-        TRI_IF_FAILURE("RocksDBCommitCounts") {
-          committed = true;
-          continue;
-        }
-        TRI_IF_FAILURE("RocksDBCommitCountsRandom") {
-          if (RandomGenerator::interval(uint16_t(100)) >= 50) {
-            committed = true;
-            continue;
-          }
-        }
         coll->commitCounts(id(), postCommitSeq);
         committed = true;
       }
