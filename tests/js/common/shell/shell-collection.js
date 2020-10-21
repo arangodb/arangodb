@@ -168,45 +168,6 @@ function CollectionSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creating with properties (isVolatile is only a valid mmfiles attr)
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreatingVolatile: function () {
-      var cn = "example";
-
-      db._drop(cn);
-      let c1 = db._create(cn, {isVolatile: true});
-      assertUndefined(c1.isVolatile);
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creating with properties (journalSize is only a valid mmfiles attr)
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreatingJournalSize: function () {
-      var cn = "example";
-
-      db._drop(cn);
-      let c1 = db._create(cn, {journalSize: 4 * 1024 * 1024});
-      assertUndefined(c1.journalSize);
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creating with properties (journalSize is only a valid mmfiles attr)
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreatingIndexBuckets: function () {
-      var cn = "example";
-
-      db._drop(cn);
-      let c1 = db._create(cn, {indexBuckets: 4});
-      assertUndefined(c1.indexBuckets);
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test revision id
 ////////////////////////////////////////////////////////////////////////////////
 

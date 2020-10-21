@@ -1021,8 +1021,6 @@ void ClusterInfo::loadPlan() {
   //      ],
   //      "isSmart": false,
   //      "isSystem": true,
-  //      "isVolatile": false,
-  //      JOURNAL_SIZE: 1048576,
   //      "keyOptions": {
   //        "allowUserKeys": true,
   //        "lastValue": 0,
@@ -1044,7 +1042,7 @@ void ClusterInfo::loadPlan() {
   //      "status": 3,
   //      "statusString": "loaded",
   //      "type": 2,
-  //      StaticStrings::WaitForSyncString: false
+  //      "waitForSync": false
   //    },...
   //  },...
   // }}
