@@ -732,6 +732,9 @@ struct TRI_v8_global_t {
   /// @brief "waitForSync" key name
   v8::Persistent<v8::String> WaitForSyncKey;
 
+  /// @brief "compact" key name
+  v8::Persistent<v8::String> CompactKey;
+
   /// @brief "_dbCache" key name
   v8::Persistent<v8::String> _DbCacheKey;
 
