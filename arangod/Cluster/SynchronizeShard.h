@@ -67,7 +67,7 @@ class SynchronizeShard : public ActionBase {
 
   arangodb::Result catchupWithExclusiveLock(
       std::string const& ep, std::string const& database,
-      LogicalCollection const& collection, std::string const& clientId,
+      LogicalCollection& collection, std::string const& clientId,
       std::string const& shard, std::string const& leader, SyncerId syncerId,
       TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
 

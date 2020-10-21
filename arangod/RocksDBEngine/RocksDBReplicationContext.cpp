@@ -35,6 +35,7 @@
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBCollectionMeta.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
@@ -191,6 +192,7 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
                            0, 0);
   }
   cIter->numberDocuments = numberDocuments;
+  cIter->numberDocumentsDumped = 0;
   cIter->isNumberDocumentsExclusive = isNumberDocsExclusive;
 
   // we should have a valid iterator if there are documents in here
@@ -274,12 +276,29 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
     dumper.dump(velocypack::Slice(reinterpret_cast<uint8_t const*>(cIter->iter->value().data())));
     buff.appendText("}\n");
     cIter->iter->Next();
+    ++cIter->numberDocumentsDumped;
   }
 
   bool hasMore = cIter->hasMore();
   if (hasMore) {
     cIter->currentTick++;
+  } else if (cIter->isNumberDocumentsExclusive) {
+    // reached the end
+    int64_t adjustment = cIter->numberDocumentsDumped - cIter->numberDocuments;
+    if (adjustment != 0) {
+      LOG_TOPIC("5575c", WARN, Logger::REPLICATION)
+          << "inconsistent collection count detected for "
+          << vocbase.name() << "/" << cIter->logical->name() 
+          << ", an offet of " << adjustment << " will be applied";
+      auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
+      auto seq = rocksutils::latestSequenceNumber();
+      rcoll->meta().adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
+      rcoll->adjustNumberDocuments(0, adjustment);
+    }
+
+    cIter->numberDocumentsDumped = 0;
   }
+
   return DumpResult(TRI_ERROR_NO_ERROR, hasMore, cIter->currentTick);
 }
 
@@ -317,11 +336,27 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
     builder.add(velocypack::Slice(reinterpret_cast<uint8_t const*>(cIter->iter->value().data())));
     builder.close();
     cIter->iter->Next();
+    ++cIter->numberDocumentsDumped;
   }
 
   bool hasMore = cIter->hasMore();
   if (hasMore) {
     cIter->currentTick++;
+  } else if (cIter->isNumberDocumentsExclusive) {
+    // reached the end
+    int64_t adjustment = cIter->numberDocumentsDumped - cIter->numberDocuments;
+    if (adjustment != 0) {
+      LOG_TOPIC("5575d", WARN, Logger::REPLICATION)
+          << "inconsistent collection count detected for "
+          << vocbase.name() << "/" << cIter->logical->name() 
+          << ", an offet of " << adjustment << " will be applied";
+      auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
+      auto seq = rocksutils::latestSequenceNumber();
+      rcoll->meta().adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
+      rcoll->adjustNumberDocuments(0, adjustment);
+    }
+
+    cIter->numberDocumentsDumped = 0;
   }
   return DumpResult(TRI_ERROR_NO_ERROR, hasMore, cIter->currentTick);
 }
@@ -367,7 +402,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
 
   b.openArray(true);
   while (cIter->hasMore()) {
-    // needs to be a strings because rocksdb::Slice gets invalidated
+    // needs to be strings because rocksdb::Slice gets invalidated
     std::string lowKey, highKey;
     uint64_t hash = 0x012345678;
 
@@ -436,10 +471,13 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
     int64_t adjustment = snapNumDocs - cIter->numberDocuments;
     if (adjustment != 0) {
       LOG_TOPIC("4986d", WARN, Logger::REPLICATION)
-          << "inconsistent collection count detected, "
-          << "an offet of " << adjustment << " will be applied";
+          << "inconsistent collection count detected for "
+          << vocbase.name() << "/" << cIter->logical->name() 
+          << ", an offet of " << adjustment << " will be applied";
       auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
-      rcoll->adjustNumberDocuments(static_cast<TRI_voc_rid_t>(0), adjustment);
+      auto seq = rocksutils::latestSequenceNumber();
+      rcoll->meta().adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
+      rcoll->adjustNumberDocuments(0, adjustment);
     }
   }
 
@@ -793,6 +831,7 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
       lastSortedIteratorOffset{0},
       vpackOptions{Options::Defaults},
       numberDocuments{0},
+      numberDocumentsDumped{0},
       isNumberDocumentsExclusive{false},
       _resolver(vocbase),
       _cTypeHandler{},

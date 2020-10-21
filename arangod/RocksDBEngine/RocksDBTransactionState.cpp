@@ -29,6 +29,7 @@
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -334,6 +335,12 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         TRI_IF_FAILURE("RocksDBCommitCounts") {
           committed = true;
           continue;
+        }
+        TRI_IF_FAILURE("RocksDBCommitCountsRandom") {
+          if (RandomGenerator::interval(uint16_t(100)) >= 50) {
+            committed = true;
+            continue;
+          }
         }
         coll->commitCounts(id(), postCommitSeq);
         committed = true;
