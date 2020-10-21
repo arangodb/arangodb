@@ -114,6 +114,7 @@ Result RocksDBMetadata::placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumbe
     }
     LOG_TOPIC("1587a", TRACE, Logger::ENGINES)
         << "[" << this << "] placed blocker (" << trxId << ", " << seq << ")";
+    return res;
   });
 }
 
