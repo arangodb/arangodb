@@ -1043,7 +1043,7 @@ TEST_F(MaintenanceTestActionPhaseOne, add_one_collection_to_local) {
 }
 
 TEST_F(MaintenanceTestActionPhaseOne,
-       modify_journalsize_in_plan_should_update_the_according_collection) {
+       modify_waitforsync_in_plan_should_update_the_according_collection) {
   VPackBuilder v;
   v.add(VPackValue(true));
   std::string dbname = "_system";

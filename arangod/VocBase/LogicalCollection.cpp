@@ -829,7 +829,6 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   // - _name
   // - _type
   // - _isSystem
-  // - _isVolatile
   // ... probably a few others missing here ...
       
   if (!vocbase().server().hasFeature<DatabaseFeature>()) {
