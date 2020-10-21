@@ -824,6 +824,7 @@ void ClusterFeature::addDirty(std::string const& database) {
   if (_dirtyDatabases.emplace(database).second) {
     LOG_TOPIC("357b9", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databases";
   }
+  // This notify is needed even if no database is added
   notify();
 }
 
