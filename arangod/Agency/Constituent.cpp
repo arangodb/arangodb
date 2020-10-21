@@ -737,7 +737,7 @@ void Constituent::run() {
               _agent->sendEmptyAppendEntriesRPC(followerId);
               auto endTime = std::chrono::steady_clock::now();
               if (endTime - startTime > std::chrono::milliseconds(100)) {
-                LOG_TOPIC("ddeeb", WARN, Logger::AGENCY)
+                LOG_TOPIC("ddeeb", DEBUG, Logger::AGENCY)
                   << "Call to sendEmptyAppendEntriesRPC took longer than 0.1 s: time needed: "
                   << std::chrono::duration<double>(endTime - startTime).count();
               }
