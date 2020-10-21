@@ -64,6 +64,7 @@ constexpr const char KEEP_NULL_PARAM_NAME[] = "keepNull";
 constexpr const char BATCH_SIZE_PARAM_NAME[] = "batchSize";
 constexpr const char CALCULATION_PARAMETER_NAME[] = "field";
 
+constexpr const uint32_t MAX_BATCH_SIZE{1000};
 
 
 using Options = arangodb::iresearch::CalculationAnalyzer::options_t;
@@ -76,6 +77,13 @@ struct OptionsValidator {
     if (opts.batchSize == 0) {
       return deserialize_error{
           std::string("Value of '").append(BATCH_SIZE_PARAM_NAME).append("' should be greater than 0")};
+    }
+    if (opts.batchSize > MAX_BATCH_SIZE) {
+      return deserialize_error{
+          std::string("Value of '")
+              .append(BATCH_SIZE_PARAM_NAME)
+              .append("' should be less or equal to ")
+              .append(std::to_string(MAX_BATCH_SIZE))};
     }
     return {};
   }

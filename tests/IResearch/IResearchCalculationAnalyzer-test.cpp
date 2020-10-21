@@ -141,7 +141,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
     auto ptr =
         irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
                                       irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"collapseArrayPos\": true,"
+                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"collapseArrayPos\": true, \"batchSize\":3,"
                                                                                            "\"queryString\": \"FOR d IN 1..5 RETURN CONCAT(UPPER(@field), d)\"}")
                                                                          ->slice()),
                                       false);
@@ -380,3 +380,161 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_invalid) {
         false));
 }
 
+TEST_F(IResearchCalculationAnalyzerTest, test_normalize) {
+  {
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\"}")->slice())));
+    VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
+    ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
+    ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
+    ASSERT_EQ(actualSlice.get("collapseArrayPos").getBool(), false);
+    ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1);
+  }
+  {
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"keepNull\":false}")->slice())));
+    VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
+    ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
+    ASSERT_EQ(actualSlice.get("keepNull").getBool(), false);
+    ASSERT_EQ(actualSlice.get("collapseArrayPos").getBool(), false);
+    ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1);
+  }
+  {
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"collapseArrayPos\":true}")->slice())));
+    VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
+    ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
+    ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
+    ASSERT_EQ(actualSlice.get("collapseArrayPos").getBool(), true);
+    ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1);
+  }
+  {
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"batchSize\":10}")->slice())));
+    VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
+    ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
+    ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
+    ASSERT_EQ(actualSlice.get("collapseArrayPos").getBool(), false);
+    ASSERT_EQ(actualSlice.get("batchSize").getInt(), 10);
+  }
+  {
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, CALC_ANALYZER_NAME,
+                                                    irs::type<irs::text_format::vpack>::get(),
+                                                    arangodb::iresearch::ref<char>(
+                                                        VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
+                                                                              "\"batchSize\":10, \"keepNull\":false,"
+                                                                              "\"collapseArrayPos\":true}")
+                                                            ->slice())));
+    VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
+    ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
+    ASSERT_EQ(actualSlice.get("keepNull").getBool(), false);
+    ASSERT_EQ(actualSlice.get("collapseArrayPos").getBool(), true);
+    ASSERT_EQ(actualSlice.get("batchSize").getInt(), 10);
+  }
+  // empty query
+  {
+    std::string actual;
+    ASSERT_FALSE(irs::analysis::analyzers::normalize(
+        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"\","
+                                  "\"batchSize\":10, \"keepNull\":false,"
+                                  "\"collapseArrayPos\":true}")
+                ->slice())));
+  }
+  // missing query
+  {
+    std::string actual;
+    ASSERT_FALSE(irs::analysis::analyzers::normalize(
+        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{"
+                                  "\"batchSize\":10, \"keepNull\":false,"
+                                  "\"collapseArrayPos\":true}")
+                ->slice())));
+  }
+  // invalid batch size
+  {
+    std::string actual;
+    ASSERT_FALSE(irs::analysis::analyzers::normalize(
+        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
+                                  "\"batchSize\":0, \"keepNull\":false,"
+                                  "\"collapseArrayPos\":true}")
+                ->slice())));
+  }
+  // invalid batch size
+  {
+    std::string actual;
+    ASSERT_FALSE(irs::analysis::analyzers::normalize(
+        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
+                                  "\"batchSize\":1001, \"keepNull\":false,"
+                                  "\"collapseArrayPos\":true}")
+                ->slice())));
+  }
+  // invalid batch size
+  {
+    std::string actual;
+    ASSERT_FALSE(irs::analysis::analyzers::normalize(
+        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
+                                  "\"batchSize\":false, \"keepNull\":false,"
+                                  "\"collapseArrayPos\":true}")
+                ->slice())));
+  }
+  // invalid keepNull
+  {
+    std::string actual;
+    ASSERT_FALSE(irs::analysis::analyzers::normalize(
+        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
+                                  "\"batchSize\":1, \"keepNull\":10,"
+                                  "\"collapseArrayPos\":true}")
+                ->slice())));
+  }
+  // invalid collapseArrayPos
+  {
+    std::string actual;
+    ASSERT_FALSE(irs::analysis::analyzers::normalize(
+        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
+                                  "\"batchSize\":11, \"keepNull\":false,"
+                                  "\"collapseArrayPos\":2}")
+                ->slice())));
+  }
+  // Unknown parameter
+  {
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"unknown_argument\":1,"
+                                  "\"batchSize\":10, \"keepNull\":false,"
+                                  "\"collapseArrayPos\":true}")
+                ->slice())));
+    VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
+    ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
+    ASSERT_EQ(actualSlice.get("keepNull").getBool(), false);
+    ASSERT_EQ(actualSlice.get("collapseArrayPos").getBool(), true);
+    ASSERT_EQ(actualSlice.get("batchSize").getInt(), 10);
+  }
+}
