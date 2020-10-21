@@ -5,7 +5,7 @@ devel
   source and a target vertex that match the given length.
   e.g.
   ```
-    FOR path IN 2..4 OUTBOUND "v/source" TO "v/target" GRAPH "g"
+    FOR path IN 2..4 OUTBOUND K_PATHS "v/source" TO "v/target" GRAPH "g"
       RETURN path
   ```
   Will yield all paths in format
