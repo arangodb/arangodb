@@ -319,6 +319,9 @@ class Ast {
   /// @brief create an AST string value node
   AstNode* createNodeValueString(char const*, size_t);
 
+  /// @brief create an AST string value node with forced non-constness
+  AstNode* createNodeValueMutableString(char const*, size_t);
+
   /// @brief create an AST array node
   AstNode* createNodeArray();
 

@@ -166,6 +166,7 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
     TRI_ASSERT(ast);
     Parser parser(queryContext, *ast, queryString);
     parser.parse();
+    ast->validateAndOptimize(queryContext.trxForOptimization());
     AstNode* astRoot = const_cast<AstNode*>(ast->root());
     TRI_ASSERT(astRoot);
     // Forbid all V8 related stuff as it is not available on DBServers where analyzers run.
@@ -368,7 +369,7 @@ bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
                      CALCULATION_PARAMETER_NAME);
 #endif
           // FIXME: move to computed value once here could be not only strings
-          auto newNode = ast->createNodeValueString(field.c_str(), field.size());
+          auto newNode = ast->createNodeValueMutableString(field.c_str(), field.size());
           // finally note that the node was created from a bind parameter
           newNode->setFlag(FLAG_BIND_PARAMETER);
           newNode->setFlag(DETERMINED_CONSTANT);  // keep value as non-constant to prevent optimizations
@@ -379,6 +380,7 @@ bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
           return node;
         }
       });
+      ast->validateAndOptimize(_query.trxForOptimization());
       _plan = ExecutionPlan::instantiateFromAst(ast);
     } else {
       for (auto node : _bindedNodes) {

@@ -1115,6 +1115,19 @@ AstNode* Ast::createNodeValueDouble(double value) {
   return node;
 }
 
+/// @brief create an AST string value node with forced non-constness
+AstNode* Ast::createNodeValueMutableString(char const* value, size_t length) {
+  if (value == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  AstNode* node = createNode(NODE_TYPE_VALUE);
+  node->setValueType(VALUE_TYPE_STRING);
+  node->setStringValue(value, length);
+  node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+  node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
+  return node;
+}
+
 /// @brief create an AST string value node
 AstNode* Ast::createNodeValueString(char const* value, size_t length) {
   if (value == nullptr) {
