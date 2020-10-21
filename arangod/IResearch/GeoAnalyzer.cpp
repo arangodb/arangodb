@@ -295,7 +295,7 @@ void GeoAnalyzer::reset(std::vector<std::string>&& terms) noexcept {
   auto* impl = dynamic_cast<GeoJSONAnalyzer const*>(ctx);
   TRI_ASSERT(impl);
 #else
-  auto* impl = static_cast<GeoPointAnalyzer const*>(ctx);
+  auto* impl = static_cast<GeoJSONAnalyzer const*>(ctx);
 #endif
 
   if (Type::CENTROID == impl->shapeType()) {
