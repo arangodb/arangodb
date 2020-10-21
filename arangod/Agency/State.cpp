@@ -538,8 +538,11 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 void State::logEraseNoLock(
   std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend) {
 
+  uint64_t delSize = 0;
+
   for (auto lit = rbegin; lit != rend; lit++) {
     std::string const& clientId = lit->clientId;
+    delSize += lit->entry->byteSize();
     if (!clientId.empty()) {
       auto ret = _clientIdLookupTable.equal_range(clientId);
       for (auto it = ret.first; it != ret.second;) {
@@ -553,6 +556,8 @@ void State::logEraseNoLock(
   }
 
   _log.erase(rbegin, rend);
+  TRI_ASSERT(delSize <= _log_size.load());
+  _log_size -= delSize;
 
 }
 
@@ -790,6 +795,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
       VPackSlice value = arangodb::velocypack::Slice::emptyObjectSlice();
       buf->append(value.startAs<char const>(), value.byteSize());
       _log.emplace_back(log_t(index_t(0), term_t(0), buf, std::string()));
+      _log_size += value.byteSize();
       persist(0, 0, 0, value, std::string());
     }
     _ready = true;
@@ -905,6 +911,7 @@ bool State::loadCompacted() {
     try {
       _cur = StringUtils::uint64(ii.get("_key").copyString());
       _log.clear();  // will be filled in loadRemaining
+      _log_size = 0;
       _clientIdLookupTable.clear();
       // Schedule next compaction:
       _lastCompactionAt = _cur;
@@ -1076,6 +1083,7 @@ bool State::loadRemaining() {
           for (index_t i = lastIndex + 1; i < index; ++i) {
             LOG_TOPIC("f95c7", WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
             _log.emplace_back(log_t(i, term, buf, std::string()));
+            _log_size += value.byteSize();
             // This has empty clientId, so we do not need to adjust
             // _clientIdLookupTable.
             lastIndex = i;
@@ -1360,6 +1368,7 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
 
   // volatile logs
   _log.clear();
+  _log_size = 0;
   _clientIdLookupTable.clear();
   _cur = index;
   // This empty log should soon be rectified!
