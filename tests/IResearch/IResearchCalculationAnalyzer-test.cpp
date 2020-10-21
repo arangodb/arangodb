@@ -280,4 +280,57 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_invalid) {
                                     arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN MY::SOME_UDF_FUNCTION(@field, 'text_en')\"}")
                                                                        ->slice()),
                                     false));
+  // V8 function
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+                                    irs::type<irs::text_format::vpack>::get(),
+                                    arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN V8(@field)\"}")
+                                                                       ->slice()),
+                                    false));
+
+  // TRAVERSAL
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(
+        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+        VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..3 ANY '1' GRAPH my_graph RETURN v\"}")->slice()),
+        false));
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(
+        CALC_ANALYZER_NAME,
+        irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+        VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..3 ANY '1' GRAPH my_graph RETURN v\"}")->slice()),
+        false));
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(
+        CALC_ANALYZER_NAME,
+        irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+        VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..3 ANY SHORTEST_PATH '1'  TO '2' GRAPH my_graph RETURN v\"}")->slice()),
+        false));
+  // COLLECT WITH COUNT
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(
+        CALC_ANALYZER_NAME,
+        irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+        VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..@field  COLLECT WITH COUNT INTO c RETURN c\"}")->slice()),
+        false));
+  // COLLECT
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(
+        CALC_ANALYZER_NAME,
+        irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+        VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..@field  COLLECT c = v * 10 RETURN c\"}")->slice()),
+        false));
+  // Wrong AQL syntax
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(
+        CALC_ANALYZER_NAME,
+        irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+        VPackParser::fromJson("{\"queryString\": \"RETAURN 1\"}")->slice()),
+        false));
 }

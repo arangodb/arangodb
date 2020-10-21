@@ -204,7 +204,8 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
               }
             } break;
             case arangodb::aql::NODE_TYPE_COLLECT: // COLLECT nodes requires optimizer rule to work properly
-              errorMessage = "COLLECT is forbidden";
+            case arangodb::aql::NODE_TYPE_COLLECT_COUNT:
+              errorMessage = "COLLECT is forbidden for calculation analyzer";
               return false;
             case arangodb::aql::NODE_TYPE_PARAMETER: {
               irs::string_ref parameterName(node->getStringValue(), node->getStringLength());
