@@ -146,7 +146,7 @@ static VPackBuilder compareIndexes(std::string const& dbname, std::string const&
               // should be fine. However, for robustness sake, we compare,
               // if the local index found actually has the right properties,
               // if not, we schedule a dropIndex action:
-              if (!arangodb::Index::Compare(pindex, lindex)) {
+              if (!arangodb::Index::Compare(pindex, lindex, dbname)) {
                 // To achieve this, we remove the long version of the ID
                 // from the indis set. This way, the local index will be
                 // dropped further down in handleLocalShard:
@@ -234,19 +234,32 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
     // Check if there is some in-sync-follower which is no longer in the Plan:
     std::string followersToDropString;
     if (leading && shouldBeLeading) {
-      VPackSlice shards = cprops.get("shards");
-      if (shards.isObject()) {
-        VPackSlice planServers = shards.get(shname);
-        if (planServers.isArray()) {
-          VPackSlice inSyncFollowers = lcol.get("servers");
-          if (inSyncFollowers.isArray()) {
-            // Now we have two server lists, we are looking for a server
-            // which does not occur in the plan, but is in the followers
-            // at an index > 0:
+      TRI_IF_FAILURE("Maintenance::doNotRemoveUnPlannedFollowers") {
+        LOG_TOPIC("de342", ERR, Logger::MAINTENANCE)
+          << "Skipping check for followers not in Plan because of failure point.";
+      } else {
+        VPackSlice shards = cprops.get("shards");
+        if (shards.isObject()) {
+          VPackSlice planServers = shards.get(shname);
+          if (planServers.isArray()) {
             std::unordered_set<std::string> followersToDrop;
-            for (auto const& q : VPackArrayIterator(inSyncFollowers)) {
-              followersToDrop.insert(q.copyString());
+            // Now we have two server lists (servers and
+            // failoverCandidates, we are looking for a server which
+            // occurs in either of them but not in the plan
+            VPackSlice serverList = lcol.get("servers");
+            if (serverList.isArray()) {
+              for (auto const& q : VPackArrayIterator(serverList)) {
+                followersToDrop.insert(q.copyString());
+              }
             }
+            serverList = lcol.get(StaticStrings::FailoverCandidates);
+            if (serverList.isArray()) {
+              // And again for the failoverCandidates:
+              for (auto const& q : VPackArrayIterator(serverList)) {
+                followersToDrop.insert(q.copyString());
+              }
+            }
+            // Remove those in Plan:
             for (auto const& p : VPackArrayIterator(planServers)) {
               if (p.isString()) {
                 followersToDrop.erase(p.copyString());

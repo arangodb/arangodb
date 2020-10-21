@@ -93,13 +93,13 @@ class DatabaseInitialSyncer final : public InitialSyncer {
                         ReplicationApplierConfiguration const& configuration);
 
   /// @brief run method, performs a full synchronization
-  Result run(bool incremental) override {
-    return runWithInventory(incremental, velocypack::Slice::noneSlice());
+  Result run(bool incremental, char const* context = nullptr) override {
+    return runWithInventory(incremental, velocypack::Slice::noneSlice(), context);
   }
 
   /// @brief run method, performs a full synchronization with the
   ///        given list of collections.
-  Result runWithInventory(bool incremental, velocypack::Slice collections);
+  Result runWithInventory(bool incremental, velocypack::Slice collections, char const* context = nullptr);
 
   TRI_vocbase_t* resolveVocbase(velocypack::Slice const& slice) override {
     return &_config.vocbase;
@@ -184,8 +184,8 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result parseCollectionDump(transaction::Methods&, LogicalCollection* col,
                              httpclient::SimpleHttpResult*, uint64_t&);
 
-  /// @brief determine the number of documents in a collection
-  int64_t getSize(arangodb::LogicalCollection const& col);
+  /// @brief whether or not the collection has documents
+  bool hasDocuments(arangodb::LogicalCollection const& col);
 
   /// @brief incrementally fetch data from a collection
   // TODO worker safety

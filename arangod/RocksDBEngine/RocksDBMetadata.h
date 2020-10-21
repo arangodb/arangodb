@@ -96,11 +96,12 @@ struct RocksDBMetadata final {
   /// @brief returns the largest safe seq to squash updates against
   rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber maxCommitSeq) const;
 
-  /// @brief get the current count, ONLY use in recovery
-  DocCount& countUnsafe() { return _count; }
-
   /// @brief buffer a counter adjustment
   void adjustNumberDocuments(rocksdb::SequenceNumber seq, TRI_voc_rid_t revId, int64_t adj);
+
+  /// @brief buffer a counter adjustment ONLY in recovery, optimized to use less memory
+  void adjustNumberDocumentsInRecovery(rocksdb::SequenceNumber seq,
+                                       TRI_voc_rid_t revId, int64_t adj);
 
   /// @brief serialize the collection metadata
   arangodb::Result serializeMeta(rocksdb::WriteBatch&, LogicalCollection&,

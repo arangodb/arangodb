@@ -471,7 +471,8 @@ bool Index::CompareIdentifiers(velocypack::Slice const& lhs, velocypack::Slice c
 
 /// @brief index comparator, used by the coordinator to detect if two index
 /// contents are the same
-bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
+bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs,
+                    std::string const& dbname) {
   auto lhsType = lhs.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(lhsType.isString());
 
@@ -482,7 +483,7 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
 
   auto* engine = EngineSelectorFeature::ENGINE;
 
-  return engine && engine->indexFactory().factory(lhsType.copyString()).equal(lhs, rhs);
+  return engine && engine->indexFactory().factory(lhsType.copyString()).equal(lhs, rhs, dbname);
 }
 
 /// @brief return a contextual string for logging

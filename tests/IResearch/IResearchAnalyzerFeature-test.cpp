@@ -882,7 +882,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_valid) {
 TEST_F(IResearchAnalyzerFeatureGetTest, test_get_global_system) {
   auto sysVocbase = system();
   ASSERT_NE(sysVocbase, nullptr);
-  auto pool = feature().get(analyzerName(), *sysVocbase, *sysVocbase);
+  auto pool = feature().get(analyzerName(), *sysVocbase);
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
   EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\":\"abc\"}")->slice(),
@@ -892,11 +892,9 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_global_system) {
 }
 
 TEST_F(IResearchAnalyzerFeatureGetTest, test_get_global_specific) {
-  auto sysVocbase = system();
   auto vocbase = specificBase();
-  ASSERT_NE(sysVocbase, nullptr);
   ASSERT_NE(vocbase, nullptr);
-  auto pool = feature().get(analyzerName(), *vocbase, *sysVocbase);
+  auto pool = feature().get(analyzerName(), *vocbase);
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
   EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\":\"abc\"}")->slice(),
@@ -906,11 +904,9 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_global_specific) {
 }
 
 TEST_F(IResearchAnalyzerFeatureGetTest, test_get_global_specific_analyzer_name_only) {
-  auto sysVocbase = system();
   auto vocbase = specificBase();
-  ASSERT_NE(sysVocbase, nullptr);
   ASSERT_NE(vocbase, nullptr);
-  auto pool = feature().get(shortName(), *vocbase, *sysVocbase);
+  auto pool = feature().get(shortName(), *vocbase);
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
   EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\":\"abc\"}")->slice(),
@@ -920,11 +916,9 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_global_specific_analyzer_name_o
 }
 
 TEST_F(IResearchAnalyzerFeatureGetTest, test_get_local_system_analyzer_no_colons) {
-  auto sysVocbase = system();
   auto vocbase = specificBase();
-  ASSERT_NE(sysVocbase, nullptr);
   ASSERT_NE(vocbase, nullptr);
-  auto pool = feature().get("test_analyzer", *vocbase, *sysVocbase);
+  auto pool = feature().get("test_analyzer", *vocbase);
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
   EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\":\"def\"}")->slice(),
@@ -934,11 +928,9 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_local_system_analyzer_no_colons
 }
 
 TEST_F(IResearchAnalyzerFeatureGetTest, test_get_local_including_collection_name) {
-  auto sysVocbase = system();
   auto vocbase = specificBase();
-  ASSERT_NE(sysVocbase, nullptr);
   ASSERT_NE(vocbase, nullptr);
-  auto pool = feature().get(specificName(), *vocbase, *sysVocbase);
+  auto pool = feature().get(specificName(), *vocbase);
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
   EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\":\"def\"}")->slice(),
@@ -958,14 +950,14 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_failure_invalid_name_adding_voc
   ASSERT_NE(sysVocbase, nullptr);
   auto pool =
       feature().get(arangodb::StaticStrings::SystemDatabase + "::invalid",
-                    *sysVocbase, *sysVocbase);
+                    *sysVocbase);
   EXPECT_EQ(pool, nullptr);
 }
 
 TEST_F(IResearchAnalyzerFeatureGetTest, test_get_failure_invalid_short_name_adding_vocbases) {
   auto sysVocbase = system();
   ASSERT_NE(sysVocbase, nullptr);
-  auto pool = feature().get("::invalid", *sysVocbase, *sysVocbase);
+  auto pool = feature().get("::invalid", *sysVocbase);
   EXPECT_EQ(pool, nullptr);
 }
 
@@ -973,14 +965,14 @@ TEST_F(IResearchAnalyzerFeatureGetTest,
        test_get_failure_invalid_short_name_no_colons_adding_vocbases) {
   auto sysVocbase = system();
   ASSERT_NE(sysVocbase, nullptr);
-  auto pool = feature().get("invalid", *sysVocbase, *sysVocbase);
+  auto pool = feature().get("invalid", *sysVocbase);
   EXPECT_EQ(pool, nullptr);
 }
 
 TEST_F(IResearchAnalyzerFeatureGetTest, test_get_failure_invalid_type_adding_vocbases) {
   auto sysVocbase = system();
   ASSERT_NE(sysVocbase, nullptr);
-  auto pool = feature().get("testAnalyzer", *sysVocbase, *sysVocbase);
+  auto pool = feature().get("testAnalyzer", *sysVocbase);
   EXPECT_EQ(pool, nullptr);
 }
 
@@ -995,7 +987,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_static_analyzer) {
 TEST_F(IResearchAnalyzerFeatureGetTest, test_get_static_analyzer_adding_vocbases) {
   auto sysVocbase = system();
   ASSERT_NE(sysVocbase, nullptr);
-  auto pool = feature().get("identity", *sysVocbase, *sysVocbase);
+  auto pool = feature().get("identity", *sysVocbase);
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags({irs::norm::type(), irs::frequency::type()}), pool->features());
   auto analyzer = pool->get();
@@ -1075,7 +1067,8 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
   {
     struct IndexTypeFactory : public arangodb::IndexTypeFactory {
       virtual bool equal(arangodb::velocypack::Slice const& lhs,
-                         arangodb::velocypack::Slice const& rhs) const override {
+                         arangodb::velocypack::Slice const& rhs,
+                         std::string const&) const override {
         return false;
       }
 
@@ -1248,8 +1241,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = "identity";
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, true);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 true);
     EXPECT_EQ(std::string("identity"), normalized);
   }
 
@@ -1257,8 +1250,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = "identity";
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, true);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 true);
     EXPECT_EQ(std::string("identity"), normalized);
   }
 
@@ -1266,8 +1259,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = irs::string_ref::NIL;
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, true);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 true);
     EXPECT_EQ(std::string("active::"), normalized);
   }
 
@@ -1275,8 +1268,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = irs::string_ref::NIL;
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, false);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 false);
     EXPECT_EQ(std::string(""), normalized);
   }
 
@@ -1284,8 +1277,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = irs::string_ref::EMPTY;
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, true);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 true);
     EXPECT_EQ(std::string("active::"), normalized);
   }
 
@@ -1293,8 +1286,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = irs::string_ref::EMPTY;
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, false);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 false);
     EXPECT_EQ(std::string(""), normalized);
   }
 
@@ -1302,8 +1295,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = "::";
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, true);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 true);
     EXPECT_EQ(std::string("_system::"), normalized);
   }
 
@@ -1311,8 +1304,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = "::";
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, false);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 false);
     EXPECT_EQ(std::string("::"), normalized);
   }
 
@@ -1320,8 +1313,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = "::name";
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, true);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 true);
     EXPECT_EQ(std::string("_system::name"), normalized);
   }
 
@@ -1329,8 +1322,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = "::name";
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, false);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 false);
     EXPECT_EQ(std::string("::name"), normalized);
   }
 
@@ -1338,8 +1331,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = "name";
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, true);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 true);
     EXPECT_EQ(std::string("active::name"), normalized);
   }
 
@@ -1347,8 +1340,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = "name";
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, false);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 false);
     EXPECT_EQ(std::string("name"), normalized);
   }
 
@@ -1356,8 +1349,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = "_system::";
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, true);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 true);
     EXPECT_EQ(std::string("_system::"), normalized);
   }
 
@@ -1365,8 +1358,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = "_system::";
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, false);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 false);
     EXPECT_EQ(std::string("::"), normalized);
   }
 
@@ -1374,8 +1367,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = "active::";
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, true);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 true);
     EXPECT_EQ(std::string("active::"), normalized);
   }
 
@@ -1383,8 +1376,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = "active::";
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, false);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 false);
     EXPECT_EQ(std::string(""), normalized);
   }
 
@@ -1392,8 +1385,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = "_system::name";
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, true);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 true);
     EXPECT_EQ(std::string("_system::name"), normalized);
   }
 
@@ -1401,17 +1394,17 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = "_system::name";
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, false);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 false);
     EXPECT_EQ(std::string("::name"), normalized);
-  }
+  } 
 
   // normalize system + delimiter + name (without prefix) in system
   {
     irs::string_ref analyzer = "_system::name";
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, system,
-                                                                 system, false);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, system.name(),
+                                                                 false);
     EXPECT_EQ(std::string("name"), normalized);
   }
 
@@ -1419,8 +1412,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = "active::name";
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, true);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 true);
     EXPECT_EQ(std::string("active::name"), normalized);
   }
 
@@ -1428,8 +1421,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   {
     irs::string_ref analyzer = "active::name";
     auto normalized =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
-                                                                 system, false);
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active.name(),
+                                                                 false);
     EXPECT_EQ(std::string("name"), normalized);
   }
 }
@@ -1848,7 +1841,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_emplace_on_single_server) 
 TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
   arangodb::iresearch::AnalyzerPool::ptr lhs;
   ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
-           lhs, "test", "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice(), irs::flags()).ok());
+                  lhs, "db::test", "TestAnalyzer",
+                  VPackParser::fromJson("\"abc\"")->slice(), irs::flags())
+                  .ok());
   ASSERT_NE(nullptr, lhs);
   ASSERT_EQ(*lhs, *lhs);
 
@@ -1856,7 +1851,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
   {
     arangodb::iresearch::AnalyzerPool::ptr rhs;
     ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
-                  rhs, "test1", "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice(), irs::flags()).ok());
+                    rhs, "db::test1", "TestAnalyzer",
+                    VPackParser::fromJson("\"abc\"")->slice(), irs::flags())
+                    .ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(lhs, rhs);
   }
@@ -1865,7 +1862,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
   {
     arangodb::iresearch::AnalyzerPool::ptr rhs;
     ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
-                  rhs, "test", "ReNormalizingAnalyzer", VPackParser::fromJson("\"abc\"")->slice(), irs::flags()).ok());
+                    rhs, "db::test", "ReNormalizingAnalyzer",
+                    VPackParser::fromJson("\"abc\"")->slice(), irs::flags())
+                    .ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(lhs, rhs);
   }
@@ -1874,7 +1873,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
   {
     arangodb::iresearch::AnalyzerPool::ptr rhs;
     ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
-                  rhs, "test", "TestAnalyzer", VPackParser::fromJson("\"abcd\"")->slice(), irs::flags()).ok());
+                    rhs, "db::test", "TestAnalyzer",
+                    VPackParser::fromJson("\"abcd\"")->slice(), irs::flags())
+                    .ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(lhs, rhs);
   }
@@ -1883,7 +1884,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
   {
     arangodb::iresearch::AnalyzerPool::ptr rhs;
     ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
-                  rhs, "test", "TestAnalyzer", VPackParser::fromJson("\"abcd\"")->slice(), irs::flags{ irs::frequency::type()}).ok());
+                    rhs, "db::test", "TestAnalyzer",
+                    VPackParser::fromJson("\"abcd\"")->slice(),
+                    irs::flags{irs::frequency::type()})
+                    .ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(lhs, rhs);
   }
@@ -1953,10 +1957,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // cannot use the existing server since its features already have some state
 
     arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
+    newServer.addFeature<arangodb::MetricsFeature>();
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>();  // required to create ClusterInfo instance
     auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>();  // required to create ClusterInfo instance
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace>(std::make_unique<arangodb::DatabaseFeature(newServer));  // required for IResearchAnalyzerFeature::emplace>(...)
-    newServer.addFeature<arangodb::MetricsFeature>();
     newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
     newServer.addFeature<arangodb::ShardingFeature>();  // required for Collections::create>(std::make_unique<arangodb::ShardingFeature(newServer)); // required for Collections::create>(...)
     auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start>(std::make_unique<arangodb::SystemDatabaseFeature(newServer));  // required for IResearchAnalyzerFeature::start>()
@@ -2021,11 +2025,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     });
 
     arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
+    newServer.addFeature<arangodb::MetricsFeature>();
     auto& auth = newServer.addFeature<arangodb::AuthenticationFeature>();
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>();  // required to create ClusterInfo instance
     auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>();  // required to create ClusterInfo instance
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
-    newServer.addFeature<arangodb::MetricsFeature>();
     newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
     newServer.addFeature<arangodb::ShardingFeature>();  // required for Collections::create>(std::make_unique<arangodb::ShardingFeature(server)); // required for Collections::create>(...)
     auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
@@ -2395,11 +2399,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // create a new instance of an ApplicationServer and fill it with the required features
   // cannot use the existing server since its features already have some state
   arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
+  newServer.addFeature<arangodb::MetricsFeature>();
   auto& analyzers =
       newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto& dbfeature = newServer.addFeature<arangodb::DatabaseFeature>();
   auto& functions = newServer.addFeature<arangodb::aql::AqlFunctionFeature>();
-  newServer.addFeature<arangodb::MetricsFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
   auto& sharding = newServer.addFeature<arangodb::ShardingFeature>();
   auto& systemdb = newServer.addFeature<arangodb::SystemDatabaseFeature>();
@@ -3283,8 +3287,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
 
   arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
-  auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
   newServer.addFeature<arangodb::MetricsFeature>();
+  auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
   newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
   newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)
@@ -3552,8 +3556,8 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   // cannot use the existing server since its features already have some state
   arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
-  auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
   newServer.addFeature<arangodb::MetricsFeature>();
+  auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
   newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
   newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)
@@ -3654,9 +3658,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   // create a new instance of an ApplicationServer and fill it with the required features
   // cannot use the existing server since its features already have some state
   arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
+  newServer.addFeature<arangodb::MetricsFeature>();
   arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
-  newServer.addFeature<arangodb::MetricsFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
   newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)

@@ -116,7 +116,8 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
 }
 
 /// @brief run method, performs a full synchronization
-Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbInventory) {
+Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbInventory,
+                                               char const* context) {
   if (!_config.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
@@ -146,7 +147,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     }
 
     if (!_config.isChild()) {
-      r = _config.master.getState(_config.connection, _config.isChild());
+      r = _config.master.getState(_config.connection, _config.isChild(), context);
 
       if (r.fail()) {
         return r;
@@ -179,7 +180,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
       // enable patching of collection count for ShardSynchronization Job
       std::string patchCount = StaticStrings::Empty;
       std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
-      if (incremental && engineName == "rocksdb" && _config.applier._skipCreateDrop &&
+      if (engineName == "rocksdb" && _config.applier._skipCreateDrop &&
           _config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include &&
           _config.applier._restrictCollections.size() == 1) {
         patchCount = *_config.applier._restrictCollections.begin();
@@ -192,7 +193,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
 
       startRecurringBatchExtension();
     }
-
+      
     VPackSlice collections, views;
     if (dbInventory.isObject()) {
       collections = dbInventory.get("collections");  // required
@@ -1013,29 +1014,9 @@ Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
   return guard.collection()->properties(slice, false);  // always a full-update
 }
 
-/// @brief determine the number of documents in a collection
-int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection const& col) {
-  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase()),
-                                  col, AccessMode::Type::READ);
-  Result res = trx.begin();
-
-  if (res.fail()) {
-    return -1;
-  }
-
-  auto result = trx.count(col.name(), transaction::CountType::Normal);
-
-  if (result.result.fail()) {
-    return -1;
-  }
-
-  VPackSlice s = result.slice();
-
-  if (!s.isNumber()) {
-    return -1;
-  }
-
-  return s.getNumber<int64_t>();
+/// @brief whether or not the collection has documents
+bool DatabaseInitialSyncer::hasDocuments(arangodb::LogicalCollection const& col) {
+  return col.getPhysical()->hasDocuments();
 }
 
 /// @brief handle the information about a collection
@@ -1232,7 +1213,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     }
 
     std::string const& masterColl = !masterUuid.empty() ? masterUuid : itoa(masterCid);
-    auto res = incremental && getSize(*col) > 0
+    auto res = incremental && hasDocuments(*col)
                    ? fetchCollectionSync(col, masterColl, _config.master.lastLogTick)
                    : fetchCollectionDump(col, masterColl, _config.master.lastLogTick);
 

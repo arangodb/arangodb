@@ -218,6 +218,8 @@ Result RocksDBSettingsManager::sync(bool force) {
   }
   TRI_ASSERT(lastSync <= minSeqNr);
   if (!didWork) {
+    LOG_TOPIC("1039e", TRACE, Logger::ENGINES)
+        << "no collection data to serialize, updating lastSync to " << minSeqNr;
     _lastSync.store(minSeqNr);
     return Result();  // nothing was written
   }
@@ -233,6 +235,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   // we have to commit all counters in one batch
   auto s = _db->Write(wo, &batch);
   if (s.ok()) {
+    LOG_TOPIC("103ae", TRACE, Logger::ENGINES) << "updating lastSync to " << minSeqNr;
     _lastSync.store(std::max(_lastSync.load(), minSeqNr));
   }
 
@@ -286,6 +289,8 @@ void RocksDBSettingsManager::loadSettings() {
             << "unable to read initial settings: invalid data";
       }
     }
+  } else {
+    LOG_TOPIC("7558b", TRACE, Logger::ENGINES) << "no initial settings found";
   }
 }
 

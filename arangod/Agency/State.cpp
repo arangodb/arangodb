@@ -285,6 +285,21 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
                               bool leading, bool reconfiguration) {
   _logLock.assertLockedByCurrentThread();
 
+  // verbose logging for all agency operations
+  // there are two different log levels in use here for the AGENCYSTORE topic
+  // - DEBUG: will log writes only on the leader
+  // - TRACE: will log writes on both leaders and followers
+  // the default log level for the AGENCYSTORE topic is WARN
+  if (leading) {
+    LOG_TOPIC("b578f", DEBUG, Logger::AGENCYSTORE)
+        << "leader: true, client: " << clientId << ", index: " << idx << ", term: " << term
+        << ", data: " << slice.toJson();
+  } else {
+    LOG_TOPIC("f586f", TRACE, Logger::AGENCYSTORE)
+        << "leader: false, client: " << clientId << ", index: " << idx << ", term: " << term
+        << ", data: " << slice.toJson();
+  }
+
   auto buf = std::make_shared<Buffer<uint8_t>>();
   buf->append((char const*)slice.begin(), slice.byteSize());
 
