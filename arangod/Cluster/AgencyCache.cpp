@@ -655,7 +655,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
       std::remove_if(
         std::begin(keys), std::end(keys),
         [&] (auto const& x) {
-          return std::binary_search(std::begin(exc), std::end(exc),x);}),
+          return std::find(std::begin(exc), std::end(exc),x) != std::end(exc);}),
       std::end(keys));
     auto query = std::make_shared<arangodb::velocypack::Builder>();
     {
