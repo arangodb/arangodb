@@ -840,7 +840,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       status: false,
       message: 'irregular termination: ' + instanceInfo.exitStatus.status +
         ' exit code: ' + instanceInfo.exitStatus.exit + errorMessage,
-      duration: deltaTime,
+      duration: deltaTime
     };
   }
 }

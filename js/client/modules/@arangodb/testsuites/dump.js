@@ -742,8 +742,6 @@ function hotBackup (options) {
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
 
-  const internal = require('internal');
-
   testFns['dump'] = dump;
   defaultFns.push('dump');
 
