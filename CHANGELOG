@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added WINDOW keyword to aql to allow aggregations on related rows.
+
 * Added the following metrics for synchronous replication in the cluster:
 
   - `arangodb_refused_followers_count`: Number of times a shard leader received 
