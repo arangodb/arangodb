@@ -310,21 +310,19 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status PutCF(uint32_t column_family_id,
                         const rocksdb::Slice& key,
                         const rocksdb::Slice& value) override {
-    LOG_TOPIC("3e5c5", TRACE, Logger::ENGINES) << "recovering PUT " << RocksDBKey(key);
+    LOG_TOPIC("3e5c5", TRACE, Logger::ENGINES)
+        << "recovering PUT @ " << _currentSequence << " " << RocksDBKey(key);
     incTick();
 
     updateMaxTick(column_family_id, key, value);
     if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
       auto coll = findCollection(RocksDBKey::objectId(key));
-      if (coll && coll->meta().countUnsafe()._committedSeq < _currentSequence) {
-        auto& cc = coll->meta().countUnsafe();
-        cc._committedSeq = _currentSequence;
-        cc._added++;
-        cc._revisionId =
-            transaction::helpers::extractRevFromDocument(RocksDBValue::data(value));
-        coll->meta().loadInitialNumberDocuments();
-      }
       if (coll) {
+        coll->meta().adjustNumberDocumentsInRecovery(_currentSequence,
+                                                     transaction::helpers::extractRevFromDocument(
+                                                         RocksDBValue::data(value)),
+                                                     1);
+
         std::vector<std::uint64_t> inserts;
         std::vector<std::uint64_t> removes;
         inserts.emplace_back(RocksDBKey::documentId(key).id());
@@ -370,16 +368,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       storeMaxTick(objectId);
 
       auto coll = findCollection(RocksDBKey::objectId(key));
-      if (coll && coll->meta().countUnsafe()._committedSeq < _currentSequence) {
-        auto& cc = coll->meta().countUnsafe();
-        cc._committedSeq = _currentSequence;
-        cc._removed++;
-        if (_lastRemovedDocRid.isSet()) {
-          cc._revisionId = _lastRemovedDocRid;
-        }
-        coll->meta().loadInitialNumberDocuments();
-      }
+
       if (coll) {
+        coll->meta().adjustNumberDocumentsInRecovery(_currentSequence,
+                                                     _lastRemovedDocRid, -1);
+
         std::vector<std::uint64_t> inserts;
         std::vector<std::uint64_t> removes;
         removes.emplace_back(RocksDBKey::documentId(key).id());
@@ -410,7 +403,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
 
   rocksdb::Status DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
-    LOG_TOPIC("5f341", TRACE, Logger::ENGINES) << "recovering DELETE " << RocksDBKey(key);
+    LOG_TOPIC("5f341", TRACE, Logger::ENGINES)
+        << "recovering DELETE @ " << _currentSequence << " " << RocksDBKey(key);
     handleDeleteCF(column_family_id, key);
     RocksDBEngine& engine =
         _server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
@@ -423,7 +417,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
     LOG_TOPIC("aa997", TRACE, Logger::ENGINES)
-        << "recovering SINGLE DELETE " << RocksDBKey(key);
+        << "recovering SINGLE DELETE @ " << _currentSequence << " " << RocksDBKey(key);
     handleDeleteCF(column_family_id, key);
 
     RocksDBEngine& engine =
@@ -438,8 +432,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status DeleteRangeCF(uint32_t column_family_id, const rocksdb::Slice& begin_key,
                                 const rocksdb::Slice& end_key) override {
     LOG_TOPIC("ed6f5", TRACE, Logger::ENGINES)
-        << "recovering DELETE RANGE from " << RocksDBKey(begin_key) << " to "
-        << RocksDBKey(end_key);
+        << "recovering DELETE RANGE @ " << _currentSequence << " from "
+        << RocksDBKey(begin_key) << " to " << RocksDBKey(end_key);
     incTick();
     // drop and truncate can use this, truncate is handled via a Log marker
     RocksDBEngine& engine =
@@ -458,23 +452,20 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         return rocksdb::Status();
       }
 
-      if (coll->meta().countUnsafe()._committedSeq <= _currentSequence) {
-        auto& cc = coll->meta().countUnsafe();
-        cc._committedSeq = _currentSequence;
-        cc._added = 0;
-        cc._removed = 0;
-        coll->meta().loadInitialNumberDocuments();
-
-        for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
-          RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-          RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
-          TRI_ASSERT(ridx->type() != Index::TRI_IDX_TYPE_EDGE_INDEX || est);
-          if (est) {
-            est->clear();
-            est->setAppliedSeq(_currentSequence);
-          }
+      uint64_t currentCount = coll->meta().numberDocuments();
+      if (currentCount != 0) {
+        coll->meta().adjustNumberDocumentsInRecovery(_currentSequence, RevisionId::none(),
+                                                     -static_cast<int64_t>(currentCount));
+      }
+      for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
+        RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
+        RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
+        TRI_ASSERT(ridx->type() != Index::TRI_IDX_TYPE_EDGE_INDEX || est);
+        if (est) {
+          est->clearInRecovery(_currentSequence);
         }
       }
+      coll->bufferTruncate(_currentSequence);
     }
 
     return rocksdb::Status();  // make WAL iterator happy
@@ -519,6 +510,9 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     WBReader handler(server, _tick);
     rocksdb::SequenceNumber earliest = engine.settingsManager()->earliestSeqNeeded();
     auto minTick = std::min(earliest, engine.releasedTick());
+
+    LOG_TOPIC("fe333", DEBUG, Logger::ENGINES)
+        << "recovery scanning wal starting from seq " << minTick;
 
     // prevent purging of WAL files while we are in here
     RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());
