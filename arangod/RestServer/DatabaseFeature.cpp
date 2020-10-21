@@ -697,7 +697,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
       auto appPath = dealer.appPath();
 
       // create app directory for database if it does not exist
-      int res = createApplicationDirectory(name, appPath);
+      int res = createApplicationDirectory(name, appPath, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
         events::CreateDatabase(name, res);
@@ -1225,34 +1225,48 @@ int DatabaseFeature::createBaseApplicationDirectory(std::string const& appPath,
 
 /// @brief create app subdirectory for a database
 int DatabaseFeature::createApplicationDirectory(std::string const& name,
-                                                std::string const& basePath) {
-  int res = TRI_ERROR_NO_ERROR;
-
+                                                std::string const& basePath,
+                                                bool removeExisting) {
   if (basePath.empty()) {
-    return res;
+    return TRI_ERROR_NO_ERROR;
   }
 
   std::string const path = basics::FileUtils::buildFilename(
       basics::FileUtils::buildFilename(basePath, "_db"), name);
-  if (!TRI_IsDirectory(path.c_str())) {
-    long systemError;
-    std::string errorMessage;
-    res = TRI_CreateRecursiveDirectory(path.c_str(), systemError, errorMessage);
 
-    if (res == TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC("6745a", TRACE, arangodb::Logger::FIXME)
-          << "created application directory '" << path << "' for database '"
-          << name << "'";
-    } else if (res == TRI_ERROR_FILE_EXISTS) {
-      LOG_TOPIC("2a78e", INFO, arangodb::Logger::FIXME)
-          << "unable to create application directory '" << path
-          << "' for database '" << name << "': " << errorMessage;
-      res = TRI_ERROR_NO_ERROR;
-    } else {
-      LOG_TOPIC("36682", ERR, arangodb::Logger::FIXME)
-          << "unable to create application directory '" << path
-          << "' for database '" << name << "': " << errorMessage;
+  if (TRI_IsDirectory(path.c_str())) {
+    // directory already exists
+    // this can happen if a database is dropped and quickly recreated
+    if (!removeExisting) {
+      return TRI_ERROR_NO_ERROR;
     }
+
+    LOG_TOPIC("56fc7", WARN, arangodb::Logger::FIXME)
+        << "forcefully removing existing application directory '" << path
+        << "' for database '" << name << "'";
+    // removing is best effort. if it does not succeed, we can still
+    // go on creating the it
+    TRI_RemoveDirectory(path.c_str());
+  }
+
+  // directory does not yet exist - this should be the standard case
+  long systemError;
+  std::string errorMessage;
+  int res = TRI_CreateRecursiveDirectory(path.c_str(), systemError, errorMessage);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC("6745a", TRACE, arangodb::Logger::FIXME)
+        << "created application directory '" << path << "' for database '"
+        << name << "'";
+  } else if (res == TRI_ERROR_FILE_EXISTS) {
+    LOG_TOPIC("2a78e", INFO, arangodb::Logger::FIXME)
+        << "unable to create application directory '" << path
+        << "' for database '" << name << "': " << errorMessage;
+    res = TRI_ERROR_NO_ERROR;
+  } else {
+    LOG_TOPIC("36682", ERR, arangodb::Logger::FIXME)
+        << "unable to create application directory '" << path
+        << "' for database '" << name << "': " << errorMessage;
   }
 
   return res;
@@ -1290,7 +1304,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       std::string const databaseName = it.get("name").copyString();
 
       // create app directory for database if it does not exist
-      res = createApplicationDirectory(databaseName, appPath);
+      res = createApplicationDirectory(databaseName, appPath, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         break;

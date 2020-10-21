@@ -161,7 +161,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   int createBaseApplicationDirectory(std::string const& appPath, std::string const& type);
 
   /// @brief create app subdirectory for a database
-  int createApplicationDirectory(std::string const& name, std::string const& basePath);
+  int createApplicationDirectory(std::string const& name, std::string const& basePath, bool removeExisting);
 
   /// @brief iterate over all databases in the databases directory and open them
   int iterateDatabases(arangodb::velocypack::Slice const& databases);
