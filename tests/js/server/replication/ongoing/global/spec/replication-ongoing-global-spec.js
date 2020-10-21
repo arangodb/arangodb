@@ -40,7 +40,7 @@ const internal = require("internal");
 const time = internal.time;
 
 const masterEndpoint = arango.getEndpoint();
-const slaveEndpoint = ARGUMENTS[0];
+const slaveEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
 const username = "root";
 const password = "";
