@@ -201,8 +201,9 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
     auto ptr =
         irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
                                       irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"keepNull\":false, \"queryString\": \"FOR d IN 1..5 LET t = d%2==0?  CONCAT(UPPER(@field), d) : NULL RETURN t \"}")
-                                                                         ->slice()),
+                                      arangodb::iresearch::ref<char>(
+                                        VPackParser::fromJson("{\"keepNull\":false, \"queryString\": \"FOR d IN 1..5 LET t = d%2==0?  CONCAT(UPPER(@field), d) : NULL RETURN t \"}")
+                                                                ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
     assert_analyzer(ptr.get(), "a", {{"A2", 0}, {"A4", 1}});
@@ -213,8 +214,9 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
     auto ptr =
         irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
                                       irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"keepNull\":true, \"queryString\": \"FOR d IN 1..5 LET t = d%2==0?  CONCAT(UPPER(@field), d) : NULL RETURN t \"}")
-                                                                         ->slice()),
+                                      arangodb::iresearch::ref<char>(
+                                        VPackParser::fromJson("{\"keepNull\":true, \"queryString\": \"FOR d IN 1..5 LET t = d%2==0?  CONCAT(UPPER(@field), d) : NULL RETURN t \"}")
+                                                               ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
     assert_analyzer(ptr.get(), "a", {{"", 0}, {"A2", 1}, {"", 2}, {"A4", 3}, {"", 4}});
@@ -333,4 +335,48 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_invalid) {
         arangodb::iresearch::ref<char>(
         VPackParser::fromJson("{\"queryString\": \"RETAURN 1\"}")->slice()),
         false));
+  // Collection access
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(
+        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+        VPackParser::fromJson("{\"queryString\": \"FOR d IN some RETURN d\"}")->slice()),
+        false));
+  // unknown parameter
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(
+        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+        VPackParser::fromJson("{\"queryString\": \"RETURN CONCAT(@field, @field2)\"}")->slice()),
+        false));
+
+  // parameter data source
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(
+        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+        VPackParser::fromJson("{\"queryString\": \"FOR d IN @@field RETURN d\"}")->slice()),
+        false));
+  // INSERT
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(
+        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+        VPackParser::fromJson("{\"queryString\": \"FOR d IN 1..@field INSERT {f:d} INTO some_collection\"}")->slice()),
+        false));
+  // UPDATE
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(
+        CALC_ANALYZER_NAME,
+        irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"FOR d IN some UPDATE d._key WITH {f:@field} IN some\"}")->slice()),
+        false));
+  // REMOVE
+  ASSERT_FALSE(
+      irs::analysis::analyzers::get(
+        CALC_ANALYZER_NAME,
+        irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"FOR d IN 1..@field REMOVE {_key:d} IN some\"}")->slice()),
+        false));
 }
+
