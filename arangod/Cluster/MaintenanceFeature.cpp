@@ -1006,7 +1006,7 @@ std::unordered_set<std::string> MaintenanceFeature::allDatabases() const {
   return server().getFeature<ClusterFeature>().allDatabases();
 }
 
-size_t MaintenanceFeature::lastNumberOfDatabases() {
+size_t MaintenanceFeature::lastNumberOfDatabases() const {
   // This number is not guarded relies on single threadedness of the maintenance
   return _lastNumberOfDatabases;
 }
