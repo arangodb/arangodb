@@ -822,7 +822,7 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
                                                             datafileReadOffset});
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
       if (jobData.options.failOnUpdateContinueFile && length != 0) {
-        LOG_TOPIC("a89bf", WARN, Logger::RESTORE) << "triggered failure point at offset " << datafileReadOffset << "!";
+        LOG_TOPIC("a87bf", WARN, Logger::RESTORE) << "triggered failure point at offset " << datafileReadOffset << "!";
         std::exit(38); // exit with exit code 38 to report to the test frame work that this was an intentional crash
       }
 #endif
