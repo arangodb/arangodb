@@ -135,10 +135,15 @@ class GeoIterator : public irs::doc_iterator {
   bool accept() {
     if (_doc->value != _columnIt->seek(_doc->value) ||
         _storedValue->value.empty()) {
+      LOG_TOPIC("62a62", WARN, arangodb::iresearch::TOPIC)
+          << "failed to find stored geo value, doc='" << _doc->value << "'";
       return false;
     }
 
     if (!parseShape(slice(_storedValue->value), _shape, false)) {
+      LOG_TOPIC("62a65", WARN, arangodb::iresearch::TOPIC)
+          << "failed to parse stored geo value, value='" << slice(_storedValue->value).toHex()
+          << ", doc='" << _doc->value << "'";
       return false;
     }
 
@@ -284,7 +289,7 @@ struct GeoDistanceRangeAcceptor {
   bool operator()(geo::ShapeContainer const& shape) const {
     auto const point = shape.centroid();
 
-    return (MinIncl ? min.InteriorContains(point) : min.Contains(point)) &&
+    return (MinIncl ? min.Contains(point) : min.InteriorContains(point)) &&
            (MaxIncl ? max.Contains(point) : max.InteriorContains(point));
   }
 };
@@ -373,6 +378,7 @@ std::pair<S2Cap, bool> getBound(irs::BoundType type,
     return { S2Cap::Full(), true };
   }
 
+  //return std::max(0.0, std::min(minDistance / 6371.000 * 1000, M_PI));
   return {
     (0. == distance
       ? S2Cap::FromPoint(origin)
