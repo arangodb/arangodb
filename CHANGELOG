@@ -37,6 +37,10 @@ v3.7.5 (XXXX-XX-XX)
   Note: ArangoDB 3.6 and 3.7 introduce this option with a default value of 
   `true`. ArangoDB 3.8 changes the default value to `false`.
 
+* Add parameter so `db.collection.truncate({compact: false})` will stop
+  compaction from happening. Compaction may have performance impacts even if the
+  truncate was invoked on nearly empty collections.
+
 * Instead of failing to connect to INADDR_ANY refuse it as a parameter, with a
   descriptive error message for novice users (issue #12871).
 

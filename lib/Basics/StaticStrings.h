@@ -70,6 +70,7 @@ class StaticStrings {
   static std::string const Overwrite;
   static std::string const OverwriteMode;
   static std::string const PreserveRevisionIds;
+  static std::string const Compact;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;

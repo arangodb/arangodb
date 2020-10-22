@@ -477,9 +477,10 @@ RestStatus RestCollectionHandler::handleCommandPut() {
   } else if (sub == "truncate") {
     OperationOptions opts;
 
-    opts.waitForSync = _request->parsedValue("waitForSync", false);
+    opts.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
     opts.isSynchronousReplicationFrom =
-        _request->value("isSynchronousReplication");
+        _request->value(StaticStrings::IsSynchronousReplicationString);
+    opts.truncateCompact = _request->parsedValue(StaticStrings::Compact, true);
 
     _activeTrx = createTransaction(coll->name(), AccessMode::Type::EXCLUSIVE);
     _activeTrx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
@@ -492,7 +493,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     }
 
     return waitForFuture(
-        _activeTrx->truncateAsync(coll->name(), opts).thenValue([this, coll](OperationResult&& opres) {
+      _activeTrx->truncateAsync(coll->name(), opts).thenValue([this, coll, opts](OperationResult&& opres) {
           // Will commit if no error occured.
           // or abort if an error occured.
           // result stays valid!
@@ -509,12 +510,13 @@ RestStatus RestCollectionHandler::handleCommandPut() {
 
           _activeTrx.reset();
 
-          // wait for the transaction to finish first. only after that compact the
-          // data range(s) for the collection
-          // we shouldn't run compact() as part of the transaction, because the compact
-          // will be useless inside due to the snapshot the transaction has taken
-          coll->compact();
-
+          if (opts.truncateCompact) {
+            // wait for the transaction to finish first. only after that compact the
+            // data range(s) for the collection
+            // we shouldn't run compact() as part of the transaction, because the compact
+            // will be useless inside due to the snapshot the transaction has taken
+            coll->compact();
+          }
           if (ServerState::instance()->isCoordinator()) {  // ClusterInfo::loadPlan eventually
                                                            // updates status
             coll->setStatus(TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED);
