@@ -42,12 +42,15 @@ function ahuacatlFailureSuite () {
   const cn = "UnitTestsAhuacatlFailures";
   const en = "UnitTestsAhuacatlEdgeFailures";
   
-  let  assertFailingQuery = function (query) {
+  let  assertFailingQuery = function (query, error) {
+    if (error === undefined) {
+      error = internal.errors.ERROR_DEBUG;
+    }
     try {
       AQL_EXECUTE(query);
       fail();
     } catch (err) {
-      assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum, query);
+      assertEqual(error.code, err.errorNum, query);
     }
   };
         
@@ -56,7 +59,7 @@ function ahuacatlFailureSuite () {
     setUpAll: function () {
       internal.debugClearFailAt();
       db._drop(cn);
-      db._create(cn);
+      db._create(cn, { numberOfShards: 3 });
       db._drop(en);
       db._createEdgeCollection(en);
     },
@@ -75,6 +78,18 @@ function ahuacatlFailureSuite () {
       internal.debugClearFailAt();
     },
 
+    testQueryRegistryInsert1 : function () {
+      internal.debugSetFailAt("QueryRegistryInsertException1");
+      // we need a diamond-query to trigger an insertion into the q-registry
+      assertFailingQuery("FOR doc1 IN " + cn + " FOR doc2 IN " + cn + " FILTER doc1._key != doc2._key RETURN 1", internal.errors.ERROR_CLUSTER_AQL_COMMUNICATION);
+    },
+    
+    testQueryRegistryInsert2 : function () {
+      internal.debugSetFailAt("QueryRegistryInsertException2");
+      // we need a diamond-query to trigger an insertion into the q-registry
+      assertFailingQuery("FOR doc1 IN " + cn + " FOR doc2 IN " + cn + " FILTER doc1._key != doc2._key RETURN 1", internal.errors.ERROR_CLUSTER_AQL_COMMUNICATION);
+    },
+    
     testShutdownSync : function () {
       internal.debugSetFailAt("ExecutionEngine::shutdownSync");
 
