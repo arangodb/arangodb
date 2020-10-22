@@ -170,7 +170,7 @@ aql::AqlValue TraverserCache::fetchVertexAqlResult(arangodb::velocypack::StringR
 }
 
 arangodb::velocypack::StringRef TraverserCache::persistString(arangodb::velocypack::StringRef idString) {
-  arangodb::velocypack::HashedStringRef hsr(idString.data(), idString.size());
+  arangodb::velocypack::HashedStringRef hsr(idString.data(), static_cast<uint32_t>(idString.size()));
 
   auto it = _persistedStrings.find(hsr);
   if (it != _persistedStrings.end()) {
