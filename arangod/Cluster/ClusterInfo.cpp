@@ -2594,7 +2594,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         LOG_TOPIC("98767", DEBUG, Logger::CLUSTER)
             << "Failed createCollectionsCoordinator for " << infos.size()
             << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
-            << " first collection name: " << (infos.size() > 0) ? infos[0].name : std::string());
+            << " first collection name: " << (infos.size() > 0 ? infos[0].name : std::string());
         return {TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, std::move(errorMsg)};
       }
 
