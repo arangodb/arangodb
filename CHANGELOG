@@ -3,6 +3,8 @@ v3.6.9 (XXXX-XX-XX)
 
 * Fixed collection count which could be off after a server crash.
 
+* Instead of failing to connect to INADDR_ANY refuse it as a parameter,
+  with a descriptive error message for novice users.
 
 v3.6.8 (2020-10-14)
 -------------------
