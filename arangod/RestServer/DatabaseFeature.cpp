@@ -493,7 +493,6 @@ void DatabaseFeature::stop() {
 #endif
   }
 
-  _calculationVocbase.reset();
   // flush again so we are sure no query is left in the cache here
   arangodb::aql::QueryCache::instance()->invalidate();
 }
@@ -533,7 +532,7 @@ void DatabaseFeature::unprepare() {
     closeOpenDatabases();
   } catch (...) {
   }
-
+  _calculationVocbase.reset();
   // clear singleton
   DATABASE = nullptr;
 }

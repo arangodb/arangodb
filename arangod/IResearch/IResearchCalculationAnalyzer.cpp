@@ -315,7 +315,7 @@ irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
 }
 
 /*static*/ bool CalculationAnalyzer::normalize_json(const irs::string_ref& args,
-                                                     std::string& out) {
+                                                    std::string& out) {
   auto src = VPackParser::fromJson(args);
   VPackBuilder builder;
   if (normalize_slice(src->slice(), builder)) {
@@ -457,6 +457,7 @@ CalculationAnalyzer::CalculationQueryContext::CalculationQueryContext(TRI_vocbas
     _queryOptions.transactionOptions,
     std::unordered_set<std::string>{});
   _trx->addHint(arangodb::transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
+  _trx->addHint(arangodb::transaction::Hints::Hint::SINGLE_OPERATION);// to avoid taking db snapshot
   _trx->begin();
 }
 
@@ -466,5 +467,20 @@ std::shared_ptr<arangodb::transaction::Context> CalculationAnalyzer::Calculation
     &_transactionContext);
 }
 
-} // namespace iresearch
+CalculationAnalyzer::CalculationTransactionContext::CalculationTransactionContext(TRI_vocbase_t& vocbase)
+  : SmartContext(vocbase, arangodb::transaction::Context::makeTransactionId(), nullptr),
+      _state(vocbase) {}
+
+/// @brief get transaction state, determine commit responsiblity
+std::shared_ptr<TransactionState> CalculationAnalyzer::CalculationTransactionContext::acquireState(
+    transaction::Options const& options, bool& responsibleForCommit) {
+  return std::shared_ptr<TransactionState>(std::shared_ptr<TransactionState>(), &_state);
+}
+
+std::shared_ptr<arangodb::transaction::Context> CalculationAnalyzer::CalculationTransactionContext::clone() const {
+  TRI_ASSERT(FALSE);
+  return nullptr;
+}
+
+}  // namespace iresearch
 } // namespace arangodb

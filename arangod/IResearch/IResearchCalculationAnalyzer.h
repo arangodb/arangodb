@@ -31,6 +31,7 @@
 #include "Aql/QueryContext.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 
@@ -90,6 +91,63 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   virtual bool reset(irs::string_ref const& field) noexcept override;
 
  private:
+  class CalculationTransactionState final : public arangodb::TransactionState {
+   public:
+    explicit CalculationTransactionState(TRI_vocbase_t& vocbase)
+        : TransactionState(vocbase, TransactionId(0), _options) {
+      updateStatus(transaction::Status::RUNNING); //always running to make ASSERTS happy
+    }
+
+    ~CalculationTransactionState() {
+      if (status() == transaction::Status::RUNNING) {
+        updateStatus(transaction::Status::ABORTED); // simulate state changes to make ASSERTS happy
+      }
+    }
+    /// @brief begin a transaction
+    Result beginTransaction(transaction::Hints) override {
+      return {};
+    }
+
+    /// @brief commit a transaction
+    Result commitTransaction(transaction::Methods*) override {
+      updateStatus(transaction::Status::COMMITTED);  // simulate state changes to make ASSERTS happy
+      return {};
+    }
+
+    /// @brief abort a transaction
+    Result abortTransaction(transaction::Methods*) override {
+      updateStatus(transaction::Status::ABORTED);  // simulate state changes to make ASSERTS happy
+      return {};
+    }
+
+    bool hasFailedOperations() const override {
+      return false;
+    }
+
+    /// @brief number of commits, including intermediate commits
+    uint64_t numCommits() const override { return 0; }
+
+   private:
+    transaction::Options _options;
+  };
+
+  struct CalculationTransactionContext final : public arangodb::transaction::SmartContext {
+    explicit CalculationTransactionContext(TRI_vocbase_t& vocbase);
+
+    /// @brief get transaction state, determine commit responsiblity
+    std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
+                                                   bool& responsibleForCommit) override;
+
+    /// @brief unregister the transaction
+    void unregisterTransaction() noexcept override{};
+
+    std::shared_ptr<Context> clone() const override;
+
+   private:
+    CalculationTransactionState _state;
+  };
+
+
   class CalculationQueryContext : public arangodb::aql:: QueryContext{
    public:
     explicit CalculationQueryContext(TRI_vocbase_t& vocbase);
@@ -130,7 +188,7 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
    private:
     arangodb::aql::QueryOptions _queryOptions;
     arangodb::CollectionNameResolver _resolver;
-    mutable arangodb::transaction::StandaloneContext _transactionContext;
+    mutable CalculationTransactionContext _transactionContext;
     std::unique_ptr<arangodb::transaction::Methods> _trx;
     arangodb::aql::ResourceMonitor _resourceMonitor;
     arangodb::aql::AqlItemBlockManager _itemBlockManager;
