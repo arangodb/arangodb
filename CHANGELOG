@@ -1,14 +1,15 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Add parameter so `db.collection.truncate({compact: false})` will stop
+  compaction from happening. Compaction may have performance impacts even if the
+  truncate was invoked on nearly empty collections.
+
 * Instead of failing to connect to INADDR_ANY refuse it as a parameter, with a
   descriptive error message for novice users (issue #12871).
 
 * Fixed collection count which could be off after a server crash.
 
-* Add parameter so `db.collection.truncate({compact: false})` will stop
-  compaction from happening. Compaction may have performance impacts even
-  if the truncate was invoked on nearly empty collections.
 
 v3.7.4 (2020-10-16)
 -------------------
