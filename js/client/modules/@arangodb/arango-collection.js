@@ -547,7 +547,6 @@ ArangoCollection.prototype.truncate = function (options) {
   arangosh.checkRequestResult(requestResult);
   // invalidate cache
   this._status = null;
-  return requestResult;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
