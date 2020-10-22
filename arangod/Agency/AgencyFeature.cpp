@@ -32,6 +32,7 @@
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
+#include "Endpoint/Endpoint.h"
 #include "FeaturePhases/FoxxFeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"

@@ -56,9 +56,6 @@
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralRequest.h"
 #include "RestServer/MetricsFeature.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -66,7 +63,6 @@
 
 using namespace arangodb;
 using namespace arangodb::application_features;
-using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
 #ifdef DEBUG_SYNC_REPLICATION
