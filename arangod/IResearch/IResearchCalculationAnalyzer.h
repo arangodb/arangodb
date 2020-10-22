@@ -91,6 +91,9 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   virtual bool reset(irs::string_ref const& field) noexcept override;
 
  private:
+
+  /// @brief Dummmy transaction state which doesn nothing but provides valid statuses
+  /// to keep ASSERT happy
   class CalculationTransactionState final : public arangodb::TransactionState {
    public:
     explicit CalculationTransactionState(TRI_vocbase_t& vocbase)
@@ -131,6 +134,7 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
     transaction::Options _options;
   };
 
+  /// @brief Dummy transaction context which just gives dummy state
   struct CalculationTransactionContext final : public arangodb::transaction::SmartContext {
     explicit CalculationTransactionContext(TRI_vocbase_t& vocbase);
 

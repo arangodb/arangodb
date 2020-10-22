@@ -1721,6 +1721,38 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
     
+    testCustomCalculationAnalyzerInView : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field:"andrey"});
+        col.save({field:"mike"});
+        col.save({field:"frank"});
+        analyzers.save("calcUnderTest","calculation",{queryString:"RETURN SOUNDEX(@field)"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['calcUnderTest']}}});
+        assertEqual(2, db._query("FOR d IN @@v SEARCH ANALYZER(d.field != SOUNDEX('andrei'), 'calcUnderTest')" + 
+                                 "OPTIONS { waitForSync: true } RETURN d ",
+                                { '@v':viewName }).toArray().length);
+        assertEqual(1, db._query("FOR d IN @@v  " + 
+                                 "SEARCH ANALYZER(d.field == SOUNDEX('andrei'), 'calcUnderTest') OPTIONS { waitForSync: true } RETURN d ",
+                                { '@v':viewName }).toArray().length);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    
     testInvalidTypeAnalyzer : function() {
       let analyzerName = "unknownUnderTest";
       try {
