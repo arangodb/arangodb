@@ -3,6 +3,15 @@ devel
 
 * Optimization of empty append entries
 
+* Remove any special handling for obsoleted collection attributes
+  `indexBuckets`, `journalSize`, `doCompact` and `isVolatile`. These
+  attributes were meaningful only with the MMFiles storage engine and have
+  no meaning with the RocksDB storage engine. Thus any special handling
+  for these attributes can be removed in the internal code. 
+  Client applications and tests that rely on the behavior that setting
+  any of these attributes produces an error when using the RocksDB engine
+  may need adjustment now.
+
 * Added the following metrics for synchronous replication in the cluster:
 
   - `arangodb_refused_followers_count`: Number of times a shard leader received 
