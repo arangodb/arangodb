@@ -107,14 +107,13 @@ Result RocksDBMetadata::placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumbe
       if (!crosslist.second) {
         return res.reset(TRI_ERROR_INTERNAL);
       }
+      LOG_TOPIC("1587a", TRACE, Logger::ENGINES)
+          << "[" << this << "] placed blocker (" << trxId << ", " << seq << ")";
       return res;
     } catch (...) {
       _blockers.erase(trxId);
       throw;
     }
-    LOG_TOPIC("1587a", TRACE, Logger::ENGINES)
-        << "[" << this << "] placed blocker (" << trxId << ", " << seq << ")";
-    return res;
   });
 }
 
