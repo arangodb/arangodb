@@ -1,6 +1,8 @@
 v3.5.7 (XXXX-XX-XX)
 -------------------
 
+* Fixed collection count which could be off after a server crash.
+
 * Fixed handling of failedLeaderJob. In case of a plan modification, that
   removes a server from the plan, e.g. reduce replication factor. Directly
   followed by a failure of the current shard leader, would reinsert the just

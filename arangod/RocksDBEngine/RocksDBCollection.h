@@ -31,6 +31,8 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <mutex>
+
 namespace rocksdb {
 class PinnableSlice;
 class Transaction;
@@ -170,11 +172,13 @@ class RocksDBCollection final : public PhysicalCollection {
   void unlockRead();
 
   /// recalculte counts for collection in case of failure
-  uint64_t recalculateCounts();
+  uint64_t recalculateCounts() override;
 
   void estimateSize(velocypack::Builder& builder);
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
+  
+  bool hasDocuments() override;
 
   RocksDBCollectionMeta& meta() { return _meta; }
 
@@ -257,6 +261,8 @@ class RocksDBCollection final : public PhysicalCollection {
   bool _cacheEnabled;
   /// @brief number of index creations in progress
   std::atomic<int> _numIndexCreations;
+
+  mutable std::mutex _recalculationLock;
 };
 
 inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {
