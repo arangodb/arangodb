@@ -69,7 +69,7 @@ class KPathFinder : public ShortestPathFinder {
     auto prependVertex(VertexRef v) -> void;
     auto appendEdge(EdgeDocumentToken v) -> void;
     auto prependEdge(EdgeDocumentToken v) -> void;
-    auto toVelocyPack(arangodb::graph::TraverserCache& cache,
+    auto toVelocyPack(arangodb::graph::ShortestPathOptions& cache,
                       arangodb::velocypack::Builder& builder) -> void;
 
     // Check uniqueness

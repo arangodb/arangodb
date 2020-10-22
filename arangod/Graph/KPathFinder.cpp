@@ -62,14 +62,18 @@ auto KPathFinder::PathResult::prependEdge(EdgeDocumentToken e) -> void {
   _edges.insert(_edges.begin(), e);
 }
 
-auto KPathFinder::PathResult::toVelocyPack(TraverserCache& cache,
+auto KPathFinder::PathResult::toVelocyPack(ShortestPathOptions& options,
                                            arangodb::velocypack::Builder& builder) -> void {
+  auto cache = options.cache();
+  TRI_ASSERT(cache != nullptr);
+
+  options.fetchVerticesCoordinator(_vertices);
   VPackObjectBuilder path{&builder};
   {
     builder.add(VPackValue(StaticStrings::GraphQueryVertices));
     VPackArrayBuilder vertices{&builder};
     for (auto const& v : _vertices) {
-      cache.insertVertexIntoResult(v.stringRef(), builder);
+      cache->insertVertexIntoResult(v.stringRef(), builder);
     }
   }
 
@@ -77,7 +81,7 @@ auto KPathFinder::PathResult::toVelocyPack(TraverserCache& cache,
     builder.add(VPackValue(StaticStrings::GraphQueryEdges));
     VPackArrayBuilder edges(&builder);
     for (auto const& e : _edges) {
-      cache.insertEdgeIntoResult(e, builder);
+      cache->insertEdgeIntoResult(e, builder);
     }
   }
 }
@@ -276,8 +280,7 @@ auto KPathFinder::getNextPath(VPackBuilder& result) -> bool {
       // result done
       _results.pop_back();
       if (_resultPath.isValid()) {
-        TRI_ASSERT(options().cache() != nullptr);
-        _resultPath.toVelocyPack(*options().cache(), result);
+        _resultPath.toVelocyPack(options(), result);
         return true;
       }
     }

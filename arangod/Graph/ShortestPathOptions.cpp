@@ -178,8 +178,9 @@ std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
                                                            : _baseLookupInfos);
 }
 
+template<typename ListType>
 void ShortestPathOptions::fetchVerticesCoordinator(
-    std::deque<arangodb::velocypack::StringRef> const& vertexIds) {
+    ListType const& vertexIds) {
   if (!arangodb::ServerState::instance()->isCoordinator()) {
     return;
   }
@@ -230,3 +231,6 @@ ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
       bidirectional{other.bidirectional},
       multiThreaded{other.multiThreaded},
       _reverseLookupInfos{other._reverseLookupInfos} {}
+
+template void ShortestPathOptions::fetchVerticesCoordinator<std::deque<arangodb::velocypack::StringRef>>(std::deque<arangodb::velocypack::StringRef> const& vertexIds);
+template void ShortestPathOptions::fetchVerticesCoordinator<std::vector<arangodb::velocypack::HashedStringRef>>(std::vector<arangodb::velocypack::HashedStringRef> const& vertexIds);

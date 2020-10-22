@@ -96,7 +96,8 @@ struct ShortestPathOptions : public BaseOptions {
   // Compute the weight of the given edge
   double weightEdge(arangodb::velocypack::Slice const) const;
 
-  void fetchVerticesCoordinator(std::deque<arangodb::velocypack::StringRef> const& vertexIds);
+  template<typename ListType>
+  void fetchVerticesCoordinator(ListType const& vertexIds);
 
   void isQueryKilledCallback() const;
 
