@@ -214,7 +214,21 @@ function recovery (options) {
         count: count,
         testDir: ""
       };
-      runArangodRecovery(params);
+
+      for (let phase = 1; ; ++phase) {
+        runArangodRecovery(params);
+
+        // check if a CONTINUE file exists
+        let continueFile = fs.join(params.args['temp.path'], "CONTINUE");
+        // very likely the CONTINUE file does not exist.
+
+        // the test we now run _may_ write a CONTINUE file.
+        // if it does, we keep looping here until the test fails
+        // or we don't have any CONTINUE file
+        if (!fs.exists(continueFile)) {
+          break;
+        }
+      }
 
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);

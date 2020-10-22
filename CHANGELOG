@@ -1,11 +1,32 @@
-v3.7.3 (XXXX-XX-XX)
+v3.7.5 (XXXX-XX-XX)
 -------------------
-      
+
+* Instead of failing to connect to INADDR_ANY refuse it as a parameter, with a
+  descriptive error message for novice users (issue #12871).
+
+* Fixed collection count which could be off after a server crash.
+
+
+v3.7.4 (2020-10-16)
+-------------------
+
+* Data definition reconsiliation in cluster has been modified
+  extensively to greatly accelerate the creation of 1000s of
+  databases through following means:
+  - AgencyCache offers change sets API based on Raft index.
+  - ClusterInfo caches are only updated using change sets.
+  - Maintenance uses local as well as agency change sets to limit
+    the scope of every runtime to these change sets.
+
+
+v3.7.3 (2020-10-14)
+-------------------
+
 * Added the following metrics for synchronous replication in the cluster:
 
-  - `arangodb_refused_followers_count`: Number of times a shard leader received 
+  - `arangodb_refused_followers_count`: Number of times a shard leader received
     a refusal answer from a follower during synchronous replication.
-  - `arangodb_sync_wrong_checksum`: Number of times a mismatching shard 
+  - `arangodb_sync_wrong_checksum`: Number of times a mismatching shard
     checksum was detected when syncing shards. In case this happens, a resync
     will be triggered for the shard.
 
@@ -65,7 +86,7 @@ v3.7.3 (XXXX-XX-XX)
   led to link recreation.
 
 * Added configuration option `--rocksdb.sync-delay-threshold`.
-  This option can be used to track if any RocksDB WAL sync operations is 
+  This option can be used to track if any RocksDB WAL sync operations is
   delayed by more than the configured value (in milliseconds). The intention
   is to get aware of severely delayed WAL sync operations.
 

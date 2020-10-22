@@ -105,6 +105,12 @@ bool UpdateCollection::first() {
       // from the local list of followers. Will be reported
       // to Current in due course.
       if (!followersToDrop.empty()) {
+        TRI_IF_FAILURE("Maintenance::doNotRemoveUnPlannedFollowers") {
+          LOG_TOPIC("de342", ERR, Logger::MAINTENANCE)
+              << "Skipping check for followers not in Plan because of failure "
+                 "point.";
+          return false;
+        }
         auto& followers = coll->followers();
         std::vector<std::string> ftd =
             arangodb::basics::StringUtils::split(followersToDrop, ',');
@@ -140,8 +146,6 @@ bool UpdateCollection::first() {
     _feature.storeShardError(database, collection, shard,
                              _description.get(SERVER_ID), _result);
   }
-
-  notify();
 
   return false;
 }
