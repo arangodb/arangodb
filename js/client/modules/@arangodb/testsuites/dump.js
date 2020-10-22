@@ -32,6 +32,7 @@ const functionsDocumentation = {
   'dump_encrypted': 'encrypted dump tests',
   'dump_maskings': 'masked dump tests',
   'dump_multiple': 'restore multiple DBs at once',
+  'dump_with_crashes': 'restore and crash the client multiple times',
   'hot_backup': 'hotbackup tests'
 };
 
@@ -519,7 +520,7 @@ function dumpWithCrashes (options) {
     activateFailurePoint: true
   };
   _.defaults(dumpOptions, options);
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){});
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){});
 }
 
 function dumpAuthentication (options) {
