@@ -365,9 +365,6 @@ void DatabaseFeature::start() {
 
   verifyAppPaths();
 
-  // need this to make calculation analyzer available in database links
-  initCalculationVocbase(server());
-
   // scan all databases
   VPackBuilder builder;
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
@@ -535,6 +532,11 @@ void DatabaseFeature::unprepare() {
   _calculationVocbase.reset();
   // clear singleton
   DATABASE = nullptr;
+}
+
+void DatabaseFeature::prepare() {
+  // need this to make calculation analyzer available in database links
+  initCalculationVocbase(server());
 }
 
 /// @brief will be called when the recovery phase has run

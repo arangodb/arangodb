@@ -62,7 +62,7 @@ constexpr const char QUERY_STRING_PARAM_NAME[] = "queryString";
 constexpr const char COLLAPSE_ARRAY_POSITIONS_PARAM_NAME[] = "collapseArrayPos";
 constexpr const char KEEP_NULL_PARAM_NAME[] = "keepNull";
 constexpr const char BATCH_SIZE_PARAM_NAME[] = "batchSize";
-constexpr const char CALCULATION_PARAMETER_NAME[] = "field";
+constexpr const char CALCULATION_PARAMETER_NAME[] = "param";
 
 constexpr const uint32_t MAX_BATCH_SIZE{1000};
 

@@ -80,6 +80,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
+  void prepare() override final;
 
   // used by catch tests
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -156,15 +157,11 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   };
 
   static TRI_vocbase_t& getCalculationVocbase();
+  
 
-#if defined(ARANGODB_USE_GOOGLE_TESTS)
- public:
-#else
  private:
-#endif
   static void initCalculationVocbase(application_features::ApplicationServer& server);
 
- private:
   void stopAppliers();
 
   /// @brief create base app directory
