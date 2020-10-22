@@ -1,6 +1,13 @@
 devel
 -----
 
+* Added CMake option `USE_MINIMAL_DEBUGINFO`.
+  This option is turned off by default. If turned on, the created binaries
+  will contain only a minimum amount of debug symbols, reducing the size
+  of the executables. If turned off (which is the default), the binaries
+  will contain full debug information, which will make them bigger in size
+  unless the debug information is later stripped again.
+
 * Added startup option `--foxx.force-update-on-startup` to toggle waiting 
   for all Foxx services in all databases to be propagated to a coordinator 
   before it completes the boot sequence. 
