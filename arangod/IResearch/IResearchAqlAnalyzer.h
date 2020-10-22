@@ -40,7 +40,7 @@
 namespace arangodb {
 namespace iresearch {
 
-class CalculationAnalyzer final : public irs::analysis::analyzer{
+class AqlAnalyzer final : public irs::analysis::analyzer{
  public:
   struct options_t {
     options_t() = default;
@@ -68,7 +68,7 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   };
 
   static constexpr irs::string_ref type_name() noexcept {
-    return "calculation";
+    return "aql";
   }
 
   static bool normalize_vpack(const irs::string_ref& args, std::string& out);
@@ -76,7 +76,7 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   static bool normalize_json(const irs::string_ref& args, std::string& out);
   static irs::analysis::analyzer::ptr make_json(irs::string_ref const& args);
 
-  explicit CalculationAnalyzer(options_t const& options);
+  explicit AqlAnalyzer(options_t const& options);
 
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     if (type == irs::type<irs::increment>::id()) {
@@ -210,7 +210,7 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
   std::vector<arangodb::aql::AstNode*> _bindedNodes;
   arangodb::aql::ExecutionState _executionState{arangodb::aql::ExecutionState::DONE};
   uint32_t _nextIncVal{0};
-}; // CalculationAnalyzer
+}; // AqlAnalyzer
 } // namespace iresearch
 } // namespace arangodb
 #endif // ARANGOD_IRESEARCH__IRESEARCH_CALCULATION_ANALYZER

@@ -44,7 +44,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/FunctionUtils.h"
 #include "IResearchCommon.h"
-#include "IResearchCalculationAnalyzer.h"
+#include "IResearchAqlAnalyzer.h"
 #include "Logger/LogMacros.h"
 #include "VelocyPackHelper.h"
 #include "VocBase/vocbase.h"
@@ -67,7 +67,7 @@ constexpr const char CALCULATION_PARAMETER_NAME[] = "param";
 constexpr const uint32_t MAX_BATCH_SIZE{1000};
 
 
-using Options = arangodb::iresearch::CalculationAnalyzer::options_t;
+using Options = arangodb::iresearch::AqlAnalyzer::options_t;
 
 struct OptionsValidator {
   std::optional<deserialize_error> operator()(Options const& opts) const {
@@ -99,12 +99,12 @@ using OptionsDeserializer = utilities::constructing_deserializer<Options, parame
 using ValidatingOptionsDeserializer = validate<OptionsDeserializer, OptionsValidator>;
 
 bool parse_options_slice(VPackSlice const& slice,
-                         arangodb::iresearch::CalculationAnalyzer::options_t& options) {
+                         arangodb::iresearch::AqlAnalyzer::options_t& options) {
   auto const res = deserialize<ValidatingOptionsDeserializer>(slice);
   if (!res.ok()) {
     LOG_TOPIC("4349c", WARN, arangodb::iresearch::TOPIC)
         << "Failed to deserialize options from JSON while constructing '"
-        << arangodb::iresearch::CalculationAnalyzer::type_name()
+        << arangodb::iresearch::AqlAnalyzer::type_name()
         << "' analyzer, error: '" << res.error().message << "'";
     return false;
   }
@@ -113,7 +113,7 @@ bool parse_options_slice(VPackSlice const& slice,
 }
 
 bool normalize_slice(VPackSlice const& slice, VPackBuilder& builder) {
-  arangodb::iresearch::CalculationAnalyzer::options_t options;
+  arangodb::iresearch::AqlAnalyzer::options_t options;
   if (parse_options_slice(slice, options)) {
     VPackObjectBuilder root(&builder);
     builder.add(QUERY_STRING_PARAM_NAME, VPackValue(options.queryString));
@@ -288,13 +288,13 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
 }
 
 irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
-  arangodb::iresearch::CalculationAnalyzer::options_t options;
+  arangodb::iresearch::AqlAnalyzer::options_t options;
   if (parse_options_slice(slice, options)) {
     auto validationRes =
         validateQuery(options.queryString,
                       arangodb::DatabaseFeature::getCalculationVocbase());
     if (validationRes.ok()) {
-      return std::make_shared<CalculationAnalyzer>(options);
+      return std::make_shared<AqlAnalyzer>(options);
     } else {
       LOG_TOPIC("f775e", WARN, iresearch::TOPIC)
           << "error validating calculation query: " << validationRes.errorMessage();
@@ -303,7 +303,7 @@ irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
   return nullptr;
 }
 
-/*static*/ bool CalculationAnalyzer::normalize_vpack(const irs::string_ref& args, std::string& out) {
+/*static*/ bool AqlAnalyzer::normalize_vpack(const irs::string_ref& args, std::string& out) {
   auto const slice = arangodb::iresearch::slice(args);
   VPackBuilder builder;
   if (normalize_slice(slice, builder)) {
@@ -314,7 +314,7 @@ irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
   return false;
 }
 
-/*static*/ bool CalculationAnalyzer::normalize_json(const irs::string_ref& args,
+/*static*/ bool AqlAnalyzer::normalize_json(const irs::string_ref& args,
                                                     std::string& out) {
   auto src = VPackParser::fromJson(args);
   VPackBuilder builder;
@@ -325,21 +325,21 @@ irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
   return false;
 }
 
-/*static*/ irs::analysis::analyzer::ptr CalculationAnalyzer::make_vpack(irs::string_ref const& args) {
+/*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_vpack(irs::string_ref const& args) {
   options_t options;
   auto const slice = arangodb::iresearch::slice(args);
   return make_slice(slice);
 }
 
 
-/*static*/ irs::analysis::analyzer::ptr CalculationAnalyzer::make_json(irs::string_ref const& args) {
+/*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_json(irs::string_ref const& args) {
   options_t options;
   auto builder = VPackParser::fromJson(args);
   return make_slice(builder->slice());
 }
 
-CalculationAnalyzer::CalculationAnalyzer(options_t const& options)
-  : irs::analysis::analyzer(irs::type<CalculationAnalyzer>::get()),
+AqlAnalyzer::AqlAnalyzer(options_t const& options)
+  : irs::analysis::analyzer(irs::type<AqlAnalyzer>::get()),
     _options(options),
     _query(arangodb::DatabaseFeature::getCalculationVocbase()),
     _engine(0, _query, _query.itemBlockManager(),
@@ -349,7 +349,7 @@ CalculationAnalyzer::CalculationAnalyzer(options_t const& options)
                  .ok());
 }
 
-bool CalculationAnalyzer::next() {
+bool AqlAnalyzer::next() {
   do {
     if (_queryResults.get()) {
       while (_queryResults->numRows() > _resultRowIdx) {
@@ -390,7 +390,7 @@ bool CalculationAnalyzer::next() {
   return false;
 }
 
-bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
+bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
   try {
     if (!_plan) {  // lazy initialization
       // important to hold a copy here as parser accepts reference!
@@ -448,7 +448,7 @@ bool CalculationAnalyzer::reset(irs::string_ref const& field) noexcept {
   return false;
 }
 
-CalculationAnalyzer::CalculationQueryContext::CalculationQueryContext(TRI_vocbase_t& vocbase)
+AqlAnalyzer::CalculationQueryContext::CalculationQueryContext(TRI_vocbase_t& vocbase)
   : QueryContext(vocbase), _resolver(vocbase),
   _transactionContext(vocbase),
   _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS) {
@@ -461,23 +461,23 @@ CalculationAnalyzer::CalculationQueryContext::CalculationQueryContext(TRI_vocbas
   _trx->begin();
 }
 
-std::shared_ptr<arangodb::transaction::Context> CalculationAnalyzer::CalculationQueryContext::newTrxContext() const {
+std::shared_ptr<arangodb::transaction::Context> AqlAnalyzer::CalculationQueryContext::newTrxContext() const {
   return std::shared_ptr<arangodb::transaction::Context>(
     std::shared_ptr<arangodb::transaction::Context>(),
     &_transactionContext);
 }
 
-CalculationAnalyzer::CalculationTransactionContext::CalculationTransactionContext(TRI_vocbase_t& vocbase)
+AqlAnalyzer::CalculationTransactionContext::CalculationTransactionContext(TRI_vocbase_t& vocbase)
   : SmartContext(vocbase, arangodb::transaction::Context::makeTransactionId(), nullptr),
       _state(vocbase) {}
 
 /// @brief get transaction state, determine commit responsiblity
-std::shared_ptr<TransactionState> CalculationAnalyzer::CalculationTransactionContext::acquireState(
+std::shared_ptr<TransactionState> AqlAnalyzer::CalculationTransactionContext::acquireState(
     transaction::Options const& options, bool& responsibleForCommit) {
   return std::shared_ptr<TransactionState>(std::shared_ptr<TransactionState>(), &_state);
 }
 
-std::shared_ptr<arangodb::transaction::Context> CalculationAnalyzer::CalculationTransactionContext::clone() const {
+std::shared_ptr<arangodb::transaction::Context> AqlAnalyzer::CalculationTransactionContext::clone() const {
   TRI_ASSERT(FALSE);
   return nullptr;
 }

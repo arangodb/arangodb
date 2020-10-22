@@ -32,13 +32,13 @@
 #include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
-#include "IResearch/IResearchCalculationAnalyzer.h"
+#include "IResearch/IResearchAqlAnalyzer.h"
 
 
-class IResearchCalculationAnalyzerTest : public IResearchQueryTest {};
+class IResearchAqlAnalyzerTest : public IResearchQueryTest {};
 
 namespace {
-constexpr irs::string_ref CALC_ANALYZER_NAME{"calculation"};
+constexpr irs::string_ref AQL_ANALYZER_NAME{"aql"};
 
 struct analyzer_token {
   irs::string_ref value;
@@ -72,10 +72,10 @@ void assert_analyzer(irs::analysis::analyzer* analyzer, const std::string& data,
 }
 } // namespace
 
-TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
+TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
   // const value
   {
-    auto ptr = irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+    auto ptr = irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                              irs::type<irs::text_format::vpack>::get(),
                                              arangodb::iresearch::ref<char>(
                                                VPackParser::fromJson("{\"queryString\": \"RETURN '1'\"}")->slice()),
@@ -86,7 +86,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
   // just parameter
   {
     auto ptr = irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN @param\"}")->slice()),
         false);
@@ -97,7 +97,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
   // calculation
   {
     auto ptr = irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN TO_STRING(TO_NUMBER(@param)+1)\"}")->slice()),
         false);
@@ -107,7 +107,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
   // object
   {
     auto ptr =
-        irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                       irs::type<irs::text_format::vpack>::get(),
                                       arangodb::iresearch::ref<char>(
                                         VPackParser::fromJson("{\"queryString\": \"LET a = [{f:@param, c:NOOPT('test')}] FOR d IN a RETURN CONCAT(d.f, d.c)\"}")
@@ -120,7 +120,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
   // cycle 
   {
     auto ptr = irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"FOR d IN 1..5 RETURN CONCAT(UPPER(@param), d)\"}")->slice()),
         false);
@@ -133,7 +133,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
   // cycle with collapse
   {
     auto ptr =
-        irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                       irs::type<irs::text_format::vpack>::get(),
                                       arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"collapseArrayPos\": true, \"batchSize\":3,"
                                                                                            "\"queryString\": \"FOR d IN 1..5 RETURN CONCAT(UPPER(@param), d)\"}")
@@ -146,7 +146,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
   // cycle with array
   {
     auto ptr =
-        irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                       irs::type<irs::text_format::vpack>::get(),
                                       arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"collapseArrayPos\": false,"
                                                                                            "\"queryString\": \"FOR d IN [UPPER(@param), @param, LOWER(@param)] RETURN d\"}")
@@ -161,7 +161,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
   // nested cycles
   {
     auto ptr =
-        irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                       irs::type<irs::text_format::vpack>::get(),
                                       arangodb::iresearch::ref<char>(VPackParser::fromJson("\
                                         {\"collapseArrayPos\": false,\
@@ -176,7 +176,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
   // subquery
   {
     auto ptr =
-        irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                       irs::type<irs::text_format::vpack>::get(),
                                       arangodb::iresearch::ref<char>(VPackParser::fromJson("\
                                         {\"collapseArrayPos\": false,\
@@ -193,7 +193,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
   // filter nulls
   {
     auto ptr =
-        irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                       irs::type<irs::text_format::vpack>::get(),
                                       arangodb::iresearch::ref<char>(
                                         VPackParser::fromJson("{\"keepNull\":false, \"queryString\": \"FOR d IN 1..5 LET t = d%2==0?  CONCAT(UPPER(@param), d) : NULL RETURN t \"}")
@@ -206,7 +206,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
   // keep nulls
   {
     auto ptr =
-        irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                       irs::type<irs::text_format::vpack>::get(),
                                       arangodb::iresearch::ref<char>(
                                         VPackParser::fromJson("{\"keepNull\":true, \"queryString\": \"FOR d IN 1..5 LET t = d%2==0?  CONCAT(UPPER(@param), d) : NULL RETURN t \"}")
@@ -219,7 +219,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
   // non string
   {
     auto ptr = irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN 1\"}")->slice()),
         false);
@@ -231,7 +231,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
   // type mix
   {
     auto ptr = irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"FOR d IN ['e', 1, ['v', 'w'], null, true, @param, 'b'] RETURN d\"}")->slice()),
         false);
@@ -243,7 +243,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
   {
     auto ptr =
         irs::analysis::analyzers::get(
-          CALC_ANALYZER_NAME,
+          AQL_ANALYZER_NAME,
           irs::type<irs::text_format::vpack>::get(),
           arangodb::iresearch::ref<char>(VPackParser::fromJson(
             "{\"collapseArrayPos\": true, \"keepNull\":true,"
@@ -255,45 +255,45 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_valid) {
   }
 }
 
-TEST_F(IResearchCalculationAnalyzerTest, test_create_invalid) {
+TEST_F(IResearchAqlAnalyzerTest, test_create_invalid) {
   // Forbidden function TOKENS
   ASSERT_FALSE(
-      irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+      irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                     irs::type<irs::text_format::vpack>::get(),
                                     arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN TOKENS(@param, 'identity')\"}")
                                                                        ->slice()),
                                     false));
   // Forbidden function NGRAM_MATCH
   ASSERT_FALSE(
-      irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+      irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                     irs::type<irs::text_format::vpack>::get(),
                                     arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN NGRAM_MATCH(@param, 'test', 0.5, 'identity')\"}")
                                                                        ->slice()),
                                     false));
   // Forbidden function PHRASE
   ASSERT_FALSE(
-      irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+      irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                     irs::type<irs::text_format::vpack>::get(),
                                     arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN PHRASE(@param, 'test', 'text_en')\"}")
                                                                        ->slice()),
                                     false));
   // Forbidden function ANALYZER
   ASSERT_FALSE(
-      irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+      irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                     irs::type<irs::text_format::vpack>::get(),
                                     arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN ANALYZER(@param, 'text_en')\"}")
                                                                        ->slice()),
                                     false));
   // UDF function 
   ASSERT_FALSE(
-      irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+      irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                     irs::type<irs::text_format::vpack>::get(),
                                     arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN MY::SOME_UDF_FUNCTION(@param, 'text_en')\"}")
                                                                        ->slice()),
                                     false));
   // V8 function
   ASSERT_FALSE(
-      irs::analysis::analyzers::get(CALC_ANALYZER_NAME,
+      irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                     irs::type<irs::text_format::vpack>::get(),
                                     arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN V8(@param)\"}")
                                                                        ->slice()),
@@ -302,20 +302,20 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_invalid) {
   // TRAVERSAL
   ASSERT_FALSE(
       irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
         VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..3 ANY '1' GRAPH my_graph RETURN v\"}")->slice()),
         false));
   ASSERT_FALSE(
       irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME,
+        AQL_ANALYZER_NAME,
         irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
         VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..3 ANY '1' GRAPH my_graph RETURN v\"}")->slice()),
         false));
   ASSERT_FALSE(
       irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME,
+        AQL_ANALYZER_NAME,
         irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
         VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..3 ANY SHORTEST_PATH '1'  TO '2' GRAPH my_graph RETURN v\"}")->slice()),
@@ -323,7 +323,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_invalid) {
   // COLLECT WITH COUNT
   ASSERT_FALSE(
       irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME,
+        AQL_ANALYZER_NAME,
         irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
         VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..@param  COLLECT WITH COUNT INTO c RETURN c\"}")->slice()),
@@ -331,7 +331,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_invalid) {
   // COLLECT
   ASSERT_FALSE(
       irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME,
+        AQL_ANALYZER_NAME,
         irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
         VPackParser::fromJson("{\"queryString\": \"FOR v IN 2..@param  COLLECT c = v * 10 RETURN c\"}")->slice()),
@@ -339,7 +339,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_invalid) {
   // Wrong AQL syntax
   ASSERT_FALSE(
       irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME,
+        AQL_ANALYZER_NAME,
         irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
         VPackParser::fromJson("{\"queryString\": \"RETAURN 1\"}")->slice()),
@@ -347,14 +347,14 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_invalid) {
   // Collection access
   ASSERT_FALSE(
       irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
         VPackParser::fromJson("{\"queryString\": \"FOR d IN some RETURN d\"}")->slice()),
         false));
   // unknown parameter
   ASSERT_FALSE(
       irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
         VPackParser::fromJson("{\"queryString\": \"RETURN CONCAT(@param, @param2)\"}")->slice()),
         false));
@@ -362,37 +362,37 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_invalid) {
   // parameter data source
   ASSERT_FALSE(
       irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
         VPackParser::fromJson("{\"queryString\": \"FOR d IN @@param RETURN d\"}")->slice()),
         false));
   // INSERT
   ASSERT_FALSE(
       irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
         VPackParser::fromJson("{\"queryString\": \"FOR d IN 1..@param INSERT {f:d} INTO some_collection\"}")->slice()),
         false));
   // UPDATE
   ASSERT_FALSE(
       irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME,
+        AQL_ANALYZER_NAME,
         irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"FOR d IN some UPDATE d._key WITH {f:@param} IN some\"}")->slice()),
         false));
   // REMOVE
   ASSERT_FALSE(
       irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME,
+        AQL_ANALYZER_NAME,
         irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"FOR d IN 1..@param REMOVE {_key:d} IN some\"}")->slice()),
         false));
 }
 
-TEST_F(IResearchCalculationAnalyzerTest, test_create_json) {
+TEST_F(IResearchAqlAnalyzerTest, test_create_json) {
   auto ptr =
       irs::analysis::analyzers::get(
-        CALC_ANALYZER_NAME,
+        AQL_ANALYZER_NAME,
         irs::type<irs::text_format::json>::get(),
         "{\"collapseArrayPos\": true, \"keepNull\":true,"
         "\"queryString\": \"FOR d IN [null, null, @param, 'b'] RETURN d\"}",
@@ -401,10 +401,10 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_json) {
   assert_analyzer(ptr.get(), "a", {{"", 0}, {"", 0}, {"a", 0}, {"b", 0}});
 }
 
-TEST_F(IResearchCalculationAnalyzerTest, test_normalize_json) {
+TEST_F(IResearchAqlAnalyzerTest, test_normalize_json) {
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(
-      actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::json>::get(),
+      actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::json>::get(),
       "{\"queryString\": \"RETURN '1'\"}", false));
   auto actualVPack = VPackParser::fromJson(actual);
   auto actualSlice = actualVPack->slice();
@@ -414,11 +414,11 @@ TEST_F(IResearchCalculationAnalyzerTest, test_normalize_json) {
   ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1);
 }
 
-TEST_F(IResearchCalculationAnalyzerTest, test_normalize) {
+TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
   {
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
-        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN '1'\"}")->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
@@ -430,7 +430,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_normalize) {
   {
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
-        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"keepNull\":false}")->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
@@ -442,7 +442,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_normalize) {
   {
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
-        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"collapseArrayPos\":true}")->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
@@ -454,7 +454,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_normalize) {
   {
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
-        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"batchSize\":1000}")->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
@@ -465,7 +465,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_normalize) {
   }
   {
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, CALC_ANALYZER_NAME,
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, AQL_ANALYZER_NAME,
                                                     irs::type<irs::text_format::vpack>::get(),
                                                     arangodb::iresearch::ref<char>(
                                                         VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
@@ -482,7 +482,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_normalize) {
   {
     std::string actual;
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"\","
                                   "\"batchSize\":10, \"keepNull\":false,"
@@ -493,7 +493,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_normalize) {
   {
     std::string actual;
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{"
                                   "\"batchSize\":10, \"keepNull\":false,"
@@ -504,7 +504,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_normalize) {
   {
     std::string actual;
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
                                   "\"batchSize\":0, \"keepNull\":false,"
@@ -515,7 +515,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_normalize) {
   {
     std::string actual;
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
                                   "\"batchSize\":1001, \"keepNull\":false,"
@@ -526,7 +526,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_normalize) {
   {
     std::string actual;
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
                                   "\"batchSize\":false, \"keepNull\":false,"
@@ -537,7 +537,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_normalize) {
   {
     std::string actual;
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
                                   "\"batchSize\":1, \"keepNull\":10,"
@@ -548,7 +548,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_normalize) {
   {
     std::string actual;
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
                                   "\"batchSize\":11, \"keepNull\":false,"
@@ -559,7 +559,7 @@ TEST_F(IResearchCalculationAnalyzerTest, test_normalize) {
   {
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
-        actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"unknown_argument\":1,"
                                   "\"batchSize\":10, \"keepNull\":false,"
