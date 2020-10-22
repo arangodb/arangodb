@@ -98,11 +98,13 @@ struct envelope {
       detail::add_to_builder(_builder.get(), std::forward<K>(k));
       return *this;
     }
-    ~read_trx() noexcept try {
-      if (_builder) {
-        end();
+    ~read_trx() noexcept {
+      try {
+        if (_builder) {
+          end();
+        }
+      } catch (...) {
       }
-    } catch (...) {
     }
     read_trx(read_trx&&) = default;
     read_trx& operator=(read_trx&&) = default;
@@ -140,11 +142,13 @@ struct envelope {
       _builder->close();
       return envelope(_builder.release());
     }
-    ~precs_trx() noexcept try {
-      if (_builder) {
-        end();
+    ~precs_trx() noexcept {
+      try {
+        if (_builder) {
+          end();
+        }
+      } catch (...) {
       }
-    } catch (...) {
     }
     precs_trx(precs_trx&&) = default;
     precs_trx& operator=(precs_trx&&) = default;
@@ -207,11 +211,13 @@ struct envelope {
       return std::move(*this);
     }
 
-    ~write_trx() noexcept try {
-      if (_builder) {
-        end();
+    ~write_trx() noexcept {
+      try {
+        if (_builder) {
+          end();
+        }
+      } catch (...) {
       }
-    } catch (...) {
     }
     write_trx(write_trx&&) = default;
     write_trx& operator=(write_trx&&) = default;
@@ -234,11 +240,13 @@ struct envelope {
     _builder->close();
     _builder.release();
   }
-  ~envelope() noexcept try {
-    if (_builder) {
-      done();
+  ~envelope() noexcept {
+    try {
+      if (_builder) {
+        done();
+      }
+    } catch (...) {
     }
-  } catch (...) {
   }
   envelope(envelope&&) = default;
   envelope& operator=(envelope&&) = default;
