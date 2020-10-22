@@ -543,7 +543,7 @@ set(LIB_ARANGO_AGENCY_SOURCES
 set(LIB_ARANGO_V8SERVER_SOURCES
   Cluster/v8-cluster.cpp
   Transaction/V8Context.cpp
-  V8Server/FoxxQueuesFeature.cpp
+  V8Server/FoxxFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp
   V8Server/v8-actions.cpp

@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "FoxxQueuesFeature.h"
+#include "FoxxFeature.h"
 
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -31,15 +31,16 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-FoxxQueuesFeature::FoxxQueuesFeature(application_features::ApplicationServer& server)
+FoxxFeature::FoxxFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "FoxxQueues"),
       _pollInterval(1.0),
-      _enabled(true) {
+      _enabled(true),
+      _startupWaitForSelfHeal(false) {
   setOptional(true);
   startsAfter<ServerFeaturePhase>();
 }
 
-void FoxxQueuesFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void FoxxFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("foxx", "Configure Foxx");
 
   options->addOldOption("server.foxx-queues", "foxx.queues");
@@ -60,9 +61,23 @@ void FoxxQueuesFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                      arangodb::options::Flags::DefaultNoComponents,
                      arangodb::options::Flags::OnCoordinator,
                      arangodb::options::Flags::OnSingle));
+
+  options->addOption("--foxx.force-update-on-startup",
+                     "ensure all Foxx services are synchronized before "
+                     "completeing the boot sequence",
+                     new BooleanParameter(&_startupWaitForSelfHeal),
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator,
+                     arangodb::options::Flags::OnSingle))
+                     .setIntroducedIn(30705);
 }
 
-void FoxxQueuesFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+bool FoxxFeature::startupWaitForSelfHeal() const {
+  return _startupWaitForSelfHeal;
+}
+
+void FoxxFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // use a minimum for the interval
   if (_pollInterval < 0.1) {
     _pollInterval = 0.1;
