@@ -18,7 +18,7 @@ v3.7.5 (XXXX-XX-XX)
   will complete the boot sequence faster, and the Foxx services will be 
   propagated lazily. Until the initialization procedure has completed for
   the local Foxx apps, any request to a Foxx app will be responded to with
-  an HTTP 500 error and message 
+  an HTTP 503 error and message 
 
     waiting for initialization of Foxx services in this database 
 

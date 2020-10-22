@@ -40,7 +40,7 @@ const coordinatorId = (
 let ensureDefaultQueue = function () {
   if (!global.KEY_GET('queue-control', 'default-queue')) {
     try {
-      let queues = require('@arangodb/foxx/queues');
+      const queues = require('@arangodb/foxx/queues');
       queues.create('default');
       global.KEY_SET('queue-control', 'default-queue', 1);
     } catch (err) {}
@@ -265,8 +265,8 @@ exports.manage = function () {
         return;
       }
 
-      let queues = db._collection('_queues');
-      let jobs = db._collection('_jobs');
+      const queues = db._collection('_queues');
+      const jobs = db._collection('_jobs');
 
       if (!queues || !jobs || !queues.count() || !jobs.count()) {
         global.KEY_SET('queue-control', 'delayUntil', -1);
