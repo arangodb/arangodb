@@ -395,6 +395,31 @@ TEST_F(IResearchCalculationAnalyzerTest, test_create_invalid) {
         false));
 }
 
+TEST_F(IResearchCalculationAnalyzerTest, test_create_json) {
+  auto ptr =
+      irs::analysis::analyzers::get(
+        CALC_ANALYZER_NAME,
+        irs::type<irs::text_format::json>::get(),
+        "{\"collapseArrayPos\": true, \"keepNull\":true,"
+        "\"queryString\": \"FOR d IN [null, null, @field, 'b'] RETURN d\"}",
+        false);
+  ASSERT_NE(nullptr, ptr);
+  assert_analyzer(ptr.get(), "a", {{"", 0}, {"", 0}, {"a", 0}, {"b", 0}});
+}
+
+TEST_F(IResearchCalculationAnalyzerTest, test_normalize_json) {
+  std::string actual;
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(
+      actual, CALC_ANALYZER_NAME, irs::type<irs::text_format::json>::get(),
+      "{\"queryString\": \"RETURN '1'\"}", false));
+  auto actualVPack = VPackParser::fromJson(actual);
+  auto actualSlice = actualVPack->slice();
+  ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
+  ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
+  ASSERT_EQ(actualSlice.get("collapseArrayPos").getBool(), false);
+  ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1);
+}
+
 TEST_F(IResearchCalculationAnalyzerTest, test_normalize) {
   {
     std::string actual;

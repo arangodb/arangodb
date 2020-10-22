@@ -1618,6 +1618,77 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
     
+    testCustomCalculationAnalyzer : function() {
+      let analyzerName = "calcUnderTest";
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      // simple expression
+      {
+        analyzers.save(analyzerName,"calculation",{queryString:"RETURN SOUNDEX(@field)"});
+        try {
+          let result = db._query(
+            "RETURN TOKENS(['Andrei', 'Andrey'], '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(2, result[0].length);
+          assertEqual([ ["A536"], ["A536"] ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // pipeline for upper + ngram utf8 sequence
+      {
+        analyzers.save(analyzerName,"pipeline",
+                        {pipeline:[
+                          {type:"calculation", properties:{queryString:"RETURN UPPER(@field)"}},
+                          {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}}]});
+       
+        try {
+          let result = db._query(
+            "RETURN TOKENS('хорошо', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(9, result[0].length);
+          assertEqual([ "ХО", "ХОР", "ОР", "ОРО", "РО", "РОШ", "ОШ", "ОШО", "ШО" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // pipeline for ngram utf8 sequence + upper
+      {
+        analyzers.save(analyzerName,"pipeline",
+                        {pipeline:[
+                          {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}},
+                          {type:"calculation", properties:{queryString:"RETURN UPPER(@field)"}}]});
+       
+        try {
+          let result = db._query(
+            "RETURN TOKENS('хорошо', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(9, result[0].length);
+          assertEqual([ "ХО", "ХОР", "ОР", "ОРО", "РО", "РОШ", "ОШ", "ОШО", "ШО" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // invalid properties
+      {
+        try {
+          analyzers.save(analyzerName, "calculation", { queryString:"" } );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+                      err.errorNum);
+        }
+      }
+    },
+    
     testInvalidTypeAnalyzer : function() {
       let analyzerName = "unknownUnderTest";
       try {

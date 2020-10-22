@@ -97,6 +97,34 @@ using OptionsDeserializer = utilities::constructing_deserializer<Options, parame
   >>;
 
 using ValidatingOptionsDeserializer = validate<OptionsDeserializer, OptionsValidator>;
+
+bool parse_options_slice(VPackSlice const& slice,
+                         arangodb::iresearch::CalculationAnalyzer::options_t& options) {
+  auto const res = deserialize<ValidatingOptionsDeserializer>(slice);
+  if (!res.ok()) {
+    LOG_TOPIC("4349c", WARN, arangodb::iresearch::TOPIC)
+        << "Failed to deserialize options from JSON while constructing '"
+        << arangodb::iresearch::CalculationAnalyzer::type_name()
+        << "' analyzer, error: '" << res.error().message << "'";
+    return false;
+  }
+  options = res.get();
+  return true;
+}
+
+bool normalize_slice(VPackSlice const& slice, VPackBuilder& builder) {
+  arangodb::iresearch::CalculationAnalyzer::options_t options;
+  if (parse_options_slice(slice, options)) {
+    VPackObjectBuilder root(&builder);
+    builder.add(QUERY_STRING_PARAM_NAME, VPackValue(options.queryString));
+    builder.add(COLLAPSE_ARRAY_POSITIONS_PARAM_NAME,
+                VPackValue(options.collapseArrayPositions));
+    builder.add(KEEP_NULL_PARAM_NAME, VPackValue(options.keepNull));
+    builder.add(BATCH_SIZE_PARAM_NAME, VPackValue(options.batchSize));
+    return true;
+  }
+  return false;
+}
 } // namespace
 
 namespace arangodb {
@@ -259,44 +287,12 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
   return {};
 }
 
-
-bool CalculationAnalyzer::parse_options(const irs::string_ref& args, options_t& options) {
-  auto const slice = arangodb::iresearch::slice(args);
-  auto const res = deserialize<ValidatingOptionsDeserializer>(slice);
-  if (!res.ok()) {
-    LOG_TOPIC("4349c", WARN, arangodb::iresearch::TOPIC) <<
-      "Failed to deserialize options from JSON while constructing '"
-      << type_name() << "' analyzer, error: '"
-      << res.error().message << "'";
-    return false;
-  }
-  options = res.get();
-  return true;
-}
-
-/*static*/ bool CalculationAnalyzer::normalize(const irs::string_ref& args, std::string& out) {
-  options_t options;
-  if (parse_options(args, options)) {
-    VPackBuilder builder;
-    {
-      VPackObjectBuilder root(&builder);
-      builder.add(QUERY_STRING_PARAM_NAME, VPackValue(options.queryString));
-      builder.add(COLLAPSE_ARRAY_POSITIONS_PARAM_NAME, VPackValue(options.collapseArrayPositions));
-      builder.add(KEEP_NULL_PARAM_NAME, VPackValue(options.keepNull));
-      builder.add(BATCH_SIZE_PARAM_NAME, VPackValue(options.batchSize));
-    }
-    out.resize(builder.slice().byteSize());
-    std::memcpy(&out[0], builder.slice().begin(), out.size());
-    return true;
-  }
-  return false;
-}
-
-/*static*/ irs::analysis::analyzer::ptr CalculationAnalyzer::make(irs::string_ref const& args) {
-  options_t options;
-  if (parse_options(args, options)) {
-    auto validationRes = validateQuery(options.queryString,
-                                       arangodb::DatabaseFeature::getCalculationVocbase());
+irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
+  arangodb::iresearch::CalculationAnalyzer::options_t options;
+  if (parse_options_slice(slice, options)) {
+    auto validationRes =
+        validateQuery(options.queryString,
+                      arangodb::DatabaseFeature::getCalculationVocbase());
     if (validationRes.ok()) {
       return std::make_shared<CalculationAnalyzer>(options);
     } else {
@@ -305,6 +301,41 @@ bool CalculationAnalyzer::parse_options(const irs::string_ref& args, options_t& 
     }
   }
   return nullptr;
+}
+
+/*static*/ bool CalculationAnalyzer::normalize_vpack(const irs::string_ref& args, std::string& out) {
+  auto const slice = arangodb::iresearch::slice(args);
+  VPackBuilder builder;
+  if (normalize_slice(slice, builder)) {
+    out.resize(builder.slice().byteSize());
+    std::memcpy(&out[0], builder.slice().begin(), out.size());
+    return true;
+  }
+  return false;
+}
+
+/*static*/ bool CalculationAnalyzer::normalize_json(const irs::string_ref& args,
+                                                     std::string& out) {
+  auto src = VPackParser::fromJson(args);
+  VPackBuilder builder;
+  if (normalize_slice(src->slice(), builder)) {
+    out = builder.toString();
+    return true;
+  }
+  return false;
+}
+
+/*static*/ irs::analysis::analyzer::ptr CalculationAnalyzer::make_vpack(irs::string_ref const& args) {
+  options_t options;
+  auto const slice = arangodb::iresearch::slice(args);
+  return make_slice(slice);
+}
+
+
+/*static*/ irs::analysis::analyzer::ptr CalculationAnalyzer::make_json(irs::string_ref const& args) {
+  options_t options;
+  auto builder = VPackParser::fromJson(args);
+  return make_slice(builder->slice());
 }
 
 CalculationAnalyzer::CalculationAnalyzer(options_t const& options)

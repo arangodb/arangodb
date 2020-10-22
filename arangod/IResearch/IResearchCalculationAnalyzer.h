@@ -66,14 +66,14 @@ class CalculationAnalyzer final : public irs::analysis::analyzer{
     uint32_t batchSize{ 1 };
   };
 
-  static bool parse_options(const irs::string_ref& args, options_t& options);
-
   static constexpr irs::string_ref type_name() noexcept {
     return "calculation";
   }
 
-  static bool normalize(const irs::string_ref& args, std::string& out);
-  static irs::analysis::analyzer::ptr make(irs::string_ref const& args);
+  static bool normalize_vpack(const irs::string_ref& args, std::string& out);
+  static irs::analysis::analyzer::ptr make_vpack(irs::string_ref const& args);
+  static bool normalize_json(const irs::string_ref& args, std::string& out);
+  static irs::analysis::analyzer::ptr make_json(irs::string_ref const& args);
 
   explicit CalculationAnalyzer(options_t const& options);
 
