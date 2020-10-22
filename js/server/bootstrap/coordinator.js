@@ -36,7 +36,6 @@
   const errors = require('@arangodb').errors;
 
   // autoload all modules and reload routing information in all threads
-  // autoload all modules
   // this functionality is deprecated and will be removed in 3.9
   if (global.USE_OLD_SYSTEM_COLLECTIONS) {
     // check and load all modules in all databases from _modules

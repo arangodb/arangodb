@@ -563,7 +563,7 @@ function ensureServiceLoaded (mount) {
 }
 
 function getServiceInstance (mount) {
-  let internalOnly = SYSTEM_SERVICE_MOUNTS.indexOf(mount) !== -1;
+  const internalOnly = SYSTEM_SERVICE_MOUNTS.indexOf(mount) !== -1;
   ensureFoxxInitialized(internalOnly);
 
   let localServiceMap;
