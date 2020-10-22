@@ -947,7 +947,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
   if (n == 0) {
     return AqlValue(AqlValueHintEmptyObject());
   }
-  
+
   auto& vopts = expressionContext->trx().vpackOptions();
 
   // use the first argument as the preliminary result
@@ -1112,7 +1112,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, AstNode const& n
                           char const* AFN, AqlValue const& invokeFN,
                           VPackFunctionParameters const& invokeParams) {
   auto& trx = expressionContext->trx();
-  
+
   std::string ucInvokeFN;
   transaction::StringBufferLeaser buffer(&trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
@@ -1742,7 +1742,7 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
   }
   auto& analyzerFeature = server.getFeature<iresearch::IResearchAnalyzerFeature>();
   auto& trx = ctx->trx();
-  auto analyzer = analyzerFeature.get(analyzerId, ctx->vocbase(), 
+  auto analyzer = analyzerFeature.get(analyzerId, ctx->vocbase(),
                                       trx.state()->analyzersRevision());
   if (!analyzer) {
     arangodb::aql::registerWarning(
@@ -4265,7 +4265,7 @@ AqlValue Functions::UnsetRecursive(ExpressionContext* expressionContext,
     registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
-  
+
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
 
@@ -4290,7 +4290,7 @@ AqlValue Functions::Keep(ExpressionContext* expressionContext, AstNode const&,
     registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
-  
+
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
 
@@ -4320,7 +4320,7 @@ AqlValue Functions::Translate(ExpressionContext* expressionContext,
     registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
-  
+
   AqlValueMaterializer materializer(vopts);
   VPackSlice slice = materializer.slice(lookupDocument, true);
   TRI_ASSERT(slice.isObject());
@@ -4419,7 +4419,7 @@ AqlValue Functions::Attributes(ExpressionContext* expressionContext,
   if (value.length() == 0) {
     return AqlValue(AqlValueHintEmptyArray());
   }
-  
+
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
 
@@ -4485,7 +4485,7 @@ AqlValue Functions::Values(ExpressionContext* expressionContext, AstNode const&,
 
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
-  
+
   AqlValueMaterializer materializer(vopts);
   VPackSlice slice = materializer.slice(value, false);
   transaction::BuilderLeaser builder(trx);
@@ -4524,7 +4524,7 @@ AqlValue Functions::Min(ExpressionContext* expressionContext, AstNode const&,
     registerWarning(expressionContext, "MIN", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
-  
+
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
 
@@ -4558,7 +4558,7 @@ AqlValue Functions::Max(ExpressionContext* expressionContext, AstNode const&,
     registerWarning(expressionContext, "MAX", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
-  
+
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
 
@@ -4588,7 +4588,7 @@ AqlValue Functions::Sum(ExpressionContext* expressionContext, AstNode const&,
     registerWarning(expressionContext, "SUM", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
-  
+
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
 
@@ -4623,7 +4623,7 @@ AqlValue Functions::Average(ExpressionContext* expressionContext, AstNode const&
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
-  
+
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
 
@@ -4667,7 +4667,7 @@ AqlValue Functions::Product(ExpressionContext* expressionContext, AstNode const&
     registerWarning(expressionContext, "PRODUCT", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
   }
-  
+
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
 
@@ -4786,7 +4786,7 @@ AqlValue Functions::IpV4FromNumber(ExpressionContext* expressionContext, AstNode
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
-  
+
   int64_t input = value.toInt64();
   if (input < 0 || static_cast<uint64_t>(input) > UINT32_MAX) {
     registerInvalidArgumentWarning(expressionContext, AFN);
@@ -4797,23 +4797,23 @@ AqlValue Functions::IpV4FromNumber(ExpressionContext* expressionContext, AstNode
 
   // in theory, we only need a 15 bytes buffer here, as the maximum result
   // string is "255.255.255.255"
-  char result[32]; 
+  char result[32];
 
   char* p = &result[0];
   // first part
-  uint64_t digit = (number & 0xff000000ULL) >> 24ULL; 
+  uint64_t digit = (number & 0xff000000ULL) >> 24ULL;
   p += basics::StringUtils::itoa(digit, p);
   *p++ = '.';
   // second part
-  digit = (number & 0x00ff0000ULL) >> 16ULL; 
+  digit = (number & 0x00ff0000ULL) >> 16ULL;
   p += basics::StringUtils::itoa(digit, p);
   *p++ = '.';
   // third part
-  digit = (number & 0x0000ff00ULL) >> 8ULL; 
+  digit = (number & 0x0000ff00ULL) >> 8ULL;
   p += basics::StringUtils::itoa(digit, p);
   *p++ = '.';
   // fourth part
-  digit = (number & 0x0000ffULL); 
+  digit = (number & 0x0000ffULL);
   p += basics::StringUtils::itoa(digit, p);
 
   return AqlValue(&result[0], p - &result[0]);
@@ -4861,12 +4861,12 @@ AqlValue Functions::IpV4ToNumber(ExpressionContext* expressionContext, AstNode c
     // inet_pton on MacOS accepts leading zeros...
     // inet_pton on Linux and Windows doesn't
     // this is the least intrusive solution, but it is not efficient.
-    if (result == 1 && 
+    if (result == 1 &&
         std::regex_match(&buffer[0], buffer + l, ::ipV4LeadingZerosRegex, std::regex_constants::match_any)) {
       result = 0;
     }
 #endif
-    
+
     if (result == 1) {
       return AqlValue(AqlValueHintUInt(basics::hostToBig(*reinterpret_cast<uint32_t*>(&addr))));
     }
@@ -4889,7 +4889,7 @@ AqlValue Functions::IsIpV4(ExpressionContext* expressionContext, AstNode const&,
 
   AqlValueMaterializer materializer(vopts);
   VPackSlice slice = materializer.slice(value, false);
-  
+
   // parse the input string
   TRI_ASSERT(slice.isString());
   VPackValueLength l;
@@ -4910,7 +4910,7 @@ AqlValue Functions::IsIpV4(ExpressionContext* expressionContext, AstNode const&,
 #else
     int result = inet_pton(AF_INET, &buffer[0], &addr);
 #endif
-   
+
     if (result == 1) {
 #ifdef __APPLE__
       // inet_pton on MacOS accepts leading zeros...
@@ -4923,7 +4923,7 @@ AqlValue Functions::IsIpV4(ExpressionContext* expressionContext, AstNode const&,
       return AqlValue(AqlValueHintBool(true));
     }
   }
-      
+
   return AqlValue(AqlValueHintBool(false));
 }
 
@@ -4957,7 +4957,7 @@ AqlValue Functions::Md5(ExpressionContext* exprCtx, AstNode const&,
 /// @brief function SHA1
 AqlValue Functions::Sha1(ExpressionContext* exprCtx, AstNode const&,
                          VPackFunctionParameters const& parameters) {
-  
+
   transaction::Methods* trx = &exprCtx->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -5276,7 +5276,7 @@ AqlValue Functions::UnionDistinct(ExpressionContext* expressionContext,
 
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
-  
+
   size_t const n = parameters.size();
   std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
@@ -6233,7 +6233,7 @@ AqlValue Functions::Zip(ExpressionContext* expressionContext, AstNode const&,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
-  
+
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
 
@@ -7388,7 +7388,7 @@ AqlValue Functions::CollectionCount(ExpressionContext* expressionContext, AstNod
   }
 
   transaction::Methods* trx = &expressionContext->trx();
-  
+
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
   std::string const collectionName = element.slice().copyString();
   OperationOptions options(ExecContext::current());
@@ -7551,7 +7551,7 @@ AqlValue Functions::Median(ExpressionContext* expressionContext, AstNode const&,
 
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
-  
+
   std::vector<double> values;
   if (!::sortNumberList(vopts, list, values)) {
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
@@ -7614,7 +7614,7 @@ AqlValue Functions::Percentile(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintNull());
     }
   }
-  
+
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
 
@@ -7693,7 +7693,7 @@ AqlValue Functions::Range(ExpressionContext* expressionContext, AstNode const&,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
-  
+
   transaction::Methods* trx = &expressionContext->trx();
 
   transaction::BuilderLeaser builder(trx);
@@ -7739,7 +7739,7 @@ AqlValue Functions::Position(ExpressionContext* expressionContext, AstNode const
 
     transaction::Methods* trx = &expressionContext->trx();
     auto* vopts = &trx->vpackOptions();
-    
+
     size_t index;
     if (::listContainsElement(vopts, list, searchValue, index)) {
       if (!returnIndex) {
@@ -8004,7 +8004,7 @@ AqlValue Functions::DecodeRev(ExpressionContext* expressionContext,
     registerInvalidArgumentWarning(expressionContext, "DECODE_REV");
     return AqlValue(AqlValueHintNull());
   }
-  
+
   transaction::Methods* trx = &expressionContext->trx();
 
   uint64_t timeMilli = arangodb::basics::HybridLogicalClock::extractTime(revInt);
@@ -8079,7 +8079,7 @@ AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
   static char const* AFN = "SCHEMA_VALIDATE";
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
-  
+
   AqlValue const& docValue = extractFunctionParameterValue(parameters, 0);
   AqlValue const& schemaValue = extractFunctionParameterValue(parameters, 1);
 
@@ -8090,7 +8090,7 @@ AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  if (schemaValue.isNull(false) || 
+  if (schemaValue.isNull(false) ||
       (schemaValue.isObject() && schemaValue.length() == 0)) {
     // schema is null or {}
     transaction::BuilderLeaser resultBuilder(trx);
@@ -8140,7 +8140,7 @@ AqlValue Functions::Interleave(arangodb::aql::ExpressionContext* expressionConte
                                VPackFunctionParameters const& parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "INTERLEAVE";
-  
+
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
 
@@ -8190,7 +8190,9 @@ AqlValue Functions::Interleave(arangodb::aql::ExpressionContext* expressionConte
 }
 
 AqlValue Functions::CallGreenspun(arangodb::aql::ExpressionContext* expressionContext,
-                 transaction::Methods* trx, VPackFunctionParameters const& parameters) {
+                                  AstNode const&, VPackFunctionParameters const& parameters) {
+
+  transaction::Methods* trx = &expressionContext->trx();
   greenspun::Machine m;
   greenspun::InitMachine(m);
 
