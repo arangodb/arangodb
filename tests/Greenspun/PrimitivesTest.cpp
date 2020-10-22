@@ -1149,6 +1149,77 @@ TEST_CASE("Test [let] primitive", "[let]") {
   }
 }
 
+TEST_CASE("Test [filter] primitive", "[filter]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("filter array") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"air(
+      ["filter", ["lambda",
+        ["quote", []],
+        ["quote", ["idx", "value"]],
+        ["quote", ["gt?", ["var-ref", "value"], 3]]
+      ], ["list", 1, 2, 3, 4, 5, 6]]
+    )air");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().toJson() == "[4,5,6]");
+  }
+
+  SECTION("filter array by keys") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"air(
+      ["filter", ["lambda",
+        ["quote", []],
+        ["quote", ["idx", "value"]],
+        ["quote", ["gt?", ["var-ref", "idx"], 3]]
+      ], ["list", 4, 6, 8, 1, 7, 3]]
+    )air");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().toJson() == "[7,3]");
+  }
+
+  SECTION("filter dicts") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"air(
+      ["filter", ["lambda",
+        ["quote", []],
+        ["quote", ["key", "value"]],
+        ["quote", ["gt?", ["var-ref", "value"], 3]]
+      ], {"a":1, "b":2, "c":3, "d": 4, "e": 5, "f": 6}]
+    )air");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().toJson() == "{\"d\":4,\"e\":5,\"f\":6}");
+  }
+
+  SECTION("filter dicts by keys") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"air(
+      ["filter", ["lambda",
+        ["quote", []],
+        ["quote", ["key", "value"]],
+        ["quote", ["eq?", ["var-ref", "key"], "d"]]
+      ], {"a":1, "b":2, "c":3, "d": 4, "e": 5, "f": 6}]
+    )air");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().toJson() == "{\"d\":4}");
+  }
+}
+
+
 // TODO: HACK HACK HACK FIXME DO A COMPARE FUNCTION FOR OBJECTS
 TEST_CASE("Test [dict] primitive", "[dict]") {
   Machine m;

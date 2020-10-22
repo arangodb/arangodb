@@ -830,14 +830,67 @@ EvalResult Prim_Map(Machine& ctx, VPackSlice const paramsList, VPackBuilder& res
       result.add(tempBuffer.slice());
     }
   } else {
-    return EvalError("expected list, found: " + list.toJson());
+    return EvalError("expected list or object, found: " + list.toJson());
   }
 
   return {};
 }
 
 EvalResult Prim_Filter(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
-  return EvalError("Prim_Filter not implemented");
+  if (!paramsList.isArray() || paramsList.length() != 2) {
+    return EvalError("expecting to arguments, a function and a list");
+  }
+
+  auto functionSlice = paramsList.at(0);
+  auto list = paramsList.at(1);
+
+  if (list.isArray()) {
+    VPackArrayBuilder ab(&result);
+    for (VPackArrayIterator iter(list); iter.valid(); iter++) {
+      VPackBuilder parameter;
+      {
+        VPackArrayBuilder pb(&parameter);
+        parameter.add(VPackValue(iter.index()));
+        parameter.add(*iter);
+      }
+
+      VPackBuilder filterResult;
+      auto res = EvaluateApply(ctx, functionSlice,
+                               VPackArrayIterator(parameter.slice()), filterResult, false);
+      if (res.fail()) {
+        return res.error().wrapMessage("when filtering pair " + parameter.toJson());
+      }
+
+      if (ValueConsideredTrue(filterResult.slice())) {
+        result.add(*iter);
+      }
+    }
+  } else if (list.isObject()) {
+    VPackObjectBuilder ob(&result);
+    for (VPackObjectIterator iter(list); iter.valid(); iter++) {
+      VPackBuilder parameter;
+      {
+        VPackArrayBuilder pb(&parameter);
+        parameter.add(iter.key());
+        parameter.add(iter.value());
+      }
+
+      VPackBuilder filterResult;
+      auto res = EvaluateApply(ctx, functionSlice,
+                               VPackArrayIterator(parameter.slice()), filterResult, false);
+      if (res.fail()) {
+        return res.error().wrapMessage("when mapping pair " + parameter.toJson());
+      }
+      if (ValueConsideredTrue(filterResult.slice())) {
+        result.add(iter.key());
+        result.add(iter.value());
+      }
+    }
+  } else {
+    return EvalError("expected list or object, found: " + list.toJson());
+  }
+
+  return {};
 }
 
 EvalResult Prim_Foldl(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
@@ -1076,7 +1129,7 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("id", Prim_Identity);
   ctx.setFunction("apply", Prim_Apply);
   ctx.setFunction("map", Prim_Map);  // ["map", <func(index, value) -> value>, <list>] or ["map", <func(key, value) -> value>, <dict>]
-  ctx.setFunction("filter", Prim_Filter);  // ["filter", <func(index, value) -> bool>, <list>] or ["map", <func(key, value) -> bool>, <dict>]
+  ctx.setFunction("filter", Prim_Filter);  // ["filter", <func(index, value) -> bool>, <list>] or ["filter", <func(key, value) -> bool>, <dict>]
   ctx.setFunction("foldl", Prim_Foldl);
   ctx.setFunction("foldl1", Prim_Foldl1);
 
