@@ -1621,7 +1621,7 @@ function iResearchFeatureAqlTestSuite () {
     testCustomCalculationAnalyzer : function() {
       let analyzerName = "calcUnderTest";
       try { analyzers.remove(analyzerName, true); } catch(e) {}
-      // simple expression
+      // soundex expression
       {
         analyzers.save(analyzerName,"calculation",{queryString:"RETURN SOUNDEX(@field)"});
         try {
@@ -1633,6 +1633,38 @@ function iResearchFeatureAqlTestSuite () {
           assertEqual(1, result.length);
           assertEqual(2, result[0].length);
           assertEqual([ ["A536"], ["A536"] ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // datetime
+      {
+        analyzers.save(analyzerName,"calculation",{queryString:"RETURN DATE_ISO8601(@field)"});
+        try {
+          let result = db._query(
+            "RETURN TOKENS('1974-06-09', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ '1974-06-09T00:00:00.000Z' ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+      // cycle
+      {
+        analyzers.save(analyzerName,"calculation",{queryString:"FOR d IN 1..TO_NUMBER(@field) FILTER d%2==0 RETURN TO_STRING(d)"});
+        try {
+          let result = db._query(
+            "RETURN TOKENS('4', '" + analyzerName + "' )",
+            null,
+            { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(2, result[0].length);
+          assertEqual(['2', '4'], result[0]);
         } finally {
           analyzers.remove(analyzerName, true);
         }
