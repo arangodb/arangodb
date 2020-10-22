@@ -51,7 +51,7 @@ class GlobalReplicationApplier final : public ReplicationApplier {
   void storeConfiguration(bool doSync) override;
 
   /// @brief load a persisted configuration for the applier
-  static ReplicationApplierConfiguration loadConfiguration();
+  static ReplicationApplierConfiguration loadConfiguration(application_features::ApplicationServer&);
 
   std::shared_ptr<InitialSyncer> buildInitialSyncer() const override;
   std::shared_ptr<TailingSyncer> buildTailingSyncer(TRI_voc_tick_t initialTick,

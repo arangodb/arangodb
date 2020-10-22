@@ -124,9 +124,16 @@ void RequestStatistics::process(RequestStatistics* statistics) {
       } else {
         totalTime = statistics->_writeEnd - statistics->_readStart;
       }
+      
+      bool const isSuperuser = statistics->_superuser;
+      if (isSuperuser) {
+        statistics::TotalRequestsSuperuser.incCounter();
+      } else {
+        statistics::TotalRequestsUser.incCounter();
+      }
 
-      statistics::RequestFigures& figures = statistics->_superuser
-        ? statistics::GeneralRequestFigures
+      statistics::RequestFigures& figures = isSuperuser
+        ? statistics::SuperuserRequestFigures
         : statistics::UserRequestFigures;
 
       figures.totalTimeDistribution.addFigure(totalTime);
@@ -176,15 +183,9 @@ void RequestStatistics::release() {
   TRI_ASSERT(!_released);
   TRI_ASSERT(!_inQueue);
 
-  if (!_ignore) {
-    _inQueue = true;
-    bool ok = _finishedList.push(this);
-    TRI_ASSERT(ok);
-  } else {
-    reset();
-    bool ok = _freeList.push(this);
-    TRI_ASSERT(ok);
-  }
+  _inQueue = true;
+  bool ok = _finishedList.push(this);
+  TRI_ASSERT(ok);
 }
 
 void RequestStatistics::getSnapshot(Snapshot& snapshot, stats::RequestStatisticsSource source) {
@@ -195,7 +196,7 @@ void RequestStatistics::getSnapshot(Snapshot& snapshot, stats::RequestStatistics
 
   statistics::RequestFigures& figures = source == stats::RequestStatisticsSource::USER
     ? statistics::UserRequestFigures
-    : statistics::GeneralRequestFigures;
+    : statistics::SuperuserRequestFigures;
 
   snapshot.totalTime = figures.totalTimeDistribution;
   snapshot.requestTime = figures.requestTimeDistribution;
@@ -205,6 +206,7 @@ void RequestStatistics::getSnapshot(Snapshot& snapshot, stats::RequestStatistics
   snapshot.bytesReceived = figures.bytesReceivedDistribution;
   
   if (source == stats::RequestStatisticsSource::ALL) {
+    TRI_ASSERT(&figures == &statistics::SuperuserRequestFigures);
     snapshot.totalTime.add(statistics::UserRequestFigures.totalTimeDistribution);
     snapshot.requestTime.add(statistics::UserRequestFigures.requestTimeDistribution);
     snapshot.queueTime.add(statistics::UserRequestFigures.queueTimeDistribution);
@@ -214,7 +216,7 @@ void RequestStatistics::getSnapshot(Snapshot& snapshot, stats::RequestStatistics
   }
 }
 
-std::string RequestStatistics::Item::timingsCsv() {
+std::string RequestStatistics::Item::timingsCsv() const {
   TRI_ASSERT(_stat != nullptr);
   std::stringstream ss;
 
@@ -223,8 +225,7 @@ std::string RequestStatistics::Item::timingsCsv() {
      << ",queue," << (_stat->_queueEnd - _stat->_queueStart)
      << ",queue-size," << _stat->_queueSize
      << ",request," << (_stat->_requestEnd - _stat->_requestStart)
-     << ",total," << (StatisticsFeature::time() - _stat->_readStart)
-     << ",error," << (_stat->_executeError ? "true" : "false");
+     << ",total," << (StatisticsFeature::time() - _stat->_readStart);
 
   return ss.str();
 }

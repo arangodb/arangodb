@@ -483,9 +483,8 @@ void OptimizerRulesFeature::addRules() {
 }
 
 void OptimizerRulesFeature::addStorageEngineRules() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
-  engine->addOptimizerRules(*this);
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  engine.addOptimizerRules(*this);
 }
 
 /// @brief translate a list of rule ids into rule names

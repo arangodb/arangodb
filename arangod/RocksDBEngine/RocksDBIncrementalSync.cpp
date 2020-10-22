@@ -36,6 +36,7 @@
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
@@ -888,7 +889,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         // patch the document counter of the collection and the transaction
         int64_t diff = static_cast<int64_t>(numberDocumentsAfterSync) -
                        static_cast<int64_t>(numberDocumentsDueToCounter);
-        auto seq = rocksutils::latestSequenceNumber();
+        RocksDBEngine& engine =
+            col->vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+        auto seq = engine.db()->GetLatestSequenceNumber();
         static_cast<RocksDBCollection*>(trx.documentCollection()->getPhysical())
             ->meta()
             .adjustNumberDocuments(seq, RevisionId::none(), diff);

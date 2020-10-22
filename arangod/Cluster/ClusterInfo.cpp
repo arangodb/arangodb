@@ -50,8 +50,8 @@
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
-#include "Logger/Logger.h"
 #include "Indexes/Index.h"
+#include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
@@ -59,6 +59,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingInfo.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
@@ -1020,8 +1021,6 @@ void ClusterInfo::loadPlan() {
   //      ],
   //      "isSmart": false,
   //      "isSystem": true,
-  //      "isVolatile": false,
-  //      JOURNAL_SIZE: 1048576,
   //      "keyOptions": {
   //        "allowUserKeys": true,
   //        "lastValue": 0,
@@ -1043,7 +1042,7 @@ void ClusterInfo::loadPlan() {
   //      "status": 3,
   //      "statusString": "loaded",
   //      "type": 2,
-  //      StaticStrings::WaitForSyncString: false
+  //      "waitForSync": false
   //    },...
   //  },...
   // }}
@@ -3180,8 +3179,8 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
     std::vector<std::string>{
       AgencyCommHelper::path("Plan/Views/" + databaseName + "/" + viewID)});
 
-  if (!acb->slice()[0].hasKey(
-        {AgencyCommHelper::path(), "Plan", "Views", databaseName, viewID})) {
+  if (!acb->slice()[0].hasKey(std::vector<std::string>{
+        AgencyCommHelper::path(), "Plan", "Views", databaseName, viewID})) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
@@ -3632,10 +3631,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
     return collectionFromPlan.state();
   }
 
+  auto& engine = _server.getFeature<EngineSelectorFeature>().engine();
   VPackSlice indexes = collectionFromPlan.indexes();
   for (auto const& other : VPackArrayIterator(indexes)) {
     TRI_ASSERT(other.isObject());
-    if (true == arangodb::Index::Compare(slice, other)) {
+    if (true == arangodb::Index::Compare(engine, slice, other, collection.vocbase().name())) {
       {  // found an existing index... Copy over all elements in slice.
         VPackObjectBuilder b(&resultBuilder);
         resultBuilder.add(VPackObjectIterator(other));

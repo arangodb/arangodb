@@ -220,8 +220,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
                                     arangodb::LogicalView const& view) override;
   virtual arangodb::Result firstTick(uint64_t&) override;
   virtual std::vector<std::string> currentWalFiles() const override;
-  virtual arangodb::Result flushWal(bool waitForSync, bool waitForCollector,
-                                    bool writeShutdownFile) override;
+  virtual arangodb::Result flushWal(bool waitForSync, bool waitForCollector) override;
   virtual void getCollectionInfo(TRI_vocbase_t& vocbase, arangodb::DataSourceId cid,
                                  arangodb::velocypack::Builder& result,
                                  bool includeIndexes, TRI_voc_tick_t maxTick) override;

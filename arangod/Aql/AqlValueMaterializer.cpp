@@ -38,10 +38,6 @@ AqlValueMaterializer::AqlValueMaterializer(velocypack::Options const* options)
     : options(options),
       materialized(),
       hasCopied(false) {}
-AqlValueMaterializer::AqlValueMaterializer(transaction::Methods* trx)
-    : options(trx->transactionContextPtr()->getVPackOptions()),
-      materialized(),
-      hasCopied(false) {}
 
 AqlValueMaterializer::AqlValueMaterializer(AqlValueMaterializer const& other)
     : options(other.options),

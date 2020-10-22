@@ -331,8 +331,10 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   }
 
   if (res.fail()) {
-    LOG_TOPIC("1964a", ERR, Logger::FIXME)
-        << "Could not create database: " << res.errorMessage();
+    if (!res.is(TRI_ERROR_BAD_PARAMETER) && !res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
+      LOG_TOPIC("1964a", ERR, Logger::FIXME)
+          << "Could not create database: " << res.errorMessage();
+    }
     events::CreateDatabase(dbName, res, exec);
     return res;
   }

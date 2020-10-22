@@ -1,6 +1,130 @@
 devel
 -----
 
+* Remove any special handling for obsoleted collection attributes
+  `indexBuckets`, `journalSize`, `doCompact` and `isVolatile`. These
+  attributes were meaningful only with the MMFiles storage engine and have
+  no meaning with the RocksDB storage engine. Thus any special handling
+  for these attributes can be removed in the internal code. 
+  Client applications and tests that rely on the behavior that setting
+  any of these attributes produces an error when using the RocksDB engine
+  may need adjustment now.
+
+* Added the following metrics for synchronous replication in the cluster:
+
+  - `arangodb_refused_followers_count`: Number of times a shard leader received 
+    a refusal answer from a follower during synchronous replication.
+  - `arangodb_sync_wrong_checksum`: Number of times a mismatching shard 
+    checksum was detected when syncing shards. In case this happens, a resync
+    will be triggered for the shard.
+
+* Don't respond with misleading error in smart vertex collections.
+
+  When inserting a document with a non-conforming key pattern into
+  a smart vertex collection, the response error code and message are
+  1466 (ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY) and "must not specify _key
+  for this collection".
+  This is misleading, because it is actually allowed to specify a key
+  value for documents in such collection. However, there are some
+  restrictions for valid key values (e.g. the key must be a string and
+  contain the smart graph attribute value at the front, followed by a
+  colon.
+  If any of these restrictions are not met, the server currently
+  responds with "must not specify key for this collection", which is
+  misleading. This change rectifies it so that the server responds with
+  error 4003 (ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE)
+  and message "in smart vertex collections _key must be a string and
+  prefixed with the value of the smart graph attribute". This should
+  make it a lot easier to understand what the actual problem is.
+
+* Added configuration option `--query.tracking-slow-queries` to decide whether
+  slow queries are tracked extra.
+
+* Added configuration option `--query.tracking-with-querystring` to decide
+  whether the query string is shown in the slow query log and the list of 
+  currently running queries. The option is true by default. 
+  When turned off, querystrings in the slow query log and the list of currently
+  running queries are just shown as "<hidden>".
+
+* Added configuration option `--query.tracking-with-datasources` to toggle
+  whether the names of data sources used by queries are shown in the slow query 
+  log and the list of currently running queries. The option is false by default. 
+  When turned on, the names of data sources used by the query will be shown in
+  the slow query log and the list of currently running queries.
+
+* Fix an issue in arangoimport improperly handling filenames with less than 3
+  characters. The specified input filename was checked for a potential ".gz"
+  ending, but the check required the filename to have at least 3 characters.
+  This is now fixed.
+
+* Added optional verbose logging for agency write operations. This logging
+  is configurable by using the new log topic "agencystore".
+
+  The following log levels can be used for for the "agencystore" log topic
+  to log writes to the agency:
+  - DEBUG: will log all writes on the leader
+  - TRACE: will log all writes on both leaders and followers
+  The default log level for the "agencystore" log topic is WARN, meaning no
+  agency writes will be logged.
+  Turning on this logging can be used for auditing and debugging, but it is
+  not recommended in the general case, as it can lead to large amounts of 
+  data being logged, which can have a performance impact and will lead to
+  higher disk space usage.
+  
+* Fix #12693: SORT inside a subquery could sometimes swallow part of its input
+  when it crossed boundaries of internal row batches.
+
+* Added configuration option `--rocksdb.sync-delay-threshold`.
+  This option can be used to track if any RocksDB WAL sync operations is 
+  delayed by more than the configured value (in milliseconds). The intention
+  is to get aware of severely delayed WAL sync operations.
+
+* Fix for BTS-191: Made transaction API database-aware.
+
+* Minor clean up of and less verbosity in agent callbacks. 
+
+* Speed up initial replication of collections/shards data by not wrapping 
+  each document in a seperate `{"type":2300,"data":...}` envelope. In 
+  addition, the follower side of the replication will request data from 
+  leaders in VelocyPack format if the leader is running at least version 
+  3.8.
+  Stripping the envelopes and using VelocyPack for transfer allows for 
+  smaller data sizes when exchanging the documents and faster processing, 
+  and thus can lead to time savings in document packing and unpacking as 
+  well as reduce the number of required HTTP requests. 
+
+* Add database, shard name and error information to several shard-related log 
+  messages.
+
+* Display shard names of a collection in the web interface when in the details
+  view of the collection.
+
+* Added HTTP requests metrics for tracking the number of superuser and normal
+  user requests separately:
+
+  - `arangodb_http_request_statistics_superuser_requests`: Total number of HTTP
+    requests executed by superuser/JWT
+  - `arangodb_http_request_statistics_user_requests`: Total number of HTTP
+    requests executed by clients
+
+* Added metric `arangodb_agency_callback_registered counter` for tracking the
+  total number of agency callbacks that were registered.
+
+* Fixed a bug in handling of followers which refuse to replicate operations.
+  In the case that the follower has simply been dropped in the meantime, we now
+  avoid an error reported by the shard leader.
+
+* Added weighted traversal. Use `mode: "weighted"` as option to enumerate
+  paths by increasing weights. The cost of an edge can be read from an
+  attribute which can be specified using `weightAttribute` option.
+
+* Fix a performance regression when a LIMIT is combined with a COLLECT WITH
+  COUNT INTO. Reported in ES-692.
+
+* Fixed issue ES-696: SEARCH vs FILTER lookup performance.
+  Consolidation functionality for ArangoSearch view links was able to hit non-
+  mergable enormous amount of segments due to improper scheduling logic.
+
 * Data definition reconsiliation in cluster has been modified
   extensively to greatly accelerate the creation of 1000s of
   databases through following means:
@@ -17,7 +141,7 @@ devel
 
 * Added startup option `--database.old-system-collections` to toggle automatic
   creation of system collections `_modules` and `_fishbowl`, along with their
-  internal usage. These collections are useful only in very few case, so it
+  internal usage. These collections are useful only in very few cases, so it
   is normally not worth to create them in all databases.
   The `_modules` collection is only used to register custom JavaScript modules,
   for which there exists no API, and `_fishbowl` is used to store the temporary
@@ -38,9 +162,9 @@ devel
   * less collections/shards will be around for deployments that create a large
     number of databases.
   Already existing `_modules` and `_fishbowl` system collections will not be
-  modified by this PR, even though they will likely be empty and unused.
+  modified by this change, even though they will likely be empty and unused.
 
-* Don't iterate over all databases as server startup in order to initialize the
+* Don't iterate over all databases at server startup in order to initialize the
   routing information. This is not necessary, as the routing information is
   global and not tied to a specific database.
 
@@ -173,7 +297,7 @@ devel
     the mount, in bytes
 
 * Fixed some cases where subqueries in PRUNE did not result in a parse error,
-  but either in an incomprehensible error (in 3.7), or undefined behaviour
+  but either in an incomprehensible error (in 3.7), or undefined behavior
   during execution (pre 3.7).
 
 * Apply user-defined idle connection timeouts for HTTP/2 and VST connections.
@@ -404,11 +528,11 @@ devel
   This will change the contents of replication log messages as well the string
   contents of replication-related error messages.
 
-The messages of the error codes 1402, 1403 and 1404 were also changed accordingly,
-as well as the identifiers:
-- `TRI_ERROR_REPLICATION_MASTER_ERROR` renamed to `TRI_ERROR_REPLICATION_LEADER_ERROR`
-- `TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE` renamed to `TRI_ERROR_REPLICATION_LEADER_INCOMPATIBLE`
-- `TRI_ERROR_REPLICATION_MASTER_CHANGE` renamed to `TRI_ERROR_REPLICATION_LEADER_CHANGE`
+  The messages of the error codes 1402, 1403 and 1404 were also changed accordingly,
+  as well as the identifiers:
+  - `TRI_ERROR_REPLICATION_MASTER_ERROR` renamed to `TRI_ERROR_REPLICATION_LEADER_ERROR`
+  - `TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE` renamed to `TRI_ERROR_REPLICATION_LEADER_INCOMPATIBLE`
+  - `TRI_ERROR_REPLICATION_MASTER_CHANGE` renamed to `TRI_ERROR_REPLICATION_LEADER_CHANGE`
 
   This change also renames the API endpoint `/_api/replication/make-slave` to
   `/_api/replication/make-follower`. The API is still available under the old

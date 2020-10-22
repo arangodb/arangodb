@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library to build up VPack documents.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +20,6 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef VELOCYPACK_BUILDER_H
@@ -308,12 +306,19 @@ class Builder {
   inline uint8_t* add(std::string const& attrName, Value const& sub) {
     return addInternal<Value>(attrName, 0, sub);
   }
+
   inline uint8_t* add(StringRef const& attrName, Value const& sub) {
     return addInternal<Value>(attrName, 0, sub);
   }
+
   inline uint8_t* add(char const* attrName, Value const& sub) {
-    return addInternal<Value>(attrName, 0, sub);
+#if __cplusplus >= 201703
+    return addInternal<Value>(attrName, std::char_traits<char>::length(attrName), 0, sub);
+#else
+    return addInternal<Value>(attrName, std::strlen(attrName), 0, sub);
+#endif
   }
+
   inline uint8_t* add(char const* attrName, std::size_t attrLength, Value const& sub) {
     return addInternal<Value>(attrName, attrLength, 0, sub);
   }
@@ -322,12 +327,19 @@ class Builder {
   inline uint8_t* add(std::string const& attrName, Slice const& sub) {
     return addInternal<Slice>(attrName, 0, sub);
   }
+
   inline uint8_t* add(StringRef const& attrName, Slice const& sub) {
     return addInternal<Slice>(attrName, 0, sub);
   }
+
   inline uint8_t* add(char const* attrName, Slice const& sub) {
-    return addInternal<Slice>(attrName, 0, sub);
+#if __cplusplus >= 201703
+    return addInternal<Slice>(attrName, std::char_traits<char>::length(attrName), 0, sub);
+#else
+    return addInternal<Slice>(attrName, std::strlen(attrName), 0, sub);
+#endif
   }
+
   inline uint8_t* add(char const* attrName, std::size_t attrLength, Slice const& sub) {
     return addInternal<Slice>(attrName, attrLength, 0, sub);
   }
@@ -336,12 +348,19 @@ class Builder {
   inline uint8_t* add(std::string const& attrName, ValuePair const& sub) {
     return addInternal<ValuePair>(attrName, 0, sub);
   }
+
   inline uint8_t* add(StringRef const& attrName, ValuePair const& sub) {
     return addInternal<ValuePair>(attrName, 0, sub);
   }
+
   inline uint8_t* add(char const* attrName, ValuePair const& sub) {
-    return addInternal<ValuePair>(attrName, 0, sub);
+#if __cplusplus >= 201703
+    return addInternal<ValuePair>(attrName, std::char_traits<char>::length(attrName), 0, sub);
+#else
+    return addInternal<ValuePair>(attrName, strlen(attrName), 0, sub);
+#endif
   }
+
   inline uint8_t* add(char const* attrName, std::size_t attrLength, ValuePair const& sub) {
     return addInternal<ValuePair>(attrName, attrLength, 0, sub);
   }
@@ -350,12 +369,19 @@ class Builder {
   inline uint8_t* add(std::string const& attrName, Serialize const& sub) {
     return addInternal<Serializable>(attrName, 0, sub._sable);
   }
+
   inline uint8_t* add(StringRef const& attrName, Serialize const& sub) {
     return addInternal<Serializable>(attrName, 0, sub._sable);
   }
+
   inline uint8_t* add(char const* attrName, Serialize const& sub) {
-    return addInternal<Serializable>(attrName, 0, sub._sable);
+#if __cplusplus >= 201703
+    return addInternal<Serializable>(attrName, std::char_traits<char>::length(attrName), 0, sub._sable);
+#else
+    return addInternal<Serializable>(attrName, std::strlen(attrName), 0, sub._sable);
+#endif
   }
+
   inline uint8_t* add(char const* attrName, std::size_t attrLength, Serialize const& sub) {
     return addInternal<Serializable>(attrName, attrLength, 0, sub._sable);
   }
@@ -390,7 +416,11 @@ class Builder {
   }
 
   inline uint8_t* addTagged(char const* attrName, uint64_t tag, Value const& sub) {
-    return addInternal<Value>(attrName, tag, sub);
+#if __cplusplus >= 201703
+    return addInternal<Value>(attrName, std::char_traits<char>::length(attrName), tag, sub);
+#else
+    return addInternal<Value>(attrName, std::strlen(attrName), tag, sub);
+#endif
   }
 
   inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Value const& sub) {
@@ -407,7 +437,11 @@ class Builder {
   }
 
   inline uint8_t* addTagged(char const* attrName, uint64_t tag, Slice const& sub) {
-    return addInternal<Slice>(attrName, tag, sub);
+#if __cplusplus >= 201703
+    return addInternal<Slice>(attrName, std::char_traits<char>::length(attrName), tag, sub);
+#else
+    return addInternal<Slice>(attrName, std::strlen(attrName), tag, sub);
+#endif
   }
 
   inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Slice const& sub) {
@@ -424,7 +458,11 @@ class Builder {
   }
 
   inline uint8_t* addTagged(char const* attrName, uint64_t tag, ValuePair const& sub) {
-    return addInternal<ValuePair>(attrName, tag, sub);
+#if __cplusplus >= 201703
+    return addInternal<ValuePair>(attrName, std::char_traits<char>::length(attrName), tag, sub);
+#else
+    return addInternal<ValuePair>(attrName, std::strlen(attrName), tag, sub);
+#endif
   }
 
   inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, ValuePair const& sub) {
@@ -441,7 +479,11 @@ class Builder {
   }
 
   inline uint8_t* addTagged(char const* attrName, uint64_t tag, Serialize const& sub) {
-    return addInternal<Serializable>(attrName, tag, sub._sable);
+#if __cplusplus >= 201703
+    return addInternal<Serializable>(attrName, std::char_traits<char>::length(attrName), tag, sub._sable);
+#else
+    return addInternal<Serializable>(attrName, std::strlen(attrName), tag, sub._sable);
+#endif
   }
 
   inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Serialize const& sub) {
@@ -748,12 +790,7 @@ class Builder {
   uint8_t* addInternal(StringRef const& attrName, uint64_t tag, T const& sub) {
     return addInternal<T>(attrName.data(), attrName.size(), tag, sub);
   }
-
-  template <typename T>
-  uint8_t* addInternal(char const* attrName, uint64_t tag, T const& sub) {
-    return addInternal<T>(attrName, strlen(attrName), tag, sub);
-  }
-
+  
   template <typename T>
   uint8_t* addInternal(char const* attrName, std::size_t attrLength, uint64_t tag, T const& sub) {
     bool haveReported = false;
