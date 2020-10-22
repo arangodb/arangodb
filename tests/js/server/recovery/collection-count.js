@@ -59,7 +59,7 @@ function runSetup () {
     internal.waitForEstimatorSync();
   }
     
-  internal.debugTerminate('crashing server');
+  internal.debugSegfault('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
