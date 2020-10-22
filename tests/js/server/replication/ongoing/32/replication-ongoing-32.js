@@ -36,7 +36,7 @@ let compareTicks = replication.compareTicks;
 var console = require('console');
 var internal = require('internal');
 var masterEndpoint = arango.getEndpoint();
-var slaveEndpoint = ARGUMENTS[0];
+const slaveEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
 const cn = 'UnitTestsReplication';
 const cn2 = 'UnitTestsReplication2';
