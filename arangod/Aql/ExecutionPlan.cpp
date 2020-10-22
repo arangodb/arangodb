@@ -1985,29 +1985,29 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous, AstNode co
   auto rangeExpr = node->getMember(1);
   auto aggregates = node->getMember(2);
   
-  WindowBounds bounds;
-  TRI_ASSERT(spec->type == NODE_TYPE_OBJECT);
-  
   AqlFunctionsInternalCache cache;
   FixedVarExpressionContext exprContext(_ast->query().trxForOptimization(), _ast->query(), cache);
   
-  Variable const* rangeVariable = nullptr;
+  Variable const* rangeVar = nullptr;
   if (rangeExpr->type != NODE_TYPE_NOP) {
     if (rangeExpr->type == NODE_TYPE_REFERENCE) {
       // operand is a variable
-      rangeVariable = static_cast<Variable*>(rangeExpr->getData());
-    } else {
+      rangeVar = static_cast<Variable*>(rangeExpr->getData());
+    } else { // need to add a calculation
       auto calc = createTemporaryCalculation(rangeExpr, previous);
       previous = calc;
-      rangeVariable = getOutVariable(calc);
+      rangeVar = getOutVariable(calc);
     }
 
     // add a sort on rangeVariable in front of the WINDOW
     SortElementVector elements;
-    elements.emplace_back(rangeVariable, /*isAscending*/true);
+    elements.emplace_back(rangeVar, /*isAscending*/true);
     auto en = registerNode(std::make_unique<SortNode>(this, nextId(), elements, false));
     previous = addDependency(previous, en);
   }
+  
+  AqlValue preceding, following;
+  TRI_ASSERT(spec->type == NODE_TYPE_OBJECT);
   
   size_t n = spec->numMembers();
   for (size_t i = 0; i < n; ++i) {
@@ -2020,7 +2020,7 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous, AstNode co
     AstNode* value = member->getMember(0);
     if (!value->isConstant()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS,
-                                     "WINDOW spec must be determined at compile time");
+                                     "WINDOW bounds must be determined at compile time");
     }
     
     bool mustDestroy = false;
@@ -2028,24 +2028,28 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous, AstNode co
       Expression expr(_ast, value);
       AqlValue val = expr.execute(&exprContext, mustDestroy);
       if (!mustDestroy && val.isPointer()) { // force a copy
-        bounds.preceding = AqlValue(val.slice());
+        preceding = AqlValue(val.slice());
       } else {
-        bounds.preceding = val.clone();
+        preceding = val.clone();
       }
     } else if (name == "following") {
       Expression expr(_ast, value);
       AqlValue val = expr.execute(&exprContext, mustDestroy);
       if (!mustDestroy && val.isPointer()) { // force a copy
-        bounds.following = AqlValue(val.slice());
+        following = AqlValue(val.slice());
       } else {
-        bounds.following = val.clone();
+        following = val.clone();
       }
     }
   }
   
+  auto type = rangeVar != nullptr ? WindowBounds::Type::Range : WindowBounds::Type::Row;
+
   // aggregate variables
   std::vector<AggregateVarInfo> aggregateVariables = prepareAggregateVars(&previous, aggregates);
-  auto en = registerNode(std::make_unique<WindowNode>(this, nextId(), std::move(bounds), rangeVariable, aggregateVariables));
+  auto en = registerNode(std::make_unique<WindowNode>(this, nextId(),
+                                                      WindowBounds(type, std::move(preceding), std::move(following)),
+                                                      rangeVar, aggregateVariables));
   return addDependency(previous, en);
 }
 

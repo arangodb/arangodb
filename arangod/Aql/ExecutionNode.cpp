@@ -382,8 +382,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
         }
       }
       
-      WindowBounds bounds;
-      bounds.fromVelocyPack(slice);
+      auto type = rangeVar != nullptr ? WindowBounds::Type::Range : WindowBounds::Type::Row;
+      WindowBounds bounds(type, slice);
       return new WindowNode(plan, slice, std::move(bounds),
                             rangeVar, aggregateVariables);
     }

@@ -50,7 +50,7 @@ class QueryWarnings;
 /// could probably also be part of the executor
 class WindowBounds final {
  public:
-  enum class Type { Undefined, Row, Range };
+  enum class Type { Row, Range };
   /// range based WINDOW row values
   struct Row {
     double value;
@@ -59,34 +59,31 @@ class WindowBounds final {
     bool valid;
   };
 
-  WindowBounds();
+  WindowBounds(Type type,
+               AqlValue&& preceding,
+               AqlValue&& following);
+  WindowBounds(Type type, velocypack::Slice slice);
   ~WindowBounds();
 
  public:
-  AqlValue preceding;
-  AqlValue following;
 
   int64_t numPrecedingRows() const;
   int64_t numFollowingRows() const;
 
   bool needsFollowingRows() const;
 
-  // determine window bounds
-  void determineBounds(Type t);
-
   Row calcRow(AqlValue const& input, QueryWarnings& q) const;
 
  public:
   bool unboundedPreceding() const;
   void toVelocyPack(velocypack::Builder& options) const;
-  void fromVelocyPack(velocypack::Slice slice);
 
  private:
   enum class RangeType { Numeric, Date };
+  const Type _type;
 
   int64_t _numPrecedingRows = 0;
   int64_t _numFollowingRows = 0;
-  Type _type = Type::Undefined;
   RangeType _rangeType = RangeType::Numeric;
 
   // contains calendar aware year + month

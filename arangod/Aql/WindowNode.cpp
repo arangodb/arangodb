@@ -42,14 +42,71 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-WindowBounds::WindowBounds()
-    : preceding(AqlValue(AqlValueHintInt(0))),
-      following(AqlValue(AqlValueHintInt(0))) {}
+WindowBounds::WindowBounds(Type type,
+                           AqlValue&& preceding,
+                           AqlValue&& following)
+    : _type(type) {
+  auto g = scopeGuard([&] {
+    preceding.destroy();
+    following.destroy();
+  });
+        
+  if (Type::Row == type) {
+    auto validate = [&](AqlValue& val) -> int64_t {
+      if (val.isNumber()) {
+        int64_t v = val.toInt64();
+        if (v < 0) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                         "WINDOW row spec is invalid");
+        }
+        return v;
+      }
+      if (val.isString() && (val.slice().isEqualString("unbounded") ||
+                             val.slice().isEqualString("inf"))) {
+        return std::numeric_limits<int64_t>::max();
+      }
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "WINDOW row spec is invalid");
+    };
+    _numPrecedingRows = validate(preceding);
+    _numFollowingRows = validate(following);
+    return;
+  }
+      
+  if (Type::Range == type) {
+    if (!(preceding.isString() && following.isString()) &&
+        !(preceding.isNumber() && following.isNumber())) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "WINDOW range spec is invalid");
+    }
 
-WindowBounds::~WindowBounds() {
-  preceding.destroy();
-  following.destroy();
+    if (preceding.isString()) {
+      _rangeType = RangeType::Date;
+      TRI_ASSERT(following.isString());
+      if (!basics::parseIsoDuration(preceding.slice().stringRef(), _precedingDuration)) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "WINDOW bound 'preceding' is not a "
+                                       "valid ISO 8601 duration string");
+      }
+      if (!basics::parseIsoDuration(following.slice().stringRef(), _followingDuration)) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "WINDOW bound 'following' is not a "
+                                       "valid ISO 8601 duration string");
+      }
+      return;
+    }
+    _rangeType = RangeType::Numeric;
+    _precedingNumber = preceding.toDouble();
+    _followingNumber = following.toDouble();
+  }
 }
+
+WindowBounds::WindowBounds(Type t, VPackSlice slice)
+  : WindowBounds(t, AqlValue(slice.get("following")),
+                 AqlValue(slice.get("preceding"))) {}
+
+WindowBounds::~WindowBounds() {}
+
 
 int64_t WindowBounds::numPrecedingRows() const {
   TRI_ASSERT(_type == Type::Row);
@@ -62,7 +119,6 @@ int64_t WindowBounds::numFollowingRows() const {
 }
 
 bool WindowBounds::unboundedPreceding() const {
-  TRI_ASSERT(_type == Type::Row);
   return _type == Type::Row &&
          _numPrecedingRows == std::numeric_limits<int64_t>::max() &&
          _numFollowingRows == 0;
@@ -82,60 +138,6 @@ bool WindowBounds::needsFollowingRows() const {
   }
   TRI_ASSERT(_rangeType == RangeType::Numeric)
   return _followingNumber > 0.0;
-}
-
-void WindowBounds::determineBounds(WindowBounds::Type t) {
-  _type = t;
-  
-  if (Type::Row == t) {
-    auto validate = [&](AqlValue& val) -> int64_t {
-      if (val.isNumber()) {
-        int64_t v = val.toInt64();
-        if (v < 0) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                         "WINDOW row spec is invalid");
-        }
-        return v;
-      }
-      if (val.isString() && val.slice().isEqualString("unbounded")) {
-        return std::numeric_limits<int64_t>::max();
-      }
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "WINDOW row spec is invalid");
-    };
-    _numPrecedingRows = validate(this->preceding);
-    _numFollowingRows = validate(this->following);
-    return;
-
-  } else if (Type::Range == t) {
-    if (!(this->preceding.isString() && this->following.isString()) &&
-        !(this->preceding.isNumber() && this->following.isNumber())) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "WINDOW range spec is invalid");
-    }
-
-    if (this->preceding.isString()) {
-      _rangeType = RangeType::Date;
-      TRI_ASSERT(this->following.isString());
-      if (!basics::parseIsoDuration(this->preceding.slice().stringRef(), _precedingDuration)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "WINDOW range spec 'preceding' is not a "
-                                       "valid ISO 8601 duration string");
-      }
-      if (!basics::parseIsoDuration(this->following.slice().stringRef(), _followingDuration)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "WINDOW range spec 'following' is not a "
-                                       "valid ISO 8601 duration string");
-      }
-      return;
-    }
-    _rangeType = RangeType::Numeric;
-    _precedingNumber = this->preceding.toDouble();
-    _followingNumber = this->following.toDouble();
-    return;
-  }
-
-  ADB_UNREACHABLE;
 }
 
 namespace {
@@ -235,15 +237,33 @@ WindowBounds::Row WindowBounds::calcRow(AqlValue const& input, QueryWarnings& w)
 }
 
 void WindowBounds::toVelocyPack(VPackBuilder& b) const {
-  b.add(VPackValue("preceding"));
-  preceding.toVelocyPack(b.options, b, true, true);
-  b.add(VPackValue("following"));
-  following.toVelocyPack(b.options, b, true, true);
-}
-
-void WindowBounds::fromVelocyPack(velocypack::Slice slice) {
-  following = AqlValue(slice.get("following"));
-  preceding = AqlValue(slice.get("preceding"));
+  switch (_type) {
+    case Type::Row:
+      b.add("preceding", VPackValue(_numPrecedingRows));
+      b.add("following", VPackValue(_numFollowingRows));
+      break;
+      
+    case Type::Range:
+      if (_rangeType == RangeType::Numeric) {
+        b.add("preceding", VPackValue(_precedingNumber));
+        b.add("following", VPackValue(_followingNumber));
+      } else {
+        auto makeDuration = [](basics::ParsedDuration const& duration) {
+          std::string p = "P";
+          p.append(std::to_string(duration.years)).append("Y");
+          p.append(std::to_string(duration.months)).append("M");
+          p.append(std::to_string(duration.days)).append("DT");
+          p.append(std::to_string(duration.hours)).append("H");
+          p.append(std::to_string(duration.minutes)).append("M");
+          p.append(std::to_string(duration.seconds)).append(".");
+          p.append(std::to_string(duration.milliseconds)).append("S");
+          return p;
+        };
+        b.add("preceding", VPackValue(makeDuration(_precedingDuration)));
+        b.add("following", VPackValue(makeDuration(_followingDuration)));
+      }
+      break;
+  }
 }
 
 WindowNode::WindowNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -252,9 +272,7 @@ WindowNode::WindowNode(ExecutionPlan* plan, ExecutionNodeId id,
     : ExecutionNode(plan, id),
       _bounds(std::move(b)),
       _rangeVariable(rangeVariable),
-      _aggregateVariables(aggregateVariables) {
-  _bounds.determineBounds(rangeVariable ? WindowBounds::Type::Range : WindowBounds::Type::Row);
-}
+      _aggregateVariables(aggregateVariables) {}
 
 WindowNode::WindowNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
                        WindowBounds&& b, Variable const* rangeVariable,
@@ -262,9 +280,7 @@ WindowNode::WindowNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
     : ExecutionNode(plan, base),
       _bounds(std::move(b)),
       _rangeVariable(rangeVariable),
-      _aggregateVariables(aggregateVariables) {
-  _bounds.determineBounds(rangeVariable ? WindowBounds::Type::Range : WindowBounds::Type::Row);
-}
+      _aggregateVariables(aggregateVariables) {}
 
 WindowNode::~WindowNode() = default;
 
