@@ -105,7 +105,7 @@ struct RocksDBCollectionMeta final {
   void adjustNumberDocuments(rocksdb::SequenceNumber seq, TRI_voc_rid_t revId, int64_t adj);
 
   /// @brief buffer a counter adjustment ONLY in recovery, optimized to use less memory
-  void adjustNumberDocumentsInRecovery(rocksdb::SequenceNumber seq,
+  bool adjustNumberDocumentsInRecovery(rocksdb::SequenceNumber seq,
                                        TRI_voc_rid_t revId, int64_t adj);
 
   /// @brief serialize the collection metadata

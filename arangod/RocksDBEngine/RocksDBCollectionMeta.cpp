@@ -196,14 +196,13 @@ void RocksDBCollectionMeta::adjustNumberDocuments(rocksdb::SequenceNumber seq,
 }
 
 /// @brief buffer a counter adjustment ONLY in recovery, optimized to use less memory
-void RocksDBCollectionMeta::adjustNumberDocumentsInRecovery(rocksdb::SequenceNumber seq,
-                                                      TRI_voc_rid_t revId, int64_t adj) {
+bool RocksDBCollectionMeta::adjustNumberDocumentsInRecovery(rocksdb::SequenceNumber seq,
+                                                            TRI_voc_rid_t revId, int64_t adj) {
   TRI_ASSERT(seq != 0 && (adj || revId));
   if (seq <= _count._committedSeq) {
     // already incorporated into counter
-    return;
+    return false;
   }
-  bool updateRev = true;
   TRI_ASSERT(seq > _count._committedSeq);
   if (_bufferedAdjs.empty()) {
     _bufferedAdjs.emplace(seq, Adjustment{revId, adj});
@@ -215,7 +214,6 @@ void RocksDBCollectionMeta::adjustNumberDocumentsInRecovery(rocksdb::SequenceNum
     if (old->first <= seq) {
       old->second.adjustment += adj;
       // just adjust counter, not rev
-      updateRev = false;
     } else {
       _bufferedAdjs.emplace(seq, Adjustment{revId, adj + old->second.adjustment});
       _bufferedAdjs.erase(old);
@@ -224,6 +222,7 @@ void RocksDBCollectionMeta::adjustNumberDocumentsInRecovery(rocksdb::SequenceNum
   LOG_TOPIC("1587e", TRACE, Logger::ENGINES)
       << "[" << this << "] buffered adjustment (" << seq << ", " << adj << ", "
       << revId << ") in recovery";
+  return true;
 }
 
 

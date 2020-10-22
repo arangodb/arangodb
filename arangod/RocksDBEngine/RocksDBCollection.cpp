@@ -1566,12 +1566,10 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
   return false;
 }
 
-/// may never be called unless recovery is finished
 void RocksDBCollection::adjustNumberDocuments(TRI_voc_rid_t revId, int64_t adjustment) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
   TRI_ASSERT(engine != nullptr);
-  TRI_ASSERT(!engine->inRecovery());
 #endif
   if (revId != 0) {
     _revisionId = revId;
