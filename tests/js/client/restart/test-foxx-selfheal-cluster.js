@@ -94,8 +94,18 @@ function testSuite() {
     setUp : function() {
       // make sure self heal has run, otherwise we may not be able to install
       arango.POST(`/_admin/execute`, "require('@arangodb/foxx/manager').healAll(); return 1");
-      
-      FoxxManager.install(basePath, mount);
+     
+      let tries = 0;
+      while (++tries < 10) {
+        try {
+          FoxxManager.install(basePath, mount);
+          break;
+        } catch (err) {
+          // for some reason we get sporadic connection errors when trying to install Foxx apps.
+          // this seems to be a timing issue
+          require('internal').sleep(0.5);
+        }
+      }
     },
 
     tearDown : function() {
@@ -157,7 +167,7 @@ function testSuite() {
         // try to request Foxx app. the app must be inaccessible, because self-heal
         // hasn't run yet
         let res = request({ method: "get", timeout: 3, url: coordinator.url + `/${mount}/echo` }); 
-        assertEqual(500, res.status);
+        assertEqual(503, res.status);
 
       } finally {
         resume(dbServers);
