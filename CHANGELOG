@@ -1,6 +1,9 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Instead of failing to connect to INADDR_ANY refuse it as a parameter, with a
+  descriptive error message for novice users (issue #12871).
+
 * Fixed collection count which could be off after a server crash.
 
 
