@@ -1,6 +1,9 @@
 devel
 -----
 
+* Instead of failing to connect to INADDR_ANY refuse it as a parameter, with a
+  descriptive error message for novice users (issue #12871).
+
 * Remove any special handling for obsoleted collection attributes
   `indexBuckets`, `journalSize`, `doCompact` and `isVolatile`. These
   attributes were meaningful only with the MMFiles storage engine and have
