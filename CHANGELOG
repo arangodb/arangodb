@@ -1,6 +1,11 @@
 devel
 -----
 
+* Bug-fix: Creating an additional index on the edge collection of a disjoint
+  SmartGraph could falsly result into an error: 
+  `Could not find all smart collections ...`
+  This is now ruled out and indexes can be created as expected.
+
 * Added startup option `--foxx.force-update-on-startup` to toggle waiting 
   for all Foxx services in all databases to be propagated to a coordinator 
   before it completes the boot sequence. 
