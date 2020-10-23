@@ -1085,7 +1085,7 @@ class block_disjunction final
       doc_base_ = block_base + block_offset * block_size();
       begin_ = mask_ + block_offset + 1;
 
-      assert(begin_ > std::begin(mask) && begin_ <= std::end(mask));
+      assert(begin_ > std::begin(mask_) && begin_ <= std::end(mask_));
       cur_ = begin_[-1] & ((~UINT64_C(0)) << target % block_size());
 
       next();
