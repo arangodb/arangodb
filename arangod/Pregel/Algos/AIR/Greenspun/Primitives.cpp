@@ -584,7 +584,7 @@ EvalResultT<VPackSlice> ReadAttribute(VPackSlice slice, VPackSlice key) {
     return EvalError("key is neither array nor string");
   }
 }
-}
+}  // namespace
 
 EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (!params.isArray() || params.length() != 2) {
@@ -606,7 +606,8 @@ EvalResult Prim_AttribRefOr(Machine& ctx, VPackSlice const params, VPackBuilder&
     return EvalError("expected exactly two parameters");
   }
 
-  auto&& [slice, key, defaultValue] = unpackTuple<VPackSlice, VPackSlice, VPackSlice>(params);
+  auto&& [slice, key, defaultValue] =
+      unpackTuple<VPackSlice, VPackSlice, VPackSlice>(params);
   if (!slice.isObject()) {
     return EvalError("expect second parameter to be an object");
   }
@@ -836,9 +837,72 @@ EvalResult Prim_Map(Machine& ctx, VPackSlice const paramsList, VPackBuilder& res
   return {};
 }
 
+EvalResult Prim_Reduce(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  if (!paramsList.isArray() || paramsList.length() < 2) {
+    return EvalError("expecting at least two arguments, a function and two dicts");
+  }
+
+  auto inputValue = paramsList.at(0);
+  auto functionSlice = paramsList.at(1);
+
+  VPackSlice inputAccumulator;
+  if (paramsList.length() == 3) {
+    inputAccumulator = paramsList.at(2); // need to do that?
+  }
+
+  // reduce(value, accumulator, currentValue)
+  VPackBuilder reduceResult;
+
+  if (inputValue.isArray()) {
+    VPackArrayBuilder ab(&result);
+
+    auto accumulatorValue = 0;
+
+    for (VPackArrayIterator iter(inputValue); iter.valid(); iter++) {
+      VPackBuilder parameter;
+      {
+        VPackArrayBuilder pb(&parameter);
+        if (iter.isFirst()) {
+          if (inputAccumulator.isNone()) {
+            parameter.add(iter.value()); // accumulator / init if none is given
+            iter++;
+          } else {
+            parameter.add(inputAccumulator); // accumulator / init if present
+          }
+
+          parameter.add(iter.value()); // value
+        } else {
+          parameter.add(reduceResult.slice()); // accumulator / previous result
+          parameter.add(iter.value()); // value
+        }
+      }
+
+      reduceResult.clear();
+      auto res = EvaluateApply(ctx, functionSlice,
+                               VPackArrayIterator(parameter.slice()), reduceResult, false);
+      if (res.fail()) {
+        return res.error().wrapMessage("when filtering parameters " + parameter.toJson());
+      }
+    }
+    result.add(reduceResult.slice());
+
+  } else if (inputValue.isObject()) {
+    return EvalError("not implemented");
+    VPackObjectBuilder ob(&result);
+    for (VPackObjectIterator iter(inputValue); iter.valid(); iter++) {
+    }
+  } else {
+    return EvalError("expected two objects, found: " + inputValue.toJson() +
+                     ", " + inputAccumulator.toJson());
+  }
+
+  return {};
+}
+
 EvalResult Prim_Filter(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
   if (!paramsList.isArray() || paramsList.length() != 2) {
-    return EvalError("expecting to arguments, a function and a list");
+    return EvalError(
+        "expecting two arguments, a function and a list or object");
   }
 
   auto functionSlice = paramsList.at(0);
@@ -948,6 +1012,7 @@ EvalResult Prim_DictExtract(Machine& ctx, VPackSlice const paramsList, VPackBuil
         return EvalError("expected string, found: " + key.toJson());
       }
 
+      return EvalError(obj.toJson());
       VPackSlice value = obj.get(key.stringRef());
       if (value.isNone()) {
         if constexpr (ignoreMissing) {
@@ -1003,7 +1068,6 @@ EvalResult Prim_Assert(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
 }
 
 EvalResult Prim_Sort(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
-
   auto res = extract<VPackSlice, VPackSlice>(paramsList);
   if (!res) {
     return std::move(res).asResult();
@@ -1025,7 +1089,6 @@ EvalResult Prim_Sort(Machine& ctx, VPackSlice const paramsList, VPackBuilder& re
 
     // return true if A is _less_ than B
     bool operator()(VPackSlice A, VPackSlice B) {
-
       VPackBuilder parameter;
       {
         VPackArrayBuilder pb(&parameter);
@@ -1035,8 +1098,8 @@ EvalResult Prim_Sort(Machine& ctx, VPackSlice const paramsList, VPackBuilder& re
 
       VPackBuilder tempBuffer;
 
-      auto res = EvaluateApply(ctx, func,
-                               VPackArrayIterator(parameter.slice()), tempBuffer, false);
+      auto res = EvaluateApply(ctx, func, VPackArrayIterator(parameter.slice()),
+                               tempBuffer, false);
       if (res.fail()) {
         throw res.error().wrapMessage("when mapping pair " + parameter.toJson());
       }
@@ -1100,7 +1163,6 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("array-empty?", Prim_ListEmptyHuh);
   ctx.setFunction("array-length", Prim_ListLength);
 
-
   // Misc
   ctx.setFunction("min", Prim_Min);
   ctx.setFunction("max", Prim_Max);
@@ -1117,7 +1179,6 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("dict-keys", Prim_DictKeys);
   ctx.setFunction("dict-directory", Prim_DictDirectory);
 
-
   // Lambdas
   ctx.setFunction("lambda", Prim_Lambda);
 
@@ -1129,6 +1190,7 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("id", Prim_Identity);
   ctx.setFunction("apply", Prim_Apply);
   ctx.setFunction("map", Prim_Map);  // ["map", <func(index, value) -> value>, <list>] or ["map", <func(key, value) -> value>, <dict>]
+  ctx.setFunction("reduce", Prim_Reduce);  // ["reduce", <func(index, value, accum), <dict>, <dict>]
   ctx.setFunction("filter", Prim_Filter);  // ["filter", <func(index, value) -> bool>, <list>] or ["filter", <func(key, value) -> bool>, <dict>]
   ctx.setFunction("foldl", Prim_Foldl);
   ctx.setFunction("foldl1", Prim_Foldl1);
