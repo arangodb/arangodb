@@ -35,6 +35,7 @@
 
 #include "Basics/voc-errors.h"
 #include "Geo/GeoJson.h"
+#include "Geo/GeoParams.h"
 #include "IResearch/Geo.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
@@ -379,11 +380,10 @@ std::pair<S2Cap, bool> getBound(irs::BoundType type,
     return { S2Cap::Full(), true };
   }
 
-  //return std::max(0.0, std::min(minDistance / 6371.000 * 1000, M_PI));
   return {
     (0. == distance
       ? S2Cap::FromPoint(origin)
-      : S2Cap(origin, S1Angle::Radians(S2Earth::MetersToRadians(distance)))),
+      : S2Cap(origin, S1Angle::Radians(geo::metersToRadians(distance)))),
     irs::BoundType::INCLUSIVE == type
   };
 }
