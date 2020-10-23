@@ -42,10 +42,10 @@ namespace iresearch {
 
 class AqlAnalyzer final : public irs::analysis::analyzer{
  public:
-  struct options_t {
-    options_t() = default;
+  struct Options {
+    Options() = default;
 
-    options_t(std::string&& query, bool collapse, bool keep, uint32_t batch)
+    Options(std::string&& query, bool collapse, bool keep, uint32_t batch)
       : queryString(query), collapseArrayPositions(collapse),
       keepNull(keep), batchSize(batch) {}
 
@@ -76,7 +76,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   static bool normalize_json(const irs::string_ref& args, std::string& out);
   static irs::analysis::analyzer::ptr make_json(irs::string_ref const& args);
 
-  explicit AqlAnalyzer(options_t const& options);
+  explicit AqlAnalyzer(Options const& options);
 
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     if (type == irs::type<irs::increment>::id()) {
@@ -91,118 +91,13 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   virtual bool reset(irs::string_ref const& field) noexcept override;
 
  private:
-
-  /// @brief Dummmy transaction state which doesn nothing but provides valid statuses
-  /// to keep ASSERT happy
-  class CalculationTransactionState final : public arangodb::TransactionState {
-   public:
-    explicit CalculationTransactionState(TRI_vocbase_t& vocbase)
-        : TransactionState(vocbase, TransactionId(0), _options) {
-      updateStatus(transaction::Status::RUNNING); //always running to make ASSERTS happy
-    }
-
-    ~CalculationTransactionState() {
-      if (status() == transaction::Status::RUNNING) {
-        updateStatus(transaction::Status::ABORTED); // simulate state changes to make ASSERTS happy
-      }
-    }
-    /// @brief begin a transaction
-    Result beginTransaction(transaction::Hints) override {
-      return {};
-    }
-
-    /// @brief commit a transaction
-    Result commitTransaction(transaction::Methods*) override {
-      updateStatus(transaction::Status::COMMITTED);  // simulate state changes to make ASSERTS happy
-      return {};
-    }
-
-    /// @brief abort a transaction
-    Result abortTransaction(transaction::Methods*) override {
-      updateStatus(transaction::Status::ABORTED);  // simulate state changes to make ASSERTS happy
-      return {};
-    }
-
-    bool hasFailedOperations() const override {
-      return false;
-    }
-
-    /// @brief number of commits, including intermediate commits
-    uint64_t numCommits() const override { return 0; }
-
-   private:
-    transaction::Options _options;
-  };
-
-  /// @brief Dummy transaction context which just gives dummy state
-  struct CalculationTransactionContext final : public arangodb::transaction::SmartContext {
-    explicit CalculationTransactionContext(TRI_vocbase_t& vocbase);
-
-    /// @brief get transaction state, determine commit responsiblity
-    std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
-                                                   bool& responsibleForCommit) override;
-
-    /// @brief unregister the transaction
-    void unregisterTransaction() noexcept override{};
-
-    std::shared_ptr<Context> clone() const override;
-
-   private:
-    CalculationTransactionState _state;
-  };
-
-
-  class CalculationQueryContext : public arangodb::aql:: QueryContext{
-   public:
-    explicit CalculationQueryContext(TRI_vocbase_t& vocbase);
-
-    virtual arangodb::aql::QueryOptions const& queryOptions() const override {
-      return _queryOptions;
-    }
-
-    /// @brief pass-thru a resolver object from the transaction context
-    virtual arangodb::CollectionNameResolver const& resolver() const override {
-      return _resolver;
-    }
-
-    virtual arangodb::velocypack::Options const& vpackOptions() const override {
-      return arangodb::velocypack::Options::Defaults;
-    }
-
-    /// @brief create a transaction::Context
-    virtual std::shared_ptr<arangodb::transaction::Context> newTrxContext() const override;
-
-    virtual arangodb::transaction::Methods& trxForOptimization() override {
-      return *_trx;
-    }
-
-    virtual bool killed() const override { return false; }
-
-    /// @brief whether or not a query is a modification query
-    virtual bool isModificationQuery() const noexcept override { return false; }
-
-    virtual bool isAsyncQuery() const noexcept override { return false; }
-
-    virtual void enterV8Context() override { TRI_ASSERT(FALSE); }
-
-    arangodb::aql::AqlItemBlockManager& itemBlockManager() noexcept {
-      return _itemBlockManager;
-    }
-
-   private:
-    arangodb::aql::QueryOptions _queryOptions;
-    arangodb::CollectionNameResolver _resolver;
-    mutable CalculationTransactionContext _transactionContext;
-    std::unique_ptr<arangodb::transaction::Methods> _trx;
-    arangodb::aql::ResourceMonitor _resourceMonitor;
-    arangodb::aql::AqlItemBlockManager _itemBlockManager;
-  };
-
   irs::term_attribute _term;
   irs::increment _inc;
   std::string _str;
-  options_t _options;
-  CalculationQueryContext _query;
+  Options _options;
+  arangodb::aql::ResourceMonitor _resourceMonitor;
+  arangodb::aql::AqlItemBlockManager _itemBlockManager;
+  std::unique_ptr<arangodb::aql::QueryContext> _query;
   arangodb::aql::ExecutionEngine _engine;
   std::unique_ptr<arangodb::aql::ExecutionPlan> _plan;
   arangodb::aql::SharedAqlItemBlockPtr _queryResults;

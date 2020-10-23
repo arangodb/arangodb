@@ -35,6 +35,7 @@
 #include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/AqlFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -56,7 +57,7 @@ QueryContext::QueryContext(TRI_vocbase_t& vocbase)
       _vocbase(vocbase),
       _execState(QueryExecutionState::ValueType::INVALID_STATE),
       _numRequests(0) {
-  if (_vocbase.id() != std::numeric_limits<uint64_t>::max() && // FIXME: find better way to check
+  if (&_vocbase != &_vocbase.server().getFeature<DatabaseFeature>().getCalculationVocbase() && 
       !AqlFeature::lease()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -65,7 +66,7 @@ QueryContext::QueryContext(TRI_vocbase_t& vocbase)
 /// @brief destroys a query
 QueryContext::~QueryContext() {
   _graphs.clear();
-  if (_vocbase.id() != std::numeric_limits<uint64_t>::max()) {
+  if (&_vocbase != &_vocbase.server().getFeature<DatabaseFeature>().getCalculationVocbase()) {
     AqlFeature::unlease();
   }
 }

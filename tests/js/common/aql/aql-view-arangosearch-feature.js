@@ -1618,12 +1618,12 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
     
-    testCustomCalculationAnalyzer : function() {
+    testCustomAqlAnalyzer : function() {
       let analyzerName = "calcUnderTest";
       try { analyzers.remove(analyzerName, true); } catch(e) {}
       // soundex expression
       {
-        analyzers.save(analyzerName,"calculation",{queryString:"RETURN SOUNDEX(@param)"});
+        analyzers.save(analyzerName,"aql",{queryString:"RETURN SOUNDEX(@param)"});
         try {
           let result = db._query(
             "RETURN TOKENS(['Andrei', 'Andrey'], '" + analyzerName + "' )",
@@ -1639,7 +1639,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       // datetime
       {
-        analyzers.save(analyzerName,"calculation",{queryString:"RETURN DATE_ISO8601(@param)"});
+        analyzers.save(analyzerName,"aql",{queryString:"RETURN DATE_ISO8601(@param)"});
         try {
           let result = db._query(
             "RETURN TOKENS('1974-06-09', '" + analyzerName + "' )",
@@ -1655,7 +1655,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       // cycle
       {
-        analyzers.save(analyzerName,"calculation",{queryString:"FOR d IN 1..TO_NUMBER(@param) FILTER d%2==0 RETURN TO_STRING(d)"});
+        analyzers.save(analyzerName,"aql",{queryString:"FOR d IN 1..TO_NUMBER(@param) FILTER d%2==0 RETURN TO_STRING(d)"});
         try {
           let result = db._query(
             "RETURN TOKENS('4', '" + analyzerName + "' )",
@@ -1673,7 +1673,7 @@ function iResearchFeatureAqlTestSuite () {
       {
         analyzers.save(analyzerName,"pipeline",
                         {pipeline:[
-                          {type:"calculation", properties:{queryString:"RETURN UPPER(@param)"}},
+                          {type:"aql", properties:{queryString:"RETURN UPPER(@param)"}},
                           {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}}]});
        
         try {
@@ -1694,7 +1694,7 @@ function iResearchFeatureAqlTestSuite () {
         analyzers.save(analyzerName,"pipeline",
                         {pipeline:[
                           {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}},
-                          {type:"calculation", properties:{queryString:"RETURN UPPER(@param)"}}]});
+                          {type:"aql", properties:{queryString:"RETURN UPPER(@param)"}}]});
        
         try {
           let result = db._query(
@@ -1712,7 +1712,7 @@ function iResearchFeatureAqlTestSuite () {
       // invalid properties
       {
         try {
-          analyzers.save(analyzerName, "calculation", { queryString:"" } );
+          analyzers.save(analyzerName, "aql", { queryString:"" } );
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1721,7 +1721,7 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
     
-    testCustomCalculationAnalyzerInView : function() {
+    testCustomAqlAnalyzerInView : function() {
       let dbName = "testDb";
       let colName = "testCollection";
       let viewName = "testView";
@@ -1734,7 +1734,7 @@ function iResearchFeatureAqlTestSuite () {
         col.save({field:"andrey"});
         col.save({field:"mike"});
         col.save({field:"frank"});
-        analyzers.save("calcUnderTest","calculation",{queryString:"RETURN SOUNDEX(@param)"});
+        analyzers.save("calcUnderTest","aql",{queryString:"RETURN SOUNDEX(@param)"});
         db._createView(viewName, "arangosearch", 
                                   {links: 
                                     {[colName]: 

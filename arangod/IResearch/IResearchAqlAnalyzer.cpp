@@ -67,7 +67,7 @@ constexpr const char CALCULATION_PARAMETER_NAME[] = "param";
 constexpr const uint32_t MAX_BATCH_SIZE{1000};
 
 
-using Options = arangodb::iresearch::AqlAnalyzer::options_t;
+using Options = arangodb::iresearch::AqlAnalyzer::Options;
 
 struct OptionsValidator {
   std::optional<deserialize_error> operator()(Options const& opts) const {
@@ -99,7 +99,7 @@ using OptionsDeserializer = utilities::constructing_deserializer<Options, parame
 using ValidatingOptionsDeserializer = validate<OptionsDeserializer, OptionsValidator>;
 
 bool parse_options_slice(VPackSlice const& slice,
-                         arangodb::iresearch::AqlAnalyzer::options_t& options) {
+                         arangodb::iresearch::AqlAnalyzer::Options& options) {
   auto const res = deserialize<ValidatingOptionsDeserializer>(slice);
   if (!res.ok()) {
     LOG_TOPIC("4349c", WARN, arangodb::iresearch::TOPIC)
@@ -113,7 +113,7 @@ bool parse_options_slice(VPackSlice const& slice,
 }
 
 bool normalize_slice(VPackSlice const& slice, VPackBuilder& builder) {
-  arangodb::iresearch::AqlAnalyzer::options_t options;
+  arangodb::iresearch::AqlAnalyzer::Options options;
   if (parse_options_slice(slice, options)) {
     VPackObjectBuilder root(&builder);
     builder.add(QUERY_STRING_PARAM_NAME, VPackValue(options.queryString));
@@ -125,27 +125,89 @@ bool normalize_slice(VPackSlice const& slice, VPackBuilder& builder) {
   }
   return false;
 }
-} // namespace
 
-namespace arangodb {
-namespace iresearch {
+/// @brief Dummmy transaction state which does nothing but provides valid
+/// statuses to keep ASSERT happy
+class CalculationTransactionState final : public arangodb::TransactionState {
+ public:
+  explicit CalculationTransactionState(TRI_vocbase_t& vocbase)
+      : TransactionState(vocbase, arangodb::TransactionId(0), _options) {
+    updateStatus(arangodb::transaction::Status::RUNNING);  // always running to make ASSERTS happy
+  }
 
-class CalculationQueryContext: public QueryContext {
+  ~CalculationTransactionState() {
+    if (status() == arangodb::transaction::Status::RUNNING) {
+      updateStatus(arangodb::transaction::Status::ABORTED);  // simulate state changes to make ASSERTS happy
+    }
+  }
+  /// @brief begin a transaction
+  arangodb::Result beginTransaction(arangodb::transaction::Hints) override {
+    return {};
+  }
+
+  /// @brief commit a transaction
+  arangodb::Result commitTransaction(arangodb::transaction::Methods*) override {
+    updateStatus(arangodb::transaction::Status::COMMITTED);  // simulate state changes to make ASSERTS happy
+    return {};
+  }
+
+  /// @brief abort a transaction
+  arangodb::Result abortTransaction(arangodb::transaction::Methods*) override {
+    updateStatus(arangodb::transaction::Status::ABORTED);  // simulate state changes to make ASSERTS happy
+    return {};
+  }
+
+  bool hasFailedOperations() const override { return false; }
+
+  /// @brief number of commits, including intermediate commits
+  uint64_t numCommits() const override { return 0; }
+
+ private:
+  arangodb::transaction::Options _options;
+};
+
+/// @brief Dummy transaction context which just gives dummy state
+struct CalculationTransactionContext final : public arangodb::transaction::SmartContext {
+  explicit CalculationTransactionContext(TRI_vocbase_t& vocbase)
+      : SmartContext(vocbase, arangodb::transaction::Context::makeTransactionId(), nullptr),
+        _state(vocbase) {}
+
+  /// @brief get transaction state, determine commit responsiblity
+  std::shared_ptr<arangodb::TransactionState> acquireState(arangodb::transaction::Options const& options,
+                                                 bool& responsibleForCommit) override {
+    return std::shared_ptr<arangodb::TransactionState>(std::shared_ptr<arangodb::TransactionState>(),
+                                                       &_state);
+  }
+
+  /// @brief unregister the transaction
+  void unregisterTransaction() noexcept override{};
+
+  std::shared_ptr<Context> clone() const override {
+    TRI_ASSERT(FALSE);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "CalculationTransactionContext cloning is not implemented");
+  }
+
+ private:
+  CalculationTransactionState _state;
+};
+
+class CalculationQueryContext final : public arangodb::aql::QueryContext {
  public:
   explicit CalculationQueryContext(TRI_vocbase_t& vocbase)
-    : QueryContext(vocbase), _resolver(vocbase),
-    _transactionContext(vocbase),
-    _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS) {
-    // we need non const parameters as we will inject multiple times
+      : QueryContext(vocbase),
+        _resolver(vocbase),
+        _transactionContext(vocbase) {
     _ast = std::make_unique<Ast>(*this, NON_CONST_PARAMETERS);
-    _trx = AqlTransaction::create(newTrxContext(), _collections,
-      _queryOptions.transactionOptions,
-      std::unordered_set<std::string>{});
+    _trx = AqlTransaction::create(newTrxContext(), _collections, _queryOptions.transactionOptions,
+                                  std::unordered_set<std::string>{});
     _trx->addHint(arangodb::transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
+    _trx->addHint(arangodb::transaction::Hints::Hint::SINGLE_OPERATION);  // to avoid taking db snapshot
     _trx->begin();
   }
 
-  virtual QueryOptions const& queryOptions() const override {
+  virtual arangodb::aql::QueryOptions const& queryOptions() const override {
     return _queryOptions;
   }
 
@@ -161,8 +223,7 @@ class CalculationQueryContext: public QueryContext {
   /// @brief create a transaction::Context
   virtual std::shared_ptr<arangodb::transaction::Context> newTrxContext() const override {
     return std::shared_ptr<arangodb::transaction::Context>(
-      std::shared_ptr<arangodb::transaction::Context>(),
-      &_transactionContext);
+        std::shared_ptr<arangodb::transaction::Context>(), &_transactionContext);
   }
 
   virtual arangodb::transaction::Methods& trxForOptimization() override {
@@ -176,19 +237,18 @@ class CalculationQueryContext: public QueryContext {
 
   virtual bool isAsyncQuery() const noexcept override { return false; }
 
-  virtual void enterV8Context() override { TRI_ASSERT(FALSE); }
-
-  AqlItemBlockManager& itemBlockManager() {
-    return _itemBlockManager;
+  virtual void enterV8Context() override {
+    TRI_ASSERT(FALSE);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "CalculationQueryContext entering V8 context is not implemented");
   }
 
  private:
-  QueryOptions _queryOptions;
+  arangodb::aql::QueryOptions _queryOptions;
   arangodb::CollectionNameResolver _resolver;
-  mutable arangodb::transaction::StandaloneContext _transactionContext;
+  mutable CalculationTransactionContext _transactionContext;
   std::unique_ptr<arangodb::transaction::Methods> _trx;
-  ResourceMonitor _resourceMonitor;
-  AqlItemBlockManager _itemBlockManager;
 };
 
 frozen::set<irs::string_ref, 4> forbiddenFunctions{"TOKENS", "NGRAM_MATCH",
@@ -288,20 +348,24 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
 }
 
 irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
-  arangodb::iresearch::AqlAnalyzer::options_t options;
+  arangodb::iresearch::AqlAnalyzer::Options options;
   if (parse_options_slice(slice, options)) {
     auto validationRes =
         validateQuery(options.queryString,
                       arangodb::DatabaseFeature::getCalculationVocbase());
     if (validationRes.ok()) {
-      return std::make_shared<AqlAnalyzer>(options);
+      return std::make_shared<arangodb::iresearch::AqlAnalyzer>(options);
     } else {
-      LOG_TOPIC("f775e", WARN, iresearch::TOPIC)
+      LOG_TOPIC("f775e", WARN, arangodb::iresearch::TOPIC)
           << "error validating calculation query: " << validationRes.errorMessage();
     }
   }
   return nullptr;
 }
+}  // namespace
+
+namespace arangodb {
+namespace iresearch {
 
 /*static*/ bool AqlAnalyzer::normalize_vpack(const irs::string_ref& args, std::string& out) {
   auto const slice = arangodb::iresearch::slice(args);
@@ -326,23 +390,24 @@ irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
 }
 
 /*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_vpack(irs::string_ref const& args) {
-  options_t options;
+  Options options;
   auto const slice = arangodb::iresearch::slice(args);
   return make_slice(slice);
 }
 
 
 /*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_json(irs::string_ref const& args) {
-  options_t options;
+  Options options;
   auto builder = VPackParser::fromJson(args);
   return make_slice(builder->slice());
 }
 
-AqlAnalyzer::AqlAnalyzer(options_t const& options)
+AqlAnalyzer::AqlAnalyzer(Options const& options)
   : irs::analysis::analyzer(irs::type<AqlAnalyzer>::get()),
     _options(options),
-    _query(arangodb::DatabaseFeature::getCalculationVocbase()),
-    _engine(0, _query, _query.itemBlockManager(),
+    _query(new CalculationQueryContext(arangodb::DatabaseFeature::getCalculationVocbase())),
+    _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS), 
+    _engine(0, *_query, _itemBlockManager,
             SerializationFormat::SHADOWROWS, nullptr) {
   TRI_ASSERT(validateQuery(_options.queryString,
                            arangodb::DatabaseFeature::getCalculationVocbase())
@@ -351,7 +416,7 @@ AqlAnalyzer::AqlAnalyzer(options_t const& options)
 
 bool AqlAnalyzer::next() {
   do {
-    if (_queryResults.get()) {
+    if (_queryResults != nullptr) {
       while (_queryResults->numRows() > _resultRowIdx) {
         AqlValue const& value =
             _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister());
@@ -368,10 +433,10 @@ bool AqlAnalyzer::next() {
       }
     }
     if (_executionState == ExecutionState::HASMORE) {
+      _executionState = ExecutionState::DONE;  // set to done to terminate in case of exception
+      _resultRowIdx = 0;
+      _queryResults = nullptr;
       try {
-        _executionState = ExecutionState::DONE; // set to done to terminate in case of exception
-        _resultRowIdx = 0;
-        _queryResults = nullptr;
         std::tie(_executionState, _queryResults) = _engine.getSome(_options.batchSize);
         TRI_ASSERT(_executionState != ExecutionState::WAITING);
       } catch (basics::Exception const& e) {
@@ -385,7 +450,7 @@ bool AqlAnalyzer::next() {
             << "error executing calculation query";
       }
     }
-  } while (_executionState != ExecutionState::DONE || (_queryResults.get() &&
+  } while (_executionState != ExecutionState::DONE || (_queryResults != nullptr &&
                                                        _queryResults->numRows() > _resultRowIdx));
   return false;
 }
@@ -395,9 +460,9 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
     if (!_plan) {  // lazy initialization
       // important to hold a copy here as parser accepts reference!
       auto queryString = arangodb::aql::QueryString(_options.queryString);
-      auto ast = _query.ast();
+      auto ast = _query->ast();
       TRI_ASSERT(ast);
-      Parser parser(_query, *ast, queryString);
+      Parser parser(*_query, *ast, queryString);
       parser.parse();
       AstNode* astRoot = const_cast<AstNode*>(ast->root());
       TRI_ASSERT(astRoot);
@@ -420,7 +485,7 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
           return node;
         }
       });
-      ast->validateAndOptimize(_query.trxForOptimization());
+      ast->validateAndOptimize(_query->trxForOptimization());
       _plan = ExecutionPlan::instantiateFromAst(ast);
     } else {
       for (auto node : _bindedNodes) {
@@ -447,40 +512,5 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
   }
   return false;
 }
-
-AqlAnalyzer::CalculationQueryContext::CalculationQueryContext(TRI_vocbase_t& vocbase)
-  : QueryContext(vocbase), _resolver(vocbase),
-  _transactionContext(vocbase),
-  _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS) {
-  _ast = std::make_unique<Ast>(*this, NON_CONST_PARAMETERS);
-  _trx = AqlTransaction::create(newTrxContext(), _collections,
-    _queryOptions.transactionOptions,
-    std::unordered_set<std::string>{});
-  _trx->addHint(arangodb::transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
-  _trx->addHint(arangodb::transaction::Hints::Hint::SINGLE_OPERATION);// to avoid taking db snapshot
-  _trx->begin();
-}
-
-std::shared_ptr<arangodb::transaction::Context> AqlAnalyzer::CalculationQueryContext::newTrxContext() const {
-  return std::shared_ptr<arangodb::transaction::Context>(
-    std::shared_ptr<arangodb::transaction::Context>(),
-    &_transactionContext);
-}
-
-AqlAnalyzer::CalculationTransactionContext::CalculationTransactionContext(TRI_vocbase_t& vocbase)
-  : SmartContext(vocbase, arangodb::transaction::Context::makeTransactionId(), nullptr),
-      _state(vocbase) {}
-
-/// @brief get transaction state, determine commit responsiblity
-std::shared_ptr<TransactionState> AqlAnalyzer::CalculationTransactionContext::acquireState(
-    transaction::Options const& options, bool& responsibleForCommit) {
-  return std::shared_ptr<TransactionState>(std::shared_ptr<TransactionState>(), &_state);
-}
-
-std::shared_ptr<arangodb::transaction::Context> AqlAnalyzer::CalculationTransactionContext::clone() const {
-  TRI_ASSERT(FALSE);
-  return nullptr;
-}
-
 }  // namespace iresearch
 } // namespace arangodb
