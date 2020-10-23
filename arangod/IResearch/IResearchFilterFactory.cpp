@@ -2804,11 +2804,11 @@ Result fromFuncPhraseLevenshteinMatch(char const* funcName,
 
         virtual void prepare(const irs::sub_reader& segment,
                              const irs::term_reader& field,
-                             const irs::seek_term_iterator& terms) {
+                             const irs::seek_term_iterator& terms) override {
           collector.prepare(segment, field, terms);
         }
 
-        virtual void visit(irs::boost_t boost) {
+        virtual void visit(irs::boost_t boost) override {
           collector.visit(boost);
         }
 
