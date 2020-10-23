@@ -1230,6 +1230,13 @@ int DatabaseFeature::createApplicationDirectory(std::string const& name,
   if (basePath.empty()) {
     return TRI_ERROR_NO_ERROR;
   }
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  if (engine && engine->inRecovery()) {
+    // we will also get here on MMFiles recovery, and in this case we don't
+    // want to delete already existing Foxx app directories
+    removeExisting = false;
+  }
 
   std::string const path = basics::FileUtils::buildFilename(
       basics::FileUtils::buildFilename(basePath, "_db"), name);
