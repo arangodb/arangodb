@@ -119,20 +119,21 @@ class GeoIterator : public irs::doc_iterator {
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t target) override {
-    const auto prev = _doc->value;
-    const auto doc = _approx->seek(target);
-
-    if (prev == doc || accept()) {
-      return doc;
+    if (target <= _doc->value) {
+      return _doc->value;
     }
 
-    next();
+    if (target != _approx->seek(target) || !accept()) {
+      next();
+    }
 
     return _doc->value;
   }
 
  private:
   bool accept() {
+    TRI_ASSERT(_columnIt->value() < _doc->value)
+
     if (_doc->value != _columnIt->seek(_doc->value) ||
         _storedValue->value.empty()) {
       LOG_TOPIC("62a62", WARN, arangodb::iresearch::TOPIC)
