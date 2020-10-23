@@ -23,6 +23,7 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_CALCULATION_ANALYZER
 #define ARANGOD_IRESEARCH__IRESEARCH_CALCULATION_ANALYZER 1
 
+#include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "Aql/Ast.h"
 #include "Aql/AqlItemBlockManager.h"
@@ -30,10 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/StandaloneContext.h"
-#include "Utils/CollectionNameResolver.h"
 
 #include <string>
 

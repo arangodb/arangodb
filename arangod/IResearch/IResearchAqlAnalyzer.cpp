@@ -27,7 +27,8 @@
 #include "date/date.h"
 #endif
 
-#include "analysis/analyzers.hpp"
+#include "IResearchAqlAnalyzer.h"
+
 #include "utils/hash_utils.hpp"
 #include "utils/object_pool.hpp"
 
@@ -35,20 +36,19 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Parser.h"
-#include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/FunctionUtils.h"
 #include "IResearchCommon.h"
-#include "IResearchAqlAnalyzer.h"
 #include "Logger/LogMacros.h"
 #include "VelocyPackHelper.h"
 #include "VocBase/vocbase.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Transaction/SmartContext.h"
+#include "Utils/CollectionNameResolver.h"
 
 #include <Containers/HashSet.h>
 #include "VPackDeserializer/deserializer.h"
@@ -102,7 +102,7 @@ bool parse_options_slice(VPackSlice const& slice,
                          arangodb::iresearch::AqlAnalyzer::Options& options) {
   auto const res = deserialize<ValidatingOptionsDeserializer, hints::hint_list<hints::ignore_unknown>>(slice);
   if (!res.ok()) {
-    LOG_TOPIC("4349c", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("d88b8", WARN, arangodb::iresearch::TOPIC)
         << "Failed to deserialize options from JSON while constructing '"
         << arangodb::iresearch::AqlAnalyzer::type_name()
         << "' analyzer, error: '" << res.error().message << "'";
