@@ -5297,6 +5297,9 @@ class RemoveToEnumCollFinder final
         }
         return false;  // continue . . .
       }
+      case EN::WINDOW: {
+        return false;  // continue . . .
+      }
       case EN::ENUMERATE_COLLECTION:
       case EN::INDEX: {
         // check that we are enumerating the variable we are to remove
