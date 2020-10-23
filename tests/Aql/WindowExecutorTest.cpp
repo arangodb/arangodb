@@ -207,7 +207,7 @@ auto boundsRow1 = WindowBounds(WindowBounds::Type::Row, AqlValue(AqlValueHintInt
 auto boundsRowAccum = WindowBounds(WindowBounds::Type::Row, AqlValue(inf->slice()), AqlValue(AqlValueHintInt(0)));
 auto boundsRange1 = WindowBounds(WindowBounds::Type::Range, AqlValue(AqlValueHintInt(1)), AqlValue(AqlValueHintInt(1)));
 auto boundsRangeP3 = WindowBounds(WindowBounds::Type::Range, AqlValue(AqlValueHintInt(3)), AqlValue(AqlValueHintInt(0)));
-auto boundsDateRange = WindowBounds(WindowBounds::Type::Range, AqlValue(duration1h10m->slice()), AqlValue(duration3s->slice()));
+//auto boundsDateRange = WindowBounds(WindowBounds::Type::Range, AqlValue(duration1h10m->slice()), AqlValue(duration3s->slice()));
 
 auto WindowInputs =
     ::testing::Values(WindowInput{boundsRow1, RegisterPlan::MaxRegisterId, "SUM", 0, inputRows, {{1, 5, 2}, {1, 1, 4}, {2, 2, 4}, {1, 5, 9}, {6, 1, 9}, {2, 2, 11}, {3, 1, 5}}},
@@ -219,7 +219,7 @@ auto WindowInputs =
                       WindowInput{boundsRowAccum, RegisterPlan::MaxRegisterId, "MIN", 0, inputRows, {{1, 5, 1}, {1, 1, 1}, {2, 2, 1}, {1, 5, 1}, {6, 1, 1}, {2, 2, 1}, {3, 1, 1}}},
                       // range based input, offset of one each way
                       WindowInput{boundsRange1, 0, "SUM", 1, sortedRows, {{1, 5, 15}, {1, 1, 15}, { 1, 5, 15}, {2, 2, 16}, {2, 2, 16}, {3, 1, 5}, {6, 1, 1}}},
-                      WindowInput{boundsRange1, 0, "MIN", 1, sortedRows, {{1, 5, 1}, {1, 1, 4}, { 1, 5, 1}, {2, 2, 1}, {2, 2, 1}, {3, 1, 1}, {6, 1, 1}}},
+                      WindowInput{boundsRange1, 0, "MIN", 1, sortedRows, {{1, 5, 1}, {1, 1, 1}, { 1, 5, 1}, {2, 2, 1}, {2, 2, 1}, {3, 1, 1}, {6, 1, 1}}},
                       // range based input, offset of offset 3 preceding
                       WindowInput{boundsRangeP3, 0, "SUM", 1, sortedRows, {{1, 5, 11}, {1, 1, 11}, { 1, 5, 11}, {2, 2, 15}, {2, 2, 15}, {3, 1, 16}, {6, 1, 2}}},
                       WindowInput{boundsRangeP3, 0, "SUM", 1, sortedRows, {{1, 5, 11}, {1, 1, 11}, { 1, 5, 11}, {2, 2, 15}, {2, 2, 15}, {3, 1, 16}, {6, 1, 2}}}
