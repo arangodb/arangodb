@@ -145,10 +145,10 @@ function inventorySuite () {
 
       db._useDatabase("UnitTestsDumpSrc");
 
-      db._create("UnitTestsDumpEmpty", { waitForSync: true, indexBuckets: 256 });
+      db._create("UnitTestsDumpEmpty", { waitForSync: true });
       db._createEdgeCollection("UnitTestsDumpEdges");
 
-      let c = db._create("UnitTestsDumpIndexes", { indexBuckets: 32 });
+      let c = db._create("UnitTestsDumpIndexes");
       c.ensureUniqueConstraint("a_uc");
       c.ensureSkiplist("a_s1", "a_s2");
       c.ensureHashIndex("a_h1", "a_h2");
