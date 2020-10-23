@@ -30,6 +30,7 @@
 #include "Basics/NumberUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -315,6 +316,18 @@ int fuerteStatusToArangoErrorCode(fuerte::Response const& res) {
 
 std::string fuerteStatusToArangoErrorMessage(fuerte::Response const& res) {
   return fuerte::status_code_to_string(res.statusCode());
+}
+
+void addSourceHeader(fuerte::Request& req) {
+  auto state = ServerState::instance();
+  if (state->isCoordinator() || state->isDBServer()) {
+    req.header.addMeta(StaticStrings::ClusterCommSource, state->getId());
+  } else if (state->isAgent()) {
+    auto agent = AgencyFeature::AGENT;
+    if (agent != nullptr) {
+      req.header.addMeta(StaticStrings::ClusterCommSource, "AGENT-" + agent->id());
+    }
+  }
 }
 
 }  // namespace network
