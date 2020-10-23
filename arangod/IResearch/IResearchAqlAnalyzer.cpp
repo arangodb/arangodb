@@ -59,7 +59,7 @@ using namespace arangodb::velocypack::deserializer;
 using namespace arangodb::aql;
 
 constexpr const char QUERY_STRING_PARAM_NAME[] = "queryString";
-constexpr const char COLLAPSE_ARRAY_POSITIONS_PARAM_NAME[] = "collapseArrayPos";
+constexpr const char COLLAPSE_ARRAY_POSITIONS_PARAM_NAME[] = "collapsePositions";
 constexpr const char KEEP_NULL_PARAM_NAME[] = "keepNull";
 constexpr const char BATCH_SIZE_PARAM_NAME[] = "batchSize";
 constexpr const char CALCULATION_PARAMETER_NAME[] = "param";
@@ -100,7 +100,7 @@ using ValidatingOptionsDeserializer = validate<OptionsDeserializer, OptionsValid
 
 bool parse_options_slice(VPackSlice const& slice,
                          arangodb::iresearch::AqlAnalyzer::Options& options) {
-  auto const res = deserialize<ValidatingOptionsDeserializer>(slice);
+  auto const res = deserialize<ValidatingOptionsDeserializer, hints::hint_list<hints::ignore_unknown>>(slice);
   if (!res.ok()) {
     LOG_TOPIC("4349c", WARN, arangodb::iresearch::TOPIC)
         << "Failed to deserialize options from JSON while constructing '"
@@ -118,7 +118,7 @@ bool normalize_slice(VPackSlice const& slice, VPackBuilder& builder) {
     VPackObjectBuilder root(&builder);
     builder.add(QUERY_STRING_PARAM_NAME, VPackValue(options.queryString));
     builder.add(COLLAPSE_ARRAY_POSITIONS_PARAM_NAME,
-                VPackValue(options.collapseArrayPositions));
+                VPackValue(options.collapsePositions));
     builder.add(KEEP_NULL_PARAM_NAME, VPackValue(options.keepNull));
     builder.add(BATCH_SIZE_PARAM_NAME, VPackValue(options.batchSize));
     return true;
@@ -427,7 +427,7 @@ bool AqlAnalyzer::next() {
             _term.value = irs::bytes_ref::EMPTY;
           }
           _inc.value = _nextIncVal;
-          _nextIncVal = !_options.collapseArrayPositions;
+          _nextIncVal = !_options.collapsePositions;
           return true;
         }
       }

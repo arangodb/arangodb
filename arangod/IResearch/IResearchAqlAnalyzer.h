@@ -46,7 +46,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
     Options() = default;
 
     Options(std::string&& query, bool collapse, bool keep, uint32_t batch)
-      : queryString(query), collapseArrayPositions(collapse),
+      : queryString(query), collapsePositions(collapse),
       keepNull(keep), batchSize(batch) {}
 
     /// @brief Query string to be executed for each document.
@@ -56,7 +56,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
     /// @brief determines how processed members of array result:
     /// if set to true all members are considered to be at position 0
     /// if set to false each array members is set at positions serially
-    bool collapseArrayPositions{ false };
+    bool collapsePositions{ false };
 
     /// @brief do not emit empty token if query result is NULL
     /// this could be used fo index filtering.

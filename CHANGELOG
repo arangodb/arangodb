@@ -1,5 +1,6 @@
 devel
 -----
+* Added new 'aql' type for ArangoSearch analyzers
 
 * Added the following metrics for synchronous replication in the cluster:
 

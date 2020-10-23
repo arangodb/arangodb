@@ -79,6 +79,9 @@ arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(arangodb::application_f
   auto rv = info.load("_expression_vocbase", std::numeric_limits<uint64_t>::max());
   return info;
 }
+
+/// @brief sandbox vocbase for executing calculation queries
+std::unique_ptr<TRI_vocbase_t> calculationVocbase;
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -354,7 +357,7 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void DatabaseFeature::initCalculationVocbase(application_features::ApplicationServer& server) {
-  _calculationVocbase =
+  calculationVocbase =
       std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL,
                                       createExpressionVocbaseInfo(server));
 }
@@ -529,7 +532,7 @@ void DatabaseFeature::unprepare() {
     closeOpenDatabases();
   } catch (...) {
   }
-  _calculationVocbase.reset();
+  calculationVocbase.reset();
   // clear singleton
   DATABASE = nullptr;
 }
@@ -1069,11 +1072,9 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t& vocba
   }
 }
 
-std::unique_ptr<TRI_vocbase_t> arangodb::DatabaseFeature::_calculationVocbase;
-
 TRI_vocbase_t& arangodb::DatabaseFeature::getCalculationVocbase() {
-  TRI_ASSERT(_calculationVocbase);
-  return *_calculationVocbase;
+  TRI_ASSERT(calculationVocbase);
+  return *calculationVocbase;
 }
 
 void DatabaseFeature::stopAppliers() {

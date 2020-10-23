@@ -216,9 +216,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   // i am here for debugging only.
   static TRI_vocbase_t* CURRENT_VOCBASE;
 #endif
-
-  /// @brief sandbox vocbase for executing calculation queries
-  static std::unique_ptr<TRI_vocbase_t> _calculationVocbase;
 };
 
 }  // namespace arangodb

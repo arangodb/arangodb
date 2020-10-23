@@ -135,7 +135,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
     auto ptr =
         irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                       irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"collapseArrayPos\": true, \"batchSize\":3,"
+                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"collapsePositions\": true, \"batchSize\":3,"
                                                                                            "\"queryString\": \"FOR d IN 1..5 RETURN CONCAT(UPPER(@param), d)\"}")
                                                                          ->slice()),
                                       false);
@@ -148,7 +148,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
     auto ptr =
         irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                       irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"collapseArrayPos\": false,"
+                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"collapsePositions\": false,"
                                                                                            "\"queryString\": \"FOR d IN [UPPER(@param), @param, LOWER(@param)] RETURN d\"}")
                                                                          ->slice()),
                                       false);
@@ -164,7 +164,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
         irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                       irs::type<irs::text_format::vpack>::get(),
                                       arangodb::iresearch::ref<char>(VPackParser::fromJson("\
-                                        {\"collapseArrayPos\": false,\
+                                        {\"collapsePositions\": false,\
                                          \"queryString\": \"FOR d IN 1..TO_NUMBER(@param)\
                                                              FILTER d%2 != 0\
                                                                FOR c IN 1..TO_NUMBER(@param)\
@@ -179,7 +179,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
         irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                       irs::type<irs::text_format::vpack>::get(),
                                       arangodb::iresearch::ref<char>(VPackParser::fromJson("\
-                                        {\"collapseArrayPos\": false,\
+                                        {\"collapsePositions\": false,\
                                          \"queryString\": \"FOR d IN [@param]\
                                                                LET Avg = (FOR c IN 1..TO_NUMBER(@param) FILTER c%2==0 RETURN c )\
                                                                    RETURN CONCAT(d,AVERAGE(Avg))\"}")
@@ -246,7 +246,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
           AQL_ANALYZER_NAME,
           irs::type<irs::text_format::vpack>::get(),
           arangodb::iresearch::ref<char>(VPackParser::fromJson(
-            "{\"collapseArrayPos\": true, \"keepNull\":true,"
+            "{\"collapsePositions\": true, \"keepNull\":true,"
             "\"queryString\": \"FOR d IN [null, null, @param, 'b'] RETURN d\"}")
             ->slice()),
           false);
@@ -394,7 +394,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_json) {
       irs::analysis::analyzers::get(
         AQL_ANALYZER_NAME,
         irs::type<irs::text_format::json>::get(),
-        "{\"collapseArrayPos\": true, \"keepNull\":true,"
+        "{\"collapsePositions\": true, \"keepNull\":true,"
         "\"queryString\": \"FOR d IN [null, null, @param, 'b'] RETURN d\"}",
         false);
   ASSERT_NE(nullptr, ptr);
@@ -410,7 +410,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize_json) {
   auto actualSlice = actualVPack->slice();
   ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
   ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
-  ASSERT_EQ(actualSlice.get("collapseArrayPos").getBool(), false);
+  ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), false);
   ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1);
 }
 
@@ -424,7 +424,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
-    ASSERT_EQ(actualSlice.get("collapseArrayPos").getBool(), false);
+    ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), false);
     ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1);
   }
   {
@@ -436,7 +436,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), false);
-    ASSERT_EQ(actualSlice.get("collapseArrayPos").getBool(), false);
+    ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), false);
     ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1);
   }
   {
@@ -444,11 +444,11 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
         actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(
-            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"collapseArrayPos\":true}")->slice())));
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"collapsePositions\":true}")->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
-    ASSERT_EQ(actualSlice.get("collapseArrayPos").getBool(), true);
+    ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), true);
     ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1);
   }
   {
@@ -460,7 +460,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
-    ASSERT_EQ(actualSlice.get("collapseArrayPos").getBool(), false);
+    ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), false);
     ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1000);
   }
   {
@@ -470,12 +470,12 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
                                                     arangodb::iresearch::ref<char>(
                                                         VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
                                                                               "\"batchSize\":10, \"keepNull\":false,"
-                                                                              "\"collapseArrayPos\":true}")
+                                                                              "\"collapsePositions\":true}")
                                                             ->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), false);
-    ASSERT_EQ(actualSlice.get("collapseArrayPos").getBool(), true);
+    ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), true);
     ASSERT_EQ(actualSlice.get("batchSize").getInt(), 10);
   }
   // empty query
@@ -486,7 +486,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"\","
                                   "\"batchSize\":10, \"keepNull\":false,"
-                                  "\"collapseArrayPos\":true}")
+                                  "\"collapsePositions\":true}")
                 ->slice())));
   }
   // missing query
@@ -497,7 +497,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{"
                                   "\"batchSize\":10, \"keepNull\":false,"
-                                  "\"collapseArrayPos\":true}")
+                                  "\"collapsePositions\":true}")
                 ->slice())));
   }
   // invalid batch size
@@ -508,7 +508,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
                                   "\"batchSize\":0, \"keepNull\":false,"
-                                  "\"collapseArrayPos\":true}")
+                                  "\"collapsePositions\":true}")
                 ->slice())));
   }
   // invalid batch size
@@ -519,7 +519,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
                                   "\"batchSize\":1001, \"keepNull\":false,"
-                                  "\"collapseArrayPos\":true}")
+                                  "\"collapsePositions\":true}")
                 ->slice())));
   }
   // invalid batch size
@@ -530,7 +530,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
                                   "\"batchSize\":false, \"keepNull\":false,"
-                                  "\"collapseArrayPos\":true}")
+                                  "\"collapsePositions\":true}")
                 ->slice())));
   }
   // invalid keepNull
@@ -541,10 +541,10 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
                                   "\"batchSize\":1, \"keepNull\":10,"
-                                  "\"collapseArrayPos\":true}")
+                                  "\"collapsePositions\":true}")
                 ->slice())));
   }
-  // invalid collapseArrayPos
+  // invalid collapsePositions
   {
     std::string actual;
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
@@ -552,7 +552,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
                                   "\"batchSize\":11, \"keepNull\":false,"
-                                  "\"collapseArrayPos\":2}")
+                                  "\"collapsePositions\":2}")
                 ->slice())));
   }
   // Unknown parameter
@@ -563,12 +563,12 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
         arangodb::iresearch::ref<char>(
             VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"unknown_argument\":1,"
                                   "\"batchSize\":10, \"keepNull\":false,"
-                                  "\"collapseArrayPos\":true}")
+                                  "\"collapsePositions\":true}")
                 ->slice())));
     VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), false);
-    ASSERT_EQ(actualSlice.get("collapseArrayPos").getBool(), true);
+    ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), true);
     ASSERT_EQ(actualSlice.get("batchSize").getInt(), 10);
   }
 }
