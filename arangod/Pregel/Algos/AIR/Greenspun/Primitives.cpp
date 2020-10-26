@@ -839,54 +839,57 @@ EvalResult Prim_Map(Machine& ctx, VPackSlice const paramsList, VPackBuilder& res
 
 EvalResult Prim_Reduce(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
   if (!paramsList.isArray() || paramsList.length() < 2) {
-    return EvalError("expecting at least two arguments, a function and two dicts");
+    return EvalError(
+        "expecting at least two arguments, a function and two dicts");
   }
 
   auto inputValue = paramsList.at(0);
   auto functionSlice = paramsList.at(1);
+  auto inputAccumulator = paramsList.at(2);
 
-  VPackSlice inputAccumulator;
-  if (paramsList.length() == 3) {
-    inputAccumulator = paramsList.at(2); // need to do that?
+  if (inputAccumulator.isNone()) {
+    return EvalError("input accumulator is required but not set!");
   }
 
-  // reduce(value, accumulator, currentValue)
+  // reduce(key, value, accumulator)
   // iter can be either VPackArrayIterator or VPackObjectIterator
-  auto buildLambdaParameters = [&] (VPackBuilder& parameter, auto& iter) {
+  auto buildLambdaParameters = [&](VPackBuilder& parameter, auto& iter) {
     {
       VPackArrayBuilder pb(&parameter);
-      if (iter.isFirst()) {
-        parameter.add(VPackValue(iter.index())); // key
-
-        if (inputAccumulator.isNone()) {
-          parameter.add(iter.value()); // value
-          iter++;
-        } else {
-          parameter.add(inputAccumulator); // value
-        }
-        parameter.add(iter.value()); // accum
+      if constexpr (std::is_same_v<VPackObjectIterator&, decltype(iter)>) {
+        parameter.add(iter.key()); // object key
       } else {
-        parameter.add(VPackValue(iter.index())); // key
-        parameter.add(iter.value()); // value
-        parameter.add(result.slice()); // accumulator / previous result
+        parameter.add(VPackValue(iter.index())); // array index
+      }
+
+      if (iter.isFirst()) {
+        parameter.add(iter.value());  // value
+        parameter.add(inputAccumulator);  // accum
+      } else {
+        parameter.add(iter.value());              // value
+        parameter.add(result.slice());  // accumulator / previous result
       }
     }
   };
 
-  if (inputValue.isArray()) {
+  auto reduceArray = [&](auto& inputValue) -> EvalResult {
     for (VPackArrayIterator iter(inputValue); iter.valid(); iter++) {
       VPackBuilder parameter;
       buildLambdaParameters(parameter, iter);
 
       result.clear();
-      auto res = EvaluateApply(ctx, functionSlice,
-                               VPackArrayIterator(parameter.slice()), result, false);
+      EvalResult res = EvaluateApply(ctx, functionSlice,
+                                     VPackArrayIterator(parameter.slice()), result, false);
       if (res.fail()) {
-        return res.error().wrapMessage("when reducing array parameters " + parameter.toJson());
+        return res.error().wrapMessage("when reducing array parameters " +
+                                       parameter.toJson());
       }
     }
-  } else if (inputValue.isObject()) {
-    VPackObjectBuilder ob(&result);
+    // no error
+    return {};
+  };
+
+  auto reduceObject = [&](auto& inputValue) -> EvalResult {
     for (VPackObjectIterator iter(inputValue); iter.valid(); iter++) {
       VPackBuilder parameter;
       buildLambdaParameters(parameter, iter);
@@ -895,12 +898,29 @@ EvalResult Prim_Reduce(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
       auto res = EvaluateApply(ctx, functionSlice,
                                VPackArrayIterator(parameter.slice()), result, false);
       if (res.fail()) {
-        return res.error().wrapMessage("when reducing object parameters " + parameter.toJson());
+        return res.error().wrapMessage("when reducing object parameters " +
+                                       parameter.toJson());
       }
     }
+    // no error
+    return {};
+  };
+
+  if (inputValue.isArray()) {
+    auto res = reduceArray(inputValue);
+    if (res.fail()) {
+      return res;
+    }
+  } else if (inputValue.isObject()) {
+    auto res = reduceObject(inputValue);
+    if (res.fail()) {
+      return res;
+    }
   } else {
-    return EvalError("expected two objects, found: " + inputValue.toJson() +
-                     ", " + inputAccumulator.toJson());
+    return EvalError("expected either object or array as input value, found: " +
+                     inputValue.toJson() +
+                     ". Accumulator can be any type: " + inputAccumulator.toJson() +
+                     " (depends on lambda definition");
   }
 
   return {};

@@ -1328,10 +1328,8 @@ TEST_CASE("Test [reduce] primitive", "[reduce]") {
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL(res.error().toString());
-    }
-    REQUIRE(result.slice().getNumericValue<double>() == 6);
+    // Definition does not allow reduce without initial accumulator being set
+    REQUIRE(res.fail());
   }
 
   SECTION("reduce list with init accumulator value (number)") {
@@ -1342,7 +1340,9 @@ TEST_CASE("Test [reduce] primitive", "[reduce]") {
             ["quote", []],
             ["quote", ["key", "value", "accum" ]],
             ["quote",
-              ["+", ["var-ref", "value"], ["var-ref", "accum"] ]
+              ["seq",
+                ["+", ["var-ref", "value"], ["var-ref", "accum"] ]
+              ]
             ]
           ],
           100
@@ -1354,6 +1354,34 @@ TEST_CASE("Test [reduce] primitive", "[reduce]") {
       FAIL(res.error().toString());
     }
     REQUIRE(result.slice().getNumericValue<double>() == 106);
+  }
+
+  SECTION("reduce list with input list and init accumulator list") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+        ["reduce",
+          ["list", 1, 2, 3],
+          ["lambda",
+            ["quote", []],
+            ["quote", ["key", "value", "accum" ]],
+            ["quote",
+              [
+                "list-set",
+                ["var-ref", "accum"],
+                ["var-ref", "key"],
+                ["+", ["var-ref", "value"], ["list-ref", ["var-ref", "accum"], ["var-ref", "key"]] ]
+              ]
+            ]
+          ],
+          ["list", 1, 2, 3]
+        ]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(res.ok());
+    REQUIRE(result.slice().toJson() == "[2,4,6]");
   }
 
   /* Objects */
@@ -1375,10 +1403,7 @@ TEST_CASE("Test [reduce] primitive", "[reduce]") {
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL(res.error().toString());
-    }
-    REQUIRE(result.slice().getNumericValue<double>() == 6);
+    REQUIRE(res.fail());
   }
 
   SECTION("reduce object with init accumulator value (number)") {
@@ -1405,8 +1430,41 @@ TEST_CASE("Test [reduce] primitive", "[reduce]") {
     REQUIRE(result.slice().getNumericValue<double>() == 106);
   }
 
-  SECTION("reduce object with init accumulator object and return new object") {
+  /*
+   * Input:  {"a": 1, "b": 2, "c": 3}
+   * Accum:  {"a": 1, "b": 2, "c": 3, "d": 4}
+   * Result: {"a": 2, "b": 4, "c": 6, "d": 4}
+   */
 
+  SECTION("reduce list with input list and init accumulator list") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+        ["reduce",
+          {"a": 1, "b": 2, "c": 3},
+          ["lambda",
+            ["quote", []],
+            ["quote", ["key", "value", "accum" ]],
+            ["seq",
+              ["print", ""],
+              ["quote",
+                [
+                  "attrib-set",
+                  ["var-ref", "accum"],
+                  ["var-ref", "key"],
+                  ["+", ["var-ref", "value"], ["attrib-ref", ["var-ref", "accum"], ["var-ref", "key"]] ]
+                ]
+              ]
+            ]
+          ],
+          {"a": 1, "b": 2, "c": 3, "d": 4}
+        ]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(res.ok());
+    REQUIRE(result.slice().toJson() == R"json({"a":2,"b":4,"c":6,"d":4})json");
   }
 }
 
