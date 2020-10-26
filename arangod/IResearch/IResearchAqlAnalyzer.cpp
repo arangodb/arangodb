@@ -268,19 +268,19 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
     // Forbid all V8 related stuff as it is not available on DBServers where analyzers run.
     if (ast->willUseV8()) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "V8 usage is forbidden for calculation analyzer"};
+              "V8 usage is forbidden for aql analyzer"};
     }
 
     // no modification (as data access is forbidden) but to give more clear error message
     if (ast->containsModificationNode()) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "DML is forbidden for calculation analyzer"};
+              "DML is forbidden for aql analyzer"};
     }
 
     // no traversal (also data access is forbidden) but to give mo clear error message
     if (ast->containsTraversal()) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "Traversal usage is forbidden for calculation analyzer"};
+              "Traversal usage is forbidden for aql analyzer"};
     }
 
     std::string errorMessage;
@@ -295,13 +295,13 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
                   forbiddenFunctions.find(func->name) != forbiddenFunctions.end()) {
                 errorMessage = "Function '";
                 errorMessage.append(func->name)
-                    .append("' is forbidden for calculation analyzer");
+                    .append("' is forbidden for aql analyzer");
                 return false;
               }
             } break;
             case arangodb::aql::NODE_TYPE_COLLECT: // COLLECT nodes requires optimizer rule to work properly
             case arangodb::aql::NODE_TYPE_COLLECT_COUNT:
-              errorMessage = "COLLECT is forbidden for calculation analyzer";
+              errorMessage = "COLLECT is forbidden for aql analyzer";
               return false;
             case arangodb::aql::NODE_TYPE_PARAMETER: {
               irs::string_ref parameterName(node->getStringValue(), node->getStringLength());
@@ -313,20 +313,20 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
             } break;
             case arangodb::aql::NODE_TYPE_PARAMETER_DATASOURCE:
               errorMessage =
-                  "Datasource acces is forbidden for calculation analyzer";
+                  "Datasource acces is forbidden for aql analyzer";
               return false;
             case arangodb::aql::NODE_TYPE_FCALL_USER:
               errorMessage =
-                  "UDF functions is forbidden for calculation analyzer";
+                  "UDF functions is forbidden for aql analyzer";
               return false;
             case arangodb::aql::NODE_TYPE_VIEW:
             case arangodb::aql::NODE_TYPE_FOR_VIEW:
               errorMessage =
-                  "View access is forbidden for calculation analyzer";
+                  "View access is forbidden for aql analyzer";
               return false;
             case arangodb::aql::NODE_TYPE_COLLECTION:
               errorMessage =
-                  "Collection access is forbidden for calculation analyzer";
+                  "Collection access is forbidden for aql analyzer";
               return false;
             default:
               break;
@@ -390,14 +390,12 @@ namespace iresearch {
 }
 
 /*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_vpack(irs::string_ref const& args) {
-  Options options;
   auto const slice = arangodb::iresearch::slice(args);
   return make_slice(slice);
 }
 
 
 /*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_json(irs::string_ref const& args) {
-  Options options;
   auto builder = VPackParser::fromJson(args);
   return make_slice(builder->slice());
 }
@@ -441,13 +439,16 @@ bool AqlAnalyzer::next() {
         TRI_ASSERT(_executionState != ExecutionState::WAITING);
       } catch (basics::Exception const& e) {
         LOG_TOPIC("b0026", ERR, iresearch::TOPIC)
-            << "error executing calculation query: " << e.message();
+            << "error executing calculation query: " << e.message()
+            << " AQL query:" << _options.queryString;
       } catch (std::exception const& e) {
         LOG_TOPIC("c92eb", ERR, iresearch::TOPIC)
-            << "error executing calculation query: " << e.what();
+            << "error executing calculation query: " << e.what()
+            << " AQL query:" << _options.queryString;
       } catch (...) {
         LOG_TOPIC("bf89b", ERR, iresearch::TOPIC)
-            << "error executing calculation query";
+            << "error executing calculation query"
+            << " AQL query:" << _options.queryString;
       }
     }
   } while (_executionState != ExecutionState::DONE || (_queryResults != nullptr &&
@@ -502,13 +503,16 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
     return true;
   } catch (basics::Exception const& e) {
     LOG_TOPIC("8ee1a", ERR, iresearch::TOPIC)
-        << "error creating calculation query: " << e.message();
+        << "error creating calculation query: " << e.message()
+        << " AQL query:" << _options.queryString;
   } catch (std::exception const& e) {
     LOG_TOPIC("d2223", ERR, iresearch::TOPIC)
-        << "error creating calculation query: " << e.what();
+        << "error creating calculation query: " << e.what()
+        << " AQL query:" << _options.queryString;
   } catch (...) {
     LOG_TOPIC("5ad87", ERR, iresearch::TOPIC)
-        << "error creating calculation query";
+        << "error creating calculation query"
+        << " AQL query:" << _options.queryString;
   }
   return false;
 }
