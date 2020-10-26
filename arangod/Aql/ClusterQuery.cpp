@@ -79,7 +79,7 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
 
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
-  // FIME change this format to take the raw one?
+  // FIXME change this format to take the raw one?
   ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
   _ast->variables()->fromVelocyPack(variables);
   // creating the plan may have produced some collections

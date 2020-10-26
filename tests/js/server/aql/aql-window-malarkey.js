@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, fail */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, fail, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -38,12 +38,9 @@ function WindowMalarkeyTestSuite() {
       c1 = db._create(cname1, { numberOfShards: 4 });
       c2 = db._create(cname2, { numberOfShards: 4 });
 
-      // add sorted index on time
-      c1.ensureIndex({ type: 'skiplist', fields: ['time'] });
-
       let docs = [];
-      for (i = 0; i < 1000; i++) {
-        docs.push({ value: i, time: Date.now() })
+      for (let i = 0; i < 3000; i++) {
+        docs.push({ value: i });
       }
       c1.insert(docs);
     },
@@ -64,7 +61,7 @@ function WindowMalarkeyTestSuite() {
       assertEqual(c1.count(), c2.count());
       let count = c1.count();
       c2.toArray().forEach(doc => {
-        let sum = Math.max(0, doc.value - 1) + doc.value + (doc.value < count-1 ? doc.value + 1 : 0);
+        let sum = Math.max(0, doc.value - 1) + doc.value + (doc.value < count - 1 ? doc.value + 1 : 0);
         assertEqual(doc.sum, sum, doc);
         assertEqual(doc.avg, doc.sum / doc.len, doc);
       });
@@ -80,7 +77,7 @@ function WindowMalarkeyTestSuite() {
       assertEqual(c1.count(), c2.count());
       let count = c1.count();
       c2.toArray().forEach(doc => {
-        let sum = Math.max(0, doc.value - 1) + doc.value + (doc.value < count-1 ? doc.value + 1 : 0);
+        let sum = Math.max(0, doc.value - 1) + doc.value + (doc.value < count - 1 ? doc.value + 1 : 0);
         assertEqual(doc.sum, sum);
         assertEqual(doc.avg, doc.sum / doc.len, doc);
       });
@@ -96,7 +93,7 @@ function WindowMalarkeyTestSuite() {
       db._query(q, { '@cc': cname1 });
       let count = c1.count();
       c1.toArray().forEach(doc => {
-        let sum = Math.max(0, doc.value - 1) + doc.value + (doc.value < count-1 ? doc.value + 1 : 0);
+        let sum = Math.max(0, doc.value - 1) + doc.value + (doc.value < count - 1 ? doc.value + 1 : 0);
         assertEqual(doc.sum, sum);
         assertEqual(doc.avg, doc.sum / doc.len, doc);
       });
@@ -111,7 +108,7 @@ function WindowMalarkeyTestSuite() {
       db._query(q, { '@cc': cname1 });
       let count = c1.count();
       c1.toArray().forEach(doc => {
-        let sum = Math.max(0, doc.value - 1) + doc.value + (doc.value < count-1 ? doc.value + 1 : 0);
+        let sum = Math.max(0, doc.value - 1) + doc.value + (doc.value < count - 1 ? doc.value + 1 : 0);
         assertEqual(doc.sum, sum);
         assertEqual(doc.avg, doc.sum / doc.len, doc);
       });
@@ -127,10 +124,9 @@ function WindowMalarkeyTestSuite() {
       let didThrow = false;
       try {
         db._query(q, { '@input': cname1, '@output': cname2 });
-        worked = true;
       } catch (err) {
         didThrow = true;
-        assertEqual(internal.errors.ERROR_QUERY_WINDOW_AFTER_MODIFICATION.code, err.errorNum);
+        assertEqual(errors.ERROR_QUERY_WINDOW_AFTER_MODIFICATION.code, err.errorNum);
       }
       assertTrue(didThrow);
     },
@@ -145,10 +141,9 @@ function WindowMalarkeyTestSuite() {
       let didThrow = false;
       try {
         db._query(q, { '@cc': cname1 });
-        worked = true;
       } catch (err) {
         didThrow = true;
-        assertEqual(internal.errors.ERROR_QUERY_WINDOW_AFTER_MODIFICATION.code, err.errorNum);
+        assertEqual(errors.ERROR_QUERY_WINDOW_AFTER_MODIFICATION.code, err.errorNum);
       }
       assertTrue(didThrow);
     },
@@ -163,17 +158,156 @@ function WindowMalarkeyTestSuite() {
       let didThrow = false;
       try {
         db._query(q, { '@cc': cname1 });
-        worked = true;
       } catch (err) {
         didThrow = true;
-        assertEqual(internal.errors.ERROR_QUERY_WINDOW_AFTER_MODIFICATION.code, err.errorNum);
+        assertEqual(errors.ERROR_QUERY_WINDOW_AFTER_MODIFICATION.code, err.errorNum);
       }
       assertTrue(didThrow);
     },
+  };
+}
 
+function WindowDateRangeTestSuite() {
+
+  const cname = "WindowTestCollection1";
+  let c = null;
+  const keyPref = 'row-';
+
+  const q = `
+  FOR doc IN @@cc 
+    WINDOW doc.time WITH {preceding: @preceding, following: @following} 
+    AGGREGATE minTime = MIN(doc.time), maxTime = MAX(doc.time), 
+              minIdx = MIN(doc.idx), maxIdx = MAX(doc.idx),
+              l = LENGTH(doc)
+    RETURN { minTime: minTime, maxTime: maxTime, 
+             minIdx: minIdx, maxIdx: maxIdx,
+             length: l, time: doc.time, idx: doc.idx} 
+  `;
+
+  function runDurationTest() {
+    let intervals = [["P1D", "P2D"],
+    ["P2M15DT6H30.33S", "P1M3WT10H"],
+    ["P4M3D", "P1Y1M3D"],
+    ["P1Y3M2D", "P1M"],
+    ["P1Y1M3D", "P1M3DT2H30M20S"],
+    ["P2M15D", "P1Y1MT10M"],
+    ["P2M15D", "P1Y1MT10M"]];
+    
+    intervals.forEach(pair => {
+      print("testing ", pair);
+
+      let cursor = db._query(q, { '@cc': cname, preceding: pair[0], following: pair[1] });
+      assertEqual(cursor.count(), c.count());
+      while (cursor.hasNext()) {
+        let row = cursor.next();
+
+        // considered rows are all within the specified duration
+        let l = db._query("RETURN DATE_DIFF(DATE_SUBTRACT(@row, @duration), @other, 'f')",
+          { row: row.time, duration: pair[0], other: row.minTime }).toArray()[0];
+
+        assertTrue(l >= 0);
+
+        l = db._query("RETURN DATE_DIFF(@other, DATE_ADD(@row, @duration), 'f')",
+          { row: row.time, duration: pair[1], other: row.maxTime }).toArray()[0];
+
+        assertTrue(l >= 0);
+
+        let diffHours = db._query("RETURN DATE_DIFF(DATE_SUBTRACT(@row, @preceding), DATE_ADD(@row, @following), 'h')",
+          { row: row.time, preceding: pair[0], following: pair[1] }).toArray()[0];
+
+        assertTrue(row.length <= diffHours, row);
+
+        assertEqual(c.document(keyPref + row.minIdx).time, row.minTime);
+        assertEqual(c.document(keyPref + row.maxIdx).time, row.maxTime);
+
+        let foundBound = false;
+        try {
+
+          let rowLess = c.document(keyPref + (row.minIdx - 1));
+          assertTrue(rowLess.time < row.minTime, row);
+          foundBound = true;
+        } catch (err) {
+          assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+        }
+        try {
+          let rowMore = c.document(keyPref + (row.maxIdx + 1));
+          assertTrue(rowMore.time > row.maxTime, row);
+          foundBound = true;
+        } catch (err) {
+          assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+        }
+
+        assertTrue(foundBound, row);
+      }
+    });
+  }
+
+  return {
+    setUpAll: function () {
+      c = db._create(cname, { numberOfShards: 4 });
+
+      let i = 0;
+      let docs = [];
+
+      let startYear = 1999;
+      let endYear = 2021;
+      for (let y = startYear; y < endYear; y++) {
+        let date = new Date(y, 0);
+        for (let m = 0; m < 12; m++) {
+          date.setMonth(m);
+          for (let d = 1; d <= 31; d += 2) {
+            date.setDate(d);
+            if (date.getMonth() !== m) {
+              break;
+            }
+
+            // pick a time of day
+            date.setHours(y - startYear + 2, m, d, 100);
+
+            docs.push({ _key: keyPref + i, idx: i, time: date.valueOf() });
+            i++;
+
+          }
+        }
+        c.insert(docs);
+      }
+
+      print("Collection count", c.count());
+    },
+
+    tearDownAll: function () {
+      db._drop(cname);
+    },
+
+    testDateRanges: function () {
+      let actual = AQL_EXPLAIN(q, { '@cc': cname, preceding: "P1D", following: "P1D" });
+      let nodes = actual.plan.nodes;
+
+      let sortNodes = nodes.filter(n => n.type === "SortNode");
+      assertEqual(sortNodes.length, 1);
+      assertEqual(1, sortNodes[0].elements.length);
+      assertFalse(sortNodes[0].stable);
+
+      runDurationTest();
+    },
+
+    testDateRangesWithIndex: function () {
+
+      // add sorted index on time
+      c.ensureIndex({ type: 'skiplist', fields: ['time'] });
+
+      let actual = AQL_EXPLAIN(q, { '@cc': cname, preceding: "P1D", following: "P1D" });
+      let nodes = actual.plan.nodes;
+
+      let sortNodes = nodes.filter(n => n.type === "SortNode");
+      assertEqual(sortNodes.length, 0);
+
+      runDurationTest();
+    }
   };
 }
 
 jsunity.run(WindowMalarkeyTestSuite);
+jsunity.run(WindowDateRangeTestSuite);
 
 return jsunity.done();

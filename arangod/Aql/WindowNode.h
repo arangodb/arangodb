@@ -94,7 +94,7 @@ class WindowBounds final {
   double _followingNumber = 0.0;
 };
 
-/// @brief class CollectNode
+/// @brief class WindowNode
 class WindowNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;

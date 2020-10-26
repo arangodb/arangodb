@@ -198,7 +198,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
         auto value = member->getMember(0);
-        TRI_ASSERT(value->isConstant()); // simon: what enforces this assertion ?
+        TRI_ASSERT(value->isConstant());
 
         if (name == "bfs") {
           options->mode = value->isTrue()

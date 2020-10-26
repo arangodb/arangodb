@@ -76,7 +76,7 @@ WindowBounds::WindowBounds(Type type,
   if (Type::Range == type) {
     if (!(preceding.isString() && following.isString()) &&
         !(preceding.isNumber() && following.isNumber())) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                                      "WINDOW range spec is invalid");
     }
 
@@ -435,8 +435,15 @@ void WindowNode::setAggregateVariables(std::vector<AggregateVarInfo> const& aggr
 
 /// @brief estimateCost
 CostEstimate WindowNode::estimateCost() const {
-  // FIXME fix
-  return _dependencies.at(0)->getCost();
+  // we never return more rows than above
+  CostEstimate estimate = _dependencies.at(0)->getCost();
+  if (_rangeVariable == nullptr) {
+    int64_t numRows = 1 + _bounds.numPrecedingRows() + _bounds.numFollowingRows();
+    estimate.estimatedCost += double(numRows * numRows) * _aggregateVariables.size();
+  } else {  // guestimate
+    estimate.estimatedCost += 4 * _aggregateVariables.size();
+  }
+  return estimate;
 }
 
 ExecutionNode::NodeType WindowNode::getType() const {

@@ -49,7 +49,6 @@ devel
   Client applications and tests that rely on the behavior that setting
   any of these attributes produces an error when using the RocksDB engine
   may need adjustment now.
->>>>>>> 73f9bc8b2c6ce7c0c607c3013bf0f1228ea09bf5
 
 * Added the following metrics for synchronous replication in the cluster:
 

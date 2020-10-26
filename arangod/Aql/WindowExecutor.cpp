@@ -78,8 +78,7 @@ BaseWindowExecutor::AggregatorList BaseWindowExecutor::createAggregators(
 
   TRI_ASSERT(!infos.getAggregateTypes().empty());
   if (infos.getAggregateTypes().empty()) {
-    // no aggregate registers. this means we'll only count the number of items
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no aggregators found in WindowExecutor");
   }
   // we do have aggregate registers. create them as empty AqlValues
   aggregators.reserve(infos.getAggregatedRegisters().size());
@@ -96,7 +95,7 @@ BaseWindowExecutor::AggregatorList BaseWindowExecutor::createAggregators(
 BaseWindowExecutor::BaseWindowExecutor(Infos& infos)
     : _infos(infos), _aggregators(createAggregators(infos)){};
 
-BaseWindowExecutor::~BaseWindowExecutor() {}
+BaseWindowExecutor::~BaseWindowExecutor() = default;
 
 const BaseWindowExecutor::Infos& BaseWindowExecutor::infos() const noexcept {
   return _infos;
@@ -128,7 +127,7 @@ void BaseWindowExecutor::produceOutputRow(InputAqlItemRow& input,
   auto const& registers = _infos.getAggregatedRegisters();
   for (std::unique_ptr<Aggregator> const& agg : _aggregators) {
     AqlValue r = agg->get();
-    AqlValueGuard guard{r, true};
+    AqlValueGuard guard{r, /*destroy*/ false};
     output.moveValueInto(/*outRegister*/ registers[j++].first, input, guard);
     if (reset) {
       agg->reset();
@@ -138,10 +137,9 @@ void BaseWindowExecutor::produceOutputRow(InputAqlItemRow& input,
 }
 
 void BaseWindowExecutor::produceInvalidOutputRow(InputAqlItemRow& input, OutputAqlItemRow& output) {
+  VPackSlice const nullSlice = VPackSlice::nullSlice();
   for (auto const& regId : _infos.getAggregatedRegisters()) {
-    AqlValue r(AqlValueHintNull{});
-    AqlValueGuard guard{r, true};
-    output.moveValueInto(/*outRegister*/ regId.first, input, guard);
+    output.moveValueInto(/*outRegister*/ regId.first, input, nullSlice);
   }
 }
 
@@ -150,9 +148,9 @@ void BaseWindowExecutor::produceInvalidOutputRow(InputAqlItemRow& input, OutputA
 AccuWindowExecutor::AccuWindowExecutor(Fetcher& fetcher, Infos& infos)
     : BaseWindowExecutor(infos) {
   TRI_ASSERT(_infos.bounds().unboundedPreceding());
-};
+}
 
-AccuWindowExecutor::~AccuWindowExecutor() {}
+AccuWindowExecutor::~AccuWindowExecutor() = default;
 
 void AccuWindowExecutor::initializeCursor() {
   resetAggregators();
@@ -213,7 +211,7 @@ auto AccuWindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCa
 WindowExecutor::WindowExecutor(Fetcher& fetcher, Infos& infos)
     : BaseWindowExecutor(infos){};
 
-WindowExecutor::~WindowExecutor() {}
+WindowExecutor::~WindowExecutor() = default;
 
 ExecutorState WindowExecutor::consumeInputRange(AqlItemBlockInputRange& inputRange) {
   const RegisterId rangeRegister = _infos.rangeRegister();
@@ -223,12 +221,12 @@ ExecutorState WindowExecutor::consumeInputRange(AqlItemBlockInputRange& inputRan
   while (inputRange.hasDataRow()) {
     auto [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
-    _rows.push_back(input);
-
+    
     if (rangeRegister != RegisterPlan::MaxRegisterId) {
       AqlValue val = input.getValue(rangeRegister);
       _windowRows.emplace_back(b.calcRow(val, qc));
     }
+    _rows.emplace_back(std::move(input));
     if (state == ExecutorState::DONE) {
       return state;
     }
