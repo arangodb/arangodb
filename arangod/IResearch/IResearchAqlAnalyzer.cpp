@@ -180,7 +180,7 @@ struct CalculationTransactionContext final : public arangodb::transaction::Smart
   }
 
   /// @brief unregister the transaction
-  void unregisterTransaction() noexcept override{};
+  void unregisterTransaction() noexcept override {}
 
   std::shared_ptr<Context> clone() const override {
     TRI_ASSERT(FALSE);
@@ -306,7 +306,7 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
             case arangodb::aql::NODE_TYPE_PARAMETER: {
               irs::string_ref parameterName(node->getStringValue(), node->getStringLength());
               if (parameterName != CALCULATION_PARAMETER_NAME) {
-                errorMessage = "Invalid parameter found '";
+                errorMessage = "Invalid bind parameter found '";
                 errorMessage.append(parameterName).append("'");
                 return false;
               }
