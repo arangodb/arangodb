@@ -92,12 +92,10 @@ if (GTEST_INCLUDE_DIR AND GTEST_SRC_DIR_GTEST AND GTEST_SRC_DIR_CMAKE)
     # definition is required: /D _SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING
 
     target_compile_options(gtest
-      PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
       PRIVATE "/D _SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING"
     )
 
     target_compile_options(gtest_main
-      PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
       PRIVATE "/D _SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING"
     )
   endif()

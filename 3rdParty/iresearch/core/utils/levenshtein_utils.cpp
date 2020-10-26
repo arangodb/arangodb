@@ -37,7 +37,7 @@
 #include "utf8_utils.hpp"
 #include "misc.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -445,9 +445,9 @@ uint64_t chi(const bitset& bs, size_t offset, uint64_t mask) noexcept {
   return (lhs | rhs) & mask;
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 parametric_description::parametric_description(
     std::vector<transition_t>&& transitions,
@@ -754,4 +754,4 @@ bool edit_distance(
   return true;
 }
 
-NS_END
+}

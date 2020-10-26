@@ -38,8 +38,8 @@
 #include <cassert>
 #include <cmath>
 
-NS_ROOT
-NS_BEGIN(math)
+namespace iresearch {
+namespace math {
 
 /// @brief sum two unsigned integral values with overflow check
 /// @returns false if sum is overflowed, true - otherwise
@@ -336,7 +336,7 @@ template<
   output_type table_[Size];
 }; // sqrt
 
-NS_END // math
-NS_END // root
+} // math
+} // root
 
 #endif

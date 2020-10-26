@@ -37,7 +37,7 @@
 #include "utils/utf8_path.hpp"
 #include "utils/type_limits.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace tests;
 
@@ -80,6 +80,10 @@ class tfidf_test: public index_test_base {
 // AverageDocLength (TotalFreq/DocsCount) = 6.5 //
 //////////////////////////////////////////////////
 
+TEST_P(tfidf_test, consts) {
+  static_assert("tfidf" == irs::type<irs::tfidf_sort>::name());
+}
+
 TEST_P(tfidf_test, test_load) {
   irs::order order;
   auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
@@ -110,6 +114,7 @@ TEST_P(tfidf_test, make_from_array) {
   {
     auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
+    ASSERT_EQ(irs::type<irs::tfidf_sort>::id(), scorer->type());
     auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(irs::tfidf_sort::WITH_NORMS(), tfidf.normalize());
   }
@@ -118,6 +123,7 @@ TEST_P(tfidf_test, make_from_array) {
   {
     auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[]");
     ASSERT_NE(nullptr, scorer);
+    ASSERT_EQ(irs::type<irs::tfidf_sort>::id(), scorer->type());
     auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(irs::tfidf_sort::WITH_NORMS(), tfidf.normalize());
   }
@@ -126,6 +132,7 @@ TEST_P(tfidf_test, make_from_array) {
   {
     auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ true ]");
     ASSERT_NE(nullptr, scorer);
+    ASSERT_EQ(irs::type<irs::tfidf_sort>::id(), scorer->type());
     auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(true, tfidf.normalize());
   }
@@ -1297,4 +1304,4 @@ INSTANTIATE_TEST_CASE_P(
 
 #endif // IRESEARCH_DLL
 
-NS_END // NS_LOCAL
+} // namespace {

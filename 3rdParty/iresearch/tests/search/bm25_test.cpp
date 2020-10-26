@@ -36,7 +36,7 @@
 #include "search/term_filter.hpp"
 #include "utils/utf8_path.hpp"
 
-NS_LOCAL
+namespace {
 
 struct bstring_data_output: public data_output {
   irs::bstring out_;
@@ -78,6 +78,10 @@ class bm25_test: public index_test_base { };
 // AverageDocLength (TotalFreq/DocsCount) = 6.5 //
 //////////////////////////////////////////////////
 
+TEST_P(bm25_test, consts) {
+  static_assert("bm25" == irs::type<irs::bm25_sort>::name());
+}
+
 TEST_P(bm25_test, test_load) {
   irs::order order;
   auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
@@ -93,6 +97,7 @@ TEST_P(bm25_test, make_from_array) {
   {
     auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
+    ASSERT_EQ(irs::type<irs::bm25_sort>::id(), scorer->type());
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(irs::bm25_sort::K(), bm25.k());
     ASSERT_EQ(irs::bm25_sort::B(), bm25.b());
@@ -102,6 +107,7 @@ TEST_P(bm25_test, make_from_array) {
   {
     auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[]");
     ASSERT_NE(nullptr, scorer);
+    ASSERT_EQ(irs::type<irs::bm25_sort>::id(), scorer->type());
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(irs::bm25_sort::K(), bm25.k());
     ASSERT_EQ(irs::bm25_sort::B(), bm25.b());
@@ -111,6 +117,7 @@ TEST_P(bm25_test, make_from_array) {
   {
     auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5 ]");
     ASSERT_NE(nullptr, scorer);
+    ASSERT_EQ(irs::type<irs::bm25_sort>::id(), scorer->type());
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(1.5f, bm25.k());
     ASSERT_EQ(irs::bm25_sort::B(), bm25.b());
@@ -129,6 +136,7 @@ TEST_P(bm25_test, make_from_array) {
   {
     auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, 1.7 ]");
     ASSERT_NE(nullptr, scorer);
+    ASSERT_EQ(irs::type<irs::bm25_sort>::id(), scorer->type());
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(1.5f, bm25.k());
     ASSERT_EQ(1.7f, bm25.b());
@@ -1443,4 +1451,4 @@ INSTANTIATE_TEST_CASE_P(
 
 #endif // IRESEARCH_DLL
 
-NS_END // NS_LOCAL
+} // namespace {

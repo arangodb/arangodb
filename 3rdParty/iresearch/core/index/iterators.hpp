@@ -30,7 +30,7 @@
 #include "utils/integer.hpp"
 #include "utils/memory.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                    doc iterators 
@@ -189,6 +189,6 @@ inline bool skip(Iterator& itr, size_t count) {
   return true;
 }
 
-NS_END
+}
 
 #endif

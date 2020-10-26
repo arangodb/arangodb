@@ -33,7 +33,7 @@
 #include "utils/thread_utils.hpp"
 #include "utils/memory.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 template<typename Key, typename Hash = std::hash<Key>, typename Equal = std::equal_to<Key>>
 class ref_counter : public util::noncopyable { // noncopyable because shared_ptr refs hold reference to internal map keys
@@ -129,6 +129,6 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
   std::unordered_set<ref_t, hash, equal_to> refs_;
 }; // ref_counter
 
-NS_END
+}
 
 #endif

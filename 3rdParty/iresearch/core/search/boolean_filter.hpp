@@ -29,7 +29,7 @@
 #include "all_filter.hpp"
 #include "utils/iterator.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class boolean_filter
@@ -97,10 +97,6 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API And: public boolean_filter {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::And";
-  }
-
   DECLARE_FACTORY();
 
   And() noexcept;
@@ -122,10 +118,6 @@ class IRESEARCH_API And: public boolean_filter {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API Or : public boolean_filter {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::Or";
-  }
-
   DECLARE_FACTORY();
 
   Or() noexcept;
@@ -163,10 +155,6 @@ class IRESEARCH_API Or : public boolean_filter {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API Not: public filter {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::Not";
-  }
-
   DECLARE_FACTORY();
 
   Not() noexcept;
@@ -187,7 +175,7 @@ class IRESEARCH_API Not: public filter {
   template<typename T>
   T& filter() {
     typedef typename std::enable_if <
-      std::is_base_of<::iresearch::filter, T >::value, T
+      std::is_base_of< iresearch::filter, T >::value, T
     >::type type;
 
     filter_ = type::make();
@@ -216,6 +204,6 @@ class IRESEARCH_API Not: public filter {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
-NS_END
+}
 
 #endif

@@ -25,7 +25,7 @@
 
 #include "scorers.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class bm25_sort : public sort {
  public:
@@ -73,6 +73,6 @@ class bm25_sort : public sort {
   float_t b_; // 0.75
 }; // bm25_sort
 
-NS_END
+}
 
 #endif

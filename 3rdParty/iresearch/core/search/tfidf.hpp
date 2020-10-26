@@ -25,7 +25,7 @@
 
 #include "scorers.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class tfidf_sort : public sort {
 public:
@@ -54,6 +54,6 @@ private:
   bool normalize_;
 }; // tfidf_sort
 
-NS_END
+}
 
 #endif

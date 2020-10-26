@@ -37,19 +37,19 @@
 #ifdef _WIN32
   #include "async_utils.hpp"
 
-  NS_LOCAL
+  namespace {
     typedef iresearch::async_utils::busywait_mutex mutex_t;
-  NS_END
+  }
 #else
   #include <mutex>
 
-  NS_LOCAL
+  namespace {
     typedef std::mutex mutex_t;
 
-  NS_END
+  }
 #endif
 
-NS_ROOT
+namespace iresearch {
 
 // Generic class representing globally-stored correspondence
 // between object of KeyType and EntryType
@@ -222,6 +222,6 @@ template<
    tag_map_t tag_map_;
 };
 
-NS_END
+}
 
 #endif

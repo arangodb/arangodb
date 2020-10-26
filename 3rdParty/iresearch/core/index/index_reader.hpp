@@ -35,7 +35,7 @@
 #include "utils/memory.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 struct sub_reader;
 
@@ -173,7 +173,7 @@ void visit(const index_reader& index, const string_ref& field,
   visit(index, field, flags::empty_instance(), field_visitor, visitor);
 }
 
-NS_END
+}
 
 MSVC_ONLY(template class IRESEARCH_API std::function<bool(iresearch::doc_id_t)>;) // sub_reader::value_visitor_f
 

@@ -27,14 +27,14 @@
 #include "thread_utils.hpp"
 #include "async_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 const auto RW_MUTEX_WAIT_TIMEOUT = std::chrono::milliseconds(100);
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(async_utils)
+namespace iresearch {
+namespace async_utils {
 
 busywait_mutex::busywait_mutex(): owner_(std::thread::id()) {}
 
@@ -423,5 +423,5 @@ void thread_pool::run() {
   }
 }
 
-NS_END
-NS_END
+}
+}

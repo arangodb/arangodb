@@ -30,7 +30,7 @@
 
 #include "text_token_stemming_stream.hpp"
 
-NS_LOCAL
+namespace {
 
 
 bool make_locale_from_name(const irs::string_ref& name,
@@ -178,10 +178,10 @@ REGISTER_ANALYZER_JSON(irs::analysis::text_token_stemming_stream, make_json,
 REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stemming_stream, make_text, 
                        normalize_text_config);
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 text_token_stemming_stream::text_token_stemming_stream(const std::locale& locale)
   : attributes{{
@@ -281,5 +281,5 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
 }
 
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT

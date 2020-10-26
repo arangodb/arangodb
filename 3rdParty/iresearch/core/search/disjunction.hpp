@@ -30,8 +30,8 @@
 #include "utils/std.hpp"
 #include "utils/type_limits.hpp"
 
-NS_ROOT
-NS_BEGIN(detail)
+namespace iresearch {
+namespace detail {
 
 // Need this proxy since Microsoft has heap validity check in std::pop_heap.
 // Our approach is to refresh top iterator (next or seek) and then remove it
@@ -164,7 +164,7 @@ struct empty_score_buffer {
   }
 }; // empty_score_buffer
 
-NS_END // detail
+} // detail
 
 template<typename Adapter>
 struct compound_doc_iterator : doc_iterator {
@@ -1174,7 +1174,7 @@ class block_disjunction final
     return block_size()*num_blocks();
   }
 
-  static_assert(window() < std::numeric_limits<doc_id_t>::max());
+  static_assert(block_size()*size_t(num_blocks()) < std::numeric_limits<doc_id_t>::max());
 
   using score_buffer_type = std::conditional_t<traits_type::score(),
     detail::score_buffer,
@@ -1474,6 +1474,6 @@ doc_iterator::ptr make_disjunction(
     std::forward<Args>(args)...);
 }
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_DISJUNCTION_H

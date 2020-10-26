@@ -23,7 +23,7 @@
 #include "score.hpp"
 #include "shared.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -33,9 +33,9 @@ const byte_type* default_score(score_ctx* ctx) noexcept {
   return reinterpret_cast<byte_type*>(ctx);
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                            score
@@ -131,4 +131,4 @@ void reset(irs::score& score, order::prepared::scorers&& scorers) {
   }
 }
 
-NS_END // ROOT
+} // ROOT

@@ -30,7 +30,7 @@
 #include "index/field_meta.hpp"
 #include "utils/math_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 const irs::math::sqrt<uint32_t, float_t, 1024> SQRT;
 
@@ -269,9 +269,9 @@ struct term_collector final: public irs::sort::term_collector {
   }
 };
 
-NS_END // LOCAL
+} // LOCAL
 
-NS_ROOT
+namespace iresearch {
 
 // bm25 similarity
 // bm25(doc, term) = idf(term) * ((k + 1) * tf(doc, term)) / (k * (1.0 - b + b * |doc|/avgDL) + tf(doc, term))
@@ -289,7 +289,7 @@ NS_ROOT
 // average document length
 // avgDL = sum(field_term_count) / (# documents with this field)
 
-NS_BEGIN(bm25)
+namespace bm25 {
 
 // empty frequency
 const frequency EMPTY_FREQ;
@@ -424,7 +424,19 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
     auto* freq = irs::get<frequency>(doc_attrs);
 
     if (!freq) {
-      return { nullptr, nullptr };
+      if (0.f == boost) {
+        return { nullptr, nullptr };
+      }
+
+      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
+      irs::sort::score_cast<score_t>(score_buf) = boost;
+
+      return {
+        reinterpret_cast<score_ctx*>(score_buf),
+        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+          return reinterpret_cast<byte_type*>(ctx);
+        }
+      };
     }
 
     auto& stats = stats_cast(query_stats);
@@ -508,7 +520,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
   float_t b_;
 }; // sort
 
-NS_END // bm25
+} // bm25
 
 DEFINE_FACTORY_DEFAULT(irs::bm25_sort)
 
@@ -529,4 +541,4 @@ sort::prepared::ptr bm25_sort::prepare() const {
   return memory::make_unique<bm25::sort>(k_, b_);
 }
 
-NS_END // ROOT
+} // ROOT
