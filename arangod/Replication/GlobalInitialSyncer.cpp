@@ -101,8 +101,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
     return r;
   }
 
-  if (_state.leader.majorVersion < 3 ||
-      (_state.leader.majorVersion == 3 && _state.leader.minorVersion < 3)) {
+  if (_state.leader.version() < 30300) {
     char const* msg =
         "global replication is not supported with a leader < ArangoDB 3.3";
     LOG_TOPIC("57394", WARN, Logger::REPLICATION) << msg;
@@ -375,7 +374,8 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
   // send request
   std::unique_ptr<httpclient::SimpleHttpResult> response;
   _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
-    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+    auto headers = replutils::createHeaders();
+    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
   });
 
   if (replutils::hasFailed(response.get())) {
