@@ -1217,7 +1217,7 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("id", Prim_Identity);
   ctx.setFunction("apply", Prim_Apply);
   ctx.setFunction("map", Prim_Map);  // ["map", <func(index, value) -> value>, <list>] or ["map", <func(key, value) -> value>, <dict>]
-  ctx.setFunction("reduce", Prim_Reduce);  // ["reduce", <func(index, value, accum), <dict>, <dict>]
+  ctx.setFunction("reduce", Prim_Reduce);  // ["reduce", value, <func(index, value, accumulator), accumulator]
   ctx.setFunction("filter", Prim_Filter);  // ["filter", <func(index, value) -> bool>, <list>] or ["filter", <func(key, value) -> bool>, <dict>]
   ctx.setFunction("foldl", Prim_Foldl);
   ctx.setFunction("foldl1", Prim_Foldl1);
