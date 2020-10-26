@@ -180,7 +180,7 @@ struct CalculationTransactionContext final : public arangodb::transaction::Smart
   }
 
   /// @brief unregister the transaction
-  void unregisterTransaction() noexcept override{};
+  void unregisterTransaction() noexcept override {}
 
   std::shared_ptr<Context> clone() const override {
     TRI_ASSERT(FALSE);
