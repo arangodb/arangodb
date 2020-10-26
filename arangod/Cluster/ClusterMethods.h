@@ -327,6 +327,13 @@ class ClusterMethods {
       bool enforceReplicationFactor, bool isNewDatabase,
       std::shared_ptr<LogicalCollection> const& colPtr);
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Enterprise Relecant code to filter out hidden collections
+  ///        that should ne be triggered directly by operations.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static bool filterHiddenCollections(LogicalCollection const& c);
+
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Persist collection in Agency and trigger shard creation process

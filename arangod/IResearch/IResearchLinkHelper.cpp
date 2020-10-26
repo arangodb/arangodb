@@ -39,6 +39,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Cluster/ClusterMethods.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
@@ -176,6 +177,7 @@ arangodb::Result dropLink( // drop link
     arangodb::LogicalCollection& collection, // link collection
     arangodb::iresearch::IResearchLink const& link // link to drop
 ) {
+
   // don't need to create an extra transaction inside arangodb::methods::Indexes::drop(...)
   if (!collection.dropIndex(link.id())) {
     return arangodb::Result(  // result
@@ -187,13 +189,18 @@ arangodb::Result dropLink( // drop link
   return arangodb::Result();
 }
 
-template<>
-arangodb::Result dropLink<arangodb::iresearch::IResearchViewCoordinator>( // drop link
-    arangodb::LogicalCollection& collection, // link collection
-    arangodb::iresearch::IResearchLink const& link // link to drop
+template <>
+arangodb::Result dropLink<arangodb::iresearch::IResearchViewCoordinator>(  // drop link
+    arangodb::LogicalCollection& collection,        // link collection
+    arangodb::iresearch::IResearchLink const& link  // link to drop
 ) {
-  arangodb::velocypack::Builder builder;
+  // Enterprise variant, we only need to drop links on non-hidden
+  // collections (e.g. in SmartGraph Case)
+  if (arangodb::ClusterMethods::filterHiddenCollections(collection)) {
+    return arangodb::Result();
+  }
 
+  arangodb::velocypack::Builder builder;
   builder.openObject();
   builder.add(                                     // add
       arangodb::StaticStrings::IndexId,            // key
