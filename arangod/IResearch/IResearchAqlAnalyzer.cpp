@@ -285,7 +285,7 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
 
     std::string errorMessage;
     // Forbid to use functions that reference analyzers -> problems on recovery as analyzers are not available for querying.
-    // Forbid all non-Dbserver runable functions as it is not available on DBServers where analyzers run.
+    // Forbid all non-Dbserver runnable functions as it is not available on DBServers where analyzers run.
     arangodb::aql::Ast::traverseReadOnly(
         ast->root(), [&errorMessage](arangodb::aql::AstNode const* node) -> bool {
           switch (node->type) {
