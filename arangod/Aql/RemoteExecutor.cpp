@@ -489,7 +489,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
 
   arangodb::network::EndpointSpec spec;
   int res = network::resolveDestination(nf, _server, spec);
-  if (res != TRI_ERROR_NO_ERROR) {  // FIXME return an error  ?!
+  if (res != TRI_ERROR_NO_ERROR) { 
     return Result(res);
   }
   TRI_ASSERT(!spec.endpoint.empty());
@@ -503,8 +503,8 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   req->timeout(kDefaultTimeOutSecs);
   if (!_distributeId.empty()) {
     req->header.addMeta("x-shard-id", _distributeId);
-    req->header.addMeta("shard-id", _distributeId);  // deprecated in 3.7, remove later
   }
+  network::addSourceHeader(*req);
 
   LOG_TOPIC("2713c", DEBUG, Logger::COMMUNICATION)
       << "request to '" << _server << "' '" << fuerte::to_string(type) << " "

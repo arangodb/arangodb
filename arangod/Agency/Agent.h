@@ -397,7 +397,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// must be done under the write lock of _outputLog and the mutex of
   /// _waitForCV to allow a thread to wait for a change using that
   /// condition variable.
-  index_t _commitIndex;
+  /// Furthermore, we make the member atomic, such that we can occasionally
+  /// read it without the locks, for example in sendEmptyAppendEntriesRPC.
+  std::atomic<index_t> _commitIndex;
 
   /// @brief Spearhead (write) kv-store
   Store _spearhead;
@@ -442,6 +444,10 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   // @brief Lock for the above time data about other agents. This
   // protects _confirmed, _lastAcked and _earliestPackage:
   mutable arangodb::Mutex _tiLock;
+
+  /// @brief Facilitate quick note of followership on leaders
+  mutable arangodb::Mutex _emptyAppendLock;
+  std::unordered_map<std::string, SteadyTimePoint> _lastEmptyAcked;
 
   /// @brief RAFT consistency lock:
   ///   _spearhead

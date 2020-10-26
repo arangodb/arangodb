@@ -21,16 +21,16 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_FOXX_QUEUES_FEATURE_H
-#define APPLICATION_FEATURES_FOXX_QUEUES_FEATURE_H 1
+#ifndef APPLICATION_FEATURES_FOXX_FEATURE_H
+#define APPLICATION_FEATURES_FOXX_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 
-class FoxxQueuesFeature final : public application_features::ApplicationFeature {
+class FoxxFeature final : public application_features::ApplicationFeature {
  public:
-  explicit FoxxQueuesFeature(application_features::ApplicationServer& server);
+  explicit FoxxFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -44,9 +44,12 @@ class FoxxQueuesFeature final : public application_features::ApplicationFeature 
     return _pollInterval;
   }
 
+  bool startupWaitForSelfHeal() const;
+
  private:
   double _pollInterval;
   bool _enabled;
+  bool _startupWaitForSelfHeal;
 };
 
 }  // namespace arangodb
