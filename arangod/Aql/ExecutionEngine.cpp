@@ -726,8 +726,7 @@ ExecutionBlock* ExecutionEngine::addBlock(std::unique_ptr<ExecutionBlock> block)
   return block.release();
 }
 
-void arangodb::aql::ExecutionEngine::reset()
-{
+void arangodb::aql::ExecutionEngine::reset() {
   _root = nullptr;
   _blocks.clear();
   _resultRegister = 0;
