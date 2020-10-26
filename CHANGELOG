@@ -1,6 +1,8 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Agency cache clears change history
+
 * Add parameter so `db.collection.truncate({compact: false})` will stop
   compaction from happening. Compaction may have performance impacts even if the
   truncate was invoked on nearly empty collections.
