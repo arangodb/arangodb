@@ -580,7 +580,7 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_ENTERPRISE
-static bool ClusterMethods::filterHiddenCollections(LogicalCollection const& c) {
+bool ClusterMethods::filterHiddenCollections(LogicalCollection const& c) {
   return false;
 }
 #endif
