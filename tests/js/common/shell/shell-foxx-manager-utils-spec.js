@@ -3,6 +3,8 @@
 const { expect } = require("chai");
 const { getReadableName } = require("@arangodb/foxx/manager-utils");
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 suite("getReadableName", () => {
   for (const [input, output] of [
     ["catch-fire", "Catch Fire"],

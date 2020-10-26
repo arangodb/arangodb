@@ -17,6 +17,7 @@ const db = arangodb.db;
 const aql = arangodb.aql;
 var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
 
 function loadFoxxIntoZip(path) {
   let zip = utils.zipDirectory(path);
@@ -56,7 +57,7 @@ function installFoxx(mountpoint, which) {
   expect(crudResp).to.have.property('manifest');
 }
 
-function deleteFox(mountpoint) {
+function deleteFoxx(mountpoint) {
   const deleteResp = arango.DELETE('/_api/foxx/service?force=true&mount=' + mountpoint);
   expect(deleteResp).to.have.property('code');
   expect(deleteResp.code).to.equal(204);
@@ -80,18 +81,19 @@ describe('FoxxApi commit', function () {
   });
 
   it('should fix missing service definition', function () {
-    db._query(aql`
+    expect(db._query(aql`
       FOR service IN _apps
         FILTER service.mount == ${mount}
         REMOVE service IN _apps
-    `);
+    `).getExtra().stats.writesExecuted).to.equal(1);
+
     let result = arango.GET('/test/header-echo');
     expect(result.code).to.equal(404);
 
     result = arango.POST('/_api/foxx/commit', '');
     expect(result.code).to.equal(204);
 
-    result = arango.GET_RAW('/test/header-echo', { origin: origin});
+    result = arango.GET_RAW('/test/header-echo', { origin: origin });
     expect(result.code).to.equal(200);
     if (arango.getEndpoint().match(/^vst:/)) {
       // GeneralServer/HttpCommTask.cpp handles this, not implemented for vst
@@ -225,13 +227,13 @@ describe('Foxx service', () => {
 
   afterEach(() => {
     try {
-      deleteFox(serviceServiceMount);
+      deleteFoxx(serviceServiceMount);
     } catch (e) {}
   });
 
   afterEach(() => {
     try {
-      deleteFox(mount);
+      deleteFoxx(mount);
     } catch (e) {}
   });
 
