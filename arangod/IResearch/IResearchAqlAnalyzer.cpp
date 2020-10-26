@@ -289,6 +289,65 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
     arangodb::aql::Ast::traverseReadOnly(
         ast->root(), [&errorMessage](arangodb::aql::AstNode const* node) -> bool {
           switch (node->type) {
+            // these nodes are ok unconditionally
+            case arangodb::aql::NODE_TYPE_ROOT:
+            case arangodb::aql::NODE_TYPE_FOR:
+            case arangodb::aql::NODE_TYPE_LET:
+            case arangodb::aql::NODE_TYPE_FILTER:
+            case arangodb::aql::NODE_TYPE_ARRAY:
+            case arangodb::aql::NODE_TYPE_RETURN:
+            case arangodb::aql::NODE_TYPE_SORT:
+            case arangodb::aql::NODE_TYPE_SORT_ELEMENT:
+            case arangodb::aql::NODE_TYPE_LIMIT:
+            case arangodb::aql::NODE_TYPE_VARIABLE:
+            case arangodb::aql::NODE_TYPE_ASSIGN:
+            case arangodb::aql::NODE_TYPE_OPERATOR_UNARY_PLUS:
+            case arangodb::aql::NODE_TYPE_OPERATOR_UNARY_MINUS:
+            case arangodb::aql::NODE_TYPE_OPERATOR_UNARY_NOT:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_AND:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_OR:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_PLUS:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_MINUS:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_TIMES:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_DIV:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_MOD:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN:
+            case arangodb::aql::NODE_TYPE_OPERATOR_TERNARY:
+            case arangodb::aql::NODE_TYPE_SUBQUERY:
+            case arangodb::aql::NODE_TYPE_EXPANSION:
+            case arangodb::aql::NODE_TYPE_ITERATOR:
+            case arangodb::aql::NODE_TYPE_VALUE:
+            case arangodb::aql::NODE_TYPE_OBJECT:
+            case arangodb::aql::NODE_TYPE_OBJECT_ELEMENT:
+            case arangodb::aql::NODE_TYPE_REFERENCE:
+            case arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS:
+            case arangodb::aql::NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
+            case arangodb::aql::NODE_TYPE_RANGE:
+            case arangodb::aql::NODE_TYPE_NOP:
+            case arangodb::aql::NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
+            case arangodb::aql::NODE_TYPE_PASSTHRU:
+            case arangodb::aql::NODE_TYPE_ARRAY_LIMIT:
+            case arangodb::aql::NODE_TYPE_DISTINCT:
+            case arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND:
+            case arangodb::aql::NODE_TYPE_OPERATOR_NARY_OR:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+            case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+            case arangodb::aql::NODE_TYPE_QUANTIFIER:
+              break;
+            // some nodes are ok with restrictions
             case arangodb::aql::NODE_TYPE_FCALL: {
               auto func = static_cast<arangodb::aql::Function*>(node->getData());
               if (!func->hasFlag(arangodb::aql::Function::Flags::CanRunOnDBServer) ||
@@ -299,10 +358,6 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
                 return false;
               }
             } break;
-            case arangodb::aql::NODE_TYPE_COLLECT: // COLLECT nodes requires optimizer rule to work properly
-            case arangodb::aql::NODE_TYPE_COLLECT_COUNT:
-              errorMessage = "COLLECT is forbidden for aql analyzer";
-              return false;
             case arangodb::aql::NODE_TYPE_PARAMETER: {
               irs::string_ref parameterName(node->getStringValue(), node->getStringLength());
               if (parameterName != CALCULATION_PARAMETER_NAME) {
@@ -311,24 +366,11 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
                 return false;
               }
             } break;
-            case arangodb::aql::NODE_TYPE_PARAMETER_DATASOURCE:
-              errorMessage =
-                  "Datasource acces is forbidden for aql analyzer";
-              return false;
-            case arangodb::aql::NODE_TYPE_FCALL_USER:
-              errorMessage =
-                  "UDF functions is forbidden for aql analyzer";
-              return false;
-            case arangodb::aql::NODE_TYPE_VIEW:
-            case arangodb::aql::NODE_TYPE_FOR_VIEW:
-              errorMessage =
-                  "View access is forbidden for aql analyzer";
-              return false;
-            case arangodb::aql::NODE_TYPE_COLLECTION:
-              errorMessage =
-                  "Collection access is forbidden for aql analyzer";
-              return false;
+            // by default all is forbidden
             default:
+              errorMessage = "Node type '";
+              errorMessage.append(node->getTypeString()) + "' is forbidden for aql analyzer";
+              return false;
               break;
           }
           return true;

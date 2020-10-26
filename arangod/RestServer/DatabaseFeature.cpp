@@ -76,7 +76,8 @@ using namespace arangodb::options;
 namespace {
 arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(arangodb::application_features::ApplicationServer& server) {
   arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
-  auto rv = info.load("_expression_vocbase", std::numeric_limits<uint64_t>::max());
+  auto rv = info.load("Z", std::numeric_limits<uint64_t>::max());
+  TRI_ASSERT(rv.ok());
   return info;
 }
 
