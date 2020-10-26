@@ -100,15 +100,7 @@ auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
   req->header.addMeta(StaticStrings::HLCHeader,
                       arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp));
 
-  auto state = ServerState::instance();
-  if (state->isCoordinator() || state->isDBServer()) {
-    req->header.addMeta(StaticStrings::ClusterCommSource, state->getId());
-  } else if (state->isAgent()) {
-    auto agent = AgencyFeature::AGENT;
-    if (agent != nullptr) {
-      req->header.addMeta(StaticStrings::ClusterCommSource, "AGENT-" + agent->id());
-    }
-  }
+  network::addSourceHeader(*req);
 
   return req;
 }

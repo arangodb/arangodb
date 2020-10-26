@@ -1,6 +1,58 @@
 devel
 -----
 
+* Bug-fix: Creating an additional index on the edge collection of a disjoint
+  SmartGraph could falsly result into an error: 
+  `Could not find all smart collections ...`
+  This is now ruled out and indexes can be created as expected.
+
+* Added startup option `--foxx.force-update-on-startup` to toggle waiting 
+  for all Foxx services in all databases to be propagated to a coordinator 
+  before it completes the boot sequence. 
+  In case the option is set to `false` (i.e. no waiting), the coordinator 
+  will complete the boot sequence faster, and the Foxx services will be 
+  propagated lazily. Until the initialization procedure has completed for
+  the local Foxx apps, any request to a Foxx app will be responded to with
+  an HTTP 503 error and message 
+
+    waiting for initialization of Foxx services in this database 
+
+  This can cause an unavailability window for Foxx services on coordinator
+  startup for the initial requests to Foxx apps until the app propagation 
+  has completed.
+  
+  When not using Foxx, this option should be set to `false` (default) to 
+  benefit from a faster coordinator startup.
+  Deployments relying on Foxx apps being available as soon as a coordinator 
+  is integrated or responding should set this option to `true`.
+  The option only has an effect for cluster setups. 
+  On single servers and in active failover mode, all Foxx apps will be 
+  available from the very beginning.
+  Note: ArangoDB 3.6 and 3.7 also introduced this option, but with a default
+  value of `true`. ArangoDB 3.8 changes the default to `false`.
+
+* Changed the server-side implementation of the following internal JavaScript 
+  APIs to no-ops:
+  * `internal.reloadAqlFunctions()`: this is a no-op function now
+  * `@arangodb/actions.buildRouting()`: this is a no-op function now
+  * `@arangodb/actions.routingTree`: will return an empty object
+  * `@arangodb/actions.routingList`: will return an empty object
+
+  All the above APIs were intended to be used for internal means only. These
+  APIs are deprecated now and will be removed in ArangoDB v3.9.
+
+* Instead of failing to connect to INADDR_ANY refuse it as a parameter, with a
+  descriptive error message for novice users (issue #12871).
+
+* Remove any special handling for obsoleted collection attributes
+  `indexBuckets`, `journalSize`, `doCompact` and `isVolatile`. These
+  attributes were meaningful only with the MMFiles storage engine and have
+  no meaning with the RocksDB storage engine. Thus any special handling
+  for these attributes can be removed in the internal code. 
+  Client applications and tests that rely on the behavior that setting
+  any of these attributes produces an error when using the RocksDB engine
+  may need adjustment now.
+
 * Added the following metrics for synchronous replication in the cluster:
 
   - `arangodb_refused_followers_count`: Number of times a shard leader received 
@@ -148,7 +200,7 @@ devel
   and will be removed in ArangoDB v3.9.
 
   Two side effects of turning this option off (which is the default) are:
-  * there will no be iteration over all databases at server startup just to check
+  * there will be no iteration over all databases at server startup just to check
     the contents of all `_modules` collections.
   * less collections/shards will be around for deployments that create a large
     number of databases.
