@@ -59,7 +59,8 @@ struct OperationOptions {
         returnOld(false),
         returnNew(false),
         isRestore(false),
-        ignoreUniqueConstraints(false) {}
+        ignoreUniqueConstraints(false),
+        truncateCompact(true) {}
 
 // The following code does not work with VisualStudi 2019's `cl`
 // Lets keep it for debugging on linux.
@@ -137,7 +138,11 @@ struct OperationOptions {
   // for replication; only set true if you an guarantee that any conflicts have
   // already been removed, and are simply not reflected in the transaction read
   bool ignoreUniqueConstraints;
-  
+
+  // when truncating - should we also run the compaction?
+  // defaults to true.
+  bool truncateCompact;
+ 
   // for synchronous replication operations, we have to mark them such that
   // we can deny them if we are a (new) leader, and that we can deny other
   // operation if we are merely a follower. Finally, we must deny replications
