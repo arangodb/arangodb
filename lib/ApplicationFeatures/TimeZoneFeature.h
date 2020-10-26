@@ -18,35 +18,39 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Andreas Dominik Jung
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_FOXX_QUEUES_FEATURE_H
-#define APPLICATION_FEATURES_FOXX_QUEUES_FEATURE_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_TIMEZONE_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_TIMEZONE_FEATURE_H 1
+
+#include <memory>
+#include <string>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+namespace options {
+class ProgramOptions;
+}
 
-class FoxxQueuesFeature final : public application_features::ApplicationFeature {
+class TimeZoneFeature final : public application_features::ApplicationFeature {
  public:
-  explicit FoxxQueuesFeature(application_features::ApplicationServer& server);
+  explicit TimeZoneFeature(application_features::ApplicationServer& server);
+  ~TimeZoneFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+  void start() override final;
 
-  /// @brief return poll interval for foxx queues. returns a negative number if
-  /// foxx queues are turned off
-  double pollInterval() const {
-    if (!_enabled) {
-      return -1.0;
-    }
-    return _pollInterval;
-  }
-
+  static void prepareTimeZoneData(std::string const& binaryPath,
+                                  std::string const& binaryExecutionPath,
+                                  std::string const& binaryName);
+  static TimeZoneFeature* instance();
  private:
-  double _pollInterval;
-  bool _enabled;
+  char const* _binaryPath;
 };
 
 }  // namespace arangodb

@@ -28,12 +28,14 @@
 #include "Basics/tri-strings.h"
 #include "Basics/ScopeGuard.h"
 
+#include <velocypack/Slice.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
 /// @brief empty string singleton
-static char const* EmptyString = "";
+char const* emptyString = "";
 }  // namespace
 
 AstResources::AstResources(ResourceMonitor* resourceMonitor)
@@ -50,64 +52,39 @@ AstResources::~AstResources() {
     TRI_FreeString(it);
   }
 
-  // free nodes
-  for (auto& it : _nodes) {
-    delete it;
-  }
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // we are in the destructor here already. decreasing the memory usage counters
   // will only provide a benefit (in terms of assertions) if we are in
   // maintainer mode, so we can save all these operations in non-maintainer mode
   _resourceMonitor->decreaseMemoryUsage(_strings.capacity() * sizeof(char*) + _stringsLength);
-  _resourceMonitor->decreaseMemoryUsage(_nodes.size() * sizeof(AstNode) +
-                                        _nodes.capacity() * sizeof(AstNode*));
+  _resourceMonitor->decreaseMemoryUsage(_nodes.numUsed() * sizeof(AstNode));
 #endif
 }
 
-/// @brief add a node to the list of nodes
-void AstResources::addNode(AstNode* node) {
-  auto guard = scopeGuard([node]() {
-    // in case something goes wrong, we must free the node we got to prevent
-    // memleaks
-    delete node;
-  });
-
-  size_t capacity;
-
-  if (_nodes.empty()) {
-    // reserve some initial space for nodes
-    capacity = 64;
-  } else {
-    capacity = _nodes.size() + 1;
-    if (capacity > _nodes.capacity()) {
-      capacity *= 2;
-    }
-  }
-
-  TRI_ASSERT(capacity > _nodes.size());
-
-  // reserve space for pointers
-  if (capacity > _nodes.capacity()) {
-    _resourceMonitor->increaseMemoryUsage((capacity - _nodes.capacity()) * sizeof(AstNode*));
-    try {
-      _nodes.reserve(capacity);
-    } catch (...) {
-      // revert change in memory increase
-      _resourceMonitor->decreaseMemoryUsage((capacity - _nodes.capacity()) *
-                                            sizeof(AstNode*));
-      throw;
-    }
-  }
-
+/// @brief create and register an AstNode
+AstNode* AstResources::registerNode(AstNodeType type) {
   // may throw
   _resourceMonitor->increaseMemoryUsage(sizeof(AstNode));
 
-  // will not fail
-  _nodes.push_back(node);
+  try {
+    return _nodes.allocate(type);
+  } catch (...) {
+    _resourceMonitor->decreaseMemoryUsage(sizeof(AstNode));
+    throw;
+  }
+}
 
-  // safely took over the ownership for the node, cancel the deletion now
-  guard.cancel();
+/// @brief create and register an AstNode
+AstNode* AstResources::registerNode(Ast* ast, arangodb::velocypack::Slice slice) {
+  // may throw
+  _resourceMonitor->increaseMemoryUsage(sizeof(AstNode));
+
+  try {
+    return _nodes.allocate(ast, slice);
+  } catch (...) {
+    _resourceMonitor->decreaseMemoryUsage(sizeof(AstNode));
+    throw;
+  }
 }
 
 /// @brief register a string
@@ -119,7 +96,7 @@ char* AstResources::registerString(char const* p, size_t length) {
 
   if (length == 0) {
     // optimization for the empty string
-    return const_cast<char*>(EmptyString);
+    return const_cast<char*>(::emptyString);
   }
 
   if (length < ShortStringStorage::maxStringLength) {
@@ -140,7 +117,7 @@ char* AstResources::registerEscapedString(char const* p, size_t length, size_t& 
   if (length == 0) {
     // optimization for the empty string
     outLength = 0;
-    return const_cast<char*>(EmptyString);
+    return const_cast<char*>(::emptyString);
   }
 
   if (length < ShortStringStorage::maxStringLength) {
@@ -181,13 +158,13 @@ char* AstResources::registerLongString(char* copy, size_t length) {
   if (capacity > _strings.capacity()) {
     // not enough capacity...
     _resourceMonitor->increaseMemoryUsage(
-        ((capacity - _strings.size()) * sizeof(char*)) + length);
+        ((capacity - _strings.capacity()) * sizeof(char*)) + length);
     try {
       _strings.reserve(capacity);
     } catch (...) {
       // revert change in memory increase
       _resourceMonitor->decreaseMemoryUsage(
-          ((capacity - _strings.size()) * sizeof(char*)) + length);
+          ((capacity - _strings.capacity()) * sizeof(char*)) + length);
       throw;
     }
   } else {

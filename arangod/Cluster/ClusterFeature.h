@@ -90,8 +90,30 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::shared_ptr<HeartbeatThread> heartbeatThread();
 
   ClusterInfo& clusterInfo();
+  
+  Counter& followersDroppedCounter() { return _followersDroppedCounter->get(); }
+  Counter& followersRefusedCounter() { return _followersRefusedCounter->get(); }
+  Counter& followersWrongChecksumCounter() { return _followersWrongChecksumCounter->get(); }
 
-  Counter& getDroppedFollowerCounter() { return _dropped_follower_counter->get(); }
+  /**
+   * @brief Add databases to dirty list
+   */
+  void addDirty(std::string const& database);
+  void addDirty(std::unordered_set<std::string> const& databases, bool callNotify);
+  void addDirty(std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& changeset);
+  std::unordered_set<std::string> allDatabases() const;
+
+  /**
+   * @brief Swap out the list of dirty databases
+   *        This method must not be called by any other mechanism than
+   *        the very start of a single maintenance run.
+   */
+  std::unordered_set<std::string> dirty();
+
+  /**
+   * @brief Check database for dirtyness
+   */
+  bool isDirty(std::string const& database) const;
 
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
@@ -129,7 +151,14 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
   std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
-  std::optional<std::reference_wrapper<Counter>> _dropped_follower_counter;
+  std::optional<std::reference_wrapper<Counter>> _followersDroppedCounter;
+  std::optional<std::reference_wrapper<Counter>> _followersRefusedCounter;
+  std::optional<std::reference_wrapper<Counter>> _followersWrongChecksumCounter;
+
+  /// @brief lock for dirty database list
+  mutable arangodb::Mutex _dirtyLock;
+  /// @brief dirty databases, where a job could not be posted)
+  std::unordered_set<std::string> _dirtyDatabases;
 };
 
 }  // namespace arangodb

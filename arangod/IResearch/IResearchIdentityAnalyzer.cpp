@@ -18,21 +18,42 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_COMPILE_TIME_STRLEN_H
-#define ARANGODB_BASICS_COMPILE_TIME_STRLEN_H 1
-
-#include <cstdlib>
+#include "IResearch/IResearchIdentityAnalyzer.h"
+#include "IResearch/IResearchVPackFormat.h"
 
 namespace arangodb {
+namespace iresearch {
 
-template<typename T>
-constexpr static inline size_t compileTimeStrlen(T str) {
-  return *str ? 1U + compileTimeStrlen(str + 1) : 0U;
+/*static*/ bool IdentityAnalyzer::normalize(
+    const irs::string_ref& /*args*/,
+    std::string& out) {
+  out.resize(VPackSlice::emptyObjectSlice().byteSize());
+  std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
+  return true;
 }
 
+/*static*/ irs::analysis::analyzer::ptr IdentityAnalyzer::make(
+    irs::string_ref const& /*args*/) {
+  return std::make_shared<IdentityAnalyzer>();
 }
 
-#endif
+IdentityAnalyzer::IdentityAnalyzer() noexcept
+  : irs::analysis::analyzer(irs::type<IdentityAnalyzer>::get()),
+    _empty(true) {
+}
+
+irs::attribute* IdentityAnalyzer::get_mutable(irs::type_info::type_id type) noexcept {
+  if (type == irs::type<irs::increment>::id()) {
+    return &_inc;
+  }
+
+  return type == irs::type<irs::term_attribute>::id()
+      ? &_term
+      : nullptr;
+}
+
+} // iresearch
+} // arangodb

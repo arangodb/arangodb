@@ -69,8 +69,6 @@ void writeError(int code, arangodb::GeneralResponse* response) {
   builder.add(arangodb::StaticStrings::Code, VPackValue(static_cast<int>(response->responseCode())));
   builder.close();
 
-  VPackOptions options(VPackOptions::Defaults);
-  options.escapeUnicode = true;
   response->setPayload(std::move(buffer), VPackOptions::Defaults);
 }
 } // namespace
@@ -179,8 +177,8 @@ void ReplicationFeature::prepare() {
 }
 
 void ReplicationFeature::start() {
-  _globalReplicationApplier.reset(
-      new GlobalReplicationApplier(GlobalReplicationApplier::loadConfiguration()));
+  _globalReplicationApplier.reset(new GlobalReplicationApplier(
+      GlobalReplicationApplier::loadConfiguration(server())));
 
   try {
     _globalReplicationApplier->loadState();

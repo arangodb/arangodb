@@ -579,6 +579,12 @@ Run specific gtest tests:
     # equivalent to:
     ./build/bin/arangodbtests --gtest_filter="IResearchDocumentTest.*:*ReturnExecutor*"
 
+Controlling the place where the test-data is stored:
+
+    TMPDIR=/some/other/path ./scripts/unittest shell_server_aql
+
+(Linux/Mac case. On Windows `TMP` or `TEMP` - as returned by `GetTempPathW` are the way to go)
+
 Note that the `arangodbtests` executable is not compiled and shipped for
 production releases (`-DUSE_GOOGLE_TESTS=off`).
 
@@ -727,20 +733,100 @@ arangosh, use this:
 
 #### Go driver
 
-Pre-requisites: 
+Pre-requisites:
  - have a go-driver checkout next to the ArangoDB source tree
  - have the go binary in the path
- - have all dependencies of it installed in the system (you may do this by try & error)
 
 Once this is completed, you may run it like this:
 
     ./scripts/unittest go_driver --gosource ../go-driver/ --testCase View --goOptions:timeout 180m --cluster true 
 
 This will invoke the test with a filter to only execute tests that have `View` in their name.
-As an aditional parameter we pass `-timeout 100m` to the driver test. 
+As an aditional parameter we pass `-timeout 100m` to the driver test.
 
 The driver integration also features JWT pass in. It will launch a cluster with 3 DB-Servers, as
 the tests expect to have at least 3 DB-Servers.
+
+#### Java driver
+
+Pre-requisites:
+ - have a arangodb-java-driver checkout next to the ArangoDB source tree in the 'next' branch
+ - have a maven binary in the path (mvn)
+
+Once this is completed, you may run it like this:
+
+    ./scripts/unittest java_driver --javasource ../arangodb-java-driver/ \
+        --javaOptions:failIfNoTests false \
+        --testCase com.arangodb.next.api.collection.CollectionApiTest#countAndDropCollection \
+        --cluster true
+
+For possible `javaOptions` see
+[arangodb-java-driver/dev-README.md#test-provided-deployment](https://github.com/arangodb/arangodb-java-driver/blob/next/arangodb-java-driver/dev-README.md)
+in the java source, or the
+[surefire documentation](https://maven.apache.org/surefire/maven-surefire-plugin/examples/single-test.html]
+
+#### ArangoJS
+
+Pre-requisites:
+ - have a arangojs checkout next to the ArangoDB source tree
+ - have a nodejs and yarn binaries installed and in the path
+ - ran `yarn` once in the arangojs source tree
+
+Once this is completed, you may run it like this:
+
+    ./scripts/unittest js_driver --jssource ../arangojs/ \
+        --testCase 'kills the given query' \
+        --cluster true
+
+#### arangodb-php
+
+Pre-requisites:
+ - have a arangodb-php checkout next to the ArangoDB source tree
+ - have `php` and `phpunit` binaries installed and in the path
+
+At the time being phpunit version 6.5 is supported. Install it like this:
+
+    wget "https://phar.phpunit.de/phpunit-6.5.14.phar"
+    mv phpunit-6.5.14.phar /usr/bin/phpunit
+    chmod a+x /usr/bin/phpunit
+
+Once this is completed, you may run it like this:
+
+    ./scipts/unittest php_driver --phpsource ../arangodb-php/ \
+        --testCase testSaveVerticesAndEdgeBetweenThemAndRemoveOneByOne \
+        --cluster true \
+        --phpkeepalive false
+
+(without connection keepalive)
+
+#### generic driver interface
+The generic driver interface expects to find i.e. script inside the
+driver source, that does all the plumbing to run the respective tests against
+the provided arangodb instance.
+The invoked script is expected to exit non-zero on failure.
+All content of `stdout` will be forwarded to the testresults.
+All required data is passed as parameters:
+
+ - driversource - the source directory with the workingcopy of the driver
+ - driverScript - the script to be executed. defaults to `run_tests.sh`
+ - driverScriptInterpreter  - since currently there is no shebang support,
+   this needs to be provided or defaults to `/bin/bash`.
+ - driverOptions options to be passed on to the driver works in the form of
+   `--driverOptions.argname value` evaluating to `--argname` `value`
+ - `--test testcase` evaluates to `--testsuite testcase`
+ - `--testCase testcaseExp` evalates to `--filter testcaseExp`
+
+Statically provided options (with sample values):
+ - `--instanceUrl http://127.0.0.1:7327`
+ - `--instanceEndpoint tcp://127.0.0.1:7327`
+ - `--port 7327`
+ - `--host 127.0.0.1`
+ - `--auth false`
+ - `--username root`
+ - `--password ''`
+ - `--[no-]enterprise`
+ - `--deployment-mode [SINGLE_SERVER|ACTIVE_FAILOVER|CLUSTER]`
+
 
 ### Debugging Tests
 
@@ -764,6 +850,14 @@ Debugging a storage engine:
     (gdb) catch throw
     (gdb) r
     arangod> require("jsunity").runTest("tests/js/client/shell/shell-client.js");
+
+### Forcing downgrade from VPack to JSON
+
+While velocypack is better for the machine to machine communication, JSON does a better job
+if you want to observe the communication using `tcpdump`.
+Hence a downgrade of the communication to JSON can be made at start time:
+
+    arangosh --server.force-json true --server.endpoint ... 
 
 ### Running tcpdump / windump for the SUT
 
@@ -789,11 +883,12 @@ Choose the `Npcap Loopback Adapter` number - 1:
     ./scripts/unittest http_server \
       --sniff true \
       --cleanup false \
-      --sniffDevice 1\
-      --sniffProgram c:/Programm Files/wireshark/tshark.exe
+      --sniffDevice 1 \
+      --sniffProgram 'c:/Programm Files/wireshark/tshark.exe' \
+      --forceJson true
 
-You can later on use Wireshark to inpsect the capture files.
-
+You can later on use Wireshark to inspect the capture files.
+(please note that `--forceJson` will downgrade the communication VPACK->JSON for better readability)
 
 ### Evaluating json test reports from previous testruns
 

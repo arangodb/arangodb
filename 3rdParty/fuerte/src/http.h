@@ -26,6 +26,7 @@
 
 #include <fuerte/message.h>
 #include <fuerte/types.h>
+
 #include <string>
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {

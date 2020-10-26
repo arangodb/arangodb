@@ -182,10 +182,12 @@ class ShardDistributionReporterTest
     aliases[dbserver1] = dbserver1short;
     aliases[dbserver2] = dbserver2short;
     aliases[dbserver3] = dbserver3short;
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
                           false);  // required for TRI_vocbase_t::dropCollection(...)
+    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    features.emplace_back(selector, false);
+    selector.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
                           false);  // required for TRI_vocbase_t instantiation
@@ -904,7 +906,7 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else if (destination == "server:" + dbserver2) {
     } else if (destination == "server:" + dbserver3) {
     } else {
@@ -959,7 +961,7 @@ TEST_F(ShardDistributionReporterTest,
     } else if (destination == "server:" + dbserver2) {
       response.response = generateCountResponse(largerFollowerCount);
     } else if (destination == "server:" + dbserver3) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else {
       EXPECT_TRUE(false);
     }
@@ -1009,9 +1011,9 @@ TEST_F(ShardDistributionReporterTest,
     if (destination == "server:" + dbserver1) {
       response.response = generateCountResponse(leaderCount);
     } else if (destination == "server:" + dbserver2) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else if (destination == "server:" + dbserver3) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else {
       EXPECT_TRUE(false);
     }
@@ -1057,7 +1059,7 @@ TEST_F(ShardDistributionReporterTest,
     response.error = fuerte::Error::NoError;
 
     if (destination == "server:" + dbserver1) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else if (destination == "server:" + dbserver2) {
     } else if (destination == "server:" + dbserver3) {
     } else {
@@ -1112,7 +1114,7 @@ TEST_F(ShardDistributionReporterTest,
     } else if (destination == "server:" + dbserver2) {
       response.response = generateCountResponse(largerFollowerCount);
     } else if (destination == "server:" + dbserver3) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else {
       EXPECT_TRUE(false);
     }
@@ -1162,9 +1164,9 @@ TEST_F(ShardDistributionReporterTest,
     if (destination == "server:" + dbserver1) {
       response.response = generateCountResponse(leaderCount);
     } else if (destination == "server:" + dbserver2) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else if (destination == "server:" + dbserver3) {
-      response.error = fuerte::Error::Timeout;
+      response.error = fuerte::Error::RequestTimeout;
     } else {
       EXPECT_TRUE(false);
     }

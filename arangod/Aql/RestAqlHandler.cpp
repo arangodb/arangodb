@@ -337,7 +337,7 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
   TRI_ASSERT(_qId > 0);
   TRI_ASSERT(_engine != nullptr);
 
-  if (_engine->getQuery().queryOptions().profile >= PROFILE_LEVEL_TRACE_1) {
+  if (_engine->getQuery().queryOptions().profile >= ProfileLevel::TraceOne) {
     LOG_TOPIC("1bf67", INFO, Logger::QUERIES)
         << "[query#" << _qId << "] remote request received: " << operation
         << " registryId=" << idString;
@@ -619,10 +619,7 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice) -> ResultT<AqlExecut
 RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
                                           VPackSlice const querySlice) {
   bool found;
-  std::string shardId = _request->header("x-shard-id", found);
-  if (!found) {  // simon: deprecated in 3.7, remove later
-    shardId = _request->header("shard-id", found);
-  }
+  std::string const& shardId = _request->header("x-shard-id", found);
 
   // upon first usage, the "initializeCursor" method must be called
   // note: if the operation is "initializeCursor" itself, we do not initialize

@@ -200,13 +200,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
                                 std::string const& key = "",
                                 RevisionId rid = RevisionId::none());
 
-  /// @brief generate an error message for a transaction error
-  void generateTransactionError(std::string const& collectionName,
-                                Result const& res, std::string const& key,
-                                RevisionId rid = RevisionId::none()) {
-    generateTransactionError(collectionName, OperationResult(res), key, rid);
-  }
-  
   /// @brief extracts the revision. "header" must be lowercase.
   RevisionId extractRevision(char const* header, bool& isValid) const;
 

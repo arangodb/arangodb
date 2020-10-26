@@ -114,15 +114,18 @@ Result FollowerInfo::add(ServerID const& sid) {
     // Not a leader is expected
     return agencyRes;
   }
-  // Real error, report
-
-  std::string errorMessage =
-      "unable to add follower in agency, timeout in agency CAS operation for "
-      "key " +
-      _docColl->vocbase().name() + "/" + std::to_string(_docColl->planId().id()) +
-      ": " + TRI_errno_string(agencyRes.errorNumber());
-  LOG_TOPIC("6295b", ERR, Logger::CLUSTER) << errorMessage;
-  agencyRes.reset(agencyRes.errorNumber(), std::move(errorMessage));
+    
+  if (!agencyRes.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
+      !agencyRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    // "Real error", report and log
+    std::string errorMessage =
+        "unable to add follower in agency, timeout in agency CAS operation for "
+        "key " +
+        _docColl->vocbase().name() + "/" + std::to_string(_docColl->planId().id()) +
+        ": " + TRI_errno_string(agencyRes.errorNumber());
+    LOG_TOPIC("6295b", ERR, Logger::CLUSTER) << errorMessage;
+    agencyRes.reset(agencyRes.errorNumber(), std::move(errorMessage));
+  }
   return agencyRes;
 }
 
@@ -192,7 +195,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
       _canWrite = false;
     }
     // we are finished
-    _docColl->vocbase().server().getFeature<arangodb::ClusterFeature>().getDroppedFollowerCounter()++;
+    _docColl->vocbase().server().getFeature<arangodb::ClusterFeature>().followersDroppedCounter()++;
     LOG_TOPIC("be0cb", DEBUG, Logger::CLUSTER)
         << "Removing follower " << sid << " from " << _docColl->name() << " succeeded";
     return agencyRes;
@@ -341,8 +344,8 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
   auto wait(50ms), waitMore(wait);
   do {
     if (_docColl->deleted() || _docColl->vocbase().isDropped()) {
-      LOG_TOPIC("8972a", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection";
-      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+      LOG_TOPIC("8972a", DEBUG, Logger::CLUSTER) << "giving up persisting follower info for dropped collection";
+      return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
     }
     AgencyReadTransaction trx(std::vector<std::string>(
         {AgencyCommHelper::path(planPath), AgencyCommHelper::path(curPath)}));

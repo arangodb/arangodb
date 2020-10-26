@@ -75,7 +75,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
                                                        bool restore, bool& created) override;
   virtual void deferDropCollection(std::function<bool(arangodb::LogicalCollection&)> const& callback) override;
   virtual bool dropIndex(arangodb::IndexId iid) override;
-  virtual void figuresSpecific(arangodb::velocypack::Builder&) override;
+  virtual void figuresSpecific(bool details, arangodb::velocypack::Builder&) override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAllIterator(
       arangodb::transaction::Methods* trx) const override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAnyIterator(
@@ -168,6 +168,7 @@ class TransactionStateMock : public arangodb::TransactionState {
   virtual arangodb::Result abortTransaction(arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result beginTransaction(arangodb::transaction::Hints hints) override;
   virtual arangodb::Result commitTransaction(arangodb::transaction::Methods* trx) override;
+  virtual uint64_t numCommits() const override;
   virtual bool hasFailedOperations() const override;
 };
 
@@ -219,8 +220,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
                                     arangodb::LogicalView const& view) override;
   virtual arangodb::Result firstTick(uint64_t&) override;
   virtual std::vector<std::string> currentWalFiles() const override;
-  virtual arangodb::Result flushWal(bool waitForSync, bool waitForCollector,
-                                    bool writeShutdownFile) override;
+  virtual arangodb::Result flushWal(bool waitForSync, bool waitForCollector) override;
   virtual void getCollectionInfo(TRI_vocbase_t& vocbase, arangodb::DataSourceId cid,
                                  arangodb::velocypack::Builder& result,
                                  bool includeIndexes, TRI_voc_tick_t maxTick) override;

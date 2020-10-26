@@ -658,9 +658,15 @@ constexpr int TRI_ERROR_REPLICATION_WRONG_CHECKSUM                              
 /// Will be raised when a shard is not empty and the follower tries a shortcut
 constexpr int TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              = 1417;
 
+/// 1447: ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED
+/// "follower transaction intermediate commit already performed"
+/// Will be raised when a follower transaction has already performed an
+/// intermediate commit and must be rolled back.
+constexpr int TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED           = 1447;
+
 /// 1448: ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED
 /// "creating collection failed due to precondition"
-/// Will be raised when updating the plan on collection creatio failed.
+/// Will be raised when updating the plan on collection creation failed.
 constexpr int TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED           = 1448;
 
 /// 1449: ERROR_CLUSTER_SERVER_UNKNOWN
@@ -1659,8 +1665,8 @@ constexpr int TRI_ERROR_NO_SMART_GRAPH_ATTRIBUTE                                
 constexpr int TRI_ERROR_CANNOT_DROP_SMART_COLLECTION                            = 4002;
 
 /// 4003: ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE
-/// "in smart vertex collections _key must be prefixed with the value of the
-/// "smart graph attribute"
+/// "in smart vertex collections _key must be a string and prefixed with the
+/// "value of the smart graph attribute"
 /// In a smart vertex collection _key must be prefixed with the value of the
 /// SmartGraph attribute.
 constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE         = 4003;

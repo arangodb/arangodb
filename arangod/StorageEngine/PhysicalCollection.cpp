@@ -89,6 +89,15 @@ void PhysicalCollection::drop() {
   }
 }
 
+
+uint64_t PhysicalCollection::recalculateCounts() {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "recalculateCounts not implemented for this engine");
+}
+
+bool PhysicalCollection::hasDocuments() {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "hasDocuments not implemented for this engine");
+}
+
 bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
   if (!slice.isString()) {
     return false;
@@ -175,18 +184,6 @@ RevisionId PhysicalCollection::newRevisionId() const {
     return RevisionId::createClusterWideUnique(*_ci);
   }
   return RevisionId::create();
-}
-
-Result PhysicalCollection::upgrade() {
-  return Result{TRI_ERROR_NOT_IMPLEMENTED,
-                "collection upgrade not supported on this type of collection"};
-}
-
-bool PhysicalCollection::didPartialUpgrade() { return false; }
-
-Result PhysicalCollection::cleanupAfterUpgrade() {
-  return Result{TRI_ERROR_NOT_IMPLEMENTED,
-                "collection upgrade not supported on this type of collection"};
 }
 
 /// @brief merge two objects for update, oldValue must have correctly set
@@ -594,7 +591,8 @@ void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
 }
 
 /// @brief return the figures for a collection
-futures::Future<OperationResult> PhysicalCollection::figures() {
+futures::Future<OperationResult> PhysicalCollection::figures(bool details,
+                                                             OperationOptions const& options) {
   auto buffer = std::make_shared<VPackBufferUInt8>();
   VPackBuilder builder(buffer);
   
@@ -625,9 +623,9 @@ futures::Future<OperationResult> PhysicalCollection::figures() {
   builder.close();  // indexes
 
   // add engine-specific figures
-  figuresSpecific(builder);
+  figuresSpecific(details, builder);
   builder.close();
-  return OperationResult(Result(), std::move(buffer));
+  return OperationResult(Result(), std::move(buffer), options);
 }
 
 std::unique_ptr<ReplicationIterator> PhysicalCollection::getReplicationIterator(

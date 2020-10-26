@@ -51,8 +51,7 @@ std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
   TRI_ASSERT(_state.leader.serverId.isSet());
   TRI_ASSERT(_state.leader.majorVersion != 0);
 
-  if (_state.leader.majorVersion < 3 ||
-      (_state.leader.majorVersion == 3 && _state.leader.minorVersion <= 2)) {
+  if (_state.leader.version() < 30300) {
     std::string err =
         "You need >= 3.3 to perform the replication of an entire server";
     LOG_TOPIC("75fa1", ERR, Logger::REPLICATION) << err;
@@ -76,8 +75,7 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
     return false;
   }
 
-  if (_state.leader.majorVersion < 3 ||
-      (_state.leader.majorVersion == 3 && _state.leader.minorVersion <= 2)) {
+  if (_state.leader.version() < 30300) {
     // globallyUniqueId only exists in 3.3 and higher
     return false;
   }

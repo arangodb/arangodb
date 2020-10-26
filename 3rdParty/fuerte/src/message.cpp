@@ -23,9 +23,9 @@
 #include <fuerte/detail/vst.h>
 #include <fuerte/helper.h>
 #include <fuerte/message.h>
-
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
+
 #include <sstream>
 
 #include "debugging.h"
@@ -69,8 +69,8 @@ std::string const& MessageHeader::metaByKey(std::string const& key,
 ///////////////////////////////////////////////
 
 void RequestHeader::acceptType(std::string const& type) {
-   addMeta(fu_accept_key, type);
- }
+  addMeta(fu_accept_key, type);
+}
 
 void RequestHeader::addParameter(std::string const& key,
                                  std::string const& value) {
@@ -90,8 +90,8 @@ void RequestHeader::parseArangoPath(std::string const& p) {
     q += 5;
     const char* pathBegin = q;
     // read until end of database name
-    while (*q != '\0' && *q != '/' && *q != '?' &&
-           *q != ' ' && *q != '\n' && *q != '\r') {
+    while (*q != '\0' && *q != '/' && *q != '?' && *q != ' ' && *q != '\n' &&
+           *q != '\r') {
       ++q;
     }
     FUERTE_ASSERT(q >= pathBegin);

@@ -217,9 +217,12 @@ void ensureLink(arangodb::DatabaseFeature& db,
 namespace arangodb {
 namespace iresearch {
 
+IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(application_features::ApplicationServer& server)
+    : _server(server) {}
+
 void IResearchRocksDBRecoveryHelper::prepare() {
   _dbFeature = DatabaseFeature::DATABASE;
-  _engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  _engine = &_server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   _documentCF = RocksDBColumnFamily::documents()->GetID();
 }
 
@@ -276,7 +279,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(
     IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*link);
 #endif
 
-    impl.insert(trx, docId, doc, arangodb::Index::OperationMode::internal);
+    impl.insert(trx, docId, doc);
   }
 
   res = trx.commit();
@@ -331,8 +334,7 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
 #endif
 
     impl.remove(trx, docId,
-                arangodb::velocypack::Slice::emptyObjectSlice(),
-                arangodb::Index::OperationMode::internal);
+                arangodb::velocypack::Slice::emptyObjectSlice());
   }
 
   res = trx.commit();

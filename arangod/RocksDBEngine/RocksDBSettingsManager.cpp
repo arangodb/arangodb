@@ -56,7 +56,8 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
-arangodb::Result writeSettings(rocksdb::WriteBatch& batch, VPackBuilder& b, uint64_t seqNumber) {
+arangodb::Result writeSettings(arangodb::StorageEngine& engine, rocksdb::WriteBatch& batch,
+                               VPackBuilder& b, uint64_t seqNumber) {
   using arangodb::EngineSelectorFeature;
   using arangodb::Logger;
   using arangodb::Result;
@@ -66,12 +67,11 @@ arangodb::Result writeSettings(rocksdb::WriteBatch& batch, VPackBuilder& b, uint
   using arangodb::StorageEngine;
 
   // now write global settings
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
   b.clear();
   b.openObject();
   b.add("tick", VPackValue(std::to_string(TRI_CurrentTickServer())));
   b.add("hlc", VPackValue(std::to_string(TRI_HybridLogicalClock())));
-  b.add("releasedTick", VPackValue(std::to_string(engine->releasedTick())));
+  b.add("releasedTick", VPackValue(std::to_string(engine.releasedTick())));
   b.add("lastSync", VPackValue(std::to_string(seqNumber)));
   b.close();
 
@@ -96,13 +96,17 @@ namespace arangodb {
 
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
-RocksDBSettingsManager::RocksDBSettingsManager(rocksdb::TransactionDB* db)
-    : _lastSync(0), _syncing(false), _db(db->GetRootDB()), _initialReleasedTick(0) {}
+RocksDBSettingsManager::RocksDBSettingsManager(RocksDBEngine& engine)
+    : _engine(engine),
+      _lastSync(0),
+      _syncing(false),
+      _db(engine.db()->GetRootDB()),
+      _initialReleasedTick(0) {}
 
 /// retrieve initial values from the database
 void RocksDBSettingsManager::retrieveInitialValues() {
   loadSettings();
-  EngineSelectorFeature::ENGINE->releaseTick(_initialReleasedTick);
+  _engine.releaseTick(_initialReleasedTick);
 }
 
 bool RocksDBSettingsManager::lockForSync(bool force) {
@@ -162,12 +166,11 @@ Result RocksDBSettingsManager::sync(bool force) {
   rocksdb::WriteBatch batch;
   _tmpBuilder.clear();  // recycle our builder
 
-  RocksDBEngine* engine = rocksutils::globalRocksEngine();
   auto dbfeature = arangodb::DatabaseFeature::DATABASE;
-  TRI_ASSERT(!engine->inRecovery()); // just don't
+  TRI_ASSERT(!_engine.inRecovery());  // just don't
 
   bool didWork = false;
-  auto mappings = engine->collectionMappings();
+  auto mappings = _engine.collectionMappings();
   std::string scratch;
   scratch.reserve(10485760);  // reserve 10MB of scratch space to work with
   for (auto const& pair : mappings) {
@@ -225,12 +228,15 @@ Result RocksDBSettingsManager::sync(bool force) {
   }
   TRI_ASSERT(lastSync <= minSeqNr);
   if (!didWork) {
+    LOG_TOPIC("1039e", TRACE, Logger::ENGINES)
+        << "no collection data to serialize, updating lastSync to " << minSeqNr;
     _lastSync.store(minSeqNr);
     return Result();  // nothing was written
   }
 
   _tmpBuilder.clear();
-  Result res = ::writeSettings(batch, _tmpBuilder, std::max(_lastSync.load(), minSeqNr));
+  Result res = ::writeSettings(_engine, batch, _tmpBuilder,
+                               std::max(_lastSync.load(), minSeqNr));
   if (res.fail()) {
     LOG_TOPIC("8a5e6", WARN, Logger::ENGINES)
         << "could not store metadata settings " << res.errorMessage();
@@ -240,6 +246,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   // we have to commit all counters in one batch
   auto s = _db->Write(wo, &batch);
   if (s.ok()) {
+    LOG_TOPIC("103ae", TRACE, Logger::ENGINES) << "updating lastSync to " << minSeqNr;
     _lastSync.store(std::max(_lastSync.load(), minSeqNr));
   }
 
@@ -280,7 +287,7 @@ void RocksDBSettingsManager::loadSettings() {
           _initialReleasedTick =
               basics::VelocyPackHelper::stringUInt64(slice.get("releasedTick"));
           LOG_TOPIC("e13f4", TRACE, Logger::ENGINES) << "using released tick: " << _initialReleasedTick;
-          EngineSelectorFeature::ENGINE->releaseTick(_initialReleasedTick);
+          _engine.releaseTick(_initialReleasedTick);
         }
 
         if (slice.hasKey("lastSync")) {
@@ -292,6 +299,8 @@ void RocksDBSettingsManager::loadSettings() {
         LOG_TOPIC("1b3de", WARN, Logger::ENGINES)
             << "unable to read initial settings: invalid data";
       }
+    } else {
+      LOG_TOPIC("7558b", TRACE, Logger::ENGINES) << "no initial settings found";
     }
   }
 }

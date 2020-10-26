@@ -81,11 +81,14 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief abort a transaction
   Result abortTransaction(transaction::Methods* trx) override;
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  uint64_t numCommits() const { return _numCommits; }
-#endif
+  /// @brief number of commits, including intermediate commits
+  uint64_t numCommits() const override { return _numCommits; }
+
+  /// @brief number of insert operations
   uint64_t numInserts() const { return _numInserts; }
+  /// @brief number of update/replace operations
   uint64_t numUpdates() const { return _numUpdates; }
+  /// @brief number of remove operations
   uint64_t numRemoves() const { return _numRemoves; }
 
   inline bool hasOperations() const {
@@ -208,8 +211,9 @@ class RocksDBTransactionState final : public TransactionState {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// store the number of log entries in WAL
   uint64_t _numLogdata = 0;
-  uint64_t _numCommits = 0;
 #endif
+  /// @brief number of commits, including intermediate commits
+  uint64_t _numCommits;
   // if a transaction gets bigger than these values then an automatic
   // intermediate commit will be done
   uint64_t _numInserts;

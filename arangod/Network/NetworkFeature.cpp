@@ -28,7 +28,7 @@
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Logger/Logger.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "Network/ConnectionPool.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -74,6 +74,7 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                network::ConnectionPool::Config config)
     : ApplicationFeature(server, "Network"),
+      _protocol(),
       _maxOpenConnections(config.maxOpenConnections),
       _idleTtlMilli(config.idleConnectionMilli),
       _numIOThreads(config.numIOThreads),
@@ -96,7 +97,7 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                      new UInt32Parameter(&_numIOThreads))
                      .setIntroducedIn(30600);
   options->addOption("--network.max-open-connections",
-                     "max open network connections for cluster-internal communication",
+                     "max open TCP connections for cluster-internal communication per endpoint",
                      new UInt64Parameter(&_maxOpenConnections))
                      .setIntroducedIn(30600);
   options->addOption("--network.idle-connection-ttl",
@@ -115,10 +116,13 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                      .setIntroducedIn(30700);
 }
 
-void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
+void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opts) {
   _numIOThreads = std::min<unsigned>(1, std::max<unsigned>(_numIOThreads, 8));
   if (_maxOpenConnections < 8) {
     _maxOpenConnections = 8;
+  }
+  if (!opts->processingResult().touched("--network.idle-connection-ttl")) {
+    _idleTtlMilli = uint64_t(GeneralServerFeature::keepAliveTimeout() * 1000 / 2);
   }
   if (_idleTtlMilli < 10000) {
     _idleTtlMilli = 10000;
@@ -177,7 +181,6 @@ void NetworkFeature::prepare() {
     };
 
   _prepared = true;
-
 }
 
 void NetworkFeature::start() {

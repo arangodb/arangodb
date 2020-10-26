@@ -18,28 +18,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Max Neunhoeffer
 /// @author Jan Steemann
-/// @author Copyright 2007-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-#include "Basics/compile-time-strlen.h"
+#include <cstring>
 
-#include "gtest/gtest.h"
+namespace arangodb {
+namespace velocypack {
 
-/// @brief test compileTimeStrlen
-TEST(CompileTimStrlenTest, test_compile_time_strlen) {
-  static_assert(arangodb::compileTimeStrlen("") == 0,
-                "invalid compile time strlen value");
-  static_assert(arangodb::compileTimeStrlen("foo") == 3,
-                "invalid compile time strlen value");
-  static_assert(arangodb::compileTimeStrlen("foobarbaz") == 9,
-                "invalid compile time strlen value");
-  static_assert(arangodb::compileTimeStrlen("the quick brown fox") == 19,
-                "invalid compile time strlen value");
+void* memrchr(void const* block, int c, std::size_t size) {
+#ifdef __linux__
+  return const_cast<void*>(::memrchr(block, c, size));
+#else
+  /// naive memrchr overlay for Windows or other platforms, which don't implement it
+  if (size) {
+    unsigned char const* p = static_cast<unsigned char const*>(block);
 
-  EXPECT_EQ(arangodb::compileTimeStrlen(""), 0U);
-  EXPECT_EQ(arangodb::compileTimeStrlen("foo"), 3U);
-  EXPECT_EQ(arangodb::compileTimeStrlen("foobarbaz"), 9U);
-  EXPECT_EQ(arangodb::compileTimeStrlen("the quick brown fox"), 19U);
+    for (p += size - 1; size; p--, size--) {
+      if (*p == c) {
+        return const_cast<void*>(static_cast<void const*>(p));
+      }
+    }
+  }
+  return nullptr;
+#endif
 }
+
+} // namespace velocypack
+} // namespace arangodb

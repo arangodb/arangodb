@@ -45,7 +45,6 @@
 #include "GeneralServer/GeneralDefinitions.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/Metrics.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
 
 namespace arangodb {
 class Endpoint;
@@ -337,7 +336,7 @@ class AgencyCommResult {
 
   [[nodiscard]] VPackBuilder toVelocyPack() const;
 
-  [[nodiscard]] std::optional<std::pair<int, std::string_view>> parseBodyError() const;
+  [[nodiscard]] std::pair<std::optional<int>, std::optional<std::string_view>> parseBodyError() const;
 
  public:
   std::string _location = "";

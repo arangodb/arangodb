@@ -3209,7 +3209,7 @@ class IResearchViewBlockTest
       auto* l =
           static_cast<arangodb::iresearch::IResearchLinkMock*>(indexes[0].get());
       for (size_t i = 2; i < 10; ++i) {
-        l->insert(*trx, arangodb::LocalDocumentId(i), doc->slice(), arangodb::Index::normal);
+        l->insert(*trx, arangodb::LocalDocumentId(i), doc->slice());
       }
     }
     // in collection only one alive doc

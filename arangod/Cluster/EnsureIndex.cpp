@@ -131,7 +131,14 @@ bool EnsureIndex::first() {
       std::stringstream error;
       error << "failed to ensure index " << body.slice().toJson() << " "
             << _result.errorMessage();
-      LOG_TOPIC("bc555", ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+
+      if (!_result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
+          !_result.is(TRI_ERROR_BAD_PARAMETER)) {
+        // "unique constraint violated" is an expected error that can happen at any time.
+        // it does not justify logging and alerting DBAs. The error will be passed back
+        // to the caller anyway, so not logging it seems to be good.
+        LOG_TOPIC("bc555", WARN, Logger::MAINTENANCE) << "EnsureIndex: " << _description << ", error: " << error.str();
+      }
 
       VPackBuilder eb;
       {
@@ -151,7 +158,6 @@ bool EnsureIndex::first() {
 
       _feature.storeIndexError(database, collection, shard, id, eb.steal());
       _result.reset(TRI_ERROR_INTERNAL, error.str());
-      notify();
       return false;
     }
 
@@ -163,6 +169,5 @@ bool EnsureIndex::first() {
     return false;
   }
 
-  notify();
   return false;
 }

@@ -576,9 +576,9 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
                                         DropState& state, double timeout) {
   state = DROP_EXIT;
   std::string const colName(collection->name());
-      
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->prepareDropCollection(*this, *collection);
+
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  engine.prepareDropCollection(*this, *collection);
 
   double endTime = TRI_microtime() + timeout;
 
@@ -616,8 +616,8 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     if (_server.isStopping()) {
       return TRI_ERROR_SHUTTING_DOWN;
     }
-  
-    engine->prepareDropCollection(*this, *collection);
+
+    engine.prepareDropCollection(*this, *collection);
 
     // sleep for a while
     std::this_thread::yield();
@@ -649,14 +649,14 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     }
     case TRI_VOC_COL_STATUS_UNLOADED: {
       // collection is unloaded
-      bool doSync = !engine->inRecovery() &&
+      bool doSync = !engine.inRecovery() &&
                     server().getFeature<DatabaseFeature>().forceSyncProperties();
 
       if (!collection->deleted()) {
         collection->deleted(true);
 
         try {
-          engine->changeCollection(*this, *collection, doSync);
+          engine.changeCollection(*this, *collection, doSync);
         } catch (arangodb::basics::Exception const& ex) {
           collection->deleted(false);
           events::DropCollection(dbName, colName, ex.code());
@@ -674,8 +674,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       locker.unlock();
       writeLocker.unlock();
 
-      TRI_ASSERT(engine != nullptr);
-      engine->dropCollection(*this, *collection);
+      engine.dropCollection(*this, *collection);
 
       dropCollectionCallback(*collection);
       break;
@@ -685,10 +684,9 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       // collection is loaded
       collection->deleted(true);
 
-      StorageEngine* engine = EngineSelectorFeature::ENGINE;
       VPackBuilder builder;
 
-      engine->getCollectionInfo(*this, collection->id(), builder, false, 0);
+      engine.getCollectionInfo(*this, collection->id(), builder, false, 0);
 
       auto res = collection->properties(builder.slice().get("parameters"),
                                         false);  // always a full-update
@@ -704,7 +702,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       locker.unlock();
       writeLocker.unlock();
 
-      engine->dropCollection(*this, *collection);
+      engine.dropCollection(*this, *collection);
       state = DROP_PERFORM;
       break;
     }
@@ -1063,12 +1061,11 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
   }
 
   // augment creation parameters
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
 
   VPackBuilder merge;
   merge.openObject();
-  engine->addParametersForNewCollection(merge, parameters);
+  engine.addParametersForNewCollection(merge, parameters);
   merge.close();
 
   merge = velocypack::Collection::merge(parameters, merge.slice(), true, false);
@@ -1159,18 +1156,9 @@ arangodb::Result TRI_vocbase_t::dropCollection(DataSourceId cid, bool allowDropS
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
 
-  if (!engine) {
-    events::DropCollection(dbName, collection->name(), TRI_ERROR_INTERNAL);
-    return arangodb::Result(
-        TRI_ERROR_INTERNAL,
-        std::string(
-            "failed to find StorageEngine while dropping collection '") +
-            collection->name() + "'");
-  }
-
-  if (!allowDropSystem && collection->system() && !engine->inRecovery()) {
+  if (!allowDropSystem && collection->system() && !engine.inRecovery()) {
     // prevent dropping of system collections
     events::DropCollection(dbName, collection->name(), TRI_ERROR_FORBIDDEN);
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
@@ -1192,7 +1180,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(DataSourceId cid, bool allowDropS
     }
 
     if (state == DROP_PERFORM) {
-      if (engine->inRecovery()) {
+      if (engine.inRecovery()) {
         dropCollectionCallback(*collection);
       } else {
         collection->deferDropCollection(dropCollectionCallback);
@@ -1386,10 +1374,9 @@ arangodb::Result TRI_vocbase_t::renameCollection(DataSourceId cid, std::string c
     return res.errorNumber();  // rename failed
   }
 
-  auto* engine = EngineSelectorFeature::ENGINE;
+  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
 
-  TRI_ASSERT(engine);
-  res = engine->renameCollection(*this, *collection, oldName);  // tell the engine
+  res = engine.renameCollection(*this, *collection, oldName);  // tell the engine
 
   if (!res.ok()) {
     return res.errorNumber();  // rename failed
@@ -1465,20 +1452,8 @@ void TRI_vocbase_t::releaseCollection(arangodb::LogicalCollection* collection) {
 /// but the functionality is not advertised
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::velocypack::Slice parameters) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  auto* engine = EngineSelectorFeature::ENGINE;
+  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
   std::string const& dbName = _info.getName();
-
-  if (!engine) {
-    std::string n;
-    if (parameters.isObject()) {
-      n = VelocyPackHelper::getStringValue(parameters,
-                                           StaticStrings::DataSourceName, "");
-    }
-    events::CreateView(dbName, n, TRI_ERROR_INTERNAL);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "failure to get storage engine during creation of view");
-  }
 
   // check that the name does not contain any strange characters
   if (!IsAllowedName(parameters)) {
@@ -1520,7 +1495,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
   registerView(basics::ConditionalLocking::DoNotLock, view);
 
   try {
-    auto res = engine->createView(view->vocbase(), view->id(), *view);
+    auto res = engine.createView(view->vocbase(), view->id(), *view);
 
     if (!res.ok()) {
       unregisterView(*view);
@@ -1555,17 +1530,9 @@ arangodb::Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem)
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
 
-  if (!engine) {
-    events::DropView(dbName, view->name(), TRI_ERROR_INTERNAL);
-    return arangodb::Result(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to find StorageEngine while dropping view '") +
-            view->name() + "'");
-  }
-
-  if (!allowDropSystem && view->system() && !engine->inRecovery()) {
+  if (!allowDropSystem && view->system() && !engine.inRecovery()) {
     events::DropView(dbName, view->name(), TRI_ERROR_FORBIDDEN);
     return TRI_ERROR_FORBIDDEN;  // prevent dropping of system views
   }
@@ -1606,7 +1573,7 @@ arangodb::Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem)
   TRI_ASSERT(writeLocker.isLocked());
   TRI_ASSERT(locker.isLocked());
 
-  auto res = engine->dropView(*this, *view);
+  auto res = engine.dropView(*this, *view);
 
   if (!res.ok()) {
     events::DropView(dbName, view->name(), res.errorNumber());
@@ -1681,8 +1648,8 @@ TRI_vocbase_t::~TRI_vocbase_t() {
 }
 
 std::string TRI_vocbase_t::path() const {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  return engine->databasePath(this);
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  return engine.databasePath(this);
 }
 
 std::string const& TRI_vocbase_t::sharding() const {

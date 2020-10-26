@@ -1,5 +1,48 @@
 include_directories(.)
 
+
+# ----------------------------------------
+# Fuerte tests
+# ----------------------------------------
+
+set(FUERTE_TESTS_SOURCES
+  Fuerte/test_vst.cpp
+  Fuerte/test_connection_basic.cpp
+  Fuerte/test_connection_concurrent.cpp
+  Fuerte/test_connection_failures.cpp
+  Fuerte/test_connection_timeouts.cpp
+#    test_10000_writes.cpp
+)
+
+add_executable(fuertetest
+  ${FUERTE_TESTS_SOURCES}
+  Fuerte/main.cpp
+)
+
+target_link_libraries(fuertetest
+    fuerte
+    gtest
+    boost_boost
+    arango
+    arango_v8server
+    ${MSVC_LIBS}
+    ${OPENSSL_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
+)
+
+target_include_directories(fuertetest SYSTEM PRIVATE
+  ${V8_INTERNAL_INCLUDE_DIR}
+  ${INCLUDE_DIRECTORIES}
+  ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
+  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
+  ${CMAKE_SOURCE_DIR}/3rdParty/fuerte/src
+)
+
+
+# ----------------------------------------
+# Link directories
+# ----------------------------------------
+
 foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
 endforeach()
@@ -108,8 +151,8 @@ set(ARANGODB_TESTS_SOURCES
   Basics/vector-test.cpp
   Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp
-  Basics/CompileTimeStrlenTest.cpp
   Basics/EndpointTest.cpp
+  Basics/FixedSizeAllocatorTest.cpp
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
   Basics/RandomTest.cpp
@@ -159,6 +202,9 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/Containers-test.cpp
   IResearch/ExpressionContextMock.cpp
   IResearch/ExpressionFilter-test.cpp
+  IResearch/GeoAnalyzer-test.cpp
+  IResearch/GeoFilter-test.cpp
+  IResearch/GeoDistanceFilter-test.cpp
   IResearch/IResearchAnalyzerFeature-test.cpp
   IResearch/IResearchComparer-test.cpp
   IResearch/IResearchDocument-test.cpp
@@ -203,6 +249,7 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchQueryTokens-test.cpp
   IResearch/IResearchQueryValue-test.cpp
   IResearch/IResearchQueryTraversal-test.cpp
+  IResearch/IResearchPrimaryKeyReuse-test.cpp
   IResearch/IResearchView-test.cpp
   IResearch/IResearchViewCoordinator-test.cpp
   IResearch/IResearchViewDBServer-test.cpp
@@ -235,6 +282,7 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/HotBackupTest.cpp
+  RocksDBEngine/EncryptionProviderTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/ShaEventListener.cpp
   RocksDBEngine/TransactionManagerTest.cpp

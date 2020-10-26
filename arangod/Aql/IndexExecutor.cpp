@@ -38,15 +38,15 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Projections.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "ExecutorExpressionContext.h"
+#include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Helpers.h"
-#include "Transaction/Methods.h"
 #include "V8/v8-globals.h"
 
 #include <velocypack/Iterator.h>
@@ -599,7 +599,7 @@ void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
     AqlValue a = exp->execute(&ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
-    AqlValueMaterializer materializer(&_trx);
+    AqlValueMaterializer materializer(&_trx.vpackOptions());
     VPackSlice slice = materializer.slice(a, false);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 

@@ -110,6 +110,7 @@ struct log_t {
   std::string clientId;                 // Client ID
   std::chrono::milliseconds timestamp;  // Timestamp
 
+  /// @brief creates a log entry, fully copying it from the buffer
   log_t(index_t idx, term_t t, buffer_t const& e,
         std::string const& clientId,
         uint64_t const& m = 0)
@@ -117,8 +118,17 @@ struct log_t {
         term(t),
         entry(std::make_shared<arangodb::velocypack::Buffer<uint8_t>>(*e.get())),
         clientId(clientId),
-        timestamp(m) {
-  }
+        timestamp(m) {}
+  
+  /// @brief creates a log entry, taking over the buffer
+  log_t(index_t idx, term_t t, buffer_t&& e,
+        std::string const& clientId,
+        uint64_t const& m = 0)
+      : index(idx),
+        term(t),
+        entry(std::move(e)),
+        clientId(clientId),
+        timestamp(m) {}
 
   friend std::ostream& operator<<(std::ostream& o, log_t const& l) {
     o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson() << " "

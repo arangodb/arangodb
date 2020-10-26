@@ -101,8 +101,8 @@ struct LinkTrxState final : public arangodb::TransactionState::Cookie {
 
   operator irs::index_writer::documents_context&() noexcept { return _ctx; }
 
-  void remove(arangodb::LocalDocumentId const& value) {
-    _ctx.remove(_removals.emplace(value));
+  void remove(arangodb::StorageEngine& engine, arangodb::LocalDocumentId const& value) {
+    _ctx.remove(_removals.emplace(engine, value));
   }
 
   void reset() noexcept {
@@ -329,7 +329,6 @@ IResearchLink::IResearchLink(arangodb::IndexId iid, LogicalCollection& collectio
 
     prev.reset();
   };
-
 }
 
 IResearchLink::~IResearchLink() {
@@ -388,7 +387,7 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
 
   auto const lastCommittedTick = _lastCommittedTick;
   bool recoverCommittedTick = true;
-  
+
   auto lastCommittedTickGuard = irs::make_finally([lastCommittedTick, this, &recoverCommittedTick]()->void {
       if (recoverCommittedTick) {
         _lastCommittedTick = lastCommittedTick;
@@ -418,7 +417,6 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
     if (subscription) {
       subscription->tick(_lastCommittedTick);
     }
-
   } catch (std::exception const& e) {
     LOG_TOPIC("a3c57", ERR, iresearch::TOPIC)
         << "caught exception while truncating arangosearch link '" << id()
@@ -616,15 +614,6 @@ Result IResearchLink::commitUnsafe(bool wait) {
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
-  auto* engine = EngineSelectorFeature::ENGINE;
-
-  if (!engine) {
-    return {
-        TRI_ERROR_INTERNAL,
-        "failure to get storage engine while committing arangosearch link '" +
-            std::to_string(id().id()) + "'"};
-  }
-
   auto subscription = std::static_pointer_cast<IResearchFlushSubscription>(_flushSubscription);
 
   if (!subscription) {
@@ -633,7 +622,7 @@ Result IResearchLink::commitUnsafe(bool wait) {
   }
 
   try {
-    auto const lastTickBeforeCommit = engine->currentTick();
+    auto const lastTickBeforeCommit = _engine->currentTick();
 
     TRY_SCOPED_LOCK_NAMED(_commitMutex, commitLock);
 
@@ -846,7 +835,7 @@ Result IResearchLink::init(
 
   // definition should already be normalized and analyzers created if required
   if (!meta.init(_collection.vocbase().server(), definition, true, error,
-                 &(_collection.vocbase()))) {
+                 _collection.vocbase().name())) {
     return {
       TRI_ERROR_BAD_PARAMETER,
       "error parsing view link parameters from json: " + error
@@ -1072,14 +1061,7 @@ Result IResearchLink::initDataStore(
                 "' while initializing link '" + std::to_string(_id.id()) + "'"};
   }
 
-  _engine = EngineSelectorFeature::ENGINE;
-
-  if (!_engine) {
-    return {
-        TRI_ERROR_INTERNAL,
-        "failure to get storage engine while initializing arangosearch link '" +
-            std::to_string(id().id()) + "'"};
-  }
+  _engine = &server.getFeature<EngineSelectorFeature>().engine();
 
   bool pathExists;
 
@@ -1452,8 +1434,7 @@ void IResearchLink::setupMaintenance() {
 Result IResearchLink::insert(
     transaction::Methods& trx,
     LocalDocumentId const& documentId,
-    velocypack::Slice const& doc,
-    Index::OperationMode /*mode*/) {
+    velocypack::Slice const doc) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
@@ -1592,7 +1573,7 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
   std::string errorField;
 
   return other.init(_collection.vocbase().server(), slice, true, errorField,
-                    &(_collection.vocbase()))  // for db-server analyzer validation should have already apssed on coordinator (missing analyzer == no match)
+                    _collection.vocbase().name())  // for db-server analyzer validation should have already apssed on coordinator (missing analyzer == no match)
          && _meta == other;
 }
 
@@ -1664,8 +1645,7 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
 Result IResearchLink::remove(
     transaction::Methods& trx,
     LocalDocumentId const& documentId,
-    velocypack::Slice const& /*doc*/,
-    Index::OperationMode /*mode*/) {
+    velocypack::Slice const /*doc*/) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
@@ -1729,7 +1709,7 @@ Result IResearchLink::remove(
   // all of its fid stores, no impact to iResearch View data integrity
   // ...........................................................................
   try {
-    ctx->remove(documentId);
+    ctx->remove(*_engine, documentId);
 
     return {TRI_ERROR_NO_ERROR};
   } catch (basics::Exception const& e) {

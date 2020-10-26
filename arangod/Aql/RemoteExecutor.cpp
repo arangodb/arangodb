@@ -489,7 +489,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
 
   arangodb::network::EndpointSpec spec;
   int res = network::resolveDestination(nf, _server, spec);
-  if (res != TRI_ERROR_NO_ERROR) {  // FIXME return an error  ?!
+  if (res != TRI_ERROR_NO_ERROR) { 
     return Result(res);
   }
   TRI_ASSERT(!spec.endpoint.empty());
@@ -503,8 +503,8 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   req->timeout(kDefaultTimeOutSecs);
   if (!_distributeId.empty()) {
     req->header.addMeta("x-shard-id", _distributeId);
-    req->header.addMeta("shard-id", _distributeId);  // deprecated in 3.7, remove later
   }
+  network::addSourceHeader(*req);
 
   LOG_TOPIC("2713c", DEBUG, Logger::COMMUNICATION)
       << "request to '" << _server << "' '" << fuerte::to_string(type) << " "
@@ -565,16 +565,15 @@ void ExecutionBlockImpl<RemoteExecutor>::traceInitializeCursorRequest(VPackSlice
 void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* const rpc,
                                                       VPackSlice const slice,
                                                       std::string const& args) {
-  if (_profile >= PROFILE_LEVEL_TRACE_1) {
+  if (_profileLevel == ProfileLevel::TraceOne ||
+      _profileLevel == ProfileLevel::TraceTwo) {
     auto const queryId = this->_engine->getQuery().id();
     auto const remoteQueryId = _queryId;
     LOG_TOPIC("92c71", INFO, Logger::QUERIES)
         << "[query#" << queryId << "] remote request sent: " << rpc
         << (args.empty() ? "" : " ") << args << " registryId=" << remoteQueryId;
-    if (_profile >= PROFILE_LEVEL_TRACE_2) {
-      LOG_TOPIC("e0ae6", INFO, Logger::QUERIES)
-          << "[query#" << queryId << "] data: " << slice.toJson();
-    }
+    LOG_TOPIC_IF("e0ae6", INFO, Logger::QUERIES, _profileLevel == ProfileLevel::TraceTwo)
+        << "[query#" << queryId << "] data: " << slice.toJson();
   }
 }
 

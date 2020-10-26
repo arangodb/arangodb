@@ -693,7 +693,8 @@ RestStatus RestAgencyHandler::handleConfig() {
     _agent->lastAckedAgo(body);
     LOG_TOPIC("ddeea", DEBUG, Logger::AGENCY) << "handleConfig after lastAckedAgo";
     body.add("configuration", _agent->config().toBuilder()->slice());
-    body.add("engine", VPackValue(EngineSelectorFeature::engineName()));
+    body.add("engine",
+             VPackValue(server().getFeature<EngineSelectorFeature>().engineName()));
     body.add("version", VPackValue(ARANGODB_VERSION));
   }
 
@@ -731,7 +732,7 @@ RestStatus RestAgencyHandler::handleState() {
     _agent->readDB(body);
   }
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
-  generateResult(rest::ResponseCode::OK, body.slice(), ctx->getVPackOptionsForDump());
+  generateResult(rest::ResponseCode::OK, body.slice(), ctx->getVPackOptions());
   return RestStatus::DONE;
 }
 

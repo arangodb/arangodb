@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Result.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -65,9 +66,9 @@ GlobalInitialSyncer::~GlobalInitialSyncer() {
 
 /// @brief run method, performs a full synchronization
 /// public method, catches exceptions
-Result GlobalInitialSyncer::run(bool incremental) {
+Result GlobalInitialSyncer::run(bool incremental, char const* context) {
   try {
-    return runInternal(incremental);
+    return runInternal(incremental, context);
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(),
                   std::string("initial synchronization for database '") +
@@ -85,7 +86,7 @@ Result GlobalInitialSyncer::run(bool incremental) {
 
 /// @brief run method, performs a full synchronization
 /// internal method, may throw exceptions
-Result GlobalInitialSyncer::runInternal(bool incremental) {
+Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
   if (!_state.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   } else if (_state.applier._server.isStopping()) {
@@ -95,13 +96,12 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
   setAborted(false);
 
   LOG_TOPIC("23d92", DEBUG, Logger::REPLICATION) << "client: getting leader state";
-  Result r = _state.leader.getState(_state.connection, _state.isChildSyncer);
+  Result r = _state.leader.getState(_state.connection, _state.isChildSyncer, context);
   if (r.fail()) {
     return r;
   }
 
-  if (_state.leader.majorVersion < 3 ||
-      (_state.leader.majorVersion == 3 && _state.leader.minorVersion < 3)) {
+  if (_state.leader.version() < 30300) {
     char const* msg =
         "global replication is not supported with a leader < ArangoDB 3.3";
     LOG_TOPIC("57394", WARN, Logger::REPLICATION) << msg;
@@ -243,7 +243,8 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDataba
 
     if (vocbase == nullptr) {
       // database is missing. we need to create it now
-      Result r = methods::Databases::create(_state.applier._server, dbName,
+      Result r = methods::Databases::create(_state.applier._server,
+                                            ExecContext::current(), dbName,
                                             VPackSlice::emptyArraySlice(),
                                             VPackSlice::emptyObjectSlice());
       if (r.fail()) {
@@ -319,7 +320,8 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDataba
     _state.vocbases.erase(dbname);  // make sure to release the db first
 
     auto r = _state.applier._server.hasFeature<arangodb::SystemDatabaseFeature>()
-                 ? methods::Databases::drop(_state.applier._server
+                 ? methods::Databases::drop(ExecContext::current(),
+                                            _state.applier._server
                                                 .getFeature<arangodb::SystemDatabaseFeature>()
                                                 .use()
                                                 .get(),
@@ -372,7 +374,8 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
   // send request
   std::unique_ptr<httpclient::SimpleHttpResult> response;
   _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
-    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+    auto headers = replutils::createHeaders();
+    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
   });
 
   if (replutils::hasFailed(response.get())) {

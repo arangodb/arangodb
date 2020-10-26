@@ -181,6 +181,7 @@ class LogicalCollection : public LogicalDataSource {
 
   // query shard for a given document
   int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete, std::string& shardID);
+  int getResponsibleShard(std::string_view key, std::string& shardID);
 
   int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
                           std::string& shardID, bool& usesDefaultShardKeys,
@@ -242,7 +243,8 @@ class LogicalCollection : public LogicalDataSource {
   virtual arangodb::Result properties(velocypack::Slice const& slice, bool partialUpdate) override;
 
   /// @brief return the figures for a collection
-  virtual futures::Future<OperationResult> figures() const;
+  virtual futures::Future<OperationResult> figures(bool details,
+                                                   OperationOptions const& options) const;
 
   /// @brief closes an open collection
   int close();

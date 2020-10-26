@@ -32,13 +32,28 @@
 #include "GeneralServer/RestHandler.h"
 
 #include <map>
-#include <mutex>
+#include <shared_mutex>
 
 namespace arangodb {
 
 class AgencyCache final : public arangodb::Thread {
 
 public:
+
+  typedef std::unordered_map<std::string, consensus::query_t> databases_t;
+
+  struct change_set_t {
+    consensus::index_t ind;  // Raft index
+    uint64_t version;        // Plan / Current version
+    databases_t dbs; // touched databases
+    consensus::query_t rest; // Plan / Current rest
+    change_set_t (consensus::index_t const& i, uint64_t const& v, databases_t const& d,
+                  consensus::query_t const& r) :
+      ind(i), version(v), dbs(d), rest(r) {}
+    change_set_t (consensus::index_t&& i, uint64_t&& v, databases_t&& d, consensus::query_t&& r) :
+      ind(std::move(i)), version(std::move(v)), dbs(std::move(d)), rest(std::move(r)) {}
+  };
+
   /// @brief start off with our server
   explicit AgencyCache(
     application_features::ApplicationServer& server,
@@ -99,6 +114,19 @@ public:
   /// @brief Used exclusively in unit tests
   consensus::Store& store();
 
+  /**
+   * @brief         Get a list of planned/current  changes and other
+   *                databases and the corresponding RAFT index
+   *
+   * @param section Plan/Current
+   * @param last    Last index known to the caller
+   *
+   * @return        The currently last noted RAFT index and  a velocypack
+   *                representation of planned and other desired databases
+   */
+  change_set_t changedSince(
+    std::string const& section, consensus::index_t const& last) const;
+  
 private:
 
   /// @brief invoke all callbacks
@@ -110,15 +138,21 @@ private:
   /// @brief invoke given callbacks
   void invokeCallbackNoLock(uint64_t, std::string const& = std::string()) const;
 
+  /// @brief reinitialize all databases, after a snapshot or after a hotbackup restore
+  /// Must hold storeLock to call!
+  std::unordered_set<std::string> reInitPlan();
+
   /// @brief handle callbacks for specific log document
-  void handleCallbacksNoLock(VPackSlice, std::unordered_set<uint64_t>&, std::vector<uint64_t>&);
+  void handleCallbacksNoLock(
+    VPackSlice, std::unordered_set<uint64_t>&, std::vector<uint64_t>&,
+    std::unordered_set<std::string>& plannedChanges, std::unordered_set<std::string>& currentChanges);
 
   /// @brief trigger all waiting call backs for index <= _commitIndex
   ///        caller must hold lock
   void triggerWaiting(consensus::index_t commitIndex);
 
   /// @brief Guard for _readDB
-  mutable std::mutex _storeLock;
+  mutable std::shared_mutex _storeLock;
 
   /// @brief Commit index
   consensus::index_t _commitIndex;
@@ -136,8 +170,22 @@ private:
   /// @brief Waiting room for indexes during office hours
   mutable std::mutex _waitLock;
   std::multimap<consensus::index_t, futures::Promise<arangodb::Result>> _waiting;
+
+  /// @ brief changes of index to plan and current 
+  std::multimap<consensus::index_t, std::string> _planChanges;
+  std::multimap<consensus::index_t, std::string> _currentChanges;
+
+  /// @brief snapshot note for client 
+  consensus::index_t _lastSnapshot;
+  
 };
 
 } // namespace
+
+namespace std {
+ostream& operator<<(ostream& o, arangodb::AgencyCache::change_set_t const& c);
+ostream& operator<<(ostream& o, arangodb::AgencyCache::databases_t const& d);
+}
+
 
 #endif

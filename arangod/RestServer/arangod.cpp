@@ -36,6 +36,7 @@
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
+#include "ApplicationFeatures/TimeZoneFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
@@ -109,7 +110,7 @@
 #include "StorageEngine/RocksDBOptionFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"
-#include "V8Server/FoxxQueuesFeature.h"
+#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
 #ifdef _WIN32
@@ -152,7 +153,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         std::type_index(typeid(AgencyFeature)),
         std::type_index(typeid(ClusterFeature)),
         std::type_index(typeid(DaemonFeature)),
-        std::type_index(typeid(FoxxQueuesFeature)),
+        std::type_index(typeid(FoxxFeature)),
         std::type_index(typeid(GeneralServerFeature)),
         std::type_index(typeid(GreetingsFeature)),
         std::type_index(typeid(HttpEndpointProvider)),
@@ -179,6 +180,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<V8FeaturePhase>();
 
     // Adding the features
+    server.addFeature<MetricsFeature>();
     server.addFeature<ActionFeature>();
     server.addFeature<AgencyFeature>();
     server.addFeature<AqlFeature>();
@@ -198,19 +200,19 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<FileDescriptorsFeature>();
     server.addFeature<FlushFeature>();
     server.addFeature<FortuneFeature>();
-    server.addFeature<FoxxQueuesFeature>();
+    server.addFeature<FoxxFeature>();
     server.addFeature<FrontendFeature>();
     server.addFeature<GeneralServerFeature>();
     server.addFeature<GreetingsFeature>();
     server.addFeature<InitDatabaseFeature>(nonServerFeatures);
     server.addFeature<LanguageCheckFeature>();
     server.addFeature<LanguageFeature>();
+    server.addFeature<TimeZoneFeature>();
     server.addFeature<LockfileFeature>();
     server.addFeature<LogBufferFeature>();
     server.addFeature<LoggerFeature>(true);
     server.addFeature<MaintenanceFeature>();
     server.addFeature<MaxMapCountFeature>();
-    server.addFeature<MetricsFeature>();
     server.addFeature<NetworkFeature>();
     server.addFeature<NonceFeature>();
     server.addFeature<PrivilegeFeature>();

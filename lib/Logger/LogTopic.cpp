@@ -110,8 +110,9 @@ class Topics {
 
 LogTopic Logger::AGENCY("agency", LogLevel::INFO);
 LogTopic Logger::AGENCYCOMM("agencycomm", LogLevel::INFO);
+LogTopic Logger::AGENCYSTORE("agencystore", LogLevel::WARN);
 LogTopic Logger::AQL("aql", LogLevel::INFO);
-LogTopic Logger::AUTHENTICATION("authentication");
+LogTopic Logger::AUTHENTICATION("authentication", LogLevel::WARN);
 LogTopic Logger::AUTHORIZATION("authorization");
 LogTopic Logger::BACKUP("backup");
 LogTopic Logger::CACHE("cache", LogLevel::INFO);
@@ -119,10 +120,8 @@ LogTopic Logger::CLUSTER("cluster", LogLevel::INFO);
 LogTopic Logger::CLUSTERCOMM("clustercomm", LogLevel::INFO);
 LogTopic Logger::COLLECTOR("collector");
 LogTopic Logger::COMMUNICATION("communication", LogLevel::INFO);
-LogTopic Logger::COMPACTOR("compactor");
 LogTopic Logger::CONFIG("config");
 LogTopic Logger::CRASH("crash");
-LogTopic Logger::DATAFILES("datafiles", LogLevel::INFO);
 LogTopic Logger::DEVEL("development", LogLevel::FATAL);
 LogTopic Logger::DUMP("dump", LogLevel::INFO);
 LogTopic Logger::ENGINES("engines", LogLevel::INFO);

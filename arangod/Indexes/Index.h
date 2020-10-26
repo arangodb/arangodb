@@ -105,9 +105,6 @@ class Index {
     TRI_IDX_TYPE_IRESEARCH_LINK,
     TRI_IDX_TYPE_NO_ACCESS_INDEX
   };
-
-  /// @brief: mode to signal how operation should behave
-  enum OperationMode { normal, internal, rollback };
   
   /// @brief: helper struct returned by index methods that determine the costs
   /// of index usage for filtering
@@ -290,7 +287,9 @@ class Index {
 
   /// @brief index comparator, used by the coordinator to detect if two index
   /// contents are the same
-  static bool Compare(velocypack::Slice const& lhs, velocypack::Slice const& rhs);
+  static bool Compare(StorageEngine&, velocypack::Slice const& lhs,
+                      velocypack::Slice const& rhs,
+                      std::string const& dbname);
 
   /// @brief whether or not the index is persistent (storage on durable media)
   /// or not (RAM only)

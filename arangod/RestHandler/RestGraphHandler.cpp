@@ -299,7 +299,7 @@ void RestGraphHandler::vertexActionRead(Graph& graph, std::string const& collect
   }
 
   // use default options
-  generateVertexRead(result.slice(), *ctx->getVPackOptionsForDump());
+  generateVertexRead(result.slice(), *ctx->getVPackOptions());
 }
 
 /// @brief generate response object: { error, code, vertex }
@@ -479,10 +479,10 @@ void RestGraphHandler::generateCreated(TRI_col_type_e colType,
 
   VPackBuilder objectBuilder =
       VPackCollection::remove(resultSlice,
-                              std::unordered_set<std::string>{"old", "new"});
+                              std::unordered_set<std::string>{StaticStrings::Old, StaticStrings::New});
   // Note: This doesn't really contain the object, only _id, _key, _rev, _oldRev
   VPackSlice objectSlice = objectBuilder.slice();
-  VPackSlice newSlice = resultSlice.get("new");
+  VPackSlice newSlice = resultSlice.get(StaticStrings::New);
 
   VPackBuilder obj;
   obj.add(VPackValue(VPackValueType::Object, true));
@@ -555,7 +555,7 @@ void RestGraphHandler::edgeActionRead(Graph& graph, const std::string& definitio
     }
   }
 
-  generateEdgeRead(result.slice(), *ctx->getVPackOptionsForDump());
+  generateEdgeRead(result.slice(), *ctx->getVPackOptions());
 }
 
 std::unique_ptr<Graph> RestGraphHandler::getGraph(const std::string& graphName) {
@@ -591,8 +591,8 @@ Result RestGraphHandler::edgeActionRemove(Graph& graph, const std::string& defin
     return result.result;
   }
 
-  generateRemoved(true, result._options.waitForSync, result.slice().get("old"),
-                  *ctx->getVPackOptionsForDump());
+  generateRemoved(true, result.options.waitForSync, result.slice().get(StaticStrings::Old),
+                  *ctx->getVPackOptions());
 
   return Result();
 }
@@ -681,7 +681,8 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph, EdgeDefinitio
   // simon: why is this part of el-cheapo ??
   auto ctx = createTransactionContext(AccessMode::Type::WRITE);
   GraphOperations gops{graph, _vocbase, ctx};
-  OperationResult result;
+  OperationOptions options(_context);
+  OperationResult result(Result(), options);
 
   if (action == EdgeDefinitionAction::CREATE) {
     result = gops.addEdgeDefinition(body, waitForSync);
@@ -708,8 +709,7 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph, EdgeDefinitio
   newGraph->graphForClient(builder);
   builder.close();
 
-  generateCreatedEdgeDefinition(waitForSync, builder.slice(),
-                                *ctx->getVPackOptionsForDump());
+  generateCreatedEdgeDefinition(waitForSync, builder.slice(), *ctx->getVPackOptions());
 
   return Result();
 }
@@ -731,7 +731,8 @@ Result RestGraphHandler::modifyVertexDefinition(graph::Graph& graph,
 
   auto ctx = createTransactionContext(AccessMode::Type::WRITE);
   GraphOperations gops{graph, _vocbase, ctx};
-  OperationResult result;
+  OperationOptions options(_context);
+  OperationResult result(Result(), options);
 
   if (action == VertexDefinitionAction::CREATE) {
     result = gops.addOrphanCollection(body, waitForSync, createCollection);
@@ -753,8 +754,7 @@ Result RestGraphHandler::modifyVertexDefinition(graph::Graph& graph,
   newGraph->graphForClient(builder);
   builder.close();
 
-  generateCreatedEdgeDefinition(waitForSync, builder.slice(),
-                                *ctx->getVPackOptionsForDump());
+  generateCreatedEdgeDefinition(waitForSync, builder.slice(), *ctx->getVPackOptions());
 
   return Result();
 }
@@ -791,7 +791,8 @@ Result RestGraphHandler::documentModify(graph::Graph& graph, const std::string& 
   auto ctx = createTransactionContext(AccessMode::Type::WRITE);
   GraphOperations gops{graph, _vocbase, ctx};
 
-  OperationResult result;
+  OperationOptions options(_context);
+  OperationResult result(Result(), options);
   // TODO get rid of this branching, rather use several functions and reuse the
   // common code another way.
   if (isPatch && colType == TRI_COL_TYPE_DOCUMENT) {
@@ -819,12 +820,12 @@ Result RestGraphHandler::documentModify(graph::Graph& graph, const std::string& 
 
   switch (colType) {
     case TRI_COL_TYPE_DOCUMENT:
-      generateVertexModified(result._options.waitForSync, result.slice(),
-                             *ctx->getVPackOptionsForDump());
+      generateVertexModified(result.options.waitForSync, result.slice(),
+                             *ctx->getVPackOptions());
       break;
     case TRI_COL_TYPE_EDGE:
-      generateEdgeModified(result._options.waitForSync, result.slice(),
-                           *ctx->getVPackOptionsForDump());
+      generateEdgeModified(result.options.waitForSync, result.slice(),
+                           *ctx->getVPackOptions());
       break;
     default:
       TRI_ASSERT(false);
@@ -851,7 +852,8 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph, std::string const& 
   auto ctx = createTransactionContext(AccessMode::Type::WRITE);
   GraphOperations gops{graph, _vocbase, ctx};
 
-  OperationResult result;
+  OperationOptions options(_context);
+  OperationResult result(Result(), options);
   if (colType == TRI_COL_TYPE_DOCUMENT) {
     result = gops.createVertex(collectionName, body, waitForSync, returnNew);
   } else if (colType == TRI_COL_TYPE_EDGE) {
@@ -866,12 +868,12 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph, std::string const& 
   } else {
     switch (colType) {
       case TRI_COL_TYPE_DOCUMENT:
-        generateVertexCreated(result._options.waitForSync, result.slice(),
-                              *ctx->getVPackOptionsForDump());
+        generateVertexCreated(result.options.waitForSync, result.slice(),
+                              *ctx->getVPackOptions());
         break;
       case TRI_COL_TYPE_EDGE:
-        generateEdgeCreated(result._options.waitForSync, result.slice(),
-                            *ctx->getVPackOptionsForDump());
+        generateEdgeCreated(result.options.waitForSync, result.slice(),
+                            *ctx->getVPackOptions());
         break;
       default:
         TRI_ASSERT(false);
@@ -901,8 +903,8 @@ Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
     return result.result;
   }
 
-  generateRemoved(true, result._options.waitForSync, result.slice().get("old"),
-                  *ctx->getVPackOptionsForDump());
+  generateRemoved(true, result.options.waitForSync, result.slice().get(StaticStrings::Old),
+                  *ctx->getVPackOptions());
 
   return Result();
 }
@@ -913,7 +915,7 @@ Result RestGraphHandler::graphActionReadGraphConfig(graph::Graph const& graph) {
   builder.openObject();
   graph.graphForClient(builder);
   builder.close();
-  generateGraphConfig(builder.slice(), *ctx->getVPackOptionsForDump());
+  generateGraphConfig(builder.slice(), *ctx->getVPackOptions());
 
   return Result();
 }
@@ -930,7 +932,7 @@ Result RestGraphHandler::graphActionRemoveGraph(graph::Graph const& graph) {
   }
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
-  generateGraphRemoved(true, result._options.waitForSync, *ctx->getVPackOptionsForDump());
+  generateGraphRemoved(true, result.options.waitForSync, *ctx->getVPackOptions());
 
   return Result();
 }
@@ -963,7 +965,7 @@ Result RestGraphHandler::graphActionCreateGraph() {
   graph->graphForClient(builder);
   builder.close();
 
-  generateCreatedGraphConfig(waitForSync, builder.slice(), *ctx->getVPackOptionsForDump());
+  generateCreatedGraphConfig(waitForSync, builder.slice(), *ctx->getVPackOptions());
 
   return Result();
 }
@@ -974,7 +976,7 @@ Result RestGraphHandler::graphActionReadGraphs() {
   VPackBuilder builder;
   _gmngr.readGraphs(builder);
 
-  generateGraphConfig(builder.slice(), *ctx->getVPackOptionsForDump());
+  generateGraphConfig(builder.slice(), *ctx->getVPackOptions());
 
   return Result();
 }
@@ -993,7 +995,7 @@ Result RestGraphHandler::graphActionReadConfig(graph::Graph const& graph, TRI_co
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
-  generateGraphConfig(builder.slice(), *ctx->getVPackOptionsForDump());
+  generateGraphConfig(builder.slice(), *ctx->getVPackOptions());
 
   return Result();
 }
@@ -1015,3 +1017,4 @@ std::optional<RevisionId> RestGraphHandler::handleRevision() const {
   }
   return revision.isSet() ? std::optional{revision} : std::nullopt;
 }
+

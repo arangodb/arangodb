@@ -355,19 +355,15 @@ ArangoCollection.prototype.type = function () {
 
 ArangoCollection.prototype.properties = function (properties) {
   var attributes = {
-    'doCompact': true,
-    'journalSize': true,
     'globallyUniqueId': false,
     'isSmart': false,
     'isSystem': false,
-    'isVolatile': false,
     'waitForSync': true,
     'shardKeys': false,
     'smartGraphAttribute': false,
     'smartJoinAttribute': false,
     'numberOfShards': false,
     'keyOptions': false,
-    'indexBuckets': true,
     'replicationFactor': true,
     'minReplicationFactor': true,
     'writeConcern': true,
@@ -428,8 +424,8 @@ ArangoCollection.prototype.recalculateCount = function () {
 // / @brief gets the figures of a collection
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.figures = function () {
-  var requestResult = this._database._connection.GET(this._baseurl('figures'));
+ArangoCollection.prototype.figures = function (details) {
+  var requestResult = this._database._connection.GET(this._baseurl('figures') + '?details=' + (details ? 'true' : 'false'));
 
   arangosh.checkRequestResult(requestResult);
 
@@ -535,22 +531,20 @@ ArangoCollection.prototype.truncate = function (options) {
   } else {
     options = options || {};
   }
-
+  if (!options.hasOwnProperty('compact')) {
+    options.compact = true;
+  }
   let headers = {};
   if (options && options.transactionId) {
     headers['x-arango-trx-id'] = options.transactionId;
   }
 
-  var append = (options.waitForSync ? '&waitForSync=true' : '');
+  var append = (options.waitForSync ? '?waitForSync=true' : '');
+  append += (append === '') ? '?' : '&' + (options.compact ? 'compact=true' : 'compact=false');
   var requestResult = this._database._connection.PUT(this._baseurl('truncate') + append, null, headers);
-
   arangosh.checkRequestResult(requestResult);
   // invalidate cache
   this._status = null;
-
-  if (!options.compact) {
-    return;
-  }
 };
 
 // //////////////////////////////////////////////////////////////////////////////

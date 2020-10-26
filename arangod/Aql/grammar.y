@@ -47,11 +47,6 @@
 
 using namespace arangodb::aql;
 
-/// @brief shortcut macro for signaling out of memory
-#define ABORT_OOM                                   \
-  parser->registerError(TRI_ERROR_OUT_OF_MEMORY);   \
-  YYABORT;
-
 #define scanner parser->scanner()
 
 /// @brief forward for lexer function defined in Aql/tokens.ll
@@ -65,6 +60,17 @@ void Aqlerror(YYLTYPE* locp,
 }
 
 namespace {
+void validateOptions(Parser* parser, AstNode const* node,
+                     int line, int column) {
+  TRI_ASSERT(node != nullptr);
+  if (!node->isObject()) {
+    parser->registerParseError(TRI_ERROR_QUERY_PARSE, "'OPTIONS' have to be an object", line, column);
+  }
+  if (!node->isConstant()) {
+    parser->registerParseError(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS, "'OPTIONS' have to be known at query compile time", line, column);
+  }
+}
+
 /// @brief check if any of the variables used in the INTO expression were
 /// introduced by the COLLECT itself, in which case it would fail
 void checkIntoVariables(Parser* parser, AstNode const* expression,
@@ -91,8 +97,6 @@ void registerAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes,
                              int line, int column,
                              VarSet& variablesIntroduced,
                              AstNode const* vars) {
-  VarSet varsInAssignment{};
-
   size_t const n = vars->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
@@ -100,18 +104,6 @@ void registerAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes,
 
     if (member != nullptr) {
       TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
-      // check if any of the assignment refers to a variable introduced by this very
-      // same COLLECT, e.g. COLLECT aggregate x = .., y = x
-      varsInAssignment.clear();
-      Ast::getReferencedVariables(member->getMember(1), varsInAssignment);
-      for (auto const& it : varsInAssignment) {
-        if (variablesIntroduced.find(it) != variablesIntroduced.end()) {
-          std::string msg("use of COLLECT variable '" + it->name + "' inside same COLLECT");
-          parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, msg.c_str(), it->name.c_str(), line, column);
-          return;
-        }
-      }
-
       // keep track of the variable for our assignment
       auto v = static_cast<Variable*>(member->getMember(0)->getData());
       scopes->addVariable(v);
@@ -121,33 +113,49 @@ void registerAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes,
 }
 
 /// @brief validate the aggregate variables expressions
-bool validateAggregates(Parser* parser, AstNode const* aggregates) {
+bool validateAggregates(Parser* parser, AstNode const* aggregates,
+                        int line, int column) {
+  VarSet variablesIntroduced{};
+  VarSet varsInAssignment{};
+  
   size_t const n = aggregates->numMembers();
-
   for (size_t i = 0; i < n; ++i) {
     auto member = aggregates->getMemberUnchecked(i);
 
     if (member != nullptr) {
       TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
+      
+      // keep track of the variable for our assignment
+      auto v = static_cast<Variable*>(member->getMember(0)->getData());
+      variablesIntroduced.emplace(v);
 
       auto func = member->getMember(1);
-
-      bool isValid = true;
       if (func->type != NODE_TYPE_FCALL) {
         // aggregate expression must be a function call
-        isValid = false;
+        char const* error = "aggregate expression must be a function call";
+        parser->registerParseError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, error, line, column);
+        return false;
       }
       else {
         auto f = static_cast<arangodb::aql::Function*>(func->getData());
         if (!Aggregator::isValid(f->name)) {
           // aggregate expression must be a call to MIN|MAX|LENGTH...
-          isValid = false;
+          char const* error = "unknown aggregate function used";
+          parser->registerParseError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, error, line, column);
+          return false;
         }
       }
-
-      if (!isValid) {
-        parser->registerError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION);
-        return false;
+      
+      // check if any of the assignment refers to a variable introduced by this very
+      // same COLLECT, e.g. COLLECT aggregate x = .., y = x
+      varsInAssignment.clear();
+      Ast::getReferencedVariables(member->getMember(1), varsInAssignment);
+      for (auto const& it : varsInAssignment) {
+        if (variablesIntroduced.find(it) != variablesIntroduced.end()) {
+          std::string msg("use of COLLECT variable '" + it->name + "' inside same COLLECT");
+          parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, msg.c_str(), it->name.c_str(), line, column);
+          return false;
+        }
       }
     }
   }
@@ -526,21 +534,15 @@ prune_and_options:
       auto node = static_cast<AstNode*>(parser->peekStack());
       if (TRI_CaseEqualString($1.value, "PRUNE")) {
         /* Only Prune */
-        if ($2 == nullptr) {
-          ABORT_OOM
-        }
+        TRI_ASSERT($2 != nullptr);
         // Prune
         node->addMember($2);
         // Options
         node->addMember(parser->ast()->createNodeNop());
       } else if (TRI_CaseEqualString($1.value, "OPTIONS")) {
         /* Only Options */
-        if ($2 == nullptr) {
-          ABORT_OOM
-        }
-        if (!$2->isObject()) {
-          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "traversal 'OPTIONS' have to be an object", $1.value, yylloc.first_line, yylloc.first_column);
-        }
+        TRI_ASSERT($2 != nullptr);
+        ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
         // Prune
         node->addMember(parser->ast()->createNodeNop());
         // Options
@@ -555,15 +557,13 @@ prune_and_options:
       if (!TRI_CaseEqualString($1.value, "PRUNE")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE'", $1.value, yylloc.first_line, yylloc.first_column);
       }
-      if ($2 == nullptr) {
-        ABORT_OOM
-      }
+      TRI_ASSERT($2 != nullptr);
       if (!TRI_CaseEqualString($3.value, "OPTIONS")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", $3.value, yylloc.first_line, yylloc.first_column);
       }
-      if ($4 == nullptr) {
-        ABORT_OOM
-      }
+      TRI_ASSERT($4 != nullptr);
+      ::validateOptions(parser, $4, yylloc.first_line, yylloc.first_column);
+
       // Prune
       node->addMember($2);
       // Options
@@ -647,7 +647,6 @@ for_statement:
       AstNode* variableNameNode = variablesNode->getMemberUnchecked(0);
       TRI_ASSERT(variableNameNode->isStringValue());
       AstNode* variableNode = parser->ast()->createNodeVariable(variableNameNode->getStringValue(), variableNameNode->getStringLength(), true);
-
       parser->pushStack(variableNode);
     } for_options {
       // now we can handle the optional SEARCH condition and OPTIONS.
@@ -803,10 +802,7 @@ collect_variable_list:
       parser->pushStack(node);
     } collect_list {
       auto list = static_cast<AstNode*>(parser->popStack());
-
-      if (list == nullptr) {
-        ABORT_OOM
-      }
+      TRI_ASSERT(list != nullptr);
       $$ = list;
     }
   ;
@@ -843,7 +839,7 @@ collect_statement:
       }
 
       // validate aggregates
-      if (!::validateAggregates(parser, $2)) {
+      if (!::validateAggregates(parser, $2, yylloc.first_line, yylloc.first_column)) {
         YYABORT;
       }
 
@@ -854,7 +850,7 @@ collect_statement:
       AstNode const* into = ::getIntoVariable(parser, $3);
       AstNode const* intoExpression = ::getIntoExpression($3);
 
-      auto node = parser->ast()->createNodeCollect(parser->ast()->createNodeArray(), $2, into, intoExpression, nullptr, $3);
+      auto node = parser->ast()->createNodeCollect(parser->ast()->createNodeArray(), $2, into, intoExpression, nullptr, $4);
       parser->ast()->addOperation(node);
     }
   | collect_variable_list aggregate collect_optional_into options {
@@ -867,7 +863,7 @@ collect_statement:
         ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, $2);
       }
 
-      if (!::validateAggregates(parser, $2)) {
+      if (!::validateAggregates(parser, $2, yylloc.first_line, yylloc.first_column)) {
         YYABORT;
       }
 
@@ -994,9 +990,7 @@ variable_list:
       }
 
       auto node = parser->ast()->createNodeReference($1.value, $1.length);
-      if (node == nullptr) {
-        ABORT_OOM
-      }
+      TRI_ASSERT(node != nullptr);
 
       // indicate the this node is a reference to the variable name, not the variable value
       node->setFlag(FLAG_KEEP_VARIABLENAME);
@@ -1008,9 +1002,7 @@ variable_list:
       }
 
       auto node = parser->ast()->createNodeReference($3.value, $3.length);
-      if (node == nullptr) {
-        ABORT_OOM
-      }
+      TRI_ASSERT(node != nullptr);
 
       // indicate the this node is a reference to the variable name, not the variable value
       node->setFlag(FLAG_KEEP_VARIABLENAME);
@@ -1303,10 +1295,7 @@ function_name:
       temp.append("::");
       temp.append($3.value, $3.length);
       auto p = parser->ast()->resources().registerString(temp);
-
-      if (p == nullptr) {
-        ABORT_OOM
-      }
+      TRI_ASSERT(p != nullptr);
 
       $$.value = p;
       $$.length = temp.size();
@@ -1553,10 +1542,7 @@ for_options:
       $$ = nullptr;
     }
   | T_STRING expression {
-      if ($2 == nullptr) {
-        ABORT_OOM
-      }
-
+      TRI_ASSERT($2 != nullptr);
       // we always return an array with two values: SEARCH and OPTIONS
       // as only one of these values will be set here, the other value is NOP
       auto node = parser->ast()->createNodeArray(2);
@@ -1571,6 +1557,8 @@ for_options:
         if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
           parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' or 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
         }
+      
+        ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
 
         node->addMember(parser->ast()->createNodeNop());
         node->addMember($2);
@@ -1579,16 +1567,15 @@ for_options:
       $$ = node;
     }
   | T_STRING expression T_STRING expression {
-      if ($2 == nullptr) {
-        ABORT_OOM
-      }
-
+      TRI_ASSERT($2 != nullptr);
       // two extra qualifiers. we expect them in the order: SEARCH, then OPTIONS
 
       if (!TRI_CaseEqualString($1.value, "SEARCH") ||
           !TRI_CaseEqualString($3.value, "OPTIONS")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' and 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
       }
+      
+      ::validateOptions(parser, $4, yylloc.first_line, yylloc.first_column);
 
       auto node = parser->ast()->createNodeArray(2);
       node->addMember($2);
@@ -1602,13 +1589,13 @@ options:
       $$ = nullptr;
     }
   | T_STRING object {
-      if ($2 == nullptr) {
-        ABORT_OOM
-      }
+      TRI_ASSERT($2 != nullptr);
 
       if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
       }
+      
+      ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
 
       $$ = $2;
     }
@@ -1832,11 +1819,8 @@ reference:
       $$ = $1;
     }
   | function_call {
+      TRI_ASSERT($1 != nullptr);
       $$ = $1;
-
-      if ($$ == nullptr) {
-        ABORT_OOM
-      }
     }
   | T_OPEN expression T_CLOSE {
       if ($2->type == NODE_TYPE_EXPANSION) {
@@ -1859,7 +1843,7 @@ reference:
       auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), variableName.size(), node, false);
       parser->ast()->addOperation(subQuery);
 
-      $$ = parser->ast()->createNodeReference(variableName);
+      $$ = parser->ast()->createNodeSubqueryReference(variableName);
     }
   | reference '.' T_STRING %prec REFERENCE {
       // named variable access, e.g. variable.reference
@@ -1957,17 +1941,11 @@ simple_value:
 
 numeric_value:
     T_INTEGER {
-      if ($1 == nullptr) {
-        ABORT_OOM
-      }
-
+      TRI_ASSERT($1 != nullptr);
       $$ = $1;
     }
   | T_DOUBLE {
-      if ($1 == nullptr) {
-        ABORT_OOM
-      }
-
+      TRI_ASSERT($1 != nullptr);
       $$ = $1;
     }
   ;

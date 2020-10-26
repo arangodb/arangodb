@@ -195,7 +195,7 @@ std::
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                                                                             weekday wd{floor<date::days>(tp)};
                                                                             wrk.append(
-                                                                                ::weekDayNames[static_cast<unsigned>(wd)]);
+                                                                                ::weekDayNames[wd.c_encoding()]);
                                                                           }},
 
                                                                          {"%mmm",
@@ -208,8 +208,7 @@ std::
                                                                          {"%www",
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                                                                             weekday wd{floor<date::days>(tp)};
-                                                                            wrk.append(
-                                                                                weekDayNamesShort[static_cast<unsigned>(wd)]);
+                                                                            wrk.append(weekDayNamesShort[wd.c_encoding()]);
                                                                           }},
                                                                          {"%fff",
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
@@ -377,7 +376,7 @@ std::
                                                                              arangodb::tp_sys_clock_ms const& tp) {
                                                                             weekday wd{floor<date::days>(tp)};
                                                                             wrk.append(std::to_string(
-                                                                                static_cast<unsigned>(wd)));
+                                                                                wd.c_encoding()));
                                                                           }},
                                                                          {"%y",
                                                                           [](std::string& wrk,

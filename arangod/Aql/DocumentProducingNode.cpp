@@ -23,6 +23,7 @@
 
 #include "DocumentProducingNode.h"
 
+#include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -61,7 +62,7 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
   if (!p.isNone()) {
     Ast* ast = plan->getAst();
     // new AstNode is memory-managed by the Ast
-    setFilter(std::make_unique<Expression>(ast, new AstNode(ast, p)));
+    setFilter(std::make_unique<Expression>(ast, ast->createNode(p)));
   }
 
   _count = arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "count", false);

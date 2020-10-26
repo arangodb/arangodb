@@ -50,8 +50,11 @@ std::atomic<aql::QueryRegistry*> QueryRegistryFeature::QUERY_REGISTRY{nullptr};
 
 QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "QueryRegistry"),
+      _trackingEnabled(true),
       _trackSlowQueries(true),
+      _trackQueryString(true),
       _trackBindVars(true),
+      _trackDataSources(false),
       _failOnWarning(aql::QueryOptions::defaultFailOnWarning),
       _queryCacheIncludeSystem(false),
 #ifdef USE_ENTERPRISE
@@ -59,6 +62,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _parallelizeTraversals(true),
 #endif
       _queryMemoryLimit(aql::QueryOptions::defaultMemoryLimit),
+      _queryMaxRuntime(aql::QueryOptions::defaultMaxRuntime),
       _maxQueryPlans(aql::QueryOptions::defaultMaxNumberOfPlans),
       _queryCacheMaxResultsCount(0),
       _queryCacheMaxResultsSize(0),
@@ -104,15 +108,32 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOldOption("database.disable-query-tracking", "query.tracking");
 
   options->addOption("--query.memory-limit",
-                     "memory threshold for AQL queries (in bytes)",
+                     "memory threshold for AQL queries (in bytes, 0 = no limit)",
                      new UInt64Parameter(&_queryMemoryLimit));
+  
+  options->addOption("--query.max-runtime",
+                     "runtime threshold for AQL queries (in seconds, 0 = no limit)",
+                     new DoubleParameter(&_queryMaxRuntime))
+                     .setIntroducedIn(30607).setIntroducedIn(30703);
 
-  options->addOption("--query.tracking", "whether to track slow AQL queries",
-                     new BooleanParameter(&_trackSlowQueries));
+  options->addOption("--query.tracking", "whether to track queries",
+                     new BooleanParameter(&_trackingEnabled));
+
+  options->addOption("--query.tracking-slow-queries", "whether to track slow queries",
+                     new BooleanParameter(&_trackSlowQueries))
+                     .setIntroducedIn(30704);
+
+  options->addOption("--query.tracking-with-querystring", "whether to track the query string",
+                     new BooleanParameter(&_trackQueryString))
+                     .setIntroducedIn(30704);
 
   options->addOption("--query.tracking-with-bindvars",
                      "whether to track bind vars with AQL queries",
                      new BooleanParameter(&_trackBindVars));
+  
+  options->addOption("--query.tracking-with-datasources", "whether to track data sources with AQL queries",
+                     new BooleanParameter(&_trackDataSources))
+                     .setIntroducedIn(30704);
 
   options->addOption("--query.fail-on-warning",
                      "whether AQL queries should fail with errors even for "
@@ -191,6 +212,12 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 }
 
 void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (_queryMaxRuntime < 0.0) {
+    LOG_TOPIC("46572", FATAL, Logger::AQL)
+        << "invalid value for `--query.max-runtime`. expecting 0 or a positive value";
+    FATAL_ERROR_EXIT();
+  }
+
   if (_maxQueryPlans == 0) {
     LOG_TOPIC("4006f", FATAL, Logger::AQL)
         << "invalid value for `--query.optimizer-max-plans`. expecting at "
@@ -212,6 +239,7 @@ void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
   
   aql::QueryOptions::defaultMemoryLimit = _queryMemoryLimit;
   aql::QueryOptions::defaultMaxNumberOfPlans = _maxQueryPlans;
+  aql::QueryOptions::defaultMaxRuntime = _queryMaxRuntime;
   aql::QueryOptions::defaultTtl = _queryRegistryTTL;
   aql::QueryOptions::defaultFailOnWarning = _failOnWarning;
 }

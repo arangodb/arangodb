@@ -476,6 +476,17 @@ inline bool findReference(aql::AstNode const& root, aql::Variable const& ref) no
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief normalizes input binary comparison node (<, <=, >, >=) containing
+///        GEO_DISTANCE fcall and fills the specified struct
+/// @returns true if the specified 'in' nodes has been successfully normalized,
+///          false otherwise
+////////////////////////////////////////////////////////////////////////////////
+bool normalizeGeoDistanceCmpNode(
+  aql::AstNode const& in,
+  aql::Variable const& ref,
+  NormalizedCmpNode& out);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes input binary comparison node (==, !=, <, <=, >, >=) and
 ///        fills the specified struct
 /// @returns true if the specified 'in' nodes has been successfully normalized,

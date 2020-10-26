@@ -26,6 +26,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ModificationExecutorInfos.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationResult.h"
 
@@ -66,7 +67,7 @@ Result ModificationExecutorHelpers::getKey(CollectionNameResolver const& resolve
 
   if (!keyEntry.isString()) {
     return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING,
-                  std::string{"Expected _key to be present in document."}};
+                  std::string{"Expected _key to be a string attribute in document."}};
   }
 
   // Key found and assigned, note rev is empty by assertion

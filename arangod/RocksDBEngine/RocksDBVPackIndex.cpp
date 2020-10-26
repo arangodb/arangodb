@@ -39,6 +39,7 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -661,8 +662,8 @@ void RocksDBVPackIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
 /// @brief inserts a document into the index
 Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
                                  LocalDocumentId const& documentId,
-                                 velocypack::Slice const& doc, OperationOptions& options) {
-  Index::OperationMode mode = options.indexOperationMode;
+                                 velocypack::Slice const doc, OperationOptions& options) {
+  IndexOperationMode mode = options.indexOperationMode;
   Result res;
   rocksdb::Status s;
   ::arangodb::containers::SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
@@ -712,7 +713,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
         auto success = _collection.getPhysical()->readDocumentWithCallback(&trx, docId,
            [&](LocalDocumentId const&, VPackSlice doc) {
              VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
-             if (mode == OperationMode::internal) {
+             if (mode == IndexOperationMode::internal) {
                res.resetErrorMessage(key.copyString());
              } else {
                addErrorMsg(res, key.copyString());
@@ -807,15 +808,15 @@ namespace {
 
 Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthds,
                                  LocalDocumentId const& oldDocumentId,
-                                 velocypack::Slice const& oldDoc,
+                                 velocypack::Slice const oldDoc,
                                  LocalDocumentId const& newDocumentId,
-                                 velocypack::Slice const& newDoc,
-                                 Index::OperationMode mode) {
+                                 velocypack::Slice const newDoc,
+                                 OperationOptions& options) {
   if (!_unique) {
     // only unique index supports in-place updates
     // lets also not handle the complex case of expanded arrays
     return RocksDBIndex::update(trx, mthds, oldDocumentId, oldDoc,
-                                newDocumentId, newDoc, mode);
+                                newDocumentId, newDoc, options);
   }
 
   if (!std::all_of(_fields.cbegin(), _fields.cend(), [&](auto const& path) {
@@ -823,7 +824,7 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
   })) {
     // we can only use in-place updates if no indexed attributes changed
     return RocksDBIndex::update(trx, mthds, oldDocumentId, oldDoc,
-                                newDocumentId, newDoc, mode);
+                                newDocumentId, newDoc, options);
   }
 
   Result res;
@@ -859,8 +860,7 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
 /// @brief removes a document from the index
 Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthds,
                                  LocalDocumentId const& documentId,
-                                 velocypack::Slice const& doc,
-                                 Index::OperationMode mode) {
+                                 velocypack::Slice const doc) {
   TRI_IF_FAILURE("BreakHashIndexRemove") {
     if (type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
       // intentionally  break index removal
@@ -1307,7 +1307,9 @@ void RocksDBVPackIndex::recalculateEstimates() {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
 
   auto bounds = getBounds();

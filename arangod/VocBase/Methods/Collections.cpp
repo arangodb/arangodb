@@ -207,8 +207,9 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
   return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
-/*static*/ arangodb::Result Collections::create(    // create collection
-    TRI_vocbase_t& vocbase,                         // collection vocbase
+/*static*/ arangodb::Result Collections::create(  // create collection
+    TRI_vocbase_t& vocbase,                       // collection vocbase
+    OperationOptions const& options,
     std::string const& name,                        // collection name
     TRI_col_type_e collectionType,                  // collection type
     arangodb::velocypack::Slice const& properties,  // collection properties
@@ -226,22 +227,21 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
   }
   std::vector<CollectionCreationInfo> infos{{name, collectionType, properties}};
   std::vector<std::shared_ptr<LogicalCollection>> collections;
-  Result res = create(vocbase, infos, createWaitsForSyncReplication,
-                      enforceReplicationFactor, isNewDatabase, nullptr,
-                      collections);
+  Result res = create(vocbase, options, infos, createWaitsForSyncReplication,
+                      enforceReplicationFactor, isNewDatabase, nullptr, collections);
   if (res.ok() && collections.size() > 0) {
     ret = std::move(collections[0]);
   }
   return res;
 }
 
-Result Collections::create(TRI_vocbase_t& vocbase,
+Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& options,
                            std::vector<CollectionCreationInfo> const& infos,
                            bool createWaitsForSyncReplication,
                            bool enforceReplicationFactor, bool isNewDatabase,
                            std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
                            std::vector<std::shared_ptr<LogicalCollection>>& ret) {
-  ExecContext const& exec = ExecContext::current();
+  ExecContext const& exec = options.context();
   if (!exec.canUseDatabase(vocbase.name(), auth::Level::RW)) {
     for (auto const& info : infos) {
       events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_FORBIDDEN);
@@ -512,7 +512,9 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   }
   for (auto const& info : infos) {
     events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_NO_ERROR);
-    events::PropertyUpdateCollection(vocbase.name(), info.name, info.properties);
+    velocypack::Builder builder(info.properties);
+    OperationResult result(Result(), builder.steal(), options);
+    events::PropertyUpdateCollection(vocbase.name(), info.name, result);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -551,10 +553,10 @@ void Collections::createSystemCollectionProperties(std::string const& collection
   }
 }
 
-/*static*/ Result Collections::createSystem(
-    TRI_vocbase_t& vocbase, std::string const& name, bool isNewDatabase,
-    std::shared_ptr<LogicalCollection>& createdCollection) {
-
+/*static*/ Result Collections::createSystem(TRI_vocbase_t& vocbase,
+                                            OperationOptions const& options,
+                                            std::string const& name, bool isNewDatabase,
+                                            std::shared_ptr<LogicalCollection>& createdCollection) {
   Result res = methods::Collections::lookup(vocbase, name, createdCollection);
 
   if (res.ok()) {
@@ -566,13 +568,13 @@ void Collections::createSystemCollectionProperties(std::string const& collection
     createSystemCollectionProperties(name, bb, vocbase);
 
     res = Collections::create(vocbase,  // vocbase to create in
-                              name,     // collection name top create
+                              options,
+                              name,  // collection name top create
                               TRI_COL_TYPE_DOCUMENT,  // collection type to create
                               bb.slice(),  // collection definition to create
                               true,        // waitsForSyncReplication
                               true,        // enforceReplicationFactor
-                              isNewDatabase,
-                              createdCollection);
+                              isNewDatabase, createdCollection);
 
     if (res.ok()) {
       TRI_ASSERT(createdCollection);
@@ -666,7 +668,8 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 }
 
 Result Collections::updateProperties(LogicalCollection& collection,
-                                     velocypack::Slice const& props) {
+                                     velocypack::Slice const& props,
+                                     OperationOptions const& options) {
   const bool partialUpdate = false; // always a full update for collections
 
   ExecContext const& exec = ExecContext::current();
@@ -710,7 +713,10 @@ Result Collections::updateProperties(LogicalCollection& collection,
 
     auto rv = info->properties(props, partialUpdate);
     if (rv.ok()) {
-      events::PropertyUpdateCollection(collection.vocbase().name(), collection.name(), props);
+      velocypack::Builder builder(props);
+      OperationResult result(rv, builder.steal(), options);
+      events::PropertyUpdateCollection(collection.vocbase().name(),
+                                       collection.name(), result);
     }
     return rv;
 
@@ -723,7 +729,10 @@ Result Collections::updateProperties(LogicalCollection& collection,
       // try to write new parameter to file
       res = collection.properties(props, partialUpdate);
       if (res.ok()) {
-        events::PropertyUpdateCollection(collection.vocbase().name(), collection.name(), props);
+        velocypack::Builder builder(props);
+        OperationResult result(res, builder.steal(), options);
+        events::PropertyUpdateCollection(collection.vocbase().name(),
+                                         collection.name(), result);
       }
     }
 
@@ -862,7 +871,11 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
 
-  LOG_TOPIC_IF("1bf4d", INFO, Logger::ENGINES, res.fail() && res.isNot(TRI_ERROR_FORBIDDEN))
+  LOG_TOPIC_IF("1bf4d", WARN, Logger::ENGINES, 
+               res.fail() && 
+               res.isNot(TRI_ERROR_FORBIDDEN) && 
+               res.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
+               res.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))
     << "error while dropping collection: '" << collName
     << "' error: '" << res.errorMessage() << "'";
 
@@ -892,7 +905,8 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   if (ServerState::instance()->isCoordinator()) {
     auto cid = std::to_string(coll.id().id());
     auto& feature = vocbase.server().getFeature<ClusterFeature>();
-    return warmupOnCoordinator(feature, vocbase.name(), cid);
+    OperationOptions options(exec);
+    return warmupOnCoordinator(feature, vocbase.name(), cid, options);
   }
 
   auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, false);
@@ -925,36 +939,13 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   return futures::makeFuture(res);
 }
 
-futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
-                                             LogicalCollection const& coll) {
-  ExecContext const& exec = ExecContext::current();  // disallow expensive ops
-  if (!exec.canUseCollection(coll.name(), auth::Level::RW)) {
-    return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
-  }
-
-  if (!ServerState::instance()->isSingleServer()) {
-    return futures::makeFuture(
-        Result(TRI_ERROR_NOT_IMPLEMENTED,
-               "collection upgrade in cluster not supported yet"));
-  }
-
-  Result res;
-  PhysicalCollection* physical = coll.getPhysical();
-  if (!physical) {
-    res.reset(TRI_ERROR_INTERNAL, "collection not found");
-    return futures::makeFuture(res);
-  }
-  res = physical->upgrade();
-
-  return futures::makeFuture(res);
-}
-
-futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
+futures::Future<OperationResult> Collections::revisionId(Context& ctxt,
+                                                         OperationOptions const& options) {
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = ctxt.coll()->vocbase().name();
     auto cid = std::to_string(ctxt.coll()->id().id());
     auto& feature = ctxt.coll()->vocbase().server().getFeature<ClusterFeature>();
-    return revisionOnCoordinator(feature, databaseName, cid);
+    return revisionOnCoordinator(feature, databaseName, cid, options);
   }
 
   RevisionId rid = ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true, true));
@@ -962,7 +953,7 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
   VPackBuilder builder;
   builder.add(VPackValue(rid.toString()));
 
-  return futures::makeFuture(OperationResult(Result(), builder.steal()));
+  return futures::makeFuture(OperationResult(Result(), builder.steal(), options));
 }
 
 /// @brief Helper implementation similar to ArangoCollection.all() in v8
@@ -1070,12 +1061,9 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
 
 arangodb::velocypack::Builder Collections::filterInput(arangodb::velocypack::Slice properties) {
   return velocypack::Collection::keep(properties,
-      std::unordered_set<std::string>{StaticStrings::DoCompact,
+      std::unordered_set<std::string>{
                                       StaticStrings::DataSourceSystem,
                                       StaticStrings::DataSourceId,
-                                      "isVolatile",
-                                      StaticStrings::JournalSize,
-                                      StaticStrings::IndexBuckets,
                                       "keyOptions",
                                       StaticStrings::WaitForSyncString,
                                       StaticStrings::CacheEnabled,

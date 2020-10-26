@@ -71,6 +71,7 @@ class StaticStrings {
   static std::string const Overwrite;
   static std::string const OverwriteMode;
   static std::string const PreserveRevisionIds;
+  static std::string const Compact;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -216,12 +217,9 @@ class StaticStrings {
   // collection attributes
   static std::string const CacheEnabled;
   static std::string const DistributeShardsLike;
-  static std::string const DoCompact;
-  static std::string const IndexBuckets;
   static std::string const Indexes;
   static std::string const IsSmart;
   static std::string const IsSmartChild;
-  static std::string const JournalSize;
   static std::string const MinReplicationFactor;
   static std::string const MinRevision;
   static std::string const NumberOfShards;
@@ -233,7 +231,6 @@ class StaticStrings {
   static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
   static std::string const SyncByRevision;
-  static std::string const TempObjectId;
   static std::string const UsesRevisionsAsDocumentIds;
   static std::string const Schema;
   static std::string const Version;
@@ -269,6 +266,11 @@ class StaticStrings {
   static std::string const GraphQueryPath;
   static std::string const GraphQueryGlobal;
   static std::string const GraphQueryNone;
+  static std::string const GraphQueryWeights;
+  static std::string const GraphQueryOrder;
+  static std::string const GraphQueryOrderBFS;
+  static std::string const GraphQueryOrderDFS;
+  static std::string const GraphQueryOrderWeighted;
 
   // Replication
   static std::string const ReplicationSoftLockOnly;

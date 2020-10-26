@@ -33,6 +33,8 @@ const sinon = require('sinon');
 const FoxxRepository = require('@arangodb/foxx/legacy/repository').Repository;
 const Model = require('@arangodb/foxx/legacy/model').Model;
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 describe('Model Events', function () {
   let collection, instance, repository;
 

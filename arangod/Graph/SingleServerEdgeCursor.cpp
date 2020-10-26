@@ -23,6 +23,7 @@
 
 #include "SingleServerEdgeCursor.h"
 
+#include "Aql/AstNode.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/TraverserCache.h"

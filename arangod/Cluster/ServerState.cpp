@@ -89,6 +89,7 @@ ServerState::ServerState(application_features::ApplicationServer& server)
       _host(),
       _state(STATE_UNDEFINED),
       _initialized(false),
+      _foxxmasterSince(0),
       _foxxmasterQueueupdate(false) {
   TRI_ASSERT(!Instance);
   Instance = this;
@@ -612,7 +613,7 @@ std::string ServerState::getPersistedId() {
 
 /// @brief check equality of engines with other registered servers
 bool ServerState::checkEngineEquality(AgencyComm& comm) {
-  std::string engineName = EngineSelectorFeature::engineName();
+  std::string engineName = _server.getFeature<EngineSelectorFeature>().engineName();
 
   AgencyCommResult result = comm.getValues(currentServersRegisteredPref);
   if (result.successful()) {  // no error if we cannot reach agency directly
@@ -822,7 +823,8 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
       builder.add("host", VPackValue(getHost()));
       builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
       builder.add("versionString", VPackValue(rest::Version::getServerVersion()));
-      builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
+      builder.add("engine",
+                  VPackValue(_server.getFeature<EngineSelectorFeature>().engineName()));
       builder.add("timestamp",
                   VPackValue(timepointToString(std::chrono::system_clock::now())));
     }
@@ -1046,37 +1048,42 @@ bool ServerState::checkCoordinatorState(StateEnum state) {
 }
 
 bool ServerState::isFoxxmaster() const {
+  READ_LOCKER(readLocker, _foxxmasterLock);
   return /*!isRunningInCluster() ||*/ _foxxmaster == getId();
 }
 
-std::string const& ServerState::getFoxxmaster() { return _foxxmaster; }
+std::string ServerState::getFoxxmaster() const { 
+  READ_LOCKER(readLocker, _foxxmasterLock);
+  return _foxxmaster; 
+}
 
 void ServerState::setFoxxmaster(std::string const& foxxmaster) {
+  WRITE_LOCKER(writeLocker, _foxxmasterLock);
+
   if (_foxxmaster != foxxmaster) {
-    setFoxxmasterQueueupdate(true);
     _foxxmaster = foxxmaster;
+    _foxxmasterQueueupdate = true;
 
     // We're the new foxxmaster, set this once.
-    if (isFoxxmaster()) {
-      setFoxxmasterSinceNow();
+    if (_foxxmaster == getId()) {
+      _foxxmasterSince = TRI_HybridLogicalClock();
     }
   }
 }
 
-bool ServerState::getFoxxmasterQueueupdate() const noexcept {
-  return _foxxmasterQueueupdate;
-}
-
-void ServerState::setFoxxmasterQueueupdate(bool value) {
+void ServerState::setFoxxmasterQueueupdate(bool value) noexcept {
+  WRITE_LOCKER(writeLocker, _foxxmasterLock);
   _foxxmasterQueueupdate = value;
 }
 
-TRI_voc_tick_t ServerState::getFoxxmasterSince() const noexcept {
-  return _foxxmasterSince;
+bool ServerState::getFoxxmasterQueueupdate() const noexcept {
+  READ_LOCKER(readLocker, _foxxmasterLock);
+  return _foxxmasterQueueupdate;
 }
 
-void ServerState::setFoxxmasterSinceNow() {
-  ServerState::_foxxmasterSince = TRI_HybridLogicalClock();
+TRI_voc_tick_t ServerState::getFoxxmasterSince() const noexcept {
+  READ_LOCKER(readLocker, _foxxmasterLock);
+  return _foxxmasterSince;
 }
 
 std::ostream& operator<<(std::ostream& stream, arangodb::ServerState::RoleEnum role) {

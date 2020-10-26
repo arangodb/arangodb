@@ -50,7 +50,7 @@ struct AgencyVersions {
       : plan(_plan), current(_plan) {}
 
   explicit AgencyVersions(const DBServerAgencySyncResult& result)
-      : plan(result.planVersion), current(result.currentVersion) {}
+      : plan(result.planIndex), current(result.currentIndex) {}
 };
 
 class AgencyCallbackRegistry;
