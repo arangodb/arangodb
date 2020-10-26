@@ -192,10 +192,8 @@ function WindowDateRangeTestSuite() {
     ["P1Y1M3D", "P1M3DT2H30M20S"],
     ["P2M15D", "P1Y1MT10M"],
     ["P2M15D", "P1Y1MT10M"]];
-    
-    intervals.forEach(pair => {
-      print("testing ", pair);
 
+    intervals.forEach(pair => {
       let cursor = db._query(q, { '@cc': cname, preceding: pair[0], following: pair[1] });
       assertEqual(cursor.count(), c.count());
       while (cursor.hasNext()) {
@@ -271,8 +269,6 @@ function WindowDateRangeTestSuite() {
         }
         c.insert(docs);
       }
-
-      print("Collection count", c.count());
     },
 
     tearDownAll: function () {
