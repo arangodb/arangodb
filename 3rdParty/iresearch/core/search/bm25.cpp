@@ -348,16 +348,15 @@ struct norm_score_ctx final : public score_ctx {
 
 class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
  public:
-  sort(float_t k, float_t b) noexcept
-    : k_(k), b_(b) {
+  sort(float_t k, float_t b, bool boost_as_score) noexcept
+    : k_(k), b_(b), boost_as_score_(boost_as_score) {
   }
 
   virtual void collect(
-    byte_type* stats_buf,
-    const irs::index_reader& /*index*/,
-    const irs::sort::field_collector* field,
-    const irs::sort::term_collector* term
-  ) const override {
+      byte_type* stats_buf,
+      const irs::index_reader& /*index*/,
+      const irs::sort::field_collector* field,
+      const irs::sort::term_collector* term) const override {
     auto& stats = stats_cast(stats_buf);
 
 #ifdef IRESEARCH_DEBUG
@@ -424,7 +423,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
     auto* freq = irs::get<frequency>(doc_attrs);
 
     if (!freq) {
-      if (0.f == boost) {
+      if (!boost_as_score_ || 0.f == boost) {
         return { nullptr, nullptr };
       }
 
@@ -518,19 +517,25 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
  private:
   float_t k_;
   float_t b_;
+  bool boost_as_score_;
 }; // sort
 
 } // bm25
 
-DEFINE_FACTORY_DEFAULT(irs::bm25_sort)
+/*static*/ sort::ptr bm25_sort::make(
+    float_t k, float_t b, bool boost_as_score) {
+  return std::make_unique<bm25_sort>(k, b, boost_as_score);
+}
 
 bm25_sort::bm25_sort(
     float_t k /*= 1.2f*/,
-    float_t b /*= 0.75f*/
+    float_t b /*= 0.75f*/,
+    bool boost_as_score /*= false*/
 ) noexcept
   : sort(irs::type<bm25_sort>::get()),
     k_(k),
-    b_(b) {
+    b_(b),
+    boost_as_score_(boost_as_score) {
 }
 
 /*static*/ void bm25_sort::init() {
@@ -538,7 +543,7 @@ bm25_sort::bm25_sort(
 }
 
 sort::prepared::ptr bm25_sort::prepare() const {
-  return memory::make_unique<bm25::sort>(k_, b_);
+  return memory::make_unique<bm25::sort>(k_, b_, boost_as_score_);
 }
 
 } // ROOT

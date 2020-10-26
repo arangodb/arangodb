@@ -101,6 +101,7 @@ TEST_P(tfidf_test, make_from_bool) {
     ASSERT_NE(nullptr, scorer);
     auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(true, tfidf.normalize());
+    ASSERT_FALSE(tfidf.use_boost_as_score());
   }
 
   // invalid `withNorms` argument
@@ -117,6 +118,7 @@ TEST_P(tfidf_test, make_from_array) {
     ASSERT_EQ(irs::type<irs::tfidf_sort>::id(), scorer->type());
     auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(irs::tfidf_sort::WITH_NORMS(), tfidf.normalize());
+    ASSERT_EQ(irs::tfidf_sort::BOOST_AS_SCORE(), tfidf.use_boost_as_score());
   }
 
   // default args
@@ -126,6 +128,7 @@ TEST_P(tfidf_test, make_from_array) {
     ASSERT_EQ(irs::type<irs::tfidf_sort>::id(), scorer->type());
     auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(irs::tfidf_sort::WITH_NORMS(), tfidf.normalize());
+    ASSERT_EQ(irs::tfidf_sort::BOOST_AS_SCORE(), tfidf.use_boost_as_score());
   }
 
   // `withNorms` argument
@@ -135,6 +138,7 @@ TEST_P(tfidf_test, make_from_array) {
     ASSERT_EQ(irs::type<irs::tfidf_sort>::id(), scorer->type());
     auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(true, tfidf.normalize());
+    ASSERT_EQ(irs::tfidf_sort::BOOST_AS_SCORE(), tfidf.use_boost_as_score());
   }
 
   // invalid `withNorms` argument
@@ -237,7 +241,7 @@ TEST_P(tfidf_test, test_phrase) {
   }
 
   irs::order order;
-  order.add(true, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
+  order.add(true, std::make_unique<irs::tfidf_sort>(false, true));
   auto prepared_order = order.prepare();
 
   auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {
@@ -362,8 +366,7 @@ TEST_P(tfidf_test, test_query) {
   }
 
   irs::order order;
-
-  order.add(true, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
+  order.add(true, std::make_unique<irs::tfidf_sort>(false, true));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
@@ -1183,6 +1186,7 @@ TEST_P(tfidf_test, test_make) {
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_FALSE(scr.normalize());
+    ASSERT_EQ(false, scr.use_boost_as_score());
   }
 
   // invalid args
@@ -1197,6 +1201,7 @@ TEST_P(tfidf_test, test_make) {
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(true, scr.normalize());
+    ASSERT_EQ(false, scr.use_boost_as_score());
   }
 
   // invalid value (non-bool)
@@ -1211,6 +1216,7 @@ TEST_P(tfidf_test, test_make) {
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(true, scr.normalize());
+    ASSERT_EQ(false, scr.use_boost_as_score());
   }
 
   // invalid values (withNorms)
@@ -1242,7 +1248,7 @@ TEST_P(tfidf_test, test_order) {
   *query.mutable_field() = "field";
 
   iresearch::order ord;
-  ord.add<iresearch::tfidf_sort>(true);
+  ord.add<iresearch::tfidf_sort>(true, false, true);
   auto prepared_order = ord.prepare();
 
   auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {

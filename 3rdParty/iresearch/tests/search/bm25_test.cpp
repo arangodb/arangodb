@@ -101,6 +101,7 @@ TEST_P(bm25_test, make_from_array) {
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(irs::bm25_sort::K(), bm25.k());
     ASSERT_EQ(irs::bm25_sort::B(), bm25.b());
+    ASSERT_EQ(irs::bm25_sort::BOOST_AS_SCORE(), bm25.use_boost_as_score());
   }
 
   // default args
@@ -111,6 +112,7 @@ TEST_P(bm25_test, make_from_array) {
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(irs::bm25_sort::K(), bm25.k());
     ASSERT_EQ(irs::bm25_sort::B(), bm25.b());
+    ASSERT_EQ(irs::bm25_sort::BOOST_AS_SCORE(), bm25.use_boost_as_score());
   }
 
   // `k` argument
@@ -121,6 +123,7 @@ TEST_P(bm25_test, make_from_array) {
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(1.5f, bm25.k());
     ASSERT_EQ(irs::bm25_sort::B(), bm25.b());
+    ASSERT_EQ(irs::bm25_sort::BOOST_AS_SCORE(), bm25.use_boost_as_score());
   }
 
   // invalid `k` argument
@@ -140,6 +143,7 @@ TEST_P(bm25_test, make_from_array) {
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(1.5f, bm25.k());
     ASSERT_EQ(1.7f, bm25.b());
+    ASSERT_EQ(irs::bm25_sort::BOOST_AS_SCORE(), bm25.use_boost_as_score());
   }
 
   // invalid `b` argument
@@ -354,8 +358,7 @@ TEST_P(bm25_test, test_query) {
   }
 
   irs::order order;
-
-  order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
+  order.add(true, std::make_unique<irs::bm25_sort>(irs::bm25_sort::K(), irs::bm25_sort::B(), true));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
@@ -1029,8 +1032,7 @@ TEST_P(bm25_test, test_query_norms) {
   }
 
   irs::order order;
-
-  order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
+  order.add(true, std::make_unique<irs::bm25_sort>(irs::bm25_sort::K(), irs::bm25_sort::B(), true));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {

@@ -292,8 +292,8 @@ struct norm_score_ctx final : public score_ctx {
 
 class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
  public:
-  explicit sort(bool normalize) noexcept
-    : normalize_(normalize) {
+  explicit sort(bool normalize, bool boost_as_score) noexcept
+    : normalize_(normalize), boost_as_score_(boost_as_score) {
   }
 
   virtual void collect(
@@ -345,7 +345,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
     auto* freq = irs::get<frequency>(doc_attrs);
 
     if (!freq) {
-      if (0.f == boost) {
+      if (!boost_as_score_ || 0.f == boost) {
         return { nullptr, nullptr };
       }
 
@@ -433,15 +433,19 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
 
  private:
   bool normalize_;
+  bool boost_as_score_;
 }; // sort
 
 } // tfidf 
 
-DEFINE_FACTORY_DEFAULT(irs::tfidf_sort)
+/*static*/ sort::ptr tfidf_sort::make(bool normalize, bool boost_as_score) {
+  return std::make_unique<tfidf_sort>(normalize, boost_as_score);
+}
 
-tfidf_sort::tfidf_sort(bool normalize) noexcept
+tfidf_sort::tfidf_sort(bool normalize, bool boost_as_score) noexcept
   : sort(irs::type<tfidf_sort>::get()),
-    normalize_(normalize) {
+    normalize_(normalize),
+    boost_as_score_(boost_as_score) {
 }
 
 /*static*/ void tfidf_sort::init() {
@@ -449,7 +453,7 @@ tfidf_sort::tfidf_sort(bool normalize) noexcept
 }
 
 sort::prepared::ptr tfidf_sort::prepare() const {
-  return memory::make_unique<tfidf::sort>(normalize_);
+  return memory::make_unique<tfidf::sort>(normalize_, boost_as_score_);
 }
 
 } // ROOT
