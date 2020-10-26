@@ -57,7 +57,7 @@ QueryContext::QueryContext(TRI_vocbase_t& vocbase)
       _vocbase(vocbase),
       _execState(QueryExecutionState::ValueType::INVALID_STATE),
       _numRequests(0) {
-  // aql analyzers should be able to run even during recovery when aql deature
+  // aql analyzers should be able to run even during recovery when AqlFeature
   // is not started. And as optimization  - this queries do not need queryRegistry
   if (&_vocbase != &_vocbase.server().getFeature<DatabaseFeature>().getCalculationVocbase() && 
       !AqlFeature::lease()) {
@@ -136,4 +136,3 @@ aql::Ast* QueryContext::ast() {
 void QueryContext::enterV8Context() {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "V8 support not implemented");
 }
-
