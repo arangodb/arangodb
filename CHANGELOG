@@ -43,6 +43,8 @@ devel
   effect when `keepNull` is set to `false` (the default value is `true` however),
   and only when just-inserted object sub-attributes contained `null` values.
 
+* Optimization of empty append entries.
+
 * Bug-fix: Creating an additional index on the edge collection of a disjoint
   SmartGraph could falsely result into an error: 
   `Could not find all smart collections ...`
@@ -152,33 +154,33 @@ devel
   The default log level for the "agencystore" log topic is WARN, meaning no
   agency writes will be logged.
   Turning on this logging can be used for auditing and debugging, but it is
-  not recommended in the general case, as it can lead to large amounts of 
+  not recommended in the general case, as it can lead to large amounts of
   data being logged, which can have a performance impact and will lead to
   higher disk space usage.
-  
+
 * Fix #12693: SORT inside a subquery could sometimes swallow part of its input
   when it crossed boundaries of internal row batches.
 
 * Added configuration option `--rocksdb.sync-delay-threshold`.
-  This option can be used to track if any RocksDB WAL sync operations is 
+  This option can be used to track if any RocksDB WAL sync operations is
   delayed by more than the configured value (in milliseconds). The intention
   is to get aware of severely delayed WAL sync operations.
 
 * Fix for BTS-191: Made transaction API database-aware.
 
-* Minor clean up of and less verbosity in agent callbacks. 
+* Minor clean up of and less verbosity in agent callbacks.
 
-* Speed up initial replication of collections/shards data by not wrapping 
-  each document in a seperate `{"type":2300,"data":...}` envelope. In 
-  addition, the follower side of the replication will request data from 
-  leaders in VelocyPack format if the leader is running at least version 
+* Speed up initial replication of collections/shards data by not wrapping
+  each document in a seperate `{"type":2300,"data":...}` envelope. In
+  addition, the follower side of the replication will request data from
+  leaders in VelocyPack format if the leader is running at least version
   3.8.
-  Stripping the envelopes and using VelocyPack for transfer allows for 
-  smaller data sizes when exchanging the documents and faster processing, 
-  and thus can lead to time savings in document packing and unpacking as 
-  well as reduce the number of required HTTP requests. 
+  Stripping the envelopes and using VelocyPack for transfer allows for
+  smaller data sizes when exchanging the documents and faster processing,
+  and thus can lead to time savings in document packing and unpacking as
+  well as reduce the number of required HTTP requests.
 
-* Add database, shard name and error information to several shard-related log 
+* Add database, shard name and error information to several shard-related log
   messages.
 
 * Display shard names of a collection in the web interface when in the details
