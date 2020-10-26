@@ -482,15 +482,15 @@ bool AqlAnalyzer::next() {
       } catch (basics::Exception const& e) {
         LOG_TOPIC("b0026", ERR, iresearch::TOPIC)
             << "error executing calculation query: " << e.message()
-            << " AQL query:" << _options.queryString;
+            << " AQL query: " << _options.queryString;
       } catch (std::exception const& e) {
         LOG_TOPIC("c92eb", ERR, iresearch::TOPIC)
             << "error executing calculation query: " << e.what()
-            << " AQL query:" << _options.queryString;
+            << " AQL query: " << _options.queryString;
       } catch (...) {
         LOG_TOPIC("bf89b", ERR, iresearch::TOPIC)
             << "error executing calculation query"
-            << " AQL query:" << _options.queryString;
+            << " AQL query: " << _options.queryString;
       }
     }
   } while (_executionState != ExecutionState::DONE || (_queryResults != nullptr &&
@@ -546,15 +546,15 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
   } catch (basics::Exception const& e) {
     LOG_TOPIC("8ee1a", ERR, iresearch::TOPIC)
         << "error creating calculation query: " << e.message()
-        << " AQL query:" << _options.queryString;
+        << " AQL query: " << _options.queryString;
   } catch (std::exception const& e) {
     LOG_TOPIC("d2223", ERR, iresearch::TOPIC)
         << "error creating calculation query: " << e.what()
-        << " AQL query:" << _options.queryString;
+        << " AQL query: " << _options.queryString;
   } catch (...) {
     LOG_TOPIC("5ad87", ERR, iresearch::TOPIC)
         << "error creating calculation query"
-        << " AQL query:" << _options.queryString;
+        << " AQL query: " << _options.queryString;
   }
   return false;
 }
