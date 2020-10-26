@@ -273,7 +273,7 @@ function optimizerRuleRemoveTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        c.truncate();
+        c.truncate({ compact: false });
         c.insert(docs);
 
         let result = AQL_EXECUTE(query[0]);
@@ -324,7 +324,7 @@ function optimizerRuleRemoveTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        c.truncate();
+        c.truncate({ compact: false });
         c.insert(docs);
 
         let result = AQL_EXECUTE(query[0]);
@@ -410,7 +410,7 @@ function optimizerRuleReplaceTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        c.truncate();
+        c.truncate({ compact: false });
         c.insert(docs);
 
         let results = AQL_EXECUTE(query[0]);
@@ -461,7 +461,7 @@ function optimizerRuleReplaceTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        c.truncate();
+        c.truncate({ compact: false });
         c.insert(docs);
 
         let results = AQL_EXECUTE(query[0]);
@@ -546,7 +546,7 @@ function optimizerRuleUpdateTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        c.truncate();
+        c.truncate({ compact: false });
         c.insert(docs);
 
         let results = AQL_EXECUTE(query[0]);
@@ -597,7 +597,7 @@ function optimizerRuleUpdateTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        c.truncate();
+        c.truncate({ compact: false });
         c.insert(docs);
 
         let results = AQL_EXECUTE(query[0]);

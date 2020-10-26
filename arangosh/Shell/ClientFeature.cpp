@@ -234,6 +234,25 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
+  if (!_endpoint.empty() &&
+      (_endpoint != "none") &&
+      (_endpoint != Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP))) {
+    std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(_endpoint));
+    if (endpoint.get() == nullptr) {
+      LOG_TOPIC("2fac9", ERR, arangodb::Logger::FIXME)
+        << "invalid value for --server.endpoint ('" << _endpoint << "')";
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+    }
+
+    if (endpoint.get()->isBroadcastBind()) {
+      LOG_TOPIC("701fb", ERR, arangodb::Logger::FIXME)
+        << "invalid value for --server.endpoint ('" << _endpoint <<
+        "') - 0.0.0.0 and :: are only allowed for servers binding - not for clients connecting." <<
+        " Choose an IP address of your machine instead." <<
+        " See https://en.wikipedia.org/wiki/0.0.0.0 for more details.";
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+    }
+  }
   SimpleHttpClientParams::setDefaultMaxPacketSize(_maxPacketSize);
 }
 

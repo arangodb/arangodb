@@ -572,9 +572,15 @@ void ClusterFeature::start() {
   std::string myId = ServerState::instance()->getId();
 
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
-    _dropped_follower_counter = server().getFeature<arangodb::MetricsFeature>().counter(
+    _followersDroppedCounter = server().getFeature<arangodb::MetricsFeature>().counter(
         StaticStrings::DroppedFollowerCount, 0,
         "Number of drop-follower events");
+    _followersRefusedCounter = server().getFeature<arangodb::MetricsFeature>().counter(
+        "arangodb_refused_followers_count", 0,
+        "Number of refusal answers from a follower during synchronous replication");
+    _followersWrongChecksumCounter = server().getFeature<arangodb::MetricsFeature>().counter(
+        "arangodb_sync_wrong_checksum", 0,
+        "Number of times a mismatching shard checksum was detected when syncing shards");
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
@@ -777,4 +783,69 @@ void ClusterFeature::allocateMembers() {
   _agencyCache =
     std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry);
   _allocated = true;
+}
+
+void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, bool callNotify) {
+  if (databases.size() > 0) {
+    MUTEX_LOCKER(guard, _dirtyLock);
+    bool addedAny = false;
+    for (auto const& database : databases) {
+      if (_dirtyDatabases.emplace(database).second) {
+        addedAny = true;
+        LOG_TOPIC("35b75", DEBUG, Logger::MAINTENANCE)
+          << "adding " << database << " to dirty databases";
+      }
+    }
+    if (callNotify && addedAny) {
+      notify();
+    }
+  }
+}
+
+void ClusterFeature::addDirty(std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& databases) {
+  if (databases.size() > 0) {
+    MUTEX_LOCKER(guard, _dirtyLock);
+    bool addedAny = false;
+    for (auto const& database : databases) {
+      if (_dirtyDatabases.emplace(database.first).second) {
+        addedAny = true;
+        LOG_TOPIC("35b77", DEBUG, Logger::MAINTENANCE)
+          << "adding " << database << " to dirty databases";
+      }
+    }
+    if (addedAny) {
+      notify();
+    }
+  }
+}
+
+void ClusterFeature::addDirty(std::string const& database) {
+  MUTEX_LOCKER(guard, _dirtyLock);
+  if (_dirtyDatabases.emplace(database).second) {
+    LOG_TOPIC("357b9", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databases";
+  }
+  // This notify is needed even if no databases is added
+  notify();
+}
+
+std::unordered_set<std::string> ClusterFeature::dirty() {
+  MUTEX_LOCKER(guard, _dirtyLock);
+  std::unordered_set<std::string> ret;
+  ret.swap(_dirtyDatabases);
+  return ret;
+}
+
+bool ClusterFeature::isDirty(std::string const& dbName) const {
+  MUTEX_LOCKER(guard, _dirtyLock);
+  return _dirtyDatabases.find(dbName) != _dirtyDatabases.end();
+}
+
+std::unordered_set<std::string> ClusterFeature::allDatabases() const {
+  std::unordered_set<std::string> allDBNames;
+  auto const tmp = server().getFeature<DatabaseFeature>().getDatabaseNames();
+  allDBNames.reserve(tmp.size());
+  for (auto const& i : tmp) {
+    allDBNames.emplace(i);
+  }
+  return allDBNames;
 }

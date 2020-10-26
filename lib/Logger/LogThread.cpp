@@ -29,7 +29,7 @@
 using namespace arangodb;
 
 LogThread::LogThread(application_features::ApplicationServer& server, std::string const& name)
-    : Thread(server, name), _messages(16) {}
+    : Thread(server, name), _messages(64) {}
 
 LogThread::~LogThread() {
   Logger::_threaded = false;

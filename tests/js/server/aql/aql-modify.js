@@ -1351,7 +1351,7 @@ function aqlUpsertReadCompleteInputSuite() {
       let result1 = db._query(query1).toArray();
       assertEqual(expected, result1);
 
-      db[collectionName].truncate();
+      db[collectionName].truncate({ compact: false });
 
       const query2 = 'FOR d IN [ {_key: "key_1", value: 1}, {_key: "key_2", value: 2}, {_key: "key_3", value: 3}, {_key: "key_1", value: 1} ] UPSERT { _key: d._key } INSERT d UPDATE d IN @@collection RETURN NEW._id';
       let result2 = db._query(query2, { "@collection": collectionName }).toArray();

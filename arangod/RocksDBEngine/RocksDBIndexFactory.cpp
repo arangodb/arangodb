@@ -56,7 +56,8 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
       : IndexTypeFactory(server), _type(type) {}
 
   bool equal(arangodb::velocypack::Slice const& lhs,
-             arangodb::velocypack::Slice const& rhs) const override {
+             arangodb::velocypack::Slice const& rhs,
+             std::string const&) const override {
     return arangodb::IndexTypeFactory::equal(_type, lhs, rhs, true);
   }
 };
