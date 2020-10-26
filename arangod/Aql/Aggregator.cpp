@@ -186,8 +186,7 @@ struct AggregatorMin final : public Aggregator {
     if (value.isEmpty()) {
       return AqlValue(AqlValueHintNull());
     }
-    AqlValue copy = value;
-    return copy;
+    return value.clone();
   }
 
   AqlValue value;
@@ -212,7 +211,7 @@ struct AggregatorMax final : public Aggregator {
     if (value.isEmpty()) {
       return AqlValue(AqlValueHintNull());
     }
-    return AqlValue(value);
+    return value.clone();
   }
 
   AqlValue value;

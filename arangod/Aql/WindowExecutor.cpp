@@ -127,7 +127,7 @@ void BaseWindowExecutor::produceOutputRow(InputAqlItemRow& input,
   auto const& registers = _infos.getAggregatedRegisters();
   for (std::unique_ptr<Aggregator> const& agg : _aggregators) {
     AqlValue r = agg->get();
-    AqlValueGuard guard{r, /*destroy*/ false};
+    AqlValueGuard guard{r, /*destroy*/ true};
     output.moveValueInto(/*outRegister*/ registers[j++].first, input, guard);
     if (reset) {
       agg->reset();
