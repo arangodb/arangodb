@@ -851,45 +851,52 @@ EvalResult Prim_Reduce(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
   }
 
   // reduce(value, accumulator, currentValue)
-  VPackBuilder reduceResult;
+  // iter can be either VPackArrayIterator or VPackObjectIterator
+  auto buildLambdaParameters = [&] (VPackBuilder& parameter, auto& iter) {
+    {
+      VPackArrayBuilder pb(&parameter);
+      if (iter.isFirst()) {
+        parameter.add(VPackValue(iter.index())); // key
 
-  if (inputValue.isArray()) {
-    VPackArrayBuilder ab(&result);
-
-    auto accumulatorValue = 0;
-
-    for (VPackArrayIterator iter(inputValue); iter.valid(); iter++) {
-      VPackBuilder parameter;
-      {
-        VPackArrayBuilder pb(&parameter);
-        if (iter.isFirst()) {
-          if (inputAccumulator.isNone()) {
-            parameter.add(iter.value()); // accumulator / init if none is given
-            iter++;
-          } else {
-            parameter.add(inputAccumulator); // accumulator / init if present
-          }
-
+        if (inputAccumulator.isNone()) {
           parameter.add(iter.value()); // value
+          iter++;
         } else {
-          parameter.add(reduceResult.slice()); // accumulator / previous result
-          parameter.add(iter.value()); // value
+          parameter.add(inputAccumulator); // value
         }
-      }
-
-      reduceResult.clear();
-      auto res = EvaluateApply(ctx, functionSlice,
-                               VPackArrayIterator(parameter.slice()), reduceResult, false);
-      if (res.fail()) {
-        return res.error().wrapMessage("when filtering parameters " + parameter.toJson());
+        parameter.add(iter.value()); // accum
+      } else {
+        parameter.add(VPackValue(iter.index())); // key
+        parameter.add(iter.value()); // value
+        parameter.add(result.slice()); // accumulator / previous result
       }
     }
-    result.add(reduceResult.slice());
+  };
 
+  if (inputValue.isArray()) {
+    for (VPackArrayIterator iter(inputValue); iter.valid(); iter++) {
+      VPackBuilder parameter;
+      buildLambdaParameters(parameter, iter);
+
+      result.clear();
+      auto res = EvaluateApply(ctx, functionSlice,
+                               VPackArrayIterator(parameter.slice()), result, false);
+      if (res.fail()) {
+        return res.error().wrapMessage("when reducing array parameters " + parameter.toJson());
+      }
+    }
   } else if (inputValue.isObject()) {
-    return EvalError("not implemented");
     VPackObjectBuilder ob(&result);
     for (VPackObjectIterator iter(inputValue); iter.valid(); iter++) {
+      VPackBuilder parameter;
+      buildLambdaParameters(parameter, iter);
+
+      result.clear();
+      auto res = EvaluateApply(ctx, functionSlice,
+                               VPackArrayIterator(parameter.slice()), result, false);
+      if (res.fail()) {
+        return res.error().wrapMessage("when reducing object parameters " + parameter.toJson());
+      }
     }
   } else {
     return EvalError("expected two objects, found: " + inputValue.toJson() +

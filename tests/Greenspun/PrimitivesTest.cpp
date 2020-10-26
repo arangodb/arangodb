@@ -1309,20 +1309,18 @@ TEST_CASE("Test [reduce] primitive", "[reduce]") {
   InitMachine(m);
   VPackBuilder result;
 
+  /* Arrays */
+
   SECTION("reduce list") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
         ["reduce",
           ["list", 1, 2, 3],
           ["lambda",
             ["quote", []],
-            ["quote", ["accum", "value"]],
+            ["quote", ["key", "value", "accum"]],
             ["quote",
               ["seq",
-                ["print", "accum:", ["var-ref", "accum"]],
-                ["print", "input:", ["var-ref", "value"]],
-                ["print", "=========="],
-                ["print", "expected: ", ["+", ["var-ref", "accum"], ["var-ref", "value"]] ],
-                ["+", ["var-ref", "accum"], ["var-ref", "value"] ]
+                ["+", ["var-ref", "value"], ["var-ref", "accum"] ]
               ]
             ]
           ]
@@ -1333,18 +1331,18 @@ TEST_CASE("Test [reduce] primitive", "[reduce]") {
     if (res.fail()) {
       FAIL(res.error().toString());
     }
-    REQUIRE(result.slice().toJson() == "[6]");
+    REQUIRE(result.slice().getNumericValue<double>() == 6);
   }
 
-  SECTION("reduce list with init accumulator value") {
+  SECTION("reduce list with init accumulator value (number)") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
         ["reduce",
           ["list", 1, 2, 3],
           ["lambda",
             ["quote", []],
-            ["quote", ["accum", "value"]],
+            ["quote", ["key", "value", "accum" ]],
             ["quote",
-              ["+", ["var-ref", "accum"], ["var-ref", "value"] ]
+              ["+", ["var-ref", "value"], ["var-ref", "accum"] ]
             ]
           ],
           100
@@ -1355,9 +1353,61 @@ TEST_CASE("Test [reduce] primitive", "[reduce]") {
     if (res.fail()) {
       FAIL(res.error().toString());
     }
-    REQUIRE(result.slice().toJson() == "[106]"); // TODO: Numeric here not working, why? Same function above.
+    REQUIRE(result.slice().getNumericValue<double>() == 106);
   }
 
+  /* Objects */
+
+  SECTION("reduce object") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+        ["reduce",
+          {"a": 1, "b": 2, "c": 3},
+          ["lambda",
+            ["quote", []],
+            ["quote", ["key", "value", "accum"]],
+            ["quote",
+              ["seq",
+                ["+", ["var-ref", "value"], ["var-ref", "accum"] ]
+              ]
+            ]
+          ]
+        ]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().getNumericValue<double>() == 6);
+  }
+
+  SECTION("reduce object with init accumulator value (number)") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+        ["reduce",
+          {"a": 1, "b": 2, "c": 3},
+          ["lambda",
+            ["quote", []],
+            ["quote", ["key", "value", "accum"]],
+            ["quote",
+              ["seq",
+                ["+", ["var-ref", "value"], ["var-ref", "accum"] ]
+              ]
+            ]
+          ],
+          100
+        ]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().getNumericValue<double>() == 106);
+  }
+
+  SECTION("reduce object with init accumulator object and return new object") {
+
+  }
 }
 
 TEST_CASE("Test [sort] primitive", "[sort]") {
