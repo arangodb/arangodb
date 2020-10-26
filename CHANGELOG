@@ -120,7 +120,7 @@ devel
   when it crossed boundaries of internal row batches.
 
 * Added configuration option `--rocksdb.sync-delay-threshold`.
-  This option can be used to track if any RocksDB WAL sync operations is
+  This option can be used to track if any RocksDB WAL sync operation is
   delayed by more than the configured value (in milliseconds). The intention
   is to get aware of severely delayed WAL sync operations.
 
@@ -181,7 +181,7 @@ devel
 * Make scheduler react and start new threads slightly faster in case a lot
   of new work arrives.
 
-* Make scheduler propertly count down the number of working threads in case
+* Make scheduler properly count down the number of working threads in case
   an exception happens in a worker thread.
 
 * Added startup option `--database.old-system-collections` to toggle automatic
@@ -227,7 +227,7 @@ devel
 * Reduce the number of dropped followers when running larger (>= 128 MB)
   write transactions.
 
-* Fixed a bug in AQL COLLECT with OPTIONS { "hash" } that lead to a quadratic
+* Fixed a bug in AQL COLLECT with OPTIONS { "hash" } that led to a quadratic
   runtime in the number of output rows.
 
 * Make the reboot tracker catch failed coordinators, too. Previously the
@@ -252,7 +252,7 @@ devel
   system the RocksDB database directory is located in. These metrics will
   always be 0 on Windows.
 
-* Fixed inifinite reload of the login window after logout of an LDAP user.
+* Fixed infinite reload of the login window after logout of an LDAP user.
 
 * Added startup option `--query.max-runtime` to limit the maximum runtime of
   all AQL queries to a specified threshold value (in seconds). By default,
@@ -1930,7 +1930,7 @@ devel
   confusing error messages
 
 * Internal statistics API now uses integer timestamps instead of doubles. The
-  old behaviour sometimes leads to failed requests because of parse errors
+  old behavior sometimes leads to failed requests because of parse errors
   which occured in the internal used JavaScript joi library.
 
 * Support trailing commas in AQL object and array definitions as follows:
