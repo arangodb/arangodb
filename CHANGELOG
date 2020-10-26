@@ -1,6 +1,8 @@
 devel
 -----
 
+* Bug-fix: Allow to unlink a view created on a SmartGraphEdge collection.
+
 * Bug-fix: Creating an additional index on the edge collection of a disjoint
   SmartGraph could falsly result into an error: 
   `Could not find all smart collections ...`
