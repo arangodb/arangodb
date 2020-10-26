@@ -3,7 +3,7 @@ devel
 
 * Fixed issue BTS-195: AQL update queries using the `keepNull` option set to
   false had an inconsistent behavior. For example, given a collection `test`
-  with an empty document with just key `testDoc`, the following document
+  with an empty document with just key `testDoc`, the following query
   would return different results when running for the first time or the second
   time:
 
