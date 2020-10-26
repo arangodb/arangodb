@@ -65,6 +65,9 @@ WindowBounds::WindowBounds(Type type,
                              val.slice().isEqualString("inf"))) {
         return std::numeric_limits<int64_t>::max();
       }
+      if (val.isNone()) {
+        return 0;
+      }
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "WINDOW row spec is invalid");
     };
