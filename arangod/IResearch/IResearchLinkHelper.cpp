@@ -137,9 +137,14 @@ arangodb::Result createLink( // create link
     arangodb::iresearch::IResearchViewCoordinator const& view, // link view
     arangodb::velocypack::Slice definition // link definition
 ) {
+  if (arangodb::ClusterMethods::filterHiddenCollections(collection)) {
+    // Silently ignore hidden collections
+    return TRI_ERROR_NO_ERROR;
+  }
   static const std::function<bool(irs::string_ref const& key)> acceptor = [](
       irs::string_ref const& key // json key
   )->bool {
+
     // ignored fields
     return key != arangodb::StaticStrings::IndexType // type field
         && key != arangodb::iresearch::StaticStrings::ViewIdField; // view id field
