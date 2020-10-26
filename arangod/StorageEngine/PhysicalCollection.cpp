@@ -332,10 +332,6 @@ Result PhysicalCollection::mergeObjectsForUpdate(
       continue;
     }
     if (!keepNull && s.isObject()) {
- //     b.addUnchecked(it.first.data(), it.first.size(),
-//                     VPackCollection::merge(
-//                       arangodb::velocypack::Slice::emptyObjectSlice(), s, true, true).slice());
-  
       b.add(VPackValuePair(it.first.data(), it.first.size(), VPackValueType::String));
       VPackCollection::merge(b, VPackSlice::emptyObjectSlice(), s, true, true);
     } else {
