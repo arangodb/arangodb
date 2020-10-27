@@ -516,7 +516,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
   // Plan to local mismatch ----------------------------------------------------
   // Create or modify if local databases are affected
-  for (auto p : plan) {
+  for (auto const& p : plan) {
     auto const& dbname = p.first;
     auto pb = p.second->slice()[0];
     auto const& pdb = pb.get(
@@ -702,7 +702,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
             std::string const& id = p.first;
             bool found = false;
             for (auto const& ind : VPackArrayIterator(indexes)) {
-              if (ind.get(ID).copyString() == id) {
+              if (ind.get(ID).stringView() == id) {
                 found = true;
                 break;
               }
@@ -1344,8 +1344,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             continue;            // thus no shardMap exists for it
           }
           if (servers.isArray() && servers.length() > 0  // servers in current
-              && servers[0].copyString() == serverId     // we are leading
-              && !ldb.hasKey(std::vector<std::string>{shName})  // no local collection
+              && servers[0].stringRef() == serverId     // we are leading
+              && !ldb.hasKey(shName)  // no local collection
               && !shardMap.slice().hasKey(shName)) {  // no such shard in plan
             report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName + "/" + shName));
             {

@@ -1061,8 +1061,8 @@ void ClusterInfo::loadPlan() {
     if (!collectionsSlice.hasKey(collectionsPath)) {
       auto it = newCollections.find(databaseName);
       if (it != newCollections.end()) {
-        for (auto collection : *(it->second)) {
-          auto collectionId = collection.first;
+        for (auto const& collection : *(it->second)) {
+          auto& collectionId = collection.first;
           newShards.erase(collectionId); // delete from maps with shardID as key
           newShardToName.erase(collectionId);
         }
@@ -2471,7 +2471,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         LOG_TOPIC("98762", DEBUG, Logger::CLUSTER)
             << "Failed createCollectionsCoordinator for " << infos.size()
             << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
-            << " first collection name: " << infos[0].name;
+            << " first collection name: " << ((infos.size() > 0) ? infos[0].name : std::string());
         return res;
       }
     }
@@ -2595,7 +2595,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         LOG_TOPIC("98767", DEBUG, Logger::CLUSTER)
             << "Failed createCollectionsCoordinator for " << infos.size()
             << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
-            << " first collection name: " << infos[0].name;
+            << " first collection name: " << (infos.size() > 0 ? infos[0].name : std::string());
         return {TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, std::move(errorMsg)};
       }
 
