@@ -40,8 +40,8 @@ class Slice;
 }  // namespace velocypack
 namespace geo {
 constexpr double kPi = M_PI;
-// assume up to 16x machine epsilon in precision errors for radian calculations
-constexpr double kRadEps = 16 * std::numeric_limits<double>::epsilon();
+// assume up to 8x machine epsilon in precision errors for radian calculations
+constexpr double kRadEps = 8 * std::numeric_limits<double>::epsilon();
 constexpr double kMaxRadiansBetweenPoints = kPi + kRadEps;
 // Equatorial radius of earth.
 // Source: http://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html

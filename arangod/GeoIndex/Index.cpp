@@ -296,6 +296,14 @@ void Index::parseCondition(aql::AstNode const* node, aql::Variable const* refere
   } else {
     handleNode(node, reference, params);
   }
+  
+  // allow for GEO_DISTANCE(g, d.geometry) <= 0
+  if (params.filterType == geo::FilterType::NONE &&
+      params.minDistance == 0 &&
+      params.maxDistance == 0 &&
+      params.maxInclusive) {
+    params.maxDistance = geo::kRadEps * geo::kEarthRadiusInMeters;
+  }
 }
 
 }  // namespace geo_index
