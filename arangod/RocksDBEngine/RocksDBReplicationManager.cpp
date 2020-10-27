@@ -98,11 +98,11 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, SyncerId const syncerId, 
                                                                     TRI_server_id_t const clientId, 
                                                                     std::string const& patchCount) {
-  // patchCount should only be set on DB servers
-  TRI_ASSERT(ServerState::instance()->isDBServer() || patchCount.empty());
+  // patchCount should only be set on single servers or DB servers
+  TRI_ASSERT(patchCount.empty() ||
+             (ServerState::instance()->isSingleServer() || ServerState::instance()->isDBServer())); 
 
   auto context = std::make_unique<RocksDBReplicationContext>(ttl, syncerId, clientId);
-  TRI_ASSERT(context != nullptr);
   TRI_ASSERT(context->isUsed());
 
   RocksDBReplicationId const id = context->id();
