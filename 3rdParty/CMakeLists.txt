@@ -55,6 +55,8 @@ endif ()
 ## JEMALLOC
 ################################################################################
 
+option(USE_JEMALLOC_PROF "use jemalloc profiler" OFF)
+
 if (USE_JEMALLOC)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
   include_directories(SYSTEM "${JEMALLOC_HOME}/include")
@@ -69,7 +71,6 @@ endif ()
 ################################################################################
 
 option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
-
 
 set(V8_VERSION
   "7.9.317"
