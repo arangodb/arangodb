@@ -47,20 +47,9 @@ RestBaseHandler::RestBaseHandler(application_features::ApplicationServer& server
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
-  bool strictValidation = true;
-  if (!_request->header(StaticStrings::ClusterCommSource).empty()) {
-    // cluster-internal request
-    AuthenticationFeature* af = AuthenticationFeature::instance();
-    if (!af->isActive() || _request->user().empty()) {
-      // with authentication off or by super user. that means the caller either
-      // has full privileges anyway, or is the superuser, which is trusted.
-      strictValidation = false;
-    }
-  }
-
   try {
     success = true;
-    return _request->payload(strictValidation);
+    return _request->payload(true);
   } catch (VPackException const& e) {
     // simon: do not mess with the error message format, tests break
     std::string errmsg("VPackError error: ");
