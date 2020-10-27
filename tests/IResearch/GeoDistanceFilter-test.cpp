@@ -642,6 +642,84 @@ TEST(GeoDistanceFilterTest, query) {
 
     ASSERT_EQ(expected, executeQuery(q, {expected.size()/2, expected.size()/2}));
   }
+
+  {
+    auto origin = docs->slice().at(7).get("geometry");
+    ASSERT_TRUE(origin.isObject());
+    arangodb::geo::ShapeContainer lhs, rhs;
+    ASSERT_TRUE(arangodb::iresearch::parseShape(origin, lhs, true));
+    std::set<std::string> expected;
+    for (auto doc : VPackArrayIterator(docs->slice())) {
+      auto geo = doc.get("geometry");
+      ASSERT_TRUE(geo.isObject());
+      ASSERT_TRUE(arangodb::iresearch::parseShape(geo, rhs, true));
+      auto const dist = lhs.distanceFromCentroid(rhs.centroid());
+      if (dist < 100 || dist > 2000) {
+        continue;
+      }
+
+      auto name = doc.get("name");
+      ASSERT_TRUE(name.isString());
+      expected.emplace(arangodb::iresearch::getStringRef(name));
+    }
+
+    GeoDistanceFilter q;
+    *q.mutable_field() = "geometry";
+    q.mutable_options()->origin = S2LatLng::FromDegrees(55.70461, 37.617053).ToPoint();
+    auto& range = q.mutable_options()->range;
+    range.min_type = irs::BoundType::INCLUSIVE;
+    range.min = 100;
+    range.max_type = irs::BoundType::INCLUSIVE;
+    range.max = 2000;
+
+    ASSERT_EQ(expected, executeQuery(q, {18, 18}));
+  }
+
+  {
+    auto origin = docs->slice().at(7).get("geometry");
+    ASSERT_TRUE(origin.isObject());
+    arangodb::geo::ShapeContainer lhs, rhs;
+    ASSERT_TRUE(arangodb::iresearch::parseShape(origin, lhs, true));
+    std::set<std::string> expected;
+    for (auto doc : VPackArrayIterator(docs->slice())) {
+      auto geo = doc.get("geometry");
+      ASSERT_TRUE(geo.isObject());
+      ASSERT_TRUE(arangodb::iresearch::parseShape(geo, rhs, true));
+      auto const dist = lhs.distanceFromCentroid(rhs.centroid());
+      if (dist <= 2000) {
+        continue;
+      }
+
+      auto name = doc.get("name");
+      ASSERT_TRUE(name.isString());
+      expected.emplace(arangodb::iresearch::getStringRef(name));
+    }
+
+    GeoDistanceFilter q;
+    *q.mutable_field() = "geometry";
+    q.mutable_options()->origin = S2LatLng::FromDegrees(55.70461, 37.617053).ToPoint();
+    auto& range = q.mutable_options()->range;
+    range.min_type = irs::BoundType::EXCLUSIVE;
+    range.min = 2000;
+    range.max_type = irs::BoundType::UNBOUNDED;
+    range.max = 2000;
+
+    ASSERT_EQ(expected, executeQuery(q, {28, 28}));
+  }
+
+  {
+    std::set<std::string> expected;
+    GeoDistanceFilter q;
+    *q.mutable_field() = "geometry";
+    q.mutable_options()->origin = S2LatLng::FromDegrees(55.70461, 37.617053).ToPoint();
+    auto& range = q.mutable_options()->range;
+    range.min_type = irs::BoundType::INCLUSIVE;
+    range.min = 2000;
+    range.max_type = irs::BoundType::INCLUSIVE;
+    range.max = 100;
+
+    ASSERT_EQ(expected, executeQuery(q, {10,12}));
+  }
 }
 
 TEST(GeoDistanceFilterTest, checkScorer) {
