@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CallbackGuard.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;
@@ -45,7 +46,14 @@ CallbackGuard& CallbackGuard::operator=(CallbackGuard&& other) {
   return *this;
 }
 
-CallbackGuard::~CallbackGuard() { call(); }
+CallbackGuard::~CallbackGuard() { 
+  try {
+    call(); 
+  } catch (std::exception const& ex) {
+    // this is a destructor, no exceptions must escape from here
+    LOG_TOPIC("bc3d5", WARN, Logger::CLUSTER) << "caught exception during CallbackGuard shutdown: " << ex.what();
+  }
+}
 
 void CallbackGuard::callAndClear() {
   call();
