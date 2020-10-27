@@ -14,7 +14,7 @@ devel
       edges: [v/source -> v/1, ...,  v/n -> v/target
     }
   that have length exactly 2 or 3 or 4, start at v/source and end at v/target.
-  The ordering of those paths is not guaranteed.
+  The order of those paths in the result set is not guaranteed.
 
 * Fixed issue BTS-195: AQL update queries using the `keepNull` option set to
   false had an inconsistent behavior. For example, given a collection `test`
