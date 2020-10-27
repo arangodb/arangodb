@@ -213,6 +213,11 @@ class Ast {
   
   /// @brief create an AST limit node
   AstNode* createNodeLimit(AstNode const*, AstNode const*);
+  
+  /// @brief create an AST window node
+  AstNode* createNodeWindow(AstNode const* spec,
+                            AstNode const* rangeVar,
+                            AstNode const* assignments);
 
   /// @brief create an AST assign node
   AstNode* createNodeAssign(char const*, size_t, AstNode const*);
