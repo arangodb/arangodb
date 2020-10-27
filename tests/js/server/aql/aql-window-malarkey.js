@@ -326,7 +326,7 @@ function WindowHappyTestSuite() {
     /// @brief test window with traversal
     ////////////////////////////////////////////////////////////////////////////////
 
-    testMakeAndreyHappy1: function () {
+    testWindowAndTraversal: function () {
 
       let vc = db._create(vn, { numberOfShards: 4 });
       let ec = db._createEdgeCollection(en, { numberOfShards: 4 });
@@ -390,7 +390,7 @@ function WindowHappyTestSuite() {
     /// @brief test copying of subquery results
     ////////////////////////////////////////////////////////////////////////////////
 
-    testMakeAndreyHappy32: function () {
+    testWindowInSubquery: function () {
       var expected = [[[], [], []]];
       for (var i = 1; i <= 100; ++i) {
         if (i < 50) {
@@ -417,7 +417,7 @@ function WindowHappyTestSuite() {
     // testOneShardDBAndSpliceSubquery
     ////////////////////////////////////////////////////////////////////////////////
 
-    testMakeAndreyHappy4: function () {
+    testWindowAndSubqueryInOneShardDB: function () {
       const dbName = "SingleShardDB";
       const docs = [];
       for (let i = 0; i < 100; ++i) {
@@ -445,10 +445,10 @@ function WindowHappyTestSuite() {
         const rules = statement.explain().plan.rules;
         if (isEnterprise && isCoordinator) {
           // Has one shard rule
-          assertTrue(rules.indexOf("cluster-one-shard") !== -1);
+          assertNotEqual(-1, rules.indexOf("cluster-one-shard"));
         }
         // Has one splice subquery rule
-        assertTrue(rules.indexOf("splice-subqueries") !== -1);
+        assertNotEqual(-1, rules.indexOf("splice-subqueries"));
         // Result is as expected
         const result = statement.execute().toArray();
         for (let i = 0; i < 100; ++i) {
