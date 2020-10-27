@@ -51,6 +51,7 @@
 #include "Aql/VarUsageFinder.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
+#include "Aql/WindowNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -1041,7 +1042,6 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const
                                      "no view for EnumerateView");
     }
 
-    auto* options = node->getMemberUnchecked(2);
     if (options->type == NODE_TYPE_NOP) {
       options = nullptr;
     }
@@ -1525,59 +1525,8 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous, AstNode c
   }
 
   // aggregate variables
-  std::vector<AggregateVarInfo> aggregateVariables;
-  {
-    auto list = node->getMember(2);
-    TRI_ASSERT(list->type == NODE_TYPE_AGGREGATIONS);
-    list = list->getMember(0);
-    TRI_ASSERT(list->type == NODE_TYPE_ARRAY);
-    size_t const numVars = list->numMembers();
-
-    aggregateVariables.reserve(numVars);
-    for (size_t i = 0; i < numVars; ++i) {
-      auto assigner = list->getMember(i);
-
-      if (assigner == nullptr) {
-        continue;
-      }
-
-      TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
-      auto out = assigner->getMember(0);
-      TRI_ASSERT(out != nullptr);
-      auto outVar = static_cast<Variable*>(out->getData());
-      TRI_ASSERT(outVar != nullptr);
-
-      auto expression = assigner->getMember(1);
-
-      // operand is always a function call
-      TRI_ASSERT(expression->type == NODE_TYPE_FCALL);
-
-      // build aggregator
-      auto func = static_cast<Function*>(expression->getData());
-      TRI_ASSERT(func != nullptr);
-
-      // function should have one argument (an array with the parameters)
-      TRI_ASSERT(expression->numMembers() == 1);
-
-      auto args = expression->getMember(0);
-      // the number of arguments should also be one (note: this has been
-      // validated before)
-      TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
-      TRI_ASSERT(args->numMembers() == 1);
-
-      auto arg = args->getMember(0);
-
-      if (arg->type == NODE_TYPE_REFERENCE) {
-        // operand is a variable
-        auto e = static_cast<Variable*>(arg->getData());
-        aggregateVariables.emplace_back(AggregateVarInfo{outVar, e, Aggregator::translateAlias(func->name)});
-      } else {
-        auto calc = createTemporaryCalculation(arg, previous);
-        previous = calc;
-        aggregateVariables.emplace_back(AggregateVarInfo{outVar, getOutVariable(calc), Aggregator::translateAlias(func->name)});
-      }
-    }
-  }
+  AstNode* aggregates = node->getMember(2);
+  std::vector<AggregateVarInfo> aggregateVars = prepareAggregateVars(&previous, aggregates);
 
   // handle out variable
   Variable const* outVariable = nullptr;
@@ -1628,7 +1577,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous, AstNode c
   }
 
   auto collectNode =
-      new CollectNode(this, nextId(), options, groupVariables, aggregateVariables,
+      new CollectNode(this, nextId(), options, groupVariables, aggregateVars,
                       expressionVariable, outVariable, keepVariables,
                       _ast->variables()->variables(false), false, false);
 
@@ -2048,6 +1997,83 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous, AstNode co
   return addDependency(previous, en);
 }
 
+/// @brief create an execution plan element from an AST WINDOW node
+ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous, AstNode const* node) {
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_WINDOW);
+  TRI_ASSERT(node->numMembers() == 3);
+
+  auto spec = node->getMember(0);
+  auto rangeExpr = node->getMember(1);
+  auto aggregates = node->getMember(2);
+  
+  AqlFunctionsInternalCache cache;
+  FixedVarExpressionContext exprContext(_ast->query().trxForOptimization(), _ast->query(), cache);
+  
+  Variable const* rangeVar = nullptr;
+  if (rangeExpr->type != NODE_TYPE_NOP) {
+    if (rangeExpr->type == NODE_TYPE_REFERENCE) {
+      // operand is a variable
+      rangeVar = static_cast<Variable*>(rangeExpr->getData());
+    } else { // need to add a calculation
+      auto calc = createTemporaryCalculation(rangeExpr, previous);
+      previous = calc;
+      rangeVar = getOutVariable(calc);
+    }
+
+    // add a sort on rangeVariable in front of the WINDOW
+    SortElementVector elements;
+    elements.emplace_back(rangeVar, /*isAscending*/true);
+    auto en = registerNode(std::make_unique<SortNode>(this, nextId(), elements, false));
+    previous = addDependency(previous, en);
+  }
+  
+  AqlValue preceding, following;
+  TRI_ASSERT(spec->type == NODE_TYPE_OBJECT);
+  
+  size_t n = spec->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    auto member = spec->getMemberUnchecked(i);
+
+    if (member == nullptr || member->type != NODE_TYPE_OBJECT_ELEMENT) {
+      continue;
+    }
+    VPackStringRef const name = member->getStringRef();
+    AstNode* value = member->getMember(0);
+    if (!value->isConstant()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS,
+                                     "WINDOW bounds must be determined at compile time");
+    }
+    
+    bool mustDestroy = false;
+    if (name == "preceding") {
+      Expression expr(_ast, value);
+      AqlValue val = expr.execute(&exprContext, mustDestroy);
+      if (!mustDestroy && val.isPointer()) { // force a copy
+        preceding = AqlValue(val.slice());
+      } else {
+        preceding = val.clone();
+      }
+    } else if (name == "following") {
+      Expression expr(_ast, value);
+      AqlValue val = expr.execute(&exprContext, mustDestroy);
+      if (!mustDestroy && val.isPointer()) { // force a copy
+        following = AqlValue(val.slice());
+      } else {
+        following = val.clone();
+      }
+    }
+  }
+  
+  auto type = rangeVar != nullptr ? WindowBounds::Type::Range : WindowBounds::Type::Row;
+
+  // aggregate variables
+  std::vector<AggregateVarInfo> aggregateVariables = prepareAggregateVars(&previous, aggregates);
+  auto en = registerNode(std::make_unique<WindowNode>(this, nextId(),
+                                                      WindowBounds(type, std::move(preceding), std::move(following)),
+                                                      rangeVar, aggregateVariables));
+  return addDependency(previous, en);
+}
+
 /// @brief create an execution plan from an abstract syntax tree node
 ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
@@ -2150,6 +2176,11 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
 
       case NODE_TYPE_UPSERT: {
         en = fromNodeUpsert(en, member);
+        break;
+      }
+        
+      case NODE_TYPE_WINDOW: {
+        en = fromNodeWindow(en, member);
         break;
       }
 
@@ -2524,6 +2555,62 @@ void ExecutionPlan::prepareTraversalOptions() {
   }
 }
 
+std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(ExecutionNode** previous, AstNode const* node) {
+  std::vector<AggregateVarInfo> aggregateVariables;
+
+  TRI_ASSERT(node->type == NODE_TYPE_AGGREGATIONS);
+  AstNode* list = node->getMember(0);
+  TRI_ASSERT(list->type == NODE_TYPE_ARRAY);
+  size_t const numVars = list->numMembers();
+
+  aggregateVariables.reserve(numVars);
+  for (size_t i = 0; i < numVars; ++i) {
+    auto assigner = list->getMemberUnchecked(i);
+
+    if (assigner == nullptr) {
+      continue;
+    }
+
+    TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
+    auto out = assigner->getMember(0);
+    TRI_ASSERT(out != nullptr);
+    auto outVar = static_cast<Variable*>(out->getData());
+    TRI_ASSERT(outVar != nullptr);
+
+    auto expression = assigner->getMember(1);
+
+    // operand is always a function call
+    TRI_ASSERT(expression->type == NODE_TYPE_FCALL);
+
+    // build aggregator
+    auto func = static_cast<Function*>(expression->getData());
+    TRI_ASSERT(func != nullptr);
+
+    // function should have one argument (an array with the parameters)
+    TRI_ASSERT(expression->numMembers() == 1);
+
+    auto args = expression->getMember(0);
+    // the number of arguments should also be one (note: this has been
+    // validated before)
+    TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
+    TRI_ASSERT(args->numMembers() == 1);
+
+    auto arg = args->getMember(0);
+
+    if (arg->type == NODE_TYPE_REFERENCE) {
+      // operand is a variable
+      auto e = static_cast<Variable*>(arg->getData());
+      aggregateVariables.emplace_back(AggregateVarInfo{outVar, e, Aggregator::translateAlias(func->name)});
+    } else {
+      auto calc = createTemporaryCalculation(arg, *previous);
+      *previous = calc;
+      aggregateVariables.emplace_back(AggregateVarInfo{outVar, getOutVariable(calc), Aggregator::translateAlias(func->name)});
+    }
+  }
+  
+  return aggregateVariables;
+}
+
 AstNode const* ExecutionPlan::resolveVariableAlias(AstNode const* node) const {
   if (node->type == NODE_TYPE_REFERENCE) {
     auto setter = getVarSetBy(static_cast<Variable const*>(node->getData())->id);
@@ -2561,7 +2648,7 @@ struct Shower final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUn
     }
 
     LoggerStream logLn{};
-    logLn << LogLevel::INFO << Logger::AQL;
+    logLn << Logger::LOGID("24fa8") << LogLevel::INFO << Logger::AQL;
 
     for (int i = 0; i < 2 * indent; i++) {
       logLn << ' ';
