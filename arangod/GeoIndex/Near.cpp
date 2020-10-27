@@ -97,7 +97,7 @@ void NearUtils<CMP>::reset() {
   TRI_ASSERT(!_deltaAngle.is_zero());
   TRI_ASSERT(_deltaAngle.radians() * geo::kEarthRadiusInMeters >= 400);
 
-  if (_minAngle == _maxAngle/* && _params.filterType != geo::FilterType::NONE*/) {  // no search area
+  if (_minAngle == _maxAngle) {  // no search area
     _allIntervalsCovered = true;
   }
 }
@@ -173,11 +173,6 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
 
   TRI_ASSERT(_innerAngle <= _outerAngle && _outerAngle <= _maxAngle);
   
-//  if (_innerAngle == _outerAngle && _allIntervalsCovered) {
-//    intervals.emplace_back(S2CellId(_params.origin), S2CellId(_params.origin));
-//    return intervals;
-//  }
-//
   TRI_ASSERT(_innerAngle != _outerAngle);
   std::vector<S2CellId> cover;
   if (_innerAngle == _minAngle) {
