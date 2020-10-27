@@ -34,6 +34,7 @@
 #include "search/multiterm_query.hpp"
 
 #include "Basics/voc-errors.h"
+#include "Geo/GeoParams.h"
 #include "Geo/GeoJson.h"
 #include "IResearch/Geo.h"
 #include "IResearch/IResearchCommon.h"
@@ -389,7 +390,7 @@ std::pair<S2Cap, bool> getBound(irs::BoundType type,
   return {
     (0. == distance
       ? S2Cap::FromPoint(origin)
-      : S2Cap(origin, S1Angle::Radians(S2Earth::MetersToRadians(distance)))),
+      : S2Cap(origin, S1Angle::Radians(geo::metersToRadians(distance)))),
     irs::BoundType::INCLUSIVE == type
   };
 }
