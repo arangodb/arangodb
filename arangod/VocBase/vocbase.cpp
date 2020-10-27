@@ -1613,16 +1613,20 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
 
   TRI_ASSERT(_info.valid());
 
-  QueryRegistryFeature& feature = _info.server().getFeature<QueryRegistryFeature>();
+  QueryRegistryFeature& feature = _server.getFeature<QueryRegistryFeature>();
   _queries.reset(new arangodb::aql::QueryList(feature));
   _cursorRepository.reset(new arangodb::CursorRepository(*this));
   _replicationClients.reset(new arangodb::ReplicationClientsProgressTracker());
 
   // init collections
-  _collections.reserve(32);
-  _deadCollections.reserve(32);
+  _collections.reserve(10);
 
   TRI_CreateUserStructuresVocBase(this);
+
+  if (_server.hasFeature<DatabaseFeature>()) {
+    // count up the number of active database objects, for statistical purposes
+    _server.getFeature<DatabaseFeature>().objectCounters().numDatabases.fetch_add(1, std::memory_order_relaxed);
+  }
 }
 
 /// @brief destroy a vocbase object
@@ -1645,6 +1649,12 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   _dataSourceById.clear();  // clear map before deallocating TRI_vocbase_t members
   _dataSourceByName.clear();  // clear map before deallocating TRI_vocbase_t members
   _dataSourceByUuid.clear();  // clear map before deallocating TRI_vocbase_t members
+  
+  if (_server.hasFeature<DatabaseFeature>()) {
+    // properly count down the number of active database objects
+    uint64_t old = _server.getFeature<DatabaseFeature>().objectCounters().numDatabases.fetch_sub(1, std::memory_order_relaxed);
+    TRI_ASSERT(old > 0);
+  }
 }
 
 std::string TRI_vocbase_t::path() const {

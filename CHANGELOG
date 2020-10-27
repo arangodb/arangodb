@@ -1,6 +1,12 @@
 devel
 -----
 
+* Added the following internal metrics for tracking the number of in-memory
+  database objects:
+  - `arangodb_objects_databases`: number of database objects in memory
+  - `arangodb_objects_collections`: number of collection objects in memory
+  - `arangodb_objects_views`: number of view objects in memory
+
 * Fixed issue BTS-195: AQL update queries using the `keepNull` option set to
   false had an inconsistent behavior. For example, given a collection `test`
   with an empty document with just key `testDoc`, the following query

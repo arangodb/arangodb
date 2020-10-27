@@ -31,6 +31,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/Metrics.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Statistics/StatisticsFeature.h"
@@ -98,6 +99,9 @@ void MetricsFeature::toPrometheus(std::string& result) const {
   if (engineName == RocksDBEngine::EngineName) {
     es.getStatistics(result);
   }
+ 
+  auto& df = server().getFeature<DatabaseFeature>();
+  df.objectCounters().toPrometheus(result);
 }
 
 Counter& MetricsFeature::counter(

@@ -1375,3 +1375,20 @@ void DatabaseFeature::enableDeadlockDetection() {
     vocbase->_deadlockDetector.enabled(true);
   }
 }
+
+void DatabaseFeature::ObjectCounters::toPrometheus(std::string& result) const {
+  result +=
+    "\n#TYPE arangodb_objects_databases gauge"
+    "\n#HELP arangodb_objects_databases Number of database objects in memory"
+    "\narangodb_objects_databases " + std::to_string(numDatabases.load(std::memory_order_relaxed)) + '\n';
+  
+  result +=
+    "\n#TYPE arangodb_objects_collections gauge"
+    "\n#HELP arangodb_objects_collections Number of collection objects in memory"
+    "\narangodb_objects_collections " + std::to_string(numCollections.load(std::memory_order_relaxed)) + '\n';
+  
+  result +=
+    "\n#TYPE arangodb_objects_views gauge"
+    "\n#HELP arangodb_objects_views Number of view objects in memory"
+    "\narangodb_objects_views " + std::to_string(numViews.load(std::memory_order_relaxed)) + '\n';
+}

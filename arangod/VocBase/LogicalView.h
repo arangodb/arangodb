@@ -55,6 +55,8 @@ class LogicalView : public LogicalDataSource {
  public:
   typedef std::shared_ptr<LogicalView> ptr;
   typedef std::function<bool(DataSourceId)> CollectionVisitor;
+  
+  ~LogicalView();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief casts a specified 'LogicalView' to a provided Target type

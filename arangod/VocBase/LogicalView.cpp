@@ -75,6 +75,19 @@ LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice const& definition)
 
   // update server's tick value
   TRI_UpdateTickServer(id().id());
+  
+  if (vocbase.server().hasFeature<DatabaseFeature>()) {
+    // count up the number of active view objects, for statistical purposes
+    vocbase.server().getFeature<DatabaseFeature>().objectCounters().numViews.fetch_add(1, std::memory_order_relaxed);
+  }
+}
+
+LogicalView::~LogicalView() {
+  if (vocbase().server().hasFeature<DatabaseFeature>()) {
+    // properly count down the number of active view objects
+    uint64_t old = vocbase().server().getFeature<DatabaseFeature>().objectCounters().numViews.fetch_sub(1, std::memory_order_relaxed);
+    TRI_ASSERT(old > 0);
+  }
 }
 
 Result LogicalView::appendVelocyPack(velocypack::Builder& builder,

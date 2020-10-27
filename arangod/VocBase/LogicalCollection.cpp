@@ -277,6 +277,19 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   // together.
 
   prepareIndexes(info.get("indexes"));
+
+  if (vocbase.server().hasFeature<DatabaseFeature>()) {
+    // count up the number of active collection objects, for statistical purposes
+    vocbase.server().getFeature<DatabaseFeature>().objectCounters().numCollections.fetch_add(1, std::memory_order_relaxed);
+  }
+}
+
+LogicalCollection::~LogicalCollection() {
+  if (vocbase().server().hasFeature<DatabaseFeature>()) {
+    // properly count down the number of active collection objects
+    uint64_t old = vocbase().server().getFeature<DatabaseFeature>().objectCounters().numCollections.fetch_sub(1, std::memory_order_relaxed);
+    TRI_ASSERT(old > 0);
+  }
 }
 
 /*static*/ LogicalDataSource::Category const& LogicalCollection::category() noexcept {
@@ -314,8 +327,6 @@ Result LogicalCollection::updateSchema(VPackSlice schema) {
 
   return { TRI_ERROR_NO_ERROR };
 }
-
-LogicalCollection::~LogicalCollection() = default;
 
 // SECTION: sharding
 ShardingInfo* LogicalCollection::shardingInfo() const {

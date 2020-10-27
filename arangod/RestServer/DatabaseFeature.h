@@ -80,6 +80,18 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
+  
+  struct ObjectCounters {
+    std::atomic<uint64_t> numDatabases{0};
+    std::atomic<uint64_t> numCollections{0};
+    std::atomic<uint64_t> numViews{0};
+
+    void toPrometheus(std::string& result) const;
+  };
+
+  ObjectCounters& objectCounters() noexcept {
+    return _objectCounters;
+  }
 
   // used by catch tests
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -195,6 +207,8 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool _checkVersion;
   bool _upgrade;
   bool _useOldSystemCollections;
+
+  ObjectCounters _objectCounters;
 
   /// @brief lock for serializing the creation of databases
   arangodb::Mutex _databaseCreateLock;
