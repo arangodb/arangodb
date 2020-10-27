@@ -828,15 +828,15 @@ bool SynchronizeShard::first() {
           " of shard " + database + "/" + collection->name() + " of collection " + database +
           "/" + resolver.getCollectionName(collection->id());
     }
-
+  
+    std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
 
     // old "shortcut" code for getting in sync. This code takes a shortcut if the
     // shard in question is supposed to be empty. in this case it will simply try
     // to add itself as an in-sync follower, without running the full replication
     // protocol. this shortcut relies on the collection counts being correct, and
     // as these can be at least temporarily off, we need to disable it.
-#if 0
-    if (docCount == 0) {
+    if (docCount == 0 && engineName == "mmfiles") {
       // We have a short cut:
       LOG_TOPIC("0932a", DEBUG, Logger::MAINTENANCE)
           << "synchronizeOneShard: trying short cut to synchronize local shard "
@@ -871,7 +871,6 @@ bool SynchronizeShard::first() {
       } catch (...) {
       }
     }
-#endif
 
     LOG_TOPIC("53337", DEBUG, Logger::MAINTENANCE)
         << "synchronizeOneShard: trying to synchronize local shard '" << database
@@ -1182,7 +1181,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   // under many cicrumstances the counts will have been auto-healed by the initial
   // or the incremental replication before, so in many cases we will not even get
   // into this if case
-  if (res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM)) {
+  if (EngineSelectorFeature::isRocksDB() && res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM)) {
     // give up the lock on the leader, so writes aren't stopped unncessarily
     // on the leader while we are recalculating the counts
     readLockGuard.fire();
