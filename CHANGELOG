@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added WINDOW keyword to AQL to allow aggregations on related rows.
+
 * Added new graph method K_PATHS to AQL. This will enumerate all paths between a
   source and a target vertex that match the given length.
   For example, the query

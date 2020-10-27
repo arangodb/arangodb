@@ -148,7 +148,7 @@ class CollectNode : public ExecutionNode {
   void clearKeepVariables();
 
   void setAggregateVariables(
-      std::vector<AggregateVarInfo> const& aggregateVariables);
+      std::vector<AggregateVarInfo>&& aggregateVariables);
 
   /// @brief clear one of the aggregates
   void clearAggregates(
