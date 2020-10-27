@@ -400,6 +400,11 @@ constexpr inline basic_string_ref<ElemDst> ref_cast(const std::basic_string<Elem
   return basic_string_ref<ElemDst>(reinterpret_cast<const ElemDst*>(src.c_str()), src.size());
 }
 
+template<typename ElemDst, typename ElemSrc>
+constexpr inline basic_string_ref<ElemDst> ref_cast(const std::basic_string_view<ElemSrc>& src) {
+  return basic_string_ref<ElemDst>(reinterpret_cast<const ElemDst*>(src.data()), src.size());
+}
+
 // ----------------------------------------------------------------------------
 // --SECTION--                                        String hashing algorithms
 // ----------------------------------------------------------------------------

@@ -1194,7 +1194,7 @@ Result fromGeoDistanceInterval(
     switch (node.cmp) {
       case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
       case aql::NODE_TYPE_OPERATOR_BINARY_NE:
-        options->range.min= distance;
+        options->range.min = distance;
         options->range.min_type = irs::BoundType::INCLUSIVE;
         options->range.max = distance;
         options->range.max_type = irs::BoundType::INCLUSIVE;

@@ -1,5 +1,4 @@
 include_directories(.)
-add_subdirectory(IResearch)
 
 # ----------------------------------------
 # Fuerte tests
@@ -62,6 +61,8 @@ set(ARANGODB_TESTS_COMMON_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/ExpressionContextMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/RestHandlerMock.cpp
 )
+
+add_subdirectory(IResearch)
 
 set(ARANGODB_TESTS_SOURCES
   ${ARANGODB_TESTS_COMMON_SOURCES}

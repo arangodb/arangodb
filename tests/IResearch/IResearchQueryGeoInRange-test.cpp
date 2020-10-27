@@ -110,34 +110,34 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoJson) {
   // populate collection
   {
     auto docs = VPackParser::fromJson(R"([
-        { "geometry": { "type": "Point", "coordinates": [ 37.615895, 55.7039   ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.615315, 55.703915 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.61509, 55.703537  ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.614183, 55.703806 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.613792, 55.704405 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.614956, 55.704695 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.616297, 55.704831 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.617053, 55.70461  ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.61582, 55.704459  ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.614634, 55.704338 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.613121, 55.704193 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.614135, 55.703298 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.613663, 55.704002 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.616522, 55.704235 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.615508, 55.704172 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.614629, 55.704081 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.610235, 55.709754 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.605,    55.707917 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.545776, 55.722083 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.559509, 55.715895 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.701645, 55.832144 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.73735,  55.816715 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.75589,  55.798193 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.659073, 55.843711 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.778549, 55.823659 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.729797, 55.853733 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.608261, 55.784682 ] } },
-        { "geometry": { "type": "Point", "coordinates": [ 37.525177, 55.802825 ] } }
+        { "id": 1,  "geometry": { "type": "Point", "coordinates": [ 37.615895, 55.7039   ] } },
+        { "id": 2,  "geometry": { "type": "Point", "coordinates": [ 37.615315, 55.703915 ] } },
+        { "id": 3,  "geometry": { "type": "Point", "coordinates": [ 37.61509, 55.703537  ] } },
+        { "id": 4,  "geometry": { "type": "Point", "coordinates": [ 37.614183, 55.703806 ] } },
+        { "id": 5,  "geometry": { "type": "Point", "coordinates": [ 37.613792, 55.704405 ] } },
+        { "id": 6,  "geometry": { "type": "Point", "coordinates": [ 37.614956, 55.704695 ] } },
+        { "id": 7,  "geometry": { "type": "Point", "coordinates": [ 37.616297, 55.704831 ] } },
+        { "id": 8,  "geometry": { "type": "Point", "coordinates": [ 37.617053, 55.70461  ] } },
+        { "id": 9,  "geometry": { "type": "Point", "coordinates": [ 37.61582, 55.704459  ] } },
+        { "id": 10, "geometry": { "type": "Point", "coordinates": [ 37.614634, 55.704338 ] } },
+        { "id": 11, "geometry": { "type": "Point", "coordinates": [ 37.613121, 55.704193 ] } },
+        { "id": 12, "geometry": { "type": "Point", "coordinates": [ 37.614135, 55.703298 ] } },
+        { "id": 13, "geometry": { "type": "Point", "coordinates": [ 37.613663, 55.704002 ] } },
+        { "id": 14, "geometry": { "type": "Point", "coordinates": [ 37.616522, 55.704235 ] } },
+        { "id": 15, "geometry": { "type": "Point", "coordinates": [ 37.615508, 55.704172 ] } },
+        { "id": 16, "geometry": { "type": "Point", "coordinates": [ 37.614629, 55.704081 ] } },
+        { "id": 17, "geometry": { "type": "Point", "coordinates": [ 37.610235, 55.709754 ] } },
+        { "id": 18, "geometry": { "type": "Point", "coordinates": [ 37.605,    55.707917 ] } },
+        { "id": 19, "geometry": { "type": "Point", "coordinates": [ 37.545776, 55.722083 ] } },
+        { "id": 20, "geometry": { "type": "Point", "coordinates": [ 37.559509, 55.715895 ] } },
+        { "id": 21, "geometry": { "type": "Point", "coordinates": [ 37.701645, 55.832144 ] } },
+        { "id": 22, "geometry": { "type": "Point", "coordinates": [ 37.73735,  55.816715 ] } },
+        { "id": 23, "geometry": { "type": "Point", "coordinates": [ 37.75589,  55.798193 ] } },
+        { "id": 24, "geometry": { "type": "Point", "coordinates": [ 37.659073, 55.843711 ] } },
+        { "id": 25, "geometry": { "type": "Point", "coordinates": [ 37.778549, 55.823659 ] } },
+        { "id": 26, "geometry": { "type": "Point", "coordinates": [ 37.729797, 55.853733 ] } },
+        { "id": 27, "geometry": { "type": "Point", "coordinates": [ 37.608261, 55.784682 ] } },
+        { "id": 28, "geometry": { "type": "Point", "coordinates": [ 37.525177, 55.802825 ] } }
       ])");
 
     arangodb::OperationOptions options;
@@ -260,7 +260,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoJson) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeojson')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -275,7 +275,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoJson) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeojson')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -290,7 +290,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoJson) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH GEO_IN_RANGE(d.geometry, origin, 0, 300)
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -305,7 +305,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoJson) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH GEO_IN_RANGE(origin, d.geometry, 0, 300)
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -322,7 +322,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoJson) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 0, 300), 'mygeojson')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -346,7 +346,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoJson) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeojson')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -370,7 +370,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoJson) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeocentroid')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -394,7 +394,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoJson) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -418,7 +418,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoJson) {
         R"(LET origin = GEO_POINT(37.613663, 55.704002)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0), 'mygeojson')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -439,7 +439,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoJson) {
         R"(LET origin = GEO_POINT(37.613663, 55.704002)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0, false, false), 'mygeojson')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -456,7 +456,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoJson) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 100, 300), 'mygeojson')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -480,7 +480,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoJson) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 100, 300), 'mygeojson')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -504,7 +504,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoJson) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 206, 207), 'mygeojson')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -528,7 +528,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoJson) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 206, 207), 'mygeojson')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -553,7 +553,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoJson) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 15000, 20000), 'mygeojson')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -622,34 +622,34 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointArray) {
   // populate collection
   {
     auto docs = VPackParser::fromJson(R"([
-        { "geometry": { "type": "Point", "coordinates": [55.7039   , 37.615895  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.703915 , 37.615315  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.703537 , 37.61509    ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.703806 , 37.614183  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.704405 , 37.613792  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.704695 , 37.614956  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.704831 , 37.616297  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.70461  , 37.617053  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.704459 , 37.61582    ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.704338 , 37.614634  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.704193 , 37.613121  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.703298 , 37.614135  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.704002 , 37.613663  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.704235 , 37.616522  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.704172 , 37.615508  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.704081 , 37.614629  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.709754 , 37.610235  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.707917 , 37.605     ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.722083 , 37.545776  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.715895 , 37.559509  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.832144 , 37.701645  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.816715 , 37.73735   ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.798193 , 37.75589   ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.843711 , 37.659073  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.823659 , 37.778549  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.853733 , 37.729797  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.784682 , 37.608261  ] } },
-        { "geometry": { "type": "Point", "coordinates": [55.802825 , 37.525177  ] } }
+        { "id": 1,  "geometry": { "type": "Point", "coordinates": [55.7039   , 37.615895  ] } },
+        { "id": 2,  "geometry": { "type": "Point", "coordinates": [55.703915 , 37.615315  ] } },
+        { "id": 3,  "geometry": { "type": "Point", "coordinates": [55.703537 , 37.61509    ] } },
+        { "id": 4,  "geometry": { "type": "Point", "coordinates": [55.703806 , 37.614183  ] } },
+        { "id": 5,  "geometry": { "type": "Point", "coordinates": [55.704405 , 37.613792  ] } },
+        { "id": 6,  "geometry": { "type": "Point", "coordinates": [55.704695 , 37.614956  ] } },
+        { "id": 7,  "geometry": { "type": "Point", "coordinates": [55.704831 , 37.616297  ] } },
+        { "id": 8,  "geometry": { "type": "Point", "coordinates": [55.70461  , 37.617053  ] } },
+        { "id": 9,  "geometry": { "type": "Point", "coordinates": [55.704459 , 37.61582    ] } },
+        { "id": 10, "geometry": { "type": "Point", "coordinates": [55.704338 , 37.614634  ] } },
+        { "id": 11, "geometry": { "type": "Point", "coordinates": [55.704193 , 37.613121  ] } },
+        { "id": 12, "geometry": { "type": "Point", "coordinates": [55.703298 , 37.614135  ] } },
+        { "id": 13, "geometry": { "type": "Point", "coordinates": [55.704002 , 37.613663  ] } },
+        { "id": 14, "geometry": { "type": "Point", "coordinates": [55.704235 , 37.616522  ] } },
+        { "id": 15, "geometry": { "type": "Point", "coordinates": [55.704172 , 37.615508  ] } },
+        { "id": 16, "geometry": { "type": "Point", "coordinates": [55.704081 , 37.614629  ] } },
+        { "id": 17, "geometry": { "type": "Point", "coordinates": [55.709754 , 37.610235  ] } },
+        { "id": 18, "geometry": { "type": "Point", "coordinates": [55.707917 , 37.605     ] } },
+        { "id": 19, "geometry": { "type": "Point", "coordinates": [55.722083 , 37.545776  ] } },
+        { "id": 20, "geometry": { "type": "Point", "coordinates": [55.715895 , 37.559509  ] } },
+        { "id": 21, "geometry": { "type": "Point", "coordinates": [55.832144 , 37.701645  ] } },
+        { "id": 22, "geometry": { "type": "Point", "coordinates": [55.816715 , 37.73735   ] } },
+        { "id": 23, "geometry": { "type": "Point", "coordinates": [55.798193 , 37.75589   ] } },
+        { "id": 24, "geometry": { "type": "Point", "coordinates": [55.843711 , 37.659073  ] } },
+        { "id": 25, "geometry": { "type": "Point", "coordinates": [55.823659 , 37.778549  ] } },
+        { "id": 26, "geometry": { "type": "Point", "coordinates": [55.853733 , 37.729797  ] } },
+        { "id": 27, "geometry": { "type": "Point", "coordinates": [55.784682 , 37.608261  ] } },
+        { "id": 28, "geometry": { "type": "Point", "coordinates": [55.802825 , 37.525177  ] } }
       ])");
 
     arangodb::OperationOptions options;
@@ -778,7 +778,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointArray) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -793,7 +793,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointArray) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -808,7 +808,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointArray) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH GEO_IN_RANGE(d.geometry.coordinates, origin, 0, 300)
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -823,7 +823,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointArray) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 300)
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -840,7 +840,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointArray) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(d.geometry.coordinates, origin, 0, 300), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -864,7 +864,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointArray) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 300), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -888,7 +888,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointArray) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 300), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -912,7 +912,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointArray) {
         R"(LET origin = GEO_POINT(37.613663, 55.704002)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 0), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -933,7 +933,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointArray) {
         R"(LET origin = GEO_POINT(37.613663, 55.704002)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 0, false, false), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -950,7 +950,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointArray) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(d.geometry.coordinates, origin, 100, 300), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -974,7 +974,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointArray) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 100, 300), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -998,7 +998,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointArray) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 206, 207), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -1022,7 +1022,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointArray) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(d.geometry.coordinates, origin, 206, 207), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -1047,7 +1047,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointArray) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 15000, 20000), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -1117,34 +1117,34 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointObject) {
   // populate collection
   {
     auto docs = VPackParser::fromJson(R"([
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.7039  , "lon" : 37.615895  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.703915, "lon" : 37.615315  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.703537, "lon" : 37.61509   } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.703806, "lon" : 37.614183  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.704405, "lon" : 37.613792  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.704695, "lon" : 37.614956  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.704831, "lon" : 37.616297  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.70461 , "lon" : 37.617053  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.704459, "lon" : 37.61582   } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.704338, "lon" : 37.614634  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.704193, "lon" : 37.613121  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.703298, "lon" : 37.614135  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.704002, "lon" : 37.613663  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.704235, "lon" : 37.616522  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.704172, "lon" : 37.615508  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.704081, "lon" : 37.614629  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.709754, "lon" : 37.610235  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.707917, "lon" : 37.605     } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.722083, "lon" : 37.545776  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.715895, "lon" : 37.559509  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.832144, "lon" : 37.701645  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.816715, "lon" : 37.73735   } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.798193, "lon" : 37.75589   } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.843711, "lon" : 37.659073  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.823659, "lon" : 37.778549  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.853733, "lon" : 37.729797  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.784682, "lon" : 37.608261  } } },
-        { "geometry": { "type": "Point", "coordinates": { "lat": 55.802825, "lon" : 37.525177  } } }
+        { "id": 1,  "geometry": { "type": "Point", "coordinates": { "lat": 55.7039  , "lon" : 37.615895  } } },
+        { "id": 2,  "geometry": { "type": "Point", "coordinates": { "lat": 55.703915, "lon" : 37.615315  } } },
+        { "id": 3,  "geometry": { "type": "Point", "coordinates": { "lat": 55.703537, "lon" : 37.61509   } } },
+        { "id": 4,  "geometry": { "type": "Point", "coordinates": { "lat": 55.703806, "lon" : 37.614183  } } },
+        { "id": 5,  "geometry": { "type": "Point", "coordinates": { "lat": 55.704405, "lon" : 37.613792  } } },
+        { "id": 6,  "geometry": { "type": "Point", "coordinates": { "lat": 55.704695, "lon" : 37.614956  } } },
+        { "id": 7,  "geometry": { "type": "Point", "coordinates": { "lat": 55.704831, "lon" : 37.616297  } } },
+        { "id": 8,  "geometry": { "type": "Point", "coordinates": { "lat": 55.70461 , "lon" : 37.617053  } } },
+        { "id": 9,  "geometry": { "type": "Point", "coordinates": { "lat": 55.704459, "lon" : 37.61582   } } },
+        { "id": 10, "geometry": { "type": "Point", "coordinates": { "lat": 55.704338, "lon" : 37.614634  } } },
+        { "id": 11, "geometry": { "type": "Point", "coordinates": { "lat": 55.704193, "lon" : 37.613121  } } },
+        { "id": 12, "geometry": { "type": "Point", "coordinates": { "lat": 55.703298, "lon" : 37.614135  } } },
+        { "id": 13, "geometry": { "type": "Point", "coordinates": { "lat": 55.704002, "lon" : 37.613663  } } },
+        { "id": 14, "geometry": { "type": "Point", "coordinates": { "lat": 55.704235, "lon" : 37.616522  } } },
+        { "id": 15, "geometry": { "type": "Point", "coordinates": { "lat": 55.704172, "lon" : 37.615508  } } },
+        { "id": 16, "geometry": { "type": "Point", "coordinates": { "lat": 55.704081, "lon" : 37.614629  } } },
+        { "id": 17, "geometry": { "type": "Point", "coordinates": { "lat": 55.709754, "lon" : 37.610235  } } },
+        { "id": 18, "geometry": { "type": "Point", "coordinates": { "lat": 55.707917, "lon" : 37.605     } } },
+        { "id": 19, "geometry": { "type": "Point", "coordinates": { "lat": 55.722083, "lon" : 37.545776  } } },
+        { "id": 20, "geometry": { "type": "Point", "coordinates": { "lat": 55.715895, "lon" : 37.559509  } } },
+        { "id": 21, "geometry": { "type": "Point", "coordinates": { "lat": 55.832144, "lon" : 37.701645  } } },
+        { "id": 22, "geometry": { "type": "Point", "coordinates": { "lat": 55.816715, "lon" : 37.73735   } } },
+        { "id": 23, "geometry": { "type": "Point", "coordinates": { "lat": 55.798193, "lon" : 37.75589   } } },
+        { "id": 24, "geometry": { "type": "Point", "coordinates": { "lat": 55.843711, "lon" : 37.659073  } } },
+        { "id": 25, "geometry": { "type": "Point", "coordinates": { "lat": 55.823659, "lon" : 37.778549  } } },
+        { "id": 26, "geometry": { "type": "Point", "coordinates": { "lat": 55.853733, "lon" : 37.729797  } } },
+        { "id": 27, "geometry": { "type": "Point", "coordinates": { "lat": 55.784682, "lon" : 37.608261  } } },
+        { "id": 28, "geometry": { "type": "Point", "coordinates": { "lat": 55.802825, "lon" : 37.525177  } } }
       ])");
 
     arangodb::OperationOptions options;
@@ -1273,7 +1273,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointObject) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -1288,7 +1288,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointObject) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -1303,7 +1303,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointObject) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH GEO_IN_RANGE(d.geometry, origin, 0, 300)
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -1318,7 +1318,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointObject) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH GEO_IN_RANGE(origin, d.geometry, 0, 300)
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -1335,7 +1335,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointObject) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 0, 300), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -1359,7 +1359,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointObject) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -1383,7 +1383,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointObject) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -1407,7 +1407,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointObject) {
         R"(LET origin = GEO_POINT(37.613663, 55.704002)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -1428,7 +1428,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointObject) {
         R"(LET origin = GEO_POINT(37.613663, 55.704002)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0, false, false), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -1445,7 +1445,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointObject) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 100, 300), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -1469,7 +1469,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointObject) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 100, 300), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -1493,7 +1493,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointObject) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 206, 207), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -1517,7 +1517,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointObject) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 206, 207), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -1542,7 +1542,7 @@ TEST_F(IResearchQueryGeoInRangeTest, testGeoPointObject) {
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 15000, 20000), 'mygeopoint')
-           SORT d._key ASC
+           SORT d.id ASC
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();

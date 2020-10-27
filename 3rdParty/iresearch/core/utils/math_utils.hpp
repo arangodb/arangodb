@@ -79,6 +79,10 @@ inline constexpr size_t roundup_power2(size_t v) noexcept {
   }
 #endif
 
+inline bool approx_equals(double_t lhs, double_t rhs) {
+  return std::fabs(rhs - lhs) < std::numeric_limits<double_t>::epsilon();
+}
+
 /// @brief rounds the result of division (num/den) to
 ///        the next greater integer value
 constexpr inline uint64_t div_ceil64(uint64_t num, uint64_t den) noexcept {

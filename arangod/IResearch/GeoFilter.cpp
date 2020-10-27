@@ -35,7 +35,6 @@
 
 #include "Basics/voc-errors.h"
 #include "Geo/GeoJson.h"
-#include "Geo/GeoParams.h"
 #include "IResearch/Geo.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
@@ -124,7 +123,11 @@ class GeoIterator : public irs::doc_iterator {
       return _doc->value;
     }
 
-    if (target != _approx->seek(target) || !accept()) {
+    if (irs::doc_limits::eof(_approx->seek(target))) {
+      return irs::doc_limits::eof();
+    }
+
+    if (!accept()) {
       next();
     }
 
@@ -323,12 +326,15 @@ std::pair<GeoStates, irs::bstring> prepareStates(
     irs::string_ref const& field) {
   assert(!geoTerms.empty());
 
+  std::vector<std::string_view> sortedTerms(geoTerms.begin(), geoTerms.end());
+  std::sort(sortedTerms.begin(), sortedTerms.end());
+
   std::pair<GeoStates, irs::bstring> res(
     std::piecewise_construct,
     std::forward_as_tuple(index.size()),
     std::forward_as_tuple(order.stats_size(), 0));
 
-  auto const size = geoTerms.size();
+  auto const size = sortedTerms.size();
   irs::field_collectors fieldStats(order);
   std::vector<GeoState::TermState> termStates;
 
@@ -348,7 +354,7 @@ std::pair<GeoStates, irs::bstring> prepareStates(
     fieldStats.collect(segment, *reader);
     termStates.reserve(size);
 
-    for (auto& term : geoTerms) {
+    for (auto& term : sortedTerms) {
       if (!terms->seek(irs::ref_cast<irs::byte_type>(term))) {
         continue;
       }
@@ -383,7 +389,7 @@ std::pair<S2Cap, bool> getBound(irs::BoundType type,
   return {
     (0. == distance
       ? S2Cap::FromPoint(origin)
-      : S2Cap(origin, S1Angle::Radians(geo::metersToRadians(distance)))),
+      : S2Cap(origin, S1Angle::Radians(S2Earth::MetersToRadians(distance)))),
     irs::BoundType::INCLUSIVE == type
   };
 }
@@ -396,6 +402,25 @@ irs::filter::prepared::ptr prepareInterval(
     GeoDistanceFilterOptions const& opts) {
   auto const& range = opts.range;
   auto const& origin = opts.origin;
+
+  if (range.min_type == irs::BoundType::INCLUSIVE &&
+      range.max_type == irs::BoundType::INCLUSIVE &&
+      irs::math::approx_equals(range.max, range.min)) {
+    S2RegionTermIndexer indexer(opts.options);
+    auto const geoTerms = indexer.GetQueryTerms(origin, opts.prefix);
+
+    if (geoTerms.empty()) {
+      return irs::filter::prepared::empty();
+    }
+
+    auto [states, stats] = prepareStates(index, order, geoTerms, field);
+
+    return ::make_query(
+      std::move(states), std::move(stats), boost,
+      [origin](geo::ShapeContainer const& shape) {
+        return origin == shape.centroid();
+    });
+  }
 
   auto [minBound, minIncl] = getBound(range.min_type, origin, range.min);
   auto [maxBound, maxIncl] = getBound(range.max_type, origin, range.max);
@@ -412,15 +437,13 @@ irs::filter::prepared::ptr prepareInterval(
   TRI_ASSERT(!minBound.is_empty());
   TRI_ASSERT(!maxBound.is_empty());
 
-  // FIXME points only???
   S2RegionTermIndexer indexer(opts.options);
   S2RegionCoverer coverer(opts.options);
 
-  // FIXME or Difference?
+  // complement is not bijective => complement of singleton cap is an empty cap
   minBound = minBound.Complement();
   auto const ring = coverer.GetCovering(maxBound).Intersection(coverer.GetCovering(maxBound));
 
-  // FIXME sort terms?
   auto const geoTerms = indexer.GetQueryTermsForCanonicalCovering(ring, opts.prefix);
 
   if (geoTerms.empty()) {
@@ -479,7 +502,6 @@ irs::filter::prepared::ptr prepareOpenInterval(
                    : irs::filter::prepared::empty();
   }
 
-  // FIXME points only???
   S2RegionTermIndexer indexer(opts.options);
 
   if (greater) {
