@@ -55,8 +55,6 @@ endif ()
 ## JEMALLOC
 ################################################################################
 
-option(USE_JEMALLOC_PROF "use jemalloc profiler" OFF)
-
 if (USE_JEMALLOC)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
   include_directories(SYSTEM "${JEMALLOC_HOME}/include")
