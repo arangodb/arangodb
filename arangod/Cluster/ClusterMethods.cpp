@@ -1906,7 +1906,10 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
     VPackSlice edges = resSlice.get("edges");
     bool allCached = true;
     VPackArrayIterator allEdges(edges);
-    result.reserve(allEdges.size());
+    // Reserve additional space for allEdges, they will
+    // all be added within this function, the continue case
+    // is only triggered on invalid network requests (unlikely)
+    result.reserve(allEdges.size() + result.size());
 
     for (VPackSlice e : allEdges) {
       VPackSlice id = e.get(StaticStrings::IdString);
@@ -1916,9 +1919,6 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
             << "got invalid edge id type: " << id.typeName();
         continue;
       
-      }
-      if (result.capacity() == 0) {
-        result.reserve(16);
       }
 
       arangodb::velocypack::HashedStringRef idRef(id);
