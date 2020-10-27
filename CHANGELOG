@@ -1,6 +1,10 @@
 devel
 -----
 
+* Modified the returned error code for calling the `shards()` function on a
+  collection in single-server from "internal error" (error number 4) to "shards
+  API is only available in cluster" and error number 9, HTTP status code 501.
+
 * Added new graph method K_PATHS to AQL. This will enumerate all paths between a
   source and a target vertex that match the given length.
   For example, the query
