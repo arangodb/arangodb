@@ -74,6 +74,9 @@ class V8ClientConnection {
 
   void timeout(double value);
 
+  uint64_t connects() const { return _connects; }
+  uint64_t requests() const { return _requests; }
+
   std::string const& databaseName() const { return _databaseName; }
   void setDatabaseName(std::string const& value) { _databaseName = value; }
   void setForceJson(bool value) { _forceJson = value; };
@@ -171,6 +174,9 @@ class V8ClientConnection {
   velocypack::Options _vpackOptions;
   bool _forceJson;
   bool _setCustomError;
+
+  uint64_t _connects;
+  uint64_t _requests;
 };
 }  // namespace arangodb
 
