@@ -404,9 +404,12 @@ irs::filter::prepared::ptr prepareInterval(
   auto const& range = opts.range;
   auto const& origin = opts.origin;
 
-  if (range.min_type == irs::BoundType::INCLUSIVE &&
-      range.max_type == irs::BoundType::INCLUSIVE &&
-      irs::math::approx_equals(range.max, range.min)) {
+  if (0. == range.max && 0. == range.min) {
+    if (irs::BoundType::INCLUSIVE != range.min_type ||
+        irs::BoundType::INCLUSIVE != range.max_type) {
+      return irs::filter::prepared::empty();
+    }
+
     S2RegionTermIndexer indexer(opts.options);
     auto const geoTerms = indexer.GetQueryTerms(origin, opts.prefix);
 
