@@ -138,7 +138,10 @@ arangodb::Result createLink( // create link
     arangodb::velocypack::Slice definition // link definition
 ) {
   if (arangodb::ClusterMethods::filterHiddenCollections(collection)) {
-    // Silently ignore hidden collections
+    // Enterprise variant, we only need to create links on non-hidden
+    // collections (e.g. in SmartGraph Case)
+    // The hidden collections are managed by the logic around the SmartEdgeCollection
+    // and do not allow to have their own modifications.
     return TRI_ERROR_NO_ERROR;
   }
   static const std::function<bool(irs::string_ref const& key)> acceptor = [](
@@ -199,9 +202,12 @@ arangodb::Result dropLink<arangodb::iresearch::IResearchViewCoordinator>(  // dr
     arangodb::LogicalCollection& collection,        // link collection
     arangodb::iresearch::IResearchLink const& link  // link to drop
 ) {
-  // Enterprise variant, we only need to drop links on non-hidden
-  // collections (e.g. in SmartGraph Case)
+
   if (arangodb::ClusterMethods::filterHiddenCollections(collection)) {
+    // Enterprise variant, we only need to drop links on non-hidden
+    // collections (e.g. in SmartGraph Case)
+    // The hidden collections are managed by the logic around the SmartEdgeCollection
+    // and do not allow to have their own modifications.
     return arangodb::Result();
   }
 
