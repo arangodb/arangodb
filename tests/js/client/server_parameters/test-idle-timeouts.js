@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, arango */
+/* global getOptions, assertEqual, assertTrue, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for security-related server options
@@ -34,13 +34,26 @@ if (getOptions === true) {
   };
 }
 let jsunity = require('jsunity');
-let db = require('internal').db;
+let internal = require('internal');
+let db = internal.db;
 const originalEndpoint = arango.getEndpoint();
 
 function testSuite() {
   let connectWith = function(protocol) {
     let endpoint = arango.getEndpoint().replace(/^[a-zA-Z0-9\+]+:/, protocol + ':');
     arango.reconnect(endpoint, db._name(), arango.connectedUser(), "");
+  };
+
+  let checkReconnect = function(timeout) {
+    // make a request so we are reconnecting if necessary
+    db._databases();
+    let statsBefore = arango.connectionStatistics();
+    internal.sleep(timeout);
+
+    // make a request so we are reconnecting if necessary
+    db._databases();
+    let statsAfter = arango.connectionStatistics();
+    assertTrue(statsAfter.connects > statsBefore.connects, { statsBefore, statsAfter });
   };
 
   return {
@@ -57,6 +70,11 @@ function testSuite() {
       assertEqual(10, result.length);
     },
     
+    testIdleTimeoutHttp1 : function() {
+      connectWith("tcp");
+      checkReconnect(7);
+    },
+    
     testKeepAliveTimeoutVst : function() {
       connectWith("vst");
       // the query should succeed despite it running longer than the configured 
@@ -65,12 +83,22 @@ function testSuite() {
       assertEqual(10, result.length);
     },
     
+    testIdleTimeoutVst : function() {
+      connectWith("vst");
+      checkReconnect(7);
+    },
+    
     testKeepAliveTimeoutHttp2 : function() {
       connectWith("h2");
       // the query should succeed despite it running longer than the configured 
       // connection timeout
       let result = db._query("FOR i IN 1..10 RETURN SLEEP(1)").toArray();
       assertEqual(10, result.length);
+    },
+    
+    testIdleTimeoutHttp2 : function() {
+      connectWith("h2");
+      checkReconnect(7);
     },
 
   };
