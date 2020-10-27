@@ -435,6 +435,7 @@ void VstCommTask<T>::doWrite() {
     // a new request item
     _writeLoopActive.store(false);
     if (_writeQueue.empty()) {
+      this->setIOTimeout();
       return;  // done, someone else may restart
     }
 

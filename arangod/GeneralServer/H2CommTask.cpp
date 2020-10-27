@@ -417,7 +417,9 @@ void H2CommTask<T>::setIOTimeout() {
 
   const bool wasReading = this->_reading;
   const bool wasWriting = this->_writing;
-  TRI_ASSERT(wasReading || wasWriting);
+  // when we are finished writing and get here, we may have
+  // neither an active reader nor writer
+  // TRI_ASSERT(wasReading || wasWriting);
   if (wasWriting) {
     secs = std::max(this->WriteTimeout, secs);
   }
@@ -792,6 +794,8 @@ void H2CommTask<T>::doWrite() {
     this->_writing = false;
     if (shouldStop()) {
       this->close();
+    } else {
+      setIOTimeout();
     }
     return;
   }
