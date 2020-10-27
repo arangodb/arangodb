@@ -328,8 +328,8 @@ function WindowHappyTestSuite() {
 
     testMakeAndreyHappy1: function () {
 
-      vc = db._create(vn, { numberOfShards: 4 });
-      ec = db._createEdgeCollection(en, { numberOfShards: 4 });
+      let vc = db._create(vn, { numberOfShards: 4 });
+      let ec = db._createEdgeCollection(en, { numberOfShards: 4 });
       try {
         gm._drop(gn);
       } catch (e) {
