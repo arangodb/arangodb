@@ -42,6 +42,7 @@
 #include "VocBase/ManagedDocumentResult.h"
 
 #include "velocypack/Builder.h"
+#include "velocypack/Collection.h"
 #include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
 
@@ -122,7 +123,7 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
   std::shared_ptr<VPackBuilder> enableRuleOptions(const char* const additionalOptionsString) const {
     auto const additionalOptions = VPackParser::fromJson(additionalOptionsString);
     auto const enableRuleOptionString = R"({"optimizer": { "rules": [ "+splice-subqueries" ] } })";
-    return std::make_shared<VPackBuilder>(basics::VelocyPackHelper::merge(
+    return std::make_shared<VPackBuilder>(arangodb::velocypack::Collection::merge(
         VPackParser::fromJson(enableRuleOptionString)->slice(),
         additionalOptions->slice(), false, false));
   }
@@ -131,7 +132,7 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
     auto const additionalOptions = VPackParser::fromJson(additionalOptionsString);
     auto const disableRuleOptionString =
         R"({"optimizer": { "rules": [ "-splice-subqueries" ] } })";
-    return std::make_shared<VPackBuilder>(basics::VelocyPackHelper::merge(
+    return std::make_shared<VPackBuilder>(arangodb::velocypack::Collection::merge(
         VPackParser::fromJson(disableRuleOptionString)->slice(),
         additionalOptions->slice(), false, false));
   }
