@@ -2515,9 +2515,9 @@ void RestReplicationHandler::handleCommandAddFollower() {
     const std::string checksum = checksumSlice.copyString();
     LOG_TOPIC("592ef", WARN, Logger::REPLICATION)
         << "Cannot add follower, mismatching checksums. "
-        << "Expected (leader): " << referenceChecksum.get() << " Actual (follower): " << checksum;
+        << "Expected (leader): " << leaderChecksum << " Actual (follower): " << checksum;
     generateError(rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-                  "'checksum' is wrong. Expected (leader): " + referenceChecksum.get() +
+                  "'checksum' is wrong. Expected (leader): " + leaderChecksum +
                       ". Actual (follower): " + checksum);
     return;
   }
