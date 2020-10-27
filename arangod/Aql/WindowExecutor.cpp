@@ -47,11 +47,11 @@ WindowExecutorInfos::WindowExecutorInfos(WindowBounds const& bounds, RegisterId 
                                          QueryWarnings& w, velocypack::Options const* opts)
     : _bounds(bounds),
       _rangeRegister(rangeRegister),
-      _aggregateTypes(aggregateTypes),
-      _aggregateRegisters(aggregateRegisters),
+      _aggregateTypes(std::move(aggregateTypes)),
+      _aggregateRegisters(std::move(aggregateRegisters)),
       _warnings(w),
       _vpackOptions(opts) {
-  TRI_ASSERT(!aggregateRegisters.empty());
+  TRI_ASSERT(!_aggregateRegisters.empty());
 }
 
 WindowBounds const& WindowExecutorInfos::bounds() const { return _bounds; }
@@ -248,7 +248,6 @@ void WindowExecutor::trimBounds() {
     }
     TRI_ASSERT(_currentIdx <= numPreceding || _rows.empty());
     return;
-
   }
   
   TRI_ASSERT(_rows.size() == _windowRows.size());
@@ -275,14 +274,13 @@ void WindowExecutor::trimBounds() {
   size_t i = std::min(_currentIdx, _rows.size() - 1);
   WindowBounds::Row row = _windowRows[i];
   bool foundLimit = false;
-  i--;
-  do {
+  while (i-- > 0) { // i might underflow, but thats ok
     if (_windowRows[i].value < row.lowBound && _windowRows[i].valid) {
       TRI_ASSERT(_windowRows[i].value < row.highBound);
       foundLimit = true;
       break;
     }
-  } while (i-- > 0); // i might underflow, but thats ok
+  }
   
   if (foundLimit) {
     TRI_ASSERT(i < _currentIdx);

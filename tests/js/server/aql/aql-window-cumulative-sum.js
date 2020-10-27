@@ -405,6 +405,64 @@ FOR i IN []
       let result = db._query(query).toArray();
       assertEqual([], result);
     },
+
+    testMakeAndreyHappy1 : function () {
+      let query = `
+      FOR i IN @from .. @to 
+        LET value = NOOPT(i) 
+        WINDOW {preceding: 'unbounded', following: 0} AGGREGATE sum = SUM(value)
+        WINDOW {preceding: 'unbounded', following: 0} AGGREGATE length = LENGTH(value)
+        WINDOW {preceding: 'unbounded', following: 0} AGGREGATE m = MAX(value)
+        RETURN {sum: sum, length: length, max: m}
+      `;
+
+      const sizes = [5, 999, 1000, 1001, 5000];
+
+      sizes.forEach(size => {
+        const froms = [0, 1, 42, 1000, 1001, 5000];
+        froms.forEach(from => {
+          const bind = {from, to: size + from};
+          let result = db._query(query, bind).toArray();
+
+          let sums = result.map(o => o.sum);
+          validateResult(sums, size, /*from*/from, /*to*/size + from, /*preceding*/size, /*following*/0);
+
+          result.forEach( (value, index) => {
+            assertEqual(index + 1, value.length, value);
+            assertEqual(index, value.max);
+          });
+        });
+      });   
+    },
+
+    testMakeAndreyHappy2 : function () {
+      let query = `
+      FOR i IN @from .. @to 
+        LET value = NOOPT(i) 
+        WINDOW {preceding: 'unbounded', following: 0} AGGREGATE sum = SUM(value)
+        WINDOW {preceding: 10, following: 0} AGGREGATE length = LENGTH(value)
+        WINDOW {preceding: 0, following: 10} AGGREGATE m = MAX(value)
+        RETURN {sum: sum, length: length, max: m}
+      `;
+
+      const sizes = [5, 999, 1000, 1001, 5000];
+
+      sizes.forEach(size => {
+        const froms = [0, 1, 42, 1000, 1001, 5000];
+        froms.forEach(from => {
+          const bind = {from, to: size + from};
+          let result = db._query(query, bind).toArray();
+
+          let sums = result.map(o => o.sum);
+          validateResult(sums, size, /*from*/from, /*to*/size + from, /*preceding*/size, /*following*/0);
+
+          result.forEach( (value, index) => {
+            assertEqual(Math.min(11, index + 1), value.length, value);
+            assertEqual(Math.min(index + 10, size + from), value.max);
+          });
+        });
+      });   
+    },
   };
 }
 
