@@ -1264,12 +1264,9 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
   
-  uint64_t finalDocCount;
-  collectionCount(collection, finalDocCount);
-
   // Report success:
   LOG_TOPIC("3423d", INFO, Logger::MAINTENANCE)
-      << "synchronizeOneShard: synchronization worked for shard " << database << "/" << shard << ", number of documents: " << finalDocCount;
+      << "synchronizeOneShard: synchronization worked for shard " << database << "/" << shard;
   _result.reset(TRI_ERROR_NO_ERROR);
   return {TRI_ERROR_NO_ERROR};
 }
