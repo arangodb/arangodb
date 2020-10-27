@@ -13,6 +13,8 @@ v3.7.5 (XXXX-XX-XX)
 
 * Fixed collection count which could be off after a server crash.
 
+* Added compile option USE_JEMALLOC_PROF to enable memory profiling
+
 
 v3.7.4 (2020-10-16)
 -------------------
