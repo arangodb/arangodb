@@ -67,7 +67,7 @@ aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(arangodb::velocypack::
       arangodb::velocypack::HashedStringRef(id.data(), static_cast<uint32_t>(id.length())));
 
   if (it != _cache.end()) {
-    // FIXME: the ClusterTraverserCache lifetime is shorter then the query
+    // FIXME: the ClusterTraverserCache lifetime is shorter than the query
     // lifetime therefore we cannot get away here without copying the result
     return aql::AqlValue(it->second);  // will copy slice
   }
