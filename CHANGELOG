@@ -8,7 +8,7 @@ devel
     FOR path IN 2..4 OUTBOUND K_PATHS "v/source" TO "v/target" GRAPH "g"
       RETURN path
   ```
-  Will yield all paths in format
+  will yield all paths in format
     {
       vertices: [v/source, ... , v/target],
       edges: [v/source -> v/1, ...,  v/n -> v/target
