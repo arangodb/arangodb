@@ -2030,11 +2030,8 @@ Result fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
     auto const* valueNode = node.getMemberUnchecked(i);
     TRI_ASSERT(valueNode);
 
-    auto rv = ::filter(filter, ctx, subFilterCtx, *valueNode);
+    auto const rv = ::filter(filter, ctx, subFilterCtx, *valueNode);
     if (rv.fail()) {
-      //auto node = aql::AstNode::toString(valueNode);
-      //return rv.reset(rv.errorNumber(), "error checking subNodes in node: " + node + ": " + rv.errorMessage());
-      //probably too much for the user
       return rv;
     }
   }

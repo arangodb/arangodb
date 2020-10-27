@@ -5592,7 +5592,7 @@ AqlValue Functions::GeoInRange(ExpressionContext* ctx,
   TRI_ASSERT(ctx);
   TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
 
-  auto const* impl = reinterpret_cast<arangodb::aql::Function*>(node.getData());
+  auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
   TRI_ASSERT(impl);
 
   auto const argc = args.size();
