@@ -178,10 +178,11 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan,
       _inTargetVariable(nullptr),
       _fromCondition(nullptr),
       _toCondition(nullptr) {
-  
-  if (base.hasKey("shortestPathType")) {
-    _shortestPathType = arangodb::graph::ShortestPathType::fromString(base.get("shortestPathType").copyString().c_str());
-  } 
+
+  if (base.hasKey(StaticStrings::GraphQueryShortestPathType)) {
+    _shortestPathType = arangodb::graph::ShortestPathType::fromString(
+        base.get(StaticStrings::GraphQueryShortestPathType).copyString().c_str());
+  }
 
   // Path out variable
   if (base.hasKey("pathOutVariable")) {
@@ -261,7 +262,8 @@ void KShortestPathsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                             std::unordered_set<ExecutionNode const*>& seen) const {
   GraphNode::toVelocyPackHelper(nodes, flags, seen);  // call base class method
 
-  nodes.add("shortestPathType", VPackValue(arangodb::graph::ShortestPathType::toString(_shortestPathType)));
+  nodes.add(StaticStrings::GraphQueryShortestPathType,
+            VPackValue(arangodb::graph::ShortestPathType::toString(_shortestPathType)));
 
   // Out variables
   if (usesPathOutVariable()) {

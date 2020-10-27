@@ -619,7 +619,7 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice) -> ResultT<AqlExecut
 RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
                                           VPackSlice const querySlice) {
   bool found;
-  std::string const& shardId = _request->header("x-shard-id", found);
+  std::string const& shardId = _request->header(StaticStrings::AqlShardIdHeader, found);
 
   // upon first usage, the "initializeCursor" method must be called
   // note: if the operation is "initializeCursor" itself, we do not initialize

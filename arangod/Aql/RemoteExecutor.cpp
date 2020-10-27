@@ -502,7 +502,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   // Later, we probably want to set these sensibly:
   req->timeout(kDefaultTimeOutSecs);
   if (!_distributeId.empty()) {
-    req->header.addMeta("x-shard-id", _distributeId);
+    req->header.addMeta(StaticStrings::AqlShardIdHeader, _distributeId);
   }
   network::addSourceHeader(*req);
 
