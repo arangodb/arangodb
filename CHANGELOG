@@ -3,7 +3,7 @@ devel
 
 * Added new graph method K_PATHS to AQL. This will enumerate all paths between a
   source and a target vertex that match the given length.
-  e.g.
+  For example, the query
   ```
     FOR path IN 2..4 OUTBOUND K_PATHS "v/source" TO "v/target" GRAPH "g"
       RETURN path
