@@ -57,6 +57,7 @@
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Cluster/ClusterFeature.h"
@@ -2918,18 +2919,19 @@ void arangodb::aql::useIndexesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan
 
   std::unordered_map<ExecutionNodeId, ExecutionNode*> changes;
 
-  auto cleanupChanges = [&changes]() -> void {
+  auto cleanupChanges = scopeGuard([&changes]() -> void {
     for (auto& v : changes) {
       delete v.second;
     }
-    changes.clear();
-  };
+  });
 
-  TRI_DEFER(cleanupChanges());
   bool hasEmptyResult = false;
   for (auto const& n : nodes) {
-    ConditionFinder finder(plan.get(), &changes, &hasEmptyResult, false);
+    ConditionFinder finder(plan.get(), changes);
     n->walk(finder);
+    if (finder.producesEmptyResult()) {
+      hasEmptyResult = true;
+    }
   }
 
   if (!changes.empty()) {
