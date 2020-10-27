@@ -1,4 +1,5 @@
 include_directories(.)
+add_subdirectory(IResearch)
 
 # ----------------------------------------
 # Fuerte tests
@@ -326,5 +327,3 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
     COMMAND cp -lf ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests>
   )
 endforeach()
-
-add_subdirectory(IResearch)
