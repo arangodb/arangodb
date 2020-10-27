@@ -3493,7 +3493,7 @@ Result RestReplicationHandler::createBlockingTransaction(
         // Code does not matter, read only access, so we can roll back.
         transaction::Manager* mgr = transaction::ManagerFeature::manager();
         if (mgr) {
-          mgr->abortManagedTrx(id, _vocbase.name());
+          mgr->abortManagedTrx(id, vn);
         }
       } catch (...) {
         // All errors that show up here can only be
@@ -3521,7 +3521,7 @@ Result RestReplicationHandler::createBlockingTransaction(
 
   if (isTombstoned(id)) {
     try {
-      return mgr->abortManagedTrx(id, _vocbase.name());
+      return mgr->abortManagedTrx(id, vn);
     } catch (...) {
       // Maybe thrown in shutdown.
     }

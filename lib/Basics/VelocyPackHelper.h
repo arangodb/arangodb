@@ -402,11 +402,6 @@ class VelocyPackHelper {
     return compare(lhs, rhs, useUTF8, options, lhsBase, rhsBase) == 0;
   }
 
-  /// @brief Merges two VelocyPack Slices
-  static arangodb::velocypack::Builder merge(arangodb::velocypack::Slice const&,
-                                             arangodb::velocypack::Slice const&,
-                                             bool, bool);
-
   /// @brief Transforms any VelocyPack to a double value. The second parameter
   ///        indicates if the transformation was successful.
   static double toDouble(VPackSlice const&, bool&);

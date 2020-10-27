@@ -43,7 +43,7 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "V8Server/FoxxQueuesFeature.h"
+#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Upgrade.h"
 
@@ -71,7 +71,7 @@ BootstrapFeature::BootstrapFeature(application_features::ApplicationServer& serv
   startsAfter<SystemDatabaseFeature>();
 
   // TODO: It is only in FoxxPhase because of:
-  startsAfter<FoxxQueuesFeature>();
+  startsAfter<FoxxFeature>();
 
   // If this is Sorted out we can go down to ServerPhase
   // And activate the following dependencies:

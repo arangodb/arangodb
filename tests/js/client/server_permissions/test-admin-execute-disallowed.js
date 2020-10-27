@@ -33,6 +33,8 @@ if (getOptions === true) {
     'javascript.allow-admin-execute': 'false',
   };
 }
+
+require("@arangodb/test-helper").waitForFoxxInitialized();
 var jsunity = require('jsunity');
 
 function testSuite() {
