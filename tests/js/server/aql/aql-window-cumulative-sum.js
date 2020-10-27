@@ -429,7 +429,7 @@ FOR i IN []
 
           result.forEach( (value, index) => {
             assertEqual(index + 1, value.length, value);
-            assertEqual(index, value.max);
+            assertEqual(index + from, value.max, value);
           });
         });
       });   
@@ -458,7 +458,7 @@ FOR i IN []
 
           result.forEach( (value, index) => {
             assertEqual(Math.min(11, index + 1), value.length, value);
-            assertEqual(Math.min(index + 10, size + from), value.max);
+            assertEqual(Math.min(index + from + 10, size + from), value.max, value);
           });
         });
       });   
