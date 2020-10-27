@@ -40,6 +40,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -453,7 +454,7 @@ static void JS_UpdateConfigData(v8::FunctionCallbackInfo<v8::Value> const& args)
 
   Result r = um->updateUser(username, [&](auth::User& u) {
     VPackBuilder updated =
-        VelocyPackHelper::merge(u.configData(), merge.slice(), true, true);
+        velocypack::Collection::merge(u.configData(), merge.slice(), true, true);
     u.setConfigData(std::move(updated));
     return TRI_ERROR_NO_ERROR;
   });

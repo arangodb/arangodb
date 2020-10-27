@@ -33,6 +33,7 @@ namespace arangodb {
 
 namespace aql {
 struct AqlValue;
+class QueryContext;
 }
 
 namespace transaction {
@@ -42,18 +43,23 @@ class Methods;
 namespace velocypack {
 class Builder;
 class Slice;
+class HashedStringRef;
+class StringRef;
 }  // namespace velocypack
 
 namespace graph {
 struct BaseOptions;
 
-class ClusterTraverserCache : public TraverserCache {
+class ClusterTraverserCache final : public TraverserCache {
  public:
   ClusterTraverserCache(aql::QueryContext& query,
                         std::unordered_map<ServerID, aql::EngineId> const* engines,
                         BaseOptions*);
 
   ~ClusterTraverserCache() = default;
+  
+  using Cache = std::unordered_map<arangodb::velocypack::HashedStringRef, arangodb::velocypack::Slice>;
+  using Datalake = std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>>;
 
   /// @brief will convert the EdgeDocumentToken to a slice
   arangodb::velocypack::Slice lookupToken(EdgeDocumentToken const& token) override;
@@ -82,11 +88,11 @@ class ClusterTraverserCache : public TraverserCache {
   }
 
   /// Map of already fetched vertices and edges (raw _id attribute)
-  std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& cache() {
+  Cache& cache() noexcept {
     return _cache;
   }
 
-  std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>>& datalake() {
+  Datalake& datalake() noexcept {
     return _datalake;
   }
 
@@ -96,9 +102,10 @@ class ClusterTraverserCache : public TraverserCache {
 
  private:
   /// @brief link by _id into our data dump
-  std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice> _cache;
+  Cache _cache;
   /// @brief dump for our edge and vertex documents
-  std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>> _datalake;
+  Datalake _datalake;
+
   std::unordered_map<ServerID, aql::EngineId> const* _engines;
 };
 

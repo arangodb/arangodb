@@ -80,6 +80,8 @@ std::string fuerteStatusToArangoErrorMessage(fuerte::Response const& res);
 fuerte::RestVerb arangoRestVerbToFuerte(rest::RequestType);
 rest::RequestType fuerteRestVerbToArango(fuerte::RestVerb);
 
+void addSourceHeader(fuerte::Request& req);
+
 }  // namespace network
 }  // namespace arangodb
 

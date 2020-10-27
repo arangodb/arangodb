@@ -218,6 +218,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_NOT_FOUND, "query ID not found");
   REG_ERROR(ERROR_QUERY_USER_ASSERT, "%s");
   REG_ERROR(ERROR_QUERY_USER_WARN, "%s");
+  REG_ERROR(ERROR_QUERY_WINDOW_AFTER_MODIFICATION, "window operation after data-modification");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_CURSOR_BUSY, "cursor is busy");
   REG_ERROR(ERROR_VALIDATION_FAILED, "schema validation failed");
