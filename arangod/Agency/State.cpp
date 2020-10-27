@@ -323,7 +323,6 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
   buf->append(slice.begin(), byteSize);
 
   logEmplaceBackNoLock(log_t(idx, term, std::move(buf), clientId, millis));
-  _log_size += byteSize;
 
   return _log.back().index;
 }
@@ -342,6 +341,7 @@ void State::logEmplaceBackNoLock(log_t&& l) {
   }
   
   try {
+    _log_size += l.entry->byteSize();
     _log.emplace_back(std::forward<log_t>(l));  // log to RAM or die
   } catch (std::bad_alloc const&) {
     LOG_TOPIC("f5adc", FATAL, Logger::AGENCY)
