@@ -107,7 +107,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
 
     case EN::ENUMERATE_COLLECTION: {
       auto node = ExecutionNode::castTo<EnumerateCollectionNode const*>(en);
-      if (_changes->find(node->id()) != _changes->end()) {
+      if (_changes.find(node->id()) != _changes.end()) {
         // already optimized this node
         break;
       }
@@ -154,7 +154,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
         }
 
         // We keep this node's change
-        _changes->try_emplace(
+        _changes.try_emplace(
             node->id(),
             arangodb::lazyConstruct([&]{
               IndexNode* idx = new IndexNode(_plan, _plan->nextId(), node->collection(),
@@ -239,7 +239,7 @@ bool ConditionFinder::handleFilterCondition(ExecutionNode* en,
       auto noRes = new NoResultsNode(_plan, _plan->nextId());
       _plan->registerNode(noRes);
       _plan->insertDependency(x, noRes);
-      *_hasEmptyResult = true;
+      _producesEmptyResult = true;
     }
     return false;
   }
@@ -269,11 +269,8 @@ void ConditionFinder::handleSortCondition(ExecutionNode* en, Variable const* out
 }
 
 ConditionFinder::ConditionFinder(ExecutionPlan* plan,
-                                 std::unordered_map<ExecutionNodeId, ExecutionNode*>* changes,
-                                 bool* hasEmptyResult, bool viewMode)
+                                 std::unordered_map<ExecutionNodeId, ExecutionNode*>& changes)
     : _plan(plan),
       _variableDefinitions(),
-      _filters(),
-      _sorts(),
       _changes(changes),
-      _hasEmptyResult(hasEmptyResult) {}
+      _producesEmptyResult(false) {}

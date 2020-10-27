@@ -457,21 +457,6 @@ struct less<arangodb::velocypack::StringRef> {
   }
 };
 
-template <>
-struct hash<arangodb::basics::VPackHashedSlice> {
-  inline size_t operator()(arangodb::basics::VPackHashedSlice const& slice) const noexcept {
-    return slice.hash;
-  }
-};
-
-template <>
-struct equal_to<arangodb::basics::VPackHashedSlice> {
-  bool operator()(arangodb::basics::VPackHashedSlice const& lhs,
-                  arangodb::basics::VPackHashedSlice const& rhs) const {
-    return lhs.slice.binaryEquals(rhs.slice);
-  }
-};
-
 }  // namespace std
 
 /// @brief Simple and limited logging of VelocyPack slices

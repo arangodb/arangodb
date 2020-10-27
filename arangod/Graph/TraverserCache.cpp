@@ -39,6 +39,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/HashedStringRef.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -169,11 +170,24 @@ aql::AqlValue TraverserCache::fetchVertexAqlResult(arangodb::velocypack::StringR
 }
 
 arangodb::velocypack::StringRef TraverserCache::persistString(arangodb::velocypack::StringRef idString) {
+  arangodb::velocypack::HashedStringRef hsr(idString.data(), static_cast<uint32_t>(idString.size()));
+
+  auto it = _persistedStrings.find(hsr);
+  if (it != _persistedStrings.end()) {
+    return (*it).stringRef();
+  }
+  auto res = _stringHeap.registerString(hsr);
+  _persistedStrings.emplace(res);
+  // convert to simple StringRef here, as caller is not prepared to receive a HashedStringRef
+  return res.stringRef();
+}
+
+arangodb::velocypack::HashedStringRef TraverserCache::persistString(arangodb::velocypack::HashedStringRef idString) {
   auto it = _persistedStrings.find(idString);
   if (it != _persistedStrings.end()) {
     return *it;
   }
-  arangodb::velocypack::StringRef res = _stringHeap.registerString(idString.data(), idString.length());
+  auto res = _stringHeap.registerString(idString);
   _persistedStrings.emplace(res);
   return res;
 }
