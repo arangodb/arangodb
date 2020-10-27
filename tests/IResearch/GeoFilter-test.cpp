@@ -401,27 +401,88 @@ TEST(GeoFilterTest, query) {
       auto values = column->values();
       auto it = prepared->execute(segment);
       EXPECT_NE(nullptr, it);
+      auto seek_it = prepared->execute(segment);
+      EXPECT_NE(nullptr, seek_it);
       auto* cost = irs::get<irs::cost>(*it);
       EXPECT_NE(nullptr, cost);
 
       EXPECT_NE(expectedCost, costs.end());
       EXPECT_EQ(*expectedCost, cost->estimate());
+      ++expectedCost;
 
+      if (irs::doc_limits::eof(it->value())) {
+        continue;
+      }
+
+      auto* score = irs::get<irs::score>(*it);
+      EXPECT_NE(nullptr, score);
+      EXPECT_TRUE(score->is_default());
+
+      auto* doc = irs::get<irs::document>(*it);
+      EXPECT_NE(nullptr, doc);
+      EXPECT_FALSE(irs::doc_limits::valid(doc->value));
+      EXPECT_FALSE(irs::doc_limits::valid(it->value()));
       while (it->next()) {
         auto docId = it->value();
+        EXPECT_EQ(docId, seek_it->seek(docId));
+        EXPECT_EQ(docId, seek_it->seek(docId));
+        EXPECT_EQ(docId, doc->value);
         irs::bytes_ref value;
         EXPECT_TRUE(values(docId, value));
         EXPECT_FALSE(value.null());
 
         actualResults.emplace(irs::to_string<std::string>(value.c_str()));
       }
+      EXPECT_TRUE(irs::doc_limits::eof(it->value()));
+      EXPECT_TRUE(irs::doc_limits::eof(seek_it->seek(it->value())));
 
-      ++expectedCost;
+      {
+        auto it = prepared->execute(segment);
+        EXPECT_NE(nullptr, it);
+
+        while (it->next()) {
+          auto const docId = it->value();
+          auto seek_it = prepared->execute(segment);
+          EXPECT_NE(nullptr, seek_it);
+          auto column_it = column->iterator();
+          EXPECT_NE(nullptr, column_it);
+          auto* payload = irs::get<irs::payload>(*column_it);
+          EXPECT_NE(nullptr, payload);
+          EXPECT_EQ(docId, seek_it->seek(docId));
+          do {
+            EXPECT_EQ(seek_it->value(), column_it->seek(seek_it->value()));
+            if (!irs::doc_limits::eof(column_it->value())) {
+              EXPECT_NE(actualResults.end(), actualResults.find(irs::to_string<std::string>(payload->value.c_str())));
+            }
+          } while (seek_it->next());
+          EXPECT_TRUE(irs::doc_limits::eof(seek_it->value()));
+        }
+        EXPECT_TRUE(irs::doc_limits::eof(it->value()));
+      }
     }
     EXPECT_EQ(expectedCost, costs.end());
 
     return actualResults;
   };
+
+  {
+    std::set<std::string> const expected{
+      "Q"
+    };
+
+    auto json = VPackParser::fromJson(R"({
+      "type": "Point",
+      "coordinates": [ 37.610235, 55.709754 ]
+    })");
+
+    GeoFilter q;
+    q.mutable_options()->type = GeoFilterType::INTERSECTS;
+    ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape).ok());
+    ASSERT_EQ(geo::ShapeContainer::Type::S2_POINT, q.mutable_options()->shape.type());
+    *q.mutable_field() = "geometry";
+
+    ASSERT_EQ(expected, executeQuery(q, {2, 0}));
+  }
 
   {
     std::set<std::string> const expected{
@@ -533,16 +594,59 @@ TEST(GeoFilterTest, checkScorer) {
       EXPECT_NE(nullptr, payload);
       auto it = prepared->execute(segment, ord);
       EXPECT_NE(nullptr, it);
+      auto seek_it = prepared->execute(segment);
+      EXPECT_NE(nullptr, seek_it);
+      auto* cost = irs::get<irs::cost>(*it);
+      EXPECT_NE(nullptr, cost);
+
+      if (irs::doc_limits::eof(it->value())) {
+        continue;
+      }
+
       auto* score = irs::get<irs::score>(*it);
       EXPECT_NE(nullptr, score);
+      EXPECT_FALSE(score->is_default());
 
+      auto* doc = irs::get<irs::document>(*it);
+      EXPECT_NE(nullptr, doc);
+      EXPECT_FALSE(irs::doc_limits::valid(doc->value));
+      EXPECT_FALSE(irs::doc_limits::valid(it->value()));
       while (it->next()) {
         auto const docId = it->value();
+        EXPECT_EQ(docId, seek_it->seek(docId));
+        EXPECT_EQ(docId, seek_it->seek(docId));
         EXPECT_EQ(docId, column_it->seek(docId));
+        EXPECT_EQ(docId, doc->value);
         EXPECT_FALSE(payload->value.null());
 
         actualResults.emplace(irs::to_string<std::string>(payload->value.c_str()),
                               irs::bytes_ref(score->evaluate(), ord.score_size()));
+      }
+      EXPECT_TRUE(irs::doc_limits::eof(it->value()));
+      EXPECT_TRUE(irs::doc_limits::eof(seek_it->seek(it->value())));
+
+      {
+        auto it = prepared->execute(segment, ord);
+        EXPECT_NE(nullptr, it);
+
+        while (it->next()) {
+          auto const docId = it->value();
+          auto seek_it = prepared->execute(segment);
+          EXPECT_NE(nullptr, seek_it);
+          auto column_it = column->iterator();
+          EXPECT_NE(nullptr, column_it);
+          auto* payload = irs::get<irs::payload>(*column_it);
+          EXPECT_NE(nullptr, payload);
+          EXPECT_EQ(docId, seek_it->seek(docId));
+          do {
+            EXPECT_EQ(seek_it->value(), column_it->seek(seek_it->value()));
+            if (!irs::doc_limits::eof(column_it->value())) {
+              EXPECT_NE(actualResults.end(), actualResults.find(irs::to_string<std::string>(payload->value.c_str())));
+            }
+          } while (seek_it->next());
+          EXPECT_TRUE(irs::doc_limits::eof(seek_it->value()));
+        }
+        EXPECT_TRUE(irs::doc_limits::eof(it->value()));
       }
     }
 
