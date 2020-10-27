@@ -78,7 +78,7 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     _done = true;
     return;
   }
-  
+ 
   arangodb::velocypack::HashedStringRef persId = traverserCache()->persistString(s);
   _vertexGetter->reset(persId.stringRef());
   _enumerator->setStartVertex(persId.stringRef());
