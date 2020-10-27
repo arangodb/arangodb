@@ -353,7 +353,6 @@ function WindowHappyTestSuite() {
         FOR v IN 1..10 OUTBOUND '${start}' ${en} OPTIONS {uniqueEdges: 'none'}
         WINDOW v.value WITH {preceding: 5, following: 0} AGGREGATE l = LENGTH(v)
         RETURN MERGE(v, {length: l})`).toArray();
-      print(cursor);
       // We expect to get s->a->d
       // We expect to get s->a->b->c->a->d
       // We expect to get s->a->b->c->a->b->c->a->d
