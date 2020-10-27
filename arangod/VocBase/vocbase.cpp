@@ -523,12 +523,6 @@ arangodb::Result TRI_vocbase_t::loadCollection(arangodb::LogicalCollection& coll
         break;
       }
 
-      // only throw this particular error if the server is configured to do so
-      auto& databaseFeature = server().getFeature<DatabaseFeature>();
-      if (databaseFeature.throwCollectionNotLoadedError()) {
-        return {TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED};
-      }
-
       std::this_thread::sleep_for(std::chrono::microseconds(collectionStatusPollInterval()));
     }
 

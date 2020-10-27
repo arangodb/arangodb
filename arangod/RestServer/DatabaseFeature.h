@@ -142,12 +142,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
   void disableUpgrade() { _upgrade = false; }
-  bool throwCollectionNotLoadedError() const {
-    return _throwCollectionNotLoadedError.load(std::memory_order_relaxed);
-  }
-  void throwCollectionNotLoadedError(bool value) {
-    _throwCollectionNotLoadedError.store(value);
-  }
   void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
   
   struct DatabasesLists {
@@ -181,7 +175,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool _defaultWaitForSync;
   bool _forceSyncProperties;
   bool _ignoreDatafileErrors;
-  std::atomic<bool> _throwCollectionNotLoadedError;
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
 

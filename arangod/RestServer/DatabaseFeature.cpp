@@ -263,7 +263,6 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
-      _throwCollectionNotLoadedError(false),
       _databasesLists(new DatabasesLists()),
       _isInitiallyEmpty(false),
       _checkVersion(false),
@@ -311,13 +310,6 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
-      "--database.throw-collection-not-loaded-error",
-      "throw an error when accessing a collection that is still loading",
-      new AtomicBooleanParameter(&_throwCollectionNotLoadedError),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-      .setDeprecatedIn(30700);
-  
-  options->addOption(
       "--database.old-system-collections",
       "create and use deprecated system collection (_modules, _fishbowl)",
       new BooleanParameter(&_useOldSystemCollections),
@@ -325,6 +317,11 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30609)
       .setIntroducedIn(30705)
       .setDeprecatedIn(30800);
+  
+  // the following option was obsoleted in 3.8
+  options->addObsoleteOption(
+      "--database.throw-collection-not-loaded-error",
+      "throw an error when accessing a collection that is still loading", false);
   
   // the following option was removed in 3.7
   options->addObsoleteOption("--database.maximal-journal-size",
