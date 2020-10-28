@@ -97,8 +97,8 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   std::string _str;
   Options _options;
   arangodb::aql::ResourceMonitor _resourceMonitor;
-  arangodb::aql::AqlItemBlockManager _itemBlockManager;
   std::unique_ptr<arangodb::aql::QueryContext> _query;
+  arangodb::aql::AqlItemBlockManager _itemBlockManager;
   arangodb::aql::ExecutionEngine _engine;
   std::unique_ptr<arangodb::aql::ExecutionPlan> _plan;
   arangodb::aql::SharedAqlItemBlockPtr _queryResults;
