@@ -1894,7 +1894,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
     // always return from the cache, regardless what's in it
     documents = cache.get();
   } else if (type == transaction::CountType::TryCache) {
-    documents = cache.get(CountCache::Ttl);
+    documents = cache.getWithTtl();
   }
 
   if (documents == CountCache::NotPopulated) {
