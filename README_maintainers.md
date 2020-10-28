@@ -751,7 +751,11 @@ the tests expect to have at least 3 DB-Servers.
 
 Pre-requisites:
  - have a arangodb-java-driver checkout next to the ArangoDB source tree in the 'next' branch
- - have a maven binary in the path (mvn)
+ - have a maven binary in the path (mvn) configured to use JDK 11
+ 
+You can check if maven is correctly configured to use JDK 11 executing: `mvn -version`.
+In case you have multiple JVMs in your machine and JDK 11 is not the default one, you can set
+the environment variable `JAVA_HOME` to the root path of JDK 11.
 
 Once this is completed, you may run it like this:
 
