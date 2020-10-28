@@ -5,6 +5,12 @@ devel
   collection in single-server from "internal error" (error number 4) to "shards
   API is only available in cluster" and error number 9, HTTP status code 501.
 
+* Bug-fix: Allow to unlink a view created on a SmartGraphEdge collection.
+
+* If a collection (or database) is dropped during the instantiation of an AQL query,
+  the setup code now aborts with an ERROR_QUERY_COLLECTION_LOCK_FAILED and earlier.
+  Before the setup code could abort with TRI_ERROR_INTERNAL in the same case.
+
 * Added WINDOW keyword to AQL to allow aggregations on related rows.
 
 * Added new graph method K_PATHS to AQL. This will enumerate all paths between a
