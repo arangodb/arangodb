@@ -61,7 +61,6 @@ void assert_analyzer(irs::analysis::analyzer* analyzer, const std::string& data,
     auto term_value =
         std::string(irs::ref_cast<char>(term->value).c_str(), term->value.size());
     SCOPED_TRACE(testing::Message("Term:") << term_value);
-    auto old_pos = pos;
     pos += inc->value;
     ASSERT_NE(expected_token, expected_tokens.end());
     ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value), term->value);
