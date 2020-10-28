@@ -645,6 +645,31 @@ AstNode* Ast::createNodeLimit(AstNode const* offset, AstNode const* count) {
   return node;
 }
 
+/// @brief create an AST window node
+AstNode* Ast::createNodeWindow(AstNode const* spec,
+                               AstNode const* rangeVar,
+                               AstNode const* aggregates) {
+  if (aggregates == 0 || aggregates->numMembers() == 0) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY); // parser should prevent this
+  }
+  
+  if (_containsModificationNode) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_WINDOW_AFTER_MODIFICATION);
+  }
+  
+  AstNode* node = createNode(NODE_TYPE_WINDOW);
+  node->reserve(3);
+  node->addMember(spec);
+  node->addMember(rangeVar != nullptr ? rangeVar : &_specialNodes.NopNode);
+
+  // wrap aggregates again
+  auto agg = createNode(NODE_TYPE_AGGREGATIONS);
+  agg->addMember(aggregates);
+  node->addMember(agg);
+
+  return node;
+}
+
 /// @brief create an AST assign node, used in COLLECT statements
 AstNode* Ast::createNodeAssign(char const* variableName, size_t nameLength,
                                AstNode const* expression) {

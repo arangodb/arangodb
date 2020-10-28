@@ -5,6 +5,8 @@ devel
   the setup code now aborts with an ERROR_QUERY_COLLECTION_LOCK_FAILED and earlier.
   Before the setup code could abort with TRI_ERROR_INTERNAL in the same case.
 
+* Added WINDOW keyword to AQL to allow aggregations on related rows.
+
 * Added new graph method K_PATHS to AQL. This will enumerate all paths between a
   source and a target vertex that match the given length.
   For example, the query
