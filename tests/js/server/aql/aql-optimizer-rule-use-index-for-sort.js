@@ -893,7 +893,7 @@ function optimizerRuleTestSuite() {
     },
 
     testSortAscEmptyCollection : function () {
-      skiplist.truncate();
+      skiplist.truncate({ compact: false });
       assertEqual(0, skiplist.count());
 
       // should not crash
@@ -915,7 +915,7 @@ function optimizerRuleTestSuite() {
     },
 
     testSortDescEmptyCollection : function () {
-      skiplist.truncate();
+      skiplist.truncate({ compact: false });
       assertEqual(0, skiplist.count());
 
       // should not crash
