@@ -2249,7 +2249,7 @@
               "queryAnalyzer" : queryAnalyzer
             };
             let res = db._query(queryString, bindVars).toArray();
-            let expected = [ geoData[7].id ]
+            let expected = [ geoData[7].id ];
             assertEqual(expected.length, res.length);
             for (let i = 0; i < expected.length; ++i) {
               assertEqual(expected[0], res[0].id);
@@ -2270,7 +2270,7 @@
               "queryAnalyzer" : queryAnalyzer
             };
             let res = db._query(queryString, bindVars).toArray();
-            let expected = [ geoData[7].id ]
+            let expected = [ geoData[7].id ];
             assertEqual(expected.length, res.length);
             for (let i = 0; i < expected.length; ++i) {
               assertEqual(expected[0], res[0].id);
@@ -2292,7 +2292,7 @@
               "queryAnalyzer" : queryAnalyzer
             };
             let res = db._query(queryString, bindVars).toArray();
-            let expected = [ geoData[7].id ]
+            let expected = [ geoData[7].id ];
             assertEqual(expected.length, res.length);
             for (let i = 0; i < expected.length; ++i) {
               assertEqual(expected[0], res[0].id);
@@ -2313,7 +2313,7 @@
               "queryAnalyzer" : queryAnalyzer
             };
             let res = db._query(queryString, bindVars).toArray();
-            let expected = [ geoData[7].id ]
+            let expected = [ geoData[7].id ];
             assertEqual(expected.length, res.length);
             for (let i = 0; i < expected.length; ++i) {
               assertEqual(expected[0], res[0].id);
@@ -2331,7 +2331,7 @@
                         [37.590322, 55.71488],
                         [37.590322, 55.695583]
                     ]
-                ]}
+                ]};
   
             let queryString = 
               "FOR d IN @@view " + 
@@ -2364,7 +2364,7 @@
                         [37.590322, 55.71488],
                         [37.590322, 55.695583]
                     ]
-                ]}
+                ]};
   
             let queryString = 
               "FOR d IN @@view " + 
@@ -2397,7 +2397,7 @@
                         [37.590322, 55.71488],
                         [37.590322, 55.695583]
                     ]
-                ]}
+                ]};
   
             let queryString = 
               "FOR d IN @@view " + 
