@@ -805,13 +805,17 @@ void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, 
 void ClusterFeature::addDirty(std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& databases) {
   if (databases.size() > 0) {
     MUTEX_LOCKER(guard, _dirtyLock);
+    bool addedAny = false;
     for (auto const& database : databases) {
       if (_dirtyDatabases.emplace(database.first).second) {
+        addedAny = true;
         LOG_TOPIC("35b77", DEBUG, Logger::MAINTENANCE)
           << "adding " << database << " to dirty databases";
       }
     }
-    notify();
+    if (addedAny) {
+      notify();
+    }
   }
 }
 
@@ -820,6 +824,7 @@ void ClusterFeature::addDirty(std::string const& database) {
   if (_dirtyDatabases.emplace(database).second) {
     LOG_TOPIC("357b9", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databases";
   }
+  // This notify is needed even if no database is added
   notify();
 }
 

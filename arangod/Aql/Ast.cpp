@@ -646,6 +646,31 @@ AstNode* Ast::createNodeLimit(AstNode const* offset, AstNode const* count) {
   return node;
 }
 
+/// @brief create an AST window node
+AstNode* Ast::createNodeWindow(AstNode const* spec,
+                               AstNode const* rangeVar,
+                               AstNode const* aggregates) {
+  if (aggregates == 0 || aggregates->numMembers() == 0) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY); // parser should prevent this
+  }
+  
+  if (_containsModificationNode) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_WINDOW_AFTER_MODIFICATION);
+  }
+  
+  AstNode* node = createNode(NODE_TYPE_WINDOW);
+  node->reserve(3);
+  node->addMember(spec);
+  node->addMember(rangeVar != nullptr ? rangeVar : &_specialNodes.NopNode);
+
+  // wrap aggregates again
+  auto agg = createNode(NODE_TYPE_AGGREGATIONS);
+  agg->addMember(aggregates);
+  node->addMember(agg);
+
+  return node;
+}
+
 /// @brief create an AST assign node, used in COLLECT statements
 AstNode* Ast::createNodeAssign(char const* variableName, size_t nameLength,
                                AstNode const* expression) {
@@ -1482,16 +1507,23 @@ AstNode* Ast::createNodeShortestPath(AstNode const* outVars, AstNode const* grap
   return node;
 }
 
-/// @brief create an AST k-shortest paths node
-AstNode* Ast::createNodeKShortestPaths(AstNode const* outVars, AstNode const* graphInfo) {
+/// @brief create an AST k-shortest paths or k-paths node
+AstNode* Ast::createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type type, AstNode const* outVars, AstNode const* graphInfo) {
   TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
   TRI_ASSERT(graphInfo->type == NODE_TYPE_ARRAY);
   AstNode* node = createNode(NODE_TYPE_K_SHORTEST_PATHS);
-  node->reserve(outVars->numMembers() + graphInfo->numMembers());
+  node->reserve(1 + outVars->numMembers() + graphInfo->numMembers());
 
   TRI_ASSERT(graphInfo->numMembers() == 5);
-  TRI_ASSERT(outVars->numMembers() > 0);
-  TRI_ASSERT(outVars->numMembers() < 3);
+  TRI_ASSERT(outVars->numMembers() == 1);
+
+  TRI_ASSERT(type == arangodb::graph::ShortestPathType::Type::KShortestPaths || 
+             type == arangodb::graph::ShortestPathType::Type::KPaths); 
+
+  // type: K_SHORTEST_PATH vs. K_PATHS
+  TRI_ASSERT(node->numMembers() == 0);
+  node->addMember(createNodeValueInt(static_cast<int64_t>(type)));
+  TRI_ASSERT(node->numMembers() == 1);
 
   // Add GraphInfo
   for (size_t i = 0; i < graphInfo->numMembers(); ++i) {
@@ -1502,7 +1534,7 @@ AstNode* Ast::createNodeKShortestPaths(AstNode const* outVars, AstNode const* gr
   for (size_t i = 0; i < outVars->numMembers(); ++i) {
     node->addMember(outVars->getMemberUnchecked(i));
   }
-  TRI_ASSERT(node->numMembers() == graphInfo->numMembers() + outVars->numMembers());
+  TRI_ASSERT(node->numMembers() == 1 + graphInfo->numMembers() + outVars->numMembers());
 
   _containsTraversal = true;
 
@@ -1765,9 +1797,10 @@ void Ast::injectBindParameters(BindParameters& parameters,
                                       node->getString().c_str());
       } else if (node->type == NODE_TYPE_TRAVERSAL) {
         extractCollectionsFromGraph(node->getMember(2));
-      } else if (node->type == NODE_TYPE_SHORTEST_PATH ||
-                 node->type == NODE_TYPE_K_SHORTEST_PATHS) {
+      } else if (node->type == NODE_TYPE_SHORTEST_PATH) {
         extractCollectionsFromGraph(node->getMember(3));
+      } else if (node->type == NODE_TYPE_K_SHORTEST_PATHS) {
+        extractCollectionsFromGraph(node->getMember(4));
       }
 
       return node;

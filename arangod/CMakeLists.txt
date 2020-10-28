@@ -168,12 +168,14 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/Graph.cpp
   Graph/GraphManager.cpp
   Graph/GraphOperations.cpp
+  Graph/KPathFinder.cpp
   Graph/KShortestPathsFinder.cpp
   Graph/NeighborsEnumerator.cpp
   Graph/PathEnumerator.cpp
   Graph/ShortestPathFinder.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
+  Graph/ShortestPathType.cpp
   Graph/SingleServerEdgeCursor.cpp
   Graph/SingleServerTraverser.cpp
   Graph/Traverser.cpp
@@ -389,6 +391,8 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/VarUsageFinder.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
+  Aql/WindowNode.cpp
+  Aql/WindowExecutor.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
 )

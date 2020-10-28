@@ -287,6 +287,7 @@ std::string const StaticStrings::GraphQueryOrder("order");
 std::string const StaticStrings::GraphQueryOrderBFS("bfs");
 std::string const StaticStrings::GraphQueryOrderDFS("dfs");
 std::string const StaticStrings::GraphQueryOrderWeighted("weighted");
+std::string const StaticStrings::GraphQueryShortestPathType("shortestPathType");
 
 // rest query parameter
 std::string const StaticStrings::GraphDropCollections("dropCollections");
@@ -350,6 +351,9 @@ std::string const StaticStrings::AqlCallListDefault("default");
 std::string const StaticStrings::ArangoSearchAnalyzersRevision("analyzersRevision");
 std::string const StaticStrings::ArangoSearchCurrentAnalyzersRevision("current");
 std::string const StaticStrings::ArangoSearchSystemAnalyzersRevision("system");
+
+// aql http headers
+std::string const StaticStrings::AqlShardIdHeader("x-shard-id");
 
 // validation
 std::string const StaticStrings::ValidationLevelNone("none");

@@ -39,6 +39,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Cluster/ClusterMethods.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
@@ -136,9 +137,17 @@ arangodb::Result createLink( // create link
     arangodb::iresearch::IResearchViewCoordinator const& view, // link view
     arangodb::velocypack::Slice definition // link definition
 ) {
+  if (arangodb::ClusterMethods::filterHiddenCollections(collection)) {
+    // Enterprise variant, we only need to create links on non-hidden
+    // collections (e.g. in SmartGraph Case)
+    // The hidden collections are managed by the logic around the SmartEdgeCollection
+    // and do not allow to have their own modifications.
+    return TRI_ERROR_NO_ERROR;
+  }
   static const std::function<bool(irs::string_ref const& key)> acceptor = [](
       irs::string_ref const& key // json key
   )->bool {
+
     // ignored fields
     return key != arangodb::StaticStrings::IndexType // type field
         && key != arangodb::iresearch::StaticStrings::ViewIdField; // view id field
@@ -176,6 +185,7 @@ arangodb::Result dropLink( // drop link
     arangodb::LogicalCollection& collection, // link collection
     arangodb::iresearch::IResearchLink const& link // link to drop
 ) {
+
   // don't need to create an extra transaction inside arangodb::methods::Indexes::drop(...)
   if (!collection.dropIndex(link.id())) {
     return arangodb::Result(  // result
@@ -187,13 +197,21 @@ arangodb::Result dropLink( // drop link
   return arangodb::Result();
 }
 
-template<>
-arangodb::Result dropLink<arangodb::iresearch::IResearchViewCoordinator>( // drop link
-    arangodb::LogicalCollection& collection, // link collection
-    arangodb::iresearch::IResearchLink const& link // link to drop
+template <>
+arangodb::Result dropLink<arangodb::iresearch::IResearchViewCoordinator>(  // drop link
+    arangodb::LogicalCollection& collection,        // link collection
+    arangodb::iresearch::IResearchLink const& link  // link to drop
 ) {
-  arangodb::velocypack::Builder builder;
 
+  if (arangodb::ClusterMethods::filterHiddenCollections(collection)) {
+    // Enterprise variant, we only need to drop links on non-hidden
+    // collections (e.g. in SmartGraph Case)
+    // The hidden collections are managed by the logic around the SmartEdgeCollection
+    // and do not allow to have their own modifications.
+    return arangodb::Result();
+  }
+
+  arangodb::velocypack::Builder builder;
   builder.openObject();
   builder.add(                                     // add
       arangodb::StaticStrings::IndexId,            // key
