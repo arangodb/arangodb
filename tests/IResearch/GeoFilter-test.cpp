@@ -510,6 +510,162 @@ TEST(GeoFilterTest, query) {
 
     ASSERT_EQ(expected, executeQuery(q, {2, 2}));
   }
+
+  {
+    auto const origin = docs->slice().at(7);
+    std::set<std::string> expected {
+      arangodb::iresearch::getStringRef(origin.get("name"))
+    };
+
+    GeoFilter q;
+    *q.mutable_field() = "geometry";
+    ASSERT_TRUE(arangodb::iresearch::parseShape(
+      origin.get("geometry"), q.mutable_options()->shape, true));
+    q.mutable_options()->type = GeoFilterType::INTERSECTS;
+    q.mutable_options()->options.set_index_contains_points_only(true);
+
+    ASSERT_EQ(expected, executeQuery(q, {2, 4}));
+  }
+
+  {
+    auto const origin = docs->slice().at(7);
+    std::set<std::string> expected {
+      arangodb::iresearch::getStringRef(origin.get("name"))
+    };
+
+    GeoFilter q;
+    *q.mutable_field() = "geometry";
+    ASSERT_TRUE(arangodb::iresearch::parseShape(
+      origin.get("geometry"), q.mutable_options()->shape, true));
+    q.mutable_options()->type = GeoFilterType::CONTAINS;
+    q.mutable_options()->options.set_index_contains_points_only(true);
+
+    ASSERT_EQ(expected, executeQuery(q, {2, 4}));
+  }
+
+  {
+    auto const origin = docs->slice().at(7);
+    std::set<std::string> expected {
+      arangodb::iresearch::getStringRef(origin.get("name"))
+    };
+
+    GeoFilter q;
+    *q.mutable_field() = "geometry";
+    ASSERT_TRUE(arangodb::iresearch::parseShape(
+      origin.get("geometry"), q.mutable_options()->shape, true));
+    q.mutable_options()->type = GeoFilterType::IS_CONTAINED;
+    q.mutable_options()->options.set_index_contains_points_only(true);
+
+    ASSERT_EQ(expected, executeQuery(q, {2, 4}));
+  }
+
+  {
+    auto shapeJson = VPackParser::fromJson(R"({
+      "type": "Polygon",
+        "coordinates": [
+            [
+                [37.590322, 55.695583],
+                [37.626114, 55.695583],
+                [37.626114, 55.71488],
+                [37.590322, 55.71488],
+                [37.590322, 55.695583]
+            ]
+      ]
+    })");
+
+    arangodb::geo::ShapeContainer shape;
+    arangodb::geo::ShapeContainer point;
+    ASSERT_TRUE(arangodb::iresearch::parseShape(shapeJson->slice(), shape, false));
+    std::set<std::string> expected;
+    for (auto doc : VPackArrayIterator(docs->slice())) {
+      auto geo = doc.get("geometry");
+      ASSERT_TRUE(geo.isObject());
+      ASSERT_TRUE(arangodb::iresearch::parseShape(geo, point, true));
+      if (!shape.contains(&point)) {
+        continue;
+      }
+
+      auto name = doc.get("name");
+      ASSERT_TRUE(name.isString());
+      expected.emplace(arangodb::iresearch::getStringRef(name));
+    }
+
+    GeoFilter q;
+    *q.mutable_field() = "geometry";
+    ASSERT_TRUE(arangodb::iresearch::parseShape(
+      shapeJson->slice(), q.mutable_options()->shape, false));
+    q.mutable_options()->type = GeoFilterType::CONTAINS;
+    q.mutable_options()->options.set_index_contains_points_only(true);
+
+    EXPECT_EQ(expected, executeQuery(q, {18, 18}));
+  }
+
+  {
+    auto shapeJson = VPackParser::fromJson(R"({
+      "type": "Polygon",
+        "coordinates": [
+            [
+                [37.590322, 55.695583],
+                [37.626114, 55.695583],
+                [37.626114, 55.71488],
+                [37.590322, 55.71488],
+                [37.590322, 55.695583]
+            ]
+      ]
+    })");
+
+    arangodb::geo::ShapeContainer shape;
+    arangodb::geo::ShapeContainer point;
+    ASSERT_TRUE(arangodb::iresearch::parseShape(shapeJson->slice(), shape, false));
+    std::set<std::string> expected;
+    for (auto doc : VPackArrayIterator(docs->slice())) {
+      auto geo = doc.get("geometry");
+      ASSERT_TRUE(geo.isObject());
+      ASSERT_TRUE(arangodb::iresearch::parseShape(geo, point, true));
+      if (!shape.contains(&point)) {
+        continue;
+      }
+
+      auto name = doc.get("name");
+      ASSERT_TRUE(name.isString());
+      expected.emplace(arangodb::iresearch::getStringRef(name));
+    }
+
+    GeoFilter q;
+    *q.mutable_field() = "geometry";
+    ASSERT_TRUE(arangodb::iresearch::parseShape(
+      shapeJson->slice(), q.mutable_options()->shape, false));
+    q.mutable_options()->type = GeoFilterType::INTERSECTS;
+
+    EXPECT_EQ(expected, executeQuery(q, {18, 18}));
+  }
+
+  {
+    auto shapeJson = VPackParser::fromJson(R"({
+      "type": "Polygon",
+        "coordinates": [
+            [
+                [37.590322, 55.695583],
+                [37.626114, 55.695583],
+                [37.626114, 55.71488],
+                [37.590322, 55.71488],
+                [37.590322, 55.695583]
+            ]
+      ]
+    })");
+
+    arangodb::geo::ShapeContainer shape;
+    arangodb::geo::ShapeContainer point;
+    std::set<std::string> expected;
+
+    GeoFilter q;
+    *q.mutable_field() = "geometry";
+    ASSERT_TRUE(arangodb::iresearch::parseShape(
+      shapeJson->slice(), q.mutable_options()->shape, false));
+    q.mutable_options()->type = GeoFilterType::IS_CONTAINED;
+
+    EXPECT_EQ(expected, executeQuery(q, {18, 18}));
+  }
 }
 
 TEST(GeoFilterTest, checkScorer) {
