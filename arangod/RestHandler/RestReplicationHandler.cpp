@@ -3529,7 +3529,14 @@ Result RestReplicationHandler::createBlockingTransaction(
       auto rGuard = std::make_unique<RebootCookie>(
         ci.rebootTracker().callMeOnChange(RebootTracker::PeerState(serverId, rebootId),
                                           f, comment));
-      transaction::Methods trx{mgr->leaseManagedTrx(id, AccessMode::Type::WRITE)};
+      auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::WRITE);
+      
+      if (!ctx) {
+        // Trx does not exist. So we assume it got cancelled.
+        return {TRI_ERROR_TRANSACTION_INTERNAL, "read transaction was cancelled"};
+      }
+
+      transaction::Methods trx{ctx};
       void* key = this; // simon: not important to get it again
       trx.state()->cookie(key, std::move(rGuard));
     }

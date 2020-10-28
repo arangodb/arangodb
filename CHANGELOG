@@ -1,6 +1,11 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed very spurious errors if the `holdReadLockCollection` replication API for
+  the getting-in-sync procedure of shards was called during server shutdown.
+  In this case that method could ask the transaction manager for a specific
+  transaction, but wasn't return one due to the server shutddown. 
+
 * Bug-fix: Creating an additional index on the edge collection of a disjoint
   SmartGraph could falsely result in an error: 
   `Could not find all smart collections ...`
