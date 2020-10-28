@@ -5,6 +5,11 @@ v3.7.5 (XXXX-XX-XX)
   the setup code now aborts with an ERROR_QUERY_COLLECTION_LOCK_FAILED and earlier.
   Before the setup code could abort with TRI_ERROR_INTERNAL in the same case.
 
+* Bug-fix: Creating an additional index on the edge collection of a disjoint
+  SmartGraph could falsely result in an error: 
+  `Could not find all smart collections ...`
+  This is now ruled out and indexes can be created as expected.
+
 * Fixed issue #12248: Web UI - Added missing HTML escaping in the setup script
   section of a foxx app.
 
