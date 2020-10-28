@@ -179,7 +179,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) 
   if (!_infos.getCount()) {
     TRI_ASSERT(_currentGroup->second->size() == _infos.getAggregatedRegisters().size());
     size_t j = 0;
-    for (auto const& it : *(_currentGroup->second)) {
+    for (std::unique_ptr<Aggregator> const& it : *(_currentGroup->second)) {
       AqlValue r = it->stealValue();
       AqlValueGuard guard{r, true};
       output.moveValueInto(_infos.getAggregatedRegisters()[j++].first,

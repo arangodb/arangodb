@@ -572,9 +572,15 @@ void ClusterFeature::start() {
   std::string myId = ServerState::instance()->getId();
 
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
-    _dropped_follower_counter = server().getFeature<arangodb::MetricsFeature>().counter(
+    _followersDroppedCounter = server().getFeature<arangodb::MetricsFeature>().counter(
         StaticStrings::DroppedFollowerCount, 0,
         "Number of drop-follower events");
+    _followersRefusedCounter = server().getFeature<arangodb::MetricsFeature>().counter(
+        "arangodb_refused_followers_count", 0,
+        "Number of refusal answers from a follower during synchronous replication");
+    _followersWrongChecksumCounter = server().getFeature<arangodb::MetricsFeature>().counter(
+        "arangodb_sync_wrong_checksum", 0,
+        "Number of times a mismatching shard checksum was detected when syncing shards");
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
@@ -799,13 +805,17 @@ void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, 
 void ClusterFeature::addDirty(std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& databases) {
   if (databases.size() > 0) {
     MUTEX_LOCKER(guard, _dirtyLock);
+    bool addedAny = false;
     for (auto const& database : databases) {
       if (_dirtyDatabases.emplace(database.first).second) {
+        addedAny = true;
         LOG_TOPIC("35b77", DEBUG, Logger::MAINTENANCE)
           << "adding " << database << " to dirty databases";
       }
     }
-    notify();
+    if (addedAny) {
+      notify();
+    }
   }
 }
 
@@ -814,6 +824,7 @@ void ClusterFeature::addDirty(std::string const& database) {
   if (_dirtyDatabases.emplace(database).second) {
     LOG_TOPIC("357b9", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databases";
   }
+  // This notify is needed even if no database is added
   notify();
 }
 

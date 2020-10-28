@@ -3493,7 +3493,7 @@ Result RestReplicationHandler::createBlockingTransaction(
         // Code does not matter, read only access, so we can roll back.
         transaction::Manager* mgr = transaction::ManagerFeature::manager();
         if (mgr) {
-          mgr->abortManagedTrx(id, _vocbase.name());
+          mgr->abortManagedTrx(id, vn);
         }
       } catch (...) {
         // All errors that show up here can only be
@@ -3521,7 +3521,7 @@ Result RestReplicationHandler::createBlockingTransaction(
 
   if (isTombstoned(id)) {
     try {
-      return mgr->abortManagedTrx(id, _vocbase.name());
+      return mgr->abortManagedTrx(id, vn);
     } catch (...) {
       // Maybe thrown in shutdown.
     }
@@ -3549,7 +3549,7 @@ ResultT<bool> RestReplicationHandler::isLockHeld(TransactionId id) const {
   transaction::Status stats = mgr->getManagedTrxStatus(id, _vocbase.name());
   if (stats == transaction::Status::UNDEFINED) {
     return ResultT<bool>::error(TRI_ERROR_HTTP_NOT_FOUND,
-                                "no hold read lock job found for 'id'");
+                                "no hold read lock job found for id " + std::to_string(id.id()));
   }
   
   return ResultT<bool>::success(true);

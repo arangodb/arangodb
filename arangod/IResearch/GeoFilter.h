@@ -97,7 +97,7 @@ class GeoFilter final
     const irs::index_reader& rdr,
     const irs::order::prepared& ord,
     irs::boost_t boost,
-    const irs::attribute_provider* /*ctx*/) const;
+    const irs::attribute_provider* /*ctx*/) const override;
 }; // GeoFilter
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -141,7 +141,7 @@ class GeoDistanceFilter final
     const irs::index_reader& rdr,
     const irs::order::prepared& ord,
     irs::boost_t boost,
-    const irs::attribute_provider* /*ctx*/) const;
+    const irs::attribute_provider* /*ctx*/) const override;
 }; // GeoDistanceFilter
 
 } // iresearch

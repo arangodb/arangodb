@@ -45,7 +45,6 @@
 #include "GeneralServer/GeneralDefinitions.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/Metrics.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
 
 namespace arangodb {
 class Endpoint;

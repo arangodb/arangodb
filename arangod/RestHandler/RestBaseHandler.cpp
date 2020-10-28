@@ -25,15 +25,13 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
-#include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
-#include "Meta/conversion.h"
 #include "Transaction/Context.h"
 
 using namespace arangodb;

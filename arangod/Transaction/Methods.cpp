@@ -277,7 +277,7 @@ transaction::Status transaction::Methods::status() const {
 }
 
 velocypack::Options const& transaction::Methods::vpackOptions() const {
-  return *_transactionContext->getVPackOptions();
+  return *transactionContextPtr()->getVPackOptions();
 }
 
 /// @brief Find out if any of the given requests has ended in a refusal
@@ -285,7 +285,11 @@ static bool findRefusal(std::vector<futures::Try<network::Response>> const& resp
   for (auto const& it : responses) {
     if (it.hasValue() && it.get().ok() &&
         it.get().response->statusCode() == fuerte::StatusNotAcceptable) {
-      return true;
+      auto r = it.get().combinedResult();
+      bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+      if (followerRefused) {
+        return true;
+      }
     }
   }
   return false;
@@ -1795,6 +1799,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       reqOpts.database = vocbase().name();
       reqOpts.timeout = network::Timeout(600);
       reqOpts.param(StaticStrings::IsSynchronousReplicationString, ServerState::instance()->getId());
+      reqOpts.param(StaticStrings::Compact, (options.truncateCompact ? "true" : "false"));
 
       for (auto const& f : *followers) {
         network::Headers headers;
@@ -1833,6 +1838,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       // error (note that we use the follower version, since we have
       // lost leadership):
       if (findRefusal(responses)) {
+        vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter()++;
         return futures::makeFuture(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
       }
@@ -2329,6 +2335,8 @@ Future<Result> Methods::replicateOperations(
           didRefuse = didRefuse || followerRefused;
 
           if (followerRefused) {
+            vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter()++;
+
             LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
                 << "synchronous replication: follower "
                 << follower << " for shard " << collection->name()
@@ -2336,6 +2344,10 @@ Future<Result> Methods::replicateOperations(
                 << " refused the operation: " << r.errorMessage();
           }
         }
+      }
+
+      TRI_IF_FAILURE("replicateOperationsDropFollower") {
+        replicationWorked = false;
       }
 
       if (!replicationWorked) {

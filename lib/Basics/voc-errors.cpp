@@ -218,6 +218,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_NOT_FOUND, "query ID not found");
   REG_ERROR(ERROR_QUERY_USER_ASSERT, "%s");
   REG_ERROR(ERROR_QUERY_USER_WARN, "%s");
+  REG_ERROR(ERROR_QUERY_WINDOW_AFTER_MODIFICATION, "window operation after data-modification");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_CURSOR_BUSY, "cursor is busy");
   REG_ERROR(ERROR_VALIDATION_FAILED, "schema validation failed");
@@ -317,7 +318,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_NO_SMART_COLLECTION, "collection is not smart");
   REG_ERROR(ERROR_NO_SMART_GRAPH_ATTRIBUTE, "smart graph attribute not given");
   REG_ERROR(ERROR_CANNOT_DROP_SMART_COLLECTION, "cannot drop this smart collection");
-  REG_ERROR(ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE, "in smart vertex collections _key must be prefixed with the value of the smart graph attribute");
+  REG_ERROR(ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE, "in smart vertex collections _key must be a string and prefixed with the value of the smart graph attribute");
   REG_ERROR(ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE, "attribute cannot be used as smart graph attribute");
   REG_ERROR(ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH, "smart graph attribute mismatch");
   REG_ERROR(ERROR_INVALID_SMART_JOIN_ATTRIBUTE, "invalid smart join attribute declaration");

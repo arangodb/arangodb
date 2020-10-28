@@ -21,40 +21,35 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_PERFORMANCE_LOG_SCOPE_H
-#define ARANGODB_BASICS_PERFORMANCE_LOG_SCOPE_H 1
+#ifndef APPLICATION_FEATURES_FOXX_FEATURE_H
+#define APPLICATION_FEATURES_FOXX_FEATURE_H 1
 
-#include "Basics/Common.h"
-#include "Basics/system-functions.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 
-class PerformanceLogScope {
+class FoxxFeature final : public application_features::ApplicationFeature {
  public:
-  PerformanceLogScope(PerformanceLogScope const&) = delete;
-  PerformanceLogScope& operator=(PerformanceLogScope const&) = delete;
+  explicit FoxxFeature(application_features::ApplicationServer& server);
 
-  explicit PerformanceLogScope(std::string const& message, double minElapsedTime = 0.0)
-      : _message(message), _start(TRI_microtime()), _minElapsedTime(minElapsedTime) {
-    LOG_TOPIC("f2a96", TRACE, Logger::PERFORMANCE) << _message;
-  }
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  ~PerformanceLogScope() {
-    double const elapsed = TRI_microtime() - _start;
-
-    if (elapsed >= _minElapsedTime) {
-      LOG_TOPIC("4ada1", TRACE, Logger::PERFORMANCE)
-          << "[timer] " << Logger::FIXED(elapsed) << " s, " << _message;
+  /// @brief return poll interval for foxx queues. returns a negative number if
+  /// foxx queues are turned off
+  double pollInterval() const {
+    if (!_enabled) {
+      return -1.0;
     }
+    return _pollInterval;
   }
+
+  bool startupWaitForSelfHeal() const;
 
  private:
-  std::string const _message;
-  double const _start;
-  double const _minElapsedTime;
+  double _pollInterval;
+  bool _enabled;
+  bool _startupWaitForSelfHeal;
 };
 
 }  // namespace arangodb

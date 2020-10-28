@@ -52,7 +52,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/FoxxQueuesFeature.h"
+#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbase.h"
@@ -442,12 +442,12 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
 
   auto setRequestBodyJsonOrVPack = [&]() {
     if (rest::ContentType::UNSET == request->contentType()) {
-      bool digesteable = false;
+      bool digestable = false;
       try {
         auto parsed = request->payload(true);
         if (parsed.isObject() || parsed.isArray()) {
           request->setDefaultContentType();
-          digesteable = true;
+          digestable = true;
         }
       } catch ( ... ) {}
       // ok, no json/vpack after all ;-)
@@ -459,7 +459,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
       TRI_GET_GLOBAL_STRING(RawRequestBodyKey);
       req->Set(context, RawRequestBodyKey, bufObj).FromMaybe(false);
       req->Set(context, RequestBodyKey, TRI_V8_PAIR_STRING(isolate, raw.data(), raw.size())).FromMaybe(false);
-      if (!digesteable) {
+      if (!digestable) {
         return;
       }
     }
@@ -472,7 +472,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
     } else if (rest::ContentType::VPACK == request->contentType()) {
       // the VPACK is passed as it is to to JavaScript
       // FIXME not every VPack can be converted to JSON
-      VPackSlice slice = request->payload();
+      VPackSlice slice = request->payload(true);
       std::string jsonString = slice.toJson();
 
       LOG_TOPIC("8afce", DEBUG, Logger::COMMUNICATION)
@@ -1789,12 +1789,20 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
 
   // poll interval for Foxx queues
   TRI_GET_GLOBALS();
-  FoxxQueuesFeature& foxxQueuesFeature = v8g->_server.getFeature<FoxxQueuesFeature>();
+  FoxxFeature& foxxFeature = v8g->_server.getFeature<FoxxFeature>();
 
   isolate->GetCurrentContext()
       ->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
-          v8::Number::New(isolate, foxxQueuesFeature.pollInterval()), v8::ReadOnly)
+          v8::Number::New(isolate, foxxFeature.pollInterval()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result
+
+  isolate->GetCurrentContext()
+      ->Global()
+      ->DefineOwnProperty(
+          TRI_IGETC,
+          TRI_V8_ASCII_STRING(isolate, "FOXX_STARTUP_WAIT_FOR_SELF_HEAL"),
+          v8::Boolean::New(isolate, foxxFeature.startupWaitForSelfHeal()), v8::ReadOnly)
       .FromMaybe(false);  // ignore result
 }

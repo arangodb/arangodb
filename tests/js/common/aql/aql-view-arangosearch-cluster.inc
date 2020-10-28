@@ -814,6 +814,32 @@
         });
       },
 
+      testViewInInnerLoopSortByAttributeWINDOW : function() {
+        var expected = [];
+        expected.push({ a: "bar", b: "foo", c: 1, unique: 1 });
+        expected.push({ a: "baz", b: "foo", c: 1, unique: 1 });
+        expected.push({ a: "foo", b: "bar", c: 0, unique: 2 });
+        expected.push({ a: "foo", b: "baz", c: 0, unique: 2 });
+
+        var result = db._query(
+          "FOR adoc IN AnotherUnitTestsCollection" +
+          "  FOR doc IN UnitTestsView SEARCH adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) OPTIONS { waitForSync: true } " +
+          "SORT doc.c DESC, doc.a, doc.b " +
+          "WINDOW {preceding: 'unbounded'} AGGREGATE u = COUNT_DISTINCT(doc.c)" +
+          "RETURN MERGE(doc, {unique: u})"
+        , null, { waitForSync: true }).toArray();
+
+        assertEqual(result.length, expected.length);
+        var i = 0;
+        result.forEach(function(res) {
+          var doc = expected[i++];
+          assertEqual(doc.a, res.a);
+          assertEqual(doc.b, res.b);
+          assertEqual(doc.c, res.c);
+          assertEqual(doc.unique, res.unique);
+        });
+      },
+
       testViewInInnerLoopSortByAttributeWithNonDeterministic : function() {
         var expected = [];
         expected.push({ a: "bar", b: "foo", c: 1 });
@@ -1128,6 +1154,26 @@
           assertTrue(res.score > 1 && res.score < 2);
         });
       },
+
+      testScorersWithDistinctWINDOW : function() {
+        var result = db._query(
+          "LET values = (FOR y IN UnitTestsCollection FILTER y.c == 0 RETURN DISTINCT y.a) " +
+          "LET x = FIRST(FOR x IN values FILTER x == 'foo' RETURN x) " +
+          "FOR doc IN UnitTestsView SEARCH doc.a == x && doc.c == 0 OPTIONS { waitForSync: true } " +
+          "LET score = BM25(doc, 20.01, 0.01)*0.0001 + 1.0 " + 
+          "WINDOW {preceding: 100} AGGREGATE maxScore = MAX(score) " +
+          "RETURN { a: doc.a, score: maxScore }"
+        ).toArray();
+
+        let max = 0;
+        result.forEach(function (res) {
+          assertEqual(res.a, "foo");
+          assertTrue(res.score > 1 && res.score < 2);
+          assertTrue(max <= res.score);
+          max = res.score;
+        });
+      },
+
       testAttributeNotInRangeOpenInterval : function () {
         var result = db._query("FOR doc IN UnitTestsView SEARCH NOT(IN_RANGE(doc.c, 1, 3, false, false)) OPTIONS { waitForSync : true } RETURN doc").toArray();
 

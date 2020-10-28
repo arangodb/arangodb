@@ -187,7 +187,9 @@ public:
 
   CFilesSetup setup;
 
-  virtual std::string getRocksDBPath() {return setup._directory.c_str();}
+  virtual std::string getRocksDBPath() override {
+    return setup._directory.c_str();
+  }
 
   std::string pathName(const char * name) {
     std::string retpath;
