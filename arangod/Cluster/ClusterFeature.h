@@ -29,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/MetricsFeature.h"
 
 namespace arangodb {
 
@@ -83,6 +84,18 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::shared_ptr<HeartbeatThread> heartbeatThread();
 
   ClusterInfo& clusterInfo();
+  
+  void trackFollowerRefusal() {
+    ++_followersRefused;
+  }
+  
+  void trackFollowerDropped() {
+    ++_followersDropped;
+  }
+  
+  void trackAddFollowerWrongChecksum() {
+    ++_addFollowerWrongChecksum;
+  }
 
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
@@ -116,6 +129,10 @@ class ClusterFeature : public application_features::ApplicationFeature {
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
+ 
+  Counter& _followersRefused;
+  Counter& _followersDropped;
+  Counter& _addFollowerWrongChecksum;
 };
 
 }  // namespace arangodb

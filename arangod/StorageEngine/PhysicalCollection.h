@@ -76,11 +76,18 @@ class PhysicalCollection {
 
   /// @brief report extra memory used by indexes etc.
   virtual size_t memory() const = 0;
-
+  
   /// @brief opens an existing collection
   virtual void open(bool ignoreErrors) = 0;
 
   void drop();
+  
+  /// recalculate counts for collection in case of failure, blocking
+  virtual uint64_t recalculateCounts();
+ 
+  /// @brief whether or not the collection contains any documents. this
+  /// function is allowed to return true even if there are no documents
+  virtual bool hasDocuments();
 
   ////////////////////////////////////
   // -- SECTION Indexes --

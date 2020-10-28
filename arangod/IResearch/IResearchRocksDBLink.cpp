@@ -141,8 +141,9 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchRocksDBLink::IndexFactory : public arangodb::IndexTypeFactory {
   bool equal(arangodb::velocypack::Slice const& lhs,
-             arangodb::velocypack::Slice const& rhs) const override {
-    return arangodb::iresearch::IResearchLinkHelper::equal(lhs, rhs);
+             arangodb::velocypack::Slice const& rhs,
+             std::string const& dbname) const override {
+    return arangodb::iresearch::IResearchLinkHelper::equal(lhs, rhs, dbname);
   }
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,

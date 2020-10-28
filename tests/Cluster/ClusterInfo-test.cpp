@@ -161,13 +161,13 @@ class ClusterInfoTest : public ::testing::Test,
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // setup required application features
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>());  
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), false);  // required for ClusterFeature::prepare()
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::application_features::CommunicationFeaturePhase>(),
                           false);
     features.emplace_back(server.addFeature<arangodb::ClusterFeature>(),
                           false);  // required for ClusterInfo::instance()
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>());  
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(server.addFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), false);  // required for LogicalView::instantiate(...)

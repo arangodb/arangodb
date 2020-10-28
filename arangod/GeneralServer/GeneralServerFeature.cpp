@@ -386,8 +386,11 @@ void GeneralServerFeature::defineHandlers() {
                                     RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
                                     queryRegistry);
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::TASKS_PATH,
-                                    RestHandlerCreator<RestTasksHandler>::createNoData);
+  if (server().isEnabled<V8DealerFeature>()) {
+    // the tasks feature depends on V8. only enable it if JavaScript is enabled
+    _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::TASKS_PATH,
+                                      RestHandlerCreator<RestTasksHandler>::createNoData);
+  }
 
   _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
                                     RestHandlerCreator<RestUploadHandler>::createNoData);

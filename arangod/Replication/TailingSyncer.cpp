@@ -1246,7 +1246,7 @@ retry:
 
   while (true) {
     setProgress("fetching master state information");
-    res = _state.master.getState(_state.connection, _state.isChildSyncer);
+    res = _state.master.getState(_state.connection, _state.isChildSyncer, nullptr);
 
     if (res.is(TRI_ERROR_REPLICATION_NO_RESPONSE)) {
       // master error. try again after a sleep period
