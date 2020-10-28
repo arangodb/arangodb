@@ -25,6 +25,7 @@
 
 #include <fuerte/asio_ns.h>
 #include <fuerte/loop.h>
+#include "debugging.h"
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
@@ -110,9 +111,15 @@ struct Socket<SocketType::Tcp> {
 template <>
 struct Socket<fuerte::SocketType::Ssl> {
   Socket(EventLoopService& loop, asio_ns::io_context& ctx)
-      : resolver(ctx), socket(ctx, loop.sslContext()), timer(ctx) {}
+    : resolver(ctx), socket(ctx, loop.sslContext()), timer(ctx), shutdownDone(false) {}
 
-  ~Socket() { this->cancel(); }
+  ~Socket() {
+    this->cancel();
+    if (!shutdownDone) {
+      this->shutdown([](auto const& ec) {
+                     });
+    }
+  }
 
   template <typename F>
   void connect(detail::ConnectionConfiguration const& config, F&& done) {
@@ -150,7 +157,7 @@ struct Socket<fuerte::SocketType::Ssl> {
       resolver.cancel();
       if (socket.lowest_layer().is_open()) {  // non-graceful shutdown
         asio_ns::error_code ec;
-        socket.lowest_layer().close(ec);
+        socket.lowest_layer().cancel(ec);
       }
     } catch (...) {
     }
@@ -158,8 +165,12 @@ struct Socket<fuerte::SocketType::Ssl> {
 
   template <typename F>
   void shutdown(F&& cb) {
+
+    shutdownDone = true;
+
     asio_ns::error_code ec;  // prevents exceptions
     socket.lowest_layer().cancel(ec);
+
     if (!socket.lowest_layer().is_open()) {
       timer.cancel(ec);
       std::forward<F>(cb)(ec);
@@ -186,6 +197,8 @@ struct Socket<fuerte::SocketType::Ssl> {
   asio_ns::ip::tcp::resolver resolver;
   asio_ns::ssl::stream<asio_ns::ip::tcp::socket> socket;
   asio_ns::steady_timer timer;
+  bool shutdownDone;
+
 };
 
 #ifdef ASIO_HAS_LOCAL_SOCKETS
