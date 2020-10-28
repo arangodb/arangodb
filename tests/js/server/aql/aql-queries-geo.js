@@ -581,8 +581,8 @@ function pointsTestSuite() {
 
     testContainsEmptyCircle: function () {
       // run on a few test samples
-      for (lat = -40; lat <= 40; lat += 8) {
-        for (lon = -40; lon <= 40; lon += 8) {
+      for (let lat = -40; lat <= 40; lat += 8) {
+        for (let lon = -40; lon <= 40; lon += 8) {
           runQuery({
             string: "FOR x IN @@cc FILTER DISTANCE(@lat, @lng, x.lat, x.lng) <= 0 RETURN x",
             bindVars: {
