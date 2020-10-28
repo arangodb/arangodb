@@ -66,7 +66,7 @@ static void onlyInCluster() {
     return;
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "ArangoDB is not running in cluster mode");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "ArangoDB is not running in cluster mode");
 }
 
 static void onlyInClusterOrActiveFailover() {
