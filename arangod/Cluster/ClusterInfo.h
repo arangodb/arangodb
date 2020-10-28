@@ -368,8 +368,8 @@ class ClusterInfo final {
       std::function<void()> const&, AgencyCallbackRegistry*);
     explicit SyncerThread(SyncerThread const&);
     ~SyncerThread();
-    void beginShutdown();
-    void run();
+    void beginShutdown() override;
+    void run() override;
     void start();
     bool notify(velocypack::Slice const&);
 

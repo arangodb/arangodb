@@ -1021,8 +1021,6 @@ void ClusterInfo::loadPlan() {
   //      ],
   //      "isSmart": false,
   //      "isSystem": true,
-  //      "isVolatile": false,
-  //      JOURNAL_SIZE: 1048576,
   //      "keyOptions": {
   //        "allowUserKeys": true,
   //        "lastValue": 0,
@@ -1044,7 +1042,7 @@ void ClusterInfo::loadPlan() {
   //      "status": 3,
   //      "statusString": "loaded",
   //      "type": 2,
-  //      StaticStrings::WaitForSyncString: false
+  //      "waitForSync": false
   //    },...
   //  },...
   // }}
@@ -1063,8 +1061,8 @@ void ClusterInfo::loadPlan() {
     if (!collectionsSlice.hasKey(collectionsPath)) {
       auto it = newCollections.find(databaseName);
       if (it != newCollections.end()) {
-        for (auto collection : *(it->second)) {
-          auto collectionId = collection.first;
+        for (auto const& collection : *(it->second)) {
+          auto& collectionId = collection.first;
           newShards.erase(collectionId); // delete from maps with shardID as key
           newShardToName.erase(collectionId);
         }
@@ -2470,7 +2468,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         LOG_TOPIC("98762", DEBUG, Logger::CLUSTER)
             << "Failed createCollectionsCoordinator for " << infos.size()
             << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
-            << " first collection name: " << infos[0].name;
+            << " first collection name: " << ((infos.size() > 0) ? infos[0].name : std::string());
         return res;
       }
     }
@@ -2594,7 +2592,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         LOG_TOPIC("98767", DEBUG, Logger::CLUSTER)
             << "Failed createCollectionsCoordinator for " << infos.size()
             << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
-            << " first collection name: " << infos[0].name;
+            << " first collection name: " << (infos.size() > 0 ? infos[0].name : std::string());
         return {TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, std::move(errorMsg)};
       }
 
@@ -3181,8 +3179,8 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
     std::vector<std::string>{
       AgencyCommHelper::path("Plan/Views/" + databaseName + "/" + viewID)});
 
-  if (!acb->slice()[0].hasKey(
-        {AgencyCommHelper::path(), "Plan", "Views", databaseName, viewID})) {
+  if (!acb->slice()[0].hasKey(std::vector<std::string>{
+        AgencyCommHelper::path(), "Plan", "Views", databaseName, viewID})) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
@@ -4816,6 +4814,10 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 
 std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(CollectionID const& collectionID) {
   int tries = 0;
+  TRI_IF_FAILURE("ClusterInfo::failedToGetShardList") {
+    // Simulate 3 failed tries below.
+    return std::make_shared<std::vector<ShardID>>();
+  }
   while (true) {
     {
       // Get the sharding keys and the number of shards:

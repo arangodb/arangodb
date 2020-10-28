@@ -1058,7 +1058,6 @@ static void JS_QueriesPropertiesAql(v8::FunctionCallbackInfo<v8::Value> const& a
 static void JS_QueriesCurrentAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  auto context = TRI_IGETC;
   auto& vocbase = GetContextVocBase(isolate);
 
   if (args.Length() != 0) {
@@ -1068,53 +1067,15 @@ static void JS_QueriesCurrentAql(v8::FunctionCallbackInfo<v8::Value> const& args
   auto* queryList = vocbase.queryList();
   TRI_ASSERT(queryList != nullptr);
 
-  try {
-    auto queries = queryList->listCurrent();
-
-    uint32_t i = 0;
-    auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
-
-    for (auto q : queries) {
-      auto timeString = TRI_StringTimeStamp(q.started, false);
-
-      v8::Handle<v8::Object> obj = v8::Object::New(isolate);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "id"),
-               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, q.id)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "database"),
-               TRI_V8_STD_STRING(isolate, q.database)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "user"),
-               TRI_V8_STD_STRING(isolate, q.user)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "query"),
-               TRI_V8_STD_STRING(isolate, q.queryString)).FromMaybe(false);
-      if (q.bindParameters != nullptr) {
-        obj->Set(context,
-                 TRI_V8_ASCII_STRING(isolate, "bindVars"),
-                 TRI_VPackToV8(isolate, q.bindParameters->slice())).FromMaybe(false);
-      } else {
-        obj->Set(context,
-                 TRI_V8_ASCII_STRING(isolate, "bindVars"), v8::Object::New(isolate)).FromMaybe(false);
-      }
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "started"),
-               TRI_V8_STD_STRING(isolate, timeString)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "runTime"), v8::Number::New(isolate, q.runTime)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "state"),
-               TRI_V8_STD_STRING(isolate, aql::QueryExecutionState::toString(q.state))).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "stream"), v8::Boolean::New(isolate, q.stream)).FromMaybe(false);
-      result->Set(context, i++, obj).FromMaybe(false);
-    }
-
-    TRI_V8_RETURN(result);
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
+  VPackBuilder b;
+  b.openArray();
+  for (auto const& q : queryList->listCurrent()) {
+    q.toVelocyPack(b);
   }
+  b.close();
+              
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, b.slice()));
+  
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1125,7 +1086,6 @@ static void JS_QueriesCurrentAql(v8::FunctionCallbackInfo<v8::Value> const& args
 static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  auto context = TRI_IGETC;
   auto& vocbase = GetContextVocBase(isolate);
   auto* queryList = vocbase.queryList();
   TRI_ASSERT(queryList != nullptr);
@@ -1139,53 +1099,15 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_SLOW()");
   }
 
-  try {
-    auto queries = queryList->listSlow();
-
-    uint32_t i = 0;
-    auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
-
-    for (auto q : queries) {
-      auto timeString = TRI_StringTimeStamp(q.started, false);
-
-      v8::Handle<v8::Object> obj = v8::Object::New(isolate);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "id"),
-               TRI_V8UInt64String<TRI_voc_tick_t>(isolate, q.id)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "database"),
-               TRI_V8_STD_STRING(isolate, q.database)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "user"),
-               TRI_V8_STD_STRING(isolate, q.user)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "query"),
-               TRI_V8_STD_STRING(isolate, q.queryString)).FromMaybe(false);
-      if (q.bindParameters != nullptr) {
-        obj->Set(context,
-                 TRI_V8_ASCII_STRING(isolate, "bindVars"),
-                 TRI_VPackToV8(isolate, q.bindParameters->slice())).FromMaybe(false);
-      } else {
-        obj->Set(context,
-                 TRI_V8_ASCII_STRING(isolate, "bindVars"), v8::Object::New(isolate)).FromMaybe(false);
-      }
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "started"),
-               TRI_V8_STD_STRING(isolate, timeString)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "runTime"), v8::Number::New(isolate, q.runTime)).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "state"),
-               TRI_V8_STD_STRING(isolate, aql::QueryExecutionState::toString(q.state))).FromMaybe(false);
-      obj->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "stream"), v8::Boolean::New(isolate, q.stream)).FromMaybe(false);
-      result->Set(context, i++, obj).FromMaybe(false);
-    }
-
-    TRI_V8_RETURN(result);
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
+  VPackBuilder b;
+  b.openArray();
+  for (auto const& q : queryList->listSlow()) {
+    q.toVelocyPack(b);
   }
+  b.close();
+              
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, b.slice()));
+  
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1274,28 +1196,6 @@ static void JS_QueryCacheInvalidateAql(v8::FunctionCallbackInfo<v8::Value> const
   }
 
   arangodb::aql::QueryCache::instance()->invalidate();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief throw collection not loaded
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_ThrowCollectionNotLoaded(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  TRI_GET_GLOBALS();
-  auto& databaseFeature = v8g->_server.getFeature<DatabaseFeature>();
-  if (args.Length() == 0) {
-    bool const value = databaseFeature.throwCollectionNotLoadedError();
-    TRI_V8_RETURN(v8::Boolean::New(isolate, value));
-  } else if (args.Length() == 1) {
-    databaseFeature.throwCollectionNotLoadedError(TRI_ObjectToBoolean(isolate, args[0]));
-  } else {
-    TRI_V8_THROW_EXCEPTION_USAGE("THROW_COLLECTION_NOT_LOADED(<value>)");
-  }
-
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2204,10 +2104,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       isolate, TRI_V8_ASCII_STRING(isolate, "AQL_QUERY_CACHE_INVALIDATE"),
       JS_QueryCacheInvalidateAql, true);
 
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "THROW_COLLECTION_NOT_LOADED"),
-      JS_ThrowCollectionNotLoaded, true);
-
   TRI_InitV8Replication(isolate, context, &vocbase, threadNumber, v8g);
 
   TRI_AddGlobalFunctionVocbase(isolate,
@@ -2314,21 +2210,21 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "DEFAULT_REPLICATION_FACTOR"),
                           v8::Number::New(isolate,
-                                          vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor()), v8::ReadOnly)
+                                          vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   context->Global()
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "MIN_REPLICATION_FACTOR"),
                           v8::Number::New(isolate,
-                                          vocbase.server().getFeature<ClusterFeature>().minReplicationFactor()), v8::ReadOnly)
+                                          vocbase.server().getFeature<ClusterFeature>().minReplicationFactor()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   context->Global()
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "MAX_REPLICATION_FACTOR"),
                           v8::Number::New(isolate,
-                                          vocbase.server().getFeature<ClusterFeature>().maxReplicationFactor()), v8::ReadOnly)
+                                          vocbase.server().getFeature<ClusterFeature>().maxReplicationFactor()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   // max number of shards
@@ -2336,7 +2232,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "MAX_NUMBER_OF_SHARDS"),
                           v8::Number::New(isolate,
-                                          vocbase.server().getFeature<ClusterFeature>().maxNumberOfShards()), v8::ReadOnly)
+                                          vocbase.server().getFeature<ClusterFeature>().maxNumberOfShards()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
   
   // max number of shards
@@ -2344,7 +2240,15 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "FORCE_ONE_SHARD"),
                           v8::Boolean::New(isolate,
-                                          vocbase.server().getFeature<ClusterFeature>().forceOneShard()), v8::ReadOnly)
+                                          vocbase.server().getFeature<ClusterFeature>().forceOneShard()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
+      .FromMaybe(false);  // ignore result
+
+  // use old system collections
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "USE_OLD_SYSTEM_COLLECTIONS"),
+                          v8::Boolean::New(isolate,
+                                          vocbase.server().getFeature<DatabaseFeature>().useOldSystemCollections()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   // a thread-global variable that will is supposed to contain the AQL module

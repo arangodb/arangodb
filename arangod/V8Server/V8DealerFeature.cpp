@@ -66,7 +66,7 @@
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-deadline.h"
-#include "V8Server/FoxxQueuesFeature.h"
+#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/v8-actions.h"
 #include "V8Server/v8-dispatcher.h"
@@ -287,7 +287,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         std::vector<std::type_index>{std::type_index(typeid(V8PlatformFeature)),
                                      std::type_index(typeid(ActionFeature)),
                                      std::type_index(typeid(ScriptFeature)),
-                                     std::type_index(typeid(FoxxQueuesFeature)),
+                                     std::type_index(typeid(FoxxFeature)),
                                      std::type_index(typeid(FrontendFeature))});
     return;
   }

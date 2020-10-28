@@ -143,7 +143,7 @@ TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_
   auto q = server.createFakeQuery("RETURN 1");
   ASSERT_EQ(q->rootEngine()->blocksForTesting().size(), 3);
   
-  ExecutionBlock* block = q->rootEngine()->blocksForTesting()[2];
+  ExecutionBlock* block = q->rootEngine()->blocksForTesting()[2].get();
   ASSERT_EQ(block->getPlanNode()->getType(), ExecutionNode::RETURN);
   
   ASSERT_EQ(q->snippets().size(), 1);

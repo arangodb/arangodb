@@ -59,6 +59,7 @@
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/GeoAnalyzer.h"
+#include "IResearchAqlAnalyzer.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchLink.h"
@@ -106,6 +107,8 @@ static constexpr frozen::map<irs::string_ref, irs::string_ref, 13> STATIC_ANALYZ
 REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(GeoJSONAnalyzer, GeoJSONAnalyzer::make, GeoJSONAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(GeoPointAnalyzer, GeoPointAnalyzer::make, GeoPointAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(AqlAnalyzer, AqlAnalyzer::make_vpack, AqlAnalyzer::normalize_vpack);
+REGISTER_ANALYZER_JSON(AqlAnalyzer, AqlAnalyzer::make_json, AqlAnalyzer::normalize_json);
 
 bool normalize(std::string& out,
                irs::string_ref const& type,
@@ -462,8 +465,8 @@ REGISTER_ANALYZER_VPACK(irs::analysis::pipeline_token_stream, pipeline_vpack_bui
   pipeline_vpack_normalizer);
 } // namespace pipeline_vpack
 
-arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressionContext*/,
-                                    arangodb::transaction::Methods* trx,
+arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expressionContext,
+                                    arangodb::aql::AstNode const&,
                                     arangodb::aql::VPackFunctionParameters const& args) {
   if (ADB_UNLIKELY(args.empty() || args.size() > 2)) {
     irs::string_ref const message =
@@ -486,12 +489,13 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressi
     arangodb::iresearch::getStringRef(args[1].slice()) :
     irs::string_ref(arangodb::iresearch::IResearchAnalyzerFeature::identity()->name());
 
-  TRI_ASSERT(trx);
-  auto& server = trx->vocbase().server();
+  TRI_ASSERT(expressionContext);
+  auto& trx = expressionContext->trx();
+  auto& server = expressionContext->vocbase().server();
   if (args.size() > 1) {
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    pool = analyzers.get(name, trx->vocbase(),
-                         trx->state()->analyzersRevision());
+    pool = analyzers.get(name, trx.vocbase(),
+                         trx.state()->analyzersRevision());
   } else { //do not look for identity, we already have reference)
     pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
   }
@@ -834,7 +838,6 @@ arangodb::Result visitAnalyzers(
       builder.close();
     }
 
-
     for (auto const& coord : coords) {
       auto f = arangodb::network::sendRequest(
             pool,
@@ -854,12 +857,12 @@ arangodb::Result visitAnalyzers(
         return { arangodb::network::fuerteToArangoErrorCode(response) };
       }
 
-      if (response.response->statusCode() == arangodb::fuerte::StatusNotFound) {
+      if (response.statusCode() == arangodb::fuerte::StatusNotFound) {
         return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
       }
 
-      std::vector<VPackSlice> slices = response.response->slices();
-      if (slices.empty() || !slices[0].isObject()) {
+      VPackSlice answer = response.slice();
+      if (!answer.isObject()) {
         return {
           TRI_ERROR_INTERNAL,
           "got misformed result while visiting Analyzer collection'" +
@@ -868,7 +871,6 @@ arangodb::Result visitAnalyzers(
         };
       }
 
-      VPackSlice answer = slices[0];
       auto result = arangodb::network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
       if (result.fail()) {
         return result;
@@ -2462,7 +2464,10 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       auto res = emplaceAnalyzer(result, analyzers, normalizedName, type, properties, features, revision);
 
       if (!res.ok()) {
-        return res; // caught error emplacing analyzer (abort further processing)
+        LOG_TOPIC("7cc7f", ERR, arangodb::iresearch::TOPIC)
+            << "analyzer '" << name
+            << "' ignored as emplace failed with reason:" << res.errorMessage();
+        return {};  // caught error emplacing analyzer  - skip it
       }
 
       if (result.second && result.first->second) {
@@ -2920,7 +2925,6 @@ void IResearchAnalyzerFeature::start() {
   if (!isEnabled()) {
     return;
   }
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // we rely on having a system database
   if (server().hasFeature<SystemDatabaseFeature>()) {

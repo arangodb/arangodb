@@ -206,7 +206,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
       _canWrite = false;
     }
     // we are finished
-    _docColl->vocbase().server().getFeature<arangodb::ClusterFeature>().getDroppedFollowerCounter()++;
+    _docColl->vocbase().server().getFeature<arangodb::ClusterFeature>().followersDroppedCounter()++;
     LOG_TOPIC("be0cb", DEBUG, Logger::CLUSTER)
         << "Removing follower " << sid << " from " << _docColl->name() << " succeeded";
     return agencyRes;

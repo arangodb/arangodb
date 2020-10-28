@@ -66,6 +66,7 @@ std::size_t countKeys(rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf) {
   rocksdb::ReadOptions opts;
   opts.fill_cache = false;
   opts.total_order_seek = true;
+  opts.verify_checksums = false;
 
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(opts, cf));
   std::size_t count = 0;
@@ -104,6 +105,26 @@ std::size_t countKeyRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
     it->Next();
   }
   return count;
+}
+
+/// @brief whether or not the specified range has keys
+bool hasKeys(rocksdb::DB* db, RocksDBKeyBounds const& bounds, bool prefix_same_as_start) {
+  rocksdb::Slice lower(bounds.start());
+  rocksdb::Slice upper(bounds.end());
+
+  rocksdb::ReadOptions readOptions;
+  readOptions.prefix_same_as_start = prefix_same_as_start;
+  readOptions.iterate_upper_bound = &upper;
+  readOptions.total_order_seek = !prefix_same_as_start;
+  readOptions.verify_checksums = false;
+  readOptions.fill_cache = false;
+
+  rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
+  rocksdb::Comparator const* cmp = cf->GetComparator();
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(readOptions, cf));
+
+  it->Seek(lower);
+  return (it->Valid() && cmp->Compare(it->key(), upper) < 0);
 }
 
 /// @brief helper method to remove large ranges of data

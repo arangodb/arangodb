@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,44 +21,26 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_TIMED_ACTION_H
-#define ARANGODB_BASICS_TIMED_ACTION_H 1
-
-#include "Basics/Common.h"
-#include "Basics/system-functions.h"
+#ifndef ARANGOD_GRAPH_SHORTEST_PATH_TYPE_H
+#define ARANGOD_GRAPH_SHORTEST_PATH_TYPE_H 1
 
 namespace arangodb {
+namespace graph {
 
-class TimedAction {
- public:
-  TimedAction(TimedAction const&) = delete;
-  TimedAction& operator=(TimedAction const&) = delete;
+struct ShortestPathType {
+  enum class Type { KShortestPaths = 0, KPaths = 1 };
 
-  TimedAction(std::function<void(double)> const& callback, double threshold)
-      : _callback(callback), _threshold(threshold), _start(TRI_microtime()), _done(false) {}
+  // no need to create an object of it
+  ShortestPathType() = delete;
 
-  ~TimedAction() = default;
+  /// @brief get the type from a string
+  static Type fromString(char const* value);
 
- public:
-  double elapsed() const { return (TRI_microtime() - _start); }
-  bool tick() {
-    if (!_done) {
-      if (elapsed() >= _threshold) {
-        _done = true;
-        _callback(_threshold);
-        return true;
-      }
-    }
-    return false;
-  }
-
- private:
-  std::function<void(double)> const _callback;
-  double const _threshold;
-  double _start;
-  bool _done;
+  /// @brief return the type as a string
+  static char const* toString(Type value);
 };
 
+}  // namespace graph
 }  // namespace arangodb
 
 #endif

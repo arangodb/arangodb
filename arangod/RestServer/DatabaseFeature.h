@@ -80,6 +80,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
+  void prepare() override final;
 
   // used by catch tests
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -142,12 +143,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
   void disableUpgrade() { _upgrade = false; }
-  bool throwCollectionNotLoadedError() const {
-    return _throwCollectionNotLoadedError.load(std::memory_order_relaxed);
-  }
-  void throwCollectionNotLoadedError(bool value) {
-    _throwCollectionNotLoadedError.store(value);
-  }
   void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
   
   struct DatabasesLists {
@@ -155,14 +150,19 @@ class DatabaseFeature : public application_features::ApplicationFeature {
     std::unordered_set<TRI_vocbase_t*> _droppedDatabases;
   };
 
+  static TRI_vocbase_t& getCalculationVocbase();
+  
+
  private:
+  static void initCalculationVocbase(application_features::ApplicationServer& server);
+
   void stopAppliers();
 
   /// @brief create base app directory
   int createBaseApplicationDirectory(std::string const& appPath, std::string const& type);
 
   /// @brief create app subdirectory for a database
-  int createApplicationDirectory(std::string const& name, std::string const& basePath);
+  int createApplicationDirectory(std::string const& name, std::string const& basePath, bool removeExisting);
 
   /// @brief iterate over all databases in the databases directory and open them
   int iterateDatabases(arangodb::velocypack::Slice const& databases);
@@ -181,7 +181,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool _defaultWaitForSync;
   bool _forceSyncProperties;
   bool _ignoreDatafileErrors;
-  std::atomic<bool> _throwCollectionNotLoadedError;
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
 
