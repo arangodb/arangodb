@@ -6,6 +6,7 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/GeoFilter-test.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GeoDistanceFilter-test.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchAnalyzerFeature-test.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchAqlAnalyzer-test.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchComparer-test.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchDocument-test.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFeature-test.cpp

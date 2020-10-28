@@ -987,8 +987,8 @@ else () # NOT MSVC
 endif ()
 
 # put together the final flags
-set(CMAKE_C_FLAGS    "${CMAKE_C_FLAGS} ${BASE_FLAGS} ${BASE_C_FLAGS}")
-set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${BASE_FLAGS} ${BASE_CXX_FLAGS}")
+set(CMAKE_C_FLAGS    "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS}")
+set(CMAKE_CXX_FLAGS  "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS}")
 
 if (VERBOSE)
   message(STATUS "Info BASE_FLAGS:     ${BASE_FLAGS}")
