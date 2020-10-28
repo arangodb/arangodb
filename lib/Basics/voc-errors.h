@@ -780,7 +780,7 @@ constexpr int TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN               
 constexpr int TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES             = 1469;
 
 /// 1470: ERROR_CLUSTER_UNSUPPORTED
-/// "unsupported operation or parameter"
+/// "unsupported operation or parameter for clusters"
 /// Will be raised when there is an attempt to carry out an operation that is
 /// not supported in the context of a sharded collection.
 constexpr int TRI_ERROR_CLUSTER_UNSUPPORTED                                     = 1470;
