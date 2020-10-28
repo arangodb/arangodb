@@ -307,6 +307,6 @@ RestStatus RestStatusHandler::executeMemoryProfile() {
   _response->setContentType(rest::ContentType::TEXT);
   _response->addRawPayload(velocypack::StringRef(content));
 
-  return RestStatus::DONE;
 #endif
+  return RestStatus::DONE;
 }
