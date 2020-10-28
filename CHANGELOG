@@ -1,5 +1,14 @@
 devel
 -----
+* Added new 'aql' type for ArangoSearch analyzers
+
+* Obsoleted the startup options `--database.throw-collection-not-loaded-error` 
+  and `--ttl.only-loaded-collection`.
+
+  These options were meaningful for the MMFiles storage engine only, but for 
+  the RocksDB storage engine they did not make any difference. Using these startup
+  options is still possible, but will have no effect other than generating a 
+  warning at server startup.
 
 * Added CMake option `USE_MINIMAL_DEBUGINFO`.
   This option is turned off by default. If turned on, the created binaries

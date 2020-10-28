@@ -73,6 +73,18 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace {
+arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(arangodb::application_features::ApplicationServer& server) {
+  arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
+  auto rv = info.load("Z", std::numeric_limits<uint64_t>::max()); // name does not matter. We just need validity check to pass.
+  TRI_ASSERT(rv.ok());
+  return info;
+}
+
+/// @brief sandbox vocbase for executing calculation queries
+std::unique_ptr<TRI_vocbase_t> calculationVocbase;
+}
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // i am here for debugging only.
 TRI_vocbase_t* DatabaseFeature::CURRENT_VOCBASE = nullptr;
@@ -263,7 +275,6 @@ DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
-      _throwCollectionNotLoadedError(false),
       _databasesLists(new DatabasesLists()),
       _isInitiallyEmpty(false),
       _checkVersion(false),
@@ -311,13 +322,6 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
-      "--database.throw-collection-not-loaded-error",
-      "throw an error when accessing a collection that is still loading",
-      new AtomicBooleanParameter(&_throwCollectionNotLoadedError),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-      .setDeprecatedIn(30700);
-  
-  options->addOption(
       "--database.old-system-collections",
       "create and use deprecated system collection (_modules, _fishbowl)",
       new BooleanParameter(&_useOldSystemCollections),
@@ -325,6 +329,11 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30609)
       .setIntroducedIn(30705)
       .setDeprecatedIn(30800);
+  
+  // the following option was obsoleted in 3.8
+  options->addObsoleteOption(
+      "--database.throw-collection-not-loaded-error",
+      "throw an error when accessing a collection that is still loading", false);
   
   // the following option was removed in 3.7
   options->addObsoleteOption("--database.maximal-journal-size",
@@ -359,6 +368,12 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
            "'--database.auto-upgrade'";
     FATAL_ERROR_EXIT();
   }
+}
+
+void DatabaseFeature::initCalculationVocbase(application_features::ApplicationServer& server) {
+  calculationVocbase =
+      std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL,
+                                      createExpressionVocbaseInfo(server));
 }
 
 void DatabaseFeature::start() {
@@ -531,9 +546,14 @@ void DatabaseFeature::unprepare() {
     closeOpenDatabases();
   } catch (...) {
   }
-
+  calculationVocbase.reset();
   // clear singleton
   DATABASE = nullptr;
+}
+
+void DatabaseFeature::prepare() {
+  // need this to make calculation analyzer available in database links
+  initCalculationVocbase(server());
 }
 
 /// @brief will be called when the recovery phase has run
@@ -1069,6 +1089,11 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t& vocba
     TRI_ASSERT(vocbase != nullptr);
     func(*vocbase);
   }
+}
+
+TRI_vocbase_t& arangodb::DatabaseFeature::getCalculationVocbase() {
+  TRI_ASSERT(calculationVocbase);
+  return *calculationVocbase;
 }
 
 void DatabaseFeature::stopAppliers() {

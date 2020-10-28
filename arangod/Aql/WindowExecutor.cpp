@@ -93,7 +93,7 @@ BaseWindowExecutor::AggregatorList BaseWindowExecutor::createAggregators(
 }
 
 BaseWindowExecutor::BaseWindowExecutor(Infos& infos)
-    : _infos(infos), _aggregators(createAggregators(infos)){};
+    : _infos(infos), _aggregators(createAggregators(infos)) {}
 
 BaseWindowExecutor::~BaseWindowExecutor() = default;
 
@@ -209,7 +209,7 @@ auto AccuWindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCa
 // -------------- WindowExecutor --------------
 
 WindowExecutor::WindowExecutor(Fetcher& fetcher, Infos& infos)
-    : BaseWindowExecutor(infos){};
+    : BaseWindowExecutor(infos) {}
 
 WindowExecutor::~WindowExecutor() = default;
 

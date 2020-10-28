@@ -523,12 +523,6 @@ arangodb::Result TRI_vocbase_t::loadCollection(arangodb::LogicalCollection& coll
         break;
       }
 
-      // only throw this particular error if the server is configured to do so
-      auto& databaseFeature = server().getFeature<DatabaseFeature>();
-      if (databaseFeature.throwCollectionNotLoadedError()) {
-        return {TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED};
-      }
-
       std::this_thread::sleep_for(std::chrono::microseconds(collectionStatusPollInterval()));
     }
 
@@ -1613,8 +1607,10 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
 
   TRI_ASSERT(_info.valid());
 
-  QueryRegistryFeature& feature = _info.server().getFeature<QueryRegistryFeature>();
-  _queries.reset(new arangodb::aql::QueryList(feature));
+  if (_info.server().hasFeature<QueryRegistryFeature>()) {
+    QueryRegistryFeature& feature = _info.server().getFeature<QueryRegistryFeature>();
+    _queries.reset(new arangodb::aql::QueryList(feature));
+  }
   _cursorRepository.reset(new arangodb::CursorRepository(*this));
   _replicationClients.reset(new arangodb::ReplicationClientsProgressTracker());
 
