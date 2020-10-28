@@ -1,6 +1,8 @@
 v3.6.9 (XXXX-XX-XX)
 -------------------
 
+* Bug-fix: Allow to unlink a view created on a SmartGraphEdge collection.
+
 * Fixed collection count which could be off after a server crash.
 
 
