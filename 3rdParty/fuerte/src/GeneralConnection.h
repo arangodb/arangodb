@@ -237,6 +237,28 @@ class GeneralConnection : public fuerte::Connection {
       this->_active.store(true);
     }
   }
+  
+  fuerte::Error translateError(asio_ns::error_code const& e,
+                               fuerte::Error c) const {
+#ifdef _WIN32
+    if (this->_timeoutOnReadWrite && (c == Error::ReadError ||
+                                      c == Error::WriteError)) {
+      return Error::RequestTimeout;
+    }
+#endif
+
+    if (e == asio_ns::error::misc_errors::eof ||
+        e == asio_ns::error::connection_reset) {
+      return fuerte::Error::ConnectionClosed;
+    } else if (e == asio_ns::error::operation_aborted ||
+               e == asio_ns::error::connection_aborted) {
+      // keepalive timeout may have expired
+      return this->_timeoutOnReadWrite ? fuerte::Error::ConnectionClosed
+                                       : fuerte::Error::ConnectionCanceled;
+    }
+
+    return c;
+  }
 
  protected:
   virtual void finishConnect() = 0;
@@ -361,21 +383,6 @@ struct MultiConnection : public GeneralConnection<ST, RT> {
   std::unique_ptr<RT> createRequest(std::unique_ptr<Request>&& req,
                                     RequestCallback&& cb) override {
     return std::make_unique<RT>(std::move(req), std::move(cb));
-  }
-
-  fuerte::Error translateError(asio_ns::error_code const& e,
-                               fuerte::Error c) const {
-    if (e == asio_ns::error::misc_errors::eof ||
-        e == asio_ns::error::connection_reset) {
-      return fuerte::Error::ConnectionClosed;
-    } else if (e == asio_ns::error::operation_aborted ||
-               e == asio_ns::error::connection_aborted) {
-      // keepalive timeout may have expired
-      return this->_timeoutOnReadWrite ? fuerte::Error::ConnectionClosed
-                                       : fuerte::Error::ConnectionCanceled;
-    }
-
-    return c;
   }
 
  private:
