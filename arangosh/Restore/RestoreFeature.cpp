@@ -657,6 +657,7 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
   int64_t numReadSinceLastReport = 0;
 
   bool const isGzip =
+      datafile->path().size() > 3 &&
       (0 == datafile->path().substr(datafile->path().size() - 3).compare(".gz"));
 
   buffer.clear();

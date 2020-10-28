@@ -3472,6 +3472,11 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
       requests[i].result.answer->header(StaticStrings::ErrorCodes, found);
       replicationWorked = !found;
     }
+
+    TRI_IF_FAILURE("replicateOperationsDropFollower") { 
+      replicationWorked = false;
+    }
+
     if (!replicationWorked) {
       auto const& followerInfo = collection.followers();
       Result res = followerInfo->remove((*followers)[i]);

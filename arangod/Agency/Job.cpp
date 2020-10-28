@@ -447,6 +447,7 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot, std::string const& d
 std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
     Node const& snap, std::string const& db, std::string const& col, std::string const& shrd,
     std::string const& serverToAvoid) {
+
   // serverToAvoid is the leader for which we are seeking a replacement. Note that
   // it is not a given that this server is the first one in Current/servers or
   // Current/failoverCandidates.
@@ -533,6 +534,35 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
   }
 
   return std::string();
+}
+
+/// @brief The shard must be one of a collection without
+/// `distributeShardsLike`. This returns all servers which
+/// are in `failoverCandidates` for this shard or for any of its clones.
+std::unordered_set<std::string> Job::findAllFailoverCandidates(
+    Node const& snap,
+    std::string const& db,
+    std::vector<Job::shard_t> const& shardsLikeMe) {
+
+  std::unordered_set<std::string> result;
+
+  for (const auto& clone : shardsLikeMe) {
+    auto sharedPath = db + "/" + clone.collection + "/";
+    auto currentFailoverCandidatesPath =
+        curColPrefix + sharedPath + clone.shard + "/failoverCandidates";
+    bool isArray = false;
+    VPackSlice serverList;
+    // If we do have failover candidates, we should use them
+    std::tie(serverList, isArray) = snap.hasAsArray(currentFailoverCandidatesPath);
+    if (isArray) {
+      for (const auto& server : VPackArrayIterator(serverList)) {
+        auto id = server.copyString();
+        result.insert(id);
+      }
+    }
+  }
+
+  return result;
 }
 
 std::string Job::uuidLookup(std::string const& shortID) {

@@ -100,11 +100,13 @@ struct RocksDBCollectionMeta final {
 
   /// @brief get the current count
   DocCount loadCount();
-    /// @brief get the current count, ONLY use in recovery
-  DocCount& countUnsafe() { return _count; }
 
   /// @brief buffer a counter adjustment
   void adjustNumberDocuments(rocksdb::SequenceNumber seq, TRI_voc_rid_t revId, int64_t adj);
+
+  /// @brief buffer a counter adjustment ONLY in recovery, optimized to use less memory
+  bool adjustNumberDocumentsInRecovery(rocksdb::SequenceNumber seq,
+                                       TRI_voc_rid_t revId, int64_t adj);
 
   /// @brief serialize the collection metadata
   arangodb::Result serializeMeta(rocksdb::WriteBatch&, LogicalCollection&,

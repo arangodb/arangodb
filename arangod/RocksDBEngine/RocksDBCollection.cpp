@@ -20,6 +20,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
@@ -50,6 +51,7 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
@@ -67,6 +69,18 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+
+namespace {
+
+rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
+  auto* sm = engine.settingsManager();
+  if (sm) {
+    sm->sync(true);  // force
+  }
+  return engine.db()->GetLatestSequenceNumber();
+}
+
+}  // namespace
 
 RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                                      arangodb::velocypack::Slice const& info)
@@ -1238,6 +1252,12 @@ void RocksDBCollection::deferDropCollection(std::function<bool(LogicalCollection
   // nothing to do here
 }
 
+bool RocksDBCollection::hasDocuments() {
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
+  return rocksutils::hasKeys(db, bounds, true);
+}
+
 /// @brief return engine-specific figures
 void RocksDBCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
@@ -1546,12 +1566,10 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
   return false;
 }
 
-/// may never be called unless recovery is finished
 void RocksDBCollection::adjustNumberDocuments(TRI_voc_rid_t revId, int64_t adjustment) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
   TRI_ASSERT(engine != nullptr);
-  TRI_ASSERT(!engine->inRecovery());
 #endif
   if (revId != 0) {
     _revisionId = revId;
@@ -1671,6 +1689,7 @@ void RocksDBCollection::unlockRead() { _exclusiveLock.unlockRead(); }
 
 // rescans the collection to update document count
 uint64_t RocksDBCollection::recalculateCounts() {
+  std::unique_lock<std::mutex> guard(_recalculationLock);
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
   rocksdb::TransactionDB* db = engine->db();
   const rocksdb::Snapshot* snapshot = nullptr;
@@ -1694,6 +1713,13 @@ uint64_t RocksDBCollection::recalculateCounts() {
   auto collGuard =
       scopeGuard([&] { vocbase.releaseCollection(&_logicalCollection); });
 
+  TRI_voc_tid_t trxId = 0;
+  auto blockerGuard = scopeGuard([&] {  // remove blocker afterwards
+    if (trxId != 0) {
+      _meta.removeBlocker(trxId);
+    }
+  });
+
   uint64_t snapNumberOfDocuments = 0;
   {
     // fetch number docs and snapshot under exclusive lock
@@ -1705,13 +1731,36 @@ uint64_t RocksDBCollection::recalculateCounts() {
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    snapNumberOfDocuments = numberDocuments();
+    // generate a unique transaction id for a blocker
+    trxId = transaction::Context::makeTransactionId();
+ 
+    // place a blocker. will be removed by blockerGuard automatically
+    _meta.placeBlocker(trxId, engine->db()->GetLatestSequenceNumber());
+
     snapshot = engine->db()->GetSnapshot();
+    snapNumberOfDocuments = numberDocuments();
     TRI_ASSERT(snapshot);
   }
 
+  auto snapSeq = snapshot->GetSequenceNumber();
+  auto bounds = RocksDBKeyBounds::Empty();
+  bool set = false;
+  {
+    READ_LOCKER(guard, _indexesLock);
+    for (auto it : _indexes) {
+      if (it->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
+        bounds = RocksDBKeyBounds::PrimaryIndex(rix->objectId());
+        set = true;
+        break;
+      }
+    }
+  }
+  if (!set) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "did not find primary index");
+  }
+
   // count documents
-  auto bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   rocksdb::Slice upper(bounds.end());
 
   rocksdb::ReadOptions ro;
@@ -1730,11 +1779,24 @@ uint64_t RocksDBCollection::recalculateCounts() {
     ++count;
   }
 
-  int64_t adjustment = snapNumberOfDocuments - count;
+  if (count % 4096 == 0 &&
+      application_features::ApplicationServer::server->isStopping()) {
+    // check for server shutdown
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+
+  int64_t adjustment = count - snapNumberOfDocuments;
   if (adjustment != 0) {
     LOG_TOPIC("ad6d3", WARN, Logger::REPLICATION)
-        << "inconsistent collection count detected, "
-        << "an offet of " << adjustment << " will be applied";
+        << "inconsistent collection count detected for "
+        << vocbase.name() << "/" << _logicalCollection.name()
+        << ", an offet of " << adjustment << " will be applied";
+    auto adjustSeq = engine->db()->GetLatestSequenceNumber();
+    if (adjustSeq <= snapSeq) {
+      adjustSeq = ::forceWrite(*engine);
+      TRI_ASSERT(adjustSeq > snapSeq);
+    }
+    _meta.adjustNumberDocuments(adjustSeq, static_cast<TRI_voc_rid_t>(0), adjustment);
     adjustNumberDocuments(static_cast<TRI_voc_rid_t>(0), adjustment);
   }
 

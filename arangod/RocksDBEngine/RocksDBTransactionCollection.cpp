@@ -24,6 +24,7 @@
 #include "RocksDBTransactionCollection.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
@@ -212,9 +213,15 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
   TRI_ASSERT(_collection != nullptr);
 
   // Update the collection count
-  int64_t const adjustment = _numInserts - _numRemoves;
+  int64_t adjustment = _numInserts - _numRemoves;
   if (hasOperations()) {
     TRI_ASSERT(_revision != 0 && commitSeq != 0);
+    TRI_IF_FAILURE("RocksDBCommitCounts") { adjustment = 0; }
+    TRI_IF_FAILURE("RocksDBCommitCountsRandom") {
+      if (RandomGenerator::interval(uint16_t(100)) >= 50) {
+        adjustment = 0;
+      }
+    }
     RocksDBCollection* coll =
         static_cast<RocksDBCollection*>(_collection->getPhysical());
     coll->adjustNumberDocuments(_revision, adjustment);  // update online count

@@ -516,6 +516,15 @@ class RocksDBCuckooIndexEstimator {
     _needToPersist.store(true, std::memory_order_release);
   }
 
+  void clearInRecovery(rocksdb::SequenceNumber seq) {
+    if (seq <= _appliedSeq.load(std::memory_order_acquire)) {
+      // already incorporated in estimator values
+      return;
+    }
+    clear();
+    setAppliedSeq(seq);
+  }
+
  private:  // methods
   /// @brief call with output from committableSeq(current), and before serialize
   rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq) {
