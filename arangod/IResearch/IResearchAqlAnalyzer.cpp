@@ -292,7 +292,7 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
               "DML is forbidden for aql analyzer"};
     }
 
-    // no traversal (also data access is forbidden) but to give mo clear error message
+    // no traversal (also data access is forbidden) but to give more clear error message
     if (ast->containsTraversal()) {
       return {TRI_ERROR_BAD_PARAMETER,
               "Traversal usage is forbidden for aql analyzer"};
