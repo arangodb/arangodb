@@ -1,6 +1,10 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* If a collection (or database) is dropped during the instantiation of an AQL query,
+  the setup code now aborts with an ERROR_QUERY_COLLECTION_LOCK_FAILED and earlier.
+  Before the setup code could abort with TRI_ERROR_INTERNAL in the same case.
+
 * Fixed issue #12248: Web UI - Added missing HTML escaping in the setup script
   section of a foxx app.
 
