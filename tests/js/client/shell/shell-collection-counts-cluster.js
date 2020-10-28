@@ -68,6 +68,68 @@ function BaseTestConfig () {
   'use strict';
   
   return {
+    testFailureOnLeaderNoManagedTrx : function () {
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      for (let i = 0; i < 200; ++i) {
+        c.insert({ _key: "test" + i }); 
+      }
+      assertEqual(200, c.count());
+      assertEqual(200, c.toArray().length);
+
+      let servers = getDBServers();
+      let shardInfo = c.shards(true);
+      let shard = Object.keys(shardInfo)[0];
+      let leader = shardInfo[shard][0];
+      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+
+      // break leaseManagedTrx on the leader, so it will return a nullptr
+      let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/leaseManagedTrxFail", body: {} });
+      assertEqual(200, result.status);
+
+      // add a follower. this will kick off the getting-in-sync protocol,
+      // which will eventually call the holdReadLockCollection API, which then
+      // will call leaseManagedTrx and get the nullptr back
+      c.properties({ replicationFactor: 2 });
+
+      // wait until we have an in-sync follower
+      let tries = 0;
+      while (tries++ < 120) {
+        shardInfo = c.shards(true);
+        servers = shardInfo[shard];
+        if (tries > 20) {
+          if (servers.length === 2 && c.count() === 200) {
+            break;
+          }
+        } else if (tries === 20) {
+          // wait several seconds so we can be sure the
+          clearFailurePoints();
+        }
+        require("internal").sleep(0.5);
+      }
+      assertEqual(2, servers.length);
+      assertEqual(200, c.count());
+      assertEqual(200, c.toArray().length);
+
+      tries = 0;
+      let total;
+      while (tries++ < 120) {
+        total = 0;
+        getDBServers().forEach((server) => {
+          if (servers.indexOf(server.id) === -1) {
+            return;
+          }
+          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+          assertEqual(200, result.status);
+          total += result.json.count;
+        });
+        if (total === 2 * 200) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+      assertEqual(2 * 200, total);
+    },
+
     testWrongCountOnLeaderFullSync : function () {
       let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
       for (let i = 0; i < 100; ++i) {

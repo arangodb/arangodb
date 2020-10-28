@@ -1,6 +1,12 @@
 devel
 -----
-* Added new 'aql' type for ArangoSearch analyzers
+
+* Fixed very spurious errors if the `holdReadLockCollection` replication API for
+  the getting-in-sync procedure of shards was called during server shutdown.
+  In this case that method could ask the transaction manager for a specific
+  transaction, but wasn't return one due to the server shutddown. 
+
+* Added new 'aql' type for ArangoSearch analyzers.
 
 * Obsoleted the startup options `--database.throw-collection-not-loaded-error` 
   and `--ttl.only-loaded-collection`.

@@ -487,11 +487,11 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
       getReadLockId(pool, endpoint, database, clientId, timeout, rlid);
   if (!result.ok()) {
     LOG_TOPIC("2e5ae", WARN, Logger::MAINTENANCE) << result.errorMessage();
-    return result;
-  }
-  LOG_TOPIC("c8d18", DEBUG, Logger::MAINTENANCE) << "Got read lock id: " << rlid;
+  } else {
+    LOG_TOPIC("c8d18", DEBUG, Logger::MAINTENANCE) << "Got read lock id: " << rlid;
 
-  result = getReadLock(pool, endpoint, database, collection, clientId, rlid, soft, timeout);
+    result.reset(getReadLock(pool, endpoint, database, collection, clientId, rlid, soft, timeout));
+  }
 
   return result;
 }
@@ -909,7 +909,7 @@ bool SynchronizeShard::first() {
         catchupWithReadLock(ep, database, *collection, clientId, shard,
                             leader, lastTick, builder);
       if (!tickResult.ok()) {
-        LOG_TOPIC("0a4d4", INFO, Logger::MAINTENANCE) << syncRes.errorMessage();
+        LOG_TOPIC("0a4d4", INFO, Logger::MAINTENANCE) << tickResult.errorMessage();
         _result.reset(std::move(tickResult).result());
         return false;
       }

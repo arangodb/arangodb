@@ -493,6 +493,10 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TransactionId tid
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return nullptr;
   }
+      
+  TRI_IF_FAILURE("leaseManagedTrxFail") {
+    return nullptr;
+  }
   
   auto const role = ServerState::instance()->getRole();
   std::chrono::steady_clock::time_point endTime;
