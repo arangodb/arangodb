@@ -1,6 +1,8 @@
 devel
 -----
 
+* Bug-fix: Allow to unlink a view created on a SmartGraphEdge collection.
+
 * If a collection (or database) is dropped during the instantiation of an AQL query,
   the setup code now aborts with an ERROR_QUERY_COLLECTION_LOCK_FAILED and earlier.
   Before the setup code could abort with TRI_ERROR_INTERNAL in the same case.
