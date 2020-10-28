@@ -151,7 +151,7 @@
     "ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS" : { "code" : 1467, "message" : "got contradicting answers from different shards" },
     "ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN" : { "code" : 1468, "message" : "not all sharding attributes given" },
     "ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES" : { "code" : 1469, "message" : "must not change the value of a shard key attribute" },
-    "ERROR_CLUSTER_UNSUPPORTED"    : { "code" : 1470, "message" : "unsupported operation or parameter" },
+    "ERROR_CLUSTER_UNSUPPORTED"    : { "code" : 1470, "message" : "unsupported operation or parameter for clusters" },
     "ERROR_CLUSTER_ONLY_ON_COORDINATOR" : { "code" : 1471, "message" : "this operation is only valid on a coordinator in a cluster" },
     "ERROR_CLUSTER_READING_PLAN_AGENCY" : { "code" : 1472, "message" : "error reading Plan in agency" },
     "ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION" : { "code" : 1473, "message" : "could not truncate collection" },
