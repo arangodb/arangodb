@@ -45,12 +45,12 @@ function ahuacatlFailureSuite () {
   const cn = "UnitTestsAhuacatlFailures";
   const en = "UnitTestsAhuacatlEdgeFailures";
   
-  let  assertFailingQuery = function (query) {
+  let  assertFailingQuery = function (query, expectedError = internal.errors.ERROR_DEBUG) {
     try {
       AQL_EXECUTE(query);
       fail();
     } catch (err) {
-      assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum, query);
+      assertEqual(expectedError.code, err.errorNum, query);
     }
   };
         
