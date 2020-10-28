@@ -234,7 +234,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
   } else if (sub == "shards") {
     // /_api/collection/<identifier>/shards
     if (!ServerState::instance()->isRunningInCluster()) {
-      this->generateError(Result(TRI_ERROR_INTERNAL));
+      this->generateError(Result(TRI_ERROR_NOT_IMPLEMENTED, "shards API is only available in a cluster"));
       return RestStatus::DONE;
     }
 

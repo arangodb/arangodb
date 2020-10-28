@@ -340,6 +340,12 @@ else ()
   set(V8_CFLAGS   "$ENV{V8_CFLAGS}")
   set(V8_CXXFLAGS "$ENV{V8_CXXFLAGS}")
   set(V8_LDFLAGS  "$ENV{V8_LDFLAGS}")
+  
+  # build V8 without debug information
+  if (USE_MINIMAL_DEBUGINFO)
+    set(V8_CFLAGS   "${V8_CFLAGS} -g0")
+    set(V8_CXXFLAGS "${V8_CXXFLAGS} -g0")
+  endif()
 
   list(APPEND V8_GYP_ARGS "-Dv8_use_snapshot=true")
 
