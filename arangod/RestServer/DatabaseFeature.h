@@ -80,6 +80,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
+  void prepare() override final;
 
   // used by catch tests
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -149,7 +150,12 @@ class DatabaseFeature : public application_features::ApplicationFeature {
     std::unordered_set<TRI_vocbase_t*> _droppedDatabases;
   };
 
+  static TRI_vocbase_t& getCalculationVocbase();
+  
+
  private:
+  static void initCalculationVocbase(application_features::ApplicationServer& server);
+
   void stopAppliers();
 
   /// @brief create base app directory

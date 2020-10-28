@@ -2194,10 +2194,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
     cluster.prepare();
     networkFeature.prepare();
+    dbFeature.prepare();
 
-    auto cleanup = arangodb::scopeGuard([&]() {
+    auto cleanup = arangodb::scopeGuard([&, this]() {
       dbFeature.unprepare();
       networkFeature.unprepare();
+      server.getFeature<arangodb::DatabaseFeature>().prepare(); // restore calculation vocbase
     });
 
     // create system vocbase (before feature start)
@@ -2262,12 +2264,14 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auth.prepare();
     cluster.prepare();
     networkFeature.prepare();
+    dbFeature.prepare();
 
-    auto cleanup = arangodb::scopeGuard([&]() {
+    auto cleanup = arangodb::scopeGuard([&, this]() {
       dbFeature.unprepare();
       networkFeature.unprepare();
       cluster.unprepare();
       auth.unprepare();
+      server.getFeature<arangodb::DatabaseFeature>().prepare(); // restore calculation vocbase
     });
 
     // create system vocbase (before feature start)
@@ -2641,7 +2645,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   auto& systemdb = newServer.addFeature<arangodb::SystemDatabaseFeature>();
   newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)
 
-  auto cleanup = arangodb::scopeGuard([&dbfeature]() { dbfeature.unprepare(); });
+  auto cleanup = arangodb::scopeGuard([&dbfeature, this]() {
+    dbfeature.unprepare();
+    server.getFeature<arangodb::DatabaseFeature>().prepare(); // restore calculation vocbase
+  });
 
   sharding.prepare();
 
@@ -3549,7 +3556,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
                                                  false, unused);
   }
 
-  auto cleanup = arangodb::scopeGuard([&dbFeature]() { dbFeature.unprepare(); });
+  auto cleanup = arangodb::scopeGuard([&dbFeature, this]() {
+    dbFeature.unprepare();
+    server.getFeature<arangodb::DatabaseFeature>().prepare(); // restore calculation vocbase
+  });
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   EXPECT_TRUE(
@@ -3819,7 +3829,10 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
   newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)
-  auto cleanup = arangodb::scopeGuard([&dbFeature]() { dbFeature.unprepare(); });
+  auto cleanup = arangodb::scopeGuard([&dbFeature, this]() {
+    dbFeature.unprepare();
+    server.getFeature<arangodb::DatabaseFeature>().prepare(); // restore calculation vocbase
+  });
 
   // create system vocbase (before feature start)
   {
@@ -3940,7 +3953,10 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
   newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)
-  auto cleanup = arangodb::scopeGuard([&dbFeature]() { dbFeature.unprepare(); });
+  auto cleanup = arangodb::scopeGuard([&dbFeature, this]() {
+    dbFeature.unprepare();
+    server.getFeature<arangodb::DatabaseFeature>().prepare(); // restore calculation vocbase
+  });
 
   // create system vocbase (before feature start)
   {

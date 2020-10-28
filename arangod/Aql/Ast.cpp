@@ -204,7 +204,7 @@ Ast::SpecialNodes::SpecialNodes()
 }
 
 /// @brief create the AST
-Ast::Ast(QueryContext& query)
+Ast::Ast(QueryContext& query, AstPropertiesFlagsType flags /* = AstPropertyFlag::AST_FLAG_DEFAULT */)
     : _query(query),
       _resources(&query.resourceMonitor()),
       _root(nullptr),
@@ -213,7 +213,8 @@ Ast::Ast(QueryContext& query)
       _containsBindParameters(false),
       _containsModificationNode(false),
       _containsParallelNode(false),
-      _willUseV8(false) {
+      _willUseV8(false),
+      _astFlags(flags) {
   startSubQuery();
 
   TRI_ASSERT(_root != nullptr);
@@ -853,6 +854,9 @@ AstNode* Ast::createNodeParameter(char const* name, size_t length) {
 
   AstNode* node = createNode(NODE_TYPE_PARAMETER);
   node->setStringValue(name, length);
+  if (hasFlag(NON_CONST_PARAMETERS)) {
+    node->setFlag(DETERMINED_CONSTANT);
+  }
 
   // insert bind parameter name into list of found parameters
   _bindParameters.emplace(name, length);
@@ -1133,6 +1137,19 @@ AstNode* Ast::createNodeValueDouble(double value) {
   node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
   node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
 
+  return node;
+}
+
+/// @brief create an AST string value node with forced non-constness
+AstNode* Ast::createNodeValueMutableString(char const* value, size_t length) {
+  if (value == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  AstNode* node = createNode(NODE_TYPE_VALUE);
+  node->setValueType(VALUE_TYPE_STRING);
+  node->setStringValue(value, length);
+  node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+  node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
   return node;
 }
 
@@ -1646,12 +1663,15 @@ void Ast::injectBindParameters(BindParameters& parameters,
         auto const& value = (*it).second.first;
 
         if (node->type == NODE_TYPE_PARAMETER) {
+          auto const constantParameter = node->isConstant();
           // bind parameter containing a value literal
           node = nodeFromVPack(value, true);
 
           if (node != nullptr) {
-            // already mark node as constant here
-            node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+            if (constantParameter) {
+              // already mark node as constant here if parameters are constant
+              node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+            }
             // mark node as simple
             node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
             // mark node as executable on db-server

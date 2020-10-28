@@ -1,5 +1,6 @@
 devel
 -----
+* Added new 'aql' type for ArangoSearch analyzers
 
 * Obsoleted the startup options `--database.throw-collection-not-loaded-error` 
   and `--ttl.only-loaded-collection`.

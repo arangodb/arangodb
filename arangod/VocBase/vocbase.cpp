@@ -1607,8 +1607,10 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
 
   TRI_ASSERT(_info.valid());
 
-  QueryRegistryFeature& feature = _info.server().getFeature<QueryRegistryFeature>();
-  _queries.reset(new arangodb::aql::QueryList(feature));
+  if (_info.server().hasFeature<QueryRegistryFeature>()) {
+    QueryRegistryFeature& feature = _info.server().getFeature<QueryRegistryFeature>();
+    _queries.reset(new arangodb::aql::QueryList(feature));
+  }
   _cursorRepository.reset(new arangodb::CursorRepository(*this));
   _replicationClients.reset(new arangodb::ReplicationClientsProgressTracker());
 

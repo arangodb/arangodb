@@ -73,6 +73,18 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace {
+arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(arangodb::application_features::ApplicationServer& server) {
+  arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
+  auto rv = info.load("Z", std::numeric_limits<uint64_t>::max()); // name does not matter. We just need validity check to pass.
+  TRI_ASSERT(rv.ok());
+  return info;
+}
+
+/// @brief sandbox vocbase for executing calculation queries
+std::unique_ptr<TRI_vocbase_t> calculationVocbase;
+}
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // i am here for debugging only.
 TRI_vocbase_t* DatabaseFeature::CURRENT_VOCBASE = nullptr;
@@ -358,6 +370,12 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 }
 
+void DatabaseFeature::initCalculationVocbase(application_features::ApplicationServer& server) {
+  calculationVocbase =
+      std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL,
+                                      createExpressionVocbaseInfo(server));
+}
+
 void DatabaseFeature::start() {
   // set singleton
   DATABASE = this;
@@ -528,9 +546,14 @@ void DatabaseFeature::unprepare() {
     closeOpenDatabases();
   } catch (...) {
   }
-
+  calculationVocbase.reset();
   // clear singleton
   DATABASE = nullptr;
+}
+
+void DatabaseFeature::prepare() {
+  // need this to make calculation analyzer available in database links
+  initCalculationVocbase(server());
 }
 
 /// @brief will be called when the recovery phase has run
@@ -1066,6 +1089,11 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t& vocba
     TRI_ASSERT(vocbase != nullptr);
     func(*vocbase);
   }
+}
+
+TRI_vocbase_t& arangodb::DatabaseFeature::getCalculationVocbase() {
+  TRI_ASSERT(calculationVocbase);
+  return *calculationVocbase;
 }
 
 void DatabaseFeature::stopAppliers() {
