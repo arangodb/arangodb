@@ -38,8 +38,7 @@ class GeoFilter;
 class GeoDistanceFilter;
 
 enum class GeoFilterType : uint32_t {
-  NEARBY = 0,
-  INTERSECTS,
+  INTERSECTS = 0,
   CONTAINS,
   IS_CONTAINED
 };
@@ -75,7 +74,7 @@ struct GeoFilterOptions {
   geo::ShapeContainer shape;
   std::string prefix;
   S2RegionTermIndexer::Options options;
-  GeoFilterType type{GeoFilterType::NEARBY};
+  GeoFilterType type{GeoFilterType::INTERSECTS};
 }; // GeoFilterOptions
 
 //////////////////////////////////////////////////////////////////////////////
