@@ -144,16 +144,10 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
     // set by RestCursorHandler before
     return;
   }
-  
-  try {
-    bool success = true;
-    VPackSlice body = parseVPackBody(success);
-    if (success) {
-      events::QueryDocument(*_request, _response.get(), body);
-    }
-    _auditLogged = true;
-  } catch (...) {
-  }
+    
+  VPackSlice body = _request->payload(false); 
+  events::QueryDocument(*_request, _response.get(), body);
+  _auditLogged = true;
 }
 
 void RestCursorHandler::cancel() {

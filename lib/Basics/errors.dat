@@ -273,6 +273,8 @@ ERROR_QUERY_NOT_FOUND,1591,"query ID not found","Will be raised when an Id of a 
 ERROR_QUERY_USER_ASSERT,1593,"%s","Will be raised if and user provided expression fails to evaluate to true"
 ERROR_QUERY_USER_WARN,1594,"%s","Will be raised if and user provided expression fails to evaluate to true"
 
+ERROR_QUERY_WINDOW_AFTER_MODIFICATION,1595,"window operation after data-modification","Will be raised when a window node is created after a data-modification operation."
+
 ################################################################################
 ## ArangoDB cursor errors
 ################################################################################

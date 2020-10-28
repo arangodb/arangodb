@@ -218,6 +218,7 @@
     "ERROR_QUERY_NOT_FOUND"        : { "code" : 1591, "message" : "query ID not found" },
     "ERROR_QUERY_USER_ASSERT"      : { "code" : 1593, "message" : "%s" },
     "ERROR_QUERY_USER_WARN"        : { "code" : 1594, "message" : "%s" },
+    "ERROR_QUERY_WINDOW_AFTER_MODIFICATION" : { "code" : 1595, "message" : "window operation after data-modification" },
     "ERROR_CURSOR_NOT_FOUND"       : { "code" : 1600, "message" : "cursor not found" },
     "ERROR_CURSOR_BUSY"            : { "code" : 1601, "message" : "cursor is busy" },
     "ERROR_VALIDATION_FAILED"      : { "code" : 1620, "message" : "schema validation failed" },
