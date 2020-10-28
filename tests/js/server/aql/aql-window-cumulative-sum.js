@@ -406,7 +406,7 @@ FOR i IN []
       assertEqual([], result);
     },
 
-    testMakeAndreyHappy1 : function () {
+    testChainedWindowStatements : function () {
       let query = `
       FOR i IN @from .. @to 
         LET value = NOOPT(i) 
@@ -435,7 +435,7 @@ FOR i IN []
       });   
     },
 
-    testMakeAndreyHappy2 : function () {
+    testChainedWindowStatements2 : function () {
       let query = `
       FOR i IN @from .. @to 
         LET value = NOOPT(i) 
