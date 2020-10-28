@@ -249,7 +249,7 @@ struct log_scale_t : public scale_t<T> {
    * @brief Dump to builder
    * @param b Envelope
    */
-  virtual void toVelocyPack(VPackBuilder& b) const {
+  virtual void toVelocyPack(VPackBuilder& b) const override {
     b.add("scale-type", VPackValue("logarithmic"));
     b.add("base", VPackValue(_base));
     scale_t<T>::toVelocyPack(b);
@@ -297,7 +297,7 @@ struct lin_scale_t : public scale_t<T> {
     return static_cast<size_t>(std::floor((val - this->_low)/ _div));
   }
 
-  virtual void toVelocyPack(VPackBuilder& b) const {
+  virtual void toVelocyPack(VPackBuilder& b) const override {
     b.add("scale-type", VPackValue("linear"));
     scale_t<T>::toVelocyPack(b);
   }

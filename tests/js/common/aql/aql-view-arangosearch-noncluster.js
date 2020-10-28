@@ -363,6 +363,16 @@ function iResearchAqlTestSuite () {
       });
     },
 
+    testAttributeEqualityFilterWithWINDOW : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH doc.a == 'foo' OPTIONS { waitForSync : true } WINDOW {preceding:'unbounded'} AGGREGATE l = LENGTH(doc) RETURN MERGE(doc, {length:l})").toArray();
+
+      assertEqual(result.length, 10);
+      result.forEach(function(res, idx) {
+        assertEqual(res.a, "foo");
+        assertEqual(res.length, idx + 1);
+      });
+    },
+
     testMultipleAttributeEqualityFilter : function () {
       var result = db._query("FOR doc IN UnitTestsView SEARCH doc.a == 'foo' && doc.b == 'bar' OPTIONS { waitForSync : true } RETURN doc").toArray();
 

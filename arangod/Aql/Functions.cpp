@@ -967,8 +967,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
         registerInvalidArgumentWarning(expressionContext, funcName);
         return AqlValue(AqlValueHintNull());
       }
-      builder = arangodb::basics::VelocyPackHelper::merge(builder.slice(), it,
-                                                          false, recursive);
+      builder = arangodb::velocypack::Collection::merge(builder.slice(), it, /*mergeObjects*/ recursive, /*nullMeansRemove*/ false);
     }
     return AqlValue(builder.slice(), builder.size());
   }
@@ -990,7 +989,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
     AqlValueMaterializer materializer(&vopts);
     VPackSlice slice = materializer.slice(param, false);
 
-    builder = arangodb::basics::VelocyPackHelper::merge(initialSlice, slice, false, recursive);
+    builder = arangodb::velocypack::Collection::merge(initialSlice, slice, /*mergeObjects*/ recursive, /*nullMeansRemove*/ false);
     initialSlice = builder.slice();
   }
   if (n == 1) {

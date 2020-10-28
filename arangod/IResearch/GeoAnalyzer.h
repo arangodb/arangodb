@@ -105,8 +105,8 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
     return _indexer.options();
   }
 
-  virtual void prepare(S2RegionTermIndexer::Options& opts) const;
-  virtual bool reset(irs::string_ref const& value);
+  virtual void prepare(S2RegionTermIndexer::Options& opts) const override;
+  virtual bool reset(irs::string_ref const& value) override;
 
  private:
   bool parsePoint(VPackSlice slice, S2LatLng& out) const;
@@ -160,8 +160,8 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
 
   explicit GeoJSONAnalyzer(Options const& opts);
 
-  virtual void prepare(S2RegionTermIndexer::Options& opts) const;
-  virtual bool reset(irs::string_ref const& value);
+  virtual void prepare(S2RegionTermIndexer::Options& opts) const override;
+  virtual bool reset(irs::string_ref const& value) override;
 
   Type shapeType() const noexcept { return _type; }
 

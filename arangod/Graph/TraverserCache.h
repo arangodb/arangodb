@@ -28,7 +28,7 @@
 #include "Basics/StringHeap.h"
 #include "VocBase/ManagedDocumentResult.h"
 
-#include <velocypack/StringRef.h>
+#include <velocypack/HashedStringRef.h>
 
 #include <unordered_set>
 
@@ -40,6 +40,7 @@ class Methods;
 
 namespace velocypack {
 class Builder;
+class StringRef;
 class Slice;
 }  // namespace velocypack
 
@@ -110,6 +111,8 @@ class TraverserCache {
   ///        stay valid as long as this cache is valid
   //////////////////////////////////////////////////////////////////////////////
   arangodb::velocypack::StringRef persistString(arangodb::velocypack::StringRef idString);
+  
+  arangodb::velocypack::HashedStringRef persistString(arangodb::velocypack::HashedStringRef idString);
 
   void increaseFilterCounter() { _filteredDocuments++; }
 
@@ -163,7 +166,7 @@ class TraverserCache {
   /// @brief Set of all strings persisted in the stringHeap. So we can save some
   ///        memory by not storing them twice.
   //////////////////////////////////////////////////////////////////////////////
-  std::unordered_set<arangodb::velocypack::StringRef> _persistedStrings;
+  std::unordered_set<arangodb::velocypack::HashedStringRef> _persistedStrings;
 
   BaseOptions const* _baseOptions;
 };
