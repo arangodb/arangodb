@@ -513,6 +513,24 @@ TEST(GeoPointAnalyzerTest, createFromSlice) {
     ASSERT_FALSE(impl.options().index_contains_points_only());
   }
 
+  {
+    auto json = VPackParser::fromJson(R"({ "unknownField": "anything", "latitude": ["subObj", "foo"], "longitude":["subObj", "bar"] })");
+    auto a = GeoPointAnalyzer::make(ref<char>(json->slice()));
+    ASSERT_NE(nullptr, a);
+    auto& impl = dynamic_cast<GeoPointAnalyzer&>(*a);
+
+    GeoPointAnalyzer::Options opts;
+    ASSERT_EQ((std::vector<std::string>{"subObj", "foo"}), impl.latitude());
+    ASSERT_EQ((std::vector<std::string>{"subObj", "bar"}), impl.longitude());
+    ASSERT_EQ(1, impl.options().level_mod());
+    ASSERT_FALSE(impl.options().optimize_for_space());
+    ASSERT_EQ("$", impl.options().marker());
+    ASSERT_EQ(opts.options.minLevel, impl.options().min_level());
+    ASSERT_EQ(opts.options.maxLevel, impl.options().max_level());
+    ASSERT_EQ(opts.options.maxCells, impl.options().max_cells());
+    ASSERT_FALSE(impl.options().index_contains_points_only());
+  }
+
   // latitude field is not set
   {
     auto json = VPackParser::fromJson(R"({
@@ -567,6 +585,16 @@ TEST(GeoPointAnalyzerTest, createFromSlice) {
     auto json = VPackParser::fromJson(R"({
       "options" : {
         "maxCells": -2
+      }
+    })");
+    ASSERT_EQ(nullptr, GeoPointAnalyzer::make(ref<char>(json->slice())));
+  }
+
+  // nan
+  {
+    auto json = VPackParser::fromJson(R"({
+      "options" : {
+        "maxCells": "2"
       }
     })");
     ASSERT_EQ(nullptr, GeoPointAnalyzer::make(ref<char>(json->slice())));
@@ -2206,6 +2234,24 @@ TEST(GeoJSONAnalyzerTest, createFromSlice) {
   }
 
   {
+    auto json = VPackParser::fromJson(R"({ "type": "point", "unknownField":"anything" })");
+    auto a = GeoJSONAnalyzer::make(ref<char>(json->slice()));
+    ASSERT_NE(nullptr, a);
+    auto& impl = dynamic_cast<GeoJSONAnalyzer&>(*a);
+
+    GeoJSONAnalyzer::Options opts;
+    opts.type = GeoJSONAnalyzer::Type::POINT;
+    ASSERT_EQ(opts.type, impl.shapeType());
+    ASSERT_EQ(1, impl.options().level_mod());
+    ASSERT_FALSE(impl.options().optimize_for_space());
+    ASSERT_EQ("$", impl.options().marker());
+    ASSERT_EQ(opts.options.minLevel, impl.options().min_level());
+    ASSERT_EQ(opts.options.maxLevel, impl.options().max_level());
+    ASSERT_EQ(opts.options.maxCells, impl.options().max_cells());
+    ASSERT_FALSE(impl.options().index_contains_points_only());
+  }
+
+  {
     auto json = VPackParser::fromJson(R"({
       "type": "Shape"
     })");
@@ -2265,6 +2311,16 @@ TEST(GeoJSONAnalyzerTest, createFromSlice) {
     auto json = VPackParser::fromJson(R"({
       "options" : {
         "maxCells": -2
+      }
+    })");
+    ASSERT_EQ(nullptr, GeoJSONAnalyzer::make(ref<char>(json->slice())));
+  }
+
+  // nan
+  {
+    auto json = VPackParser::fromJson(R"({
+      "options" : {
+        "maxCells": "2"
       }
     })");
     ASSERT_EQ(nullptr, GeoJSONAnalyzer::make(ref<char>(json->slice())));

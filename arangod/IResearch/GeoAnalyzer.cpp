@@ -192,7 +192,8 @@ template<typename Analyzer>
 bool fromVelocyPack(irs::string_ref const& args, typename Analyzer::Options& out) {
   auto const slice = arangodb::iresearch::slice(args);
 
-  auto const res = deserialize<typename Deserializer<Analyzer>::type>(slice);
+  auto const res = deserialize<typename Deserializer<Analyzer>::type,
+                               hints::hint_list<hints::ignore_unknown>>(slice);
 
   if (!res.ok()) {
     LOG_TOPIC("4349c", WARN, arangodb::iresearch::TOPIC) <<
