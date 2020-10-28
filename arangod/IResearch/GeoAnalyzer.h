@@ -89,10 +89,10 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
 
   explicit GeoPointAnalyzer(Options const& opts);
 
-  virtual void prepare(S2RegionTermIndexer::Options& opts) const;
+  virtual void prepare(S2RegionTermIndexer::Options& opts) const override;
 
  protected:
-  virtual bool reset(irs::string_ref const& value);
+  virtual bool reset(irs::string_ref const& value) override;
 
  private:
   bool parsePoint(VPackSlice slice, S2LatLng& out) const;
@@ -130,10 +130,10 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
 
   explicit GeoJSONAnalyzer(Options const& opts);
 
-  virtual void prepare(S2RegionTermIndexer::Options& opts) const;
+  virtual void prepare(S2RegionTermIndexer::Options& opts) const override;
 
  protected:
-  virtual bool reset(irs::string_ref const& value);
+  virtual bool reset(irs::string_ref const& value) override;
 
  private:
   S2RegionTermIndexer _indexer;

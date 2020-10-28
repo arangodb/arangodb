@@ -1,6 +1,13 @@
 devel
 -----
 
+* Added CMake option `USE_MINIMAL_DEBUGINFO`.
+  This option is turned off by default. If turned on, the created binaries
+  will contain only a minimum amount of debug symbols, reducing the size
+  of the executables. If turned off (which is the default), the binaries
+  will contain full debug information, which will make them bigger in size
+  unless the debug information is later stripped again.
+
 * Modified the returned error code for calling the `shards()` function on a
   collection in single-server from "internal error" (error number 4) to "shards
   API is only available in cluster" and error number 9, HTTP status code 501.

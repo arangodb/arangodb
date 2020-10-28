@@ -64,7 +64,7 @@ class WalkerWorkerBase {
 template <class T, WalkerUniqueness U>
 class WalkerWorker : public WalkerWorkerBase<T> {
  public:
-  virtual bool done([[maybe_unused]] T* en) {
+  virtual bool done([[maybe_unused]] T* en) override {
     if constexpr (U == WalkerUniqueness::Unique) {
       return !_done.emplace(en).second;
     }
