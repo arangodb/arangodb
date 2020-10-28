@@ -49,7 +49,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::TRAVERSAL:
     case EN::K_SHORTEST_PATHS:
     case EN::SHORTEST_PATH:
-    case EN::ENUMERATE_IRESEARCH_VIEW: {
+    case EN::ENUMERATE_IRESEARCH_VIEW:
+    case EN::WINDOW: {
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.

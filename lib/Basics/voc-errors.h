@@ -1158,6 +1158,12 @@ constexpr int TRI_ERROR_QUERY_USER_ASSERT                                       
 /// Will be raised if and user provided expression fails to evaluate to true
 constexpr int TRI_ERROR_QUERY_USER_WARN                                         = 1594;
 
+/// 1595: ERROR_QUERY_WINDOW_AFTER_MODIFICATION
+/// "window operation after data-modification"
+/// Will be raised when a window node is created after a data-modification
+/// operation.
+constexpr int TRI_ERROR_QUERY_WINDOW_AFTER_MODIFICATION                         = 1595;
+
 /// 1600: ERROR_CURSOR_NOT_FOUND
 /// "cursor not found"
 /// Will be raised when a cursor is requested via its id but a cursor with that
