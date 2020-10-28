@@ -1,11 +1,13 @@
 v3.6.9 (XXXX-XX-XX)
 -------------------
 
+* Add parameter so `db.collection.truncate({compact: false})` will stop
+  compaction from happening. Compaction may have performance impacts even if the
+  truncate was invoked on nearly empty collections.
+  This option has effect only for deployments with RocksDB storage engine.
+
 * Fixed collection count which could be off after a server crash.
 
-* Add parameter so `db.collection.truncate({compact: false})` will stop 
-  compaction from happening. Compaction may have performance impacts even
-  if the truncate was invoked on nearly empty collections.
 
 v3.6.8 (2020-10-14)
 -------------------
