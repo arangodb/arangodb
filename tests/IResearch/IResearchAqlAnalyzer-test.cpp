@@ -253,6 +253,19 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
     ASSERT_NE(nullptr, ptr);
     assert_analyzer(ptr.get(), "a", {{"", 0}, {"", 0}, {"a", 0}, {"b", 0}});
   }
+
+  // check memoryLimit kills query
+  {
+    auto ptr =
+        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
+                                      irs::type<irs::text_format::vpack>::get(),
+                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN @param\", \"memoryLimit\":1}")
+                                                                         ->slice()),
+                                      false);
+    ASSERT_NE(nullptr, ptr);
+    ASSERT_FALSE(ptr->reset("AAAAAAAAA"));
+  }
+
 }
 
 TEST_F(IResearchAqlAnalyzerTest, test_create_invalid) {
