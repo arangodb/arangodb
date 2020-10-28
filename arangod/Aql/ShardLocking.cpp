@@ -160,7 +160,6 @@ void ShardLocking::updateLocking(Collection const* col,
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
           "Could not identify any shard belonging to collection: " + name + ". Maybe it is dropped?");
-      return;
     }
     for (auto const& s : *shards) {
       info.allShards.emplace(s);
