@@ -33,6 +33,8 @@
 #include "utils/object_pool.hpp"
 
 #include "Aql/Ast.h"
+#include "Aql/AqlCallList.h"
+#include "Aql/AqlCallStack.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExpressionContext.h"
@@ -62,10 +64,11 @@ constexpr const char QUERY_STRING_PARAM_NAME[] = "queryString";
 constexpr const char COLLAPSE_ARRAY_POSITIONS_PARAM_NAME[] = "collapsePositions";
 constexpr const char KEEP_NULL_PARAM_NAME[] = "keepNull";
 constexpr const char BATCH_SIZE_PARAM_NAME[] = "batchSize";
+constexpr const char MEMORY_LIMIT_PARAM_NAME[] = "memoryLimit";
 constexpr const char CALCULATION_PARAMETER_NAME[] = "param";
 
 constexpr const uint32_t MAX_BATCH_SIZE{1000};
-
+constexpr const uint32_t MAX_MEMORY_LIMIT{33554432U}; // 32Mb
 
 using Options = arangodb::iresearch::AqlAnalyzer::Options;
 
@@ -85,6 +88,16 @@ struct OptionsValidator {
               .append("' should be less or equal to ")
               .append(std::to_string(MAX_BATCH_SIZE))};
     }
+    if (opts.memoryLimit == 0) {
+      return deserialize_error{
+          std::string("Value of '").append(MEMORY_LIMIT_PARAM_NAME).append("' should be greater than 0")};
+    }
+    if (opts.memoryLimit > MAX_MEMORY_LIMIT) {
+      return deserialize_error{std::string("Value of '")
+                                   .append(MEMORY_LIMIT_PARAM_NAME)
+                                   .append("' should be less or equal to ")
+                                   .append(std::to_string(MAX_MEMORY_LIMIT))};
+    }
     return {};
   }
 };
@@ -93,7 +106,8 @@ using OptionsDeserializer = utilities::constructing_deserializer<Options, parame
   factory_deserialized_parameter<QUERY_STRING_PARAM_NAME, values::value_deserializer<std::string>, true>,
   factory_simple_parameter<COLLAPSE_ARRAY_POSITIONS_PARAM_NAME, bool, false, values::numeric_value<bool, false>>,
   factory_simple_parameter<KEEP_NULL_PARAM_NAME, bool, false, values::numeric_value<bool, true>>,
-  factory_simple_parameter<BATCH_SIZE_PARAM_NAME, uint32_t, false, values::numeric_value<uint32_t, 1>>
+  factory_simple_parameter<BATCH_SIZE_PARAM_NAME, uint32_t, false, values::numeric_value<uint32_t, 10>>,
+  factory_simple_parameter<MEMORY_LIMIT_PARAM_NAME, uint32_t, false, values::numeric_value<uint32_t, 1048576U>>
   >>;
 
 using ValidatingOptionsDeserializer = validate<OptionsDeserializer, OptionsValidator>;
@@ -121,6 +135,7 @@ bool normalize_slice(VPackSlice const& slice, VPackBuilder& builder) {
                 VPackValue(options.collapsePositions));
     builder.add(KEEP_NULL_PARAM_NAME, VPackValue(options.keepNull));
     builder.add(BATCH_SIZE_PARAM_NAME, VPackValue(options.batchSize));
+    builder.add(MEMORY_LIMIT_PARAM_NAME, VPackValue(options.memoryLimit));
     return true;
   }
   return false;
@@ -288,6 +303,7 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
     // Forbid all non-Dbserver runnable functions as it is not available on DBServers where analyzers run.
     arangodb::aql::Ast::traverseReadOnly(
         ast->root(), [&errorMessage](arangodb::aql::AstNode const* node) -> bool {
+          TRI_ASSERT(node);
           switch (node->type) {
             // these nodes are ok unconditionally
             case arangodb::aql::NODE_TYPE_ROOT:
@@ -369,9 +385,8 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
             // by default all is forbidden
             default:
               errorMessage = "Node type '";
-              errorMessage.append(node->getTypeString()) + "' is forbidden for aql analyzer";
+              errorMessage.append(node->getTypeString()).append("' is forbidden for aql analyzer");
               return false;
-              break;
           }
           return true;
         });
@@ -446,9 +461,10 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
   : irs::analysis::analyzer(irs::type<AqlAnalyzer>::get()),
     _options(options),
     _query(new CalculationQueryContext(arangodb::DatabaseFeature::getCalculationVocbase())),
-    _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS), 
+    _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
     _engine(0, *_query, _itemBlockManager,
             SerializationFormat::SHADOWROWS, nullptr) {
+  _resourceMonitor.setMemoryLimit(_options.memoryLimit);
   TRI_ASSERT(validateQuery(_options.queryString,
                            arangodb::DatabaseFeature::getCalculationVocbase())
                  .ok());
@@ -477,7 +493,10 @@ bool AqlAnalyzer::next() {
       _resultRowIdx = 0;
       _queryResults = nullptr;
       try {
-        std::tie(_executionState, _queryResults) = _engine.getSome(_options.batchSize);
+        AqlCallStack aqlStack{AqlCallList{AqlCall::SimulateGetSome(_options.batchSize)}};
+        SkipResult skip;
+        std::tie(_executionState, skip, _queryResults) = _engine.execute(aqlStack);
+        TRI_ASSERT(skip.nothingSkipped());
         TRI_ASSERT(_executionState != ExecutionState::WAITING);
       } catch (basics::Exception const& e) {
         LOG_TOPIC("b0026", ERR, iresearch::TOPIC)

@@ -411,7 +411,8 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize_json) {
   ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
   ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
   ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), false);
-  ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1);
+  ASSERT_EQ(actualSlice.get("batchSize").getInt(), 10);
+  ASSERT_EQ(actualSlice.get("memoryLimit").getInt(), 1048576U);
 }
 
 TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
@@ -425,7 +426,8 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
     ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), false);
-    ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1);
+    ASSERT_EQ(actualSlice.get("batchSize").getInt(), 10);
+    ASSERT_EQ(actualSlice.get("memoryLimit").getInt(), 1048576U);
   }
   {
     std::string actual;
@@ -437,7 +439,8 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), false);
     ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), false);
-    ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1);
+    ASSERT_EQ(actualSlice.get("batchSize").getInt(), 10);
+    ASSERT_EQ(actualSlice.get("memoryLimit").getInt(), 1048576U);
   }
   {
     std::string actual;
@@ -449,7 +452,8 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
     ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), true);
-    ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1);
+    ASSERT_EQ(actualSlice.get("batchSize").getInt(), 10);
+    ASSERT_EQ(actualSlice.get("memoryLimit").getInt(), 1048576U);
   }
   {
     std::string actual;
@@ -462,6 +466,7 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
     ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), false);
     ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1000);
+    ASSERT_EQ(actualSlice.get("memoryLimit").getInt(), 1048576U);
   }
   {
     std::string actual;
@@ -477,6 +482,37 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), false);
     ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), true);
     ASSERT_EQ(actualSlice.get("batchSize").getInt(), 10);
+    ASSERT_EQ(actualSlice.get("memoryLimit").getInt(), 1048576U);
+  }
+  //memory limit
+  {
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, AQL_ANALYZER_NAME,
+                                                    irs::type<irs::text_format::vpack>::get(),
+                                                    arangodb::iresearch::ref<char>(
+                                                        VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"batchSize\":1000, \"memoryLimit\":1}")
+                                                            ->slice())));
+    VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
+    ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
+    ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
+    ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), false);
+    ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1000);
+    ASSERT_EQ(actualSlice.get("memoryLimit").getInt(), 1);
+  }
+  // memory limit max
+  {
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, AQL_ANALYZER_NAME,
+                                                    irs::type<irs::text_format::vpack>::get(),
+                                                    arangodb::iresearch::ref<char>(
+                                                        VPackParser::fromJson("{\"queryString\": \"RETURN '1'\", \"batchSize\":1000, \"memoryLimit\":33554432}")
+                                                            ->slice())));
+    VPackSlice actualSlice(reinterpret_cast<uint8_t const*>(actual.c_str()));
+    ASSERT_EQ(actualSlice.get("queryString").stringView(), "RETURN '1'");
+    ASSERT_EQ(actualSlice.get("keepNull").getBool(), true);
+    ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), false);
+    ASSERT_EQ(actualSlice.get("batchSize").getInt(), 1000);
+    ASSERT_EQ(actualSlice.get("memoryLimit").getInt(), 33554432U);
   }
   // empty query
   {
@@ -555,6 +591,28 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
                                   "\"collapsePositions\":2}")
                 ->slice())));
   }
+  // invalid memoryLimit
+  {
+    std::string actual;
+    ASSERT_FALSE(irs::analysis::analyzers::normalize(
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
+                                  "\"memoryLimit\":0, \"keepNull\":false,"
+                                  "\"collapsePositions\":true}")
+                ->slice())));
+  }
+  // invalid memoryLimit
+  {
+    std::string actual;
+    ASSERT_FALSE(irs::analysis::analyzers::normalize(
+        actual, AQL_ANALYZER_NAME, irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(
+            VPackParser::fromJson("{\"queryString\": \"RETURN '1'\","
+                                  "\"memoryLimit\":33554433, \"keepNull\":false,"
+                                  "\"collapsePositions\":true}")
+                ->slice())));
+  }
   // Unknown parameter
   {
     std::string actual;
@@ -570,5 +628,6 @@ TEST_F(IResearchAqlAnalyzerTest, test_normalize) {
     ASSERT_EQ(actualSlice.get("keepNull").getBool(), false);
     ASSERT_EQ(actualSlice.get("collapsePositions").getBool(), true);
     ASSERT_EQ(actualSlice.get("batchSize").getInt(), 10);
+    ASSERT_EQ(actualSlice.get("memoryLimit").getInt(), 1048576U);
   }
 }

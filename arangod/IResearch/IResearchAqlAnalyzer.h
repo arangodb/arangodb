@@ -43,9 +43,9 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   struct Options {
     Options() = default;
 
-    Options(std::string&& query, bool collapse, bool keep, uint32_t batch)
+    Options(std::string&& query, bool collapse, bool keep, uint32_t batch, uint32_t limit)
       : queryString(query), collapsePositions(collapse),
-      keepNull(keep), batchSize(batch) {}
+      keepNull(keep), batchSize(batch), memoryLimit(limit) {}
 
     /// @brief Query string to be executed for each document.
     /// Field value is set with @param binded parameter.
@@ -60,9 +60,12 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
     /// this could be used fo index filtering.
     bool keepNull{ true };
 
-    /// @brief  batch size for running query. Set to 1 as most of the cases
-    /// we expect just 1 to 1 modification query.
-    uint32_t batchSize{ 1 };
+    /// @brief  batch size for running query. Set to 10 as most of the cases
+    /// we expect just simple query.
+    uint32_t batchSize{ 10 };
+
+    /// @brief memory limit for query.  1Mb by default. Could be increased to 32Mb
+    uint32_t memoryLimit{ 1048576U };
   };
 
   static constexpr irs::string_ref type_name() noexcept {
