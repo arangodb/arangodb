@@ -300,7 +300,7 @@ function ClusterCrudSimpleSuite () {
     assertEqual(doc._key, doc.value2);
     assertEqual(1, doc.value3);
 
-    c.truncate();
+    c.truncate({ compact: false });
     assertNull(c.any());
   };
 
@@ -317,16 +317,16 @@ function ClusterCrudSimpleSuite () {
 
     assertEqual(n, c.count());
 
-    c.truncate();
+    c.truncate({ compact: false });
     assertEqual(0, c.count());
 
-    c.truncate();
+    c.truncate({ compact: false });
     assertEqual(0, c.count());
 
     c.save({ _key : "foo" });
     assertEqual(1, c.count());
 
-    c.truncate();
+    c.truncate({ compact: false });
     assertEqual(0, c.count());
   };
 
