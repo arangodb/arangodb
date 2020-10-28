@@ -159,14 +159,14 @@ class IRESEARCH_API Not: public filter {
 
   Not() noexcept;
 
-  const iresearch::filter* filter() const { 
+  const irs::filter* filter() const {
     return filter_.get(); 
   }
 
   template<typename T>
   const T* filter() const {
     typedef typename std::enable_if <
-      std::is_base_of<iresearch::filter, T>::value, T
+      std::is_base_of<irs::filter, T>::value, T
     >::type type;
 
     return static_cast<const type*>(filter_.get());
@@ -175,7 +175,7 @@ class IRESEARCH_API Not: public filter {
   template<typename T>
   T& filter() {
     typedef typename std::enable_if <
-      std::is_base_of< iresearch::filter, T >::value, T
+      std::is_base_of<irs::filter, T >::value, T
     >::type type;
 
     filter_ = type::make();
@@ -196,7 +196,7 @@ class IRESEARCH_API Not: public filter {
   virtual size_t hash() const noexcept override;
 
  protected:
-  virtual bool equals(const iresearch::filter& rhs) const noexcept override;
+  virtual bool equals(const irs::filter& rhs) const noexcept override;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
