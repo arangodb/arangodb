@@ -62,7 +62,7 @@ class QueueTest : public ::testing::Test {
 
 TEST_F(QueueTest, it_should_be_empty_if_new_queue_initialized) {
   auto queue = FifoQueue<Step>();
-  ASSERT_TRUE(queue.size() == 0);
+  ASSERT_EQ(queue.size(), 0);
   ASSERT_TRUE(queue.isEmpty());
 }
 
@@ -70,7 +70,7 @@ TEST_F(QueueTest, it_should_contain_element_after_insertion) {
   auto queue = FifoQueue<Step>();
   auto step = Step{1, 1, false};
   queue.append(step);
-  ASSERT_TRUE(queue.size() == 1);
+  ASSERT_EQ(queue.size(), 1);
   ASSERT_FALSE(queue.isEmpty());
 }
 
@@ -80,7 +80,7 @@ TEST_F(QueueTest, it_should_contain_zero_elements_after_clear) {
   queue.append(Step{2, 1, false});
   queue.append(Step{3, 1, false});
   queue.append(Step{4, 1, true});
-  ASSERT_TRUE(queue.size() == 4);
+  ASSERT_EQ(queue.size(), 4);
   queue.clear();
   ASSERT_TRUE(queue.isEmpty());
 }
@@ -91,7 +91,7 @@ TEST_F(QueueTest, it_should_contain_processable_elements) {
   queue.append(Step{2, 1, false});
   queue.append(Step{3, 1, false});
   queue.append(Step{4, 1, true});
-  ASSERT_TRUE(queue.size() == 4);
+  ASSERT_EQ(queue.size(), 4);
   ASSERT_TRUE(queue.hasProcessableElement());
 }
 
@@ -101,7 +101,7 @@ TEST_F(QueueTest, it_should_not_contain_processable_elements) {
   queue.append(Step{2, 1, true});
   queue.append(Step{3, 1, true});
   queue.append(Step{4, 1, true});
-  ASSERT_TRUE(queue.size() == 4);
+  ASSERT_EQ(queue.size(), 4);
   ASSERT_FALSE(queue.hasProcessableElement());
 }
 
@@ -111,12 +111,12 @@ TEST_F(QueueTest, it_should_pop_first_element_if_processable) {
   queue.append(Step{2, 1, false});
   queue.append(Step{3, 1, true});
   queue.append(Step{4, 1, true});
-  ASSERT_TRUE(queue.size() == 4);
+  ASSERT_EQ(queue.size(), 4);
   ASSERT_TRUE(queue.hasProcessableElement());
   while (queue.hasProcessableElement()) {
     std::ignore = queue.pop();
   }
-  ASSERT_TRUE(queue.size() == 2);
+  ASSERT_EQ(queue.size(), 2);
   ASSERT_FALSE(queue.hasProcessableElement());
 }
 
@@ -126,13 +126,13 @@ TEST_F(QueueTest, it_should_pop_all_loose_ends) {
   queue.append(Step{2, 1, true});
   queue.append(Step{3, 1, true});
   queue.append(Step{4, 1, true});
-  ASSERT_TRUE(queue.size() == 4);
+  ASSERT_EQ(queue.size(), 4);
   ASSERT_FALSE(queue.hasProcessableElement());
   std::vector<Step> mySteps = queue.popLooseEnds();
   ASSERT_TRUE(queue.isEmpty());
-  ASSERT_TRUE(mySteps.size() == 4);
+  ASSERT_EQ(mySteps.size(), 4);
 
-  ASSERT_TRUE(queue.size() == 0);
+  ASSERT_EQ(queue.size(), 0);
   ASSERT_TRUE(queue.isEmpty());
   ASSERT_FALSE(queue.hasProcessableElement());
 }
