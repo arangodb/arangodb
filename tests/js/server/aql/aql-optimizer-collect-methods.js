@@ -497,7 +497,7 @@ function optimizerCollectMethodsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
    
     testManyCollects : function () {
-      c.truncate();
+      c.truncate({ compact: false });
       c.insert({ value: 3 });
       var q = "", g = [];
       for (var i = 0; i < 10; ++i) {

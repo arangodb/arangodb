@@ -499,9 +499,10 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     uint64_t count = 0;
     OperationOptions opts;
 
-    opts.waitForSync = _request->parsedValue("waitForSync", false);
+    opts.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
     opts.isSynchronousReplicationFrom =
-        _request->value("isSynchronousReplication");
+        _request->value(StaticStrings::IsSynchronousReplicationString);
+    opts.truncateCompact = _request->parsedValue(StaticStrings::Compact, true);
 
     _activeTrx = createTransaction(coll->name(), AccessMode::Type::EXCLUSIVE);
     _activeTrx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
@@ -519,7 +520,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     }
     
     return waitForFuture(
-        _activeTrx->truncateAsync(coll->name(), opts).thenValue([this, coll, count](OperationResult&& opres) {
+      _activeTrx->truncateAsync(coll->name(), opts).thenValue([this, coll, count, opts](OperationResult&& opres) {
           // Will commit if no error occured.
           // or abort if an error occured.
           // result stays valid!
@@ -540,7 +541,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
           // data range(s) for the collection
           // we shouldn't run compact() as part of the transaction, because the compact
           // will be useless inside due to the snapshot the transaction has taken
-          if (count >= 4 * 1024) {
+          if (opts.truncateCompact && (count >= 4 * 1024)) {
             // only compact if the collection contained a substantial amount of documents
             // before truncation
             coll->compact();

@@ -210,7 +210,8 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Methods& trx,
-                                                                 std::string const& collname);
+                                                                 std::string const& collname,
+                                                                 OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush Wal on all DBservers
@@ -321,6 +322,13 @@ class ClusterMethods {
       bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
       bool enforceReplicationFactor, bool isNewDatabase,
       std::shared_ptr<LogicalCollection> const& colPtr);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Enterprise Relecant code to filter out hidden collections
+  ///        that should ne be triggered directly by operations.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static bool filterHiddenCollections(LogicalCollection const& c);
 
  private:
   ////////////////////////////////////////////////////////////////////////////////

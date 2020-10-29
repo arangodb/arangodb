@@ -1971,7 +1971,7 @@ function transactionOperationsSuite () {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
         
-        tc1.truncate();
+        tc1.truncate({ compact: false });
 
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
@@ -2007,7 +2007,7 @@ function transactionOperationsSuite () {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
         
-        tc1.truncate();
+        tc1.truncate({ compact: false });
 
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
@@ -2043,7 +2043,7 @@ function transactionOperationsSuite () {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
         
-        tc1.truncate();
+        tc1.truncate({ compact: false });
         tc1.save({ _key: 'foo' });
 
       } catch(err) {
@@ -2992,7 +2992,7 @@ function transactionRollbackSuite () {
         
         // truncate often...
         for (let i = 0; i < 100; ++i) {
-          tc1.truncate();
+          tc1.truncate({ compact: false });
         }
       
       } finally {
@@ -3028,7 +3028,7 @@ function transactionRollbackSuite () {
         
         // truncate often...
         for (let i = 0; i < 100; ++i) {
-          tc1.truncate();
+          tc1.truncate({ compact: false });
         }
         tc1.save({ _key: 'bar' });
       
@@ -3362,10 +3362,10 @@ function transactionCountSuite () {
         tc1.remove(d2);
         assertEqual(1, tc1.count());
 
-        tc1.truncate();
+        tc1.truncate({ compact: false });
         assertEqual(0, tc1.count());
 
-        tc1.truncate();
+        tc1.truncate({ compact: false });
         assertEqual(0, tc1.count());
       } finally {
         trx.commit();

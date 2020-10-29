@@ -99,9 +99,14 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 /// there are active contexts
 //////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, SyncerId const syncerId, TRI_server_id_t const clientId) {
+RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, SyncerId const syncerId, 
+                                                                    TRI_server_id_t const clientId, 
+                                                                    std::string const& patchCount) {
+  // patchCount should only be set on single servers or DB servers
+  TRI_ASSERT(patchCount.empty() ||
+             (ServerState::instance()->isSingleServer() || ServerState::instance()->isDBServer())); 
+
   auto context = std::make_unique<RocksDBReplicationContext>(ttl, syncerId, clientId);
-  TRI_ASSERT(context != nullptr);
   TRI_ASSERT(context->isUsed());
 
   RocksDBReplicationId const id = context->id();
@@ -112,6 +117,30 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, 
     if (_isShuttingDown) {
       // do not accept any further contexts when we are already shutting down
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    if (!patchCount.empty()) {
+      // patchCount was set. this is happening only during the getting-in-sync
+      // protocol. now check if any other context has the same patchCount
+      // value set. in this case, the other context is responsible for applying
+      // count patches, and we have to drop ours
+      
+      // note: it is safe here to access the patchCount() method of any context,
+      // as the only place that modifies a context's _patchCount instance variable,
+      // is the call to setPatchcount() a few lines below. there is no concurrency
+      // here, as this method here is executed under a mutex. in addition, _contexts
+      // is only modified under this same mutex, 
+      bool foundOther = 
+        _contexts.end() != std::find_if(_contexts.begin(), _contexts.end(), [&patchCount](decltype(_contexts)::value_type const& entry) {
+          return entry.second->patchCount() == patchCount;
+        });
+      if (!foundOther) {
+        // no other context exists that has "leadership" for patching counts to the
+        // same collection/shard
+        context->setPatchCount(patchCount);
+      }
+      // if we found a different context here, then the other context is responsible
+      // for applying count patches.
     }
 
     _contexts.try_emplace(id, context.get());

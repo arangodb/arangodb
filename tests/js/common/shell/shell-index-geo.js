@@ -970,7 +970,7 @@ function GeoIndexSimpleQueriesSuite() {
 
     testSaveAfterTruncateWithoutDocs : function () {
       collection.ensureGeoIndex("location");
-      collection.truncate();
+      collection.truncate({ compact: false });
       collection.save({location: [1, 1]});
 
       assertEqual(1, collection.count());
@@ -979,7 +979,7 @@ function GeoIndexSimpleQueriesSuite() {
     testSaveAfterTruncateWithDocs : function () {
       collection.ensureGeoIndex("location");
       collection.save({location: [1, 1]});
-      collection.truncate();
+      collection.truncate({ compact: false });
       collection.save({location: [1, 1]});
 
       assertEqual(1, collection.count());
@@ -1023,7 +1023,7 @@ function SphericalIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSPIUpdates : function () {
-      collection.truncate();
+      collection.truncate({ compact: false });
 
       //collection.ensureGeoIndex("coordinates", true);
       collection.ensureIndex({type: "geo",
