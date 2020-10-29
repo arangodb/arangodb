@@ -1,6 +1,8 @@
 v3.6.9 (XXXX-XX-XX)
 -------------------
 
+* Bug-fix: Allow to unlink a view created on a SmartGraphEdge collection.
+
 * Fixed an ownership issue which could lead to undefined behavior in case an AQL
   query could not be inserted into the query registry of a coordinator or DB
   server successfully (due to an out-of-memory situation or a race during server

@@ -736,6 +736,19 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
 }
 }  // namespace
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Enterprise Relecant code to filter out hidden collections
+///        that should ne be triggered directly by operations.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef USE_ENTERPRISE
+bool ClusterMethods::filterHiddenCollections(LogicalCollection const& c) {
+  return false;
+}
+#endif
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a shard distribution for a new collection, the list
 /// dbServers must be a list of DBserver ids to distribute across.
