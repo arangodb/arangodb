@@ -321,6 +321,203 @@ function collectionCountsSuite () {
       assertEqual(2 * 100000, total);
     },
     
+    testWrongCountOnLeaderFullSyncMultipleFollowers : function () {
+      let servers = getDBServers();
+      if (servers.length <= 2) {
+        // we need at least 3 DB servers
+        return;
+      }
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i }); 
+      }
+      assertEqual(100, c.count());
+      assertEqual(100, c.toArray().length);
+
+      let shardInfo = c.shards(true);
+      let shard = Object.keys(shardInfo)[0];
+      let leader = shardInfo[shard][0];
+      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+
+      // set a failure point to get the counts wrong on the leader
+      let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
+      assertEqual(200, result.status);
+      
+      for (let i = 100; i < 200; ++i) {
+        c.insert({ _key: "test" + i }); 
+      }
+
+      assertNotEqual(200, c.count());
+      assertEqual(200, c.toArray().length);
+      clearFailurePoints();
+
+      c.properties({ replicationFactor: 3 });
+
+      // wait until we have an in-sync follower
+      let tries = 0;
+      while (tries++ < 120) {
+        shardInfo = c.shards(true);
+        servers = shardInfo[shard];
+        if (servers.length === 3 && c.count() === 200) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+      assertEqual(3, servers.length);
+      assertEqual(200, c.count());
+      assertEqual(200, c.toArray().length);
+
+      tries = 0;
+      let total;
+      while (tries++ < 120) {
+        total = 0;
+        getDBServers().forEach((server) => {
+          if (servers.indexOf(server.id) === -1) {
+            return;
+          }
+          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+          assertEqual(200, result.status);
+          total += result.json.count;
+        });
+        if (total === 3 * 200) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+      assertEqual(3 * 200, total);
+    },
+    
+    testWrongCountOnLeaderFullSync2MultipleFollowers : function () {
+      let servers = getDBServers();
+      if (servers.length <= 2) {
+        // we need at least 3 DB servers
+        return;
+      }
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+
+      let shardInfo = c.shards(true);
+      let shard = Object.keys(shardInfo)[0];
+      let leader = shardInfo[shard][0];
+      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+
+      // set a failure point to get the counts wrong on the leader
+      let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
+      assertEqual(200, result.status);
+      
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i }); 
+      }
+      
+      assertEqual(100, c.toArray().length);
+      assertNotEqual(100, c.count());
+
+      c.properties({ replicationFactor: 3 });
+
+      // wait until we have an in-sync follower
+      let tries = 0;
+      while (tries++ < 120) {
+        shardInfo = c.shards(true);
+        servers = shardInfo[shard];
+        if (servers.length === 3 && c.count() === 100) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+      
+      assertEqual(3, servers.length);
+      assertEqual(100, c.count());
+      assertEqual(100, c.toArray().length);
+     
+      tries = 0;
+      let total;
+      while (tries++ < 120) {
+        total = 0;
+        getDBServers().forEach((server) => {
+          if (servers.indexOf(server.id) === -1) {
+            return;
+          }
+          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+          assertEqual(200, result.status);
+          total += result.json.count;
+        });
+        if (total === 3 * 100) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+      assertEqual(3 * 100, total);
+    },
+    
+    testWrongCountOnLeaderFullSyncLargeCollectionMultipleFollowers : function () {
+      let servers = getDBServers();
+      if (servers.length <= 2) {
+        // we need at least 3 DB servers
+        return;
+      }
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      let docs = [];
+      for (let i = 0; i < 5000; ++i) {
+        docs.push({ value: i });
+      }
+      for (let i = 0; i < 10; ++i) {
+        c.insert(docs);
+      }
+      assertEqual(50000, c.count());
+      assertEqual(50000, c.toArray().length);
+
+      let shardInfo = c.shards(true);
+      let shard = Object.keys(shardInfo)[0];
+      let leader = shardInfo[shard][0];
+      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+
+      // set a failure point to get the counts wrong on the leader
+      let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
+      assertEqual(200, result.status);
+      
+      for (let i = 0; i < 10; ++i) {
+        c.insert(docs);
+      }
+
+      assertNotEqual(100000, c.count());
+      assertEqual(100000, c.toArray().length);
+      clearFailurePoints();
+
+      c.properties({ replicationFactor: 3 });
+
+      // wait until we have an in-sync follower
+      let tries = 0;
+      while (tries++ < 120) {
+        shardInfo = c.shards(true);
+        servers = shardInfo[shard];
+        if (servers.length === 3 && c.count() === 100000) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+      assertEqual(3, servers.length);
+      assertEqual(100000, c.count());
+      assertEqual(100000, c.toArray().length);
+
+      tries = 0;
+      let total;
+      while (tries++ < 120) {
+        total = 0;
+        getDBServers().forEach((server) => {
+          if (servers.indexOf(server.id) === -1) {
+            return;
+          }
+          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
+          assertEqual(200, result.status);
+          total += result.json.count;
+        });
+        if (total === 3 * 100000) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+      assertEqual(3 * 100000, total);
+    },
+    
     testWrongCountOnFollowerFullSync : function () {
       let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
       for (let i = 0; i < 100; ++i) {
