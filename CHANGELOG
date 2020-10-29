@@ -1,12 +1,12 @@
 v3.6.9 (XXXX-XX-XX)
 -------------------
 
-* Fixed collection count which could be off after a server crash.
+* Fixed an ownership issue which could lead to undefined behavior in case an AQL
+  query could not be inserted into the query registry of a coordinator or DB
+  server successfully (due to an out-of-memory situation or a race during server
+  shutdown).
 
-* Fixed an ownership issue which could lead to undefined behavior in case an
-  AQL query could not be inserted into the query registry of a coordinator or
-  DB server successfully (due to an out-of-memory situation or a race during
-  server shutdown).
+* Fixed collection count which could be off after a server crash.
 
 
 v3.6.8 (2020-10-14)
