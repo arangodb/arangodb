@@ -703,9 +703,9 @@ function ValidationEdgeSuite () {
   var testCollection;
   var validatorJson;
 
-  const edgeAttrs = { "_from": "vert/A", "_to": "vert/B" }
-  const goodEdge = { ...edgeAttrs, "name": "Helge" }
-  const badEdge = { ...edgeAttrs, "additional": true }
+  const edgeAttrs = { "_from" : "vert/A", "_to" : "vert/B" }
+  const goodEdge = { ...edgeAttrs, "name" : "Helge" }
+  const badEdge = { ...edgeAttrs, "additional" : true }
 
   return {
 
