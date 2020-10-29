@@ -32,7 +32,8 @@ namespace graph {
 template <class Step>
 class FifoQueue {
  public:
-  // using Step = UsedStep;
+  // TODOS: Add Sorting (Performance)
+  // -> loose ends to the end
 
   FifoQueue() {}
   ~FifoQueue() {}
@@ -42,14 +43,16 @@ class FifoQueue {
 
   void clear() { _queue.clear(); };
 
-  void append(Step step) { _queue.emplace_back(step); };
+  void append(Step step) { _queue.push_back(step); };
 
-  bool hasProcessableVertex() {
-    for (auto& step : _queue) {
-      if (step.isProcessable()) {
+  bool hasProcessableElement() {
+    if (!isEmpty()) {
+      auto& first = _queue.front();
+      if (first.isProcessable()) {
         return true;
       }
     }
+
     return false;
   };
 
@@ -57,10 +60,22 @@ class FifoQueue {
 
   bool isEmpty() { return _queue.size() == 0; };
 
-  /*Step pop() {
-    Step first = _queue.front();
-    //_queue.
-  };*/
+  std::vector<Step> popLooseEnds(){
+    TRI_ASSERT(!hasProcessableElement());
+
+    std::vector<Step> steps;
+    while (!hasProcessableElement() && !isEmpty()) {
+      steps.emplace_back(pop());
+    }
+    return std::move(steps);
+  };
+
+  Step pop() {
+    TRI_ASSERT(!isEmpty());
+    Step first = std::move(_queue.front());
+    _queue.pop_front();
+    return std::move(first);
+  };
 };
 
 }  // namespace graph
