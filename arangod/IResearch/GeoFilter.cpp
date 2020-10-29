@@ -396,90 +396,6 @@ std::pair<S2Cap, bool> getBound(irs::BoundType type,
   };
 }
 
-irs::filter::prepared::ptr prepareInterval(
-    irs::index_reader const& index,
-    irs::order::prepared const& order,
-    irs::boost_t boost,
-    irs::string_ref const& field,
-    GeoDistanceFilterOptions const& opts) {
-  auto const& range = opts.range;
-  auto const& origin = opts.origin;
-
-  if (0. == range.max && 0. == range.min) {
-    if (irs::BoundType::INCLUSIVE != range.min_type ||
-        irs::BoundType::INCLUSIVE != range.max_type) {
-      return irs::filter::prepared::empty();
-    }
-
-    S2RegionTermIndexer indexer(opts.options);
-    auto const geoTerms = indexer.GetQueryTerms(origin, opts.prefix);
-
-    if (geoTerms.empty()) {
-      return irs::filter::prepared::empty();
-    }
-
-    auto [states, stats] = prepareStates(index, order, geoTerms, field);
-
-    return ::make_query(
-      std::move(states), std::move(stats), boost,
-      [origin](geo::ShapeContainer const& shape) {
-        return origin == shape.centroid();
-    });
-  }
-
-  auto [minBound, minIncl] = getBound(range.min_type, origin, range.min);
-  auto [maxBound, maxIncl] = getBound(range.max_type, origin, range.max);
-
-  if (!minBound.is_valid() || !maxBound.is_valid()) {
-    return irs::filter::prepared::empty();
-  }
-
-  // complement is not bijective => complement of singleton cap is an empty cap
-  minBound = minBound.Complement();
-
-  if ((maxIncl && !maxBound.Intersects(minBound)) ||
-      (!maxIncl && !maxBound.InteriorIntersects(minBound))) {
-    return irs::filter::prepared::empty();
-  }
-
-  TRI_ASSERT(!minBound.is_empty());
-  TRI_ASSERT(!maxBound.is_empty());
-
-  S2RegionTermIndexer indexer(opts.options);
-  S2RegionCoverer coverer(opts.options);
-
-  auto const ring = coverer.GetCovering(maxBound).Intersection(coverer.GetCovering(minBound));
-  auto const geoTerms = indexer.GetQueryTermsForCanonicalCovering(ring, opts.prefix);
-
-  if (geoTerms.empty()) {
-    return irs::filter::prepared::empty();
-  }
-
-  auto [states, stats] = prepareStates(index, order, geoTerms, field);
-
-  switch (size_t(minIncl) + 2*size_t(maxIncl)) {
-    case 0:
-      return ::make_query(
-        std::move(states), std::move(stats), boost,
-        GeoDistanceRangeAcceptor<false, false>{minBound, maxBound});
-    case 1:
-      return ::make_query(
-        std::move(states), std::move(stats), boost,
-        GeoDistanceRangeAcceptor<true, false>{minBound, maxBound});
-    case 2:
-      return ::make_query(
-        std::move(states), std::move(stats), boost,
-        GeoDistanceRangeAcceptor<false, true>{minBound, maxBound});
-    case 3:
-      return ::make_query(
-        std::move(states), std::move(stats), boost,
-        GeoDistanceRangeAcceptor<true, true>{minBound, maxBound});
-    default:
-      TRI_ASSERT(false);
-      return irs::filter::prepared::empty();
-  }
-}
-
 irs::filter::prepared::ptr prepareOpenInterval(
     irs::index_reader const& index,
     irs::order::prepared const& order,
@@ -497,7 +413,9 @@ irs::filter::prepared::ptr prepareOpenInterval(
   S2Cap bound;
   bool incl;
 
-  if (0. == dist) {
+  if (dist < 0.) {
+    bound = greater ? S2Cap::Full() : S2Cap::Empty();
+  } else if (0. == dist) {
     switch (type) {
       case irs::BoundType::UNBOUNDED:
         TRI_ASSERT(false);
@@ -584,6 +502,99 @@ irs::filter::prepared::ptr prepareOpenInterval(
   }
 }
 
+irs::filter::prepared::ptr prepareInterval(
+    irs::index_reader const& index,
+    irs::order::prepared const& order,
+    irs::boost_t boost,
+    irs::string_ref const& field,
+    GeoDistanceFilterOptions const& opts) {
+  auto const& range = opts.range;
+  TRI_ASSERT(irs::BoundType::UNBOUNDED != range.min_type);
+  TRI_ASSERT(irs::BoundType::UNBOUNDED != range.max_type);
+
+  if (range.max < 0.) {
+    return irs::filter::prepared::empty();
+  } else if (range.min < 0.) {
+    return ::prepareOpenInterval(index, order, boost, field, opts, false);
+  }
+
+  auto const& origin = opts.origin;
+
+  if (0. == range.max && 0. == range.min) {
+    if (irs::BoundType::INCLUSIVE != range.min_type ||
+        irs::BoundType::INCLUSIVE != range.max_type) {
+      return irs::filter::prepared::empty();
+    }
+
+    S2RegionTermIndexer indexer(opts.options);
+    auto const geoTerms = indexer.GetQueryTerms(origin, opts.prefix);
+
+    if (geoTerms.empty()) {
+      return irs::filter::prepared::empty();
+    }
+
+    auto [states, stats] = prepareStates(index, order, geoTerms, field);
+
+    return ::make_query(
+      std::move(states), std::move(stats), boost,
+      [origin](geo::ShapeContainer const& shape) {
+        return origin == shape.centroid();
+    });
+  }
+
+  auto [minBound, minIncl] = getBound(range.min_type, origin, range.min);
+  auto [maxBound, maxIncl] = getBound(range.max_type, origin, range.max);
+
+  if (!minBound.is_valid() || !maxBound.is_valid()) {
+    return irs::filter::prepared::empty();
+  }
+
+  // complement is not bijective => complement of singleton cap is an empty cap
+  minBound = minBound.Complement();
+
+  if ((maxIncl && !maxBound.Intersects(minBound)) ||
+      (!maxIncl && !maxBound.InteriorIntersects(minBound))) {
+    return irs::filter::prepared::empty();
+  }
+
+  TRI_ASSERT(!minBound.is_empty());
+  TRI_ASSERT(!maxBound.is_empty());
+
+  S2RegionTermIndexer indexer(opts.options);
+  S2RegionCoverer coverer(opts.options);
+
+  auto const ring = coverer.GetCovering(maxBound).Intersection(coverer.GetCovering(minBound));
+  auto const geoTerms = indexer.GetQueryTermsForCanonicalCovering(ring, opts.prefix);
+
+  if (geoTerms.empty()) {
+    return irs::filter::prepared::empty();
+  }
+
+  auto [states, stats] = prepareStates(index, order, geoTerms, field);
+
+  switch (size_t(minIncl) + 2*size_t(maxIncl)) {
+    case 0:
+      return ::make_query(
+        std::move(states), std::move(stats), boost,
+        GeoDistanceRangeAcceptor<false, false>{minBound, maxBound});
+    case 1:
+      return ::make_query(
+        std::move(states), std::move(stats), boost,
+        GeoDistanceRangeAcceptor<true, false>{minBound, maxBound});
+    case 2:
+      return ::make_query(
+        std::move(states), std::move(stats), boost,
+        GeoDistanceRangeAcceptor<false, true>{minBound, maxBound});
+    case 3:
+      return ::make_query(
+        std::move(states), std::move(stats), boost,
+        GeoDistanceRangeAcceptor<true, true>{minBound, maxBound});
+    default:
+      TRI_ASSERT(false);
+      return irs::filter::prepared::empty();
+  }
+}
+
 }
 
 namespace arangodb {
@@ -665,7 +676,7 @@ irs::filter::prepared::ptr GeoDistanceFilter::prepare(
 
   if (!lowerBound && !upperBound) {
     return match_all(index, order, field(), boost);
-  } else if (lowerBound && upperBound) {
+  } if (lowerBound && upperBound) {
     return ::prepareInterval(index, order, boost, field(), options());
   } else {
     return ::prepareOpenInterval(index, order, boost, field(), options(), lowerBound);
