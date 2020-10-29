@@ -749,6 +749,7 @@ void ClusterInfo::loadPlan() {
   decltype(_shardServers) newShardServers;
   decltype(_shardToName) newShardToName;
   decltype(_dbAnalyzersRevision) newDbAnalyzersRevision;
+  decltype(_shardIds) newShardIds;
 
   bool swapDatabases = false;
   bool swapCollections = false;
@@ -766,9 +767,9 @@ void ClusterInfo::loadPlan() {
     newDbAnalyzersRevision = _dbAnalyzersRevision;
     auto ende = std::chrono::steady_clock::now();
     LOG_TOPIC("feee1", TRACE, Logger::CLUSTER)
-        << "Time for copy operation in loadPlan: "
-        << std::chrono::duration_cast<std::chrono::nanoseconds>(ende - start).count()
-        << " ns";
+      << "Time for copy operation in loadPlan: "
+      << std::chrono::duration_cast<std::chrono::nanoseconds>(ende - start).count()
+      << " ns";
   }
 
   std::string name;
@@ -791,8 +792,10 @@ void ClusterInfo::loadPlan() {
     name = database.first;
     auto dbSlice = database.second->slice()[0];
     std::vector<std::string> dbPath{AgencyCommHelper::path(), "Plan", "Databases", name};
-    if (!dbSlice.hasKey(dbPath)) { // Dropped from Plan
+    // Dropped from Plan?
+    if (!dbSlice.hasKey(dbPath)) {
       newDatabases.erase(name);
+      newPlan.erase(name);
       continue;
     }
 
