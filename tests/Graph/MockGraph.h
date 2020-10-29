@@ -19,54 +19,44 @@
 ///
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef TESTS_MOCK_GRAPH_PROVIDER_H
-#define TESTS_MOCK_GRAPH_PROVIDER_H
+
+#ifndef TESTS_MOCK_GRAPH_H
+#define TESTS_MOCK_GRAPH_H
 
 #include <numeric>
-#include <unordered_map>
 #include <vector>
 
-#include "./MockGraph.h"
-
 namespace arangodb {
-
-namespace futures {
-template <typename T>
-class Future;
-}
-
 namespace tests {
 namespace graph {
 
-class MockGraphProvider {
-  using VertexType = size_t;
-  using EdgeType = MockGraph::EdgeDef;
+class MockGraph {
  public:
-  struct Step {
-
-    Step(size_t prev, VertexType v, EdgeType e);
-    ~Step();
-
-    VertexType vertex;
-    size_t previous;
-
+  struct EdgeDef {
+    EdgeDef(size_t from, size_t to, double weight)
+        : _from(from), _to(to), _weight(weight){};
+    size_t _from;
+    size_t _to;
+    double _weight;
   };
 
-  MockGraphProvider(MockGraph const& data);
-  ~MockGraphProvider();
+ public:
+  MockGraph() {}
+  ~MockGraph() {}
 
-  auto fetch(std::vector<Step> const& looseEnds) -> futures::Future<std::vector<Step>>;
-  auto expand(Step const& from, size_t previous) -> std::vector<Step>;
+  void addEdge(size_t from, size_t to, double weight = 1.0) {
+    _edges.emplace_back(EdgeDef{from, to, weight});
+  }
+
+  auto edges() const -> std::vector<EdgeDef> const& {
+    return _edges;
+  }
 
  private:
-
- std::unordered_map<size_t, std::vector<MockGraph::EdgeDef>> _fromIndex;
- std::unordered_map<size_t, std::vector<MockGraph::EdgeDef>> _toIndex;
-
-
+  std::vector<EdgeDef> _edges;
 };
-}  // namespace graph
-}  // namespace tests
-}  // namespace arangodb
+}
+}
+}
 
 #endif
