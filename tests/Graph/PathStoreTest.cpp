@@ -79,6 +79,39 @@ TEST_F(PathStoreTest, it_should_be_able_to_set_startVertex) {
   ASSERT_EQ(ps.size(), 1);
 }
 
+TEST_F(PathStoreTest, it_should_be_able_to_clear) {
+  auto ps = PathStore<Step>();
+  ps.setStartVertex({0, 1, 0, false, true});
+
+  size_t lastIndex = ps._schreierIndex;
+  lastIndex = ps.append({1, 1, lastIndex, false, false});
+  lastIndex = ps.append({2, 1, lastIndex, false, false});
+  lastIndex = ps.append({3, 1, lastIndex, false, false});
+  lastIndex = ps.append({4, 1, lastIndex, false, false});
+  ASSERT_EQ(ps.size(), 5);
+  ASSERT_NE(ps._schreierIndex, 0);
+  ps.reset();
+  ASSERT_EQ(ps.size(), 0);
+  ASSERT_EQ(ps._schreierIndex, 0);
+}
+
+TEST_F(PathStoreTest, it_should_be_able_to_set_new_startVertex_and_auto_clear) {
+  auto ps = PathStore<Step>();
+  ps.setStartVertex({0, 1, 0, false, true});
+
+  size_t lastIndex = ps._schreierIndex;
+  lastIndex = ps.append({1, 1, lastIndex, false, false});
+  lastIndex = ps.append({2, 1, lastIndex, false, false});
+  lastIndex = ps.append({3, 1, lastIndex, false, false});
+  lastIndex = ps.append({4, 1, lastIndex, false, false});
+  ASSERT_EQ(ps.size(), 5);
+  ASSERT_NE(ps._schreierIndex, 0);
+
+  ps.setStartVertex({0, 1, 0, false, true});
+  ASSERT_EQ(ps.size(), 1);
+  ASSERT_EQ(ps._schreierIndex, 0);
+}
+
 TEST_F(PathStoreTest, it_should_not_be_empty_if_values_will_be_inserted) {
   auto ps = PathStore<Step>();
 

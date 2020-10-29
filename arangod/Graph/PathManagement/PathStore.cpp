@@ -37,16 +37,21 @@ template <class Step>
 PathStore<Step>::PathStore() {
   // performance optimization: just reserve a little more as per default
   _schreier.reserve(32);
+  reset(false);
+}
+
+template <class Step>
+void PathStore<Step>::reset(bool clear) {
+  if (clear) {
+    _schreier.clear();
+  }
   _schreierIndex = 0;
   _lastReturned = 0;
 }
 
 template <class Step>
 void PathStore<Step>::setStartVertex(Step startVertex) {
-  _schreier.clear();
-  _schreierIndex = 0;
-  _lastReturned = 0;
-
+  reset();
   _schreier.emplace_back(startVertex);
 }
 
