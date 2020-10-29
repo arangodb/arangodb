@@ -42,11 +42,11 @@ let sleepInCluster = () => {
   }
 };
 
-const goodDoc = { "zahlen" : [1, 2, 3, 4] };
-const badDoc = { "zahlen" : "1, 2, 3, 4" };
+const goodDoc = { "numArray" : [1, 2, 3, 4] };
+const badDoc = { "numArray" : "1, 2, 3, 4" };
 
 function ValidationBasicsSuite () {
-  const skipOptions = { skipDocumentValidation : true };
+  const skipOptions = { "skipDocumentValidation" : true };
 
   const testCollectionName = "TestValidationCollection";
   var testCollection;
@@ -59,27 +59,27 @@ function ValidationBasicsSuite () {
         db._drop(testCollectionName);
       } catch (ex) {}
       validatorJson = {
-        level : "strict",
-        rule: {
-          type: "object",
-          properties: {
-            zahlen : {
-              type : "array",
-              items : { type : "number", maximum : 6 }
+        "level" : "strict",
+        "rule" : {
+          "type" : "object",
+          "properties" : {
+            "numArray" : {
+              "type" : "array",
+              "items" : { "type" : "number", "maximum" : 6 }
             },
-            name : {
-              type : "string",
-              minLength: 4,
-              maxLength: 10
+            "name" : {
+              "type" : "string",
+              "minLength" : 4,
+              "maxLength" : 10
             },
-            number : {
-              type : "number",
-              items : { minimum: 1000000 }
+            "number" : {
+              "type" : "number",
+              "items": { "minimum" : 1000000 }
             },
           },
-          additionalProperties : false
+          "additionalProperties" : false
         },
-        message : "Json-Schema validation failed",
+        "message" : "Schema validation failed",
       };
       testCollection = db._create(testCollectionName, { schema :  validatorJson, numberOfShards: 3 });
     },
@@ -141,7 +141,7 @@ function ValidationBasicsSuite () {
 
     testAQLInsert : () => {
       try {
-        db._query(`INSERT {"zahlen" : "1, 2, 3, 4"} INTo ${testCollectionName}`);
+        db._query(`INSERT { "numArray" : "1, 2, 3, 4" } INTO ${testCollectionName}`);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
@@ -149,7 +149,7 @@ function ValidationBasicsSuite () {
     },
 
     testAQLInsertSkip : () => {
-      db._query(`INSERT {"zahlen" : "1, 2, 3, 4"} INTo ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
+      db._query(`INSERT { "numArray" : "1, 2, 3, 4" } INTO ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
       assertEqual(testCollection.toArray().length, 1);
     },
 
@@ -179,7 +179,7 @@ function ValidationBasicsSuite () {
       assertEqual(testCollection.toArray().length, 1);
 
       try {
-        db._query(`UPDATE "${doc._key}" WITH {"zahlen" : "baz"} INTo ${testCollectionName}`);
+        db._query(`UPDATE "${doc._key}" WITH { "numArray" : "baz" } INTO ${testCollectionName}`);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
@@ -190,7 +190,7 @@ function ValidationBasicsSuite () {
       let doc = testCollection.insert(badDoc, skipOptions);
       assertEqual(testCollection.toArray().length, 1);
 
-      db._query(`UPDATE "${doc._key}" WITH {"zahlen" : "baz"} INTo ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
+      db._query(`UPDATE "${doc._key}" WITH { "numArray" : "baz" } INTO ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
       assertEqual(testCollection.toArray().length, 1);
     },
 
@@ -208,7 +208,7 @@ function ValidationBasicsSuite () {
       assertEqual(testCollection.toArray().length, 1);
 
       try {
-        db._query(`REPLACE "${doc._key}" WITH {"zahlen" : "baz"} INTo ${testCollectionName}`);
+        db._query(`REPLACE "${doc._key}" WITH { "numArray" : "baz" } INTO ${testCollectionName}`);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
@@ -219,7 +219,7 @@ function ValidationBasicsSuite () {
       let doc = testCollection.insert(badDoc, skipOptions);
       assertEqual(testCollection.toArray().length, 1);
 
-      db._query(`REPLACE "${doc._key}" WITH {"zahlen" : "baz"} INTo ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
+      db._query(`REPLACE "${doc._key}" WITH { "numArray" : "baz" } INTO ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
       assertEqual(testCollection.toArray().length, 1);
     },
 
@@ -295,11 +295,11 @@ function ValidationBasicsSuite () {
       testCollection.replace(doc._key, badDoc);
 
       doc = testCollection.insert(badDoc, skipOptions);
-      query = `UPDATE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+      query = `UPDATE "${doc._key}" WITH { "numArray" : "numbers are just digits" } IN ${testCollectionName}`;
       db._query(query);
 
       doc = testCollection.insert(badDoc, skipOptions);
-      query = `REPLACE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+      query = `REPLACE "${doc._key}" WITH { "numArray" : "numbers are just digits" } IN ${testCollectionName}`;
       db._query(query);
     },
 
@@ -319,7 +319,7 @@ function ValidationBasicsSuite () {
       }
 
       try {
-        let query = `UPDATE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+        let query = `UPDATE "${doc._key}" WITH { "numArray" : "numbers are just digits" } IN ${testCollectionName}`;
         db._query(query);
         fail();
       } catch (err) {
@@ -342,7 +342,7 @@ function ValidationBasicsSuite () {
       }
 
       try {
-        let query = `REPLACE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+        let query = `REPLACE "${doc._key}" WITH { "numArray" : "numbers are just digits" } IN ${testCollectionName}`;
         db._query(query);
         fail();
       } catch (err) {
@@ -380,7 +380,7 @@ function ValidationBasicsSuite () {
       }
 
       try {
-        let query = `REPLACE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+        let query = `REPLACE "${doc._key}" WITH { "numArray" : "numbers are just digits" } IN ${testCollectionName}`;
         db._query(query);
         fail();
       } catch (err) {
@@ -388,7 +388,7 @@ function ValidationBasicsSuite () {
       }
 
       try {
-        let query = `UPDATE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+        let query = `UPDATE "${doc._key}" WITH { "numArray" : "numbers are just digits" } IN ${testCollectionName}`;
         db._query(query);
         fail();
       } catch (err) {
@@ -442,7 +442,7 @@ function ValidationBasicsSuite () {
     testJsonRequire  : () => {
       let p = {
         ...validatorJson.rule,
-        required: [ "zahlen", "name" ]
+        required: [ "numArray", "name" ]
       };
       validatorJson.rule = p;
       validatorJson.level = "strict";
@@ -453,7 +453,7 @@ function ValidationBasicsSuite () {
       try {
         //name missing
         testCollection.insert({
-          "zahlen" : [1,2,3,4,5],
+          "numArray" : [1,2,3,4,5],
         });
         fail();
       } catch (err) {
@@ -463,8 +463,8 @@ function ValidationBasicsSuite () {
       try {
         //name too short
         testCollection.insert({
-          "zahlen" : [1,2,3,4,5],
-          "name" : "ulf"
+          "numArray" : [1,2,3,4,5],
+          "name" : "Ulf"
         });
         fail();
       } catch (err) {
@@ -474,8 +474,8 @@ function ValidationBasicsSuite () {
       {
         // good document
         testCollection.insert({
-          "zahlen" : [1,2,3,4,5],
-          "name" : "guterName"
+          "numArray" : [1,2,3,4,5],
+          "name" : "good name"
         });
       }
 
@@ -526,7 +526,7 @@ function ValidationBasicsSuite () {
                 "foo" : { "type" : "string" }
               }
             },
-            "message" : "validation - failed"
+            "message" : "Schema validation failed"
           }
         )
       `).toArray();
@@ -542,7 +542,7 @@ function ValidationBasicsSuite () {
                 "foo" : { "type" : "string" }
               }
             },
-            "message" : "validation - failed"
+            "message" : "Schema validation failed"
           }
         )
       `).toArray();
@@ -558,7 +558,7 @@ function ValidationBasicsSuite () {
                 "foo" : { "type" : "string" }
               }
             },
-            "message" : "validation - failed"
+            "message" : "Schema validation failed"
           }
         )
       `).toArray();
@@ -574,12 +574,12 @@ function ValidationBasicsSuite () {
                 "foo" : { "type" : "string" }
               }
             },
-            "message" : "validation - failed"
+            "message" : "Schema validation failed"
           }
         )
       `).toArray();
       assertEqual(res[0].valid, false);
-      assertEqual(res[0].errorMessage, "validation - failed");
+      assertEqual(res[0].errorMessage, "Schema validation failed");
 
       // doc matches schema
       res = db._query(`
