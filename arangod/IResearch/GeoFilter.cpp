@@ -28,6 +28,7 @@
 
 #include "index/index_reader.hpp"
 #include "search/all_filter.hpp"
+#include "search/boolean_filter.hpp"
 #include "search/column_existence_filter.hpp"
 #include "search/collectors.hpp"
 #include "search/disjunction.hpp"
@@ -487,30 +488,82 @@ irs::filter::prepared::ptr prepareOpenInterval(
     GeoDistanceFilterOptions const& opts,
     bool greater) {
   auto const& range = opts.range;
+  auto const& origin = opts.origin;
 
-  auto [bound, incl] = greater
-    ? getBound(range.min_type, opts.origin, range.min)
-    : getBound(range.max_type, opts.origin, range.max);
+  auto const [dist, type] = greater
+    ? std::forward_as_tuple(range.min, range.min_type)
+    : std::forward_as_tuple(range.max, range.max_type);
 
-  if (!bound.is_valid()) {
-    return irs::filter::prepared::empty();
+  S2Cap bound;
+  bool incl;
+
+  if (0. == dist) {
+    switch (type) {
+      case irs::BoundType::UNBOUNDED:
+        TRI_ASSERT(false);
+        break;
+      case irs::BoundType::INCLUSIVE:
+        bound = greater ? S2Cap::Full()
+                        : S2Cap::FromPoint(origin);
+
+        if (!bound.is_valid()) {
+          return irs::filter::prepared::empty();
+        }
+
+        incl = true;
+        break;
+      case irs::BoundType::EXCLUSIVE:
+        if (greater) {
+          // a full cap without a center
+          irs::And root;
+          {
+            auto& incl = root.add<irs::by_column_existence>();
+            *incl.mutable_field() = field;
+          }
+          {
+            auto& excl = root.add<irs::Not>().filter<GeoDistanceFilter>();
+            *excl.mutable_field() = field;
+            auto* options = excl.mutable_options();
+            options->prefix = opts.prefix;
+            options->options = opts.options;
+            options->range.min = 0;
+            options->range.min_type = irs::BoundType::INCLUSIVE;
+            options->range.max = 0;
+            options->range.max_type = irs::BoundType::INCLUSIVE;
+            options->origin = origin;
+          }
+
+          return root.prepare(index, order, boost);
+        } else {
+          bound = S2Cap::Empty();
+        }
+
+        incl = false;
+        break;
+    }
+  } else {
+    std::tie(bound, incl) = getBound(type, origin, dist);
+
+    if (!bound.is_valid()) {
+      return irs::filter::prepared::empty();
+    }
+
+    if (greater) {
+      bound = bound.Complement();
+    }
   }
 
+  TRI_ASSERT(bound.is_valid());
+
   if (bound.is_full()) {
-    return greater ? irs::filter::prepared::empty()
-                   : match_all(index, order, field, boost);
+    return match_all(index, order, field, boost);
   }
 
   if (bound.is_empty()) {
-    return greater ? match_all(index, order, field, boost)
-                   : irs::filter::prepared::empty();
+    return irs::filter::prepared::empty();
   }
 
   S2RegionTermIndexer indexer(opts.options);
-
-  if (greater) {
-    bound = bound.Complement();
-  }
 
   auto const geoTerms = indexer.GetQueryTerms(bound, opts.prefix);
 
