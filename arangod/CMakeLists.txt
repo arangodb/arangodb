@@ -57,6 +57,7 @@ add_library(arango_iresearch
   IResearch/GeoAnalyzer.cpp IResearch/GeoAnalyzer.h
   IResearch/GeoFilter.cpp IResearch/GeoFilter.h
   IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
+  IResearch/IResearchAqlAnalyzer.cpp IResearch/IResearchAqlAnalyzer.h
   IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
   IResearch/IResearchCompression.cpp IResearch/IResearchCompression.h
   IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h

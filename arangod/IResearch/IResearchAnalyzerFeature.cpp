@@ -59,6 +59,7 @@
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/GeoAnalyzer.h"
+#include "IResearchAqlAnalyzer.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchLink.h"
@@ -106,6 +107,8 @@ static constexpr frozen::map<irs::string_ref, irs::string_ref, 13> STATIC_ANALYZ
 REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(GeoJSONAnalyzer, GeoJSONAnalyzer::make, GeoJSONAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(GeoPointAnalyzer, GeoPointAnalyzer::make, GeoPointAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(AqlAnalyzer, AqlAnalyzer::make_vpack, AqlAnalyzer::normalize_vpack);
+REGISTER_ANALYZER_JSON(AqlAnalyzer, AqlAnalyzer::make_json, AqlAnalyzer::normalize_json);
 
 bool normalize(std::string& out,
                irs::string_ref const& type,
@@ -2461,7 +2464,10 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       auto res = emplaceAnalyzer(result, analyzers, normalizedName, type, properties, features, revision);
 
       if (!res.ok()) {
-        return res; // caught error emplacing analyzer (abort further processing)
+        LOG_TOPIC("7cc7f", ERR, arangodb::iresearch::TOPIC)
+            << "analyzer '" << name
+            << "' ignored as emplace failed with reason:" << res.errorMessage();
+        return {};  // caught error emplacing analyzer  - skip it
       }
 
       if (result.second && result.first->second) {
@@ -2919,7 +2925,6 @@ void IResearchAnalyzerFeature::start() {
   if (!isEnabled()) {
     return;
   }
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // we rely on having a system database
   if (server().hasFeature<SystemDatabaseFeature>()) {
