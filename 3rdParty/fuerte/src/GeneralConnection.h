@@ -253,7 +253,7 @@ class GeneralConnection : public fuerte::Connection {
     } else if (e == asio_ns::error::operation_aborted ||
                e == asio_ns::error::connection_aborted) {
       // keepalive timeout may have expired
-      return this->_timeoutOnReadWrite ? fuerte::Error::ConnectionClosed
+      return this->_timeoutOnReadWrite ? fuerte::Error::RequestTimeout
                                        : fuerte::Error::ConnectionCanceled;
     }
 
