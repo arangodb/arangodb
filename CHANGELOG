@@ -1,6 +1,12 @@
 devel
 -----
-* Added new 'aql' type for ArangoSearch analyzers
+
+* Fixed very spurious errors if the `holdReadLockCollection` replication API for
+  the getting-in-sync procedure of shards was called during server shutdown.
+  In this case that method could ask the transaction manager for a specific
+  transaction, but wasn't return one due to the server shutddown. 
+
+* Added new 'aql' type for ArangoSearch analyzers.
 
 * Obsoleted the startup options `--database.throw-collection-not-loaded-error` 
   and `--ttl.only-loaded-collection`.
@@ -166,6 +172,11 @@ devel
   and message "in smart vertex collections _key must be a string and
   prefixed with the value of the smart graph attribute". This should
   make it a lot easier to understand what the actual problem is.
+
+* Fixed handling of failoverCandidates. Sometimes, a server can still be a
+  failoverCandidate even though it has been taken out of the Plan. With this
+  fix, such a server is quickly taken out of failoverCandidates and it can never
+  be re-added to the Plan before this has happened.
 
 * Added configuration option `--query.tracking-slow-queries` to decide whether
   slow queries are tracked extra.
