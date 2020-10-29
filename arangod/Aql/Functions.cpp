@@ -2470,7 +2470,6 @@ AqlValue Functions::CharLength(ExpressionContext* ctx, AstNode const&,
 AqlValue Functions::NormalizeUtf8(ExpressionContext* ctx, AstNode const&,
                                   VPackFunctionParameters const& parameters) {
   static char const* AFN = "NORMALIZE_UTF8";
-  std::string utf8;
   transaction::Methods* trx = &ctx->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -8223,4 +8222,3 @@ AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
   registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
   return AqlValue(AqlValueHintNull());
 }
-
