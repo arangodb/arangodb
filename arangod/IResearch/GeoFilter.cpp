@@ -433,6 +433,9 @@ irs::filter::prepared::ptr prepareInterval(
     return irs::filter::prepared::empty();
   }
 
+  // complement is not bijective => complement of singleton cap is an empty cap
+  minBound = minBound.Complement();
+
   if ((maxIncl && !maxBound.Intersects(minBound)) ||
       (!maxIncl && !maxBound.InteriorIntersects(minBound))) {
     return irs::filter::prepared::empty();
@@ -444,10 +447,7 @@ irs::filter::prepared::ptr prepareInterval(
   S2RegionTermIndexer indexer(opts.options);
   S2RegionCoverer coverer(opts.options);
 
-  // complement is not bijective => complement of singleton cap is an empty cap
-  minBound = minBound.Complement();
-  auto const ring = coverer.GetCovering(maxBound).Intersection(coverer.GetCovering(maxBound));
-
+  auto const ring = coverer.GetCovering(maxBound).Intersection(coverer.GetCovering(minBound));
   auto const geoTerms = indexer.GetQueryTermsForCanonicalCovering(ring, opts.prefix);
 
   if (geoTerms.empty()) {

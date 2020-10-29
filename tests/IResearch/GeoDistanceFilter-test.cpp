@@ -718,7 +718,21 @@ TEST(GeoDistanceFilterTest, query) {
     range.max_type = irs::BoundType::INCLUSIVE;
     range.max = 100;
 
-    ASSERT_EQ(expected, executeQuery(q, {10,12}));
+    ASSERT_EQ(expected, executeQuery(q, {0,0}));
+  }
+
+  {
+    std::set<std::string> expected;
+    GeoDistanceFilter q;
+    *q.mutable_field() = "geometry";
+    q.mutable_options()->origin = S2LatLng::FromDegrees(55.70461, 37.617053).ToPoint();
+    auto& range = q.mutable_options()->range;
+    range.min_type = irs::BoundType::INCLUSIVE;
+    range.min = 2000;
+    range.max_type = irs::BoundType::EXCLUSIVE;
+    range.max = 2000;
+
+    ASSERT_EQ(expected, executeQuery(q, {18,18}));
   }
 }
 
