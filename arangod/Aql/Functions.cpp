@@ -2469,7 +2469,6 @@ AqlValue Functions::CharLength(ExpressionContext* ctx, AstNode const&,
 /// @brief function NORMALIZE_UTF8
 AqlValue Functions::NormalizeUtf8(ExpressionContext* ctx, AstNode const&,
                                   VPackFunctionParameters const& parameters) {
-  static char const* AFN = "NORMALIZE_UTF8";
   transaction::Methods* trx = &ctx->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -2477,11 +2476,10 @@ AqlValue Functions::NormalizeUtf8(ExpressionContext* ctx, AstNode const&,
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
   size_t outlength;
-  char *dest;
   
   ::appendAsString(vopts, adapter, value);
   
-  dest = TRI_normalize_utf8_to_NFC(buffer->c_str(), buffer->length(), &outlength);
+  auto dest = TRI_normalize_utf8_to_NFC(buffer->c_str(), buffer->length(), &outlength);
   if (dest == nullptr) {
     return AqlValue(AqlValueHintNull());
   }
@@ -2491,7 +2489,7 @@ AqlValue Functions::NormalizeUtf8(ExpressionContext* ctx, AstNode const&,
     return ret;
   } catch (...) {
     TRI_Free(dest);
-    throw;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }  
 }
 
