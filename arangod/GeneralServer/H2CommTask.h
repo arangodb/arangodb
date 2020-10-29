@@ -54,7 +54,7 @@ class H2CommTask final : public GeneralCommTask<T> {
   
  protected:
   virtual bool readCallback(asio_ns::error_code ec) override;
-  virtual void setIOTimeout() override;
+  virtual void setIOTimeout(bool force = false) override;
 
   virtual void sendResponse(std::unique_ptr<GeneralResponse> response,
                             RequestStatistics::Item stat) override;

@@ -29,8 +29,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
+  const fs = require('fs');
+  const tu = require('@arangodb/test-utils');
+  const keyFile = fs.join(tu.pathForTesting('.'), '..', '..', 'UnitTests', 'server.pem');
   return {
-    'http.keep-alive-timeout': '5'
+    'http.keep-alive-timeout': '5',
+    'ssl.keyfile': keyFile,
+    'protocol': 'ssl', // not an arangod option, but picked up by the test framework
   };
 }
 let jsunity = require('jsunity');
@@ -99,20 +104,20 @@ function BaseTestConfig(protocol) {
 function http1TestSuite() {
   'use strict';
   let suite = {};
-  deriveTestSuite(BaseTestConfig("tcp"), suite, '_http1');
+  deriveTestSuite(BaseTestConfig("ssl"), suite, '_ssl_http1');
   return suite;
 };
 function vstTestSuite() {
   'use strict';
   let suite = {};
-  deriveTestSuite(BaseTestConfig("vst"), suite, '_vst');
+  deriveTestSuite(BaseTestConfig("vst+ssl"), suite, '_ssl_vst');
   return suite;
 };
 
 function http2TestSuite() {
   'use strict';
   let suite = {};
-  deriveTestSuite(BaseTestConfig("h2"), suite, '_http2');
+  deriveTestSuite(BaseTestConfig("h2+ssl"), suite, '_ssl_http2');
   return suite;
 };
 

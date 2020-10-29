@@ -82,6 +82,10 @@ function startParameterTest(options, testpath, suiteName) {
       if (paramsSecondRun.hasOwnProperty('server.jwt-secret')) {
         clonedOpts['server.jwt-secret'] = paramsSecondRun['server.jwt-secret'];
       }
+      if (paramsSecondRun.hasOwnProperty('protocol')) {
+        options.protocol = paramsSecondRun.protocol;
+        delete paramsSecondRun.protocol;
+      }
       if (runSetup) {
         delete paramsSecondRun.runSetup;
         instanceInfo = pu.startInstance(options.protocol, options, paramsFirstRun, suiteName, rootDir); // first start

@@ -58,7 +58,7 @@ class GeneralCommTask : public CommTask {
   virtual bool readCallback(asio_ns::error_code ec) = 0;
   
   /// set / reset connection timeout
-  virtual void setIOTimeout() = 0;
+  virtual void setIOTimeout(bool force = false) = 0;
   
  protected:
   

@@ -294,7 +294,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
 }
 
 template <SocketType T>
-void HttpCommTask<T>::setIOTimeout() {
+void HttpCommTask<T>::setIOTimeout(bool /*force*/) {
   double secs = GeneralServerFeature::keepAliveTimeout();
   if (secs <= 0) {
     return;
@@ -508,7 +508,6 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   // bool seenConnectionHeader = false;
   for (auto const& it : response.headers()) {
     std::string const& key = it.first;
-    size_t const keyLength = key.size();
     // ignore content-length
     if (key == StaticStrings::ContentLength || key == StaticStrings::Connection ||
         key == StaticStrings::TransferEncoding) {
@@ -523,7 +522,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     _header.reserve(key.size() + 2 + it.second.size() + 2);
 
     char const* p = key.data();
-    char const* end = p + keyLength;
+    char const* end = p + key.size();
     int capState = 1;
     while (p < end) {
       if (capState == 1) {
