@@ -529,7 +529,7 @@ function replicationSync (options) {
       let shutdownState = true;
       let res = true;
       print("starting replication slave: ");
-      let slave = pu.startInstance('tcp', options, {"log.level" : "replication=trace", "--log.level": "replication=trace"}, 'slave_sync');
+      let slave = pu.startInstance('tcp', options, {"log.level" : "replication=info", "--log.level": "replication=info"}, 'slave_sync');
       let state = (typeof slave === 'object');
 
       if (state) {
