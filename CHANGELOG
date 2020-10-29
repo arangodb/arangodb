@@ -1,10 +1,12 @@
 devel
 -----
 
+* Fixed issue #12778: fails validation if additionalProperties: false
+
 * Fixed very spurious errors if the `holdReadLockCollection` replication API for
   the getting-in-sync procedure of shards was called during server shutdown.
   In this case that method could ask the transaction manager for a specific
-  transaction, but wasn't return one due to the server shutddown. 
+  transaction, but wasn't return one due to the server shutdown.
 
 * Added new 'aql' type for ArangoSearch analyzers.
 
