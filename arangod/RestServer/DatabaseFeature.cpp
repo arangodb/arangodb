@@ -1216,12 +1216,14 @@ int DatabaseFeature::createApplicationDirectory(std::string const& name,
       return TRI_ERROR_NO_ERROR;
     }
 
-    LOG_TOPIC("56fc7", WARN, arangodb::Logger::FIXME)
-        << "forcefully removing existing application directory '" << path
-        << "' for database '" << name << "'";
-    // removing is best effort. if it does not succeed, we can still
-    // go on creating the it
-    TRI_RemoveDirectory(path.c_str());
+    if (!basics::FileUtils::listFiles(path).empty()) {
+      LOG_TOPIC("56fc7", INFO, arangodb::Logger::FIXME)
+          << "forcefully removing existing application directory '" << path
+          << "' for database '" << name << "'";
+      // removing is best effort. if it does not succeed, we can still
+      // go on creating the it
+      TRI_RemoveDirectory(path.c_str());
+    }
   }
 
   // directory does not yet exist - this should be the standard case
