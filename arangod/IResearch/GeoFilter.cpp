@@ -61,6 +61,10 @@ irs::filter::prepared::ptr match_all(
   return filter.prepare(index, order, boost);
 }
 
+inline S2Cap fromPoint(S2Point const& origin) {
+  return S2Cap(origin, S1Angle::Radians(geo::kRadEps));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class GeoIterator
 ////////////////////////////////////////////////////////////////////////////////
@@ -390,7 +394,7 @@ std::pair<S2Cap, bool> getBound(irs::BoundType type,
 
   return {
     (0. == distance
-      ? S2Cap::FromPoint(origin)
+      ? fromPoint(origin)
       : S2Cap(origin, S1Angle::Radians(geo::metersToRadians(distance)))),
     irs::BoundType::INCLUSIVE == type
   };
@@ -422,7 +426,7 @@ irs::filter::prepared::ptr prepareOpenInterval(
         break;
       case irs::BoundType::INCLUSIVE:
         bound = greater ? S2Cap::Full()
-                        : S2Cap::FromPoint(origin);
+                        : fromPoint(origin);
 
         if (!bound.is_valid()) {
           return irs::filter::prepared::empty();
@@ -537,8 +541,8 @@ irs::filter::prepared::ptr prepareInterval(
 
     return ::make_query(
       std::move(states), std::move(stats), boost,
-      [origin](geo::ShapeContainer const& shape) {
-        return origin == shape.centroid();
+      [bound = fromPoint(origin)](geo::ShapeContainer const& shape) {
+        return bound.InteriorContains(shape.centroid());
     });
   }
 
