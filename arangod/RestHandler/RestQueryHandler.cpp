@@ -105,11 +105,20 @@ bool RestQueryHandler::readQuery(bool slow) {
 
     result.add(VPackValue(VPackValueType::Object));
     result.add("id", VPackValue(StringUtils::itoa(q.id)));
+    result.add("database", VPackValue(q.database));
+    result.add("user", VPackValue(q.user));
     result.add("query", VPackValue(q.queryString));
     if (q.bindParameters != nullptr) {
       result.add("bindVars", q.bindParameters->slice());
     } else {
       result.add("bindVars", arangodb::velocypack::Slice::emptyObjectSlice());
+    }
+    if (!q.dataSources.empty()) {
+      result.add("dataSources", VPackValue(VPackValueType::Array));
+      for (auto const& dn : q.dataSources) {
+        result.add(VPackValue(dn));
+      }
+      result.close();
     }
     result.add("started", VPackValue(timeString));
     result.add("runTime", VPackValue(q.runTime));
@@ -347,8 +356,9 @@ bool RestQueryHandler::parseQuery() {
 
 /// @brief returns the short id of the server which should handle this request
 ResultT<std::pair<std::string, bool>> RestQueryHandler::forwardingTarget() {
-  if (!ServerState::instance()->isCoordinator()) {
-    return {std::make_pair(StaticStrings::Empty, false)};
+  auto base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base.ok() && !std::get<0>(base.get()).empty()) {
+    return base;
   }
 
   bool found = false;

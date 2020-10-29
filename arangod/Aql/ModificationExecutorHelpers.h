@@ -84,7 +84,7 @@ bool writeRequired(ModificationExecutorInfos const& infos,
 // which are needed in the cluster where a document not found error can happen
 // but not be fatal.
 void throwOperationResultException(ModificationExecutorInfos const& infos,
-                                   OperationResult const& result);
+                                   OperationResult const& operationResult);
 
 // Converts ModificationOptions to OperationOptions
 OperationOptions convertOptions(ModificationOptions const& in, Variable const* outVariableNew,

@@ -56,6 +56,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -220,7 +221,7 @@ class TemplateSpecializer {
 
 static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false, false);
-  // We do not need any features from this phase
+  server.addFeature<arangodb::MetricsFeature>(false); 
 }
 
 static void SetupBasicFeaturePhase(MockServer& server) {
@@ -465,9 +466,8 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery() const {
 }
 
 MockRestServer::MockRestServer(bool start) : MockServer() {
-  addFeature<arangodb::QueryRegistryFeature>(false);
-
   SetupV8Phase(*this);
+  addFeature<arangodb::QueryRegistryFeature>(false);
   if (start) {
     startFeatures();
   }
@@ -573,9 +573,9 @@ TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
   // unless it is the system database, in which case this does not work:
   if (name != "_system") {
     maintenance::ActionDescription ad(
-        {{std::string(maintenance::NAME), std::string(maintenance::CREATE_DATABASE)},
-         {std::string(maintenance::DATABASE), std::string(name)}},
-         maintenance::HIGHER_PRIORITY);
+      {{std::string(maintenance::NAME), std::string(maintenance::CREATE_DATABASE)},
+       {std::string(maintenance::DATABASE), std::string(name)}},
+      maintenance::HIGHER_PRIORITY, false);
     auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
     maintenance::CreateDatabase cd(mf, ad);
     cd.first();   // Does the job
@@ -598,9 +598,9 @@ void MockDBServer::dropDatabase(std::string const& name) {
 
   // Now we must run a maintenance action to create the database locally:
   maintenance::ActionDescription ad(
-      {{std::string(maintenance::NAME), std::string(maintenance::DROP_DATABASE)},
-       {std::string(maintenance::DATABASE), std::string(name)}},
-       maintenance::HIGHER_PRIORITY);
+    {{std::string(maintenance::NAME), std::string(maintenance::DROP_DATABASE)},
+     {std::string(maintenance::DATABASE), std::string(name)}},
+    maintenance::HIGHER_PRIORITY, false);
   auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
   maintenance::DropDatabase dd(mf, ad);
   dd.first();   // Does the job

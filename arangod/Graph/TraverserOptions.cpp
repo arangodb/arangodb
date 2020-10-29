@@ -406,9 +406,10 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
 void TraverserOptions::addDepthLookupInfo(aql::ExecutionPlan* plan,
                                           std::string const& collectionName,
                                           std::string const& attributeName,
-                                          aql::AstNode* condition, uint64_t depth) {
+                                          aql::AstNode* condition, uint64_t depth,
+                                          bool onlyEdgeIndexes) {
   auto& list = _depthLookupInfo[depth];
-  injectLookupInfoInList(list, plan, collectionName, attributeName, condition);
+  injectLookupInfoInList(list, plan, collectionName, attributeName, condition, onlyEdgeIndexes);
 }
 
 bool TraverserOptions::vertexHasFilter(uint64_t depth) const {

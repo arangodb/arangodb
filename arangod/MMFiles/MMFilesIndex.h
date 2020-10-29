@@ -66,7 +66,7 @@ class MMFilesIndex : public Index {
   virtual Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const& doc, OperationMode mode) = 0;
 
-  void afterTruncate(TRI_voc_tick_t) override {
+  void afterTruncate(TRI_voc_tick_t, transaction::Methods*) override {
     // for mmfiles, truncating the index just unloads it
     unload();
   }

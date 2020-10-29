@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 200, unused: false*/
-/*global assertEqual, assertTrue, assertFalse, fail */
+/*global assertEqual, assertTrue, assertFalse, fail, AQL_WARNING */
 
 /* unused for functions with 'what' parameter.*/
 ////////////////////////////////////////////////////////////////////////////////
@@ -573,6 +573,30 @@ function AqlFunctionsSuite () {
 /// @brief register a function and run a query
 ////////////////////////////////////////////////////////////////////////////////
 
+    testQueryReturnError : function () {
+      unregister("UnitTests::tryme");
+      aqlfunctions.register("UnitTests::tryme", function (what) {
+        const error = require("@arangodb").errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH;
+        AQL_WARNING(error.code,'ALL THY ERRORS ARE BELONG TO US!');
+      },
+                            true);
+
+      var actual = db._query({ query: "RETURN UnitTests::tryme(4)" });
+      let extra = actual.getExtra();
+      assertTrue(extra.hasOwnProperty('warnings'));
+      assertTrue(Array.isArray(extra.warnings));
+      assertEqual(extra.warnings.length, 1);
+      var warn = extra.warnings[0];
+      assertTrue(warn.hasOwnProperty('code'));
+      assertTrue(warn.hasOwnProperty('message'));
+      assertEqual(warn.code, require("@arangodb").errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code);
+      assertEqual(warn.message, 'ALL THY ERRORS ARE BELONG TO US!');
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a function and run a query
+////////////////////////////////////////////////////////////////////////////////
+
     testQueryReturnComplex : function () {
       unregister("UnitTests::tryme");
       aqlfunctions.register("UnitTests::tryme",
@@ -678,6 +702,38 @@ function AqlFunctionsSuite () {
       assertEqual(false, actual[0].value4);
 
       db._drop("UnitTestsFunc");
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test for specific problem with docs returned by user functions
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testQueryUsesUDFWithNestedQuery : function () {
+      db._drop("UnitTestsFunc");
+      db._create("UnitTestsFunc", {numberOfShards: 2, shardKeys: ["productId"]});
+      db._create("UnitTestsFunc2", {numberOfShards: 1});
+
+      let docs = [];
+      for (let i = 0; i < 100; i++) {
+        docs.push({ productId: "abc" });
+      }
+      db.UnitTestsFunc.save(docs);
+      db.UnitTestsFunc2.save({ _key: "abc", value: "hello" });
+
+      unregister("UnitTests::testFunc");
+      var testFunc = function(d) {
+        let db = require("internal").db;
+        let query = "FOR d IN UnitTestsFunc2 RETURN d";
+        return db._query(query).toArray()[0];
+      };
+      aqlfunctions.register("UnitTests::testFunc", testFunc);
+
+      var actual = db._query({ query: "FOR doc in UnitTestsFunc RETURN UnitTests::testFunc(doc)" }).toArray();
+      assertEqual(100, actual.length);
+      assertEqual("hello", actual[0].value);
+
+      db._drop("UnitTestsFunc");
+      db._drop("UnitTestsFunc2");
     }
 
   };

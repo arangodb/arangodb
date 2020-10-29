@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/QueryRegistry.h"
+#include "RestServer/MetricsFeature.h"
 
 namespace arangodb {
 
@@ -44,8 +45,11 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void stop() override final;
   void unprepare() override final;
 
+  bool trackingEnabled() const { return _trackingEnabled; }
   bool trackSlowQueries() const { return _trackSlowQueries; }
+  bool trackQueryString() const { return _trackQueryString; }
   bool trackBindVars() const { return _trackBindVars; }
+  bool trackDataSources() const { return _trackDataSources; }
   double slowQueryThreshold() const { return _slowQueryThreshold; }
   double slowStreamingQueryThreshold() const {
     return _slowStreamingQueryThreshold;
@@ -53,16 +57,24 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool failOnWarning() const { return _failOnWarning; }
   bool smartJoins() const { return _smartJoins; }
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
+  double queryMaxRuntime() const { return _queryMaxRuntime; }
   uint64_t maxQueryPlans() const { return _maxQueryPlans; }
   aql::QueryRegistry* queryRegistry() const { return _queryRegistry.get(); }
 
+  // tracks a slow query by increasing the counter
+  void trackSlowQuery() { ++_slowQueriesCounter; }
+
  private:
+  bool _trackingEnabled;
   bool _trackSlowQueries;
+  bool _trackQueryString;
   bool _trackBindVars;
+  bool _trackDataSources;
   bool _failOnWarning;
   bool _queryCacheIncludeSystem;
   bool _smartJoins;
   uint64_t _queryMemoryLimit;
+  double _queryMaxRuntime;
   uint64_t _maxQueryPlans;
   uint64_t _queryCacheMaxResultsCount;
   uint64_t _queryCacheMaxResultsSize;
@@ -71,6 +83,8 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   double _slowStreamingQueryThreshold;
   double _queryRegistryTTL;
   std::string _queryCacheMode;
+  
+  Counter& _slowQueriesCounter;
 
  private:
   static std::atomic<aql::QueryRegistry*> QUERY_REGISTRY;

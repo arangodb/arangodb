@@ -226,7 +226,7 @@ struct ClusterCommResult {
 
   /// @brief return if request was successful, use this on the request
   /// results after a `performRequest`:
-  bool successful() const {
+  bool isGood() const {
     if (status != CL_COMM_RECEIVED) {
       return false;
     }

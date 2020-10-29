@@ -93,7 +93,8 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature&,
 
 futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature&,
                                                       std::string const& dbname,
-                                                      std::string const& collname);
+                                                      std::string const& collname,
+                                                      bool details);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts number of documents in a coordinator, by shard
@@ -209,7 +210,8 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Methods& trx,
-                                                                 std::string const& collname);
+                                                                 std::string const& collname,
+                                                                 OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush Wal on all DBservers
@@ -217,6 +219,9 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
 
 int flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
                            bool waitForCollector, double maxWaitTime = -1.0);
+
+/// @brief compact the database on all DB servers
+Result compactOnAllDBServers(ClusterFeature&, bool changeLevel, bool compactBottomMostLevel);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief create hotbackup on a coordinator
@@ -317,6 +322,13 @@ class ClusterMethods {
       bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
       bool enforceReplicationFactor, bool isNewDatabase,
       std::shared_ptr<LogicalCollection> const& colPtr);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Enterprise Relecant code to filter out hidden collections
+  ///        that should ne be triggered directly by operations.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static bool filterHiddenCollections(LogicalCollection const& c);
 
  private:
   ////////////////////////////////////////////////////////////////////////////////

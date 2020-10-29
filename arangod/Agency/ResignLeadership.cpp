@@ -390,7 +390,7 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         if (isLeader) {
 
           std::string toServer = Job::findNonblockedCommonHealthyInSyncFollower(
-            _snapshot, database.first, collptr.first, shard.first);
+            _snapshot, database.first, collptr.first, shard.first, _server);
 
           if (toServer.empty()) {
             continue ; // can not resign from that shard

@@ -57,6 +57,7 @@ function SynchronousReplicationWithViewSuite () {
   var cinfo;
   var ccinfo;
   var shards;
+  var failedState = { leader: null, follower: null };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find out servers for the system collections
@@ -97,6 +98,16 @@ function SynchronousReplicationWithViewSuite () {
       replicas = ccinfo.map(s => s.servers.length);
       if (replicas.every(x => x > 1)) {
         console.info("Replication up and running!");
+        // The following wait has a purpose, so please do not remove it.
+        // We have just seen that all followers are in sync. However, this
+        // means that the leader has told the agency so, it has not necessarily
+        // responded to the followers, so they might still be in
+        // SynchronizeShard. If we STOP the leader too quickly in a subsequent
+        // test, then the follower might get stuck in SynchronizeShard
+        // and the expected failover cannot happen. A second should be plenty
+        // of time to receive the response and finish the SynchronizeShard
+        // operation.
+        wait(1);
         return true;
       }  
       wait(0.5);
@@ -119,14 +130,15 @@ function SynchronousReplicationWithViewSuite () {
     assertTrue(pos >= 0);
     assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
     console.info("Have failed follower", follower);
+    failedState.follower = follower;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heal the follower
 ////////////////////////////////////////////////////////////////////////////////
 
-  function healFollower() {
-    var follower = cinfo.shards[shards[0]][1];
+  function healFollower(follower = null) {
+    if (follower == null) follower = cinfo.shards[shards[0]][1];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
     // Now look for instanceInfo:
     var pos = _.findIndex(global.instanceInfo.arangods,
@@ -134,6 +146,7 @@ function SynchronousReplicationWithViewSuite () {
     assertTrue(pos >= 0);
     assertTrue(continueExternal(global.instanceInfo.arangods[pos].pid));
     console.info("Have healed follower", follower);
+    if (failedState.follower === follower) failedState.follower = null;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,6 +162,7 @@ function SynchronousReplicationWithViewSuite () {
     assertTrue(pos >= 0);
     assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
     console.info("Have failed leader", leader);
+    failedState.leader = leader;
     return leader;
   }
 
@@ -156,8 +170,8 @@ function SynchronousReplicationWithViewSuite () {
 /// @brief heal the follower
 ////////////////////////////////////////////////////////////////////////////////
 
-  function healLeader() {
-    var leader = cinfo.shards[shards[0]][0];
+  function healLeader(leader) {
+    if (leader == null) leader = cinfo.shards[shards[0]][0];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
     // Now look for instanceInfo:
     var pos = _.findIndex(global.instanceInfo.arangods,
@@ -165,6 +179,7 @@ function SynchronousReplicationWithViewSuite () {
     assertTrue(pos >= 0);
     assertTrue(continueExternal(global.instanceInfo.arangods[pos].pid));
     console.info("Have healed leader", leader);
+    if (failedState.leader === leader) failedState.leader = null;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -492,6 +507,8 @@ function SynchronousReplicationWithViewSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      if(failedState.leader != null) healLeader(failedState.leader);
+      if(failedState.follower != null) healFollower(failedState.follower);
       db._drop(cn);
       viewOperations("drop");
       //global.ArangoAgency.set('Target/FailedServers', {});

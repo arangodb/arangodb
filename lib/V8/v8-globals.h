@@ -716,6 +716,9 @@ struct TRI_v8_global_t {
   /// @brief information about the currently running transaction
   void* _transactionContext;
 
+  /// @brief current AQL query
+  void* _query;
+
   /// @brief pointer to the vocbase (TRI_vocbase_t*)
   TRI_vocbase_t* _vocbase;
 

@@ -129,32 +129,36 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   auto v8Counters = dealer.getCurrentContextNumbers();
   v8::Handle<v8::Object> v8CountersObj = v8::Object::New(isolate);
   v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "available"),
-                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.available)));
+                     v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.available)));
   v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "busy"),
-                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.busy)));
+                     v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.busy)));
   v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "dirty"),
-                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.dirty)));
+                     v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.dirty)));
   v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "free"),
-                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.free)));
+                     v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.free)));
   v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "max"),
-                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.max)));
+                     v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.max)));
+  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "min"),
+                     v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.min)));
 
-  auto memoryStatistics = dealer.getCurrentMemoryNumbers();
+  auto memoryStatistics = dealer.getCurrentContextDetails();
 
   v8::Handle<v8::Array> v8ListOfMemory = v8::Array::New(isolate, static_cast<int>(memoryStatistics.size()));
   uint32_t pos = 0;
   for (auto memStatistic : memoryStatistics) {
     v8::Handle<v8::Object> v8MemStat = v8::Object::New(isolate);
     v8MemStat->Set(TRI_V8_ASCII_STRING(isolate, "contextId"),
-                   v8::Integer::New(isolate, static_cast<int32_t>(memStatistic.id)));
+                   v8::Integer::New(isolate, static_cast<uint32_t>(memStatistic.id)));
     v8MemStat->Set(TRI_V8_ASCII_STRING(isolate, "tMax"),
                    v8::Number::New(isolate, (double)memStatistic.tMax));
     v8MemStat->Set(TRI_V8_ASCII_STRING(isolate, "countOfTimes"),
-                   v8::Integer::New(isolate, static_cast<int32_t>(memStatistic.countOfTimes)));
+                   v8::Integer::New(isolate, static_cast<uint32_t>(memStatistic.countOfTimes)));
     v8MemStat->Set(TRI_V8_ASCII_STRING(isolate, "heapMax"),
                    v8::Number::New(isolate, (double)memStatistic.heapMax));
     v8MemStat->Set(TRI_V8_ASCII_STRING(isolate, "heapMin"),
                    v8::Number::New(isolate, (double)memStatistic.heapMin));
+    v8MemStat->Set(TRI_V8_ASCII_STRING(isolate, "invocations"),
+                   v8::Integer::New(isolate, static_cast<uint32_t>(memStatistic.invocations)));
 
     v8ListOfMemory->Set(pos++, v8MemStat);
   }
@@ -208,12 +212,14 @@ static void JS_ClientStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
 
   StatisticsCounter httpConnections;
   StatisticsCounter totalRequests;
+  StatisticsCounter totalRequestsSuperuser;
+  StatisticsCounter totalRequestsUser;
   std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
   StatisticsCounter asyncRequests;
   StatisticsDistribution connectionTime;
 
-  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                             asyncRequests, connectionTime);
+  ConnectionStatistics::fill(httpConnections, totalRequests, totalRequestsSuperuser, totalRequestsUser, 
+                             methodRequests, asyncRequests, connectionTime);
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "httpConnections"),
               v8::Number::New(isolate, (double)httpConnections._count));
@@ -253,16 +259,22 @@ static void JS_HttpStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   StatisticsCounter httpConnections;
   StatisticsCounter totalRequests;
+  StatisticsCounter totalRequestsSuperuser;
+  StatisticsCounter totalRequestsUser;
   std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
   StatisticsCounter asyncRequests;
   StatisticsDistribution connectionTime;
 
-  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                             asyncRequests, connectionTime);
+  ConnectionStatistics::fill(httpConnections, totalRequests, totalRequestsSuperuser, totalRequestsUser, 
+                             methodRequests, asyncRequests, connectionTime);
 
   // request counters
   result->Set(TRI_V8_ASCII_STRING(isolate, "requestsTotal"),
               v8::Number::New(isolate, (double)totalRequests._count));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsSuperuser"),
+              v8::Number::New(isolate, (double)totalRequestsSuperuser._count));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsUser"),
+              v8::Number::New(isolate, (double)totalRequestsUser._count));
   result->Set(TRI_V8_ASCII_STRING(isolate, "requestsAsync"),
               v8::Number::New(isolate, (double)asyncRequests._count));
   result->Set(TRI_V8_ASCII_STRING(isolate, "requestsGet"),

@@ -87,9 +87,14 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
 
   virtual void start() = 0;
   virtual void close() = 0;
-  
+
+  // returns the number of scheduled requests
+  std::size_t getRequestCount() const { return _requestCount; }
+
+  void setKeepAliveTimeoutReached() { _keepAliveTimeoutReached = true; }
+
 protected:
-  
+
   virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
                                                           uint64_t messageId) = 0;
 
@@ -102,7 +107,7 @@ protected:
                             RequestStatistics*) = 0;
 
  protected:
-  
+
   enum class Flow : bool { Continue = true, Abort = false };
   static constexpr size_t MaximalBodySize = 1024 * 1024 * 1024;  // 1024 MB
 
@@ -124,25 +129,27 @@ protected:
   /// @brief send response including error response body
   void addErrorResponse(rest::ResponseCode, rest::ContentType,
                         uint64_t messageId, int errorNum, char const* errorMessage = nullptr);
-  
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks the access rights for a specified path, includes automatic
   ///        exceptions for /_api/users to allow logins without authorization
   ////////////////////////////////////////////////////////////////////////////////
   rest::ResponseCode canAccessPath(GeneralRequest&) const;
-  
+
  private:
   bool handleRequestSync(std::shared_ptr<RestHandler>);
   bool handleRequestAsync(std::shared_ptr<RestHandler>, uint64_t* jobId = nullptr);
-  
+
  protected:
-  
+
   GeneralServer& _server;
   char const* _name;
   ConnectionInfo _connectionInfo;
-  
+
   ConnectionStatistics* _connectionStatistics;
   std::chrono::milliseconds _keepAliveTimeout;
+  std::size_t _requestCount = 0;
+  bool _keepAliveTimeoutReached = false;
   AuthenticationFeature* _auth;
 
   std::mutex _statisticsMutex;

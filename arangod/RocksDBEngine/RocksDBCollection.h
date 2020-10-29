@@ -131,10 +131,12 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                 std::function<void()> const& cbDuringLock) override;
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
+  
+  bool hasDocuments() override;
 
  private:
   /// @brief return engine-specific figures
-  void figuresSpecific(velocypack::Builder&) override;
+  void figuresSpecific(bool details, velocypack::Builder&) override;
 
   // @brief return the primary index
   // WARNING: Make sure that this instance

@@ -778,14 +778,6 @@ std::string getSingleShardId(arangodb::aql::ExecutionPlan const* plan,
 
 bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
                                  arangodb::aql::LimitNode& limitNode) {
-  auto const* loop = sortNode.getLoop();
-  if (loop && arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
-    // since currently view node doesn't provide any
-    // useful estimation, we apply heap optimization
-    // unconditionally
-    return true;
-  }
-
   size_t input = sortNode.getCost().estimatedNrItems;
   size_t output = limitNode.limit() + limitNode.offset();
 
@@ -5019,6 +5011,14 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         return false;  // continue . . .
       }
       case EN::CALCULATION: {
+        auto calculationNode = ExecutionNode::castTo<CalculationNode*>(en);
+        auto expr = calculationNode->expression();
+
+        // If we find an expression that is not allowed to run on a DBServer,
+        // we cannot undistribute (as then the expression *would* run on a dbserver)
+        if (!expr->canRunOnDBServer()) {
+          break;
+        }
         return false;  // continue . . .
       }
       case EN::ENUMERATE_COLLECTION:
@@ -6017,7 +6017,15 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
 
     while (current != nullptr) {
       if (current->getType() == EN::COLLECT) {
+        if (subqueryNode->isInInnerLoop()) {
+          eligible = false;
+          break;
+        }
         if (ExecutionNode::castTo<CollectNode const*>(current)->hasOutVariable()) {
+          // COLLECT ... INTO captures all existing variables in the scope.
+          // if we move the subquery from one scope into another, we will end up with
+          // different variables captured, so we must not apply the optimization in
+          // this case.
           eligible = false;
           break;
         }
@@ -7234,6 +7242,7 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
         
         current = filterParent;
         modified = true;
+        continue;
       } else if (current->getType() == EN::CALCULATION) {
         // store all calculations we found
         auto calculationNode = ExecutionNode::castTo<CalculationNode*>(current);

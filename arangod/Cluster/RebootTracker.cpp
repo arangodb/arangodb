@@ -81,6 +81,8 @@ void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> con
     if (newIt == state.end()) {
       // Try to schedule all callbacks for serverId.
       // If that didn't throw, erase the entry.
+      LOG_TOPIC("88858", INFO, Logger::CLUSTER)
+          << "Server " << serverId << " removed, aborting its old jobs now.";
       scheduleAllCallbacksFor(serverId);
       auto it = _callbacks.find(serverId);
       if (it != _callbacks.end()) {
@@ -94,7 +96,7 @@ void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> con
       TRI_ASSERT(oldRebootId <= newRebootId);
       if (oldRebootId < newRebootId) {
         LOG_TOPIC("88857", INFO, Logger::CLUSTER)
-            << "Server " << serverId << " rebooted, aborting its old jobs now.";
+            << "Server " << serverId << " gone or rebooted, aborting its old jobs now.";
         // Try to schedule all callbacks for serverId older than newRebootId.
         // If that didn't throw, erase the entry.
         scheduleCallbacksFor(serverId, newRebootId);

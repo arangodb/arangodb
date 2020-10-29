@@ -26,6 +26,59 @@
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
+std::string status_code_to_string(StatusCode statusCode) {
+  switch (statusCode) {
+    case StatusUndefined:
+      return "0 Undefined";
+    case StatusOK:
+      return "200 OK";
+    case StatusCreated:
+      return "201 Created";
+    case StatusAccepted:
+      return "202 Accepted";
+    case StatusPartial:
+      return "203 Partial";
+    case StatusNoContent:
+      return "204 No Content";
+    case StatusBadRequest:
+      return "400 Bad Request";
+    case StatusUnauthorized:
+      return "401 Unauthorized";
+    case StatusForbidden:
+      return "403 Forbidden";
+    case StatusNotFound:
+      return "404 Not Found";
+    case StatusMethodNotAllowed:
+      return "405 Method Not Allowed";
+    case StatusNotAcceptable:
+      return "406 Not Acceptable";
+    case StatusConflict:
+      return "409 Conflict";
+    case StatusPreconditionFailed:
+      return "412 Precondition Failed";
+    case StatusInternalError:
+      return "500 Internal Error";
+    case StatusUnavailable:
+      return "503 Unavailable";
+    case StatusVersionNotSupported:
+      return "505 Version Not Supported";
+    default:
+      if (100 <= statusCode && statusCode < 200) {
+        return std::to_string(statusCode) + " Unknown informational response";
+      } else if (200 <= statusCode && statusCode < 300) {
+        return std::to_string(statusCode) + " Unknown successful response";
+      } else if (300 <= statusCode && statusCode < 400) {
+        return std::to_string(statusCode) + " Unknown redirect";
+      } else if (400 <= statusCode && statusCode < 500) {
+        return std::to_string(statusCode) + " Unknown client error";
+      } else if (500 <= statusCode && statusCode < 600) {
+        return std::to_string(statusCode) + " Unknown server error";
+      } else {
+        return std::to_string(statusCode) + " Unknown or invalid status code";
+      }
+  }
+}
+
 std::string to_string(RestVerb type) {
   switch (type) {
     case RestVerb::Illegal:

@@ -283,16 +283,6 @@ IResearchLink::IResearchLink(
 
     prev.reset();
   };
-
-  // initialize commit callback
-  _before_commit = [this](uint64_t tick, irs::bstring& out) {
-    _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t(tick)); // update last tick
-    tick = irs::numeric_utils::hton64(uint64_t(_lastCommittedTick)); // convert to BE
-
-    out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof(uint64_t));
-
-    return true;
-  };
 }
 
 IResearchLink::~IResearchLink() {
@@ -313,8 +303,13 @@ bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
   return _meta == meta;
 }
 
-void IResearchLink::afterTruncate() {
+void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
+                                  transaction::Methods* trx) {
   SCOPED_LOCK(_asyncSelf->mutex());  // '_dataStore' can be asynchronously modified
+
+  TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
   if (!*_asyncSelf) {
     // the current link is no longer valid (checked after ReadLock acquisition)
@@ -325,10 +320,56 @@ void IResearchLink::afterTruncate() {
   }
 
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
+  if (trx != nullptr) {
+    auto* key = this;
+
+    auto& state = *(trx->state());
+
+    // TODO FIXME find a better way to look up a ViewState
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* ctx = dynamic_cast<LinkTrxState*>(state.cookie(key));
+#else
+    auto* ctx = static_cast<LinkTrxState*>(state.cookie(key));
+#endif
+
+    if (ctx) {
+      ctx->reset(); // throw away all pending operations as clear will overwrite them all
+      state.cookie(key, nullptr); // force active segment release to allow commit go and avoid deadlock in clear
+    }
+  }
+
+  auto const lastCommittedTick = _lastCommittedTick;
+  bool recoverCommittedTick = true;
+
+  auto lastCommittedTickGuard = irs::make_finally([lastCommittedTick, this, &recoverCommittedTick]()->void {
+      if (recoverCommittedTick) {
+        _lastCommittedTick = lastCommittedTick;
+      }
+    });
 
   try {
-    _dataStore._writer->clear();
-    _dataStore._reader = _dataStore._reader.reopen();
+    _dataStore._writer->clear(tick);
+    recoverCommittedTick = false; //_lastCommittedTick now updated and data is written to storage
+
+    // get new reader
+    auto reader = _dataStore._reader.reopen();
+
+    if (!reader) {
+      // nothing more to do
+      LOG_TOPIC("1c2c1", WARN, iresearch::TOPIC)
+        << "failed to update snapshot after truncate "
+        << ", reuse the existing snapshot for arangosearch link '" << id() << "'";
+      return;
+    }
+
+    // update reader
+    _dataStore._reader = reader;
+
+    auto subscription = std::static_pointer_cast<IResearchFlushSubscription>(_flushSubscription);
+
+    if (subscription) {
+      subscription->tick(_lastCommittedTick);
+    }
   } catch (std::exception const& e) {
     LOG_TOPIC("a3c57", ERR, iresearch::TOPIC)
         << "caught exception while truncating arangosearch link '" << id()
@@ -563,7 +604,7 @@ Result IResearchLink::commitUnsafe(bool wait) {
 
     try {
       // _lastCommittedTick is being updated in '_before_commit'
-      _dataStore._writer->commit(_before_commit);
+      _dataStore._writer->commit();
     } catch (...) {
       // restore last committed tick in case of any error
       _lastCommittedTick = lastCommittedTick;
@@ -767,7 +808,8 @@ Result IResearchLink::init(
   IResearchLinkMeta meta;
 
   // definition should already be normalized and analyzers created if required
-  if (!meta.init(definition, true, error, &(collection().vocbase()))) {
+  if (!meta.init(definition, true, error,
+                 _collection.vocbase().name())) {
     return {
       TRI_ERROR_BAD_PARAMETER,
       "error parsing view link parameters from json: " + error
@@ -1086,6 +1128,15 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
   irs::index_writer::init_options options;
   options.lock_repository = false; // do not lock index, ArangoDB has its own lock
   options.comparator = sorted ? &_comparer : nullptr; // set comparator if requested
+  // initialize commit callback
+  options.meta_payload_provider = [this](uint64_t tick, irs::bstring& out) {
+    _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t(tick)); // update last tick
+    tick = irs::numeric_utils::hton64(uint64_t(_lastCommittedTick)); // convert to BE
+
+    out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof(uint64_t));
+
+    return true;
+  };
 
   // setup columnstore compression/encryption if requested by storage engine
   auto const encrypt = (nullptr != irs::get_encryption(_dataStore._directory->attributes()));
@@ -1116,7 +1167,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
   }
 
   if (!_dataStore._reader) {
-    _dataStore._writer->commit(_before_commit); // initialize 'store'
+    _dataStore._writer->commit(); // initialize 'store'
     _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory));
   }
 
@@ -1503,8 +1554,9 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
   IResearchLinkMeta other;
   std::string errorField;
 
-  return other.init(slice, true, errorField, &(collection().vocbase())) // for db-server analyzer validation should have already apssed on coordinator (missing analyzer == no match)
-    && _meta == other;
+  return other.init(slice, true, errorField,
+                    _collection.vocbase().name())  // for db-server analyzer validation should have already apssed on coordinator (missing analyzer == no match)
+         && _meta == other;
 }
 
 Result IResearchLink::properties(

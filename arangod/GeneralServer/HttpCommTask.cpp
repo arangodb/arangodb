@@ -348,6 +348,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
                                            std::move(thisPtr->_protocol),
                                            fuerte::vst::VST1_0);
       thisPtr->_server.registerTask(std::move(commTask));
+      thisPtr->close();
       return;  // vst 1.0
 
     } else if (std::equal(::vst11, ::vst11 + 11, bg, bg + 11)) {
@@ -357,6 +358,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
                                            std::move(thisPtr->_protocol),
                                            fuerte::vst::VST1_1);
       thisPtr->_server.registerTask(std::move(commTask));
+      thisPtr->close();
       return;  // vst 1.1
     }
 
@@ -376,6 +378,12 @@ bool HttpCommTask<T>::checkHttpUpgrade() {
 template <SocketType T>
 void HttpCommTask<T>::processRequest() {
   TRI_ASSERT(_request);
+
+  this->_protocol->timer.cancel();
+  this->_requestCount += 1;
+  if (this->_keepAliveTimeoutReached) {
+    return ;  // we have to ignore this request because the connection has already been closed
+  }
 
   // ensure there is a null byte termination. RestHandlers use
   // C functions like strchr that except a C string as input
@@ -546,7 +554,7 @@ ResponseCode HttpCommTask<T>::handleAuthHeader(HttpRequest& req) {
 
     if (Logger::logRequestParameters()) {
       LOG_TOPIC("c4536", DEBUG, arangodb::Logger::REQUESTS)
-          << "\"authorization-header\",\"" << (void*)this << "\",\"" << authStr << "\"";
+          << "\"authorization-header\",\"" << (void*)this << "\",SENSITIVE_DETAILS_HIDDEN";
     }
 
     try {
@@ -728,14 +736,19 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   if (_shouldKeepAlive && secs > 0) {
     int64_t millis = static_cast<int64_t>(secs * 1000);
     this->_protocol->timer.expires_after(std::chrono::milliseconds(millis));
-    this->_protocol->timer.async_wait([self = CommTask::weak_from_this()](asio_ns::error_code ec) {
-      std::shared_ptr<CommTask> s;
-      if (ec || !(s = self.lock())) {  // was canceled / deallocated
-        return;
-      }
-      LOG_TOPIC("5c1e0", INFO, Logger::REQUESTS)
-          << "keep alive timeout, closing stream!";
-      s->close();
+    this->_protocol->timer.async_wait([self = CommTask::weak_from_this(), oldRequestCount = this->_requestCount](asio_ns::error_code ec) {
+        std::shared_ptr<CommTask> s;
+        if (ec || !(s = self.lock())) {  // was canceled / deallocated
+            return;
+        }
+        if (s->getRequestCount()!=oldRequestCount) {
+            return;
+        }
+
+        s->setKeepAliveTimeoutReached();
+        LOG_TOPIC("5c1e0", INFO, Logger::REQUESTS)
+        << "keep alive timeout, closing stream!";
+        s->close();
     });
 
     _header.append(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
@@ -793,7 +806,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
       << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
       << "\",\"" << static_cast<int>(response.responseCode()) << "\","
       << Logger::FIXED(totalTime, 6);
-  
+
   if constexpr (SocketType::Ssl == T) {
     this->_protocol->context.io_context.post([self = this->shared_from_this(), stat]() mutable {
       auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
@@ -808,7 +821,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 template <SocketType T>
 void HttpCommTask<T>::writeResponse(RequestStatistics* stat) {
   TRI_ASSERT(!_header.empty());
-  
+
   RequestStatistics::SET_WRITE_START(stat);
 
   std::array<asio_ns::const_buffer, 2> buffers;
@@ -823,7 +836,7 @@ void HttpCommTask<T>::writeResponse(RequestStatistics* stat) {
                          auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
                          RequestStatistics::SET_WRITE_END(stat);
                          RequestStatistics::ADD_SENT_BYTES(stat, nwrite);
-    
+
                          thisPtr->_response.reset();
 
                          llhttp_errno_t err = llhttp_get_errno(&thisPtr->_parser);

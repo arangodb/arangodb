@@ -1334,6 +1334,8 @@ void Query::init() {
     return;
   }
 
+  _user = ExecContext::current().user();
+
   TRI_ASSERT(_profile == nullptr);
   // adds query to QueryList which is needed for /_api/query/current
   _profile = std::make_unique<QueryProfile>(this);
@@ -1510,7 +1512,7 @@ CollectionNameResolver const& Query::resolver() {
 
 /// @brief look up a graph either from our cache list or from the _graphs
 ///        collection
-graph::Graph const* Query::lookupGraphByName(std::string const& name) {
+ResultT<graph::Graph const*> Query::lookupGraphByName(std::string const& name) {
   auto it = _graphs.find(name);
 
   if (it != _graphs.end()) {
@@ -1521,13 +1523,13 @@ graph::Graph const* Query::lookupGraphByName(std::string const& name) {
   auto g = graphManager.lookupGraphByName(name);
 
   if (g.fail()) {
-    return nullptr;
+    return g.result();
   }
 
-  auto graph = g.get().get();
+  auto graphPtr = g.get().get();
   _graphs.emplace(name, std::move(g.get()));
 
-  return graph;
+  return graphPtr;
 }
 
 /// @brief returns the next query id

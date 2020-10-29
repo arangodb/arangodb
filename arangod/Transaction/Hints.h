@@ -53,6 +53,7 @@ class Hints {
     FROM_TOPLEVEL_AQL = 16384,    // transaction is only runnning one AQL query
     GLOBAL_MANAGED = 32768,  // transaction with externally managed lifetime
     INDEX_CREATION = 65536, // transaction is for creating index on existing collection (many inserts, no removes, index will be deleted on any failure anyway)
+    IS_FOLLOWER_TRX = 131072,  // transaction used to replicate something on a follower
   };
 
   Hints() : _value(0) {}

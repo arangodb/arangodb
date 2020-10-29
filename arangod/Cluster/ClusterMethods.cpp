@@ -195,7 +195,7 @@ void recursiveAddMMFiles(VPackSlice const& value, VPackBuilder& builder) {
   TRI_ASSERT(builder.isClosed());
 }
 
-void recursiveAddRocksDB(VPackSlice const& value, VPackBuilder& builder) {
+void recursiveAddRocksDB(bool detailed, VPackSlice const& value, VPackBuilder& builder) {
   TRI_ASSERT(value.isObject());
   TRI_ASSERT(builder.slice().isObject());
   TRI_ASSERT(builder.isClosed());
@@ -227,13 +227,64 @@ void recursiveAddRocksDB(VPackSlice const& value, VPackBuilder& builder) {
   updated.add("size", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                     {"indexes", "size"})));
   updated.close();
+
+  if (detailed && value.hasKey("engine")) {
+    updated.add("engine", VPackValue(VPackValueType::Object));
+    updated.add("documents", VPackValue(addFigures<size_t>(value, builder.slice(),
+                                                           {"engine", "documents"})));
+    // merge indexes together
+    std::map<uint64_t, std::pair<VPackSlice, VPackSlice>> indexes;
+
+    updated.add("indexes", VPackValue(VPackValueType::Array));
+    VPackSlice rocksDBValues = value.get("engine");
+
+    for (auto const& it : VPackArrayIterator(rocksDBValues.get("indexes"))) {
+      VPackSlice idSlice = it.get("id");
+      if (!idSlice.isNumber()) {
+        continue;
+      }
+      indexes.emplace(idSlice.getNumber<uint64_t>(), std::make_pair(it, VPackSlice::noneSlice()));
+    }
+  
+    rocksDBValues = builder.slice().get("engine");
+    if (rocksDBValues.isObject()) {
+      for (auto const& it : VPackArrayIterator(rocksDBValues.get("indexes"))) {
+        VPackSlice idSlice = it.get("id");
+        if (!idSlice.isNumber()) {
+          continue;
+        }
+        auto idx = indexes.find(idSlice.getNumber<uint64_t>());
+        if (idx == indexes.end()) {
+          indexes.emplace(idSlice.getNumber<uint64_t>(), std::make_pair(it, VPackSlice::noneSlice()));
+        } else {
+          (*idx).second.second = it;
+        }
+      }
+    }
+
+    for (auto const& it : indexes) {
+      updated.openObject();
+      updated.add("type", it.second.first.get("type"));
+      updated.add("id", it.second.first.get("id"));
+      uint64_t count = it.second.first.get("count").getNumber<uint64_t>();
+      if (it.second.second.isObject()) {
+        count += it.second.second.get("count").getNumber<uint64_t>();
+      }
+      updated.add("count", VPackValue(count));
+      updated.close();
+    }
+
+    updated.close(); // "indexes" array
+    updated.close(); // "engine" object
+  }
   
   updated.close();
 
   TRI_ASSERT(updated.slice().isObject());
   TRI_ASSERT(updated.isClosed());
-
+  
   builder = VPackCollection::merge(builder.slice(), updated.slice(), true, false);
+  
   TRI_ASSERT(builder.slice().isObject());
   TRI_ASSERT(builder.isClosed());
 }
@@ -327,6 +378,7 @@ OperationResult handleResponsesFromAllShards(
       result.reset(commError);
       break;
     } else {
+      TRI_ASSERT(res.response);
       std::vector<VPackSlice> const& slices = res.response->slices();
       if (!slices.empty()) {
         VPackSlice answer = slices[0];
@@ -684,6 +736,19 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
 }
 }  // namespace
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Enterprise Relecant code to filter out hidden collections
+///        that should ne be triggered directly by operations.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef USE_ENTERPRISE
+bool ClusterMethods::filterHiddenCollections(LogicalCollection const& c) {
+  return false;
+}
+#endif
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a shard distribution for a new collection, the list
 /// dbServers must be a list of DBserver ids to distribute across.
@@ -863,7 +928,7 @@ network::Headers getForwardableRequestHeaders(arangodb::GeneralRequest* request)
     std::string const& key = (*it).first;
 
     // ignore the following headers
-    if (key != "x-arango-async" && key != "authorization" &&
+    if (key != StaticStrings::Async && key != "authorization" &&
         key != "content-length" && key != "connection" && key != "expect" &&
         key != "host" && key != "origin" && key != StaticStrings::HLCHeader &&
         key != StaticStrings::ErrorCodes &&
@@ -1077,7 +1142,8 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
 
 futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
                                                       std::string const& dbname,
-                                                      std::string const& collname) {
+                                                      std::string const& collname,
+                                                      bool details) {
   // Set a few variables needed for our work:
   ClusterInfo& ci = feature.clusterInfo();
 
@@ -1106,20 +1172,20 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
     auto future =
         network::sendRequest(pool, "shard:" + p.first, fuerte::RestVerb::Get,
                              "/_api/collection/" +
-                                 StringUtils::urlEncode(p.first) + "/figures",
+                                 StringUtils::urlEncode(p.first) + "/figures?details=" + (details ? "true" : "false"),
                              VPackBuffer<uint8_t>(), reqOpts);
     futures.emplace_back(std::move(future));
   }
 
-  auto cb = [isRocksDB](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
-    auto handler = [isRocksDB](Result& result, VPackBuilder& builder, ShardID&,
+  auto cb = [isRocksDB, details](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
+    auto handler = [isRocksDB, details](Result& result, VPackBuilder& builder, ShardID&,
                       VPackSlice answer) mutable -> void {
       if (answer.isObject()) {
         VPackSlice figures = answer.get("figures");
         // add to the total
         if (figures.isObject()) {
           if (isRocksDB) {
-            recursiveAddRocksDB(figures, builder);
+            recursiveAddRocksDB(details, figures, builder);
           } else {
             recursiveAddMMFiles(figures, builder);
           }
@@ -1611,7 +1677,8 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Methods& trx,
-                                                                 std::string const& collname) {
+                                                                 std::string const& collname,
+                                                                 OperationOptions const& options) {
   Result res;
   // Set a few variables needed for our work:
   ClusterInfo& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
@@ -1640,6 +1707,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
   reqOpts.database = trx.vocbase().name();
   reqOpts.timeout = network::Timeout(600.0);
   reqOpts.retryNotFound = true;
+  reqOpts.param(StaticStrings::Compact, (options.truncateCompact ? "true" : "false"));
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
@@ -2321,7 +2389,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
     VPackBuffer<uint8_t> buffer;
     buffer.append(slice.begin(), slice.byteSize());
 
-    for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
+    for (auto const& shardServers : *shardIds) {
       ShardID const& shard = shardServers.first;
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
@@ -2393,6 +2461,46 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
     }
   }
   return TRI_ERROR_NO_ERROR;
+}
+ 
+/// @brief compact the database on all DB servers
+Result compactOnAllDBServers(ClusterFeature& feature,
+                             bool changeLevel, bool compactBottomMostLevel) {
+  ClusterInfo& ci = feature.clusterInfo();
+
+  std::vector<ServerID> DBservers = ci.getCurrentDBServers();
+
+  auto* pool = feature.server().getFeature<NetworkFeature>().pool();
+
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(3600);
+  reqOpts.skipScheduler = true; // hack to avoid scheduler queue
+  reqOpts.param("changeLevel", (changeLevel ? "true" : "false"))
+         .param("compactBottomMostLevel", (compactBottomMostLevel ? "true" : "false"));
+
+  std::vector<Future<network::Response>> futures;
+  futures.reserve(DBservers.size());
+
+  VPackBufferUInt8 buffer;
+  VPackSlice const s = VPackSlice::emptyObjectSlice();
+  buffer.append(s.start(), s.byteSize());
+  for (std::string const& server : DBservers) {
+    futures.emplace_back(
+        network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Put,
+                                  "/_admin/compact", buffer, reqOpts));
+  }
+
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = f.get();
+
+    if (r.fail()) {
+      return {network::fuerteToArangoErrorCode(r), network::fuerteToArangoErrorMessage(r)};
+    }
+    if (r.response->statusCode() != fuerte::StatusOK) {
+      return network::resultFromBody(r.slice(), TRI_ERROR_INTERNAL);
+    }
+  }
+  return {};
 }
 
 #ifndef USE_ENTERPRISE
@@ -3777,10 +3885,17 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       return result;
     }
 
+    auto releaseAgencyLock = scopeGuard([&]{
+      LOG_TOPIC("52416", DEBUG, Logger::BACKUP)
+          << "Releasing agency lock with scope guard! backupId: " << backupId;
+      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+    });
+
     if (end < steady_clock::now()) {
       LOG_TOPIC("352d6", INFO, Logger::BACKUP)
           << "hot backup didn't get to locking phase within " << timeout << "s.";
-      auto hlRes = ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      // release the lock
+      releaseAgencyLock.fire();
 
       events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_CLUSTER_TIMEOUT);
       return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT,
@@ -3790,8 +3905,10 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     // acquire agency dump
     auto agency = std::make_shared<VPackBuilder>();
     result = ci.agencyPlan(agency);
+
     if (!result.ok()) {
-      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      // release the lock
+      releaseAgencyLock.fire();
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("failed to acquire agency dump: ") + result.errorMessage());
       LOG_TOPIC("c014d", ERR, Logger::BACKUP) << result.errorMessage();
@@ -3808,14 +3925,21 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     }
     std::vector<ServerID> dbServers = ci.getCurrentDBServers();
     std::vector<ServerID> lockedServers;
-    double lockWait(1);
-    while (cc != nullptr && steady_clock::now() < end) {
+    // We try to hold all write transactions on all dbservers at the same time.
+    // The default timeout to get to this state is 120s. We first try for a
+    // certain time t, and if not everybody has stopped all transactions within
+    // t seconds, we release all locks and try again with t doubled, until the
+    // total timeout has been reached. We start with t=15, which gives us
+    // 15, 30 and 60 to try before the default timeout of 120s has been reached.
+    double lockWait(15.0);
+    while (cc != nullptr && steady_clock::now() < end && !feature.server().isStopping()) {
       result = lockDBServerTransactions(backupId, dbServers, lockWait, lockedServers);
       if (!result.ok()) {
         unlockDBServerTransactions(backupId, lockedServers);
         lockedServers.clear();
         if (result.is(TRI_ERROR_LOCAL_LOCK_FAILED)) {  // Unrecoverable
-          ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+          // release the lock
+          releaseAgencyLock.fire();
           events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_LOCAL_LOCK_FAILED);
           return result;
         }
@@ -3823,7 +3947,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
         break;
       }
       if (lockWait < 3600.0) {
-        lockWait *= 1.5;
+        lockWait *= 2.0;
       }
       std::this_thread::sleep_for(milliseconds(300));
     }
@@ -3846,7 +3970,6 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       auto releaseLocks = scopeGuard([&]{
         hotbackupCancelAsyncLocks(lockJobIds, lockedServers);
         unlockDBServerTransactions(backupId, lockedServers);
-        ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       });
 
       // we have to reset the timeout, otherwise the code below will exit too soon
@@ -3893,7 +4016,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     // and we are in the case of a force backup we want to continue here
     if (!gotLocks && !allowInconsistent) {
       unlockDBServerTransactions(backupId, dbServers);
-      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      // release the lock
+      releaseAgencyLock.fire();
       result.reset(
           TRI_ERROR_HOT_BACKUP_INTERNAL,
           std::string(
@@ -3910,7 +4034,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
                                 /* force */ !gotLocks, meta);
     if (!result.ok()) {
       unlockDBServerTransactions(backupId, dbServers);
-      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      // release the lock
+      releaseAgencyLock.fire();
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("failed to hot backup on all db servers: ") +
                        result.errorMessage());
@@ -3921,18 +4046,18 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     }
 
     unlockDBServerTransactions(backupId, dbServers);
-    ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
-
+    // release the lock
+    releaseAgencyLock.fire();
+    
     auto agencyCheck = std::make_shared<VPackBuilder>();
     result = ci.agencyPlan(agencyCheck);
     if (!result.ok()) {
       if (!allowInconsistent) {
         removeLocalBackups(backupId, dbServers, dummy);
       }
-      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("failed to acquire agency dump post backup: ") +
-                       result.errorMessage() + " backup's intergrity is not guaranteed");
+                       result.errorMessage() + " backup's integrity is not guaranteed");
       LOG_TOPIC("d4229", ERR, Logger::BACKUP) << result.errorMessage();
       events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
       return result;

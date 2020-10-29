@@ -25,6 +25,7 @@
 #define ARANGODB_REST_VERSION_H 1
 
 #include <map>
+#include <string>
 
 #include "Basics/operating-system.h"
 

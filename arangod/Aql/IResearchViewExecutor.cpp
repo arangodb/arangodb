@@ -672,9 +672,8 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
         if (ADB_UNLIKELY(sortValue.empty())) {
           return false;
         }
-        auto s = sortValue.c_str();
         auto totalSize = sortValue.size();
-        auto slice = VPackSlice(s);
+        auto slice = VPackSlice(sortValue.c_str());
         size_t size = 0;
         size_t i = 0;
         for (auto const& [fieldNum, registerId] : outNonMaterializedViewRegs) {
@@ -682,9 +681,11 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
             size += slice.byteSize();
             TRI_ASSERT(size <= totalSize);
             if (ADB_UNLIKELY(size > totalSize)) {
+              LOG_TOPIC("2343e", WARN, arangodb::iresearch::TOPIC)
+                << "Invalid sorted values slices. Total size is " << totalSize << " but next step is " << size;
               return false;
             }
-            slice = VPackSlice(s + slice.byteSize());
+            slice = VPackSlice(slice.end());
             ++i;
           }
           AqlValue v(slice);

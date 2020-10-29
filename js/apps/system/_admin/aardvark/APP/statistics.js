@@ -438,7 +438,7 @@ router.get('/coordshort', function (req, res) {
     var counter2;
 
     _.each(data, function (stat) {
-      if (typeof stat === 'object') {
+      if (typeof stat === 'object' && Object.keys(stat).length !== 0) {
         if (counter === 0) {
           // one time value
           _.each(onetime, function (value) {
@@ -468,24 +468,28 @@ router.get('/coordshort', function (req, res) {
           _.each(http, function (value) {
             counter2 = 0;
             _.each(stat[value], function (x) {
-              if (merged.http[value][counter2] === undefined) {
-                // this will hit if a previous coordinater was not able to deliver
-                // proper current statistics, but the current one already has statistics.
-                merged.http[value][counter2] = x;
-              } else {
-                merged.http[value][counter2] = merged.http[value][counter2] + x;
-              }
+              try {
+                if (merged.http[value][counter2] === undefined) {
+                  // this will hit if a previous coordinator was not able to deliver
+                  // proper current statistics, but the current one already has statistics.
+                  merged.http[value][counter2] = x;
+                } else {
+                  merged.http[value][counter2] += x;
+                }
+              } catch (err) {}
               counter2++;
             });
           });
           _.each(arrays, function (value) {
             counter2 = 0;
             _.each(stat[value], function (x) {
-              if (merged[value][counter2] === undefined) {
-                merged[value][counter2] = 0;
-              } else {
-                merged[value][counter2] = merged[value][counter2] + x;
-              }
+              try {
+                if (merged[value][counter2] === undefined) {
+                  merged[value][counter2] = 0;
+                } else {
+                  merged[value][counter2] += x;
+                }
+              } catch (err) {}
               counter2++;
             });
           });
@@ -503,7 +507,7 @@ router.get('/coordshort', function (req, res) {
         "GET",
         "server:" + coordinator,
         "_system",
-        '/_admin/aardvark/statistics/short?count=' + coordinators.length, 
+        '/_admin/aardvark/statistics/short',
         "",
         {},
         { timeout: 10 }
@@ -525,10 +529,7 @@ router.get('/coordshort', function (req, res) {
         // noop
       }
 
-      throw Object.assign(
-        new httperr.BadRequest("error from DBserver, possibly DBserver unknown"),
-        {extra: {body}}
-      );
+      return {};
     });
 
     if (coordinatorStats) {
@@ -634,7 +635,7 @@ router.get("/cluster", function (req, res) {
     }
 
     throw Object.assign(
-      new httperr.BadRequest("error from DBserver, possibly DBserver unknown"),
+      new httperr.BadRequest("error from DBserver '" + DBserver + "', possibly DBserver unknown or down"),
       {extra: {body}}
     );
   }

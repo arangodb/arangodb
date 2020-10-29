@@ -100,19 +100,22 @@ ArangoCollection.prototype.toArray = function () {
 // / @brief was docuBlock collectionTruncate
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.truncate = function () {
+ArangoCollection.prototype.truncate = function (options) {
+  if (typeof options === 'boolean') {
+    options = { waitForSync: options || false };
+  } else {
+    options = options || {};
+  }
+  if (!options.hasOwnProperty('compact')) {
+    options.compact = true;
+  }
   var cluster = require('@arangodb/cluster');
   if (cluster.isCoordinator()) {
     if (this.status() === ArangoCollection.STATUS_UNLOADED) {
       this.load();
     }
   }
-  var ret = this.TRUNCATE();
-  // manually trigger compaction, otherwise the SST files stay large
-  if (internal.db._engine().name === "rocksdb" && this.compact) {
-    this.compact();
-  }
-  return ret;
+  return this.TRUNCATE(options.waitForSync, options.compact);
 };
 
 // //////////////////////////////////////////////////////////////////////////////

@@ -282,6 +282,8 @@ class RocksDBEngine final : public StorageEngine {
   }
 
   arangodb::Result dropView(TRI_vocbase_t const& vocbase, LogicalView const& view) override;
+  
+  arangodb::Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
 
   void destroyView(TRI_vocbase_t const& vocbase, LogicalView const& view) noexcept override;
 
@@ -467,6 +469,10 @@ public:
   // WAL sync interval, specified in milliseconds by end user, but uses
   // microseconds internally
   uint64_t _syncInterval;
+
+  // WAL sync delay threshold. Any WAL disk sync longer ago than this value
+  // will trigger a warning (in milliseconds)
+  uint64_t _syncDelayThreshold;
 
   // use write-throttling
   bool _useThrottle;

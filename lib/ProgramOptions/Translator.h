@@ -23,6 +23,7 @@
 #ifndef ARANGODB_PROGRAM_OPTIONS_TRANSLATOR_H
 #define ARANGODB_PROGRAM_OPTIONS_TRANSLATOR_H 1
 
+#include <string>
 #include "Basics/Common.h"
 
 namespace arangodb {

@@ -25,11 +25,12 @@
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
 #include "Logger/Logger.h"
-#include "RocksDBEngine/RocksDBMetaCollection.h"
+#include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "StorageEngine/TransactionState.h"
 #include "StorageEngine/RocksDBOptionFeature.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -210,13 +211,23 @@ void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
 }
 
 void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq) {
+  TRI_IF_FAILURE("DisableCommitCounts") {
+    return;
+  }
   TRI_ASSERT(_collection != nullptr);
   auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
 
   // Update the collection count
-  int64_t const adj = _numInserts - _numRemoves;
+  int64_t adj = _numInserts - _numRemoves;
   if (hasOperations()) {
     TRI_ASSERT(_revision != 0 && commitSeq != 0);
+
+    TRI_IF_FAILURE("RocksDBCommitCounts") { adj = 0; }
+    TRI_IF_FAILURE("RocksDBCommitCountsRandom") {
+      if (RandomGenerator::interval(uint16_t(100)) >= 50) {
+        adj = 0;
+      }
+    }
     rcoll->meta().adjustNumberDocuments(commitSeq, _revision, adj);
   }
 

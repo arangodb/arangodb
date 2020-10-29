@@ -128,9 +128,18 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
+  try {
   traceGetSomeBegin(atMost);
   auto result = getSomeWithoutTrace(atMost);
   return traceGetSomeEnd(result.first, std::move(result.second));
+  } catch (arangodb::velocypack::Exception const& e) {
+    ExecutionNode const* node = getPlanNode();
+    LOG_TOPIC("feaa2", ERR, Logger::QUERIES)  << "[query#" << this->_engine->getQuery()->id() << "] "
+      << "Internal velocypack Error thrown by type=" << node->getTypeString() << " id=" << node->id() << " Message: " << e.what();
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, e.what());
+  } catch (...) {
+    throw;
+  }
 }
 
 template <class Executor>

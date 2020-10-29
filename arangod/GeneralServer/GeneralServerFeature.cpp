@@ -60,6 +60,7 @@
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestAuthReloadHandler.h"
 #include "RestHandler/RestBatchHandler.h"
+#include "RestHandler/RestCompactHandler.h"
 #include "RestHandler/RestControlPregelHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDatabaseHandler.h"
@@ -385,8 +386,11 @@ void GeneralServerFeature::defineHandlers() {
                                     RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
                                     queryRegistry);
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::TASKS_PATH,
-                                    RestHandlerCreator<RestTasksHandler>::createNoData);
+  if (server().isEnabled<V8DealerFeature>()) {
+    // the tasks feature depends on V8. only enable it if JavaScript is enabled
+    _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::TASKS_PATH,
+                                      RestHandlerCreator<RestTasksHandler>::createNoData);
+  }
 
   _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
                                     RestHandlerCreator<RestUploadHandler>::createNoData);
@@ -472,6 +476,9 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler("/_admin/time",
                               RestHandlerCreator<RestTimeHandler>::createNoData);
+  
+  _handlerFactory->addHandler("/_admin/compact",
+                              RestHandlerCreator<RestCompactHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler("/_api/job",
                                     RestHandlerCreator<arangodb::RestJobHandler>::createData<AsyncJobManager*>,

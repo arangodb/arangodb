@@ -402,7 +402,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           if (isLeader) {
 
             std::string toServer = Job::findNonblockedCommonHealthyInSyncFollower(
-              _snapshot, database.first, collptr.first, shard.first);
+              _snapshot, database.first, collptr.first, shard.first, _server);
 
             MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                     _jobId, database.first, collptr.first, shard.first, _server,

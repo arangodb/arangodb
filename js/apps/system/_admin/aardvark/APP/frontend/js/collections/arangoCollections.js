@@ -182,11 +182,11 @@
         }
       }
 
-      if (object.minReplicationFactor) {
-        data.minReplicationFactor = object.minReplicationFactor;
-        if (pattern.test(object.minReplicationFactor)) {
+      if (object.writeConcern) {
+        data.writeConcern = object.writeConcern;
+        if (pattern.test(object.writeConcern)) {
           // looks like a number
-          data.minReplicationFactor = JSON.parse(object.minReplicationFactor);
+          data.writeConcern = JSON.parse(object.writeConcern);
         }
       }
 

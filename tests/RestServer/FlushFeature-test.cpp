@@ -35,6 +35,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -71,6 +72,7 @@ class FlushFeatureTest
   FlushFeatureTest() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false); 
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),
                           false);  // required for ClusterFeature::prepare()
     features.emplace_back(server.addFeature<arangodb::ClusterFeature>(), false);  // required for V8DealerFeature::prepare()

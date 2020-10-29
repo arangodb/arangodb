@@ -968,9 +968,14 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
 
-    if (ep == nullptr) {
+    if (ep.get() == nullptr) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      std::string("invalid URL ") + url);
+    }
+
+    if (ep.get()->isBroadcastBind()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     std::string("Cannot connect to INADDR_ANY or INADDR6_ANY ") + url);
     }
 
     std::unique_ptr<GeneralClientConnection> connection(
@@ -3850,17 +3855,21 @@ static void JS_Sleep(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("sleep(<seconds>)");
   }
-
+  
   double n = TRI_ObjectToDouble(isolate, args[0]);
   double until = TRI_microtime() + n;
 
   while (true) {
+    if (ApplicationServer::server().isStopping()) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
     double now = TRI_microtime();
     if (now >= until) {
       break;
     }
     uint64_t duration =
-        (until - now >= 0.5) ? 500000 : static_cast<uint64_t>((until - now) * 1000000);
+        (until - now >= 0.5) ? 100000 : static_cast<uint64_t>((until - now) * 1000000);
 
     std::this_thread::sleep_for(std::chrono::microseconds(duration));
   }

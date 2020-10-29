@@ -47,6 +47,8 @@ extern std::vector<double> const TRI_RequestTimeDistributionVectorStatistics;
 extern StatisticsCounter TRI_AsyncRequestsStatistics;
 extern StatisticsCounter TRI_HttpConnectionsStatistics;
 extern StatisticsCounter TRI_TotalRequestsStatistics;
+extern StatisticsCounter TRI_TotalRequestsStatisticsSuperuser;
+extern StatisticsCounter TRI_TotalRequestsStatisticsUser;
 
 constexpr size_t MethodRequestsStatisticsSize =
     ((size_t)arangodb::rest::RequestType::ILLEGAL) + 1;
@@ -86,9 +88,7 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
   void prepare() override final;
   void start() override final;
   void stop() override final;
-  void toPrometheus(std::string& result, double const& now) {
-    _statisticsWorker->generateRawStatistics(result, now);
-  }
+  void toPrometheus(std::string& result, double const& now);
 
   static stats::Descriptions const* descriptions() {
     if (STATISTICS != nullptr) {

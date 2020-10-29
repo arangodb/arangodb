@@ -733,6 +733,10 @@
       fromY: false
     },
 
+    removeOldContextMenu: function () {
+      $('#nodeContextMenu').remove();
+    },
+
     clearOldContextMenu: function (states) {
       var self = this;
 
@@ -1223,63 +1227,6 @@
       this.openNodesDate = new Date();
     },
 
-    // click nodes context menu
-    /*
-      createNodesContextMenu: function () {
-        var self = this;
-        var e = self.nodesContextEventState;
-
-        var x = e.clientX - 50;
-        var y = e.clientY - 50;
-        self.clearOldContextMenu();
-
-        var generateMenu = function (e) {
-          var Wheelnav = wheelnav;
-
-          var wheel = new Wheelnav('nodeContextMenu');
-          wheel.maxPercent = 1.0;
-          wheel.wheelRadius = 50;
-          wheel.clockwise = false;
-          wheel.colors = self.colors.hotaru;
-          wheel.multiSelect = true;
-          wheel.clickModeRotate = false;
-          wheel.slicePathFunction = slicePath().DonutSlice;
-          if (self.viewStates.captureMode) {
-            wheel.createWheel([icon.plus, icon.trash]);
-          } else {
-            wheel.createWheel([icon.trash, icon.arrowleft2]);
-          }
-
-          wheel.navItems[0].selected = false;
-          wheel.navItems[0].hovered = false;
-          // add menu events
-
-          // function 0: remove all selectedNodes
-          wheel.navItems[0].navigateFunction = function (e) {
-            self.clearOldContextMenu();
-            self.deleteNodesModal();
-          };
-
-          // function 1: clear contextmenu
-          wheel.navItems[1].navigateFunction = function (e) {
-            self.clearOldContextMenu();
-          };
-
-          // deselect active default entry
-          wheel.navItems[0].selected = false;
-          wheel.navItems[0].hovered = false;
-        };
-
-        $('#nodeContextMenu').css('position', 'fixed');
-        $('#nodeContextMenu').css('left', x);
-        $('#nodeContextMenu').css('top', y);
-        $('#nodeContextMenu').width(100);
-        $('#nodeContextMenu').height(100);
-
-        generateMenu(e);
-      },
-      */
-
     // right click background context menu
     createContextMenu: function (e) {
       var self = this;
@@ -1308,12 +1255,26 @@
         wheel.navItems[0].navigateFunction = function (e) {
           self.clearOldContextMenu();
           self.addNodeModal();
+          self.removeOldContextMenu();
+          self.removeHelp();
         };
 
         // function 1: exit
         wheel.navItems[1].navigateFunction = function (e) {
           self.clearOldContextMenu();
+          self.removeOldContextMenu();
         };
+
+        var descriptions = [
+          'Add new node.',
+          'Close menu.'
+        ];
+
+        // hover functions
+        _.each(descriptions, function (val, key) {
+          wheel.navItems[key].navTitle.mouseover(function () { self.drawHelp(val); });
+          wheel.navItems[key].navTitle.mouseout(function () { self.removeHelp(); });
+        });
 
         // deselect active default entry
         wheel.navItems[0].selected = false;
@@ -1350,23 +1311,39 @@
         wheel.multiSelect = true;
         wheel.clickModeRotate = false;
         wheel.slicePathFunction = slicePath().DonutSlice;
-        wheel.createWheel([icon.edit, icon.trash]);
+        wheel.createWheel([
+          'imgsrc:img/gv_edit.png',
+          'imgsrc:img/gv_trash.png'
+        ]);
 
         // add menu events
         wheel.navItems[0].selected = false;
         wheel.navItems[0].hovered = false;
 
-        // function 0: edit
+        // function 0: edit the edge
         wheel.navItems[0].navigateFunction = function (e) {
           self.clearOldContextMenu();
           self.editEdge(edgeId);
+          self.removeHelp();
         };
 
-        // function 1: delete
+        // function 1: delete the edge
         wheel.navItems[1].navigateFunction = function (e) {
           self.clearOldContextMenu();
           self.deleteEdgeModal(edgeId);
+          self.removeHelp();
         };
+
+        var descriptions = [
+          'Edit the edge.',
+          'Delete the edge.'
+        ];
+
+        // hover functions
+        _.each(descriptions, function (val, key) {
+          wheel.navItems[key].navTitle.mouseover(function () { self.drawHelp(val); });
+          wheel.navItems[key].navTitle.mouseout(function () { self.removeHelp(); });
+        });
 
         // deselect active default entry
         wheel.navItems[0].selected = false;
@@ -1502,7 +1479,7 @@
 
           var descriptions = [
             'Edit the node.',
-            'Delete node.'
+            'Delete the node.'
           ];
 
           if (!self.noDefinedGraph) {
@@ -2176,6 +2153,7 @@
                 // cleanup
                 self.clearOldContextMenu(true);
                 self.clearMouseCanvas();
+                self.removeOldContextMenu();
               }
 
               // remember halo
@@ -2337,55 +2315,8 @@
         }, 2000);
       }
 
-      /*
-         var enableLasso = function () {
-         self.graphLasso = self.initializeGraph(s, graph);
-         self.graphLasso.activate();
-         self.graphLasso.deactivate();
-         };
-
-      // init graph lasso
-      if (this.graphConfig) {
-      if (this.graphConfig.renderer === 'canvas') {
-      enableLasso();
-      } else {
-      $('#selectNodes').parent().hide();
-      }
-      } else {
-      if (renderer === 'canvas') {
-      enableLasso();
-      } else {
-      $('#selectNodes').parent().hide();
-      }
-      }
-      */
-
-      /* if (self.graphLasso) {
-      // add lasso event
-      // Toggle lasso activation on Alt + l
-      window.App.listenerFunctions['graphViewer'] = this.keyUpFunction.bind(this);
-      } */
-
       // clear up info div
       $('#calculatingGraph').fadeOut('slow');
-
-      if (!aqlMode) {
-        if (self.graphConfig) {
-          if (self.graphConfig.nodeSizeByEdges === 'false') {
-            // make nodes a bit bigger
-            // var maxNodeSize = s.settings('maxNodeSize');
-            // var factor = 1;
-            // var length = s.graph.nodes().length;
-
-            /*
-               factor = 0.35;
-               maxNodeSize = maxNodeSize * factor;
-               s.settings('maxNodeSize', maxNodeSize);
-               s.refresh({});
-               */
-          }
-        }
-      }
 
       self.calcFinished = new Date();
       // console.log('Client side calculation took ' + Math.abs(self.calcFinished.getTime() - self.calcStart.getTime()) + ' ms');
@@ -2445,37 +2376,6 @@
         this.startLayout();
       }
     },
-
-    /*
-toggleLasso: function () {
-var self = this;
-
-if (this.graphLasso.isActive) {
-var y = document.getElementById('deleteNodes');
-y.removeEventListener('click', self.deleteNodesModal, false);
-$('#deleteNodes').remove();
-
-    // remove event
-    var c = document.getElementsByClassName('sigma-lasso')[0];
-    c.removeEventListener('mouseup', this.nodesContextMenuCheck.bind(this), false);
-
-    $('#selectNodes').removeClass('activated');
-    this.graphLasso.deactivate();
-
-    // clear selected nodes state
-    this.selectedNodes = {};
-    this.activeNodes = [];
-    this.currentGraph.refresh({ skipIndexation: true });
-    } else {
-    $('#selectNodes').addClass('activated');
-    this.graphLasso.activate();
-
-    // add event
-    var x = document.getElementsByClassName('sigma-lasso')[0];
-    x.addEventListener('mouseup', self.nodesContextMenuCheck.bind(this), false);
-    }
-    },
-    */
 
     startLayout: function (kill, origin) {
       var self = this;

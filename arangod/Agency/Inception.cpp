@@ -345,6 +345,10 @@ bool Inception::restartingActiveAgent() {
               auto const theirLeaderEp =
                   tcc.get(std::vector<std::string>({"pool", theirLeaderId})).copyString();
 
+              if (theirLeaderId == myConfig.id()) {
+                continue;
+              }
+
               // Contact leader to update endpoint
               if (theirLeaderId != theirId) {
                 if (this->isStopping() || _agent.isStopping()) {

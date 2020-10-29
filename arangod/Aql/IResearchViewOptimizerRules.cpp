@@ -374,6 +374,8 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
             // Moreover we pass raw collection pointer - this must not cross process border!
             if (sortNode != nullptr) {
               stopSearch = true;
+            } else {
+              stickToSortNode = true;
             }
             break;
           default: // make clang happy
@@ -460,6 +462,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         // 3. We need to add materializer after limit node to do materialization
         Ast* ast = plan->getAst();
         auto* localDocIdTmp = ast->variables()->createTemporaryVariable();
+        TRI_ASSERT(localDocIdTmp);
         auto* localColPtrTmp = ast->variables()->createTemporaryVariable();
         viewNode.setLateMaterialized(localColPtrTmp, localDocIdTmp);
         // insert a materialize node
@@ -467,9 +470,8 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
             plan->registerNode(std::make_unique<materialize::MaterializeMultiNode>(
               plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp, viewNode.outVariable()));
 
-        // on cluster we need to materialize node stay close to sort node on db server (to avoid network hop for materialization calls)
-        // however on single server we move it to limit node to make materialization as lazy as possible
-        auto materializeDependency = ServerState::instance()->isCoordinator() || stickToSortNode ? sortNode : limitNode;
+        auto* materializeDependency = stickToSortNode ? sortNode : limitNode;
+        TRI_ASSERT(materializeDependency);
         auto* dependencyParent = materializeDependency->getFirstParent();
         TRI_ASSERT(dependencyParent);
         dependencyParent->replaceDependency(materializeDependency, materializeNode);

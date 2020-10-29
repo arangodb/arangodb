@@ -232,21 +232,24 @@ void BaseOptions::setVariable(aql::Variable const* variable) {
 }
 
 void BaseOptions::addLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
-                                std::string const& attributeName, aql::AstNode* condition) {
-  injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName, condition);
+                                std::string const& attributeName,
+                                aql::AstNode* condition, bool onlyEdgeIndexes) {
+  injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName, condition, onlyEdgeIndexes);
 }
 
 void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
                                          aql::ExecutionPlan* plan,
                                          std::string const& collectionName,
                                          std::string const& attributeName,
-                                         aql::AstNode* condition) {
+                                         aql::AstNode* condition, bool onlyEdgeIndexes) {
   LookupInfo info;
   info.indexCondition = condition->clone(plan->getAst());
+
   bool res =
       _trx->getBestIndexHandleForFilterCondition(collectionName, info.indexCondition,
                                                  _tmpVar, 1000, aql::IndexHint(),
-                                                 info.idxHandles[0]);
+                                                 info.idxHandles[0], onlyEdgeIndexes);
+
   // Right now we have an enforced edge index which should always fit.
   if (!res) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

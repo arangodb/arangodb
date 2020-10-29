@@ -196,6 +196,11 @@ class TransactionState {
     return (_type == AccessMode::Type::READ);
   }
 
+  /// @brief whether or not a transaction is a follower transaction
+  bool isFollowerTransaction() const {
+    return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+  }
+
   /// @brief whether or not a transaction only has exculsive or read accesses
   bool isOnlyExclusiveTransaction() const;
 

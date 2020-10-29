@@ -47,10 +47,17 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Cluster") {
+    : ApplicationFeature(server, "Cluster"),
+      _followersRefused(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_refused_followers_count", 0, "number of times a leader received a refusal answer from a follower")),
+      _followersDropped(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_dropped_followers_count", 0, "number of times a follower was dropped")),
+      _addFollowerWrongChecksum(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_sync_wrong_checksum", 0, "number of times a wrong shard checksum was detected when syncing shards")) {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
+  startsAfter<MetricsFeature>();
 }
 
 ClusterFeature::~ClusterFeature() {
@@ -537,6 +544,17 @@ void ClusterFeature::start() {
         << "default value '" << _heartbeatInterval << " ms'";
   }
 
+  auto wait = std::chrono::milliseconds(100);
+  size_t n = 1;
+  while (!server().isStopping()) {
+    if (server().getFeature<DatabaseFeature>().lookupDatabase("_system") != nullptr) {
+      break;
+    }
+    std::this_thread::sleep_for(n*wait);
+    if (n < 10) {
+      ++n;
+    }
+  }
   startHeartbeatThread(_agencyCallbackRegistry.get(), _heartbeatInterval, 5, endpoints);
 
   comm.increment("Current/Version");

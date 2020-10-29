@@ -89,6 +89,14 @@ void PhysicalCollection::drop() {
   }
 }
 
+uint64_t PhysicalCollection::recalculateCounts() {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "recalculateCounts not implemented for this engine");
+}
+  
+bool PhysicalCollection::hasDocuments() {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "hasDocuments not implemented for this engine");
+}
+
 bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
   if (!slice.isString()) {
     return false;
@@ -549,7 +557,7 @@ void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
 }
 
 /// @brief return the figures for a collection
-futures::Future<OperationResult> PhysicalCollection::figures() {
+futures::Future<OperationResult> PhysicalCollection::figures(bool details) {
   auto buffer = std::make_shared<VPackBufferUInt8>();
   VPackBuilder builder(buffer);
   
@@ -580,7 +588,7 @@ futures::Future<OperationResult> PhysicalCollection::figures() {
   builder.close();  // indexes
 
   // add engine-specific figures
-  figuresSpecific(builder);
+  figuresSpecific(details, builder);
   builder.close();
   return OperationResult(Result(), std::move(buffer));
 }

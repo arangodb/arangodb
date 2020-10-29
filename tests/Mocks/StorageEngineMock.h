@@ -76,7 +76,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
                                                        bool restore, bool& created) override;
   virtual void deferDropCollection(std::function<bool(arangodb::LogicalCollection&)> const& callback) override;
   virtual bool dropIndex(TRI_idx_iid_t iid) override;
-  virtual void figuresSpecific(arangodb::velocypack::Builder&) override;
+  virtual void figuresSpecific(bool details, arangodb::velocypack::Builder&) override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAllIterator(
       arangodb::transaction::Methods* trx) const override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAnyIterator(
@@ -224,6 +224,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
                                       arangodb::LogicalView const& view) override;
   virtual void getViewProperties(TRI_vocbase_t& vocbase, arangodb::LogicalView const& view,
                                  VPackBuilder& builder) override;
+  virtual arangodb::Result compactAll(bool changeLevels, bool compactBottomMostLevel) override;
   virtual TRI_voc_tick_t currentTick() const override;
   virtual std::string dataPath() const override;
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const override;

@@ -40,9 +40,14 @@
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/convenience.h>
+#include <rocksdb/db.h>
+#include <rocksdb/options.h>
+#include <rocksdb/status.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
+
+#include <initializer_list>
 
 namespace arangodb {
 namespace rocksutils {
@@ -114,6 +119,7 @@ std::size_t countKeys(rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf) {
   rocksdb::ReadOptions opts;
   opts.fill_cache = false;
   opts.total_order_seek = true;
+  opts.verify_checksums = false;
 
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(opts, cf));
   std::size_t count = 0;
@@ -152,6 +158,26 @@ std::size_t countKeyRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
     it->Next();
   }
   return count;
+}
+
+/// @brief whether or not the specified range has keys
+bool hasKeys(rocksdb::DB* db, RocksDBKeyBounds const& bounds, bool prefix_same_as_start) {
+  rocksdb::Slice lower(bounds.start());
+  rocksdb::Slice upper(bounds.end());
+
+  rocksdb::ReadOptions readOptions;
+  readOptions.prefix_same_as_start = prefix_same_as_start;
+  readOptions.iterate_upper_bound = &upper;
+  readOptions.total_order_seek = !prefix_same_as_start;
+  readOptions.verify_checksums = false;
+  readOptions.fill_cache = false;
+
+  rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
+  rocksdb::Comparator const* cmp = cf->GetComparator();
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(readOptions, cf));
+
+  it->Seek(lower);
+  return (it->Valid() && cmp->Compare(it->key(), upper) < 0);
 }
 
 /// @brief helper method to remove large ranges of data
@@ -260,6 +286,42 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
     return Result(TRI_ERROR_INTERNAL,
                   "unknown exception during RocksDB key prefix deletion");
   }
+}
+
+Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLevel) {
+  rocksdb::CompactRangeOptions options;
+  options.change_level = changeLevel;
+  options.bottommost_level_compaction = compactBottomMostLevel ?
+      rocksdb::BottommostLevelCompaction::kForceOptimized : 
+      rocksdb::BottommostLevelCompaction::kIfHaveCompactionFilter;
+
+  std::initializer_list<rocksdb::ColumnFamilyHandle*> const cfs = {
+    RocksDBColumnFamily::definitions(),
+    RocksDBColumnFamily::documents(),
+    RocksDBColumnFamily::primary(),
+    RocksDBColumnFamily::edge(),
+    RocksDBColumnFamily::vpack(),
+    RocksDBColumnFamily::geo(),
+    RocksDBColumnFamily::fulltext(),
+  };
+
+  LOG_TOPIC("d8a5d", INFO, arangodb::Logger::ENGINES)
+      << "starting compaction of entire RocksDB database key range";
+
+  for (auto* cf : cfs) {
+    // compact the entire data range
+    rocksdb::Status s = db->CompactRange(options, cf, nullptr, nullptr);
+    if (!s.ok()) {
+      Result res = rocksutils::convertStatus(s);
+      LOG_TOPIC("e46a3", WARN, arangodb::Logger::ENGINES)
+        << "compaction of entire RocksDB database key range failed: " << res.errorMessage();
+      return res;
+    }
+  }
+  LOG_TOPIC("65594", INFO, arangodb::Logger::ENGINES)
+      << "compaction of entire RocksDB database key range finished";
+
+  return {};
 }
 
 }  // namespace rocksutils

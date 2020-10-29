@@ -598,7 +598,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     {
       READ_LOCKER(guard, _indexesLock);
       for (std::shared_ptr<Index> const& idx : _indexes) {
-        idx->afterTruncate(seq);  // clears caches / clears links (if applicable)
+        idx->afterTruncate(seq, &trx);  // clears caches / clears links (if applicable)
       }
     }
     
@@ -1154,8 +1154,14 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   return res;
 }
 
+bool RocksDBCollection::hasDocuments() {
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
+  return rocksutils::hasKeys(db, bounds, true);
+}
+
 /// @brief return engine-specific figures
-void RocksDBCollection::figuresSpecific(arangodb::velocypack::Builder& builder) {
+void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Builder& builder) {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   rocksdb::Range r(bounds.start(), bounds.end());
@@ -1182,6 +1188,67 @@ void RocksDBCollection::figuresSpecific(arangodb::velocypack::Builder& builder) 
   } else {
     builder.add("cacheSize", VPackValue(0));
     builder.add("cacheUsage", VPackValue(0));
+  }
+
+  if (details) {
+    rocksdb::DB* db = rocksutils::globalRocksDB()->GetRootDB();
+
+    builder.add("engine", VPackValue(VPackValueType::Object));
+    
+    builder.add("documents", VPackValue(rocksutils::countKeyRange(db, RocksDBKeyBounds::CollectionDocuments(_objectId), true)));
+    builder.add("indexes", VPackValue(VPackValueType::Array));
+    {
+      READ_LOCKER(guard, _indexesLock);
+      for (auto it : _indexes) {
+        auto type = it->type();
+        if (type == Index::TRI_IDX_TYPE_UNKNOWN ||
+            type == Index::TRI_IDX_TYPE_IRESEARCH_LINK ||
+            type == Index::TRI_IDX_TYPE_NO_ACCESS_INDEX) {
+          continue;
+        }
+        
+        builder.openObject();
+        builder.add("type", VPackValue(it->typeName()));
+        builder.add("id", VPackValue(it->id()));
+        
+        RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
+        size_t count = 0;
+        switch (type) {
+          case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+            count = rocksutils::countKeyRange(db, RocksDBKeyBounds::PrimaryIndex(rix->objectId()), true);
+            break;
+          case Index::TRI_IDX_TYPE_GEO_INDEX:
+          case Index::TRI_IDX_TYPE_GEO1_INDEX:
+          case Index::TRI_IDX_TYPE_GEO2_INDEX: 
+            count = rocksutils::countKeyRange(db, RocksDBKeyBounds::GeoIndex(rix->objectId()), true);
+            break;
+          case Index::TRI_IDX_TYPE_HASH_INDEX:
+          case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
+          case Index::TRI_IDX_TYPE_TTL_INDEX:
+          case Index::TRI_IDX_TYPE_PERSISTENT_INDEX: 
+            if (it->unique()) {
+              count = rocksutils::countKeyRange(db, RocksDBKeyBounds::UniqueVPackIndex(rix->objectId()), true);
+            } else {
+              count = rocksutils::countKeyRange(db, RocksDBKeyBounds::VPackIndex(rix->objectId()), true);
+            }
+            break;
+          case Index::TRI_IDX_TYPE_EDGE_INDEX: 
+            count = rocksutils::countKeyRange(db, RocksDBKeyBounds::EdgeIndex(rix->objectId()), false);
+            break;
+          case Index::TRI_IDX_TYPE_FULLTEXT_INDEX: 
+            count = rocksutils::countKeyRange(db, RocksDBKeyBounds::FulltextIndex(rix->objectId()), true);
+            break;
+          default: 
+            // we should not get here
+            TRI_ASSERT(false);
+        }
+
+        builder.add("count", VPackValue(count));
+        builder.close();
+      }
+    }
+    builder.close(); // "indexes" array
+    builder.close(); // "engine" object
   }
 }
 

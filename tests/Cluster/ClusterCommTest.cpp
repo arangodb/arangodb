@@ -32,6 +32,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterComm.h"
+#include "RestServer/MetricsFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
 #include "VocBase/ticks.h"
@@ -88,6 +89,7 @@ class ClusterCommTester : public ClusterComm {
 
 TEST(ClusterCommTest, no_matching_response) {
   application_features::ApplicationServer server(nullptr, nullptr);
+  server.addFeature<arangodb::MetricsFeature>();
   ClusterCommTester testme(server);
   ClusterCommResult result;
   CoordTransactionID id = TRI_NewTickServer();
@@ -100,6 +102,7 @@ TEST(ClusterCommTest, no_matching_response) {
 
 TEST(ClusterCommTest, single_response) {
   application_features::ApplicationServer server(nullptr, nullptr);
+  server.addFeature<arangodb::MetricsFeature>();
   ClusterCommTester testme(server);
   ClusterCommResult result;
   OperationID id;
@@ -125,6 +128,7 @@ TEST(ClusterCommTest, single_response) {
 
 TEST(ClusterCommTest, out_of_order_response) {
   application_features::ApplicationServer server(nullptr, nullptr);
+  server.addFeature<arangodb::MetricsFeature>();
   ClusterCommTester testme(server);
   ClusterCommResult result;
   OperationID id_first, id_other;
@@ -151,6 +155,7 @@ TEST(ClusterCommTest, out_of_order_response) {
 
 TEST(ClusterCommTest, simple_function_timeout) {
   application_features::ApplicationServer server(nullptr, nullptr);
+  server.addFeature<arangodb::MetricsFeature>();
   ClusterCommTester testme(server);
   ClusterCommResult result;
   CoordTransactionID transId;
@@ -179,6 +184,7 @@ TEST(ClusterCommTest, simple_function_timeout) {
 
 TEST(ClusterCommTest, time_delayed_out_of_order_response) {
   application_features::ApplicationServer server(nullptr, nullptr);
+  server.addFeature<arangodb::MetricsFeature>();
   ClusterCommTester testme(server);
   ClusterCommResult result;
   OperationID id_first, id_other;

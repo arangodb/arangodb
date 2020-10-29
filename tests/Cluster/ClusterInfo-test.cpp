@@ -40,6 +40,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -160,6 +161,7 @@ class ClusterInfoTest : public ::testing::Test,
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // setup required application features
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>());  
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), false);  // required for ClusterFeature::prepare()
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::application_features::CommunicationFeaturePhase>(),

@@ -30,6 +30,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 class Request;
@@ -55,6 +56,8 @@ StatusCode constexpr StatusPreconditionFailed = 412;
 StatusCode constexpr StatusInternalError = 500;
 StatusCode constexpr StatusUnavailable = 503;
 StatusCode constexpr StatusVersionNotSupported = 505;
+
+std::string status_code_to_string(StatusCode);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         enum class ErrorCondition

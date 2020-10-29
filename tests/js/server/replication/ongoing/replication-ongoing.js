@@ -715,7 +715,7 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          db._collection(cn).truncate();
+          db._collection(cn).truncate({ compact: false });
         },
 
         function (state) {

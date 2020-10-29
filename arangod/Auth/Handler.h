@@ -66,6 +66,7 @@ class Handler {
  public:
   /// Refresh rate for users from this source in seconds
   virtual double refreshRate() const = 0;
+  virtual bool allowOfflineCacheUsage() const = 0;
   virtual auth::Source source() const = 0;
 
   /// Authenticate user and return user permissions and roles

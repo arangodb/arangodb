@@ -66,7 +66,8 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
   }
   
   // Start the connection implementation
-  result->startConnection();
+  // result->startConnection();
+  // This is now done lazily.
 
   return result;
 }

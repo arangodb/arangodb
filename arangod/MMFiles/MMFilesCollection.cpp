@@ -1320,7 +1320,7 @@ void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
 }
 
-void MMFilesCollection::figuresSpecific(arangodb::velocypack::Builder& builder) {
+void MMFilesCollection::figuresSpecific(bool /*details*/, arangodb::velocypack::Builder& builder) {
   // fills in compaction status
   char const* lastCompactionStatus = "-";
   char lastCompactionStampString[21];
@@ -1569,6 +1569,15 @@ bool MMFilesCollection::applyForTickRange(
   }    // next datafile
 
   return false;  // hasMore = false
+}
+
+bool MMFilesCollection::hasDocuments() {
+  TRY_READ_LOCKER(locker, _dataLock);
+
+  if (locker.isLocked()) {
+    return primaryIndex()->size() > 0;
+  }
+  return true;
 }
 
 // @brief Return the number of documents in this collection
@@ -2814,7 +2823,7 @@ Result MMFilesCollection::truncate(transaction::Methods& trx, OperationOptions& 
     ++idx;  // skip primary index
     for (; idx != _indexes.end(); ++idx) {
       TRI_ASSERT((*idx)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-      (*idx)->afterTruncate(tick);
+      (*idx)->afterTruncate(tick, &trx);
     }
   }
 

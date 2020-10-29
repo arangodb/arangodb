@@ -195,8 +195,51 @@ function optimizerRuleTestSuite () {
         let result = AQL_EXPLAIN(query);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
-    }
+    },
+
+    testMultipleFiltersUsageOnIndex : function () {
+      for (let i = 1; i < 10; ++i) {
+        let filters = "";
+        // repeat the same filter i times
+        for (let j = 0; j < i; ++j) {
+          filters += " FILTER doc.value1 == 'test'";
+        }
+        let query = `FOR doc IN ${cn} ${filters} RETURN doc`;
+        let result = AQL_EXPLAIN(query);
+        assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        assertNotEqual(-1, result.plan.rules.indexOf("remove-filter-covered-by-index"), query);
+        assertNotEqual(-1, result.plan.rules.indexOf("use-indexes"), query);
+      }
+    },
+
+    testMultipleFiltersUsageOnNonIndex : function () {
+      for (let i = 1; i < 10; ++i) {
+        let filters = "";
+        // repeat the same filter i times
+        for (let j = 0; j < i; ++j) {
+          filters += " FILTER doc.value2 == 'test'";
+        }
+        let query = `FOR doc IN ${cn} ${filters} RETURN doc`;
+        let result = AQL_EXPLAIN(query);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      }
+    },
     
+    testMultipleFiltersUsageMixed : function () {
+      for (let i = 2; i < 10; ++i) {
+        let filters = "";
+        // repeat the same filter i times
+        for (let j = 0; j < i; ++j) {
+          filters += ` FILTER doc.value${1 + (j % 2)} == 'test'`;
+        }
+        let query = `FOR doc IN ${cn} ${filters} RETURN doc`;
+        let result = AQL_EXPLAIN(query);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        assertNotEqual(-1, result.plan.rules.indexOf("remove-filter-covered-by-index"), query);
+        assertNotEqual(-1, result.plan.rules.indexOf("use-indexes"), query);
+      }
+    },
+
   };
 }
 

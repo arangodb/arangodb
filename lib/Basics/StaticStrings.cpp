@@ -63,6 +63,7 @@ std::string const StaticStrings::Namespace("namespace");
 std::string const StaticStrings::Prefix("prefix");
 std::string const StaticStrings::ReplaceExisting("replaceExisting");
 std::string const StaticStrings::OverWrite("overwrite");
+std::string const StaticStrings::Compact("compact");
 
 // replication headers
 std::string const StaticStrings::ReplicationHeaderCheckMore(
@@ -178,6 +179,7 @@ std::string const StaticStrings::ContentTypeHeader("content-type");
 std::string const StaticStrings::CorsMethods(
     "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT");
 std::string const StaticStrings::Error("error");
+std::string const StaticStrings::ErrorCode("errorCode");
 std::string const StaticStrings::ErrorMessage("errorMessage");
 std::string const StaticStrings::ErrorNum("errorNum");
 std::string const StaticStrings::Errors("x-arango-errors");
@@ -276,6 +278,7 @@ std::string const StaticStrings::FailoverCandidates("failoverCandidates");
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");
 std::string const StaticStrings::AttrCoordinatorRebootId("coordinatorRebootId");
+std::string const StaticStrings::AttrCoordinatorId("coordinatorId");
 std::string const StaticStrings::AttrIsBuilding("isBuilding");
 
 // misc strings

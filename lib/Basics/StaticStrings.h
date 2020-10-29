@@ -68,6 +68,7 @@ class StaticStrings {
   static std::string const ReplaceExisting;
   static std::string const Prefix;
   static std::string const OverWrite;
+  static std::string const Compact;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -168,6 +169,7 @@ class StaticStrings {
   static std::string const ContentTypeHeader;
   static std::string const CorsMethods;
   static std::string const Error;
+  static std::string const ErrorCode;
   static std::string const ErrorMessage;
   static std::string const ErrorNum;
   static std::string const Errors;
@@ -256,6 +258,7 @@ class StaticStrings {
   // generic attribute names
   static std::string const AttrCoordinator;
   static std::string const AttrCoordinatorRebootId;
+  static std::string const AttrCoordinatorId;
   static std::string const AttrIsBuilding;
 
   // misc strings

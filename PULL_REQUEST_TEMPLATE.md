@@ -78,8 +78,9 @@ Additionally:
 - [ ] Added a *Changelog Entry* (referencing the corresponding public or internal issue number)
 - [ ] Added entry to *Release Notes* 
 - [ ] Added a new section in the *Manual* 
-- [ ] Added a new section in the *http API* 
-- [ ] Added *Swagger examples* for the http API  
+- [ ] Added a new section in the *HTTP API* 
+- [ ] Added *Swagger examples* for the HTTP API  
+- [ ] Updated license information in *LICENSES-OTHER-COMPONENTS.md* for 3rd party libraries
 
 ### CLA Note 
 

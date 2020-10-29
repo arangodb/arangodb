@@ -137,7 +137,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
     // be overwritten later if is contained in `object`
     VPackBuilder builder;
     // we must use "convertFunctionsToNull" here, because "action" is most
-    // likey a JavaScript function
+    // likely a JavaScript function
     TRI_V8ToVPack(isolate, builder, object, false,
                   /*convertFunctionsToNull*/ true);
     if (!builder.isClosed()) {

@@ -304,6 +304,8 @@ class MMFilesEngine final : public StorageEngine {
   std::string createViewDirectoryName(std::string const& basePath, TRI_voc_cid_t id);
 
   void saveViewInfo(TRI_vocbase_t const& vocbase, LogicalView const& view, bool sync) const;
+  
+  arangodb::Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
 
   void signalCleanup(TRI_vocbase_t& vocbase) override;
 

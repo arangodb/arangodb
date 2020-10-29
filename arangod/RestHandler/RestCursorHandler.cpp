@@ -82,9 +82,13 @@ RestStatus RestCursorHandler::execute() {
 }
 
 RestStatus RestCursorHandler::continueExecute() {
+  if (wasCanceled()) {
+    generateError(rest::ResponseCode::GONE, TRI_ERROR_QUERY_KILLED);
+    return RestStatus::DONE;
+  }
+  
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
-
   if (_query != nullptr) {  // non-stream query
     if (type == rest::RequestType::POST || type == rest::RequestType::PUT) {
       return processQuery();
@@ -219,6 +223,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl",
                                                          _queryRegistry->defaultTTL());
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
+  
+  // simon: access mode can always be write on the coordinator
+  const AccessMode::Type mode = AccessMode::Type::WRITE;
 
   if (stream) {
     if (count) {
@@ -231,7 +238,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
       _cursor = cursors->createQueryStream(querySlice.copyString(), bindVarsBuilder,
                                            _options, batchSize, ttl,
                                            /*contextOwnedByExt*/ false,
-                                           createTransactionContext());
+                                           createTransactionContext(mode));
       _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
       
       return generateCursorResult(rest::ResponseCode::CREATED);
@@ -247,7 +254,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   auto query = std::make_unique<aql::Query>(
       false, _vocbase, arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
       bindVarsBuilder, _options, arangodb::aql::PART_MAIN);
-  query->setTransactionContext(createTransactionContext());
+  query->setTransactionContext(createTransactionContext(mode));
 
   std::shared_ptr<aql::SharedQueryState> ss = query->sharedState();
   ss->setWakeupHandler([self = shared_from_this()] {
@@ -270,7 +277,6 @@ RestStatus RestCursorHandler::processQuery() {
         TRI_ERROR_INTERNAL,
         "Illegal state in RestQueryHandler, query not found.");
   }
-
   {
     // always clean up
     auto guard = scopeGuard([this]() { unregisterQuery(); });
@@ -382,6 +388,11 @@ RestStatus RestCursorHandler::handleQueryResult() {
 
 /// @brief returns the short id of the server which should handle this request
 ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
+  auto base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base.ok() && !std::get<0>(base.get()).empty()) {
+    return base;
+  }
+
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
     return {std::make_pair(StaticStrings::Empty, false)};
@@ -433,16 +444,17 @@ void RestCursorHandler::unregisterQuery() {
 void RestCursorHandler::cancelQuery() {
   MUTEX_LOCKER(mutexLocker, _queryLock);
 
-  if (_query != nullptr) {
+  if (_cursor) {
+    _cursor->setDeleted();
+  } else if (_query != nullptr) {
+    // cursor is canceled. now remove the continue handler we may have
+    // registered in the query
+    _query->sharedState()->resetWakeupHandler();
     _query->kill();
     _queryKilled = true;
     _hasStarted = true;
-
-    // cursor is canceled. now remove the continue handler we may have
-    // registered in the query
-    std::shared_ptr<aql::SharedQueryState> ss = _query->sharedState();
-    ss->invalidate();
-  } else if (!_hasStarted) {
+  }
+  if (!_hasStarted) {
     _queryKilled = true;
   }
 }

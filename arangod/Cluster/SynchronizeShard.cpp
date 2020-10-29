@@ -46,6 +46,9 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -151,34 +154,36 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
   options.timeout = network::Timeout(timeout);
   options.skipScheduler = true; // hack to speed up future.get()
   
-  auto res = network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
+  auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
                                   REPL_HOLD_READ_LOCK,
                                   VPackBuffer<uint8_t>(), options)
                  .get();
+  auto res = response.combinedResult();
 
-  if (res.ok() && res.response->statusCode() == fuerte::StatusOK) {
-    auto const idSlice = res.response->slice();
+  if (res.ok()) {
+    auto const idSlice = response.response->slice();
     TRI_ASSERT(idSlice.isObject());
     TRI_ASSERT(idSlice.hasKey(ID));
     try {
       id = std::stoull(idSlice.get(ID).copyString());
+      return arangodb::Result();
     } catch (std::exception const&) {
       error += " expecting id to be uint64_t ";
       error += idSlice.toJson();
       return arangodb::Result(TRI_ERROR_INTERNAL, error);
+    } catch (...) {
+      TRI_ASSERT(false);
+      return arangodb::Result(TRI_ERROR_INTERNAL, error);
     }
   } else {
-    error.append(network::fuerteToArangoErrorMessage(res));
-    return arangodb::Result(TRI_ERROR_INTERNAL, error);
+    return res;
   }
-
-  return arangodb::Result();
 }
 
-static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollection> const& col,
+static arangodb::Result collectionCount(arangodb::LogicalCollection const& collection,
                                         uint64_t& c) {
-  std::string collectionName(col->name());
-  auto ctx = std::make_shared<transaction::StandaloneContext>(col->vocbase());
+  std::string collectionName(collection.name());
+  auto ctx = std::make_shared<transaction::StandaloneContext>(collection.vocbase());
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
 
   Result res = trx.begin();
@@ -192,7 +197,7 @@ static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollect
   res = trx.finish(opResult.result);
 
   if (res.fail()) {
-    LOG_TOPIC("263d2", ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("26ed2", ERR, Logger::MAINTENANCE)
         << "Failed to finish count transaction: " << res;
     return res;
   }
@@ -204,14 +209,28 @@ static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollect
   return opResult.result;
 }
 
-static arangodb::Result addShardFollower(
-    network::ConnectionPool* pool, std::string const& endpoint,
-    std::string const& database, std::string const& shard, uint64_t lockJobId,
-    std::string const& clientId, SyncerId const syncerId,
-    std::string const& clientInfoString, double timeout = 120.0) {
+arangodb::Result collectionReCount(LogicalCollection& collection,
+                                   uint64_t& c) {
+  Result res;
+  if (EngineSelectorFeature::isRocksDB()) {
+    try {
+      c = collection.getPhysical()->recalculateCounts();
+    } catch (basics::Exception const& e) {
+      res.reset(e.code(), e.message());
+    }
+  }
+  return res;
+}
+
+arangodb::Result addShardFollower(network::ConnectionPool* pool,
+                                  std::string const& endpoint, std::string const& database,
+                                  std::string const& shard, uint64_t lockJobId,
+                                  std::string const& clientId, SyncerId const syncerId,
+                                  std::string const& clientInfoString,
+                                  double timeout = 120.0) {
   LOG_TOPIC("b982e", DEBUG, Logger::MAINTENANCE)
       << "addShardFollower: tell the leader to put us into the follower "
-         "list...";
+         "list for " << database << "/" << shard << "...";
 
   if (pool == nullptr) {  // nullptr only happens during controlled shutdown
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
@@ -226,18 +245,19 @@ static arangodb::Result addShardFollower(
     if (collection == nullptr) {
       std::string errorMsg(
         "SynchronizeShard::addShardFollower: Failed to lookup collection ");
-      errorMsg += shard;
+      errorMsg += database + "/" + shard;
       LOG_TOPIC("4a8db", ERR, Logger::MAINTENANCE) << errorMsg;
       return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
     }
 
     uint64_t docCount;
-    {
-      Result res = collectionCount(collection, docCount);
-      if (res.fail()) {
-        return res;
-      }
+    // use cached count
+    Result res = collectionCount(*collection.get(), docCount);
+    if (res.fail()) {
+      return res;
     }
+
+
     VPackBuilder body;
     {
       VPackObjectBuilder b(&body);
@@ -262,7 +282,7 @@ static arangodb::Result addShardFollower(
           // here. Note that we are in the lockJobId == 0 case, which is
           // the shortcut.
           std::string msg =
-              "Short cut synchronization for shard " + shard +
+              "Short cut synchronization for " + database + "/" + shard +
               " did not work, since we got a document in the meantime.";
           LOG_TOPIC("ef299", INFO, Logger::MAINTENANCE) << msg;
           return arangodb::Result(TRI_ERROR_INTERNAL, msg);
@@ -275,22 +295,26 @@ static arangodb::Result addShardFollower(
     options.timeout = network::Timeout(timeout);
     options.skipScheduler = true; // hack to speed up future.get()
     
-    auto res = network::sendRequest(pool, endpoint, fuerte::RestVerb::Put,
+    auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Put,
                                     REPL_ADD_FOLLOWER,
                                     std::move(*body.steal()), options)
                    .get();
+    auto result = response.combinedResult();
 
-    std::string errorMessage(
-        "addShardFollower: could not add us to the leader's follower list. ");
-    if (res.fail() || res.response->statusCode() != fuerte::StatusOK) {
+    if (result.fail()) {
+      std::string const errorMessage =
+          "addShardFollower: could not add us to the leader's follower list for " +
+          database + "/" + shard;
+
       if (lockJobId != 0) {
-        errorMessage += network::fuerteToArangoErrorMessage(res);
-        LOG_TOPIC("22e0a", ERR, Logger::MAINTENANCE) << errorMessage;
+        LOG_TOPIC("22e0a", WARN, Logger::MAINTENANCE)
+            << errorMessage << ", " << result.errorMessage();
       } else {
-        errorMessage += "With shortcut (can happen, no problem).";
-        LOG_TOPIC("abf2e", INFO, Logger::MAINTENANCE) << errorMessage;
+        LOG_TOPIC("abf2e", INFO, Logger::MAINTENANCE)
+            << errorMessage << " with shortcut (can happen, no problem).";
       }
-      return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
+      return arangodb::Result(result.errorNumber(),
+                              errorMessage + ", " + result.errorMessage());
     }
 
     LOG_TOPIC("79935", DEBUG, Logger::MAINTENANCE) << "addShardFollower: success";
@@ -326,14 +350,15 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
   options.database = database;
   options.timeout = network::Timeout(timeout);
   options.skipScheduler = true; // hack to speed up future.get()
-  
-  auto res = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
+
+  auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
                                   REPL_HOLD_READ_LOCK,
                                   std::move(*body.steal()), options)
                  .get();
 
-  if (res.ok() && res.response && res.response->statusCode() == fuerte::StatusNotFound) {
-    auto const slice = res.response->slice();
+  if (response.ok() && response.response &&
+      response.response->statusCode() == fuerte::StatusNotFound) {
+    auto const slice = response.response->slice();
     if (slice.isObject()) {
       VPackSlice s = slice.get(StaticStrings::ErrorNum);
       if (s.isNumber()) {
@@ -346,18 +371,19 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
     }
   }
 
-  if (res.fail() || res.response->statusCode() != fuerte::StatusOK) {
-    auto errorMessage = network::fuerteToArangoErrorMessage(res);
+  auto res = response.combinedResult();
+
+  if (res.fail()) {
     // rebuild body since we stole it earlier
     VPackBuilder body;
     {
       VPackObjectBuilder b(&body);
       body.add(ID, VPackValue(std::to_string(lockJobId)));
     }
-    LOG_TOPIC("52924", ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("52924", WARN, Logger::MAINTENANCE)
         << "cancelReadLockOnLeader: exception caught for " << body.toJson()
-        << ": " << errorMessage;
-    return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
+        << ": " << res.errorMessage();
+    return arangodb::Result(TRI_ERROR_INTERNAL, res.errorMessage());
   }
 
   LOG_TOPIC("4355c", DEBUG, Logger::MAINTENANCE) << "cancelReadLockOnLeader: success";
@@ -382,31 +408,32 @@ static arangodb::Result cancelBarrier(network::ConnectionPool* pool,
   options.timeout = network::Timeout(timeout);
   options.skipScheduler = true; // hack to speed up future.get()
   
-  auto res =
+  auto response =
       network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
                            REPL_BARRIER_API + std::to_string(barrierId),
                            VPackBuffer<uint8_t>(), options)
           .get();
 
-  if (res.ok()) {
-    auto* response = res.response.get();
-    if (response->statusCode() != fuerte::StatusOK &&
-        response->statusCode() != fuerte::StatusNoContent) {
-      std::string errorMessage = "got status " + std::to_string(response->statusCode());
-      LOG_TOPIC("f5733", ERR, Logger::MAINTENANCE)
+  auto res = response.combinedResult();
+
+  if (res.fail()) {
+    if (response.ok() && response.response->fail()) {
+      std::string errorMessage =
+          "got status " + std::to_string(response.response->statusCode());
+      LOG_TOPIC("f5733", WARN, Logger::MAINTENANCE)
           << "CancelBarrier: error '" << errorMessage << "'";
-      return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
+      return arangodb::Result(res.errorNumber(), errorMessage);
+    } else {
+      std::string error(
+          "CancelBarrier: failed to send message to leader : status ");
+      error += res.errorMessage();
+      LOG_TOPIC("1c48a", WARN, Logger::MAINTENANCE) << error;
+      return arangodb::Result(res.errorNumber(), error);
     }
   } else {
-    std::string error(
-        "CancelBarrier: failed to send message to leader : status ");
-    error += network::fuerteToArangoErrorMessage(res);
-    LOG_TOPIC("1c48a", ERR, Logger::MAINTENANCE) << error;
-    return arangodb::Result(TRI_ERROR_INTERNAL, error);
+    LOG_TOPIC("313dc", DEBUG, Logger::MAINTENANCE) << "cancelBarrier: success";
+    return arangodb::Result();
   }
-
-  LOG_TOPIC("313dc", DEBUG, Logger::MAINTENANCE) << "cancelBarrier: success";
-  return arangodb::Result();
 }
 
 static inline bool isStopping() {
@@ -451,50 +478,51 @@ arangodb::Result SynchronizeShard::getReadLock(
   // Try to POST the lock body. If POST fails, we should just exit and retry
   // SynchroShard anew. 
   network::RequestOptions options;
-    options.timeout = network::Timeout(timeout);
-    auto res = network::sendRequest(
-      pool, endpoint, fuerte::RestVerb::Post,
-      url, *buf, options).get();
+  options.timeout = network::Timeout(timeout);
+  auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Post, url, *buf, options)
+                 .get();
 
-  if (!res.fail() && res.response->statusCode() == fuerte::StatusOK) {
+  auto res = response.combinedResult();
+
+  if (res.ok()) {
     // Habemus clausum, we have a lock
     return arangodb::Result();
   }
-    
+
   LOG_TOPIC("cba32", DEBUG, Logger::MAINTENANCE)
     << "startReadLockOnLeader: couldn't POST lock body, "
-    << network::fuerteToArangoErrorMessage(res) << ", giving up.";
+    << network::fuerteToArangoErrorMessage(response) << ", giving up.";
 
   // We MUSTN'T exit without trying to clean up a lock that was maybe acquired
-  if (res.error == fuerte::Error::CouldNotConnect) {
+  if (response.error == fuerte::Error::CouldNotConnect) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       "startReadLockOnLeader: couldn't POST lock body, giving up.");
   }
-  
+
   double timeLeft =
-    double(timeout) - duration<double>(steady_clock::now()-start).count() ;
+      double(timeout) - duration<double>(steady_clock::now() - start).count();
   if (timeLeft < 60.0) {
     timeLeft = 60.0;
   }
 
   // Ambiguous POST, we'll try to DELETE a potentially acquired lock
   try {
-    auto r = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete, url,
-                                  *buf, options)
+    auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete, url, *buf, options)
                  .get();
-    if (r.fail() || r.response->statusCode() != fuerte::StatusOK) {
-      std::string addendum = network::fuerteToArangoErrorMessage(r);
-      LOG_TOPIC("4f34d", ERR, Logger::MAINTENANCE)
+    auto res = response.combinedResult();
+    if (res.fail()) {
+      LOG_TOPIC("4f34d", WARN, Logger::MAINTENANCE)
           << "startReadLockOnLeader: cancelation error for shard - "
-          << collection << ": " << addendum;
+          << database << "/" << collection << ": " << res.errorMessage();
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC("7fcc9", ERR, Logger::MAINTENANCE)
-      << "startReadLockOnLeader: exception in cancel: " << e.what();
+    LOG_TOPIC("7fcc9", WARN, Logger::MAINTENANCE)
+        << "startReadLockOnLeader: exception in cancel: " << e.what();
   }
-  return arangodb::Result(
-    TRI_ERROR_CLUSTER_TIMEOUT, "startReadLockOnLeader: giving up");
+
+  return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT,
+                          "startReadLockOnLeader: giving up");
 }
 
 arangodb::Result SynchronizeShard::startReadLockOnLeader(
@@ -507,7 +535,7 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
   arangodb::Result result =
       getReadLockId(pool, endpoint, database, clientId, timeout, rlid);
   if (!result.ok()) {
-    LOG_TOPIC("2e5ae", ERR, Logger::MAINTENANCE) << result.errorMessage();
+    LOG_TOPIC("2e5ae", WARN, Logger::MAINTENANCE) << result.errorMessage();
     return result;
   }
   LOG_TOPIC("c8d18", DEBUG, Logger::MAINTENANCE) << "Got read lock id: " << rlid;
@@ -527,8 +555,6 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   auto& vocbase = col->vocbase();
 
   auto database = vocbase.name();
-
-  auto shard = col->name();
 
   bool keepBarrier = config.get(KEEP_BARRIER).getBool();
   std::string leaderId;
@@ -560,12 +586,13 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   SyncerId syncerId{syncer->syncerId()};
 
   try {
-    Result r = syncer->run(configuration._incremental);
+    std::string const context = "synchronization of shard " + database + "/" + col->name();
+    Result r = syncer->run(configuration._incremental, context.c_str());
 
     if (r.fail()) {
       LOG_TOPIC("3efff", DEBUG, Logger::REPLICATION)
-          << "initial sync failed for database '" << database
-          << "': " << r.errorMessage();
+          << "initial sync failed for database " << database << "/" << col->name()
+          << ": " << r.errorMessage();
       THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
     }
 
@@ -632,7 +659,8 @@ static arangodb::Result replicationSynchronizeCatchup(VPackSlice const& conf, do
 
   Result r;
   try {
-    r = syncer.syncCollectionCatchup(collection, timeout, tickReached, didTimeout);
+    std::string const context = "catching up delta changes for shard " + database + "/" + collection;
+    r = syncer.syncCollectionCatchup(collection, timeout, tickReached, didTimeout, context.c_str());
   } catch (arangodb::basics::Exception const& ex) {
     r = Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -670,7 +698,8 @@ static arangodb::Result replicationSynchronizeFinalize(VPackSlice const& conf) {
 
   Result r;
   try {
-    r = syncer.syncCollectionFinalize(collection);
+    std::string const context = "final synchronization of shard " + database + "/" + collection;
+    r = syncer.syncCollectionFinalize(collection, context.c_str());
   } catch (arangodb::basics::Exception const& ex) {
     r = Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -775,7 +804,7 @@ bool SynchronizeShard::first() {
     auto collection = vocbase->lookupCollection(shard);
     if (collection == nullptr) {
       std::stringstream error;
-      error << "failed to lookup local shard " << shard;
+      error << "failed to lookup local shard " << database << "/" << shard;
       LOG_TOPIC("06489", ERR, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
       _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
@@ -783,29 +812,45 @@ bool SynchronizeShard::first() {
 
     auto ep = clusterInfo.getServerEndpoint(leader);
     uint64_t docCount;
-    if (!collectionCount(collection, docCount).ok()) {
+    if (!collectionCount(*collection.get(), docCount).ok()) {
       std::stringstream error;
-      error << "failed to get a count on leader " << shard;
+      error << "failed to get a count on leader " << database << "/" << shard;
       LOG_TOPIC("da225", ERR, Logger::MAINTENANCE) << "SynchronizeShard " << error.str();
       _result.reset(TRI_ERROR_INTERNAL, error.str());
       return false;
     }
+                   
 
     { // Initialize _clientInfoString
       CollectionNameResolver resolver(collection->vocbase());
       _clientInfoString =
           std::string{"follower "} + ServerState::instance()->getPersistedId() +
-          " of shard " + collection->name() + " of collection " + database +
+          " of shard " + database + "/" + collection->name() + " of collection " + database +
           "/" + resolver.getCollectionName(collection->id());
     }
+  
+    std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
 
-    if (docCount == 0) {
+    // old "shortcut" code for getting in sync. This code takes a shortcut if the
+    // shard in question is supposed to be empty. in this case it will simply try
+    // to add itself as an in-sync follower, without running the full replication
+    // protocol. this shortcut relies on the collection counts being correct, and
+    // as these can be at least temporarily off, we need to disable it.
+    if (docCount == 0 && engineName == "mmfiles") {
       // We have a short cut:
       LOG_TOPIC("0932a", DEBUG, Logger::MAINTENANCE)
           << "synchronizeOneShard: trying short cut to synchronize local shard "
              "'"
           << database << "/" << shard << "' for central '" << database << "/"
           << planId << "'";
+      // now do a final sync-to-disk call. note that this can fail
+      Result res = EngineSelectorFeature::ENGINE->flushWal(/*waitForSync*/ true, /*waitForCollector*/ false, false);
+      if (res.fail()) {
+        LOG_TOPIC("a49d1", INFO, Logger::MAINTENANCE) << res.errorMessage();
+        _result.reset(res);
+        return false;
+      }
+
       try {
         NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
         network::ConnectionPool* pool = nf.pool();
@@ -837,8 +882,6 @@ bool SynchronizeShard::first() {
       // should usually not happen. If it fails without an exception,
       // we log and use return.
 
-      Result res;  // used multiple times for intermediate results
-
       // First once without a read transaction:
 
       if (isStopping()) {
@@ -860,8 +903,7 @@ bool SynchronizeShard::first() {
       {
         VPackObjectBuilder o(&config);
         config.add(ENDPOINT, VPackValue(ep));
-        config.add(INCREMENTAL,
-                   VPackValue(docCount > 0));  // use dump if possible
+        config.add(INCREMENTAL, VPackValue(docCount > 0)); // use incremental if possible
         config.add(KEEP_BARRIER, VPackValue(true));
         config.add(LEADER_ID, VPackValue(leader));
         config.add(SKIP_CREATE_DROP, VPackValue(true));
@@ -888,7 +930,7 @@ bool SynchronizeShard::first() {
       if (endTime - startTime > seconds(5)) {
         LOG_TOPIC("ca7e3", INFO, Logger::MAINTENANCE)
             << "synchronizeOneShard: long call to syncCollection for shard"
-            << shard << " " << syncRes.errorMessage()
+            << database << "/" << shard << " " << syncRes.errorMessage()
             << " start time: " << timepointToString(startTime)
             << ", end time: " << timepointToString(system_clock::now());
       }
@@ -896,7 +938,7 @@ bool SynchronizeShard::first() {
       // If this did not work, then we cannot go on:
       if (!syncRes.ok()) {
         std::stringstream error;
-        error << "could not initially synchronize shard " << shard << ": "
+        error << "could not initially synchronize shard " << database << "/" << shard << ": "
               << syncRes.errorMessage();
         LOG_TOPIC("c1b31", DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());
@@ -915,7 +957,7 @@ bool SynchronizeShard::first() {
 
       if (collections.length() == 0 || collections[0].get("name").copyString() != shard) {
         std::stringstream error;
-        error << "shard " << shard << " seems to be gone from leader, this "
+        error << "shard " << database << "/" << shard << " seems to be gone from leader, this "
                "can happen if a collection was dropped during synchronization!";
         LOG_TOPIC("664ae", WARN, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());
@@ -937,9 +979,9 @@ bool SynchronizeShard::first() {
       }
       lastTick = tickResult.get();
 
-      // Now start a exclusive transaction to stop writes:
-      res = catchupWithExclusiveLock(ep, database, *collection, clientId, shard,
-                                     leader, syncerId, lastTick, builder);
+      // Now start an exclusive transaction to stop writes:
+      Result res = catchupWithExclusiveLock(ep, database, *collection, clientId, shard,
+                                            leader, syncerId, lastTick, builder);
       if (!res.ok()) {
         LOG_TOPIC("be85f", INFO, Logger::MAINTENANCE) << res.errorMessage();
         _result.reset(res);
@@ -1079,7 +1121,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
 }
 
 Result SynchronizeShard::catchupWithExclusiveLock(
-    std::string const& ep, std::string const& database, LogicalCollection const& collection,
+    std::string const& ep, std::string const& database, LogicalCollection& collection,
     std::string const& clientId, std::string const& shard, std::string const& leader,
     SyncerId const syncerId, TRI_voc_tick_t lastLogTick, VPackBuilder& builder) {
   uint64_t lockJobId = 0;
@@ -1102,8 +1144,8 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     if (!res.ok()) {
       LOG_TOPIC("067a8", INFO, Logger::MAINTENANCE)
           << "Could not cancel hard read lock on leader: " << res.errorMessage();
-      }
-    });
+    }
+  });
 
   LOG_TOPIC("d76cb", DEBUG, Logger::MAINTENANCE) << "lockJobId: " << lockJobId;
 
@@ -1130,31 +1172,115 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
   NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
-  res = addShardFollower(pool, ep, database, shard, lockJobId, clientId,
-                         syncerId, _clientInfoString, 60.0);
+  res = addShardFollower(pool, ep, database, shard, lockJobId, clientId, syncerId,
+                         _clientInfoString, 60.0);
 
+  // if we get a checksum mismatch, it means that we got different amounts
+  // of documents on the leader and the follower, which can happen if collection
+  // counts are off for whatever reason. 
+  // under many cicrumstances the counts will have been auto-healed by the initial
+  // or the incremental replication before, so in many cases we will not even get
+  // into this if case
+  if (EngineSelectorFeature::isRocksDB() && res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM)) {
+    // give up the lock on the leader, so writes aren't stopped unncessarily
+    // on the leader while we are recalculating the counts
+    readLockGuard.fire();
+          
+    collection.vocbase().server().getFeature<ClusterFeature>().trackAddFollowerWrongChecksum();
+
+    // recalculate collection count on follower
+    LOG_TOPIC("29384", INFO, Logger::MAINTENANCE) 
+       << "recalculating collection count on follower for "
+       << database << "/" << shard;
+  
+    uint64_t docCount;
+    Result countRes = collectionCount(collection, docCount);
+    if (countRes.fail()) {
+      return countRes;
+    }
+    // store current count value
+    uint64_t oldCount = docCount;
+
+    // recalculate on follower. this can take a long time
+    countRes = collectionReCount(collection, docCount);
+    if (countRes.fail()) {
+      return countRes;
+    }
+    
+    LOG_TOPIC("d2689", INFO, Logger::MAINTENANCE) 
+       << "recalculated collection count on follower for "
+       << database << "/" << shard << ", old: " << oldCount << ", new: " << docCount;
+
+    // check if our recalculation has made a difference
+    if (oldCount == docCount) {
+      // no change happened due to recalculation. now try recounting on leader too.
+      // this is last resort and should not happen often!
+      LOG_TOPIC("3dc64", INFO, Logger::MAINTENANCE) 
+         << "recalculating collection count on leader for "
+         << database << "/" << shard;
+ 
+      VPackBuffer<uint8_t> buffer;
+      VPackBuilder tmp(buffer);
+      tmp.add(VPackSlice::emptyObjectSlice());
+
+      network::RequestOptions options;
+      options.database = database;
+      options.timeout = network::Timeout(600.0);  // this can be slow!!!
+      options.skipScheduler = true;  // hack to speed up future.get()
+
+      std::string const url = "/_api/collection/" + collection.name() +
+                              "/recalculateCount";
+
+      auto response = network::sendRequest(pool, ep, fuerte::RestVerb::Put,
+                                           url, std::move(buffer), options)
+                          .get();
+      auto result = response.combinedResult();
+
+      if (result.fail()) {
+        std::string const errorMessage =
+            "addShardFollower: could not add us to the leader's follower "
+            "list for " + database + "/" + shard +
+            ", error while recalculating count on leader: " +
+            result.errorMessage();
+        LOG_TOPIC("22e0b", WARN, Logger::MAINTENANCE) << errorMessage;
+        return arangodb::Result(result.errorNumber(), errorMessage);
+      }
+    }
+ 
+    // still let the operation fail here, because we gave up the lock 
+    // already and cannot be sure the data on the leader hasn't changed in
+    // the meantime. we will sort this issue out during the next maintenance
+    // run
+    TRI_ASSERT(res.fail());
+    TRI_ASSERT(res.is(TRI_ERROR_REPLICATION_WRONG_CHECKSUM));
+    return res;
+  }
+
+  // no more retrying...
   if (!res.ok()) {
     std::string errorMessage(
       "synchronizeOneshard: error in addShardFollower: ");
     errorMessage += res.errorMessage();
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
-
+  
   // Report success:
-  LOG_TOPIC("3423d", DEBUG, Logger::MAINTENANCE)
-      << "synchronizeOneShard: synchronization worked for shard " << shard;
+  LOG_TOPIC("3423d", INFO, Logger::MAINTENANCE)
+      << "synchronizeOneShard: synchronization worked for shard " << database << "/" << shard;
   _result.reset(TRI_ERROR_NO_ERROR);
   return {TRI_ERROR_NO_ERROR};
 }
 
 void SynchronizeShard::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
-    auto const& shard = _description.get("shard");
+    auto const& shard = _description.get(SHARD);
     if (COMPLETE == state) {
+      std::string database = _description.get(DATABASE);
       LOG_TOPIC("50827", INFO, Logger::MAINTENANCE)
-        << "SynchronizeShard: synchronization completed for shard " << shard;
+        << "SynchronizeShard: synchronization completed for shard " << database << "/" << shard;
     }
     _feature.incShardVersion(shard);
+    _feature.unlockShard(shard);
   }
   ActionBase::setState(state);
 }

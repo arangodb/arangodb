@@ -50,6 +50,8 @@ class ConnectionStatistics {
 
   static void fill(basics::StatisticsCounter& httpConnections,
                    basics::StatisticsCounter& totalRequests,
+                   basics::StatisticsCounter& totalRequestsSuperuser,
+                   basics::StatisticsCounter& totalRequestsUser,
                    std::array<basics::StatisticsCounter, basics::MethodRequestsStatisticsSize>& methodRequests,
                    basics::StatisticsCounter& asyncRequests,
                    basics::StatisticsDistribution& connectionTime);

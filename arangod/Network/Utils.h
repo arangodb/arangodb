@@ -70,6 +70,8 @@ int fuerteToArangoErrorCode(network::Response const& res);
 int fuerteToArangoErrorCode(fuerte::Error err);
 std::string fuerteToArangoErrorMessage(network::Response const& res);
 std::string fuerteToArangoErrorMessage(fuerte::Error err);
+int fuerteStatusToArangoErrorCode(fuerte::Response const& res);
+std::string fuerteStatusToArangoErrorMessage(fuerte::Response const& res);
 
 /// @brief convert between arango and fuerte rest methods
 fuerte::RestVerb arangoRestVerbToFuerte(rest::RequestType);

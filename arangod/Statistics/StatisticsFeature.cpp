@@ -68,6 +68,8 @@ std::vector<double> const TRI_RequestTimeDistributionVectorStatistics({0.01, 0.0
 StatisticsCounter TRI_AsyncRequestsStatistics;
 StatisticsCounter TRI_HttpConnectionsStatistics;
 StatisticsCounter TRI_TotalRequestsStatistics;
+StatisticsCounter TRI_TotalRequestsStatisticsSuperuser;
+StatisticsCounter TRI_TotalRequestsStatisticsUser;
 std::array<StatisticsCounter, MethodRequestsStatisticsSize> TRI_MethodRequestsStatistics;
 
 StatisticsDistribution TRI_BytesReceivedDistributionStatistics(TRI_BytesReceivedDistributionVectorStatistics);
@@ -256,4 +258,10 @@ void StatisticsFeature::stop() {
   _statisticsWorker.reset();
 
   STATISTICS = nullptr;
+}
+  
+void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
+  if (_statisticsWorker != nullptr) {
+    _statisticsWorker->generateRawStatistics(result, now);
+  }
 }

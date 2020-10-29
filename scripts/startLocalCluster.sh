@@ -311,5 +311,5 @@ done
 
 echo == Done, your cluster is ready at
 for p in `seq $CO_BASE $PORTTOPCO` ; do
-    echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://[::1]:$p"
+    echo "   ${BUILD}/bin/arangosh --server.endpoint '$TRANSPORT://[::1]:$p'"
 done

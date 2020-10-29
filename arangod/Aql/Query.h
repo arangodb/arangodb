@@ -39,6 +39,7 @@
 #include "Aql/SharedQueryState.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Cluster/ResultT.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/voc-types.h"
 
@@ -265,6 +266,12 @@ class Query {
   /// @brief mark a query as modification query
   void setIsModificationQuery() { _isModificationQuery = true; }
 
+  /// @brief return the user that started the query
+  std::string const& user() const { return _user; }
+  
+  /// @brief set the user that started the query
+  void user(std::string const& user) { _user = user; }
+
   /// @brief prepare a V8 context for execution for this expression
   /// this needs to be called once before executing any V8 function in this
   /// expression
@@ -293,7 +300,7 @@ class Query {
   void addWarningsToVelocyPack(arangodb::velocypack::Builder&) const;
 
   /// @brief look up a graph in the _graphs collection
-  graph::Graph const* lookupGraphByName(std::string const& name);
+  ResultT<graph::Graph const*> lookupGraphByName(std::string const& name);
 
   /// @brief return the bind parameters as passed by the user
   std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const {
@@ -387,6 +394,9 @@ class Query {
 
   /// @brief parsed query options
   QueryOptions _queryOptions;
+
+  /// @brief user that started the query
+  std::string _user;
 
   /// @brief collections used in the query
   Collections _collections;

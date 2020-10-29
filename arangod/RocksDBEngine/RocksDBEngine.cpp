@@ -203,6 +203,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 #else
       _syncInterval(100),
 #endif
+      _syncDelayThreshold(5000),
       _useThrottle(true),
       _useReleasedTick(false),
       _debugLogging(false),
@@ -296,6 +297,16 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "milliseconds, use 0 to turn automatic syncing off)",
                      new UInt64Parameter(&_syncInterval));
 
+  options->addOption("--rocksdb.sync-delay-threshold",
+                     "threshold value for self-observation of WAL disk syncs. "
+                     "any WAL disk sync longer ago than this threshold will trigger "
+                     "a warning (in milliseconds, use 0 for no warnings)",
+                     new UInt64Parameter(&_syncDelayThreshold),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30800)
+                     .setIntroducedIn(30705)
+                     .setIntroducedIn(30608);
+
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
@@ -345,12 +356,28 @@ void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   validateEnterpriseOptions(options);
 #endif
 
-  if (_syncInterval > 0 && _syncInterval < minSyncInterval) {
-    // _syncInterval = 0 means turned off!
-    LOG_TOPIC("bbd68", FATAL, arangodb::Logger::CONFIG)
-        << "invalid value for --rocksdb.sync-interval. Please use a value "
-        << "of at least " << minSyncInterval;
-    FATAL_ERROR_EXIT();
+  if (_syncInterval > 0) {
+    if (_syncInterval < minSyncInterval) {
+      // _syncInterval = 0 means turned off!
+      LOG_TOPIC("bbd68", FATAL, arangodb::Logger::CONFIG)
+          << "invalid value for --rocksdb.sync-interval. Please use a value "
+          << "of at least " << minSyncInterval;
+      FATAL_ERROR_EXIT();
+    }
+
+    if (_syncDelayThreshold > 0 && _syncDelayThreshold <= _syncInterval) {
+      if (!options->processingResult().touched("rocksdb.sync-interval") &&
+          options->processingResult().touched("rocksdb.sync-delay-threshold")) {
+        // user has not set --rocksdb.sync-interval, but set --rocksdb.sync-delay-threshold
+        LOG_TOPIC("c3f45", WARN, arangodb::Logger::CONFIG)
+            << "invalid value for --rocksdb.sync-delay-threshold. should be higher "
+            << "than the value of --rocksdb.sync-interval (" << _syncInterval << ")";
+      }
+      
+      _syncDelayThreshold = 10 * _syncInterval;
+      LOG_TOPIC("c0fa3", WARN, arangodb::Logger::CONFIG)
+          << "auto-adjusting value of --rocksdb.sync-delay-threshold to " << _syncDelayThreshold << " ms";
+    }
   }
 
 #ifdef _WIN32
@@ -432,6 +459,12 @@ void RocksDBEngine::start() {
   _options.enable_pipelined_write = opts._enablePipelinedWrite;
   _options.write_buffer_size = static_cast<size_t>(opts._writeBufferSize);
   _options.max_write_buffer_number = static_cast<int>(opts._maxWriteBufferNumber);
+  // The following setting deserves an explanation: We found that if we leave the
+  // default for max_write_buffer_number_to_maintain at 0, then RocksDB keeps a lot 
+  // of memory in immutable flushed write buffers, which is bad for small deployments.
+  // Therefore, by default, we now set this to 1 if the available memory is less than 4GB,
+  // and to 0 otherwise.
+  _options.max_write_buffer_number_to_maintain = static_cast<int>(opts._maxWriteBufferNumberToMaintain);
   _options.delayed_write_rate = opts._delayedWriteRate;
   _options.min_write_buffer_number_to_merge =
       static_cast<int>(opts._minWriteBufferNumberToMerge);
@@ -785,7 +818,7 @@ void RocksDBEngine::start() {
              _useReleasedTick);
 
   if (_syncInterval > 0) {
-    _syncThread.reset(new RocksDBSyncThread(*this, std::chrono::milliseconds(_syncInterval)));
+    _syncThread.reset(new RocksDBSyncThread(*this, std::chrono::milliseconds(_syncInterval), std::chrono::milliseconds(_syncDelayThreshold)));
     if (!_syncThread->start()) {
       LOG_TOPIC("63919", FATAL, Logger::ENGINES)
           << "could not start rocksdb sync thread";
@@ -1582,6 +1615,10 @@ int RocksDBEngine::shutdownDatabase(TRI_vocbase_t& vocbase) {
   return TRI_ERROR_NO_ERROR;
 }
 
+Result RocksDBEngine::compactAll(bool changeLevel, bool compactBottomMostLevel) {
+  return rocksutils::compactAll(_db->GetRootDB(), changeLevel, compactBottomMostLevel);
+}
+
 /// @brief Add engine-specific optimizer rules
 void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
   RocksDBOptimizerRules::registerResources(feature);
@@ -1687,23 +1724,30 @@ std::vector<std::string> RocksDBEngine::currentWalFiles() const {
 
 Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector,
                                bool /*writeShutdownFile*/) {
+  Result res;
+
   if (_syncThread) {
     // _syncThread may be a nullptr, in case automatic syncing is turned off
-    _syncThread->syncWal();
+    res = _syncThread->syncWal();
+  } else {
+    // no syncThread...
+    res = RocksDBSyncThread::sync(_db->GetBaseDB());
   }
 
-  if (waitForCollector) {
+  if (res.ok() && waitForCollector) {
     rocksdb::FlushOptions flushOptions;
     flushOptions.wait = waitForSync;
 
     for (auto cf : RocksDBColumnFamily::_allHandles) {
       rocksdb::Status status = _db->GetBaseDB()->Flush(flushOptions, cf);
       if (!status.ok()) {
-        return rocksutils::convertStatus(status);
+        res.reset(rocksutils::convertStatus(status));
+        break;
       }
     }
   }
-  return Result();
+
+  return res;
 }
 
 void RocksDBEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) {
@@ -1745,7 +1789,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
   auto status = _db->GetSortedWalFiles(files);
   if (!status.ok()) {
     LOG_TOPIC("078ef", INFO, Logger::ENGINES)
-        << "could not get WAL files " << status.ToString();
+        << "could not get WAL files: " << status.ToString();
     return;
   }
 

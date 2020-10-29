@@ -34,10 +34,10 @@
 #include "Agency/JobContext.h"
 #include "Agency/RemoveFollower.h"
 #include "Agency/Store.h"
+#include "Agency/AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
-#include "Cluster/AgencyPaths.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
 
@@ -406,18 +406,21 @@ void handleOnStatusCoordinator(Agent* agent, Node const& snapshot, HealthRecord&
                                HealthRecord& transisted, std::string const& serverID) {
 
   if (transisted.status == Supervision::HEALTH_STATUS_FAILED) {
-    // if the current foxxmaster server failed => reset the value to ""
-    if (snapshot.hasAsString(foxxmaster).first == serverID) {
-      VPackBuilder create;
+    VPackBuilder create;
+    {
+      VPackArrayBuilder tx(&create);
       {
-        VPackArrayBuilder tx(&create);
-        {
-          VPackObjectBuilder d(&create);
+        VPackObjectBuilder b(&create);
+        // unconditionally increase reboot id and plan version
+        Job::addIncreaseRebootId(create, serverID);
+
+        // if the current foxxmaster server failed => reset the value to ""
+        if (snapshot.hasAsString(foxxmaster).first == serverID) {
           create.add(foxxmaster, VPackValue(""));
         }
       }
-      singleWriteTransaction(agent, create, false);
     }
+    singleWriteTransaction(agent, create, false);
   }
 }
 
@@ -1836,9 +1839,15 @@ void Supervision::enforceReplication() {
         }
       }
 
-      bool clone = col.has(StaticStrings::DistributeShardsLike);
+      bool const clone = col.has(StaticStrings::DistributeShardsLike);
+      bool const isBuilding = std::invoke([&col] {
+        auto pair = col.hasAsBool(StaticStrings::AttrIsBuilding);
+        // Return true if the attribute exists, is a bool, and that bool is
+        // true. Return false otherwise.
+        return pair.first && pair.second;
+      });
 
-      if (!clone) {
+      if (!clone && !isBuilding) {
         for (auto const& shard_ : col.hasAsChildren("shards").first) {  // Pl shards
           auto const& shard = *(shard_.second);
           VPackBuilder onlyFollowers;

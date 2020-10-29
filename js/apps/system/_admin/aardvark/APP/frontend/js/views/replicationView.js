@@ -65,18 +65,18 @@
 
     render: function () {
       this.undelegateEvents();
-      if (this.mode || this.mode === 0) {
-        // mode found
-        this.$el.html(this.template.render({
-          mode: this.mode,
-          info: this.info,
-          nodes: this.nodes
-        }));
+      this.getMode(this.continueRender.bind(this));
+    },
 
-        this.getStateData();
-      } else {
-        this.getMode(this.render.bind(this));
-      }
+    continueRender: function () {
+      // mode will be set now
+      this.$el.html(this.template.render({
+        mode: this.mode,
+        info: this.info,
+        nodes: this.nodes
+      }));
+
+      this.getStateData();
       this.delegateEvents();
     },
 

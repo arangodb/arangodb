@@ -32,6 +32,7 @@
 #include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 extern const char* ARGV0;  // defined in main.cpp
 
@@ -108,7 +109,8 @@ TEST_F(IResearchQuerySelectAllTest, test) {
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
 
-  std::vector<arangodb::ManagedDocumentResult> insertedDocs(2 * 42);
+  // need more than 100 docs for constrained heap optimization to be applied
+  std::vector<arangodb::ManagedDocumentResult> insertedDocs(101);
 
   // populate view with the data
   {
@@ -156,8 +158,40 @@ TEST_F(IResearchQuerySelectAllTest, test) {
       expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
     }
 
+    std::string const queryString = "FOR d IN testView RETURN d";
+
+    // check node estimation
+    {
+      auto explanationResult =
+          arangodb::tests::explainQuery(vocbase, queryString);
+      ASSERT_TRUE(explanationResult.result.ok());
+      auto const explanationSlice = explanationResult.data->slice();
+      ASSERT_TRUE(explanationSlice.isObject());
+      auto const nodesSlice = explanationSlice.get("nodes");
+      ASSERT_TRUE(nodesSlice.isArray());
+      VPackSlice viewNode;
+      for (auto node : VPackArrayIterator(nodesSlice)) {
+        auto const nodeType = arangodb::iresearch::getStringRef(node.get("type"));
+
+        if ("EnumerateViewNode" != nodeType) {
+          continue;
+        }
+
+        auto const viewName = arangodb::iresearch::getStringRef(node.get("view"));
+
+        if ("testView" == viewName) {
+          viewNode = node;
+          break;
+        }
+      }
+
+      ASSERT_TRUE(viewNode.isObject());
+      ASSERT_EQ(insertedDocs.size() + 1., viewNode.get("estimatedCost").getDouble());
+      ASSERT_EQ(insertedDocs.size(), viewNode.get("estimatedNrItems").getNumber<size_t>());
+    }
+
     auto queryResult =
-        arangodb::tests::executeQuery(vocbase, "FOR d IN testView RETURN d");
+        arangodb::tests::executeQuery(vocbase, queryString);
     ASSERT_TRUE(queryResult.result.ok());
 
     auto result = queryResult.data->slice();
@@ -398,8 +432,7 @@ TEST_F(IResearchQuerySelectAllTest, test) {
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase, queryString, {},
-        //"{ \"fullCount\": true }" // FIXME uncomment
-        "{ \"optimizer\" : { \"rules\": [ \"-sort-limit\"] }, \"fullCount\": "
+        "{ \"optimizer\" : { \"rules\": [ \"+sort-limit\"] }, \"fullCount\": "
         "true }");
     ASSERT_TRUE(queryResult.result.ok());
 

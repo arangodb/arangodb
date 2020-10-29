@@ -41,7 +41,6 @@
 #include "utils/string.hpp"
 #include "utils/noncopyable.hpp"
 
-#include <cassert>
 #include <atomic>
 
 NS_ROOT
@@ -143,7 +142,7 @@ class IRESEARCH_API index_writer
         flush_context* flush_ctx = nullptr, // the flush_context the segment_context is currently registered with
         size_t pending_segment_context_offset = integer_traits<size_t>::const_max // the segment offset in flush_ctx_->pending_segments_
     ) NOEXCEPT;
-    active_segment_context(active_segment_context&& other) NOEXCEPT;
+    active_segment_context(active_segment_context&& other)  = default;
     ~active_segment_context();
     active_segment_context& operator=(active_segment_context&& other) NOEXCEPT;
 
@@ -336,7 +335,7 @@ class IRESEARCH_API index_writer
 
       // .......................................................................
       // perform rollback
-      // implicitly NOEXCEPT since memory reserved in the call to begin(...)
+      // implicitly noexcept since memory reserved in the call to begin(...)
       // .......................................................................
 
       writer.rollback(); // mark as failed
@@ -395,8 +394,7 @@ class IRESEARCH_API index_writer
       : filter(match_filter), generation(gen), update(isUpdate), seen(false) {}
     modification_context(irs::filter::ptr&& match_filter, size_t gen, bool isUpdate)
       : filter(std::move(match_filter)), generation(gen), update(isUpdate), seen(false) {}
-    modification_context(modification_context&& other) NOEXCEPT
-      : filter(std::move(other.filter)), generation(other.generation), update(other.update), seen(other.seen) {}
+    modification_context(modification_context&& other) = default;
     modification_context& operator=(const modification_context& other) = delete; // no default constructor
   };
 
@@ -428,6 +426,12 @@ class IRESEARCH_API index_writer
     size_t segment_memory_max{0};
   };
 
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief functor for creating payload. Operation tick is provided for 
+  /// payload generation.
+  ////////////////////////////////////////////////////////////////////////////
+  using payload_provider_t = std::function<bool(uint64_t, bstring&)>;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief options the the writer should use after creation
   //////////////////////////////////////////////////////////////////////////////
@@ -436,6 +440,11 @@ class IRESEARCH_API index_writer
     /// @brief returns column info the writer should use for columnstore
     ////////////////////////////////////////////////////////////////////////////
     column_info_provider_t column_info;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief Provides payload for index_meta created by writer
+    ////////////////////////////////////////////////////////////////////////////
+    payload_provider_t meta_payload_provider;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief comparator defines physical order of documents in each segment
@@ -522,9 +531,10 @@ class IRESEARCH_API index_writer
   ////////////////////////////////////////////////////////////////////////////
   /// @brief Clears the existing index repository by staring an empty index.
   ///        Previously opened readers still remain valid.
+  /// @param truncate transaction tick
   /// @note call will rollback any opened transaction
   ////////////////////////////////////////////////////////////////////////////
-  void clear();
+  void clear(uint64_t tick = 0);
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief merges segments accepted by the specified defragment policty into
@@ -600,17 +610,15 @@ class IRESEARCH_API index_writer
     return comparator_;
   }
 
-  typedef std::function<bool(uint64_t, bstring&)> before_commit_f;
-
   ////////////////////////////////////////////////////////////////////////////
   /// @brief begins the two-phase transaction
   /// @param payload arbitrary user supplied data to store in the index
   /// @returns true if transaction has been sucessflully started
   ////////////////////////////////////////////////////////////////////////////
-  bool begin(const before_commit_f& before_commit = {}) {
+  bool begin() {
     SCOPED_LOCK(commit_lock_);
 
-    return start(before_commit);
+    return start();
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -629,10 +637,10 @@ class IRESEARCH_API index_writer
   /// @note that if begin() has been already called commit() is
   /// relatively lightweight operation 
   ////////////////////////////////////////////////////////////////////////////
-  void commit(const before_commit_f& before_commit = {}) {
+  void commit() {
     SCOPED_LOCK(commit_lock_);
 
-    start(before_commit);
+    start();
     finish();
   }
 
@@ -649,11 +657,7 @@ class IRESEARCH_API index_writer
   struct consolidation_context_t : util::noncopyable {
     consolidation_context_t() = default;
 
-    consolidation_context_t(consolidation_context_t&& rhs) NOEXCEPT
-      : consolidaton_meta(std::move(rhs.consolidaton_meta)),
-        candidates(std::move(rhs.candidates)),
-        merger(std::move(rhs.merger)) {
-    }
+    consolidation_context_t(consolidation_context_t&& rhs) = default; 
 
     consolidation_context_t(
         std::shared_ptr<index_meta>&& consolidaton_meta,
@@ -734,12 +738,7 @@ class IRESEARCH_API index_writer
         segment(std::move(segment)) {
     }
 
-    import_context(import_context&& other) NOEXCEPT
-      : generation(other.generation),
-        segment(std::move(other.segment)),
-        refs(std::move(other.refs)),
-        consolidation_ctx(std::move(other.consolidation_ctx)) {
-    }
+    import_context(import_context&& other) = default;
 
     import_context& operator=(const import_context&) = delete;
 
@@ -993,11 +992,7 @@ class IRESEARCH_API index_writer
     sync_context to_sync; // file names and segments to be synced during next commit
 
     pending_context_t() = default;
-    pending_context_t(pending_context_t&& other) NOEXCEPT
-      : ctx(std::move(other.ctx)),
-        meta(std::move(other.meta)),
-        to_sync(std::move(other.to_sync)) {
-    }
+    pending_context_t(pending_context_t&& other) = default;
     operator bool() const NOEXCEPT { return ctx && meta; }
   }; // pending_context_t
 
@@ -1022,21 +1017,23 @@ class IRESEARCH_API index_writer
     const segment_options& segment_limits,
     const comparer* comparator,
     const column_info_provider_t& column_info,
+    const payload_provider_t& meta_payload_provider,
     index_meta&& meta,
     committed_state_t&& committed_state
   );
 
-  pending_context_t flush_all(const before_commit_f& before_commit);
+  pending_context_t flush_all();
 
   flush_context_ptr get_flush_context(bool shared = true);
   active_segment_context get_segment_context(flush_context& ctx); // return a usable segment or a nullptr segment if retry is required (e.g. no free segments available)
 
-  bool start(const before_commit_f& before_commit); // starts transaction
+  bool start(); // starts transaction
   void finish(); // finishes transaction
   void abort(); // aborts transaction
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   column_info_provider_t column_info_;
+  payload_provider_t meta_payload_provider_; // provides payload for new segments
   const comparer* comparator_;
   readers_cache cached_readers_; // readers by segment name
   format::ptr codec_;

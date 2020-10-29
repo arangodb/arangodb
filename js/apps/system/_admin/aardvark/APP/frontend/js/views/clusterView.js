@@ -537,6 +537,8 @@
     },
 
     getCoordStatHistory: function (callback) {
+      var self = this;
+
       if (this.coordshortSuccess || this.coordshortSuccess === undefined || (Date.now() - this.coordshortTimestamp) / 1000 > 60) {
         this.coordshortSuccess = false;
         var url = 'statistics/coordshort';
@@ -547,17 +549,19 @@
 
         $.ajax({
           url: url,
-          json: true
-        })
-          .success(function (data) {
-            this.coordshortTimestamp = Date.now();
-            this.coordshortSuccess = true;
-            this.statsEnabled = data.enabled;
+          json: true,
+          type: "GET",
+          success: function (data) {
+            self.coordshortTimestamp = Date.now();
+            self.coordshortSuccess = true;
+            self.statsEnabled = data.enabled;
             callback(data.data);
-          }.bind(this)).error(function (data) {
-            this.coordshortTimestamp = Date.now();
-            this.coordshortSuccess = false;
-          }.bind(this));
+          },
+          error: function () {
+            self.coordshortTimestamp = Date.now();
+            self.coordshortSuccess = false;
+          }
+        });
       }
     }
 

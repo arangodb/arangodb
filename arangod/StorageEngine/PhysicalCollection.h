@@ -76,11 +76,18 @@ class PhysicalCollection {
 
   /// @brief report extra memory used by indexes etc.
   virtual size_t memory() const = 0;
-
+  
   /// @brief opens an existing collection
   virtual void open(bool ignoreErrors) = 0;
 
   void drop();
+  
+  /// recalculate counts for collection in case of failure, blocking
+  virtual uint64_t recalculateCounts();
+ 
+  /// @brief whether or not the collection contains any documents. this
+  /// function is allowed to return true even if there are no documents
+  virtual bool hasDocuments();
 
   ////////////////////////////////////
   // -- SECTION Indexes --
@@ -127,7 +134,7 @@ class PhysicalCollection {
                        std::function<bool(arangodb::Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const;
 
   /// @brief return the figures for a collection
-  virtual futures::Future<OperationResult> figures();
+  virtual futures::Future<OperationResult> figures(bool details);
 
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
@@ -214,7 +221,7 @@ class PhysicalCollection {
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);
 
   /// @brief Inject figures that are specific to StorageEngine
-  virtual void figuresSpecific(arangodb::velocypack::Builder&) = 0;
+  virtual void figuresSpecific(bool details, arangodb::velocypack::Builder&) = 0;
 
   // SECTION: Document pre commit preperation
 

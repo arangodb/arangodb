@@ -59,6 +59,7 @@ std::string const curColPrefix = "/Current/Collections/";
 std::string const blockedServersPrefix = "/Supervision/DBServers/";
 std::string const blockedShardsPrefix = "/Supervision/Shards/";
 std::string const planVersion = "/Plan/Version";
+std::string const currentVersion = "/Current/Version";
 std::string const plannedServers = "/Plan/DBServers";
 std::string const healthPrefix = "/Supervision/Health/";
 std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
@@ -456,7 +457,12 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot, std::string const& d
 }
 
 std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
-    Node const& snap, std::string const& db, std::string const& col, std::string const& shrd) {
+    Node const& snap, std::string const& db, std::string const& col, std::string const& shrd,
+    std::string const& serverToAvoid) {
+
+  // serverToAvoid is the leader for which we are seeking a replacement. Note that
+  // it is not a given that this server is the first one in Current/servers or
+  // Current/failoverCandidates.
   auto cs = clones(snap, db, col, shrd);  // clones
   auto nclones = cs.size();               // #clones
   std::unordered_map<std::string, bool> good;
@@ -498,13 +504,12 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
     // Guaranteed by if above
     TRI_ASSERT(serverList.isArray());
 
-    size_t i = 0;
     for (const auto& server : VPackArrayIterator(serverList)) {
-      if (i++ == 0) {
-        // Skip leader
+      auto id = server.copyString();
+      if (id == serverToAvoid) {
+        // Skip current leader for which we are seeking a replacement
         continue;
       }
-      auto id = server.copyString();
 
       if (!good[id]) {
         // Skip unhealthy servers
@@ -541,6 +546,35 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
   }
 
   return std::string();
+}
+
+/// @brief The shard must be one of a collection without
+/// `distributeShardsLike`. This returns all servers which
+/// are in `failoverCandidates` for this shard or for any of its clones.
+std::unordered_set<std::string> Job::findAllFailoverCandidates(
+    Node const& snap,
+    std::string const& db,
+    std::vector<Job::shard_t> const& shardsLikeMe) {
+
+  std::unordered_set<std::string> result;
+
+  for (const auto& clone : shardsLikeMe) {
+    auto sharedPath = db + "/" + clone.collection + "/";
+    auto currentFailoverCandidatesPath =
+        curColPrefix + sharedPath + clone.shard + "/failoverCandidates";
+    bool isArray = false;
+    VPackSlice serverList;
+    // If we do have failover candidates, we should use them
+    std::tie(serverList, isArray) = snap.hasAsArray(currentFailoverCandidatesPath);
+    if (isArray) {
+      for (const auto& server : VPackArrayIterator(serverList)) {
+        auto id = server.copyString();
+        result.insert(id);
+      }
+    }
+  }
+
+  return result;
 }
 
 std::string Job::uuidLookup(std::string const& shortID) {
@@ -609,6 +643,23 @@ void Job::addIncreasePlanVersion(Builder& trx) {
     VPackObjectBuilder guard(&trx);
     trx.add("op", VPackValue("increment"));
   }
+}
+
+void Job::addIncreaseCurrentVersion(Builder& trx) {
+  trx.add(VPackValue(currentVersion));
+  {
+    VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue("increment"));
+  }
+}
+
+void Job::addIncreaseRebootId(Builder& trx, std::string const& server) {
+  trx.add(VPackValue(curServersKnown + server + "/rebootId"));
+  {
+    VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue("increment"));
+  }
+  addIncreaseCurrentVersion(trx);
 }
 
 void Job::addRemoveJobFromSomewhere(Builder& trx, std::string const& where,

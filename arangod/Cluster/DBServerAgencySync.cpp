@@ -105,7 +105,7 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
         // object was created, we believe it. Otherwise, we do not accept
         // that we are the leader. This is to circumvent the problem that
         // after a restart we would implicitly be assumed to be the leader.
-        collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : "NOT_YET_TOUCHED"));
+        collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : maintenance::LEADER_NOT_YET_KNOWN));
         collections.add("theLeaderTouched", VPackValue(theLeaderTouched));
 
         if (theLeader.empty() && theLeaderTouched) {
@@ -167,6 +167,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     return result;
   }
 
+  // It is crucial that the following happens before we do `getLocalCollections`!
+  MaintenanceFeature::ShardActionMap currentShardLocks = mfeature.getShardLocks();
+
   VPackBuilder local;
   Result glc = getLocalCollections(local);
   if (!glc.ok()) {
@@ -185,7 +188,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne";
     tmp = arangodb::maintenance::phaseOne(plan->slice(), local.slice(),
-                                          serverId, mfeature, rb);
+                                          serverId, mfeature, rb, currentShardLocks);
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne done";
@@ -211,6 +214,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("675fd", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
 
+    // It is crucial that the following happens before we do `getLocalCollections`!
+    currentShardLocks = mfeature.getShardLocks();
+
     mfeature.increaseCurrentCounter();
 
     local.clear();
@@ -230,7 +236,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         << "DBServerAgencySync::phaseTwo";
 
     tmp = arangodb::maintenance::phaseTwo(plan->slice(), current->slice(),
-                                          local.slice(), serverId, mfeature, rb);
+                                          local.slice(), serverId, mfeature, rb,
+                                          currentShardLocks);
 
     LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";

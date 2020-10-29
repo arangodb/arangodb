@@ -1,0 +1,74 @@
+<%
+var escaped = function (value) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+};
+var cutByResolution = function (str) {
+  if (str.length > 256) {
+    return escaped(str.substr(0, 256)) + '...';
+  }
+  return escaped(str);
+};
+%>
+
+<div class="pure-g pure-table pure-table-header pure-title no-padding">
+  <div class="pure-table-row">
+    <div class="pure-u-19-24">
+      <div class="title">Content</div>
+    </div>
+    <div class="pure-u-3-24">
+      <div class="">_key</div>
+    </div>
+    <div class="pure-u-2-24">
+      <div class="actions">
+        <a id="addDocumentButton" class="pull-right addButton"><span title="Add a document"><i class="fa fa-plus-circle"></i></span></a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pure-g pure-table pure-table-body no-padding">
+  <% if (docs.length === 0) { %>
+    <div class="pure-table-row pure-u-1-1">
+      <span class="dataTables_empty">No documents</span>
+    </div>
+  <%
+  }
+  var odd = true;
+  _.each(docs.models, function(doc) {
+    var tempObj = {};
+    var jsonModel = doc.toJSON();
+
+    Object.keys(jsonModel.content).forEach(function (k) {
+      if ((k !== '_id' || k !== '_rev' || k !== '_key')) {
+        tempObj[k] = jsonModel.content[k];
+      }
+    });
+    tmpObj = JSON.stringify(tempObj);
+  %>
+
+  <div class="pure-table-row <%=odd?'odd':'even'%>" id="row_<%=doc.get('key')%>">
+
+    <div class="pure-u-19-24">
+      <div class="padding-right">
+        <pre class="hljs-pre" title="<%=escaped(tmpObj)%>"><code class="json"><%= cutByResolution(tmpObj) %></code></pre>
+      </div>
+    </div>
+    <div class="pure-u-3-24">
+      <div class="key"><%= doc.get('key') %></div>
+    </div>
+    <div class="pure-u-2-24">
+      <div class="actions">
+        <a class="deleteButton">
+        <span data-original-title="Delete document" title="Delete document"><i class="fa fa-minus-circle"></i></i></span></a>
+      </div>
+    </div>
+
+  </div>
+
+  <% 
+    odd = !odd;
+    });
+  %>
+
+</div>

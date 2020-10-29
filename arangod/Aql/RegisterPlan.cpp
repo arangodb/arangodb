@@ -32,6 +32,7 @@
 #include "Aql/IResearchViewNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/SubqueryEndExecutionNode.h"
+#include "Basics/Exceptions.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -39,7 +40,10 @@ using namespace arangodb::aql;
 // Requires RegisterPlan to be defined
 VarInfo::VarInfo(int depth, RegisterId registerId)
     : depth(depth), registerId(registerId) {
-  TRI_ASSERT(registerId < RegisterPlan::MaxRegisterId);
+  if (registerId >= RegisterPlan::MaxRegisterId) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT, 
+                                   std::string("too many registers (") + std::to_string(RegisterPlan::MaxRegisterId) + ") needed for AQL query");
+  }
 }
 
 // Copy constructor used for a subquery:

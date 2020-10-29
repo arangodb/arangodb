@@ -315,6 +315,22 @@ stats::Descriptions::Descriptions()
                                stats::FigureType::Accumulated,
                                stats::Unit::Number,
                                {}});
+  
+  _figures.emplace_back(Figure{stats::GroupType::Http,
+                               "requestsSuperuser",
+                               "Total superuser requests",
+                               "Total number of HTTP requests executed by superuser/JWT.",
+                               stats::FigureType::Accumulated,
+                               stats::Unit::Number,
+                               {}});
+  
+  _figures.emplace_back(Figure{stats::GroupType::Http,
+                               "requestsUser",
+                               "Total user requests",
+                               "Total number of HTTP requests executed by clients.",
+                               stats::FigureType::Accumulated,
+                               stats::Unit::Number,
+                               {}});
 
   _figures.emplace_back(
       Figure{stats::GroupType::Http,
@@ -429,21 +445,23 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   if (dealer.isEnabled()) {
     b.add("v8Context", VPackValue(VPackValueType::Object, true));
     auto v8Counters = dealer.getCurrentContextNumbers();
-    auto memoryStatistics = dealer.getCurrentMemoryNumbers();
+    auto memoryStatistics = dealer.getCurrentContextDetails();
     b.add("available", VPackValue(v8Counters.available));
     b.add("busy", VPackValue(v8Counters.busy));
     b.add("dirty", VPackValue(v8Counters.dirty));
     b.add("free", VPackValue(v8Counters.free));
     b.add("max", VPackValue(v8Counters.max));
+    b.add("min", VPackValue(v8Counters.min));
     {
       b.add("memory", VPackValue(VPackValueType::Array));
-      for (auto memStatistic : memoryStatistics) {
+      for (auto const& memStatistic : memoryStatistics) {
         b.add(VPackValue(VPackValueType::Object));
         b.add("contextId", VPackValue(memStatistic.id));
         b.add("tMax", VPackValue(memStatistic.tMax));
         b.add("countOfTimes", VPackValue(memStatistic.countOfTimes));
         b.add("heapMax", VPackValue(memStatistic.heapMax));
         b.add("heapMin", VPackValue(memStatistic.heapMin));
+        b.add("invocations", VPackValue(memStatistic.invocations));
         b.close();
       }
       b.close();
@@ -476,13 +494,15 @@ static void FillDistribution(VPackBuilder& b, std::string const& name,
 void stats::Descriptions::clientStatistics(velocypack::Builder& b, RequestStatisticsSource source) const {
   basics::StatisticsCounter httpConnections;
   basics::StatisticsCounter totalRequests;
+  basics::StatisticsCounter totalRequestsSuperuser;
+  basics::StatisticsCounter totalRequestsUser;
   std::array<basics::StatisticsCounter, basics::MethodRequestsStatisticsSize> methodRequests;
   basics::StatisticsCounter asyncRequests;
   basics::StatisticsDistribution connectionTime;
 
   // FIXME why are httpConnections in here ?
-  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                             asyncRequests, connectionTime);
+  ConnectionStatistics::fill(httpConnections, totalRequests, totalRequestsSuperuser, totalRequestsUser,
+                             methodRequests, asyncRequests, connectionTime);
 
   b.add("httpConnections", VPackValue(httpConnections._count));
   FillDistribution(b, "connectionTime", connectionTime);
@@ -507,15 +527,19 @@ void stats::Descriptions::clientStatistics(velocypack::Builder& b, RequestStatis
 void stats::Descriptions::httpStatistics(velocypack::Builder& b) const {
   basics::StatisticsCounter httpConnections;
   basics::StatisticsCounter totalRequests;
+  basics::StatisticsCounter totalRequestsSuperuser;
+  basics::StatisticsCounter totalRequestsUser;
   std::array<basics::StatisticsCounter, basics::MethodRequestsStatisticsSize> methodRequests;
   basics::StatisticsCounter asyncRequests;
   basics::StatisticsDistribution connectionTime;
 
-  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                             asyncRequests, connectionTime);
+  ConnectionStatistics::fill(httpConnections, totalRequests, totalRequestsSuperuser, totalRequestsUser,
+                             methodRequests, asyncRequests, connectionTime);
 
   // request counters
   b.add("requestsTotal", VPackValue(totalRequests._count));
+  b.add("requestsSuperuser", VPackValue(totalRequestsSuperuser._count));
+  b.add("requestsUser", VPackValue(totalRequestsUser._count));
   b.add("requestsAsync", VPackValue(asyncRequests._count));
   b.add("requestsGet", VPackValue(methodRequests[(int)rest::RequestType::GET]._count));
   b.add("requestsHead", VPackValue(methodRequests[(int)rest::RequestType::HEAD]._count));

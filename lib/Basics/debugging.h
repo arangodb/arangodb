@@ -136,6 +136,8 @@ template < typename T > struct is_container :
                    && !std::is_same<unsigned char *, typename std::decay<T>::type>::value
                    && !std::is_same<unsigned char const*, typename std::decay<T>::type>::value
                    && !std::is_same<T, std::string>::value
+                   && !std::is_same<T, std::string_view>::value
+                   && !std::is_same<T, const std::string_view>::value
                    && !std::is_same<T, const std::string>::value, std::true_type, std::false_type >::type {};
 
 template < typename T > struct is_associative :

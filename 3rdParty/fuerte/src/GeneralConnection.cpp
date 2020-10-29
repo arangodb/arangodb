@@ -50,6 +50,12 @@ void GeneralConnection<ST>::cancel() {
   });
 }
 
+// Lease this connection (cancel idle alarm)
+template <SocketType ST>
+bool GeneralConnection<ST>::lease() {
+  return true;   // this is a noop, derived classes can override
+}
+
 // Activate this connection.
 template <SocketType ST>
 void GeneralConnection<ST>::startConnection() {
@@ -119,13 +125,15 @@ void GeneralConnection<ST>::tryConnect(unsigned retries) {
   if (_config._connectTimeout.count() > 0) {
     _timeout.expires_after(_config._connectTimeout);
     _timeout.async_wait([self, this](asio_ns::error_code const& ec) {
-      if (!ec) { // someone else will retry
+      if (!ec && _connecting) { // someone else will retry
         _proto.shutdown();
       }
     });
   }
-  
+
+  _connecting = true;
   _proto.connect(_config, [self, this, retries](auto const& ec) {
+    _connecting = false;
     _timeout.cancel();
     if (!ec) {
       finishConnect();

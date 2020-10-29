@@ -31,7 +31,6 @@
 #include "VocBase/LogicalDataSource.h"
 
 #include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
 
 namespace arangodb {
 

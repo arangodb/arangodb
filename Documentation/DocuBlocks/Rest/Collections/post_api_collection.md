@@ -122,7 +122,11 @@ and the hash value is used to determine the target shard.
 (The default is *1*): in a cluster, this attribute determines how many copies
 of each shard are kept on different DBServers. The value 1 means that only one
 copy (no synchronous replication) is kept. A value of k means that k-1 replicas
-are kept. Any two copies reside on different DBServers. Replication between them is
+are kept. It can also be the string `"satellite"` for a SatelliteCollection,
+where the replication factor is matched to the number of DB-Servers
+(Enterprise Edition only).
+
+Any two copies reside on different DB-Servers. Replication between them is
 synchronous, that is, every write operation to the "leader" copy will be replicated
 to all "follower" replicas, before the write operation is reported successful.
 

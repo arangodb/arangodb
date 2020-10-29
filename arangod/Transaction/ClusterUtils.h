@@ -27,10 +27,12 @@
 
 namespace arangodb {
 class ClusterInfo;
+class LogicalCollection;
 
 namespace transaction {
 namespace cluster {
   
+void abortTransactions(LogicalCollection& coll);
 void abortLeaderTransactionsOnShard(TRI_voc_cid_t cid);
 void abortFollowerTransactionsOnShard(TRI_voc_cid_t cid);
 void abortTransactionsWithFailedServers(ClusterInfo&);

@@ -24,6 +24,8 @@
 #ifndef ARANGOD_AQL_TYPES_H
 #define ARANGOD_AQL_TYPES_H 1
 
+#include <cstdint>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
