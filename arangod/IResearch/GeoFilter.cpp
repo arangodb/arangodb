@@ -49,6 +49,9 @@ using namespace arangodb::iresearch;
 
 using Disjunction = irs::disjunction_iterator<irs::doc_iterator::ptr>;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a filter matching all documents with a given geo field
+////////////////////////////////////////////////////////////////////////////////
 irs::filter::prepared::ptr match_all(
     irs::index_reader const& index,
     irs::order::prepared const& order,
@@ -61,6 +64,9 @@ irs::filter::prepared::ptr match_all(
   return filter.prepare(index, order, boost);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function takes into account max error for radian calculation
+////////////////////////////////////////////////////////////////////////////////
 inline S2Cap fromPoint(S2Point const& origin) {
   return S2Cap(origin, S1Angle::Radians(geo::kRadEps));
 }
