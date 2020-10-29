@@ -2490,9 +2490,8 @@ AqlValue Functions::NormalizeUtf8(ExpressionContext* ctx, AstNode const&,
     TRI_Free(dest);
     return ret;
   } catch (...) {
-    registerWarning(ctx, AFN, TRI_ERROR_OUT_OF_MEMORY);
     TRI_Free(dest);
-    return AqlValue(AqlValueHintNull());
+    throw;
   }  
 }
 
