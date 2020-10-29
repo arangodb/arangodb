@@ -2466,9 +2466,10 @@ AqlValue Functions::CharLength(ExpressionContext* ctx, AstNode const&,
   return AqlValue(AqlValueHintUInt(length));
 }
 
-/// @brief function NORMALIZE
-AqlValue Functions::Normalize(ExpressionContext* ctx, AstNode const&,
-                              VPackFunctionParameters const& parameters) {
+/// @brief function NORMALIZE_UTF8
+AqlValue Functions::NormalizeUtf8(ExpressionContext* ctx, AstNode const&,
+                                  VPackFunctionParameters const& parameters) {
+  static char const* AFN = "NORMALIZE_UTF8";
   std::string utf8;
   transaction::Methods* trx = &ctx->trx();
   auto* vopts = &trx->vpackOptions();
@@ -2482,9 +2483,18 @@ AqlValue Functions::Normalize(ExpressionContext* ctx, AstNode const&,
   ::appendAsString(vopts, adapter, value);
   
   dest = TRI_normalize_utf8_to_NFC(buffer->c_str(), buffer->length(), &outlength);
-  auto ret = AqlValue(dest, outlength);
-  delete dest;
-  return ret;
+  if (dest == nullptr) {
+    return AqlValue(AqlValueHintNull());
+  }
+  try {
+    auto ret = AqlValue(dest, outlength);
+    TRI_Free(dest);
+    return ret;
+  } catch (...) {
+    registerWarning(ctx, AFN, TRI_ERROR_OUT_OF_MEMORY);
+    TRI_Free(dest);
+    return AqlValue(AqlValueHintNull());
+  }  
 }
 
 /// @brief function LOWER
