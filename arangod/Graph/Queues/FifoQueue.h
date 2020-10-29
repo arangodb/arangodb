@@ -24,6 +24,8 @@
 #ifndef ARANGOD_GRAPH_QUEUE_H
 #define ARANGOD_GRAPH_QUEUE_H 1
 
+#include "Basics/debugging.h"
+
 #include <queue>
 
 namespace arangodb {
@@ -64,7 +66,7 @@ class FifoQueue {
     TRI_ASSERT(!hasProcessableElement());
 
     std::vector<Step> steps;
-    while (!hasProcessableElement() && !isEmpty()) {
+    while (!isEmpty() && !hasProcessableElement()) {
       steps.emplace_back(pop());
     }
     return std::move(steps);

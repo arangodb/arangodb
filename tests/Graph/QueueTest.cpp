@@ -23,22 +23,10 @@
 
 #include "gtest/gtest.h"
 
-#include "fakeit.hpp"
-
-#include "Aql/AqlValue.h"
-#include "Aql/Query.h"
-#include "Aql/QueryWarnings.h"
-#include "Cluster/ServerState.h"
-#include "Graph/ClusterTraverserCache.h"
-#include "Graph/GraphTestTools.h"
 #include "Graph/Queues/FifoQueue.h"
-#include "Transaction/Methods.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
 
 using namespace arangodb;
-using namespace arangodb::aql;
 using namespace arangodb::graph;
 
 namespace arangodb {
