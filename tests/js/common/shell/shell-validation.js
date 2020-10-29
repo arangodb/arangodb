@@ -27,7 +27,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
+const jsunity = require("jsunity");
 
 const internal = require("internal");
 const db = internal.db;
@@ -46,8 +46,8 @@ const skipOptions = { "skipDocumentValidation" : true };
 
 function ValidationBasicsSuite () {
   const testCollectionName = "TestValidationCollection";
-  var testCollection;
-  var validatorJson;
+  let testCollection;
+  let validatorJson;
 
   // Same attribute key, so that updating badDoc with goodDoc will succeed
   const goodDoc = { "numArray" : [1, 2, 3, 4] };
@@ -94,7 +94,7 @@ function ValidationBasicsSuite () {
     // properties ////////////////////////////////////////////////////////////////////////////////////////
     testProperties : () => {
       const v = validatorJson;
-      var props = testCollection.properties();
+      const props = testCollection.properties();
       assertNotUndefined(props);
       assertNotUndefined(props.schema);
       assertEqual(props.schema.rule, v.rule);
@@ -108,7 +108,7 @@ function ValidationBasicsSuite () {
 
       testCollection.properties({"schema" : v});
 
-      var props = testCollection.properties();
+      const props = testCollection.properties();
       assertEqual(props.schema.rule, v.rule);
       assertEqual(props.schema.message, v.message);
       assertEqual(props.schema.level, v.level);
@@ -701,8 +701,8 @@ function ValidationBasicsSuite () {
 
 function ValidationEdgeSuite () {
   const testCollectionName = "TestValidationEdgeCollection";
-  var testCollection;
-  var validatorJson;
+  let testCollection;
+  let validatorJson;
 
   const blankEdge = { "_from" : "vert/A", "_to" : "vert/B" }
   const goodEdge = { ...blankEdge, "name" : "Helge" }
