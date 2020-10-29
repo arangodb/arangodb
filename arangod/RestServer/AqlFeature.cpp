@@ -105,7 +105,7 @@ void AqlFeature::stop() {
     if (n == 0 && m == 0) {
       break;
     }
-    LOG_TOPIC_IF("63d54", INFO, Logger::QUERIES, (i % 64) == 0)
+    LOG_TOPIC_IF("63d54", INFO, Logger::QUERIES, (i++ % 64) == 0)
         << "AQLFeature shutdown, waiting for " << n
         << " registered queries to terminate and for " << m
         << " feature leases to be released";

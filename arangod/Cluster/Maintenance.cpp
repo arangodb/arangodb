@@ -248,28 +248,36 @@ void handlePlanShard(StorageEngine& engine, uint64_t planIndex, VPackSlice const
       if (shards.isObject()) {
         VPackSlice planServers = shards.get(shname);
         if (planServers.isArray()) {
-          VPackSlice inSyncFollowers = lcol.get(SERVERS);
-          if (inSyncFollowers.isArray()) {
-            // Now we have two server lists, we are looking for a server
-            // which does not occur in the plan, but is in the followers
-            // at an index > 0:
-            std::unordered_set<std::string> followersToDrop;
-            for (auto const& q : VPackArrayIterator(inSyncFollowers)) {
+          std::unordered_set<std::string> followersToDrop;
+          // Now we have two server lists (servers and
+          // failoverCandidates, we are looking for a server which
+          // occurs in either of them but not in the plan
+          VPackSlice serverList = lcol.get(SERVERS);
+          if (serverList.isArray()) {
+            for (auto const& q : VPackArrayIterator(serverList)) {
               followersToDrop.insert(q.copyString());
             }
-            for (auto const& p : VPackArrayIterator(planServers)) {
-              if (p.isString()) {
-                followersToDrop.erase(p.copyString());
-              }
+          }
+          serverList = lcol.get(StaticStrings::FailoverCandidates);
+          if (serverList.isArray()) {
+            // And again for the failoverCandidates:
+            for (auto const& q : VPackArrayIterator(serverList)) {
+              followersToDrop.insert(q.copyString());
             }
-            // Everything remaining in followersToDrop is something we
-            // need to act on
-            for (auto const& r : followersToDrop) {
-              if (!followersToDropString.empty()) {
-                followersToDropString.push_back(',');
-              }
-              followersToDropString += r;
+          }
+          // Remove those in Plan:
+          for (auto const& p : VPackArrayIterator(planServers)) {
+            if (p.isString()) {
+              followersToDrop.erase(p.copyString());
             }
+          }
+          // Everything remaining in followersToDrop is something we
+          // need to act on
+          for (auto const& r : followersToDrop) {
+            if (!followersToDropString.empty()) {
+              followersToDropString.push_back(',');
+            }
+            followersToDropString += r;
           }
         }
       }

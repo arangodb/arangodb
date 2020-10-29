@@ -51,12 +51,14 @@
 #include "Aql/VarUsageFinder.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
+#include "Aql/WindowNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Containers/SmallVector.h"
 #include "Graph/ShortestPathOptions.h"
+#include "Graph/ShortestPathType.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LoggerStream.h"
 #include "Utils/OperationOptions.h"
@@ -104,7 +106,7 @@ struct NodeCounter final : public WalkerWorker<ExecutionNode, WalkerUniqueness::
 };
 #endif
 
-uint64_t checkTraversalDepthValue(AstNode const* node) {
+uint64_t checkDepthValue(AstNode const* node) {
   if (!node->isNumericValue()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
                                    "invalid traversal depth");
@@ -124,6 +126,35 @@ uint64_t checkTraversalDepthValue(AstNode const* node) {
                                    "invalid traversal depth");
   }
   return static_cast<uint64_t>(v);
+}
+
+std::pair<uint64_t, uint64_t> getMinMaxDepths(AstNode const* steps) {
+  uint64_t minDepth = 0;
+  uint64_t maxDepth = 0;
+  bool invalidDepth = false;
+
+  if (steps->isNumericValue()) {
+    // Check if a double value is integer
+    minDepth = checkDepthValue(steps);
+    maxDepth = checkDepthValue(steps);
+  } else if (steps->type == NODE_TYPE_RANGE) {
+    // Range depth
+    minDepth = checkDepthValue(steps->getMember(0));
+    maxDepth = checkDepthValue(steps->getMember(1));
+  } else {
+    invalidDepth = true;
+  }
+    
+  if (maxDepth < minDepth) {
+    invalidDepth = true;
+  }
+
+  if (invalidDepth) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid traversal depth");
+  }
+
+  return {minDepth, maxDepth};
 }
 
 void parseGraphCollectionRestriction(std::vector<std::string>& collections,
@@ -154,36 +185,17 @@ void parseGraphCollectionRestriction(std::vector<std::string>& collections,
 std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
                                                            AstNode const* direction,
                                                            AstNode const* optionsNode) {
-  aql::QueryContext& query = ast->query();
-  auto options = std::make_unique<traverser::TraverserOptions>(query);
-
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
-  auto steps = direction->getMember(1);
 
-  bool invalidDepth = false;
+  // will throw on invalid depths
+  auto [minDepth, maxDepth] = getMinMaxDepths(direction->getMember(1));
 
-  if (steps->isNumericValue()) {
-    // Check if a double value is integer
-    options->minDepth = checkTraversalDepthValue(steps);
-    options->maxDepth = options->minDepth;
-  } else if (steps->type == NODE_TYPE_RANGE) {
-    // Range depth
-    options->minDepth = checkTraversalDepthValue(steps->getMember(0));
-    options->maxDepth = checkTraversalDepthValue(steps->getMember(1));
-
-    if (options->maxDepth < options->minDepth) {
-      invalidDepth = true;
-    }
-  } else {
-    invalidDepth = true;
-  }
-
-  if (invalidDepth) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                   "invalid traversal depth");
-  }
+  aql::QueryContext& query = ast->query();
+  auto options = std::make_unique<traverser::TraverserOptions>(query);
+  options->minDepth = minDepth;
+  options->maxDepth = maxDepth;
 
   // WTF this is the 10th place the deals with parsing of options
   // how do you even maintain that?
@@ -266,15 +278,26 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
   return options;
 }
 
-std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::QueryContext& query,
-                                                              AstNode const* node) {
-  auto options = std::make_unique<graph::ShortestPathOptions>(query);
+std::unique_ptr<graph::BaseOptions> createShortestPathOptions(Ast* ast,
+                                                              AstNode const* direction,
+                                                              AstNode const* optionsNode) {
+  TRI_ASSERT(direction != nullptr);
+  TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
+  TRI_ASSERT(direction->numMembers() == 2);
 
-  if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
-    size_t n = node->numMembers();
+  // will throw on invalid depths
+  auto [minDepth, maxDepth] = getMinMaxDepths(direction->getMember(1));
+
+  aql::QueryContext& query = ast->query();
+  auto options = std::make_unique<graph::ShortestPathOptions>(query);
+  options->minDepth = minDepth;
+  options->maxDepth = maxDepth;
+
+  if (optionsNode != nullptr && optionsNode->type == NODE_TYPE_OBJECT) {
+    size_t n = optionsNode->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMemberUnchecked(i);
+      auto member = optionsNode->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -1019,7 +1042,6 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const
                                      "no view for EnumerateView");
     }
 
-    auto* options = node->getMemberUnchecked(2);
     if (options->type == NODE_TYPE_NOP) {
       options = nullptr;
     }
@@ -1229,12 +1251,11 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   // The members 5-6, where 6 is optional, are used
   // as out variables.
   AstNode const* direction = node->getMember(0);
-  TRI_ASSERT(direction->isIntValue());
   AstNode const* start = parseTraversalVertexNode(previous, node->getMember(1));
   AstNode const* target = parseTraversalVertexNode(previous, node->getMember(2));
   AstNode const* graph = node->getMember(3);
 
-  auto options = createShortestPathOptions(_ast->query(), node->getMember(4));
+  auto options = createShortestPathOptions(getAst(), direction, node->getMember(4));
 
   // First create the node
   auto spNode = new ShortestPathNode(this, nextId(), &(_ast->query().vocbase()), direction,
@@ -1260,30 +1281,30 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-/// @brief create an execution plan element from an AST for SHORTEST_PATH node
+/// @brief create an execution plan element from an AST for K_SHORTEST_PATH node
 ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
                                                      AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_K_SHORTEST_PATHS);
-  TRI_ASSERT(node->numMembers() >= 6);
-  TRI_ASSERT(node->numMembers() <= 7);
+  TRI_ASSERT(node->numMembers() == 7);
 
-  // the first 4 members are used by shortest_path internally.
-  // The members 5-6, where 6 is optional, are used
-  // as out variables.
-  AstNode const* direction = node->getMember(0);
-  TRI_ASSERT(direction->isIntValue());
-  AstNode const* start = parseTraversalVertexNode(previous, node->getMember(1));
-  AstNode const* target = parseTraversalVertexNode(previous, node->getMember(2));
-  AstNode const* graph = node->getMember(3);
+  auto const type = static_cast<arangodb::graph::ShortestPathType::Type>(node->getMember(0)->getIntValue());
+  TRI_ASSERT(type == arangodb::graph::ShortestPathType::Type::KShortestPaths || 
+             type == arangodb::graph::ShortestPathType::Type::KPaths); 
 
-  // FIXME: here goes the parameters with k etc
-  auto options = createShortestPathOptions(getAst()->query(), node->getMember(4));
+  // the first 5 members are used by shortest_path internally.
+  // The members 6 is the out variable
+  AstNode const* direction = node->getMember(1);
+  AstNode const* start = parseTraversalVertexNode(previous, node->getMember(2));
+  AstNode const* target = parseTraversalVertexNode(previous, node->getMember(3));
+  AstNode const* graph = node->getMember(4);
+  
+  auto options = createShortestPathOptions(getAst(), direction, node->getMember(5));
 
   // First create the node
-  auto spNode = new KShortestPathsNode(this, nextId(), &(_ast->query().vocbase()), direction,
+  auto spNode = new KShortestPathsNode(this, nextId(), &(_ast->query().vocbase()), type, direction,
                                        start, target, graph, std::move(options));
 
-  auto variable = node->getMember(5);
+  auto variable = node->getMember(6);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
   auto v = static_cast<Variable*>(variable->getData());
   TRI_ASSERT(v != nullptr);
@@ -1504,59 +1525,8 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous, AstNode c
   }
 
   // aggregate variables
-  std::vector<AggregateVarInfo> aggregateVariables;
-  {
-    auto list = node->getMember(2);
-    TRI_ASSERT(list->type == NODE_TYPE_AGGREGATIONS);
-    list = list->getMember(0);
-    TRI_ASSERT(list->type == NODE_TYPE_ARRAY);
-    size_t const numVars = list->numMembers();
-
-    aggregateVariables.reserve(numVars);
-    for (size_t i = 0; i < numVars; ++i) {
-      auto assigner = list->getMember(i);
-
-      if (assigner == nullptr) {
-        continue;
-      }
-
-      TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
-      auto out = assigner->getMember(0);
-      TRI_ASSERT(out != nullptr);
-      auto outVar = static_cast<Variable*>(out->getData());
-      TRI_ASSERT(outVar != nullptr);
-
-      auto expression = assigner->getMember(1);
-
-      // operand is always a function call
-      TRI_ASSERT(expression->type == NODE_TYPE_FCALL);
-
-      // build aggregator
-      auto func = static_cast<Function*>(expression->getData());
-      TRI_ASSERT(func != nullptr);
-
-      // function should have one argument (an array with the parameters)
-      TRI_ASSERT(expression->numMembers() == 1);
-
-      auto args = expression->getMember(0);
-      // the number of arguments should also be one (note: this has been
-      // validated before)
-      TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
-      TRI_ASSERT(args->numMembers() == 1);
-
-      auto arg = args->getMember(0);
-
-      if (arg->type == NODE_TYPE_REFERENCE) {
-        // operand is a variable
-        auto e = static_cast<Variable*>(arg->getData());
-        aggregateVariables.emplace_back(AggregateVarInfo{outVar, e, Aggregator::translateAlias(func->name)});
-      } else {
-        auto calc = createTemporaryCalculation(arg, previous);
-        previous = calc;
-        aggregateVariables.emplace_back(AggregateVarInfo{outVar, getOutVariable(calc), Aggregator::translateAlias(func->name)});
-      }
-    }
-  }
+  AstNode* aggregates = node->getMember(2);
+  std::vector<AggregateVarInfo> aggregateVars = prepareAggregateVars(&previous, aggregates);
 
   // handle out variable
   Variable const* outVariable = nullptr;
@@ -1607,7 +1577,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous, AstNode c
   }
 
   auto collectNode =
-      new CollectNode(this, nextId(), options, groupVariables, aggregateVariables,
+      new CollectNode(this, nextId(), options, groupVariables, aggregateVars,
                       expressionVariable, outVariable, keepVariables,
                       _ast->variables()->variables(false), false, false);
 
@@ -2027,6 +1997,83 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous, AstNode co
   return addDependency(previous, en);
 }
 
+/// @brief create an execution plan element from an AST WINDOW node
+ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous, AstNode const* node) {
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_WINDOW);
+  TRI_ASSERT(node->numMembers() == 3);
+
+  auto spec = node->getMember(0);
+  auto rangeExpr = node->getMember(1);
+  auto aggregates = node->getMember(2);
+  
+  AqlFunctionsInternalCache cache;
+  FixedVarExpressionContext exprContext(_ast->query().trxForOptimization(), _ast->query(), cache);
+  
+  Variable const* rangeVar = nullptr;
+  if (rangeExpr->type != NODE_TYPE_NOP) {
+    if (rangeExpr->type == NODE_TYPE_REFERENCE) {
+      // operand is a variable
+      rangeVar = static_cast<Variable*>(rangeExpr->getData());
+    } else { // need to add a calculation
+      auto calc = createTemporaryCalculation(rangeExpr, previous);
+      previous = calc;
+      rangeVar = getOutVariable(calc);
+    }
+
+    // add a sort on rangeVariable in front of the WINDOW
+    SortElementVector elements;
+    elements.emplace_back(rangeVar, /*isAscending*/true);
+    auto en = registerNode(std::make_unique<SortNode>(this, nextId(), elements, false));
+    previous = addDependency(previous, en);
+  }
+  
+  AqlValue preceding, following;
+  TRI_ASSERT(spec->type == NODE_TYPE_OBJECT);
+  
+  size_t n = spec->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    auto member = spec->getMemberUnchecked(i);
+
+    if (member == nullptr || member->type != NODE_TYPE_OBJECT_ELEMENT) {
+      continue;
+    }
+    VPackStringRef const name = member->getStringRef();
+    AstNode* value = member->getMember(0);
+    if (!value->isConstant()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS,
+                                     "WINDOW bounds must be determined at compile time");
+    }
+    
+    bool mustDestroy = false;
+    if (name == "preceding") {
+      Expression expr(_ast, value);
+      AqlValue val = expr.execute(&exprContext, mustDestroy);
+      if (!mustDestroy && val.isPointer()) { // force a copy
+        preceding = AqlValue(val.slice());
+      } else {
+        preceding = val.clone();
+      }
+    } else if (name == "following") {
+      Expression expr(_ast, value);
+      AqlValue val = expr.execute(&exprContext, mustDestroy);
+      if (!mustDestroy && val.isPointer()) { // force a copy
+        following = AqlValue(val.slice());
+      } else {
+        following = val.clone();
+      }
+    }
+  }
+  
+  auto type = rangeVar != nullptr ? WindowBounds::Type::Range : WindowBounds::Type::Row;
+
+  // aggregate variables
+  std::vector<AggregateVarInfo> aggregateVariables = prepareAggregateVars(&previous, aggregates);
+  auto en = registerNode(std::make_unique<WindowNode>(this, nextId(),
+                                                      WindowBounds(type, std::move(preceding), std::move(following)),
+                                                      rangeVar, aggregateVariables));
+  return addDependency(previous, en);
+}
+
 /// @brief create an execution plan from an abstract syntax tree node
 ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
@@ -2129,6 +2176,11 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
 
       case NODE_TYPE_UPSERT: {
         en = fromNodeUpsert(en, member);
+        break;
+      }
+        
+      case NODE_TYPE_WINDOW: {
+        en = fromNodeWindow(en, member);
         break;
       }
 
@@ -2503,6 +2555,62 @@ void ExecutionPlan::prepareTraversalOptions() {
   }
 }
 
+std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(ExecutionNode** previous, AstNode const* node) {
+  std::vector<AggregateVarInfo> aggregateVariables;
+
+  TRI_ASSERT(node->type == NODE_TYPE_AGGREGATIONS);
+  AstNode* list = node->getMember(0);
+  TRI_ASSERT(list->type == NODE_TYPE_ARRAY);
+  size_t const numVars = list->numMembers();
+
+  aggregateVariables.reserve(numVars);
+  for (size_t i = 0; i < numVars; ++i) {
+    auto assigner = list->getMemberUnchecked(i);
+
+    if (assigner == nullptr) {
+      continue;
+    }
+
+    TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
+    auto out = assigner->getMember(0);
+    TRI_ASSERT(out != nullptr);
+    auto outVar = static_cast<Variable*>(out->getData());
+    TRI_ASSERT(outVar != nullptr);
+
+    auto expression = assigner->getMember(1);
+
+    // operand is always a function call
+    TRI_ASSERT(expression->type == NODE_TYPE_FCALL);
+
+    // build aggregator
+    auto func = static_cast<Function*>(expression->getData());
+    TRI_ASSERT(func != nullptr);
+
+    // function should have one argument (an array with the parameters)
+    TRI_ASSERT(expression->numMembers() == 1);
+
+    auto args = expression->getMember(0);
+    // the number of arguments should also be one (note: this has been
+    // validated before)
+    TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
+    TRI_ASSERT(args->numMembers() == 1);
+
+    auto arg = args->getMember(0);
+
+    if (arg->type == NODE_TYPE_REFERENCE) {
+      // operand is a variable
+      auto e = static_cast<Variable*>(arg->getData());
+      aggregateVariables.emplace_back(AggregateVarInfo{outVar, e, Aggregator::translateAlias(func->name)});
+    } else {
+      auto calc = createTemporaryCalculation(arg, *previous);
+      *previous = calc;
+      aggregateVariables.emplace_back(AggregateVarInfo{outVar, getOutVariable(calc), Aggregator::translateAlias(func->name)});
+    }
+  }
+  
+  return aggregateVariables;
+}
+
 AstNode const* ExecutionPlan::resolveVariableAlias(AstNode const* node) const {
   if (node->type == NODE_TYPE_REFERENCE) {
     auto setter = getVarSetBy(static_cast<Variable const*>(node->getData())->id);
@@ -2540,7 +2648,7 @@ struct Shower final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUn
     }
 
     LoggerStream logLn{};
-    logLn << LogLevel::INFO << Logger::AQL;
+    logLn << Logger::LOGID("24fa8") << LogLevel::INFO << Logger::AQL;
 
     for (int i = 0; i < 2 * indent; i++) {
       logLn << ' ';

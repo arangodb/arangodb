@@ -4,8 +4,55 @@ devel
 * Agency cache clears change history. This keeps the change history,
   introduced in v3.7.4, from growing in size too much.
 
-* Bug-fix: Creating an additional index on the edge collection of a disjoint
-  SmartGraph could falsly result into an error:
+* Fixed very spurious errors if the `holdReadLockCollection` replication API for
+  the getting-in-sync procedure of shards was called during server shutdown.
+  In this case that method could ask the transaction manager for a specific
+  transaction, but wasn't return one due to the server shutddown.
+
+* Added new 'aql' type for ArangoSearch analyzers.
+
+* Obsoleted the startup options `--database.throw-collection-not-loaded-error`
+  and `--ttl.only-loaded-collection`.
+
+  These options were meaningful for the MMFiles storage engine only, but for
+  the RocksDB storage engine they did not make any difference. Using these startup
+  options is still possible, but will have no effect other than generating a
+  warning at server startup.
+
+* Added CMake option `USE_MINIMAL_DEBUGINFO`.
+  This option is turned off by default. If turned on, the created binaries
+  will contain only a minimum amount of debug symbols, reducing the size
+  of the executables. If turned off (which is the default), the binaries
+  will contain full debug information, which will make them bigger in size
+  unless the debug information is later stripped again.
+
+* Modified the returned error code for calling the `shards()` function on a
+  collection in single-server from "internal error" (error number 4) to "shards
+  API is only available in cluster" and error number 9, HTTP status code 501.
+
+* Bug-fix: Allow to unlink a view created on a SmartGraphEdge collection.
+
+* If a collection (or database) is dropped during the instantiation of an AQL query,
+  the setup code now aborts with an ERROR_QUERY_COLLECTION_LOCK_FAILED and earlier.
+  Before the setup code could abort with TRI_ERROR_INTERNAL in the same case.
+
+* Added WINDOW keyword to AQL to allow aggregations on related rows.
+
+* Added new graph method K_PATHS to AQL. This will enumerate all paths between a
+  source and a target vertex that match the given length.
+  For example, the query
+  ```
+    FOR path IN 2..4 OUTBOUND K_PATHS "v/source" TO "v/target" GRAPH "g"
+      RETURN path
+  ```
+  will yield all paths in format
+    {
+      vertices: [v/source, ... , v/target],
+      edges: [v/source -> v/1, ...,  v/n -> v/target
+    }
+  that have length exactly 2 or 3 or 4, start at v/source and end at v/target.
+  The order of those paths in the result set is not guaranteed.
+>>>>>>> f17db376a0f679a8e6cb966b43ef0f3414d861df
 
 * Fixed issue BTS-195: AQL update queries using the `keepNull` option set to
   false had an inconsistent behavior. For example, given a collection `test`
@@ -13,7 +60,7 @@ devel
   would return different results when running for the first time or the second
   time:
 
-      UPDATE 'testDoc' 
+      UPDATE 'testDoc'
           WITH {test: {sub1: true, sub2: null}} IN test
       OPTIONS { keepNull: false, mergeObjects: true }
 
@@ -129,6 +176,11 @@ devel
   and message "in smart vertex collections _key must be a string and
   prefixed with the value of the smart graph attribute". This should
   make it a lot easier to understand what the actual problem is.
+
+* Fixed handling of failoverCandidates. Sometimes, a server can still be a
+  failoverCandidate even though it has been taken out of the Plan. With this
+  fix, such a server is quickly taken out of failoverCandidates and it can never
+  be re-added to the Plan before this has happened.
 
 * Added configuration option `--query.tracking-slow-queries` to decide whether
   slow queries are tracked extra.

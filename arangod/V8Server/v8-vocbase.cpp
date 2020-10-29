@@ -1200,28 +1200,6 @@ static void JS_QueryCacheInvalidateAql(v8::FunctionCallbackInfo<v8::Value> const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief throw collection not loaded
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_ThrowCollectionNotLoaded(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  TRI_GET_GLOBALS();
-  auto& databaseFeature = v8g->_server.getFeature<DatabaseFeature>();
-  if (args.Length() == 0) {
-    bool const value = databaseFeature.throwCollectionNotLoadedError();
-    TRI_V8_RETURN(v8::Boolean::New(isolate, value));
-  } else if (args.Length() == 1) {
-    databaseFeature.throwCollectionNotLoadedError(TRI_ObjectToBoolean(isolate, args[0]));
-  } else {
-    TRI_V8_THROW_EXCEPTION_USAGE("THROW_COLLECTION_NOT_LOADED(<value>)");
-  }
-
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_vocbase_t
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2125,10 +2103,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "AQL_QUERY_CACHE_INVALIDATE"),
       JS_QueryCacheInvalidateAql, true);
-
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "THROW_COLLECTION_NOT_LOADED"),
-      JS_ThrowCollectionNotLoaded, true);
 
   TRI_InitV8Replication(isolate, context, &vocbase, threadNumber, v8g);
 

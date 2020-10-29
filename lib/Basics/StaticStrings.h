@@ -271,6 +271,7 @@ class StaticStrings {
   static std::string const GraphQueryOrderBFS;
   static std::string const GraphQueryOrderDFS;
   static std::string const GraphQueryOrderWeighted;
+  static std::string const GraphQueryShortestPathType;
 
   // Replication
   static std::string const ReplicationSoftLockOnly;
@@ -324,6 +325,9 @@ class StaticStrings {
   static std::string const ArangoSearchAnalyzersRevision;
   static std::string const ArangoSearchCurrentAnalyzersRevision;
   static std::string const ArangoSearchSystemAnalyzersRevision;
+
+  // aql http headers
+  static std::string const AqlShardIdHeader;
 
   // validation
   static std::string const ValidationLevelNone;

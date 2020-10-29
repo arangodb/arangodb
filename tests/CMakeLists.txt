@@ -132,6 +132,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/UpsertExecutorTest.cpp
   Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
+  Aql/WindowExecutorTest.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/UserManagerTest.cpp
   Basics/conversions-test.cpp
@@ -195,6 +196,7 @@ set(ARANGODB_TESTS_SOURCES
   Graph/ClusterTraverserCacheTest.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/GraphTestTools.cpp
+  Graph/KPathFinderTest.cpp
   Graph/KShortestPathsFinder.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
   IResearch/common.cpp
@@ -206,6 +208,7 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/GeoFilter-test.cpp
   IResearch/GeoDistanceFilter-test.cpp
   IResearch/IResearchAnalyzerFeature-test.cpp
+  IResearch/IResearchAqlAnalyzer-test.cpp
   IResearch/IResearchComparer-test.cpp
   IResearch/IResearchDocument-test.cpp
   IResearch/IResearchFeature-test.cpp
@@ -322,7 +325,7 @@ add_executable(
 
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-    target_compile_options(arangodbtests PRIVATE -fno-devirtualize)
+  target_compile_options(arangodbtests PRIVATE -fno-devirtualize)
 endif()
 
 target_link_libraries(arangodbtests

@@ -91,7 +91,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // create transaction+snapshot, ttl will be default if `ttl == 0``
     auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
     auto& engine = server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-    auto* ctx = _manager->createContext(engine, ttl, syncerId, clientId);
+    auto* ctx = _manager->createContext(engine, ttl, syncerId, clientId, patchCount);
     RocksDBReplicationContextGuard guard(_manager, ctx);
 
     if (!patchCount.empty()) {
@@ -644,9 +644,6 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 
   bool found = false;
   uint64_t contextId = 0;
-
-  // contains dump options that might need to be inspected
-  // VPackSlice options = _request->payload();
 
   // get collection Name
   std::string const& cname = _request->value("collection");
