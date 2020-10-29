@@ -124,10 +124,15 @@ class GeoIterator : public irs::doc_iterator {
   }
 
   virtual bool next() override {
-    bool next = false;
-    while ((next = _approx->next()) && !accept()) {}
+    for (;;) {
+      if (!_approx->next()) {
+        return false;
+      }
 
-    return next;
+      if (accept()) {
+        return true;
+      }
+    }
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t target) override {
@@ -528,13 +533,18 @@ irs::filter::prepared::ptr prepareInterval(
     return ::prepareOpenInterval(index, order, boost, field, opts, false);
   }
 
-  auto const& origin = opts.origin;
-
-  if (0. == range.max && 0. == range.min) {
+  if (irs::math::approx_equals(range.min, range.max)) {
     if (irs::BoundType::INCLUSIVE != range.min_type ||
         irs::BoundType::INCLUSIVE != range.max_type) {
       return irs::filter::prepared::empty();
     }
+  }
+
+  auto const& origin = opts.origin;
+
+  if (0. == range.max && 0. == range.min) {
+    TRI_ASSERT(irs::BoundType::INCLUSIVE == range.min_type);
+    TRI_ASSERT(irs::BoundType::INCLUSIVE == range.max_type);
 
     S2RegionTermIndexer indexer(opts.options);
     auto const geoTerms = indexer.GetQueryTerms(origin, opts.prefix);

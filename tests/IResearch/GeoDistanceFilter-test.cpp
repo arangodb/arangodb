@@ -644,6 +644,29 @@ TEST(GeoDistanceFilterTest, query) {
   }
 
   {
+    std::set<std::string> expected;
+    for (auto doc : VPackArrayIterator(docs->slice())) {
+      auto name = arangodb::iresearch::getStringRef(doc.get("name"));
+
+      if (name == "Q") {
+        continue;
+      }
+
+      expected.emplace(name);
+    }
+
+    GeoDistanceFilter q;
+    *q.mutable_field() = "geometry";
+    q.mutable_options()->origin = S2LatLng::FromDegrees(55.709754, 37.610235).ToPoint();
+    auto& range = q.mutable_options()->range;
+    range.max_type = irs::BoundType::UNBOUNDED;
+    range.min_type = irs::BoundType::EXCLUSIVE;
+    range.min = 0;
+
+    ASSERT_EQ(expected, executeQuery(q, {14, 14}));
+  }
+
+  {
     auto origin = docs->slice().at(7).get("geometry");
     ASSERT_TRUE(origin.isObject());
     arangodb::geo::ShapeContainer lhs, rhs;
@@ -848,7 +871,7 @@ TEST(GeoDistanceFilterTest, query) {
     range.max_type = irs::BoundType::EXCLUSIVE;
     range.max = 2000;
 
-    ASSERT_EQ(expected, executeQuery(q, {18,18}));
+    ASSERT_EQ(expected, executeQuery(q, {0,0}));
   }
 }
 
