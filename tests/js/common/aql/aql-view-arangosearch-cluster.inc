@@ -2186,6 +2186,27 @@
               "queryAnalyzer" : queryAnalyzer
             };
             let res = db._query(queryString, bindVars).toArray();
+            let expected = [ 7, 9, 14 ];
+            assertEqual(expected.length, res.length);
+            for (let i = 0; i < expected.length; ++i) {
+              assertEqual(expected[0], res[0].id);
+            }
+          }
+
+          {
+            let queryString = 
+              "FOR d IN @@view " + 
+              "SEARCH ANALYZER(GEO_DISTANCE(@origin, d.geometry) >= 0 && GEO_DISTANCE(@origin, d.geometry) < 100, @queryAnalyzer) " + 
+              "OPTIONS { waitForSync: true } " +
+              "SORT d.id ASC " + 
+              "RETURN d";
+  
+            let bindVars = {
+              "@view" : queryView,
+              "origin" : geoData[7].geometry,
+              "queryAnalyzer" : queryAnalyzer
+            };
+            let res = db._query(queryString, bindVars).toArray();
             let expected = [ 7, 8, 9, 14 ];
             assertEqual(expected.length, res.length);
             for (let i = 0; i < expected.length; ++i) {
