@@ -99,7 +99,7 @@
   // we insert data and remove it
   c = db._create("UnitTestsDumpTruncated", { isVolatile: db._engine().name === "mmfiles" });
   c.save(Array(10000).fill().map((e, i, a) => Object({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i})));  
-  c.truncate();
+  c.truncate({ compact: false });
 
   // custom key options
   c = db._create("UnitTestsDumpKeygen", {

@@ -365,7 +365,7 @@ function ReplicationSuite() {
           
           let truncateCollection = function() {
             let collection = pickCollection();
-            collection.truncate();
+            collection.truncate({ compact: false });
           };
 
           let createIndex = function () {
