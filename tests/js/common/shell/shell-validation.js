@@ -52,6 +52,9 @@ function ValidationBasicsSuite () {
   var testCollection;
   var validatorJson;
 
+  const goodDoc = { "numArray" : [1, 2, 3, 4] };
+  const badDoc = { "numArray" : "1, 2, 3, 4" };
+
   return {
 
     setUp : () => {
@@ -74,14 +77,14 @@ function ValidationBasicsSuite () {
             },
             "number" : {
               "type" : "number",
-              "items": { "minimum" : 1000000 }
+              "items" : { "minimum" : 1000000 }
             },
           },
           "additionalProperties" : false
         },
         "message" : "Schema validation failed",
       };
-      testCollection = db._create(testCollectionName, { schema :  validatorJson, numberOfShards: 3 });
+      testCollection = db._create(testCollectionName, { schema :  validatorJson, numberOfShards : 3 });
     },
 
     tearDown : () => {
@@ -466,7 +469,7 @@ function ValidationBasicsSuite () {
       }
     },
 
-    testRemoveValidation: () => {
+    testRemoveValidation : () => {
       try {
         testCollection.insert(badDoc);
         fail();
@@ -480,7 +483,7 @@ function ValidationBasicsSuite () {
       assertEqual(1, testCollection.count());
     },
     
-    testRemoveValidationWithNull: () => {
+    testRemoveValidationWithNull : () => {
       try {
         testCollection.insert(badDoc);
         fail();
@@ -495,7 +498,7 @@ function ValidationBasicsSuite () {
     },
 
     // json  ////////////////////////////////////////////////////////////////////////////////////////////
-    testJson: () => {
+    testJson : () => {
       validatorJson.level = "strict";
       testCollection.properties({"schema" : validatorJson });
       sleepInCluster();
@@ -512,7 +515,7 @@ function ValidationBasicsSuite () {
     testJsonRequire  : () => {
       let p = {
         ...validatorJson.rule,
-        required: [ "numArray", "name" ]
+        required : [ "numArray", "name" ]
       };
       validatorJson.rule = p;
       validatorJson.level = "strict";
@@ -551,7 +554,7 @@ function ValidationBasicsSuite () {
 
     },
     // AQL  ////////////////////////////////////////////////////////////////////////////////////////////
-    test_SCHEMA_GET: () => {
+    test_SCHEMA_GET : () => {
       validatorJson.level = "strict";
       testCollection.properties({"schema" : validatorJson });
       sleepInCluster();
@@ -561,7 +564,7 @@ function ValidationBasicsSuite () {
       assertEqual(res[0], validatorJson);
     },
 
-    test_SCHEMA_GET_no_collection: () => {
+    test_SCHEMA_GET_no_collection : () => {
       // schema on non existing collection
       try {
         db._query(`RETURN SCHEMA_GET("nonExistingTestCollection")`).toArray();
@@ -571,7 +574,7 @@ function ValidationBasicsSuite () {
       }
     },
 
-    test_SCHEMA_GET_null: () => {
+    test_SCHEMA_GET_null : () => {
       // no validation available must return `null`
       testCollection.properties({schema : {}});
       let res = db._query(`
@@ -580,7 +583,7 @@ function ValidationBasicsSuite () {
       assertEqual(res[0], null);
     },
 
-    test_SCHEMA_VALIDATE: () => {
+    test_SCHEMA_VALIDATE : () => {
       // unset schema
       testCollection.properties({schema : {}});
       sleepInCluster();
