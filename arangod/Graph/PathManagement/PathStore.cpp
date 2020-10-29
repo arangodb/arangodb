@@ -53,8 +53,8 @@ void PathStore<Step>::setStartVertex(Step startVertex) {
 template <class Step>
 size_t PathStore<Step>::append(Step step) {
   TRI_ASSERT(size() > 0);
-  TRI_ASSERT(step._previous >= 0);
-  TRI_ASSERT(step._previous >= _schreierIndex);
+  TRI_ASSERT(step.getPrevious() >= 0);
+  TRI_ASSERT(step.getPrevious() >= _schreierIndex);
   _schreier.emplace_back(step);
   _schreierIndex++;
 
