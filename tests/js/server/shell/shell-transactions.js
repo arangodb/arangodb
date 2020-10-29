@@ -1881,7 +1881,7 @@ function transactionOperationsSuite () {
           write: [ cn1 ]
         },
         action: function () {
-          c1.truncate();
+          c1.truncate({ compact: false });
           return true;
         }
       };
@@ -1909,7 +1909,7 @@ function transactionOperationsSuite () {
           write: [ cn1 ]
         },
         action: function () {
-          c1.truncate();
+          c1.truncate({ compact: false });
           return true;
         }
       };
@@ -1937,7 +1937,7 @@ function transactionOperationsSuite () {
           write: [ cn1 ]
         },
         action: function () {
-          c1.truncate();
+          c1.truncate({ compact: false });
           c1.save({ _key: 'foo' });
           return true;
         }
@@ -3351,10 +3351,10 @@ function transactionCountSuite () {
           c1.remove(d2);
           assertEqual(1, c1.count());
 
-          c1.truncate();
+          c1.truncate({ compact: false });
           assertEqual(0, c1.count());
 
-          c1.truncate();
+          c1.truncate({ compact: false });
           assertEqual(0, c1.count());
 
           return true;

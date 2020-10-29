@@ -988,9 +988,14 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
 
-    if (ep == nullptr) {
+    if (ep.get() == nullptr) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      std::string("invalid URL ") + url);
+    }
+
+    if (ep.get()->isBroadcastBind()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     std::string("Cannot connect to INADDR_ANY or INADDR6_ANY ") + url);
     }
 
     std::unique_ptr<GeneralClientConnection> connection(
