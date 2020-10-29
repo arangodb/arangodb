@@ -794,6 +794,21 @@ void ClusterInfo::loadPlan() {
     std::vector<std::string> dbPath{AgencyCommHelper::path(), "Plan", "Databases", name};
     // Dropped from Plan?
     if (!dbSlice.hasKey(dbPath)) {
+      std::shared_ptr<VPackBuilder> plan;
+      { 
+        READ_LOCKER(guard, _planProt.lock);
+        plan = _plan.at(name);
+      }
+      std::vector<std::string> colPath{AgencyCommHelper::path(), "Plan", "Collections", name};
+      for (auto const& col : VPackObjectIterator(plan->slice()[0].get(colPath))) {
+        LOG_DEVEL << col.key.stringView();
+        for (auto const& shard : VPackObjectIterator(col.value.get("shards"))) {
+          auto const& shardName = shard.key.copyString();
+          newShards.erase(shardName);
+          newShardServers.erase(shardName);
+          newShardToName.erase(shardName);
+        }
+      }
       newDatabases.erase(name);
       newPlan.erase(name);
       continue;
@@ -1352,6 +1367,7 @@ void ClusterInfo::loadCurrent() {
     auto databaseSlice = database.second->slice()[0];
     if (!databaseSlice.hasKey(dbPath)) {
       newDatabases.erase(databaseName);
+      newCurrent.erase(databaseName);
       swapDatabases = true;
       continue;
     }
