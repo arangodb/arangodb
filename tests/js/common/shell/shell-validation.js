@@ -42,9 +42,6 @@ let sleepInCluster = () => {
   }
 };
 
-const goodDoc = { "numArray" : [1, 2, 3, 4] };
-const badDoc = { "numArray" : "1, 2, 3, 4" };
-
 const skipOptions = { "skipDocumentValidation" : true };
 
 function ValidationBasicsSuite () {
@@ -52,6 +49,7 @@ function ValidationBasicsSuite () {
   var testCollection;
   var validatorJson;
 
+  // Same attribute key, so that updating badDoc with goodDoc will succeed
   const goodDoc = { "numArray" : [1, 2, 3, 4] };
   const badDoc = { "numArray" : "1, 2, 3, 4" };
 
@@ -758,12 +756,12 @@ function ValidationEdgeSuite () {
       assertEqual(testCollection.count(), 1);
     },
 
-    testAqlInsertEdgeGood : () => {
+    testAQLInsertEdgeGood : () => {
       db._query(`INSERT { "_from" : "vert/A", "_to" : "vert/B", "name" : "Helge" } INTO ${testCollectionName}`);
       assertEqual(testCollection.count(), 1);
     },
 
-    testAqlInsertEdgeBad : () => {
+    testAQLInsertEdgeBad : () => {
       try {
         db._query(`INSERT { "_from" : "vert/A", "_to" : "vert/B", "additional" : true } INTO ${testCollectionName}`);
         fail();
@@ -772,7 +770,7 @@ function ValidationEdgeSuite () {
       }
     },
 
-    testAqlInsertEdgeBadSkip : () => {
+    testAQLInsertEdgeBadSkip : () => {
       db._query(`INSERT { "_from" : "vert/A", "_to" : "vert/B", "additional" : true } INTO ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
       assertEqual(testCollection.count(), 1);
     },
@@ -808,7 +806,7 @@ function ValidationEdgeSuite () {
       assertNotUndefined(doc.additional);
     },
 
-    testAqlUpdateEdgeGood : () => {
+    testAQLUpdateEdgeGood : () => {
       let doc = testCollection.insert(blankEdge);
       assertEqual(testCollection.count(), 1);
 
@@ -817,7 +815,7 @@ function ValidationEdgeSuite () {
       assertNotUndefined(doc.name);
     },
 
-    testAqlUpdateEdgeBad : () => {
+    testAQLUpdateEdgeBad : () => {
       let doc = testCollection.insert(blankEdge);
       assertEqual(testCollection.count(), 1);
 
@@ -829,7 +827,7 @@ function ValidationEdgeSuite () {
       }
     },
 
-    testAqlUpdateEdgeBadSkip : () => {
+    testAQLUpdateEdgeBadSkip : () => {
       let doc = testCollection.insert(blankEdge);
       assertEqual(testCollection.count(), 1);
 
@@ -868,7 +866,7 @@ function ValidationEdgeSuite () {
       assertNotUndefined(doc.additional);
     },
 
-    testAqlReplaceEdgeGood : () => {
+    testAQLReplaceEdgeGood : () => {
       let doc = testCollection.insert(blankEdge);
       assertEqual(testCollection.count(), 1);
 
@@ -877,7 +875,7 @@ function ValidationEdgeSuite () {
       assertNotUndefined(doc.name);
     },
 
-    testAqlReplaceEdgeBad : () => {
+    testAQLReplaceEdgeBad : () => {
       let doc = testCollection.insert(blankEdge);
       assertEqual(testCollection.count(), 1);
 
@@ -889,7 +887,7 @@ function ValidationEdgeSuite () {
       }
     },
 
-    testAqlReplaceEdgeBadSkip : () => {
+    testAQLReplaceEdgeBadSkip : () => {
       let doc = testCollection.insert(blankEdge);
       assertEqual(testCollection.count(), 1);
 
