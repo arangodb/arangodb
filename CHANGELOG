@@ -1,6 +1,11 @@
 v3.6.9 (XXXX-XX-XX)
 -------------------
 
+* Fixed an ownership issue which could lead to undefined behavior in case an AQL
+  query could not be inserted into the query registry of a coordinator or DB
+  server successfully (due to an out-of-memory situation or a race during server
+  shutdown).
+
 * Instead of failing to connect to INADDR_ANY refuse it as a parameter, with a
   descriptive error message for novice users (issue #12871).
 

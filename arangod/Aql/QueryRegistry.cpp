@@ -84,13 +84,21 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl,
     // don't register any queries for dropped databases
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+  
+  TRI_IF_FAILURE("QueryRegistryInsertException1") { 
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
   // create the query info object outside of the lock
   auto p = std::make_unique<QueryInfo>(id, query, ttl, isPrepared, std::move(guard));
   p->_isOpen = keepLease;
-
-  // now insert into table of running queries
-  {
+      
+  try {
+    TRI_IF_FAILURE("QueryRegistryInsertException2") { 
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  
+    // now insert into table of running queries
     WRITE_LOCKER(writeLocker, _lock);
     if (_disallowInserts) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
@@ -101,6 +109,19 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl,
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, "query with given vocbase and id already there");
     }
+  } catch (...) {
+    // all callers of "insert" currently pass a raw Query pointer into this
+    // method, and only give up ownership if "insert" returns successfully.
+    // if insert throws, the caller will delete the Query object.
+    // however, if the QueryInfo object was created successfully, it assumes 
+    // ownership of the Query object too. In this case the QueryInfo dtor and
+    // the call site will both delete the query, which is UB.
+    
+    // in this case, we make QueryInfo give up its own ownership of the Query
+    // object and let the call site delete the query. this opaque ownership
+    // is already addressed in 3.7.
+    p->_query = nullptr;
+    throw;
   }
 }
 
