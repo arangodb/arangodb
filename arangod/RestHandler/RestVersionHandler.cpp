@@ -30,8 +30,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
-#include <jemalloc/jemalloc.h>
-#include <unistd.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -55,26 +53,15 @@ RestStatus RestVersionHandler::execute() {
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
 #ifdef USE_ENTERPRISE
-  result.add("license", VPackValue("enterprise"));
+    result.add("license", VPackValue("enterprise"));
 #else
-  result.add("license", VPackValue("community"));
+    result.add("license", VPackValue("community"));
 #endif
 
-  bool found;
-  std::string const& heapInfo = _request->value("heap_info", found);
-  if (found && StringUtils::boolean(heapInfo)) {
-    std::string fileName = std::to_string(getpid()) + "heap_info.out";
-    std::string const& heapInfoFilenamePrefix = _request->value("heap_info_filename_prefix", found);
-    if (found) {
-      fileName = heapInfoFilenamePrefix + fileName;
-    }
-    char const* f = fileName.c_str();
-    mallctl("prof.dump", NULL, NULL, &f, sizeof(const char *));
-  }
-  
   if (allowInfo) {
     result.add("version", VPackValue(ARANGODB_VERSION));
 
+    bool found;
     std::string const& detailsStr = _request->value("details", found);
     if (found && StringUtils::boolean(detailsStr)) {
       result.add("details", VPackValue(VPackValueType::Object));
