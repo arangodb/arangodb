@@ -325,13 +325,22 @@ function ActiveFailoverSuite() {
 
       assertTrue(checkInSync(currentLead, servers));
 
-      internal.wait(5); // settle down
+      let i = 100;
+      do {
+        let endpoints = getClusterEndpoints();
+        if (endpoints.length === servers.length && endpoints[0] === currentLead) {
+          db._collection(cname).truncate({ compact: false });
+          return ;
+        }
+        print("cluster endpoints not as expected: found =", endpoints, " expected =", servers);
+        internal.wait(1); // settle down
+      } while(i --> 0);
+
 
       let endpoints = getClusterEndpoints();
       assertEqual(endpoints.length, servers.length);
       assertEqual(endpoints[0], currentLead);
-
-      db._collection(cname).truncate();
+      db._collection(cname).truncate({ compact: false });
     },
 
     tearDownAll: function () {
