@@ -2466,6 +2466,27 @@ AqlValue Functions::CharLength(ExpressionContext* ctx, AstNode const&,
   return AqlValue(AqlValueHintUInt(length));
 }
 
+/// @brief function NORMALIZE
+AqlValue Functions::Normalize(ExpressionContext* ctx, AstNode const&,
+                              VPackFunctionParameters const& parameters) {
+  std::string utf8;
+  transaction::Methods* trx = &ctx->trx();
+  auto* vopts = &trx->vpackOptions();
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  size_t outlength;
+  char *dest;
+  
+  ::appendAsString(vopts, adapter, value);
+  
+  dest = TRI_normalize_utf8_to_NFC(buffer->c_str(), buffer->length(), &outlength);
+  auto ret = AqlValue(dest, outlength);
+  delete dest;
+  return ret;
+}
+
 /// @brief function LOWER
 AqlValue Functions::Lower(ExpressionContext* ctx, AstNode const&,
                           VPackFunctionParameters const& parameters) {

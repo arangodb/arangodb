@@ -192,6 +192,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"CONCAT", ".|+", flags, &Functions::Concat});
   add({"CONCAT_SEPARATOR", ".,.|+", flags, &Functions::ConcatSeparator});
   add({"CHAR_LENGTH", ".", flags, &Functions::CharLength});
+  add({"NORMALIZE", ".", flags, &Functions::Normalize});
   add({"LOWER", ".", flags, &Functions::Lower});
   add({"UPPER", ".", flags, &Functions::Upper});
   add({"SUBSTRING", ".,.|.", flags, &Functions::Substring});
