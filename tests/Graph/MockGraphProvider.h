@@ -44,6 +44,7 @@ class MockGraphProvider {
  public:
   struct Step {
 
+    explicit Step(VertexType v);
     Step(size_t prev, VertexType v, EdgeType e);
     ~Step();
 
