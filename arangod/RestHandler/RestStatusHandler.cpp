@@ -301,6 +301,7 @@ RestStatus RestStatusHandler::executeMemoryProfile() {
   char const* f = fileName.c_str();
   mallctl("prof.dump", NULL, NULL, &f, sizeof(const char *));
   std::string const content = FileUtils::slurp(fileName);
+  TRI_UnlinkFile(f);
 
   resetResponse(rest::ResponseCode::OK);
 
