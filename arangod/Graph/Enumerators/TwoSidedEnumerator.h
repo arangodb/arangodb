@@ -42,11 +42,30 @@ class PathResult;
 
 template <class QueueType, class PathStoreType, class ProviderType>
 class TwoSidedEnumerator {
+ private:
+  enum Direction { FORWARD, BACKWARD };
+
   using VertexRef = arangodb::velocypack::HashedStringRef;
   using Step = typename ProviderType::Step;
   using ResultList = std::vector<std::pair<Step, Step>>;
 
-  class Ball {};
+  class Ball {
+   public:
+    Ball(Direction dir);
+    ~Ball();
+    auto clear() -> void;
+    auto reset(VertexRef center) -> void;
+    auto startNextDepth() -> void;
+    auto noPathLeft() const -> bool;
+    auto getDepth() const -> size_t;
+    auto shellSize() const -> size_t;
+    auto doneWithDepth() const -> bool;
+
+    auto buildPath(Step const& vertexInShell, PathResult<Step>& path) -> void;
+
+    auto matchResultsInShell(Step const& match, ResultList& results) const -> void;
+    auto computeNeighbourhoodOfNextVertex(Ball const& other, ResultList& results) -> void;
+  };
 
  public:
   TwoSidedEnumerator(ProviderType&& provider);

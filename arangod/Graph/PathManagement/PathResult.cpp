@@ -31,6 +31,32 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 template <class Step>
+PathResult<Step>::PathResult() {}
+
+template <class Step>
+auto PathResult<Step>::clear() -> void {
+  _vertices.clear();
+  _edges.clear();
+}
+
+template <class Step>
+auto PathResult<Step>::appendVertex(typename Step::Vertex v) -> void {
+  _vertices.push_back(v);
+}
+template <class Step>
+auto PathResult<Step>::prependVertex(typename Step::Vertex v) -> void {
+  _vertices.insert(_vertices.begin(), v);
+}
+template <class Step>
+auto PathResult<Step>::appendEdge(typename Step::Edge e) -> void {
+  _edges.push_back(e);
+}
+template <class Step>
+auto PathResult<Step>::prependEdge(typename Step::Edge e) -> void {
+  _edges.insert(_edges.begin(), e);
+}
+
+template <class Step>
 auto PathResult<Step>::toVelocyPack(arangodb::velocypack::Builder& builder) -> void {
   VPackObjectBuilder path{&builder};
   {

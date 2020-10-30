@@ -40,14 +40,14 @@ using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::tests::graph;
 
-MockGraphProvider::Step::Step(VertexType v)
+MockGraphProvider::Step::Step(size_t v)
     : vertex(v), previous(std::numeric_limits<size_t>::max()) {}
 
-MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e)
+MockGraphProvider::Step::Step(size_t prev, size_t v, EdgeType e)
     : vertex(v), previous(prev) {}
 MockGraphProvider::Step::~Step() {}
 
-void MockGraphProvider::Step::Vertex::addToBuilder(arangodb::velocypack::Builder& builder) {
+void MockGraphProvider::Step::Vertex::addToBuilder(arangodb::velocypack::Builder& builder) const {
   std::string key = basics::StringUtils::itoa(_vertex);
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(key));
@@ -55,7 +55,7 @@ void MockGraphProvider::Step::Vertex::addToBuilder(arangodb::velocypack::Builder
   builder.close();
 }
 
-void MockGraphProvider::Step::Edge::addToBuilder(arangodb::velocypack::Builder& builder) {
+void MockGraphProvider::Step::Edge::addToBuilder(arangodb::velocypack::Builder& builder) const {
   std::string fromId = "v/" + basics::StringUtils::itoa(_edge._from);
   std::string toId = "v/" + basics::StringUtils::itoa(_edge._to);
   std::string keyId = basics::StringUtils::itoa(_edge._from) + "->" + basics::StringUtils::itoa(_edge._to);
@@ -88,8 +88,8 @@ auto MockGraphProvider::fetch(std::vector<Step> const& looseEnds)
 auto MockGraphProvider::expand(Step const& from, size_t previousIndex)
     -> std::vector<Step> {
   std::vector<Step> result{};
-  if (_fromIndex.find(from.vertex) != _fromIndex.end()) {
-    for (auto const& edge : _fromIndex[from.vertex]) {
+  if (_fromIndex.find(from.vertex.data()) != _fromIndex.end()) {
+    for (auto const& edge : _fromIndex[from.vertex.data()]) {
       result.push_back(Step{previousIndex, edge._to, edge});
     }
   }

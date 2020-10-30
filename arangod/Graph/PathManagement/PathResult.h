@@ -37,7 +37,7 @@ namespace graph {
 template <class Step>
 class PathResult {
  public:
-  explicit PathResult(size_t numItems);
+  explicit PathResult();
   auto clear() -> void;
   auto appendVertex(typename Step::Vertex v) -> void;
   auto prependVertex(typename Step::Vertex v) -> void;

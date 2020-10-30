@@ -49,24 +49,34 @@ class MockGraphProvider {
  public:
   struct Step {
     class Vertex {
+
      public:
-      Vertex(VertexType v) : _vertex(v){}; // TODO: private?
-      void addToBuilder(arangodb::velocypack::Builder& builder);
+      explicit Vertex(VertexType v) : _vertex(v){};
+
+      void addToBuilder(arangodb::velocypack::Builder& builder) const;
+
+// This is only internal for the mock.
+// For some reason i did not manage to get this Class as the unordered_map key.
+// although it is a trivial wrapper around a size_t...
+      VertexType data() const{
+        return _vertex;
+      }
 
      private:
       VertexType _vertex;
     };
 
     class Edge {
-      Edge(EdgeType e) : _edge(e){}; // TODO: private?
-      void addToBuilder(arangodb::velocypack::Builder& builder);
+     public:
+      Edge(EdgeType e) : _edge(e){};
+      void addToBuilder(arangodb::velocypack::Builder& builder) const;
 
      private:
       EdgeType _edge;
     };
 
-    explicit Step(VertexType v);
-    Step(size_t prev, VertexType v, EdgeType e);
+    explicit Step(size_t v);
+    Step(size_t prev, size_t v, EdgeType e);
     ~Step();
 
     Vertex vertex;
@@ -84,8 +94,8 @@ class MockGraphProvider {
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
 
  private:
-  std::unordered_map<Step::Vertex, std::vector<MockGraph::EdgeDef>> _fromIndex;
-  std::unordered_map<Step::Vertex, std::vector<MockGraph::EdgeDef>> _toIndex;
+  std::unordered_map<VertexType, std::vector<MockGraph::EdgeDef>> _fromIndex;
+  std::unordered_map<VertexType, std::vector<MockGraph::EdgeDef>> _toIndex;
 };
 }  // namespace graph
 }  // namespace tests

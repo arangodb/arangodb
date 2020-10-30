@@ -63,7 +63,7 @@ TEST_F(GraphProviderTest, should_enumerate_a_single_edge) {
   auto res = testee.expand(start, 0);
   ASSERT_EQ(res.size(), 1);
   auto const& f = res.front();
-  EXPECT_EQ(f.vertex, 1);
+  EXPECT_EQ(f.vertex.data(), 1);
   EXPECT_EQ(f.previous, 0);
 }
 
@@ -81,7 +81,7 @@ TEST_F(GraphProviderTest, should_enumerate_all_edges) {
   for (auto const& f : res) {
     // All expand of the same previous
     EXPECT_EQ(f.previous, 0);
-    auto const& v = f.vertex;
+    auto const& v = f.vertex.data();
     // We can only range from 1 to 3
     EXPECT_GE(v, 1);
     EXPECT_LE(v, 3);

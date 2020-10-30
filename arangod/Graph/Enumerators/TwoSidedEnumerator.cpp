@@ -23,6 +23,10 @@
 
 #include "TwoSidedEnumerator.h"
 
+#include "Basics/system-compiler.h"
+
+#include "Graph/PathManagement/PathResult.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/velocypack-aliases.h>
@@ -32,7 +36,7 @@ using namespace arangodb::graph;
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::TwoSidedEnumerator(ProviderType&& provider)
-    : _provider(std::move(provider)) {}
+    : _provider(std::move(provider)), _left{Direction::FORWARD}, _right{Direction::BACKWARD}, _resultPath{} {}
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::~TwoSidedEnumerator() {}
