@@ -53,10 +53,7 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
         : db(db), cid(cid), iid(iid) {}
 
     bool operator<(IndexId const& rhs) const noexcept {
-      return (db < rhs.db) ||
-               (db == rhs.db &&
-                  (cid < rhs.cid ||
-                    (cid == rhs.cid &&  iid < rhs.iid)));
+      return db < rhs.db && cid < rhs.cid && iid < rhs.iid;
     }
   };
 
