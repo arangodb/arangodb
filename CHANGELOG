@@ -1,5 +1,6 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
+* Fixed BTS-233 issue: Fixed invalid IndexId comparator.
 
 * Bug-fix: Creating an additional index on the edge collection of a disjoint
   SmartGraph could falsely result in an error: 

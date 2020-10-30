@@ -39,10 +39,23 @@ function runSetup () {
   var c = db._create('UnitTestsRecoveryDummy');
 
   db._dropView('UnitTestsRecoveryView');
+  db._dropView('UnitTestsRecoveryView2');
+  db._dropView('UnitTestsRecoveryView3');
+  db._dropView('UnitTestsRecoveryView4');
+  db._dropView('UnitTestsRecoveryView5');
   db._createView('UnitTestsRecoveryView', 'arangosearch', {});
+  db._createView('UnitTestsRecoveryView2', 'arangosearch', {});
+  db._createView('UnitTestsRecoveryView3', 'arangosearch', {});
+  db._createView('UnitTestsRecoveryView4', 'arangosearch', {});
+  db._createView('UnitTestsRecoveryView5', 'arangosearch', {});
+  analyzers.save('calcAnalyzer',"aql",{queryString:"RETURN SOUNDEX(@param)"});
 
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
   db._view('UnitTestsRecoveryView').properties(meta);
+  db._view('UnitTestsRecoveryView2').properties(meta);
+  db._view('UnitTestsRecoveryView3').properties(meta);
+  db._view('UnitTestsRecoveryView4').properties(meta);
+  db._view('UnitTestsRecoveryView5').properties(meta);
 
   for (let i = 0; i < 10000; i++) {
     c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
@@ -76,10 +89,21 @@ function recoverySuite () {
       var p = v.properties().links;
       assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
-
-      var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      
       var expectedResult = db._query("FOR doc IN UnitTestsRecoveryDummy FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
+
+      let result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      let result2 = db._query("FOR doc IN UnitTestsRecoveryView2 SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      let result3 = db._query("FOR doc IN UnitTestsRecoveryView3 SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      let result4 = db._query("FOR doc IN UnitTestsRecoveryView4 SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      let result5 = db._query("FOR doc IN UnitTestsRecoveryView5 SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+
       assertEqual(result[0], expectedResult[0]);
+      assertEqual(result2[0], expectedResult[0]);
+      assertEqual(result3[0], expectedResult[0]);
+      assertEqual(result4[0], expectedResult[0]);
+      assertEqual(result5[0], expectedResult[0]);
+
     }
 
   };
