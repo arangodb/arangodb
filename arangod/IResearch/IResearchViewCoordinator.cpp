@@ -273,6 +273,15 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
 }
 
 Result IResearchViewCoordinator::link(IResearchLink const& link) {
+#ifdef USE_ENTERPRISE
+  {
+    auto const& name = link.collection().name();
+    // Guard against duplicate documents in SmartGraphs.
+    if (TRI_vocbase_t::IsSystemName(name) && name.rfind("_to_", 0) != std::string::npos) {
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+#endif
   static const std::function<bool(irs::string_ref const& key)> acceptor = []( // acceptor
     irs::string_ref const& key // key
   ) -> bool {
