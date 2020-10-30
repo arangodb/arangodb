@@ -170,6 +170,8 @@ void DatabaseManagerThread::run() {
             // remove apps directory for database
             std::string const& appPath = dealer.appPath();
             if (database->isOwnAppsDirectory() && !appPath.empty()) {
+              MUTEX_LOCKER(mutexLocker, databaseFeature._databaseCreateLock);
+
               // but only if nobody re-created a database with the same name!
               MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
               
@@ -180,7 +182,7 @@ void DatabaseManagerThread::run() {
                 std::string path = arangodb::basics::FileUtils::buildFilename(
                     arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
                     database->name());
-
+  
                 if (TRI_IsDirectory(path.c_str())) {
                   LOG_TOPIC("041b1", TRACE, arangodb::Logger::FIXME)
                     << "removing app directory '" << path << "' of database '"
