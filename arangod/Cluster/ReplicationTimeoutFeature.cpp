@@ -34,6 +34,7 @@ namespace arangodb {
 double ReplicationTimeoutFeature::timeoutFactor = 1.0;
 double ReplicationTimeoutFeature::timeoutPer4k = 0.1;
 double ReplicationTimeoutFeature::lowerLimit = 30.0;  // longer than heartbeat timeout
+double ReplicationTimeoutFeature::upperLimit = 120.0;
 
 ReplicationTimeoutFeature::ReplicationTimeoutFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ReplicationTimeout") {
@@ -48,6 +49,11 @@ void ReplicationTimeoutFeature::collectOptions(std::shared_ptr<ProgramOptions> o
       "--cluster.synchronous-replication-timeout-minimum",
       "all synchronous replication timeouts will be at least this value (in seconds)",
       new DoubleParameter(&lowerLimit));
+
+  options->addOption("--cluster.synchronous-replication-timeout-maximum",
+                     "all synchronous replication timeouts will be at most "
+                     "this value (in seconds)",
+                     new DoubleParameter(&upperLimit));
 
   options->addOption(
       "--cluster.synchronous-replication-timeout-factor",

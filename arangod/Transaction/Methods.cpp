@@ -979,7 +979,8 @@ static double chooseTimeout(size_t count, size_t totalBytes) {
   if (timeout < ReplicationTimeoutFeature::lowerLimit) {
     return ReplicationTimeoutFeature::lowerLimit * ReplicationTimeoutFeature::timeoutFactor;
   }
-  return (std::min)(120.0, timeout) * ReplicationTimeoutFeature::timeoutFactor;
+  return (std::min)(ReplicationTimeoutFeature::upperLimit, timeout) *
+         ReplicationTimeoutFeature::timeoutFactor;
 }
 
 /// @brief create one or multiple documents in a collection, local
