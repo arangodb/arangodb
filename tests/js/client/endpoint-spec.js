@@ -1,4 +1,4 @@
-/* global db, describe, it, beforeEach, afterEach*/
+/* global db, describe, it, beforeEach, afterEach, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
