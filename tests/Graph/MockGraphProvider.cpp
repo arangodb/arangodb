@@ -33,6 +33,7 @@
 #include "Futures/Utilities.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/HashedStringRef.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -67,6 +68,13 @@ void MockGraphProvider::Step::Edge::addToBuilder(arangodb::velocypack::Builder& 
   builder.add(StaticStrings::ToString, VPackValue(toId));
   builder.add("weight", VPackValue(_edge._weight));
   builder.close();
+}
+
+arangodb::velocypack::HashedStringRef MockGraphProvider::Step::Vertex::getId() const {
+  std::string key = basics::StringUtils::itoa(_vertex);
+  VPackBuilder builder; // TODO: HACK - fix me
+  builder.add(VPackValue(key));
+  return VPackHashedStringRef(builder.slice());
 }
 
 MockGraphProvider::MockGraphProvider(MockGraph const& data) {

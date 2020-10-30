@@ -28,6 +28,8 @@
 
 #include "Graph/ShortestPathFinder.h"  // TODO: Change / remove / minimize
 
+#include <set>
+
 namespace arangodb {
 
 namespace velocypack {
@@ -47,6 +49,8 @@ class TwoSidedEnumerator {
 
   using VertexRef = arangodb::velocypack::HashedStringRef;
   using Step = typename ProviderType::Step;
+  using Shell = std::multiset<Step>;
+  using Interior = std::vector<Step>;
   using ResultList = std::vector<std::pair<Step, Step>>;
 
   class Ball {
@@ -54,7 +58,7 @@ class TwoSidedEnumerator {
     Ball(Direction dir);
     ~Ball();
     auto clear() -> void;
-    auto reset(VertexRef center) -> void;
+    auto reset(Step center) -> void;
     auto startNextDepth() -> void;
     auto noPathLeft() const -> bool;
     auto getDepth() const -> size_t;
@@ -65,6 +69,15 @@ class TwoSidedEnumerator {
 
     auto matchResultsInShell(Step const& match, ResultList& results) const -> void;
     auto computeNeighbourhoodOfNextVertex(Ball const& other, ResultList& results) -> void;
+
+   private:
+    VertexRef _center; // TODO: Use Step::Vertex? Then we need to add copy constructor
+    Shell _shell{};
+    Interior _interior{};
+    size_t _depth{0};
+    size_t _searchIndex{std::numeric_limits<size_t>::max()};
+    Direction _direction;
+    bool _cursor;
   };
 
  public:

@@ -37,7 +37,8 @@ class Future;
 
 namespace velocypack {
 class Builder;
-}
+class HashedStringRef;
+}  // namespace velocypack
 
 namespace tests {
 namespace graph {
@@ -45,25 +46,28 @@ namespace graph {
 class MockGraphProvider {
   using VertexType = size_t;
   using EdgeType = MockGraph::EdgeDef;
+  using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:
   struct Step {
     class Vertex {
-
      public:
       explicit Vertex(VertexType v) : _vertex(v){};
 
       void addToBuilder(arangodb::velocypack::Builder& builder) const;
+      VertexRef getId() const;
 
-// This is only internal for the mock.
-// For some reason i did not manage to get this Class as the unordered_map key.
-// although it is a trivial wrapper around a size_t...
-      VertexType data() const{
-        return _vertex;
-      }
+      // This is only internal for the mock.
+      // For some reason I did not manage to get this Class as the unordered_map
+      // key. Although it is a trivial wrapper around a size_t...
+      VertexType data() const { return _vertex; }
 
      private:
       VertexType _vertex;
+
+      // TODO: Check, fix or cleanup
+      // Make the set work on the VertexRef attribute only
+      bool operator<(Vertex const& other) const noexcept;
     };
 
     class Edge {
@@ -84,6 +88,9 @@ class MockGraphProvider {
     size_t previous;
 
     size_t getPrevious() { return previous; }
+
+    // TODO: remove me - Make the set work on the Vertex attribute only
+    bool operator<(Step const& other) const noexcept;
   };
 
   MockGraphProvider(MockGraph const& data);

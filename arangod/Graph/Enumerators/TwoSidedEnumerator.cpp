@@ -35,6 +35,43 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 template <class QueueType, class PathStoreType, class ProviderType>
+TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::Ball(Direction dir)
+    : _direction(dir) {
+  _cursor = false;  // TODO: to be implemented - origin: opts.buildCursor(dir == Direction::BACKWARD);
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
+TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::~Ball() = default;
+
+template <class QueueType, class PathStoreType, class ProviderType>
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::reset(Step center) {
+  clear();
+  _center = center.vertex.getId();
+  // _center = center.vertex; // TODO: check - also see workaround above - needs to be cleaned up
+  _shell.emplace(center);
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::clear() {
+  _shell.clear();
+  _interior.clear();
+  _depth = 0;
+  _searchIndex = std::numeric_limits<size_t>::max();
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::doneWithDepth() const
+    -> bool {
+  return _searchIndex >= _interior.size();
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::noPathLeft() const
+    -> bool {
+  return doneWithDepth() && _shell.empty();
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::TwoSidedEnumerator(ProviderType&& provider)
     : _provider(std::move(provider)), _left{Direction::FORWARD}, _right{Direction::BACKWARD}, _resultPath{} {}
 
