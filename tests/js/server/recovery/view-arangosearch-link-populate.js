@@ -48,7 +48,6 @@ function runSetup () {
   db._createView('UnitTestsRecoveryView3', 'arangosearch', {});
   db._createView('UnitTestsRecoveryView4', 'arangosearch', {});
   db._createView('UnitTestsRecoveryView5', 'arangosearch', {});
-  analyzers.save('calcAnalyzer',"aql",{queryString:"RETURN SOUNDEX(@param)"});
 
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
   db._view('UnitTestsRecoveryView').properties(meta);
