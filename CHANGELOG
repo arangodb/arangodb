@@ -1,11 +1,14 @@
 v3.7.3 (2020-10-14)
 -------------------
-      
+
+* Fix a memory leak because cluster internal connections were not cleaned
+  up for agency communication.
+
 * Added the following metrics for synchronous replication in the cluster:
 
-  - `arangodb_refused_followers_count`: Number of times a shard leader received 
+  - `arangodb_refused_followers_count`: Number of times a shard leader received
     a refusal answer from a follower during synchronous replication.
-  - `arangodb_sync_wrong_checksum`: Number of times a mismatching shard 
+  - `arangodb_sync_wrong_checksum`: Number of times a mismatching shard
     checksum was detected when syncing shards. In case this happens, a resync
     will be triggered for the shard.
 
@@ -314,6 +317,8 @@ v3.7.3 (2020-10-14)
 
 * Fixed issue BTS-169: cost estimation for LIMIT nodes showed wrong number of
   estimated items.
+
+* Added compile option USE_JEMALLOC_PROF to enable memory profiling
 
 
 v3.7.2.2 (2020-10-07)

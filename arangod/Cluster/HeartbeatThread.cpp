@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// disclaimer
+/// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -370,6 +370,16 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
       }
     }
   }
+
+  // Periodically update the list of DBServers and prune agency comm
+  // connection pool:
+  if (++_DBServerUpdateCounter >= 60) {
+    auto& clusterFeature = server().getFeature<ClusterFeature>();
+    auto& ci = clusterFeature.clusterInfo();
+    ci.loadCurrentDBServers();
+    _DBServerUpdateCounter = 0;
+    clusterFeature.pruneAsyncAgencyConnectionPool();
+  }
 }
 
 DBServerAgencySync& HeartbeatThread::agencySync() { return _agencySync; }
@@ -697,6 +707,8 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
   if (++_DBServerUpdateCounter >= 60) {
     ci.loadCurrentDBServers();
     _DBServerUpdateCounter = 0;
+    auto& clusterFeature = server().getFeature<ClusterFeature>();
+    clusterFeature.pruneAsyncAgencyConnectionPool();
   }
 }
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -94,6 +94,11 @@ class ClusterFeature : public application_features::ApplicationFeature {
   Counter& followersDroppedCounter() { return _followersDroppedCounter->get(); }
   Counter& followersRefusedCounter() { return _followersRefusedCounter->get(); }
   Counter& followersWrongChecksumCounter() { return _followersWrongChecksumCounter->get(); }
+
+  /// @brief hand out async agency comm connection pool pruning:
+  void pruneAsyncAgencyConnectionPool() {
+    _asyncAgencyCommPool->pruneConnections();
+  }
 
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
