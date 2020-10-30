@@ -33,6 +33,9 @@ var arangodb = require("@arangodb");
 var db = arangodb.db;
 var internal = require("internal");
 
+const {ERROR_QUERY_COLLECTION_LOCK_FAILED} = internal.errors;
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,20 +45,16 @@ function ahuacatlFailureSuite () {
   const cn = "UnitTestsAhuacatlFailures";
   const en = "UnitTestsAhuacatlEdgeFailures";
   
-  let  assertFailingQuery = function (query, error) {
-    if (error === undefined) {
-      error = internal.errors.ERROR_DEBUG;
-    }
+  let  assertFailingQuery = function (query, expectedError = internal.errors.ERROR_DEBUG) {
     try {
       AQL_EXECUTE(query);
       fail();
     } catch (err) {
-      assertEqual(error.code, err.errorNum, query);
+      assertEqual(expectedError.code, err.errorNum, query);
     }
   };
         
   return {
-
     setUpAll: function () {
       internal.debugClearFailAt();
       db._drop(cn);
@@ -74,7 +73,7 @@ function ahuacatlFailureSuite () {
       db._drop(en);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       internal.debugClearFailAt();
     },
 
@@ -97,27 +96,51 @@ function ahuacatlFailureSuite () {
       // no real test expectations here, just that the query works and doesn't fail on shutdown
       assertEqual(0, res.length);
     },
-    
-    testShutdownSyncDiamond : function () {
+
+    testShutdownSyncDiamond: function () {
       internal.debugSetFailAt("ExecutionEngine::shutdownSync");
 
-      let res = AQL_EXECUTE("FOR doc1 IN " + cn + " FOR doc2 IN " + en + " FILTER doc1._key == doc2._key RETURN doc1").json;
+      let res = AQL_EXECUTE(
+        "FOR doc1 IN " +
+          cn +
+          " FOR doc2 IN " +
+          en +
+          " FILTER doc1._key == doc2._key RETURN doc1"
+      ).json;
       // no real test expectations here, just that the query works and doesn't fail on shutdown
       assertEqual(0, res.length);
     },
-    
-    testShutdownSyncFailInGetSome : function () {
+
+    testShutdownSyncFailInGetSome: function () {
       internal.debugSetFailAt("ExecutionEngine::shutdownSync");
       internal.debugSetFailAt("RestAqlHandler::getSome");
 
       assertFailingQuery("FOR doc IN " + cn + " RETURN doc");
     },
 
-    testShutdownSyncDiamondFailInGetSome : function () {
+    testShutdownSyncDiamondFailInGetSome: function () {
       internal.debugSetFailAt("ExecutionEngine::shutdownSync");
       internal.debugSetFailAt("RestAqlHandler::getSome");
 
-      assertFailingQuery("FOR doc1 IN " + cn + " FOR doc2 IN " + en + " FILTER doc1._key == doc2._key RETURN doc1");
+      assertFailingQuery(
+        "FOR doc1 IN " +
+          cn +
+          " FOR doc2 IN " +
+          en +
+          " FILTER doc1._key == doc2._key RETURN doc1"
+      );
+    },
+
+    testNoShardsReturned: function () {
+      internal.debugSetFailAt("ClusterInfo::failedToGetShardList");
+      assertFailingQuery(
+        "FOR doc1 IN " +
+          cn +
+          " FOR doc2 IN " +
+          en +
+          " FILTER doc1._key == doc2._key RETURN doc1",
+        ERROR_QUERY_COLLECTION_LOCK_FAILED
+      );
     },
   };
 }
