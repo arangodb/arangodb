@@ -53,7 +53,7 @@ TEST(IResearchRocksDBRecoveryHelperIndexId, comparison_less_db2) {
 
 TEST(IResearchRocksDBRecoveryHelperIndexId, comparison_less_db3) {
   arangodb::iresearch::IResearchRocksDBRecoveryHelper::IndexId id(
-      1, 3), arangodb::IndexId(4));
+      1, 3, arangodb::IndexId(4));
   arangodb::iresearch::IResearchRocksDBRecoveryHelper::IndexId id2(
       2, 2, arangodb::IndexId(3));
   ASSERT_TRUE(id < id2);
