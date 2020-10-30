@@ -1,5 +1,6 @@
 devel
 -----
+* Fixed BTS-233 issue: Fixed invalid IndexId comparator.
 
 * Fixed handling of failedLeaderJob. In case of a plan modification, that
   removes a server from the plan, e.g. reduce replication factor. Directly
