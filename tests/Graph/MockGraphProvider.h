@@ -35,26 +35,45 @@ template <typename T>
 class Future;
 }
 
+namespace velocypack {
+class Builder;
+}
+
 namespace tests {
 namespace graph {
 
 class MockGraphProvider {
   using VertexType = size_t;
   using EdgeType = MockGraph::EdgeDef;
+
  public:
   struct Step {
+    class Vertex {
+     public:
+      Vertex(VertexType v) : _vertex(v){}; // TODO: private?
+      void addToBuilder(arangodb::velocypack::Builder& builder);
+
+     private:
+      VertexType _vertex;
+    };
+
+    class Edge {
+      Edge(EdgeType e) : _edge(e){}; // TODO: private?
+      void addToBuilder(arangodb::velocypack::Builder& builder);
+
+     private:
+      EdgeType _edge;
+    };
 
     explicit Step(VertexType v);
     Step(size_t prev, VertexType v, EdgeType e);
     ~Step();
 
-    VertexType vertex;
+    Vertex vertex;
+    std::optional<Edge> edge;
     size_t previous;
 
-    size_t getPrevious() {
-      return previous;
-    }
-
+    size_t getPrevious() { return previous; }
   };
 
   MockGraphProvider(MockGraph const& data);
@@ -65,11 +84,8 @@ class MockGraphProvider {
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
 
  private:
-
- std::unordered_map<size_t, std::vector<MockGraph::EdgeDef>> _fromIndex;
- std::unordered_map<size_t, std::vector<MockGraph::EdgeDef>> _toIndex;
-
-
+  std::unordered_map<Step::Vertex, std::vector<MockGraph::EdgeDef>> _fromIndex;
+  std::unordered_map<Step::Vertex, std::vector<MockGraph::EdgeDef>> _toIndex;
 };
 }  // namespace graph
 }  // namespace tests

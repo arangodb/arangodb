@@ -24,8 +24,17 @@
 
 #include "./MockGraph.h"
 
+#include "Basics/operating-system.h"
+
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
+
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::tests;
@@ -38,6 +47,28 @@ MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e)
     : vertex(v), previous(prev) {}
 MockGraphProvider::Step::~Step() {}
 
+void MockGraphProvider::Step::Vertex::addToBuilder(arangodb::velocypack::Builder& builder) {
+  std::string key = basics::StringUtils::itoa(_vertex);
+  builder.openObject();
+  builder.add(StaticStrings::KeyString, VPackValue(key));
+  builder.add(StaticStrings::IdString, VPackValue("v/" + key));
+  builder.close();
+}
+
+void MockGraphProvider::Step::Edge::addToBuilder(arangodb::velocypack::Builder& builder) {
+  std::string fromId = "v/" + basics::StringUtils::itoa(_edge._from);
+  std::string toId = "v/" + basics::StringUtils::itoa(_edge._to);
+  std::string keyId = basics::StringUtils::itoa(_edge._from) + "->" + basics::StringUtils::itoa(_edge._to);
+
+  builder.openObject();
+  builder.add(StaticStrings::IdString, VPackValue("e/" + keyId));
+  builder.add(StaticStrings::KeyString, VPackValue(keyId));
+  builder.add(StaticStrings::FromString, VPackValue(fromId));
+  builder.add(StaticStrings::ToString, VPackValue(toId));
+  builder.add("weight", VPackValue(_edge._weight));
+  builder.close();
+}
+
 MockGraphProvider::MockGraphProvider(MockGraph const& data) {
   for (auto const& it : data.edges()) {
     _fromIndex[it._from].push_back(it);
@@ -47,22 +78,20 @@ MockGraphProvider::MockGraphProvider(MockGraph const& data) {
 
 MockGraphProvider::~MockGraphProvider() {}
 
-auto MockGraphProvider::startVertex(VertexType v) -> Step {
-  return Step(v);
+auto MockGraphProvider::startVertex(VertexType v) -> Step { return Step(v); }
+
+auto MockGraphProvider::fetch(std::vector<Step> const& looseEnds)
+    -> futures::Future<std::vector<Step>> {
+  return futures::makeFuture(std::vector<Step>{});
 }
 
-auto MockGraphProvider::fetch(std::vector<Step> const& looseEnds) -> futures::Future<std::vector<Step>> {
-  return futures::makeFuture(std::vector<Step>{});  
-}
-
-auto MockGraphProvider::expand(Step const& from, size_t previousIndex) -> std::vector<Step> {
+auto MockGraphProvider::expand(Step const& from, size_t previousIndex)
+    -> std::vector<Step> {
   std::vector<Step> result{};
   if (_fromIndex.find(from.vertex) != _fromIndex.end()) {
     for (auto const& edge : _fromIndex[from.vertex]) {
       result.push_back(Step{previousIndex, edge._to, edge});
     }
-  } 
+  }
   return result;
 }
-
-

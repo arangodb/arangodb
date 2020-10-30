@@ -32,9 +32,7 @@ using namespace arangodb::graph;
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::TwoSidedEnumerator(ProviderType&& provider)
-    : _provider(std::move(provider)) {
-
-}
+    : _provider(std::move(provider)) {}
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::~TwoSidedEnumerator() {}
@@ -94,6 +92,38 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::reset(VertexRef
 template <class QueueType, class PathStoreType, class ProviderType>
 bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::getNextPath(
     arangodb::velocypack::Builder& result) {
+  while (!isDone()) {
+    while (_results.empty() && !searchDone()) {
+      if (_searchLeft) {
+        if (ADB_UNLIKELY(_left.doneWithDepth())) {
+          startNextDepth();
+        } else {
+          _left.computeNeighbourhoodOfNextVertex(_right, _results);
+        }
+      } else {
+        if (ADB_UNLIKELY(_right.doneWithDepth())) {
+          startNextDepth();
+        } else {
+          _right.computeNeighbourhoodOfNextVertex(_left, _results);
+        }
+      }
+    }
+
+    while (!_results.empty()) {
+      auto [leftVertex, rightVertex] = _results.back();
+
+      _resultPath.clear();
+      _left.buildPath(leftVertex, _resultPath);
+      _right.buildPath(rightVertex, _resultPath);
+
+      // result done
+      _results.pop_back();
+      if (_resultPath.isValid()) {
+        _resultPath.toVelocyPack(result);
+        return true;
+      }
+    }
+  }
   return false;
 }
 
@@ -107,4 +137,11 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::getNextPath(
 template <class QueueType, class PathStoreType, class ProviderType>
 bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::skipPath() {
   return false;
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::searchDone() const
+    -> bool {
+  return _left.noPathLeft() || _right.noPathLeft();
+  // TODO: include getDepth
 }

@@ -24,18 +24,29 @@
 #ifndef ARANGODB_GRAPH_ENUMERATORS_TWO_SIDED_ENUMERATOR_H
 #define ARANGODB_GRAPH_ENUMERATORS_TWO_SIDED_ENUMERATOR_H 1
 
+#include "Containers/HashSet.h"
+
+#include "Graph/ShortestPathFinder.h"  // TODO: Change / remove / minimize
+
 namespace arangodb {
 
 namespace velocypack {
 class Builder;
 class HashedStringRef;
-}
+}  // namespace velocypack
 
 namespace graph {
+
+template <class Step>
+class PathResult;
 
 template <class QueueType, class PathStoreType, class ProviderType>
 class TwoSidedEnumerator {
   using VertexRef = arangodb::velocypack::HashedStringRef;
+  using Step = typename ProviderType::Step;
+  using ResultList = std::vector<std::pair<Step, Step>>;
+
+  class Ball {};
 
  public:
   TwoSidedEnumerator(ProviderType&& provider);
@@ -89,9 +100,20 @@ class TwoSidedEnumerator {
   bool skipPath();
 
  private:
+  auto searchDone() const -> bool;
+  auto startNextDepth() -> void;
+
+ private:
   QueueType _queue;
   PathStoreType _pathStore;
   ProviderType _provider;
+
+  Ball _left;
+  Ball _right;
+  bool _searchLeft{true};
+  ResultList _results{};
+
+  PathResult<Step> _resultPath;
 };
 }  // namespace graph
 }  // namespace arangodb
