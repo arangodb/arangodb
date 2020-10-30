@@ -63,7 +63,7 @@
 #include "misc.hpp"
 #include "log.hpp"
 
-NS_LOCAL
+namespace {
 
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprecated declaration
@@ -710,10 +710,10 @@ bool stack_trace_libunwind(irs::logger::level_t level, int output_pipe); // pred
   }
 #endif
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(logger)
+namespace iresearch {
+namespace logger {
 
 void log(const char* function, const char* file, int line,
   level_t level, const char* message, size_t len) {
@@ -860,5 +860,5 @@ void stack_trace_level(level_t level) {
   logger_ctx::instance().stack_trace_level(level);
 }
 
-NS_END // logger
-NS_END
+} // logger
+}

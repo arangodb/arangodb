@@ -29,7 +29,7 @@
 #include "utils/frozen_attributes.hpp"
 #include "utils/type_limits.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class score_iterator_adapter
@@ -295,6 +295,6 @@ doc_iterator::ptr make_conjunction(
     std::forward<Args>(args)...);
 }
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_CONJUNCTION_H

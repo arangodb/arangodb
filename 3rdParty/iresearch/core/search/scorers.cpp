@@ -33,7 +33,7 @@
 #include "utils/register.hpp"
 #include "utils/hash_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 struct entry_key_t {
   irs::type_info args_format_;
@@ -50,9 +50,9 @@ struct entry_key_t {
   }
 };
 
-NS_END
+}
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<entry_key_t> {
@@ -63,9 +63,9 @@ struct hash<entry_key_t> {
   }
 }; // hash
 
-NS_END // std
+} // std
 
-NS_LOCAL
+namespace {
 
 const std::string FILENAME_PREFIX("libscorer-");
 
@@ -92,9 +92,9 @@ class scorer_register:
   }
 };
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 /*static*/ bool scorers::exists(
     const string_ref& name,
@@ -195,4 +195,4 @@ scorer_registrar::operator bool() const noexcept {
   return registered_;
 }
 
-NS_END
+}
