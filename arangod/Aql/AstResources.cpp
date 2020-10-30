@@ -181,13 +181,13 @@ char* AstResources::registerLongString(char* copy, size_t length) {
   if (capacity > _strings.capacity()) {
     // not enough capacity...
     _resourceMonitor->increaseMemoryUsage(
-        ((capacity - _strings.size()) * sizeof(char*)) + length);
+        ((capacity - _strings.capacity()) * sizeof(char*)) + length);
     try {
       _strings.reserve(capacity);
     } catch (...) {
       // revert change in memory increase
       _resourceMonitor->decreaseMemoryUsage(
-          ((capacity - _strings.size()) * sizeof(char*)) + length);
+          ((capacity - _strings.capacity()) * sizeof(char*)) + length);
       throw;
     }
   } else {

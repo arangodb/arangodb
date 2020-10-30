@@ -4,6 +4,11 @@ v3.7.5 (XXXX-XX-XX)
 * Agency cache clears change history. This keeps the change history, introduced
   in v3.7.4, from growing in size too much.
 
+* Bug-fix: Creating an additional index on the edge collection of a disjoint
+  SmartGraph could falsely result in an error: 
+  `Could not find all smart collections ...`
+  This is now ruled out and indexes can be created as expected.
+
 * Fixed issue #12248: Web UI - Added missing HTML escaping in the setup script
   section of a foxx app.
 
@@ -96,7 +101,7 @@ v3.7.3 (2020-10-14)
   led to link recreation.
 
 * Added configuration option `--rocksdb.sync-delay-threshold`.
-  This option can be used to track if any RocksDB WAL sync operations is
+  This option can be used to track if any RocksDB WAL sync operation is
   delayed by more than the configured value (in milliseconds). The intention
   is to get aware of severely delayed WAL sync operations.
 
@@ -130,7 +135,7 @@ v3.7.3 (2020-10-14)
 * Use rclone built from v1.51.0 source with go1.15.2 instead of prebuilt
   v1.51.0 release.
 
-* Fixed a bug in AQL COLLECT with OPTIONS { "hash" } that lead to a quadratic
+* Fixed a bug in AQL COLLECT with OPTIONS { "hash" } that led to a quadratic
   runtime in the number of output rows.
 
 * Added startup option `--database.old-system-collections` to toggle automatic
@@ -149,7 +154,7 @@ v3.7.3 (2020-10-14)
   The default value for the option is going to change to `false` in v3.8,
   meaning the collections will not be created anymore there by default.
 
-  Any functionality related to the `_modules` system collection is deprecate
+  Any functionality related to the `_modules` system collection is deprecated
   and will be removed in ArangoDB v3.9.
 
   Two side effects of turning this option off are:
@@ -160,7 +165,7 @@ v3.7.3 (2020-10-14)
   Already existing `_modules` and `_fishbowl` system collections will not be
   modified by this PR, even though they will likely be empty and unused.
 
-* Don't iterate over all databases as server startup in order to initialize the
+* Don't iterate over all databases at server startup in order to initialize the
   routing information. This is not necessary, as the routing information is
   global and not tied to a specific database.
 
@@ -170,7 +175,7 @@ v3.7.3 (2020-10-14)
 * Added safeguards against using V8 internally in environments that have
   JavaScript turned off via the `--javascript.enabled false` option.
 
-* Make scheduler propertly count down the number of working threads in case an
+* Make scheduler properly count down the number of working threads in case an
   exception happens in a worker thread.
 
 * Turn off upgrade checks in arangod in alpha/beta/preview Enterprise builds,
@@ -184,7 +189,7 @@ v3.7.3 (2020-10-14)
 
 * If LDAP search fails, also retry (update to given number of retries).
 
-* Fixed inifinite reload of the login window after logout of an LDAP user.
+* Fixed infinite reload of the login window after logout of an LDAP user.
 
 * Make the reboot tracker catch failed coordinators, too. Previously the reboot
   tracker was invoked only when a DB server failed or was restarted, and when a
@@ -245,7 +250,7 @@ v3.7.3 (2020-10-14)
   undefined when assertions were turned off.
 
 * Fixed some cases where subqueries in PRUNE did not result in a parse error,
-  but either in an incomprehensible error (in 3.7), or undefined behaviour
+  but either in an incomprehensible error (in 3.7), or undefined behavior
   during execution (pre 3.7).
 
 * Fixed an issue with audit logging misreporting some document requests as
