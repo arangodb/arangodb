@@ -21,10 +21,10 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Logger/LogMacros.h>
 #include "gtest/gtest.h"
 
 #include "Graph/Queues/FifoQueue.h"
-
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -52,10 +52,12 @@ class Step {
   bool operator==(Step const& other) { return _id == other._id; }
 
   bool isProcessable() { return _isLooseEnd ? false : true; }
+  size_t id() { return _id; }
 };
 
 class QueueTest : public ::testing::Test {
- protected:
+ //protected:
+ public:
   QueueTest() {}
   ~QueueTest() {}
 };
@@ -120,6 +122,24 @@ TEST_F(QueueTest, it_should_pop_first_element_if_processable) {
   ASSERT_FALSE(queue.hasProcessableElement());
 }
 
+TEST_F(QueueTest, it_should_pop_in_correct_order) {
+  auto queue = FifoQueue<Step>();
+  queue.append(Step{1, 1, false});
+  queue.append(Step{2, 1, false});
+  queue.append(Step{3, 1, false});
+  queue.append(Step{4, 1, false});
+  ASSERT_EQ(queue.size(), 4);
+  ASSERT_TRUE(queue.hasProcessableElement());
+  size_t id = 1;
+  while (queue.hasProcessableElement()) {
+    Step myStep = queue.pop();
+    ASSERT_EQ(id, myStep.id());
+    id++;
+  }
+  ASSERT_EQ(queue.size(), 0);
+  ASSERT_FALSE(queue.hasProcessableElement());
+}
+
 TEST_F(QueueTest, it_should_pop_all_loose_ends) {
   auto queue = FifoQueue<Step>();
   queue.append(Step{1, 1, true});
@@ -128,12 +148,17 @@ TEST_F(QueueTest, it_should_pop_all_loose_ends) {
   queue.append(Step{4, 1, true});
   ASSERT_EQ(queue.size(), 4);
   ASSERT_FALSE(queue.hasProcessableElement());
-  std::vector<Step> mySteps = queue.popLooseEnds();
-  ASSERT_TRUE(queue.isEmpty());
-  ASSERT_EQ(mySteps.size(), 4);
 
-  ASSERT_EQ(queue.size(), 0);
-  ASSERT_TRUE(queue.isEmpty());
+  std::vector<Step*> myStepReferences = queue.getLooseEnds();
+  ASSERT_EQ(myStepReferences.size(), 4);
+
+  size_t id = 1;
+  for (auto stepReference : myStepReferences) {
+    ASSERT_EQ(stepReference->id(), id);
+    id++;
+  }
+
+  ASSERT_EQ(queue.size(), 4);
   ASSERT_FALSE(queue.hasProcessableElement());
 }
 

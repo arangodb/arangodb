@@ -62,13 +62,16 @@ class FifoQueue {
 
   bool isEmpty() { return _queue.size() == 0; };
 
-  std::vector<Step> popLooseEnds(){
+  std::vector<Step*> getLooseEnds(){
     TRI_ASSERT(!hasProcessableElement());
 
-    std::vector<Step> steps;
-    while (!isEmpty() && !hasProcessableElement()) {
-      steps.emplace_back(pop());
+    std::vector<Step*> steps;
+    for (auto& step: _queue) {
+      if (!step.isProcessable()) {
+        steps.emplace_back(&step);
+      }
     }
+
     return std::move(steps);
   };
 
