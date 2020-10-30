@@ -1645,16 +1645,15 @@ void Agent::rebuildDBs() {
   _commitIndex = lastCompactionIndex;
   _waitForCV.broadcast();
 
+  auto commitIndex = _commitIndex.load(std::memory_order_relaxed)
   // Apply logs from last applied index to leader's commit index
   LOG_TOPIC("b12cb", DEBUG, Logger::AGENCY)
       << "Rebuilding key-value stores from index " << lastCompactionIndex
-      << " to " << _commitIndex.load(std::memory_order_relaxed) << " " << _state;
+      << " to " << commitIndex << " " << _state;
 
-  {
-    auto logs = _state.slices(lastCompactionIndex + 1, _commitIndex.load(std::memory_order_relaxed));
-    _readDB.applyLogEntries(logs, _commitIndex.load(std::memory_order_relaxed),
-                            term, false /* do not send callbacks */);
-  }
+  auto logs = _state.slices(lastCompactionIndex + 1, commitIndex);
+  _readDB.applyLogEntries(logs, commitIndex, term, false /* do not send callbacks */);
+
   _spearhead = _readDB;
 
   LOG_TOPIC("a66dc", INFO, Logger::AGENCY) << id() << " rebuilt key-value stores - serving.";
