@@ -47,6 +47,10 @@ MockGraphProvider::MockGraphProvider(MockGraph const& data) {
 
 MockGraphProvider::~MockGraphProvider() {}
 
+auto MockGraphProvider::startVertex(VertexType v) -> Step {
+  return Step(v);
+}
+
 auto MockGraphProvider::fetch(std::vector<Step> const& looseEnds) -> futures::Future<std::vector<Step>> {
   return futures::makeFuture(std::vector<Step>{});  
 }

@@ -56,6 +56,7 @@ class MockGraphProvider {
   MockGraphProvider(MockGraph const& data);
   ~MockGraphProvider();
 
+  auto startVertex(VertexType vertex) -> Step;
   auto fetch(std::vector<Step> const& looseEnds) -> futures::Future<std::vector<Step>>;
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
 

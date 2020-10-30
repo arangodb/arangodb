@@ -43,17 +43,13 @@ class GraphProviderTest : public ::testing::Test {
   auto makeProvider(MockGraph const& graph) -> MockGraphProvider {
     return MockGraphProvider(graph);
   }
-
-  auto startStep(size_t i) -> MockGraphProvider::Step {
-    return MockGraphProvider::Step(i);
-  }
 };
 
 TEST_F(GraphProviderTest, no_results_if_graph_is_empty) {
   MockGraph empty{};
   
   auto testee = makeProvider(empty);
-  auto start = startStep(0);
+  auto start = testee.startVertex(0);
   auto res = testee.expand(start, 0);
   EXPECT_EQ(res.size(), 0);
 }
@@ -63,7 +59,7 @@ TEST_F(GraphProviderTest, should_enumerate_a_single_edge) {
   g.addEdge(0, 1);
   
   auto testee = makeProvider(g);
-  auto start = startStep(0);
+  auto start = testee.startVertex(0);
   auto res = testee.expand(start, 0);
   ASSERT_EQ(res.size(), 1);
   auto const& f = res.front();
@@ -79,7 +75,7 @@ TEST_F(GraphProviderTest, should_enumerate_all_edges) {
   std::unordered_set<size_t> found{};
   
   auto testee = makeProvider(g);
-  auto start = startStep(0);
+  auto start = testee.startVertex(0);
   auto res = testee.expand(start, 0);
   ASSERT_EQ(res.size(), 3);
   for (auto const& f : res) {
