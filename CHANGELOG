@@ -4,6 +4,13 @@ v3.7.5 (XXXX-XX-XX)
 * Agency cache clears change history. This keeps the change history, introduced
   in v3.7.4, from growing in size too much.
 
+* Bug-fix: Allow to unlink a view created on a SmartGraphEdge collection.
+
+* If a collection (or database) is dropped during the instantiation of an AQL
+  query, the setup code now aborts with an ERROR_QUERY_COLLECTION_LOCK_FAILED
+  and earlier.
+  Before the setup code could abort with TRI_ERROR_INTERNAL in the same case.
+
 * Bug-fix: Creating an additional index on the edge collection of a disjoint
   SmartGraph could falsely result in an error: 
   `Could not find all smart collections ...`
