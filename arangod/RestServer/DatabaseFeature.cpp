@@ -163,8 +163,10 @@ void DatabaseManagerThread::run() {
             // remove apps directory for database
             std::string const& appPath = dealer.appPath();
             if (database->isOwnAppsDirectory() && !appPath.empty()) {
+              MUTEX_LOCKER(mutexLocker1, _databaseCreateLock);
+
               // but only if nobody re-created a database with the same name!
-              MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
+              MUTEX_LOCKER(mutexLocker2, databaseFeature._databasesMutex);
               
               TRI_vocbase_t* newInstance = databaseFeature.lookupDatabase(database->name());
               TRI_ASSERT(newInstance == nullptr || newInstance->id() != database->id());
