@@ -716,7 +716,7 @@ void ClusterInfo::loadPlan() {
   }
 
   bool changed = false;
-  auto changeSet = agencyCache.changedSince("Plan", planIndex); // also delivers plan/version
+  auto changeSet = agencyCache.changedSince(prefixPlan, planIndex); // also delivers plan/version
   decltype(_plan) newPlan;
   {
     READ_LOCKER(readLocker, _planProt.lock);
@@ -1254,6 +1254,7 @@ void ClusterInfo::loadPlan() {
     triggerWaiting(_waitPlanVersion, _planVersion);
   }
 
+  agencyCache.clearChanged(prefixPlan, _planIndex);
   auto diff = duration<float, std::milli>(clock::now() - start).count();
   _lpTotal += static_cast<uint64_t>(diff);
   _lpTimer.count(diff);
@@ -1295,7 +1296,7 @@ void ClusterInfo::loadCurrent() {
   decltype(_current) newCurrent;
 
   bool changed = false;
-  auto changeSet = agencyCache.changedSince("Current", currentIndex);
+  auto changeSet = agencyCache.changedSince(prefixCurrent, currentIndex);
   {
     READ_LOCKER(readLocker, _currentProt.lock);
     newCurrent = _current;
@@ -1449,6 +1450,8 @@ void ClusterInfo::loadCurrent() {
     std::lock_guard w(_waitCurrentVersionLock);
     triggerWaiting(_waitCurrentVersion, _currentVersion);
   }
+
+  agencyCache.clearChanged(prefixCurrent, _currentIndex);
 
   auto diff = duration<float, std::milli>(clock::now() - start).count();
   _lcTotal += static_cast<uint64_t>(diff);
@@ -4809,6 +4812,10 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 
 std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(CollectionID const& collectionID) {
   int tries = 0;
+  TRI_IF_FAILURE("ClusterInfo::failedToGetShardList") {
+    // Simulate 3 failed tries below.
+    return std::make_shared<std::vector<ShardID>>();
+  }
   while (true) {
     {
       // Get the sharding keys and the number of shards:

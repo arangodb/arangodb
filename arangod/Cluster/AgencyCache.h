@@ -126,6 +126,13 @@ public:
   change_set_t changedSince(
     std::string const& section, consensus::index_t const& last) const;
 
+  /**
+   * @brief         Clean up planned/current changes before index
+   *
+   * @param index   Done index
+   */
+  void clearChanged(std::string const& section, consensus::index_t const& last);
+
 private:
 
   /// @brief invoke all callbacks
