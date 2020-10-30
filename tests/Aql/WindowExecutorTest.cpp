@@ -199,9 +199,10 @@ auto sortedDateRows = MatrixBuilder<2>{RowBuilder<2>{t0, 5}, RowBuilder<2>{t1, 1
                                        RowBuilder<2>{t5, 1}};
 
 
-auto inf = VPackParser::fromJson("\"inf\"");
-auto duration1h10m = VPackParser::fromJson("\"PT1H10M\"");
-auto duration3s = VPackParser::fromJson("\"PT3S\"");
+auto vpackOptions = VPackOptions();
+auto inf = VPackParser::fromJson("\"inf\"", &vpackOptions);
+auto duration1h10m = VPackParser::fromJson("\"PT1H10M\"", &vpackOptions);
+auto duration3s = VPackParser::fromJson("\"PT3S\"", &vpackOptions);
 
 auto boundsRow1 = WindowBounds(WindowBounds::Type::Row, AqlValue(AqlValueHintInt(1)), AqlValue(AqlValueHintInt(1)));
 auto boundsRowAccum = WindowBounds(WindowBounds::Type::Row, AqlValue(inf->slice()), AqlValue(AqlValueHintInt(0)));
