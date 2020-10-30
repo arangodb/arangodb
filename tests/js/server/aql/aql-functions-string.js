@@ -42,7 +42,20 @@ var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 
 function ahuacatlStringFunctionsTestSuite () {
   return {
-
+    setUpAll: function () {
+      var analyzers = require("@arangodb/analyzers");
+      analyzers.save("text_en_nostem", "norm", {
+        locale: "de.utf-8",
+        accent: false,
+        stemming: false,
+        stopwords: []
+      }, ["norm"]);
+    },
+    tearDownAll: function () {
+      var analyzers = require("@arangodb/analyzers");
+      analyzers.remove("text_en_nostem", true);
+    },
+      
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test tobase64
 // //////////////////////////////////////////////////////////////////////////////
@@ -2130,6 +2143,36 @@ function ahuacatlStringFunctionsTestSuite () {
 
     assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN NOOPT(CHAR_LENGTH('yes', 'yes'))`);
   },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test normalize_UTF8 function
+// //////////////////////////////////////////////////////////////////////////////
+
+    testNormalize1: () => {
+    assertEqual([ 'the quick brown fox jumped殺殺'.normalize() ], getQueryResults(`RETURN NOOPT(TOKENS('the quick brown fox jumped殺殺', 'text_en_nostem')[0])`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test normalize_UTF8 function
+// //////////////////////////////////////////////////////////////////////////////
+
+  testNormalize2: () => {
+    assertEqual([ 'äöüÄÖÜß アボカド名称について殺殺'.normalize() ], getQueryResults(`return NOOPT(TOKENS('äöüÄÖÜß アボカド名称について殺殺', 'text_en_nostem')[0])`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test normalize_UTF8 function
+// //////////////////////////////////////////////////////////////////////////////
+
+    testNormalize3: () => {
+      let str = `0123456789<>|,;.:-_#'+*@!"$&/(){[]}?\\殺殺`;
+      assertEqual([ txt.normalize() ], getQueryResults(`return NOOPT(TOKENS(@str, 'text_en_nostem')[0])`,
+                                                       { str: str}));
+      assertEqual([true], getQueryResults(`return MD5(TOKENS(@str, 'text_en_nostem')[0]) != MD5(@str)`,
+                                          { str: str}));
+      assertEqual([true], getQueryResults(`return CONTAINS(TOKENS(@str, 'text_en_nostem')[0], @contains)`,
+                                          {str: str, contains: '殺殺'}));
+    },
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test lower function
