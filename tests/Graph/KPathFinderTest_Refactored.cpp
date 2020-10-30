@@ -22,17 +22,25 @@
 
 #include "gtest/gtest.h"
 
-#include "GraphTestTools.h"
+#include "./MockGraph.h"
+#include "./MockGraphProvider.h"
 
+// Used for StringUtils size_t variant
+#include "Basics/operating-system.h"
+
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Graph/KPathFinder.h"
-#include "Graph/ShortestPathOptions.h"
+#include "Graph/Enumerators/TwoSidedEnumerator.h"
+#include "Graph/PathManagement/PathStore.h"
+#include "Graph/Queues/FifoQueue.h"
 
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
+using namespace arangodb::graph;
 using namespace arangodb::velocypack;
 
 namespace arangodb {
@@ -40,56 +48,57 @@ namespace tests {
 namespace graph {
 
 class KPathFinderTest_Refactored : public ::testing::Test {
- protected:
-  GraphTestSetup s;
-  MockGraphDatabase gdb;
 
-  std::unique_ptr<arangodb::aql::Query> query;
-  std::unique_ptr<arangodb::graph::ShortestPathOptions> _spo;
+  using KPathFinder = TwoSidedEnumerator<FifoQueue<MockGraphProvider::Step>, PathStore<MockGraphProvider::Step>, MockGraphProvider>;
+
+ protected:
+   MockGraph mockGraph;
+   std::unique_ptr<MockGraphProvider> p{nullptr};
+
   std::unique_ptr<KPathFinder> _finder;
 
-  KPathFinderTest_Refactored() : gdb(s.server, "testVocbase") {
-    gdb.addVertexCollection("v", 100);
-    gdb.addEdgeCollection("e", "v",
-                          {/* a chain 1->2->3->4 */
-                           {1, 2},
-                           {2, 3},
-                           {3, 4},
-                           /* a diamond 5->6|7|8->9 */
-                           {5, 6},
-                           {5, 7},
-                           {5, 8},
-                           {6, 9},
-                           {7, 9},
-                           {8, 9},
-                           /* many path lengths */
-                           {10, 11},
-                           {10, 12},
-                           {12, 11},
-                           {12, 13},
-                           {13, 11},
-                           {13, 14},
-                           {14, 11},
-                           /* loop path */
-                           {20, 21},
-                           {21, 20},
-                           {21, 21},
-                           {21, 22},
-                           /* triangle loop */
-                           {30, 31},
-                           {31, 32},
-                           {32, 33},
-                           {33, 31},
-                           {32, 34}});
+  KPathFinderTest_Refactored() {
+    /* a chain 1->2->3->4 */
+    mockGraph.addEdge(1, 2);
+    mockGraph.addEdge(2, 3);
+    mockGraph.addEdge(3, 4);
 
-    query = gdb.getQuery("RETURN 1", std::vector<std::string>{"v", "e"});
+    /* a diamond 5->6|7|8->9 */
+    mockGraph.addEdge(5, 6);
+    mockGraph.addEdge(5, 7);
+    mockGraph.addEdge(5, 8);
+    mockGraph.addEdge(6, 9);
+    mockGraph.addEdge(7, 9);
+    mockGraph.addEdge(8, 9);
+
+    /* many path lengths */
+    mockGraph.addEdge(10, 11);
+    mockGraph.addEdge(10, 12);
+    mockGraph.addEdge(12, 11);
+    mockGraph.addEdge(12, 13);
+    mockGraph.addEdge(13, 11);
+    mockGraph.addEdge(13, 14);
+    mockGraph.addEdge(14, 11);
+
+    /* loop path */
+    mockGraph.addEdge(20, 21);
+    mockGraph.addEdge(21, 20);
+    mockGraph.addEdge(21, 21);
+    mockGraph.addEdge(21, 22);
+
+    /* triangle loop */
+    mockGraph.addEdge(30, 31);
+    mockGraph.addEdge(31, 32);
+    mockGraph.addEdge(32, 33);
+    mockGraph.addEdge(33, 31);
+    mockGraph.addEdge(32, 34);
+
+    p = std::make_unique<MockGraphProvider>(mockGraph);
   }
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder& {
-    _spo = gdb.getShortestPathOptions(query.get());
-    _spo->minDepth = minDepth;
-    _spo->maxDepth = maxDepth;
-    _finder = std::make_unique<KPathFinder>(*_spo);
+    // TODO minDepth, maxDepth
+    _finder = std::make_unique<KPathFinder>();
     return *_finder;
   }
 
