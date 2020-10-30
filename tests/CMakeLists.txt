@@ -199,7 +199,6 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchQueryTokens-test.cpp
   IResearch/IResearchQueryValue-test.cpp
   IResearch/IResearchQueryTraversal-test.cpp
-  IResearch/IResearchRocksDBRecoveryHelper-test.cpp
   IResearch/IResearchView-test.cpp
   IResearch/IResearchViewCoordinator-test.cpp
   IResearch/IResearchViewDBServer-test.cpp
