@@ -44,6 +44,9 @@
 
 namespace {
 
+// assume up to 2x machine epsilon in precision errors for signleton caps
+constexpr auto SIGNLETON_CAP_EPS = 2*std::numeric_limits<double_t>::epsilon();
+
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
@@ -65,10 +68,10 @@ irs::filter::prepared::ptr match_all(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief function takes into account max error for radian calculation
+/// @brief returns singleton S2Cap that tolerates precision errors
 ////////////////////////////////////////////////////////////////////////////////
 inline S2Cap fromPoint(S2Point const& origin) {
-  return S2Cap(origin, S1Angle::Radians(geo::kRadEps));
+  return S2Cap(origin, S1Angle::Radians(SIGNLETON_CAP_EPS));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
