@@ -746,6 +746,7 @@ void ClusterInfo::loadPlan() {
   std::set<std::string> buildingDatabases;
   decltype(_plannedCollections) newCollections;
   decltype(_shards) newShards;
+  decltype(_shardIds) newShardIds;
   decltype(_shardServers) newShardServers;
   decltype(_shardToName) newShardToName;
   decltype(_dbAnalyzersRevision) newDbAnalyzersRevision;
@@ -763,6 +764,7 @@ void ClusterInfo::loadPlan() {
     newShards = _shards;
     newShardServers = _shardServers;
     newShardToName = _shardToName;
+    newShardIds = _shardIds;
     newDbAnalyzersRevision = _dbAnalyzersRevision;
     auto ende = std::chrono::steady_clock::now();
     LOG_TOPIC("feee1", TRACE, Logger::CLUSTER)
@@ -808,6 +810,7 @@ void ClusterInfo::loadPlan() {
               newShards.erase(shardName);
               newShardServers.erase(shardName);
               newShardToName.erase(shardName);
+              newShardIds.erase(shardName);
             }
           }
         }
@@ -1251,6 +1254,7 @@ void ClusterInfo::loadPlan() {
     _shards.swap(newShards);
     _shardServers.swap(newShardServers);
     _shardToName.swap(newShardToName);
+    _shardIds.swap(newShardIds);
   }
 
   if (swapViews) {
@@ -1371,22 +1375,6 @@ void ClusterInfo::loadCurrent() {
 
 
     if (!databaseSlice.hasKey(dbPath)) {
-      std::shared_ptr<VPackBuilder> current;
-      {
-        READ_LOCKER(guard, _currentProt.lock);
-        current = newCurrent.at(databaseName);
-      }
-      std::vector<std::string> colPath{AgencyCommHelper::path(), "Current", "Collections", databaseName};
-      LOG_DEVEL << current->toJson();
-      if (current->slice()[0].hasKey(colPath)) {
-        for (auto const& col : VPackObjectIterator(current->slice()[0].get(colPath))) {
-          for (auto const& shard : VPackObjectIterator(col.value)) {
-            LOG_DEVEL << shard.key.stringView();
-            auto const& shardName = shard.key.copyString();
-            newShardIds.erase(shardName);
-          }
-        }
-      }
       newDatabases.erase(databaseName);
       newCurrent.erase(databaseName);
       swapDatabases = true;
