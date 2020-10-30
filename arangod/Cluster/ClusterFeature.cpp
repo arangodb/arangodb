@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -670,7 +670,7 @@ void ClusterFeature::stop() {
     ServerState::instance()->logoff(10.0);
   }
 
-  // make sure ClusterInfo's syncer threads have stopped.
+  // Make sure ClusterInfo's syncer threads have stopped.
   _clusterInfo->waitForSyncersToStop();
 
   AsyncAgencyCommManager::INSTANCE->setStopping(true);
@@ -713,7 +713,7 @@ void ClusterFeature::shutdownHeartbeatThread() {
   size_t counter = 0;
   while (_heartbeatThread->isRunning()) {
     if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
-      LOG_TOPIC("b5a8d", FATAL, Logger::CLUSTER)
+      LOG_TOPIC("d8a5b", FATAL, Logger::CLUSTER)
         << "exiting prematurely as we failed terminating the heartbeat thread";
       FATAL_ERROR_EXIT();
     }
@@ -725,7 +725,6 @@ void ClusterFeature::shutdownHeartbeatThread() {
   }
 }
 
-
 void ClusterFeature::shutdownAgencyCache() {
   if (_agencyCache == nullptr) {
     return;
@@ -735,7 +734,7 @@ void ClusterFeature::shutdownAgencyCache() {
   size_t counter = 0;
   while (_agencyCache != nullptr && _agencyCache->isRunning()) {
     if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
-      LOG_TOPIC("d8a5b", FATAL, Logger::CLUSTER)
+      LOG_TOPIC("b5a8d", FATAL, Logger::CLUSTER)
         << "exiting prematurely as we failed terminating the agency cache";
       FATAL_ERROR_EXIT();
     }
@@ -746,7 +745,6 @@ void ClusterFeature::shutdownAgencyCache() {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 }
-
 
 void ClusterFeature::notify() {
   if (_heartbeatThread != nullptr) {
