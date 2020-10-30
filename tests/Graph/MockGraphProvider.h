@@ -62,12 +62,22 @@ class MockGraphProvider {
       // key. Although it is a trivial wrapper around a size_t...
       VertexType data() const { return _vertex; }
 
-     private:
-      VertexType _vertex;
-
       // TODO: Check, fix or cleanup
       // Make the set work on the VertexRef attribute only
-      bool operator<(Vertex const& other) const noexcept;
+      bool operator<(Vertex const& other) const noexcept {
+        if (_vertex < other._vertex) return -1;
+        if (_vertex > other._vertex) return 1;
+        return 0;
+      }
+
+      bool operator>(Vertex const& other) const noexcept {
+        if (_vertex > other._vertex) return -1;
+        if (_vertex < other._vertex) return 1;
+        return 0;
+      }
+
+     private:
+      VertexType _vertex;
     };
 
     class Edge {
@@ -90,7 +100,11 @@ class MockGraphProvider {
     size_t getPrevious() { return previous; }
 
     // TODO: remove me - Make the set work on the Vertex attribute only
-    bool operator<(Step const& other) const noexcept;
+    bool operator<(Step const& other) const noexcept {
+      if (vertex < other.vertex) return -1;
+      if (vertex > other.vertex) return 1;
+      return 0;
+    }
   };
 
   MockGraphProvider(MockGraph const& data);
