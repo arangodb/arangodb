@@ -1056,7 +1056,7 @@ void ClusterInfo::loadPlan() {
       auto it = newCollections.find(databaseName);
       if (it != newCollections.end()) {
         for (auto const& collection : *(it->second)) {
-          auto collectionId = collection.first;
+          auto& collectionId = collection.first;
           newShards.erase(collectionId); // delete from maps with shardID as key
           newShardToName.erase(collectionId);
         }
@@ -4809,6 +4809,10 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 
 std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(CollectionID const& collectionID) {
   int tries = 0;
+  TRI_IF_FAILURE("ClusterInfo::failedToGetShardList") {
+    // Simulate 3 failed tries below.
+    return std::make_shared<std::vector<ShardID>>();
+  }
   while (true) {
     {
       // Get the sharding keys and the number of shards:
