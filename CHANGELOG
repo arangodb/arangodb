@@ -1,5 +1,6 @@
 devel
 -----
+* Fixed BTS-233 issue: Fixed invalid IndexId comparator.
 
 * Fixed very spurious errors if the `holdReadLockCollection` replication API for
   the getting-in-sync procedure of shards was called during server shutdown.
