@@ -38,7 +38,7 @@ class TwoSidedEnumerator {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:
-  TwoSidedEnumerator();
+  TwoSidedEnumerator(ProviderType&& provider);
 
   ~TwoSidedEnumerator();
 
@@ -89,6 +89,9 @@ class TwoSidedEnumerator {
   bool skipPath();
 
  private:
+  QueueType _queue;
+  PathStoreType _pathStore;
+  ProviderType _provider;
 };
 }  // namespace graph
 }  // namespace arangodb

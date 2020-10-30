@@ -48,12 +48,11 @@ namespace tests {
 namespace graph {
 
 class KPathFinderTest_Refactored : public ::testing::Test {
-
-  using KPathFinder = TwoSidedEnumerator<FifoQueue<MockGraphProvider::Step>, PathStore<MockGraphProvider::Step>, MockGraphProvider>;
+  using KPathFinder =
+      TwoSidedEnumerator<FifoQueue<MockGraphProvider::Step>, PathStore<MockGraphProvider::Step>, MockGraphProvider>;
 
  protected:
-   MockGraph mockGraph;
-   std::unique_ptr<MockGraphProvider> p{nullptr};
+  MockGraph mockGraph;
 
   std::unique_ptr<KPathFinder> _finder;
 
@@ -92,13 +91,11 @@ class KPathFinderTest_Refactored : public ::testing::Test {
     mockGraph.addEdge(32, 33);
     mockGraph.addEdge(33, 31);
     mockGraph.addEdge(32, 34);
-
-    p = std::make_unique<MockGraphProvider>(mockGraph);
   }
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder& {
     // TODO minDepth, maxDepth
-    _finder = std::make_unique<KPathFinder>();
+    _finder = std::make_unique<KPathFinder>(MockGraphProvider(mockGraph));
     return *_finder;
   }
 
@@ -180,7 +177,7 @@ TEST_F(KPathFinderTest_Refactored, no_path_exists) {
   // No path between those
   auto source = vId(91);
   auto target = vId(99);
-  auto& finder = pathFinder(1,1);
+  auto& finder = pathFinder(1, 1);
   finder.reset(toHashedStringRef(source), toHashedStringRef(target));
 
   EXPECT_FALSE(finder.isDone());
@@ -331,7 +328,7 @@ TEST_F(KPathFinderTest_Refactored, path_depth_3) {
 TEST_F(KPathFinderTest_Refactored, path_diamond) {
   VPackBuilder result;
   // Search 0 depth
-auto& finder = pathFinder(2, 2);
+  auto& finder = pathFinder(2, 2);
 
   // Source and target are direkt neighbors, there is only one path between them
   auto source = vId(5);
@@ -377,7 +374,7 @@ auto& finder = pathFinder(2, 2);
 
 TEST_F(KPathFinderTest_Refactored, path_depth_1_to_2) {
   VPackBuilder result;
-auto& finder = pathFinder(1, 2);
+  auto& finder = pathFinder(1, 2);
 
   // Source and target are direkt neighbors, there is only one path between them
   auto source = vId(10);
@@ -456,7 +453,6 @@ TEST_F(KPathFinderTest_Refactored, path_depth_2_to_3) {
     EXPECT_TRUE(finder.isDone());
   }
 }
-
 
 TEST_F(KPathFinderTest_Refactored, path_loop) {
   VPackBuilder result;

@@ -51,6 +51,10 @@ class MockGraphProvider {
     VertexType vertex;
     size_t previous;
 
+    size_t getPrevious() {
+      return previous;
+    }
+
   };
 
   MockGraphProvider(MockGraph const& data);

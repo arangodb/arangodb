@@ -24,7 +24,11 @@
 #include "./MockGraphProvider.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.cpp"
 #include "Graph/PathManagement/PathStore.h"
+#include "Graph/PathManagement/PathStore.cpp"
 #include "Graph/Queues/FifoQueue.h"
+
+template class
+::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::FifoQueue<::arangodb::tests::graph::MockGraphProvider::Step>,

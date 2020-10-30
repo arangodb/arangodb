@@ -31,13 +31,22 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 template <class QueueType, class PathStoreType, class ProviderType>
-TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::TwoSidedEnumerator() {}
+TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::TwoSidedEnumerator(ProviderType&& provider)
+    : _provider(std::move(provider)) {
+
+}
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::~TwoSidedEnumerator() {}
 
 template <class QueueType, class PathStoreType, class ProviderType>
-void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::clear() {}
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::clear() {
+  // Cases:
+  // - Needs to clear Queue?
+  // - Needs to clear Store?
+  // - Needs to clear Provider?
+  // - Needs to clear itself?
+}
 
 /**
  * @brief Quick test if the finder can prove there is no more data available.
@@ -47,6 +56,11 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::clear() {}
  */
 template <class QueueType, class PathStoreType, class ProviderType>
 bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::isDone() const {
+  // Cases:
+  // - Provider does not have more data
+  // - PathStore does not return / save any additional Paths
+  // - Queue does not contain any looseEnds anymore (?)
+  // - OR: Just local algorithm check?
   return true;
 }
 
@@ -61,7 +75,8 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::isDone() const 
  * @param target The target vertex to end the paths
  */
 template <class QueueType, class PathStoreType, class ProviderType>
-void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::reset(VertexRef source, VertexRef target) {}
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::reset(VertexRef source,
+                                                                       VertexRef target) {}
 
 /**
  * @brief Get the next path, if available written into the result build.
@@ -77,7 +92,8 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::reset(VertexRef
  * @return false No path found, result has not been changed.
  */
 template <class QueueType, class PathStoreType, class ProviderType>
-bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::getNextPath(arangodb::velocypack::Builder& result) {
+bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::getNextPath(
+    arangodb::velocypack::Builder& result) {
   return false;
 }
 
