@@ -2466,33 +2466,6 @@ AqlValue Functions::CharLength(ExpressionContext* ctx, AstNode const&,
   return AqlValue(AqlValueHintUInt(length));
 }
 
-/// @brief function NORMALIZE_UTF8
-AqlValue Functions::NormalizeUtf8(ExpressionContext* ctx, AstNode const&,
-                                  VPackFunctionParameters const& parameters) {
-  transaction::Methods* trx = &ctx->trx();
-  auto* vopts = &trx->vpackOptions();
-  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
-  size_t outlength;
-  
-  ::appendAsString(vopts, adapter, value);
-  
-  auto dest = TRI_normalize_utf8_to_NFC(buffer->c_str(), buffer->length(), &outlength);
-  if (dest == nullptr) {
-    return AqlValue(AqlValueHintNull());
-  }
-  try {
-    auto ret = AqlValue(dest, outlength);
-    TRI_Free(dest);
-    return ret;
-  } catch (...) {
-    TRI_Free(dest);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }  
-}
-
 /// @brief function LOWER
 AqlValue Functions::Lower(ExpressionContext* ctx, AstNode const&,
                           VPackFunctionParameters const& parameters) {
@@ -8219,3 +8192,4 @@ AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
   registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
   return AqlValue(AqlValueHintNull());
 }
+
