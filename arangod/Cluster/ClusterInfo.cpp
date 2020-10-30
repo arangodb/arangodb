@@ -1056,7 +1056,7 @@ void ClusterInfo::loadPlan() {
       auto it = newCollections.find(databaseName);
       if (it != newCollections.end()) {
         for (auto const& collection : *(it->second)) {
-          auto collectionId = collection.first;
+          auto& collectionId = collection.first;
           newShards.erase(collectionId); // delete from maps with shardID as key
           newShardToName.erase(collectionId);
         }
