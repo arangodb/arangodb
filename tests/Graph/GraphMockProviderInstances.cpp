@@ -21,7 +21,12 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Graph/Enumerators/TwoSidedEnumerator.cpp"
 #include "./MockGraphProvider.h"
+#include "Graph/Enumerators/TwoSidedEnumerator.cpp"
+#include "Graph/PathManagement/PathStore.h"
+#include "Graph/Queues/FifoQueue.h"
 
-template class ::arangodb::graph::TwoSidedEnumerator<::arangodb::graph::FifoQueue<::arangodb::tests::graph::MockGraphProvider::Step>, ::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>, ::arangodb::tests::graph::MockGraphProvider>;
+template class ::arangodb::graph::TwoSidedEnumerator<
+    ::arangodb::graph::FifoQueue<::arangodb::tests::graph::MockGraphProvider::Step>,
+    ::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>,
+    ::arangodb::tests::graph::MockGraphProvider>;
