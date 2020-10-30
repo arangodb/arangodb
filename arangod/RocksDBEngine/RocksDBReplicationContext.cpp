@@ -94,6 +94,7 @@ RocksDBReplicationContext::RocksDBReplicationContext(double ttl, SyncerId syncer
       _isDeleted{false},
       _users{1} {
   TRI_ASSERT(_ttl > 0.0);
+  TRI_ASSERT(_patchCount.empty());
 }
 
 RocksDBReplicationContext::~RocksDBReplicationContext() {
@@ -199,7 +200,8 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
     // only DBServers require a corrected document count
     const double to = ServerState::instance()->isDBServer() ? 10.0 : 1.0;
     auto lockGuard = scopeGuard([rcoll] { rcoll->unlockWrite(); });
-    if (rcoll->lockWrite(to) == TRI_ERROR_NO_ERROR) {
+    if (!_patchCount.empty() && _patchCount == cname &&
+        rcoll->lockWrite(to) == TRI_ERROR_NO_ERROR) {
       // fetch number docs and snapshot under exclusive lock
       // this should enable us to correct the count later
       isNumberDocsExclusive = true;
@@ -212,6 +214,7 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
     numberDocuments = rcoll->meta().numberDocuments();
   }
   TRI_ASSERT(_snapshot != nullptr);
+  TRI_ASSERT(!isNumberDocsExclusive || (!_patchCount.empty() && _patchCount == cname));
 
   auto iter = std::make_unique<CollectionIterator>(vocbase, logical, true, _snapshot);
   auto result = _iterators.try_emplace(cid, std::move(iter));
@@ -272,6 +275,19 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
   vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
 
   return Result();
+}
+  
+void RocksDBReplicationContext::setPatchCount(std::string const& patchCount) {
+  // _patchCount can only be set once in a context, and if it is set, it should be non-empty.
+  // in addition, it should be set before we acquire the snapshot
+  TRI_ASSERT(_snapshot == nullptr);
+  TRI_ASSERT(!patchCount.empty());
+  TRI_ASSERT(_patchCount.empty());
+  _patchCount = patchCount;
+}
+
+std::string const& RocksDBReplicationContext::patchCount() const {
+  return _patchCount;
 }
 
 // iterates over at most 'limit' documents in the collection specified,

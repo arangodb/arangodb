@@ -60,50 +60,57 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl,
   }
 
   QueryId qId = query->id();
+
+  TRI_IF_FAILURE("QueryRegistryInsertException1") { 
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
   // create the query info object outside of the lock
   auto p = std::make_unique<QueryInfo>(std::move(query), ttl, std::move(guard));
   TRI_ASSERT(p->_expires != 0);
 
-  // now insert into table of running queries
-  {
-    WRITE_LOCKER(writeLocker, _lock);
-    if (_disallowInserts) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-    }
+  TRI_IF_FAILURE("QueryRegistryInsertException2") { 
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
-    try {
-      for (auto& pair : p->_query->snippets()) {
-        if (pair.first != 0) { // skip the root snippet
-          auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), p.get()));
-          TRI_ASSERT(result.second);
-          TRI_ASSERT(result.first->second._type == EngineType::Execution);
-          p->_numEngines++;
-        }
-      }
-      for (auto& pair : p->_query->traversers()) {
+  // now insert into table of running queries
+  WRITE_LOCKER(writeLocker, _lock);
+  if (_disallowInserts) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+
+  try {
+    for (auto& pair : p->_query->snippets()) {
+      if (pair.first != 0) { // skip the root snippet
         auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), p.get()));
         TRI_ASSERT(result.second);
-        TRI_ASSERT(result.first->second._type == EngineType::Graph);
+        TRI_ASSERT(result.first->second._type == EngineType::Execution);
         p->_numEngines++;
       }
-
-      auto result = _queries[vocbase.name()].try_emplace(qId, std::move(p));
-      if (!result.second) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL, "query with given vocbase and id already there");
-      }
-    
-    } catch (...) {
-      // revert engine registration
-      for (auto& pair : p->_query->snippets()) {
-        _engines.erase(pair.first);
-      }
-      for (auto& pair : p->_query->traversers()) {
-        _engines.erase(pair.first);
-      }
-      // no need to revert last insert
-      throw;
     }
+    for (auto& pair : p->_query->traversers()) {
+      auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), p.get()));
+      TRI_ASSERT(result.second);
+      TRI_ASSERT(result.first->second._type == EngineType::Graph);
+      p->_numEngines++;
+    }
+
+    auto result = _queries[vocbase.name()].try_emplace(qId, std::move(p));
+    if (!result.second) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "query with given vocbase and id already there");
+    }
+  
+  } catch (...) {
+    // revert engine registration
+    for (auto& pair : p->_query->snippets()) {
+      _engines.erase(pair.first);
+    }
+    for (auto& pair : p->_query->traversers()) {
+      _engines.erase(pair.first);
+    }
+    // no need to revert last insert
+    throw;
   }
 }
 
