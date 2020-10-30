@@ -25,8 +25,8 @@
 
 #include "shared.hpp"
 
-NS_ROOT
-NS_BEGIN(util)
+namespace iresearch {
+namespace util {
 
 struct noncopyable {
   noncopyable() = default;
@@ -38,7 +38,7 @@ struct noncopyable {
   noncopyable& operator= (const noncopyable&) = delete;
 };
 
-NS_END
-NS_END
+}
+}
 
 #endif

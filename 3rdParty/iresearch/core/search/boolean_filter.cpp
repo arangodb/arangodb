@@ -29,7 +29,7 @@
 #include "min_match_disjunction.hpp"
 #include "exclusion.hpp"
 
-NS_LOCAL
+namespace {
 
 // first - pointer to the innermost not "not" node
 // second - collapsed negation mark
@@ -133,9 +133,9 @@ irs::doc_iterator::ptr make_conjunction(
   );
 }
 
-NS_END // LOCAL
+} // LOCAL
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class boolean_query
@@ -682,4 +682,4 @@ bool Not::equals(const irs::filter& rhs) const noexcept {
        || (empty() && typed_rhs.empty()));
 }
 
-NS_END // ROOT
+} // ROOT

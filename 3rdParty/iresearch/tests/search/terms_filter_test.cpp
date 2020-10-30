@@ -26,7 +26,7 @@
 #include "search/boost_sort.hpp"
 #include "search/terms_filter.hpp"
 
-NS_LOCAL
+namespace {
 
 irs::by_terms make_filter(
     const irs::string_ref& field,
@@ -41,7 +41,7 @@ irs::by_terms make_filter(
   return q;
 }
 
-NS_END
+}
 
 TEST(by_terms_test, options) {
   irs::by_terms_options opts;

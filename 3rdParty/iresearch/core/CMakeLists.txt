@@ -228,7 +228,6 @@ set(IResearch_core_headers
   ./utils/compression.hpp
   ./utils/lz4compression.hpp
   ./utils/file_utils.hpp
-  ./utils/fst_utils.hpp
   ./utils/fstext/fst_builder.hpp
   ./utils/fstext/fst_decl.hpp
   ./utils/fstext/fst_table_matcher.hpp
