@@ -327,7 +327,6 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
   }
 
   logEmplaceBackNoLock(log_t(idx, term, buf, clientId, millis));
-  _log_size += byteSize;
 
   return _log.back().index;
 }
