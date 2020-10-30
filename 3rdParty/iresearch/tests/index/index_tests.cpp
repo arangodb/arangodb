@@ -35,13 +35,9 @@
 #include "utils/wildcard_utils.hpp"
 #include "utils/fstext/fst_table_matcher.hpp"
 
-NS_BEGIN(tests)
+namespace tests {
 
 struct incompatible_attribute : irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept {
-    return "tests::incompatible_attribute";
-  }
-
   incompatible_attribute() noexcept;
 };
 
@@ -49,7 +45,7 @@ REGISTER_ATTRIBUTE(incompatible_attribute);
 
 incompatible_attribute::incompatible_attribute() noexcept { }
 
-NS_BEGIN(templates)
+namespace templates {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                               token_stream_payload implemntation
@@ -237,7 +233,7 @@ void europarl_doc_template::reset() {
   idval_ = 0;
 }
 
-NS_END // templates
+} // templates
 
 void generic_json_field_factory(
     tests::document& doc,
@@ -365,7 +361,7 @@ irs::format::ptr index_test_base::get_codec() const {
   return irs::formats::get(info.codec, info.module);
 }
 
-NS_END // tests
+} // tests
 
 class index_test_case : public tests::index_test_base {
  public:
@@ -13622,14 +13618,14 @@ INSTANTIATE_TEST_CASE_P(
 );
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
-NS_LOCAL
+namespace {
 #if defined(IRESEARCH_SSE2)
 const auto index_test_case_12_values = ::testing::Values(tests::format_info{"1_2", "1_0"},
                                                          tests::format_info{"1_2simd", "1_0"});
 #else
 const auto index_test_case_12_values = ::testing::Values(tests::format_info{"1_2", "1_0"});
 #endif
-NS_END
+}
 
 INSTANTIATE_TEST_CASE_P(
   index_test_12,
@@ -13646,14 +13642,14 @@ INSTANTIATE_TEST_CASE_P(
 );
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
-NS_LOCAL
+namespace {
 #if defined(IRESEARCH_SSE2)
 const auto index_test_case_13_values = ::testing::Values(tests::format_info{"1_3", "1_0"},
                                                          tests::format_info{"1_3simd", "1_0"});
 #else
 const auto index_test_case_13_values = ::testing::Values(tests::format_info{"1_3", "1_0"});
 #endif
-NS_END
+}
 
 INSTANTIATE_TEST_CASE_P(
   index_test_13,
@@ -13665,6 +13661,30 @@ INSTANTIATE_TEST_CASE_P(
       &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
     ),
     index_test_case_13_values
+  ),
+  tests::to_string
+);
+
+// Separate definition as MSVC parser fails to do conditional defines in macro expansion
+namespace {
+#if defined(IRESEARCH_SSE2)
+const auto index_test_case_14_values = ::testing::Values(tests::format_info{"1_4", "1_0"},
+                                                         tests::format_info{"1_4simd", "1_0"});
+#else
+const auto index_test_case_13_values = ::testing::Values(tests::format_info{"1_4", "1_0"});
+#endif
+}
+
+INSTANTIATE_TEST_CASE_P(
+  index_test_14,
+  index_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      tests::memory_directory,
+      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
+      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
+    ),
+    index_test_case_14_values
   ),
   tests::to_string
 );
@@ -14449,7 +14469,7 @@ TEST_P(index_test_case_11, commit_payload) {
 }
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
-NS_LOCAL
+namespace {
 #ifdef IRESEARCH_SSE2
 const auto index_test_case_11_values = ::testing::Values(tests::format_info{"1_1", "1_0"},
                                                          tests::format_info{"1_2", "1_0"},
@@ -14458,7 +14478,7 @@ const auto index_test_case_11_values = ::testing::Values(tests::format_info{"1_1
 const auto index_test_case_11_values = ::testing::Values(tests::format_info{"1_1", "1_0"},
                                                          tests::format_info{"1_2", "1_0"});
 #endif
-NS_END
+}
 
 INSTANTIATE_TEST_CASE_P(
   index_test_11,

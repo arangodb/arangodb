@@ -27,8 +27,8 @@
 #include "utils/attributes.hpp"
 #include "utils/log.hpp"
 
-NS_ROOT
-NS_BEGIN(directory_utils)
+namespace iresearch {
+namespace directory_utils {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                           memory_allocator utils
@@ -248,7 +248,7 @@ directory_cleaner::removal_acceptor_t remove_except_current_segments(
   return std::bind(acceptor, std::placeholders::_1, std::move(retain));
 }
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                tracking_directory
@@ -494,4 +494,4 @@ bool ref_tracking_directory::visit_refs(
   return true;
 }
 
-NS_END
+}

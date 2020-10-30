@@ -7119,5 +7119,4 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
   assertFilterFail(
     vocbase(),
     "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, RAND() ? 'identity' : 'test_analyzer') RETURN d");
-
 }

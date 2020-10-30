@@ -27,7 +27,7 @@
 
 #include <memory>
 
-NS_ROOT
+namespace iresearch {
 
 class IRESEARCH_API result {
  public:
@@ -104,7 +104,7 @@ class IRESEARCH_API result {
   std::unique_ptr<char[]> state_;
 }; // result
 
-NS_END
+}
 
 #endif // IRESEARCH_STATUS_H
 

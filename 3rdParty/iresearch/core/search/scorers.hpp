@@ -27,7 +27,7 @@
 #include "sort.hpp"
 #include "utils/text_format.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               scorer registration
@@ -104,6 +104,6 @@ class IRESEARCH_API scorers {
   scorers() = delete;
 };
 
-NS_END
+}
 
 #endif
