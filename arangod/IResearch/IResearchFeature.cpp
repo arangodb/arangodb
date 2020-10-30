@@ -615,8 +615,7 @@ void IResearchLogTopic::log_appender(void* context, const char* function, const 
                                      irs::logger::level_t level, const char* message,
                                      size_t message_len) {
   auto const arangoLevel = static_cast<arangodb::LogLevel>(level + 1);
-  std::string msg = LIBIRESEARCH.displayName();
-  msg.append(message, message_len);
+  std::string msg(message, message_len); 
   arangodb::Logger::log("9afd3", function, file, line, arangoLevel, LIBIRESEARCH.id(), msg);
 }
 
