@@ -1645,7 +1645,7 @@ void Agent::rebuildDBs() {
   _commitIndex = lastCompactionIndex;
   _waitForCV.broadcast();
 
-  auto commitIndex = _commitIndex.load(std::memory_order_relaxed)
+  auto commitIndex = _commitIndex.load(std::memory_order_relaxed);
   // Apply logs from last applied index to leader's commit index
   LOG_TOPIC("b12cb", DEBUG, Logger::AGENCY)
       << "Rebuilding key-value stores from index " << lastCompactionIndex
