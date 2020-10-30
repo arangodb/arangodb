@@ -198,6 +198,7 @@ set(ARANGODB_TESTS_SOURCES
   Graph/GenericGraphProviderTest.cpp
   Graph/GraphTestTools.cpp
   Graph/KPathFinderTest.cpp
+  Graph/KPathFinderTest_Refactored.cpp
   Graph/KShortestPathsFinder.cpp
   Graph/MockGraphProvider.cpp
   Graph/PathStoreTest.cpp
