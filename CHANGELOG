@@ -1,6 +1,9 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Views on SmartGraph Edge collections do not contain some documents
+  twice.
+
 * Added arangobench options:
   `--create-database` to create the test database on start
 	`--duration` to run test for a duration rather than a defined count

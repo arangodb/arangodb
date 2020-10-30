@@ -333,11 +333,17 @@ class ClusterMethods {
       std::shared_ptr<LogicalCollection> const& colPtr);
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Enterprise Relecant code to filter out hidden collections
-  ///        that should ne be triggered directly by operations.
+  /// @brief Enterprise Relevant code to filter out hidden collections
+  ///        that should not be triggered directly by operations.
   ////////////////////////////////////////////////////////////////////////////////
 
   static bool filterHiddenCollections(LogicalCollection const& c);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Enterprise Relevant code to filter out hidden collections
+  ///        that should not be included in links
+  ////////////////////////////////////////////////////////////////////////////////
+  static bool includeHiddenCollectionInLink(std::string const& name);
 
  private:
   ////////////////////////////////////////////////////////////////////////////////
