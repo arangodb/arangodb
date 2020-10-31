@@ -1,5 +1,5 @@
-v3.7.3 (XXXX-XX-XX)
--------------------
+v3.7.3.1 (XXXX-XX-XX)
+---------------------
 
 * Fix a memory leak because cluster internal connections were not cleaned up for
   agency communication.
