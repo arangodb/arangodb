@@ -27,7 +27,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Rest/GeneralRequest.h"
-#include "RestHandler/RestBaseHandler.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
