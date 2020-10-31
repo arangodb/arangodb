@@ -1,6 +1,9 @@
 v3.6.9 (XXXX-XX-XX)
 -------------------
 
+* Fixed potential deadlock in cluster transactions if a transaction is
+  returned that was soft-aborted by transaction garbage collection before.
+
 * Bug-fix: Allow to unlink a view created on a SmartGraphEdge collection.
 
 * Fixed an ownership issue which could lead to undefined behavior in case an AQL
