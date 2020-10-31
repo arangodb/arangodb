@@ -28,6 +28,7 @@
 #include "StatisticsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CpuUsageFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Basics/ConditionLocker.h"
@@ -946,6 +947,18 @@ std::map<std::string, std::vector<std::string>> statStrings{
   {"physicalSize",
    {"arangodb_server_statistics_physical_memory", "gauge",
     "Physical memory in bytes"}},
+  {"userPercent",
+   {"arangodb_server_statistics_user_percent", "gauge",
+    "Percentage of time that the system CPUs have spent in user mode"}},
+  {"systemPercent",
+   {"arangodb_server_statistics_system_percent", "gauge",
+    "Percentage of time that the system CPUs have spent in kernel mode"}},
+  {"idlePercent",
+   {"arangodb_server_statistics_idle_percent", "gauge",
+    "Percentage of time that the system CPUs have been idle"}},
+  {"iowaitPercent",
+   {"arangodb_server_statistics_iowait_percent", "gauge",
+    "Percentage of time that the system CPUs have been waiting for I/O"}},
   {"v8ContextAvailable",
    {"arangodb_v8_context_alive", "gauge",
     "Number of V8 contexts currently alive"}},
@@ -1001,6 +1014,16 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
   appendMetric(result, std::to_string(info._virtualSize), "virtualSize");
   appendMetric(result, std::to_string(PhysicalMemory::getValue()), "physicalSize");
   appendMetric(result, std::to_string(serverInfo.uptime()), "uptime");
+
+  CpuUsageFeature& cpuUsage =
+      _vocbase.server().getFeature<CpuUsageFeature>();
+  if (cpuUsage.isEnabled()) {
+    auto snapshot = cpuUsage.snapshot();
+    appendMetric(result, std::to_string(snapshot.userPercent()), "userPercent");
+    appendMetric(result, std::to_string(snapshot.systemPercent()), "systemPercent");
+    appendMetric(result, std::to_string(snapshot.idlePercent()), "idlePercent");
+    appendMetric(result, std::to_string(snapshot.iowaitPercent()), "iowaitPercent");
+  }
 
   // _clientStatistics()
   appendMetric(result, std::to_string(connectionStats.httpConnections.get()), "clientHttpConnections");
