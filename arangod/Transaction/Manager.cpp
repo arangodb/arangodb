@@ -533,7 +533,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
 }
 
 void Manager::returnManagedTrx(TRI_voc_tid_t tid) noexcept {
-  bool isSoftAborted;
+  bool isSoftAborted = false;
 
   {
     const size_t bucket = getBucket(tid);
@@ -556,6 +556,15 @@ void Manager::returnManagedTrx(TRI_voc_tid_t tid) noexcept {
     }
     
     it->second.rwlock.unlock();
+  }
+  
+  // it is important that we release the write lock for the bucket here,
+  // because abortManagedTrx will call statusChangeWithTimeout, which will
+  // call updateTransaction, which then will try to acquire the same 
+  // write lock
+  
+  TRI_IF_FAILURE("returnManagedTrxForceSoftAbort") {
+    isSoftAborted = true;
   }
 
   if (isSoftAborted) {
