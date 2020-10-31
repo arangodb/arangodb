@@ -11,6 +11,9 @@ devel
   - `arangodb_server_statistics_iowait_percent`: Percentage of time that 
     the system CPUs have been waiting for I/O
 
+  These metrics resemble the overall CPU usage metrics in `top`.
+  They are available on Linux only.
+
 * Fixed BTS-233 issue: Fixed invalid IndexId comparator.
 
 * Fixed handling of failedLeaderJob. In case of a plan modification, that
