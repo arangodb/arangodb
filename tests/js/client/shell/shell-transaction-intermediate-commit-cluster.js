@@ -30,6 +30,7 @@ let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
+let errors = arangodb.errors;
 const request = require('@arangodb/request');
 
 function getEndpointById(id) {
@@ -158,6 +159,52 @@ function transactionIntermediateCommitsSingleSuite() {
     tearDown: function () {
       getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
       db._drop(cn);
+    },
+    
+    testSoftAbort: function () {
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      let shards = db._collection(cn).shards(true);
+      let shardId = Object.keys(shards)[0];
+      let leader = getEndpointById(shards[shardId][0]);
+      let follower = getEndpointById(shards[shardId][1]);
+      debugSetFailAt(leader, "returnManagedTrxForceSoftAbort");
+      debugSetFailAt(follower, "returnManagedTrxForceSoftAbort");
+      
+      let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_count");
+      let intermediateCommitsBefore = getMetric(follower, "arangodb_intermediate_commits");
+
+      const opts = {
+        collections: {
+          write: [cn]
+        },
+        intermediateCommitCount: 1000,
+        options: { intermediateCommitCount: 1000 }
+      };
+      
+      const trx = db._createTransaction(opts);
+      const tc = trx.collection(cn);
+      // the transaction will be soft-aborted after this call on the server
+      let res = tc.insert({ _key: "test" });
+      assertEqual("test", res._key);
+      try {
+        tc.insert({});
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_TRANSACTION_NOT_FOUND.code);
+      }
+
+      assertEqual(0, c.count());
+      res = trx.abort();
+      assertEqual("aborted", res.status);
+
+      assertEqual(0, c.count());
+      // follower must not have been dropped
+      let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_count");
+      assertEqual(droppedFollowersBefore, droppedFollowersAfter);
+      
+      let intermediateCommitsAfter = getMetric(follower, "arangodb_intermediate_commits");
+      assertEqual(intermediateCommitsBefore, intermediateCommitsAfter);
+      assertInSync(leader, follower, shardId);
     },
     
     // make follower execute intermediate commits (before the leader), but let the
@@ -326,6 +373,9 @@ function transactionIntermediateCommitsSingleSuite() {
       // turn on intermediate commits on follower
       debugClearFailAt(follower, "noIntermediateCommits");
       
+      let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_count");
+      let intermediateCommitsBefore = getMetric(follower, "arangodb_intermediate_commits");
+      
       const opts = {
         collections: {
           write: [cn]
@@ -333,9 +383,6 @@ function transactionIntermediateCommitsSingleSuite() {
         intermediateCommitCount: 1000,
         options: { intermediateCommitCount: 1000 }
       };
-      
-      let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_count");
-      let intermediateCommitsBefore = getMetric(follower, "arangodb_intermediate_commits");
       
       const trx = db._createTransaction(opts);
       const tc = trx.collection(cn);

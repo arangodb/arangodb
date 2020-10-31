@@ -617,8 +617,12 @@ void Manager::returnManagedTrx(TransactionId tid) noexcept {
     
     it->second.rwlock.unlock();
   }
+  
+  TRI_IF_FAILURE("returnManagedTrxForceSoftAbort") {
+    isSoftAborted = true;
+  }
 
-  // it is imporant that we release the write lock for the bucket here,
+  // it is important that we release the write lock for the bucket here,
   // because abortManagedTrx will call statusChangeWithTimeout, which will
   // call updateTransaction, which then will try to acquire the same 
   // write lock
