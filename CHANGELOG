@@ -1,5 +1,6 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
+
 * Fixed BTS-233 issue: Fixed invalid IndexId comparator.
 
 * Agency cache clears change history. This keeps the change history, introduced
