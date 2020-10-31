@@ -111,6 +111,10 @@ CpuUsageSnapshot CpuUsageFeature::snapshot() {
   // expect a minimum size
   if (nread < 32 || memcmp(&buffer[0], "cpu ", 4) != 0) {
     // invalid data read. return whatever we had before
+    {
+      MUTEX_LOCKER(guard, _snapshotMutex);
+      _updateInProgress = false;
+    }
     return last;
   }
 
