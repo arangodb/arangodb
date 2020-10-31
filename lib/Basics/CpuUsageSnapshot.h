@@ -24,6 +24,7 @@
 #ifndef ARANGODB_CPU_USAGE_SNAPSHOT_H
 #define ARANGODB_CPU_USAGE_SNAPSHOT_H 1
 
+#include <cstddef>
 #include <cstdint>
 
 namespace arangodb {
