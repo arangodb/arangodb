@@ -288,23 +288,22 @@ RestStatus RestStatusHandler::executeOverview() {
 
 RestStatus RestStatusHandler::executeMemoryProfile() {
 #if defined(USE_MEMORY_PROFILE)
-  bool found;
-  std::string outDirectory = _request->value("directory", found);
-
-  if (!found) {
-    outDirectory = TRI_GetTempPath();
-  }
-
+  std::string const outDirectory = TRI_GetTempPath();
   std::string const fileName = FileUtils::buildFilename(outDirectory, "profile.out");
   char const* f = fileName.c_str();
-  mallctl("prof.dump", NULL, NULL, &f, sizeof(const char *));
-  std::string const content = FileUtils::slurp(fileName);
-  TRI_UnlinkFile(f);
+  try {
+    mallctl("prof.dump", NULL, NULL, &f, sizeof(const char *));
+    std::string const content = FileUtils::slurp(fileName);
+    TRI_UnlinkFile(f);
 
-  resetResponse(rest::ResponseCode::OK);
+    resetResponse(rest::ResponseCode::OK);
 
-  _response->setContentType(rest::ContentType::TEXT);
-  _response->addRawPayload(velocypack::StringRef(content));
+    _response->setContentType(rest::ContentType::TEXT);
+    _response->addRawPayload(velocypack::StringRef(content));
+  } catch (...) {
+    TRI_UnlinkFile(f);
+    throw;
+  }
 
 #endif
   return RestStatus::DONE;
