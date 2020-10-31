@@ -4,6 +4,8 @@ v3.7.3 (XXXX-XX-XX)
 * Fix a memory leak because cluster internal connections were not cleaned up for
   agency communication.
 
+* Added compile option USE_JEMALLOC_PROF to enable memory profiling.
+
 
 v3.7.3 (2020-10-14)
 -------------------
@@ -321,8 +323,6 @@ v3.7.3 (2020-10-14)
 
 * Fixed issue BTS-169: cost estimation for LIMIT nodes showed wrong number of
   estimated items.
-
-* Added compile option USE_JEMALLOC_PROF to enable memory profiling
 
 
 v3.7.2.2 (2020-10-07)
