@@ -286,21 +286,28 @@ RestStatus RestStatusHandler::executeOverview() {
 
 RestStatus RestStatusHandler::executeMemoryProfile() {
 #if defined(USE_MEMORY_PROFILE)
-  std::string const outDirectory = TRI_GetTempPath();
-  std::string const fileName = FileUtils::buildFilename(outDirectory, "profile.out");
-  char const* f = fileName.c_str();
-  try {
-    mallctl("prof.dump", NULL, NULL, &f, sizeof(const char *));
-    std::string const content = FileUtils::slurp(fileName);
-    TRI_UnlinkFile(f);
+  long err;
+  std::string filename;
+  std::string msg;
+  int res = TRI_GetTempName(nullptr, filename, true, err, msg);
 
-    resetResponse(rest::ResponseCode::OK);
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(rest::ResponseCode::INTERNAL_ERROR, res, msg);
+  } else {
+    char const* f = fileName.c_str();
+    try {
+      mallctl("prof.dump", NULL, NULL, &f, sizeof(const char *));
+      std::string const content = FileUtils::slurp(fileName);
+      TRI_UnlinkFile(f);
 
-    _response->setContentType(rest::ContentType::TEXT);
-    _response->addRawPayload(velocypack::StringRef(content));
-  } catch (...) {
-    TRI_UnlinkFile(f);
-    throw;
+      resetResponse(rest::ResponseCode::OK);
+
+      _response->setContentType(rest::ContentType::TEXT);
+      _response->addRawPayload(velocypack::StringRef(content));
+    } catch (...) {
+      TRI_UnlinkFile(f);
+      throw;
+    }
   }
 #else
   generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
