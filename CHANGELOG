@@ -1,8 +1,12 @@
-v3.7.3 (2020-10-14)
+v3.7.3 (XXXX-XX-XX)
 -------------------
 
-* Fix a memory leak because cluster internal connections were not cleaned
-  up for agency communication.
+* Fix a memory leak because cluster internal connections were not cleaned up for
+  agency communication.
+
+
+v3.7.3 (2020-10-14)
+-------------------
 
 * Added the following metrics for synchronous replication in the cluster:
 
