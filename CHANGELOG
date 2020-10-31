@@ -3,6 +3,8 @@ v3.6.9 (XXXX-XX-XX)
 
 * Fixed potential deadlock in cluster transactions if a transaction is
   returned that was soft-aborted by transaction garbage collection before.
+  This deadlock should rarely ever occur in practice, as it can only be 
+  triggered once during the server shutdown sequence.
 
 * Bug-fix: Allow to unlink a view created on a SmartGraphEdge collection.
 
