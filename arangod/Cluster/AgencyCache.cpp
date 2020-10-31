@@ -333,7 +333,11 @@ void AgencyCache::run() {
                     TRI_ASSERT(rs.get("log").isArray());
                     LOG_TOPIC("4579e", TRACE, Logger::CLUSTER) <<
                       "Applying to cache " << rs.get("log").toJson();
+                    std::unordered_set<std::string> pc;  // Plan changes
+                    std::unordered_set<std::string> cc;  // Current changes
                     for (auto const& i : VPackArrayIterator(rs.get("log"))) {
+                      pc.clear();
+                      cc.clear();
                       {
                         std::lock_guard g(_storeLock);
                         _readDB.applyTransaction(i); // apply logs
@@ -569,6 +573,14 @@ void AgencyCache::invokeAllCallbacks() const {
   invokeCallbacks(toCall);
 }
 
+
+void AgencyCache::clearChanged(std::string const& what, consensus::index_t const& done) {
+  std::shared_lock g(_storeLock);
+  decltype(_planChanges)& changes = (what == PLAN) ? _planChanges : _currentChanges;
+  if (changes.size() > 0) {
+    changes.erase(changes.begin(), changes.upper_bound(done));
+  }
+}
 
 AgencyCache::change_set_t AgencyCache::changedSince(
   std::string const& what, consensus::index_t const& last) const {

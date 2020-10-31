@@ -147,6 +147,9 @@ class RocksDBReplicationContext {
                       bool includeFoxxQueues, bool global,
                       velocypack::Builder&);
 
+  void setPatchCount(std::string const& patchCount);
+  std::string const& patchCount() const;
+
   // ========================= Dump API =============================
 
   struct DumpResult {
@@ -235,6 +238,12 @@ class RocksDBReplicationContext {
   SyncerId const _syncerId;
   ServerId const _clientId;
   std::string const _clientInfo;
+
+  /// @brief collection for which we are allowed to patch counts. this can
+  /// be empty, meaning that the counts should not be patched for any collection.
+  /// if this is set to the name of any collection/shard, it is expected that the
+  /// context will only be used for exactly one collection/shard.
+  std::string _patchCount;
 
   uint64_t _snapshotTick;  // tick in WAL from _snapshot
   rocksdb::Snapshot const* _snapshot;
