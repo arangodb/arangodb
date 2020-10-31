@@ -75,10 +75,8 @@ RestStatus RestStatusHandler::execute() {
 
   if (_request->parsedValue("overview", false)) {
     return executeOverview();
-#ifdef USE_MEMORY_PROFILE
   } else if (_request->parsedValue("memory", false)) {
     return executeMemoryProfile();
-#endif
   } else {
     return executeStandard(security);
   }
@@ -304,7 +302,10 @@ RestStatus RestStatusHandler::executeMemoryProfile() {
     TRI_UnlinkFile(f);
     throw;
   }
-
+#else
+  generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+		"memory profiles not enabled at compile time");
 #endif
+
   return RestStatus::DONE;
 }
