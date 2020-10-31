@@ -1,6 +1,8 @@
 v3.6.9 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-233 issue: Fixed invalid IndexId comparator.
+
 * If a collection (or database) is dropped during the instantiation of an AQL
   query, the setup code now aborts with an ERROR_QUERY_COLLECTION_LOCK_FAILED
   and earlier.
