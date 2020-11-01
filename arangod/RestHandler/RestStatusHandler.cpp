@@ -75,10 +75,8 @@ RestStatus RestStatusHandler::execute() {
 
   if (_request->parsedValue("overview", false)) {
     return executeOverview();
-#ifdef USE_MEMORY_PROFILE
   } else if (_request->parsedValue("memory", false)) {
     return executeMemoryProfile();
-#endif
   } else {
     return executeStandard(security);
   }
@@ -290,24 +288,33 @@ RestStatus RestStatusHandler::executeOverview() {
 
 RestStatus RestStatusHandler::executeMemoryProfile() {
 #if defined(USE_MEMORY_PROFILE)
-  bool found;
-  std::string outDirectory = _request->value("directory", found);
+  long err;
+  std::string filename;
+  std::string msg;
+  int res = TRI_GetTempName(nullptr, filename, true, err, msg);
 
-  if (!found) {
-    outDirectory = TRI_GetTempPath();
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(rest::ResponseCode::INTERNAL_ERROR, res, msg);
+  } else {
+    char const* f = fileName.c_str();
+    try {
+      mallctl("prof.dump", NULL, NULL, &f, sizeof(const char *));
+      std::string const content = FileUtils::slurp(fileName);
+      TRI_UnlinkFile(f);
+
+      resetResponse(rest::ResponseCode::OK);
+
+      _response->setContentType(rest::ContentType::TEXT);
+      _response->addRawPayload(velocypack::StringRef(content));
+    } catch (...) {
+      TRI_UnlinkFile(f);
+      throw;
+    }
   }
-
-  std::string const fileName = FileUtils::buildFilename(outDirectory, "profile.out");
-  char const* f = fileName.c_str();
-  mallctl("prof.dump", NULL, NULL, &f, sizeof(const char *));
-  std::string const content = FileUtils::slurp(fileName);
-  TRI_UnlinkFile(f);
-
-  resetResponse(rest::ResponseCode::OK);
-
-  _response->setContentType(rest::ContentType::TEXT);
-  _response->addRawPayload(velocypack::StringRef(content));
-
+#else
+  generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+		"memory profiles not enabled at compile time");
 #endif
+
   return RestStatus::DONE;
 }
