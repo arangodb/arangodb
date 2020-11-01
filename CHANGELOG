@@ -1,4 +1,4 @@
-v3.7.3.1 (XXXX-XX-XX)
+v3.7.3.1 (2020-11-01)
 ---------------------
 
 * Fix a memory leak because cluster internal connections were not cleaned up for
