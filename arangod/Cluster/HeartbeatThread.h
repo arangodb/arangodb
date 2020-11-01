@@ -29,8 +29,8 @@
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
+#include "Basics/Thread.h"
 #include "Cluster/AgencyCallback.h"
-#include "Cluster/CriticalThread.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "RestServer/MetricsFeature.h"
 
@@ -56,7 +56,7 @@ struct AgencyVersions {
 class AgencyCallbackRegistry;
 class HeartbeatBackgroundJobThread;
 
-class HeartbeatThread : public CriticalThread,
+class HeartbeatThread : public arangodb::Thread,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
   HeartbeatThread(application_features::ApplicationServer&, AgencyCallbackRegistry*,
