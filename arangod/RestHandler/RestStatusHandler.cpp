@@ -27,6 +27,11 @@
 #include <unistd.h>
 #endif
 
+#if defined(USE_MEMORY_PROFILE)
+#include <jemalloc/jemalloc.h>
+#include <velocypack/StringRef.h>
+#endif
+
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -35,6 +40,8 @@
 #include "Agency/Agent.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/files.h"
+#include "Basics/FileUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
@@ -68,6 +75,8 @@ RestStatus RestStatusHandler::execute() {
 
   if (_request->parsedValue("overview", false)) {
     return executeOverview();
+  } else if (_request->parsedValue("memory", false)) {
+    return executeMemoryProfile();
   } else {
     return executeStandard(security);
   }
@@ -272,5 +281,38 @@ RestStatus RestStatusHandler::executeOverview() {
 
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
+  return RestStatus::DONE;
+}
+
+RestStatus RestStatusHandler::executeMemoryProfile() {
+#if defined(USE_MEMORY_PROFILE)
+  long err;
+  std::string filename;
+  std::string msg;
+  int res = TRI_GetTempName(nullptr, filename, true, err, msg);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(rest::ResponseCode::INTERNAL_ERROR, res, msg);
+  } else {
+    char const* f = fileName.c_str();
+    try {
+      mallctl("prof.dump", NULL, NULL, &f, sizeof(const char *));
+      std::string const content = FileUtils::slurp(fileName);
+      TRI_UnlinkFile(f);
+
+      resetResponse(rest::ResponseCode::OK);
+
+      _response->setContentType(rest::ContentType::TEXT);
+      _response->addRawPayload(velocypack::StringRef(content));
+    } catch (...) {
+      TRI_UnlinkFile(f);
+      throw;
+    }
+  }
+#else
+  generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+		"memory profiles not enabled at compile time");
+#endif
+
   return RestStatus::DONE;
 }
