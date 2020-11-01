@@ -1,3 +1,10 @@
+v3.7.6 (XXXX-XX-XX)
+-------------------
+
+* Reduce the number of dropped followers when running larger (>= 128 MB)
+  write transactions.
+
+
 v3.7.5 (XXXX-XX-XX)
 -------------------
 

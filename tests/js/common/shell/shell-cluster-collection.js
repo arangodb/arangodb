@@ -303,8 +303,8 @@ function ClusterCollectionSuite () {
 
       try {
         db._collection("UnitTestsClusterCrud").properties({
-          replicationFactor: 3,
-          minReplicationFactor: 3
+          replicationFactor: 5,
+          minReplicationFactor: 5
         });
         fail();
       } catch (err) {
