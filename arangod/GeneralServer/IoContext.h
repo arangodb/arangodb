@@ -28,6 +28,8 @@
 #include "Basics/Thread.h"
 #include "Basics/asio_ns.h"
 
+#include <atomic>
+
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;

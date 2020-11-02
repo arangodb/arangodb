@@ -429,13 +429,18 @@ irs::filter::prepared::ptr prepareOpenInterval(
     : std::forward_as_tuple(range.max, range.max_type);
 
   S2Cap bound;
-  bool incl;
+  // the actual initialization value does not matter. the proper
+  // value for incl will be set below. the initialization is here
+  // just to please the compiler, which may otherwise warn about
+  // uninitialized values
+  bool incl = false;
 
   if (dist < 0.) {
     bound = greater ? S2Cap::Full() : S2Cap::Empty();
   } else if (0. == dist) {
     switch (type) {
       case irs::BoundType::UNBOUNDED:
+        incl = false;
         TRI_ASSERT(false);
         break;
       case irs::BoundType::INCLUSIVE:

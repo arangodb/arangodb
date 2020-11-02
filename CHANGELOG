@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fixed potential deadlock in cluster transactions if a transaction is
+  returned that was soft-aborted by transaction garbage collection before.
+  This deadlock should rarely ever occur in practice, as it can only be 
+  triggered once during the server shutdown sequence.
+
 * Added support of `GEO_DISTANCE`, `GEO_CONTAINS`, `GEO_INTERSECTS`,
   `GEO_IN_RANGE` to ArangoSearch.
 
