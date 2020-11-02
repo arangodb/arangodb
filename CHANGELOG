@@ -160,7 +160,6 @@ devel
   any of these attributes produces an error when using the RocksDB engine
   may need adjustment now.
 
-
 * Added the following metrics for synchronous replication in the cluster:
 
   - `arangodb_refused_followers_count`: Number of times a shard leader received

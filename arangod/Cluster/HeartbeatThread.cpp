@@ -981,8 +981,8 @@ void HeartbeatThread::runSingleServer() {
           << "got an unknown exception in single server heartbeat";
     }
     // Periodically prune the connection pool
-    if (++_DBServerUpdateCounter >= 60) {
-      _DBServerUpdateCounter = 0;
+    if (++_updateCounter >= 60) {
+      _updateCounter = 0;
       auto& clusterFeature = server().getFeature<ClusterFeature>();
       clusterFeature.pruneAsyncAgencyConnectionPool();
     }
