@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fixed issue #12778: fails validation if additionalProperties: false
+* Fixed issue #12778: fails validation if additionalProperties: false.
 
 * Fixed BTS-233 issue: Fixed invalid IndexId comparator.
 
