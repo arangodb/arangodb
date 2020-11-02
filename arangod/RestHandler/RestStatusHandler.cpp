@@ -27,6 +27,11 @@
 #include <unistd.h>
 #endif
 
+#if defined(USE_MEMORY_PROFILE)
+#include <jemalloc/jemalloc.h>
+#include <velocypack/StringRef.h>
+#endif
+
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -35,6 +40,8 @@
 #include "Agency/Agent.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/files.h"
+#include "Basics/FileUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
@@ -68,6 +75,10 @@ RestStatus RestStatusHandler::execute() {
 
   if (_request->parsedValue("overview", false)) {
     return executeOverview();
+#ifdef USE_MEMORY_PROFILE
+  } else if (_request->parsedValue("memory", false)) {
+    return executeMemoryProfile();
+#endif
   } else {
     return executeStandard(security);
   }
@@ -272,5 +283,29 @@ RestStatus RestStatusHandler::executeOverview() {
 
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
+  return RestStatus::DONE;
+}
+
+RestStatus RestStatusHandler::executeMemoryProfile() {
+#if defined(USE_MEMORY_PROFILE)
+  bool found;
+  std::string outDirectory = _request->value("directory", found);
+
+  if (!found) {
+    outDirectory = TRI_GetTempPath();
+  }
+
+  std::string const fileName = FileUtils::buildFilename(outDirectory, "profile.out");
+  char const* f = fileName.c_str();
+  mallctl("prof.dump", NULL, NULL, &f, sizeof(const char *));
+  std::string const content = FileUtils::slurp(fileName);
+  TRI_UnlinkFile(f);
+
+  resetResponse(rest::ResponseCode::OK);
+
+  _response->setContentType(rest::ContentType::TEXT);
+  _response->addRawPayload(velocypack::StringRef(content));
+
+#endif
   return RestStatus::DONE;
 }

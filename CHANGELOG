@@ -1,5 +1,11 @@
 devel
 -----
+
+* Fix a memory leak because cluster internal connections were not cleaned
+  up for agency communication.
+
+* Added compile option USE_JEMALLOC_PROF to enable memory profiling.
+
 * Fixed BTS-233 issue: Fixed invalid IndexId comparator.
 
 * Fixed handling of failedLeaderJob. In case of a plan modification, that
@@ -2019,7 +2025,6 @@ devel
 
   Like for the existing variant the `overwrite` flag has to be set to true.
   Then the update version can be selected by setting the `overwriteMode` to `"update"`.
-
 
 * Updated ArangoDB Starter to 0.14.13.
 
