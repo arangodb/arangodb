@@ -1039,7 +1039,6 @@ EvalResult Prim_DictExtract(Machine& ctx, VPackSlice const paramsList, VPackBuil
         return EvalError("expected string, found: " + key.toJson());
       }
 
-      return EvalError(obj.toJson());
       VPackSlice value = obj.get(key.stringRef());
       if (value.isNone()) {
         if constexpr (ignoreMissing) {

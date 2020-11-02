@@ -2028,3 +2028,43 @@ TEST_CASE("Test [quasi-quote] primitive", "[quasi-quote]") {
     REQUIRE(result.slice().toJson() == R"=([["foo"],[1,2],1,2])=");
   }
 }
+
+TEST_CASE("Test [rand] primitive", "[rand]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("rand") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["rand"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().isNumber<double>());
+    REQUIRE(result.slice().getDouble() <= 1.0);
+    REQUIRE(result.slice().getDouble() >= 0.0);
+  }
+}
+
+TEST_CASE("Test [rand-range] primitive", "[rand-range]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("rand-range") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["rand-range", 5, 9]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().isNumber<double>());
+    REQUIRE(result.slice().getDouble() <= 9.0);
+    REQUIRE(result.slice().getDouble() >= 5.0);
+  }
+}
