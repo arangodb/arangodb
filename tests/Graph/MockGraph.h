@@ -42,6 +42,10 @@ class MockGraph {
     std::string _from;
     std::string _to;
     double _weight;
+
+    std::string toString() const {
+      return "<EdgeDef>(_from: " + _from + ", to: " + _to + ")";
+    }
   };
 
  public:
