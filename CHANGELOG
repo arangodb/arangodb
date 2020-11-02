@@ -1,6 +1,9 @@
 v3.6.9 (XXXX-XX-XX)
 -------------------
 
+* Added missing exceptions catch clause for some parts of supervision and
+  heartbeat threads.
+
 * Optimization of empty append entries.
 
 * Fixed BTS-233 issue: Fixed invalid IndexId comparator.
