@@ -28,6 +28,7 @@
 // Used for StringUtils size_t variant
 #include "Basics/operating-system.h"
 
+#include "../Mocks/Servers.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
@@ -54,10 +55,13 @@ class KPathFinderTest_Refactored : public ::testing::Test {
 
  protected:
   MockGraph mockGraph;
+  mocks::MockAqlServer _server{true};
 
   std::unique_ptr<KPathFinder> _finder;
 
   KPathFinderTest_Refactored() {
+    Logger::GRAPHS.setLogLevel(LogLevel::TRACE);
+
     /* a chain 1->2->3->4 */
     mockGraph.addEdge(1, 2);
     mockGraph.addEdge(2, 3);
@@ -96,7 +100,8 @@ class KPathFinderTest_Refactored : public ::testing::Test {
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder& {
     // TODO minDepth, maxDepth
-    _finder = std::make_unique<KPathFinder>(MockGraphProvider(mockGraph, false), MockGraphProvider(mockGraph, true));
+    _finder = std::make_unique<KPathFinder>(MockGraphProvider(mockGraph, false),
+                                            MockGraphProvider(mockGraph, true));
     return *_finder;
   }
 

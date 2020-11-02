@@ -78,6 +78,7 @@ class FifoQueue {
   Step pop() {
     TRI_ASSERT(!isEmpty());
     Step first = std::move(_queue.front());
+    LOG_TOPIC("78156", TRACE, Logger::GRAPHS) << "<FifoQueue> Pop: " << first.toString();
     _queue.pop_front();
     return std::move(first);
   };

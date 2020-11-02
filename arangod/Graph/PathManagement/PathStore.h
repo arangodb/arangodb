@@ -59,13 +59,6 @@ class PathStore {
   /// @brief schreier vector to store the visited vertices
   std::vector<Step> _schreier;
 
-  /// @brief Next free index in schreier vector.
-  size_t _schreierIndex;
-
-  /// @brief Position of the last returned value in the schreier vector
-  // needed to build up our AQL results // TODO: check
-  size_t _lastReturned;
-
   // @brief Method to verify whether path is needed
   bool testPath(Step);
 

@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PathStore.h"
+#include <Logger/LogMacros.h>
+#include <Logger/Logger.h>
 
 using namespace arangodb;
 
@@ -34,37 +36,30 @@ class AqlValue;
 namespace graph {
 
 template <class Step>
-PathStore<Step>::PathStore() : _schreierIndex(0), _lastReturned(0) {
+PathStore<Step>::PathStore() {
   // performance optimization: just reserve a little more as per default
+  LOG_TOPIC("78156", TRACE, Logger::GRAPHS) << "<PathStore> Initialization.";
   _schreier.reserve(32);
 }
 
 template <class Step>
 void PathStore<Step>::reset() {
-  _schreier.clear();
-  _schreierIndex = 0;
-  _lastReturned = 0;
-}
-
-template <class Step>
-void PathStore<Step>::setStartVertex(Step startVertex) {
-  reset();
-  _schreier.emplace_back(startVertex);
-}
+  LOG_TOPIC("78156", TRACE, Logger::GRAPHS) << "<PathStore> Resetting.";
+  _schreier.clear();}
 
 template <class Step>
 size_t PathStore<Step>::append(Step step) {
-  TRI_ASSERT(size() > 0);
-  TRI_ASSERT(step.getPrevious() >= 0);
-  TRI_ASSERT(step.getPrevious() >= _schreierIndex);
-  _schreier.emplace_back(step);
-  _schreierIndex++;
+  LOG_TOPIC("78156", TRACE, Logger::GRAPHS) << "<PathStore> Adding step: " << step.toString();
 
-  return _schreierIndex;
+  auto idx = _schreier.size();
+  _schreier.emplace_back(step);
+
+  return idx;
 }
 
 template <class Step>
 bool PathStore<Step>::testPath(Step step) {
+  LOG_TOPIC("78156", TRACE, Logger::GRAPHS) << "<PathStore> Testing path:";
   // TODO: needs to be implemented
   return true;
 }

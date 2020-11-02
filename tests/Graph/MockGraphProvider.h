@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+tests/Graph/QueueTest.cpp////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2020-2020 ArangoDB GmbH, Cologne, Germany
@@ -23,6 +23,7 @@
 #define TESTS_MOCK_GRAPH_PROVIDER_H
 
 #include <numeric>
+#include <ostream>
 #include <unordered_map>
 #include <vector>
 
@@ -87,6 +88,10 @@ class MockGraphProvider {
       Edge(EdgeType e) : _edge(e){};
       void addToBuilder(arangodb::velocypack::Builder& builder) const;
 
+      std::string toString() const {
+        return "Edge - _from: " + _edge._from + ", _to: " + _edge._to;
+      }
+
      private:
       EdgeType _edge;
     };
@@ -106,6 +111,17 @@ class MockGraphProvider {
       if (vertex < other.vertex) return -1;
       if (vertex > other.vertex) return 1;
       return 0;
+    }
+
+    std::string toString() const {
+      if (edge.has_value()) {
+        return "<Step><Vertex>: " + vertex.data().toString() +
+               ", <Edge>:" + edge.value().toString() +
+               ", previous: " + basics::StringUtils::itoa(previous);
+      } else {
+        return "<Step><Vertex>: " + vertex.data().toString() +
+               ", previous: " + basics::StringUtils::itoa(previous);
+      }
     }
 
     bool isProcessable() const { return true; }

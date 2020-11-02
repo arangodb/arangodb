@@ -40,6 +40,7 @@ using namespace arangodb::graph;
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::Ball(Direction dir, ProviderType&& provider)
     : _provider(std::move(provider)), _direction(dir) {
+  // _interior.setStartVertex(_queue.pop()); // TODO Discuss
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>

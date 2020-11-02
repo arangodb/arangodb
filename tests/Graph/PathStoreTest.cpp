@@ -25,6 +25,9 @@
 
 #include "Graph/PathManagement/PathStore.cpp"
 
+#include <Basics/StringUtils.h>
+#include <ostream>
+
 using namespace arangodb;
 using namespace arangodb::graph;
 
@@ -45,7 +48,7 @@ class Step {
     _weight = weight;
     _previous = previous;
     _isLooseEnd = isLooseEnd;  // TODO: needed here?
-    _isFirst = isFirst; // TODO: I don't like that - std::variant e.g.?
+    _isFirst = isFirst;        // TODO: I don't like that - std::variant e.g.?
   };
 
   ~Step() = default;
@@ -53,6 +56,11 @@ class Step {
   Step(Step const& other) = default;
   Step& operator=(Step const& other) = delete;
   bool operator==(Step const& other) { return _id == other._id; }
+  std::string toString() const {
+    return "<Step> _id: " + basics::StringUtils::itoa(_id) +
+           ", _weight: " + basics::StringUtils::ftoa(_weight) +
+           ", _previous: " + basics::StringUtils::itoa(_previous);
+  }
 
   bool isProcessable() { return _isLooseEnd ? false : true; }
   size_t getPrevious() { return _previous; }
@@ -66,60 +74,52 @@ class PathStoreTest : public ::testing::Test {
 
 TEST_F(PathStoreTest, it_should_be_empty_if_new_path_store_is_initialized) {
   auto ps = PathStore<Step>();
-  ASSERT_EQ(ps._schreierIndex, 0);
   ASSERT_EQ(ps.size(), 0);
 }
 
 TEST_F(PathStoreTest, it_should_be_able_to_set_startVertex) {
   auto ps = PathStore<Step>();
-  ASSERT_EQ(ps._schreierIndex, 0);
   ASSERT_EQ(ps.size(), 0);
-  ps.setStartVertex({0, 1, 0, false, true});
-  ASSERT_EQ(ps._schreierIndex, 0);
+  std::ignore = ps.append({0, 1, 0, false, true});
   ASSERT_EQ(ps.size(), 1);
 }
 
 TEST_F(PathStoreTest, it_should_be_able_to_clear) {
   auto ps = PathStore<Step>();
-  ps.setStartVertex({0, 1, 0, false, true});
 
-  size_t lastIndex = ps._schreierIndex;
+  size_t lastIndex = std::numeric_limits<size_t>::max();
+  lastIndex = ps.append({0, 1, lastIndex, false, false});
   lastIndex = ps.append({1, 1, lastIndex, false, false});
   lastIndex = ps.append({2, 1, lastIndex, false, false});
   lastIndex = ps.append({3, 1, lastIndex, false, false});
   lastIndex = ps.append({4, 1, lastIndex, false, false});
   ASSERT_EQ(ps.size(), 5);
-  ASSERT_NE(ps._schreierIndex, 0);
   ps.reset();
   ASSERT_EQ(ps.size(), 0);
-  ASSERT_EQ(ps._schreierIndex, 0);
 }
 
-TEST_F(PathStoreTest, it_should_be_able_to_set_new_startVertex_and_auto_clear) {
+TEST_F(PathStoreTest, it_should_be_able_to_append_on_empty_clear_and_reappend) {
   auto ps = PathStore<Step>();
-  ps.setStartVertex({0, 1, 0, false, true});
 
-  size_t lastIndex = ps._schreierIndex;
+  size_t lastIndex = std::numeric_limits<size_t>::max();
+  lastIndex = ps.append({0, 1, lastIndex, false, false});
   lastIndex = ps.append({1, 1, lastIndex, false, false});
   lastIndex = ps.append({2, 1, lastIndex, false, false});
   lastIndex = ps.append({3, 1, lastIndex, false, false});
   lastIndex = ps.append({4, 1, lastIndex, false, false});
   ASSERT_EQ(ps.size(), 5);
-  ASSERT_NE(ps._schreierIndex, 0);
+  ps.reset();
 
-  ps.setStartVertex({0, 1, 0, false, true});
+  lastIndex = ps.append({0, 1, lastIndex, false, false});
   ASSERT_EQ(ps.size(), 1);
-  ASSERT_EQ(ps._schreierIndex, 0);
 }
 
 TEST_F(PathStoreTest, it_should_not_be_empty_if_values_will_be_inserted) {
   auto ps = PathStore<Step>();
 
-  size_t lastIndex = ps._schreierIndex;
+  size_t lastIndex = std::numeric_limits<size_t>::max();
+  lastIndex = ps.append({0, 1, lastIndex, false, false});
   ASSERT_EQ(lastIndex, 0);
-
-  ps.setStartVertex({0, 1, lastIndex, false, true});
-  ASSERT_EQ(ps._schreierIndex, 0);
 
   lastIndex = ps.append({1, 1, lastIndex, false, false});
   ASSERT_EQ(lastIndex, 1);

@@ -21,6 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Basics/StringUtils.h>
 #include <Logger/LogMacros.h>
 #include "gtest/gtest.h"
 
@@ -53,6 +54,10 @@ class Step {
 
   bool isProcessable() const { return _isLooseEnd ? false : true; }
   size_t id() const { return _id; }
+  std::string toString() {
+    return "<Step> _id: " + basics::StringUtils::itoa(static_cast<int32_t>(_id)) +
+           ", _weight: " + basics::StringUtils::ftoa(_weight); // TODO: Add isLooseEnd
+  }
 };
 
 class QueueTest : public ::testing::Test {
