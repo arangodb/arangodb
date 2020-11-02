@@ -433,7 +433,10 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
       LOG_TOPIC("b0b19", DEBUG, Logger::AGENCY)
           << "Finished empty AppendEntriesRPC from " << leaderId
           << " with term " << term;
-      _commitIndex = std::max(_commitIndex.load(std::memory_order_relaxed), std::min(leaderCommitIndex, lastIndex));
+      {
+        WRITE_LOCKER(oLocker, _outputLock);
+        _commitIndex = std::max(_commitIndex.load(std::memory_order_relaxed), std::min(leaderCommitIndex, lastIndex));
+      }
       return priv_rpc_ret_t(true, t);
     } else {
       return priv_rpc_ret_t(false, t);
