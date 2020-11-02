@@ -533,26 +533,39 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
 }
 
 void Manager::returnManagedTrx(TRI_voc_tid_t tid) noexcept {
-  const size_t bucket = getBucket(tid);
-  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+  bool isSoftAborted = false;
 
-  auto it = _transactions[bucket]._managed.find(tid);
-  if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user)) {
-    LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS)
-        << "managed transaction was not found";
-    TRI_ASSERT(false);
-    return;
-  }
+  {
+    const size_t bucket = getBucket(tid);
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
-  TRI_ASSERT(it->second.state != nullptr);
+    auto it = _transactions[bucket]._managed.find(tid);
+    if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user)) {
+      LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS)
+          << "managed transaction was not found";
+      TRI_ASSERT(false);
+      return;
+    }
 
-  // garbageCollection might soft abort used transactions
-  const bool isSoftAborted = it->second.expiryTime == 0;
-  if (!isSoftAborted) {
-    it->second.updateExpiry();
+    TRI_ASSERT(it->second.state != nullptr);
+
+    // garbageCollection might soft abort used transactions
+    isSoftAborted = it->second.expiryTime == 0;
+    if (!isSoftAborted) {
+      it->second.updateExpiry();
+    }
+    
+    it->second.rwlock.unlock();
   }
   
-  it->second.rwlock.unlock();
+  // it is important that we release the write lock for the bucket here,
+  // because abortManagedTrx will call statusChangeWithTimeout, which will
+  // call updateTransaction, which then will try to acquire the same 
+  // write lock
+  
+  TRI_IF_FAILURE("returnManagedTrxForceSoftAbort") {
+    isSoftAborted = true;
+  }
 
   if (isSoftAborted) {
     abortManagedTrx(tid);
