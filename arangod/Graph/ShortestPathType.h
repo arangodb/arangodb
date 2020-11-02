@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,38 +16,31 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FST_UTILS_H
-#define IRESEARCH_FST_UTILS_H
+#ifndef ARANGOD_GRAPH_SHORTEST_PATH_TYPE_H
+#define ARANGOD_GRAPH_SHORTEST_PATH_TYPE_H 1
 
-#include "store/data_output.hpp"
-#include "store/data_input.hpp"
+namespace arangodb {
+namespace graph {
 
-#include "utils/noncopyable.hpp"
+struct ShortestPathType {
+  enum class Type { KShortestPaths = 0, KPaths = 1 };
 
-#include "fstext/fst_decl.hpp"
-#include "fstext/fst_string_weight.h"
+  // no need to create an object of it
+  ShortestPathType() = delete;
 
-NS_ROOT
+  /// @brief get the type from a string
+  static Type fromString(char const* value);
 
-struct byte_weight_output : data_output, private util::noncopyable {
-  virtual void close() override {}
+  /// @brief return the type as a string
+  static char const* toString(Type value);
+};
 
-  virtual void write_byte(byte_type b) override final {
-    weight.PushBack(b);
-  }
-
-  virtual void write_bytes(const byte_type* b, size_t len) override final {
-    weight.PushBack(b, b + len);
-  }
-
-  byte_weight weight;
-}; // byte_weight_output
-
-NS_END // ROOT
+}  // namespace graph
+}  // namespace arangodb
 
 #endif

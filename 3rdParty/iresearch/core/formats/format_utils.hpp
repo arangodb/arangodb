@@ -27,11 +27,11 @@
 #include "utils/string_utils.hpp"
 #include "index/field_meta.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 IRESEARCH_API void validate_footer(iresearch::index_input& in);
 
-NS_BEGIN(format_utils)
+namespace format_utils {
 
 const int32_t FORMAT_MAGIC = 0x3fd76c17;
 
@@ -71,7 +71,7 @@ inline int64_t check_footer(index_input& in, int64_t checksum) {
 
 IRESEARCH_API int64_t checksum(const index_input& in);
 
-NS_END
-NS_END
+}
+}
 
 #endif

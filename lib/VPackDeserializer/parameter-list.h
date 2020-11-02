@@ -384,20 +384,20 @@ struct parameter_list_executor<I, K, parameter_list<>, H, FullList> {
   template <typename T, typename C>
   static auto unpack(T& t, ::arangodb::velocypack::deserializer::slice_type s,
                      typename H::state_type hints, C &&) -> unpack_result {
-    if (s.length() != K) {
-
-      for (auto&& pair : ObjectIterator(s)) {
-        if (!FullList::contains_name(pair.key)) {
-          return unpack_result{deserialize_error{
-              "superfluous field in object: `" + pair.key.copyString() + "`"}};
+    if constexpr (!hints::hint_has_ignore_unknown<H>) {
+      if (s.length() != K) {
+        for (auto&& pair : ObjectIterator(s)) {
+          if (!FullList::contains_name(pair.key)) {
+            return unpack_result{deserialize_error{
+                "superfluous field in object: `" + pair.key.copyString() + "`"}};
+          }
         }
+
+        return unpack_result{deserialize_error{
+            "superfluous field in object, found " + std::to_string(s.length()) +
+            " fields, expected " + std::to_string(K) + " fields"}};
       }
-
-      return unpack_result{deserialize_error{
-          "superfluous field in object, found " + std::to_string(s.length()) +
-          " fields, expected " + std::to_string(K) + " fields"}};
     }
-
     return unpack_result{unit_type{}};
   }
 };

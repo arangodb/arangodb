@@ -46,7 +46,7 @@ class CallbackGuardTest : public ::testing::Test {
   std::function<void(void)> incrCounterA;
   std::function<void(void)> incrCounterB;
 
-  void SetUp() {
+  void SetUp() override {
     counterA = 0;
     counterB = 0;
     incrCounterA = [& counterA = this->counterA]() { ++counterA; };
@@ -156,8 +156,8 @@ class RebootTrackerTest : public ::testing::Test,
   // ApplicationServer needs to be prepared in order for the scheduler to start
   // threads.
 
-  void SetUp() { scheduler->start(); }
-  void TearDown() { scheduler->shutdown(); }
+  void SetUp() override { scheduler->start(); }
+  void TearDown() override { scheduler->shutdown(); }
 
   bool schedulerEmpty() const {
     auto stats = scheduler->queueStatistics();

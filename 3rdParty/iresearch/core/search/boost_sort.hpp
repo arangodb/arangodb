@@ -25,7 +25,7 @@
 
 #include "scorers.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 struct IRESEARCH_API boost_sort final : public sort {
   static constexpr string_ref type_name() noexcept {
@@ -41,7 +41,7 @@ struct IRESEARCH_API boost_sort final : public sort {
   virtual sort::prepared::ptr prepare() const override;
 }; // boost_sort
 
-NS_END
+}
 
 #endif // IRESEARCH_BOOST_H
 

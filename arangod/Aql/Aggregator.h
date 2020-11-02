@@ -24,6 +24,8 @@
 #ifndef ARANGOD_AQL_AGGREGATOR_H
 #define ARANGOD_AQL_AGGREGATOR_H 1
 
+#include "Aql/AqlValue.h"
+
 #include <functional>
 #include <memory>
 #include <string>
@@ -36,8 +38,6 @@ struct Options;
 
 namespace aql {
 
-struct AqlValue;
-
 struct Aggregator {
   Aggregator() = delete;
   Aggregator(Aggregator const&) = delete;
@@ -49,7 +49,12 @@ struct Aggregator {
   virtual ~Aggregator() = default;
   virtual void reset() = 0;
   virtual void reduce(AqlValue const&) = 0;
-  virtual AqlValue stealValue() = 0;
+  virtual AqlValue get() const = 0;
+  AqlValue stealValue() {
+    AqlValue r = this->get();
+    this->reset();
+    return r;
+  }
 
   /// @brief creates an aggregator from a name string
   static std::unique_ptr<Aggregator> fromTypeString(velocypack::Options const*,

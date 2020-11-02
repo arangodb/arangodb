@@ -1360,7 +1360,101 @@ function aqlUpsertReadCompleteInputSuite() {
 
   };
 };
+
+function aqlBts195Suite() {
+  return {
+    setUp: function () {
+      db._drop(collectionName);
+      db._create(collectionName, { numberOfShards: 3 });
+    },
+
+    tearDown: function () {
+      db._drop(collectionName);
+    },
     
+    testKeepNullFalseOnMain: function () {
+      let c = db._collection(collectionName);
+      c.insert({});
+
+      const query = `FOR doc IN ${collectionName} UPDATE doc WITH { sub: true, mustBeGone: null } IN ${collectionName} OPTIONS { keepNull: false, mergeObjects: true } RETURN NEW`;
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      let doc = result[0];
+      assertTrue(doc.sub);
+      assertFalse(doc.hasOwnProperty("mustBeGone"));
+     
+      // execute again - result should not change
+      result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      doc = result[0];
+      assertTrue(doc.sub);
+      assertFalse(doc.hasOwnProperty("mustBeGone"));
+    },
+    
+    testKeepNullTrueOnMain: function () {
+      let c = db._collection(collectionName);
+      c.insert({});
+
+      const query = `FOR doc IN ${collectionName} UPDATE doc WITH { sub: true, mustBeGone: null } IN ${collectionName} OPTIONS { keepNull: true, mergeObjects: true } RETURN NEW`;
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      let doc = result[0];
+      assertTrue(doc.sub);
+      assertTrue(doc.hasOwnProperty("mustBeGone"));
+      assertNull(doc.mustBeGone);
+     
+      // execute again - result should not change
+      result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      doc = result[0];
+      assertTrue(doc.sub);
+      assertTrue(doc.hasOwnProperty("mustBeGone"));
+      assertNull(doc.mustBeGone);
+    },
+
+    testKeepNullFalseOnSub: function () {
+      let c = db._collection(collectionName);
+      c.insert({});
+
+      const query = `FOR doc IN ${collectionName} UPDATE doc WITH { test: { sub: true, mustBeGone: null } } IN ${collectionName} OPTIONS { keepNull: false, mergeObjects: true } RETURN NEW`;
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      let doc = result[0];
+      assertEqual({ sub: true }, doc.test);
+      assertFalse(doc.test.hasOwnProperty("mustBeGone"));
+     
+      // execute again - result should not change
+      result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      doc = result[0];
+      assertEqual({ sub: true }, doc.test);
+      assertFalse(doc.test.hasOwnProperty("mustBeGone"));
+    },
+    
+    testKeepNullTrueOnSub: function () {
+      let c = db._collection(collectionName);
+      c.insert({});
+
+      const query = `FOR doc IN ${collectionName} UPDATE doc WITH { test: { sub: true, mustBeGone: null } } IN ${collectionName} OPTIONS { keepNull: true, mergeObjects: true } RETURN NEW`;
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      let doc = result[0];
+      assertEqual({ sub: true, mustBeGone: null }, doc.test);
+      assertTrue(doc.test.hasOwnProperty("mustBeGone"));
+      assertNull(doc.test.mustBeGone);
+     
+      // execute again - result should not change
+      result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      doc = result[0];
+      assertEqual({ sub: true, mustBeGone: null }, doc.test);
+      assertTrue(doc.test.hasOwnProperty("mustBeGone"));
+      assertNull(doc.test.mustBeGone);
+    },
+
+  };
+};
+
 jsunity.run(aqlUpdateOptionsSuite);
 jsunity.run(aqlUpdateWithOptionsSuite);
 jsunity.run(aqlUpdateWithRevOptionsSuite);
@@ -1373,4 +1467,5 @@ if (!isCluster) {
   // TODO: remove the !isCluster() once it has been made working in cluster
   jsunity.run(aqlUpsertReadCompleteInputSuite);
 }
+jsunity.run(aqlBts195Suite);
 return jsunity.done();

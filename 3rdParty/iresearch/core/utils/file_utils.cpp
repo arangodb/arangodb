@@ -54,7 +54,7 @@
 
 #endif // _WIN32
 
-NS_LOCAL
+namespace {
 
 #ifdef _WIN32
 
@@ -83,10 +83,10 @@ inline int path_stats(file_stat_t& info, const file_path_t path) {
   #endif
 }
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(file_utils)
+namespace iresearch {
+namespace file_utils {
 
 
 void file_deleter::operator()(void* f) const noexcept {
@@ -252,10 +252,10 @@ long ftell(void* fd) {
 
 
 #ifdef _WIN32
-NS_LOCAL
+namespace {
 constexpr DWORD FS_DEFERRED_DELETE_TIMEOUT = 10;
 constexpr int CREATE_FILE_TRIES = 3;
-NS_END
+}
 
 bool verify_lock_file(const file_path_t file) {
   if (!exists(file)) {
@@ -1273,5 +1273,5 @@ bool visit_directory(
   #endif
 }
 
-NS_END // file_utils
-NS_END // ROOT
+} // file_utils
+} // ROOT

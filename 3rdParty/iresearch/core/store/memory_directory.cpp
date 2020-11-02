@@ -39,7 +39,7 @@
 #include <cstring>
 #include <algorithm>
   
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class single_instance_lock
@@ -586,4 +586,4 @@ bool memory_directory::visit(const directory::visitor_f& visitor) const {
   return true;
 }
 
-NS_END
+}

@@ -27,7 +27,7 @@
 #include "search/term_query.hpp"
 #include "search/range_filter.hpp"
 
-NS_LOCAL
+namespace {
 
 irs::by_term make_filter(
     const irs::string_ref& field,
@@ -689,4 +689,4 @@ INSTANTIATE_TEST_CASE_P(
   tests::to_string
 );
 
-NS_END
+}
