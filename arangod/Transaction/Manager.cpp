@@ -428,6 +428,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
             }
           } catch (basics::Exception const& ex) {
             res.reset(ex.code(), ex.what());
+            TRI_ASSERT(res.fail());
             return false;
           }
         }
@@ -441,16 +442,26 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     }
     return true;
   };
+      
+  // downgrade exclusive locks to normal write-locks on followers. 
+  // this is done to reduce the possibility of running into deadlock locking
+  // issues on followers. note that this may make previously exclusively
+  // locked operations on the follower a bit more expensive, because only
+  // with exclusive locking we are setting the `skip_concurrency_control`
+  // option on the transaction in RocksDB. setting this option avoids
+  // locking keys and checking for conflicts, so disabling it may be 
+  // somewhat expensive. we have to evaluate this change and potentially
+  // revert. TODO
+  AccessMode::type const exclusiveLockMode = isFollowerTransactionOnDBServer
+    ? AccessMode::Type::WRITE 
+    : AccessMode::Type::EXCLUSIVE;
  
-  if (!lockCols(exclusiveCollections, AccessMode::Type::EXCLUSIVE) ||
+  if (!lockCols(exclusiveCollections, exclusiveLockMode) ||
       !lockCols(writeCollections, AccessMode::Type::WRITE) ||
       !lockCols(readCollections, AccessMode::Type::READ)) {
-    if (res.fail()) {
-      // error already set by callback function
-      return res;
-    }
-    // no error set. so it must be "data source not found"
-    return res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    TRI_ASSERT(res.fail());
+    // error already set by callback function
+    return res;
   }
   
   // start the transaction
@@ -490,6 +501,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
 
   LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS) << "created managed trx " << tid;
 
+  TRI_ASSERT(res.ok());
   return res;
 }
 

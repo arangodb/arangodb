@@ -136,7 +136,8 @@ class Manager final {
                           transaction::Options options,
                           double ttl = 0.0);
 
-  /// @brief lease the transaction, increases nesting
+  /// @brief lease the transaction, increases nesting.
+  /// note: this can return a nullptr Context during shutdown or in error cases!
   std::shared_ptr<transaction::Context> leaseManagedTrx(TransactionId tid,
                                                         AccessMode::Type mode);
   void returnManagedTrx(TransactionId) noexcept;
