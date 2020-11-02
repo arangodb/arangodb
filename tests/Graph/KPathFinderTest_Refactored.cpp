@@ -111,6 +111,7 @@ class KPathFinderTest_Refactored : public ::testing::Test {
 
   auto pathStructureValid(VPackSlice path, size_t depth) -> void {
     ASSERT_TRUE(path.isObject());
+    LOG_DEVEL << path.toJson(); // TODO: remove me
     {
       // Check Vertices
       ASSERT_TRUE(path.hasKey(StaticStrings::GraphQueryVertices));

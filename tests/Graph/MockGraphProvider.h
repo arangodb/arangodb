@@ -28,6 +28,8 @@
 #include <vector>
 
 #include "./MockGraph.h"
+#include "Basics/Exceptions.h"
+#include "Basics/voc-errors.h"
 
 #include <velocypack/HashedStringRef.h>
 
@@ -124,6 +126,15 @@ class MockGraphProvider {
       }
     }
 
+    Vertex getVertex() const { return vertex; }
+    Edge getEdge() const {
+      if (edge.has_value()) {
+        return edge.value();
+      } else {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+    }
+    bool isFirst() const { return !edge.has_value(); }
     bool isProcessable() const { return true; }
   };
 

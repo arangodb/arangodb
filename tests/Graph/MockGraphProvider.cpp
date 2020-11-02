@@ -46,16 +46,17 @@ MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e)
 MockGraphProvider::Step::~Step() {}
 
 void MockGraphProvider::Step::Vertex::addToBuilder(arangodb::velocypack::Builder& builder) const {
-  std::string key = _vertex.toString();
+  // TODO: works only if collection name stays "v/"
+  std::string id = _vertex.toString();
   builder.openObject();
-  builder.add(StaticStrings::KeyString, VPackValue(key));
-  builder.add(StaticStrings::IdString, VPackValue("v/" + key));
+  builder.add(StaticStrings::KeyString, VPackValue(id.substr(2)));
+  builder.add(StaticStrings::IdString, VPackValue(id));
   builder.close();
 }
 
 void MockGraphProvider::Step::Edge::addToBuilder(arangodb::velocypack::Builder& builder) const {
-  std::string fromId = "v/" + _edge._from;
-  std::string toId = "v/" + _edge._to;
+  std::string fromId = _edge._from;
+  std::string toId = _edge._to;
   std::string keyId = _edge._from + "->" + _edge._to;
 
   builder.openObject();
@@ -94,25 +95,20 @@ auto MockGraphProvider::fetch(std::vector<Step> const& looseEnds)
   return futures::makeFuture(std::vector<Step>{});
 }
 
-auto MockGraphProvider::expand(Step const& from, size_t previousIndex)
+auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
     -> std::vector<Step> {
   LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Expanding...";
   std::vector<Step> result{};
 
+  LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
+      << "<MockGraphProvider> Searching: " << source.vertex.data().toString();
+
   if (_reverse) {
     LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
         << "<MockGraphProvider - reverse> _toIndex size: " << _toIndex.size();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    for (auto const& to : _toIndex) {
-      LOG_TOPIC("78157", TRACE, Logger::GRAPHS) << "<toIndex> id: " << to.first;
-      for (auto const& edgeDef : to.second) {
-        LOG_TOPIC("78157", TRACE, Logger::GRAPHS) << " << " << edgeDef.toString();
-      }
-    }
-#endif
-    if (_toIndex.find(from.vertex.data().toString()) != _toIndex.end()) {
-      for (auto const& edge : _toIndex[from.vertex.data().toString()]) {
+    if (_toIndex.find(source.vertex.data().toString()) != _toIndex.end()) {
+      for (auto const& edge : _toIndex[source.vertex.data().toString()]) {
         VPackHashedStringRef fromH{edge._from.c_str(),
                                    static_cast<uint32_t>(edge._from.length())};
         result.push_back(Step{previousIndex, fromH, edge});
@@ -125,16 +121,8 @@ auto MockGraphProvider::expand(Step const& from, size_t previousIndex)
   } else {
     LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
         << "<MockGraphProvider - default> _fromIndex size: " << _fromIndex.size();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    for (auto const& from : _fromIndex) {
-      LOG_TOPIC("78157", TRACE, Logger::GRAPHS) << "<fromIndex> id: " << from.first;
-      for (auto const& edgeDef : from.second) {
-        LOG_TOPIC("78157", TRACE, Logger::GRAPHS) << " << " << edgeDef.toString();
-      }
-    }
-#endif
-    if (_fromIndex.find(from.vertex.data().toString()) != _fromIndex.end()) {
-      for (auto const& edge : _fromIndex[from.vertex.data().toString()]) {
+    if (_fromIndex.find(source.vertex.data().toString()) != _fromIndex.end()) {
+      for (auto const& edge : _fromIndex[source.vertex.data().toString()]) {
         VPackHashedStringRef toH{edge._to.c_str(),
                                  static_cast<uint32_t>(edge._to.length())};
         result.push_back(Step{previousIndex, toH, edge});

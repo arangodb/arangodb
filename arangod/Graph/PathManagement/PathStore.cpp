@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PathStore.h"
+#include "Graph/PathManagement/PathResult.h"
+
 #include <Logger/LogMacros.h>
 #include <Logger/Logger.h>
 
@@ -44,12 +46,14 @@ PathStore<Step>::PathStore() {
 
 template <class Step>
 void PathStore<Step>::reset() {
-  LOG_TOPIC("78156", TRACE, Logger::GRAPHS) << "<PathStore> Resetting.";
-  _schreier.clear();}
+  LOG_TOPIC("8f726", TRACE, Logger::GRAPHS) << "<PathStore> Resetting.";
+  _schreier.clear();
+}
 
 template <class Step>
 size_t PathStore<Step>::append(Step step) {
-  LOG_TOPIC("78156", TRACE, Logger::GRAPHS) << "<PathStore> Adding step: " << step.toString();
+  LOG_TOPIC("45bf4", TRACE, Logger::GRAPHS)
+      << "<PathStore> Adding step: " << step.toString();
 
   auto idx = _schreier.size();
   _schreier.emplace_back(step);
@@ -58,8 +62,21 @@ size_t PathStore<Step>::append(Step step) {
 }
 
 template <class Step>
+void PathStore<Step>::buildPath(Step const& vertex, PathResult<Step>& path) const {
+  Step const* myStep = &vertex;
+
+  while (!myStep->isFirst()) {
+    path.prependVertex(myStep->getVertex());
+    path.prependEdge(myStep->getEdge());
+    TRI_ASSERT(size() > myStep->getPrevious());
+    myStep = &_schreier[myStep->getPrevious()];
+  }
+  path.prependVertex(myStep->getVertex());
+}
+
+template <class Step>
 bool PathStore<Step>::testPath(Step step) {
-  LOG_TOPIC("78156", TRACE, Logger::GRAPHS) << "<PathStore> Testing path:";
+  LOG_TOPIC("2ff8d", TRACE, Logger::GRAPHS) << "<PathStore> Testing path:";
   // TODO: needs to be implemented
   return true;
 }

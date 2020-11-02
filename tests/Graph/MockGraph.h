@@ -57,8 +57,8 @@ class MockGraph {
   }
 
   void addEdge(size_t from, size_t to, double weight = 1.0) {
-    _edges.emplace_back(EdgeDef{basics::StringUtils::itoa(from),
-                                basics::StringUtils::itoa(to), weight});
+    _edges.emplace_back(EdgeDef{"v/" + basics::StringUtils::itoa(from),
+                                "v/" + basics::StringUtils::itoa(to), weight});
   }
 
   auto edges() const -> std::vector<EdgeDef> const& { return _edges; }

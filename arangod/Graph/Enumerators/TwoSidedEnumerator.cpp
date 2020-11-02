@@ -138,7 +138,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::matchResu
 template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::buildPath(
     Step const& vertexInShell, PathResult<Step>& path) -> void {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  _interior.buildPath(vertexInShell, path);
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>

@@ -41,6 +41,9 @@ class AqlValue;
 
 namespace graph {
 
+template <class Step>
+class PathResult;
+
 /*
  * Schreier element:
  * {
@@ -73,7 +76,9 @@ class PathStore {
   size_t append(Step step);
 
   // @brief returns the current vector size
-  size_t size() { return _schreier.size(); };
+  size_t size() const { return _schreier.size(); }
+
+  void buildPath(Step const& vertex, PathResult<Step>& path) const;
 
   // TODO: to be defined - section idea: methods to convenient build paths for AQL
   arangodb::aql::AqlValue lastVertexToAqlValue();

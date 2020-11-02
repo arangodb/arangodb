@@ -36,19 +36,20 @@ namespace tests {
 namespace graph_path_store_test {
 
 class Step {
+  using Vertex = size_t;
+  using Edge = size_t;
+
   size_t _id;
   double _weight;
   size_t _previous;
   bool _isLooseEnd;
-  bool _isFirst;
 
  public:
-  Step(size_t id, double weight, size_t previous, bool isLooseEnd, bool isFirst) {
+  Step(size_t id, double weight, size_t previous, bool isLooseEnd) {
     _id = id;
     _weight = weight;
     _previous = previous;
     _isLooseEnd = isLooseEnd;  // TODO: needed here?
-    _isFirst = isFirst;        // TODO: I don't like that - std::variant e.g.?
   };
 
   ~Step() = default;
@@ -62,8 +63,13 @@ class Step {
            ", _previous: " + basics::StringUtils::itoa(_previous);
   }
 
-  bool isProcessable() { return _isLooseEnd ? false : true; }
-  size_t getPrevious() { return _previous; }
+  bool isProcessable() const { return _isLooseEnd ? false : true; }
+  bool isFirst() const {
+    return _previous == std::numeric_limits<size_t>::max();
+  }
+  size_t getPrevious() const { return _previous; }
+  size_t getVertex() const { return _id; }  // TODO: adjust
+  size_t getEdge() const { return _id; }    // TODO: adjust
 };
 
 class PathStoreTest : public ::testing::Test {
@@ -80,7 +86,7 @@ TEST_F(PathStoreTest, it_should_be_empty_if_new_path_store_is_initialized) {
 TEST_F(PathStoreTest, it_should_be_able_to_set_startVertex) {
   auto ps = PathStore<Step>();
   ASSERT_EQ(ps.size(), 0);
-  std::ignore = ps.append({0, 1, 0, false, true});
+  std::ignore = ps.append({0, 1, 0, false});
   ASSERT_EQ(ps.size(), 1);
 }
 
@@ -88,11 +94,11 @@ TEST_F(PathStoreTest, it_should_be_able_to_clear) {
   auto ps = PathStore<Step>();
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
-  lastIndex = ps.append({0, 1, lastIndex, false, false});
-  lastIndex = ps.append({1, 1, lastIndex, false, false});
-  lastIndex = ps.append({2, 1, lastIndex, false, false});
-  lastIndex = ps.append({3, 1, lastIndex, false, false});
-  lastIndex = ps.append({4, 1, lastIndex, false, false});
+  lastIndex = ps.append({0, 1, lastIndex, false});
+  lastIndex = ps.append({1, 1, lastIndex, false});
+  lastIndex = ps.append({2, 1, lastIndex, false});
+  lastIndex = ps.append({3, 1, lastIndex, false});
+  lastIndex = ps.append({4, 1, lastIndex, false});
   ASSERT_EQ(ps.size(), 5);
   ps.reset();
   ASSERT_EQ(ps.size(), 0);
@@ -102,15 +108,15 @@ TEST_F(PathStoreTest, it_should_be_able_to_append_on_empty_clear_and_reappend) {
   auto ps = PathStore<Step>();
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
-  lastIndex = ps.append({0, 1, lastIndex, false, false});
-  lastIndex = ps.append({1, 1, lastIndex, false, false});
-  lastIndex = ps.append({2, 1, lastIndex, false, false});
-  lastIndex = ps.append({3, 1, lastIndex, false, false});
-  lastIndex = ps.append({4, 1, lastIndex, false, false});
+  lastIndex = ps.append({0, 1, lastIndex, false});
+  lastIndex = ps.append({1, 1, lastIndex, false});
+  lastIndex = ps.append({2, 1, lastIndex, false});
+  lastIndex = ps.append({3, 1, lastIndex, false});
+  lastIndex = ps.append({4, 1, lastIndex, false});
   ASSERT_EQ(ps.size(), 5);
   ps.reset();
 
-  lastIndex = ps.append({0, 1, lastIndex, false, false});
+  lastIndex = ps.append({0, 1, lastIndex, false});
   ASSERT_EQ(ps.size(), 1);
 }
 
@@ -118,16 +124,16 @@ TEST_F(PathStoreTest, it_should_not_be_empty_if_values_will_be_inserted) {
   auto ps = PathStore<Step>();
 
   size_t lastIndex = std::numeric_limits<size_t>::max();
-  lastIndex = ps.append({0, 1, lastIndex, false, false});
+  lastIndex = ps.append({0, 1, lastIndex, false});
   ASSERT_EQ(lastIndex, 0);
 
-  lastIndex = ps.append({1, 1, lastIndex, false, false});
+  lastIndex = ps.append({1, 1, lastIndex, false});
   ASSERT_EQ(lastIndex, 1);
 
-  lastIndex = ps.append({2, 1, lastIndex, false, false});
+  lastIndex = ps.append({2, 1, lastIndex, false});
   ASSERT_EQ(lastIndex, 2);
 
-  lastIndex = ps.append({0, 1, lastIndex, false, false});
+  lastIndex = ps.append({0, 1, lastIndex, false});
   ASSERT_EQ(lastIndex, 3);
 
   ASSERT_EQ(ps.size(), 4);
