@@ -41,15 +41,15 @@ using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::tests::graph;
 
-MockGraphProvider::Step::Step(size_t v)
+MockGraphProvider::Step::Step(VertexType v)
     : vertex(v), previous(std::numeric_limits<size_t>::max()) {}
 
-MockGraphProvider::Step::Step(size_t prev, size_t v, EdgeType e)
+MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e)
     : vertex(v), previous(prev) {}
 MockGraphProvider::Step::~Step() {}
 
 void MockGraphProvider::Step::Vertex::addToBuilder(arangodb::velocypack::Builder& builder) const {
-  std::string key = basics::StringUtils::itoa(_vertex);
+  std::string key = _vertex.toString();
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(key));
   builder.add(StaticStrings::IdString, VPackValue("v/" + key));
@@ -71,10 +71,7 @@ void MockGraphProvider::Step::Edge::addToBuilder(arangodb::velocypack::Builder& 
 }
 
 arangodb::velocypack::HashedStringRef MockGraphProvider::Step::Vertex::getId() const {
-  std::string key = basics::StringUtils::itoa(_vertex);
-  VPackBuilder builder; // TODO: HACK - fix me
-  builder.add(VPackValue(key));
-  return VPackHashedStringRef(builder.slice());
+  return _vertex;
 }
 
 MockGraphProvider::MockGraphProvider(MockGraph const& data, bool reverse) : _reverse(reverse) {

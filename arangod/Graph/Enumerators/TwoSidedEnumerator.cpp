@@ -46,9 +46,10 @@ template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::~Ball() = default;
 
 template <class QueueType, class PathStoreType, class ProviderType>
-void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::reset(Step center) {
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::reset(VertexRef center) {
   clear();
-  _shell.emplace(center);
+  auto firstStep = _provider.startVertex(center);
+  _shell.emplace(std::move(firstStep));
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
@@ -179,7 +180,14 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::isDone() const 
  */
 template <class QueueType, class PathStoreType, class ProviderType>
 void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::reset(VertexRef source,
-                                                                       VertexRef target) {}
+                                                                       VertexRef target) {
+  _results.clear();
+  _left.reset(source);
+  _right.reset(target);
+  _resultPath.clear();
+
+  // TODO Special depth == 0 case
+}
 
 /**
  * @brief Get the next path, if available written into the result build.

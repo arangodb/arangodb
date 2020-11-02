@@ -28,6 +28,8 @@
 
 #include "./MockGraph.h"
 
+#include <velocypack/HashedStringRef.h>
+
 namespace arangodb {
 
 namespace futures {
@@ -44,7 +46,7 @@ namespace tests {
 namespace graph {
 
 class MockGraphProvider {
-  using VertexType = size_t;
+  using VertexType = arangodb::velocypack::HashedStringRef;
   using EdgeType = MockGraph::EdgeDef;
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
@@ -89,8 +91,8 @@ class MockGraphProvider {
       EdgeType _edge;
     };
 
-    explicit Step(size_t v);
-    Step(size_t prev, size_t v, EdgeType e);
+    explicit Step(VertexType v);
+    Step(size_t prev, VertexType v, EdgeType e);
     ~Step();
 
     Vertex vertex;
@@ -117,8 +119,8 @@ class MockGraphProvider {
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
 
  private:
-  std::unordered_map<VertexType, std::vector<MockGraph::EdgeDef>> _fromIndex;
-  std::unordered_map<VertexType, std::vector<MockGraph::EdgeDef>> _toIndex;
+  std::unordered_map<size_t, std::vector<MockGraph::EdgeDef>> _fromIndex;
+  std::unordered_map<size_t, std::vector<MockGraph::EdgeDef>> _toIndex;
   bool _reverse;
 };
 }  // namespace graph

@@ -57,7 +57,7 @@ class TwoSidedEnumerator {
     Ball(Direction dir, ProviderType&& provider);
     ~Ball();
     auto clear() -> void;
-    auto reset(Step center) -> void;
+    auto reset(VertexRef center) -> void;
     auto startNextDepth() -> void;
     auto noPathLeft() const -> bool;
     auto getDepth() const -> size_t;
