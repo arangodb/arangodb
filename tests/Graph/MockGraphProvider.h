@@ -25,6 +25,7 @@
 #include <numeric>
 #include <unordered_map>
 #include <vector>
+#include <set>
 
 #include "./MockGraph.h"
 
@@ -119,8 +120,8 @@ class MockGraphProvider {
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
 
  private:
-  std::unordered_map<size_t, std::vector<MockGraph::EdgeDef>> _fromIndex;
-  std::unordered_map<size_t, std::vector<MockGraph::EdgeDef>> _toIndex;
+  std::unordered_map<std::string, std::vector<MockGraph::EdgeDef>> _fromIndex;
+  std::unordered_map<std::string, std::vector<MockGraph::EdgeDef>> _toIndex;
   bool _reverse;
 };
 }  // namespace graph

@@ -24,10 +24,7 @@
 
 #include "./MockGraph.h"
 
-#include "Basics/operating-system.h"
-
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
@@ -57,9 +54,9 @@ void MockGraphProvider::Step::Vertex::addToBuilder(arangodb::velocypack::Builder
 }
 
 void MockGraphProvider::Step::Edge::addToBuilder(arangodb::velocypack::Builder& builder) const {
-  std::string fromId = "v/" + basics::StringUtils::itoa(_edge._from);
-  std::string toId = "v/" + basics::StringUtils::itoa(_edge._to);
-  std::string keyId = basics::StringUtils::itoa(_edge._from) + "->" + basics::StringUtils::itoa(_edge._to);
+  std::string fromId = "v/" + _edge._from;
+  std::string toId = "v/" + _edge._to;
+  std::string keyId = _edge._from + "->" + _edge._to;
 
   builder.openObject();
   builder.add(StaticStrings::IdString, VPackValue("e/" + keyId));
@@ -93,16 +90,21 @@ auto MockGraphProvider::fetch(std::vector<Step> const& looseEnds)
 auto MockGraphProvider::expand(Step const& from, size_t previousIndex)
     -> std::vector<Step> {
   std::vector<Step> result{};
+
+
+
   if (_reverse) {
-    if (_toIndex.find(from.vertex.data()) != _toIndex.end()) {
-      for (auto const& edge : _toIndex[from.vertex.data()]) {
-        result.push_back(Step{previousIndex, edge._from, edge});
+    if (_toIndex.find(from.vertex.data().toString()) != _toIndex.end()) {
+      for (auto const& edge : _toIndex[from.vertex.data().toString()]) {
+        VPackHashedStringRef fromH {edge._from.c_str(), static_cast<uint32_t>(edge._from.length())};
+        result.push_back(Step{previousIndex, fromH, edge});
       }
     }
   } else {
-    if (_fromIndex.find(from.vertex.data()) != _fromIndex.end()) {
-      for (auto const& edge : _fromIndex[from.vertex.data()]) {
-        result.push_back(Step{previousIndex, edge._to, edge});
+    if (_fromIndex.find(from.vertex.data().toString()) != _fromIndex.end()) {
+      for (auto const& edge : _fromIndex[from.vertex.data().toString()]) {
+        VPackHashedStringRef toH {edge._to.c_str(), static_cast<uint32_t>(edge._to.length())};
+        result.push_back(Step{previousIndex, toH, edge});
       }
     }
   }

@@ -25,6 +25,7 @@
 #include "./MockGraph.h"
 #include "./MockGraphProvider.h"
 
+#include <velocypack/velocypack-aliases.h>
 #include <unordered_set>
 
 using namespace arangodb;
@@ -49,7 +50,9 @@ TEST_F(GraphProviderTest, no_results_if_graph_is_empty) {
   MockGraph empty{};
   
   auto testee = makeProvider(empty);
-  auto start = testee.startVertex(0);
+  std::string startString = "0";
+  VPackHashedStringRef startH {startString.c_str(), static_cast<uint32_t>(startString.length())};
+  auto start = testee.startVertex(startH);
   auto res = testee.expand(start, 0);
   EXPECT_EQ(res.size(), 0);
 }
@@ -59,11 +62,13 @@ TEST_F(GraphProviderTest, should_enumerate_a_single_edge) {
   g.addEdge(0, 1);
   
   auto testee = makeProvider(g);
-  auto start = testee.startVertex(0);
+  std::string startString = "0";
+  VPackHashedStringRef startH {startString.c_str(), static_cast<uint32_t>(startString.length())};
+  auto start = testee.startVertex(startH);
   auto res = testee.expand(start, 0);
   ASSERT_EQ(res.size(), 1);
   auto const& f = res.front();
-  EXPECT_EQ(f.vertex.data(), 1);
+  EXPECT_EQ(f.vertex.data().toString(), "1");
   EXPECT_EQ(f.previous, 0);
 }
 
@@ -72,19 +77,20 @@ TEST_F(GraphProviderTest, should_enumerate_all_edges) {
   g.addEdge(0, 1);
   g.addEdge(0, 2);
   g.addEdge(0, 3);
-  std::unordered_set<size_t> found{};
+  std::unordered_set<std::string> found{};
   
   auto testee = makeProvider(g);
-  auto start = testee.startVertex(0);
-  auto res = testee.expand(start, 0);
+  std::string startString = "0";
+  VPackHashedStringRef startH {startString.c_str(), static_cast<uint32_t>(startString.length())};
+  auto start = testee.startVertex(startH);  auto res = testee.expand(start, 0);
   ASSERT_EQ(res.size(), 3);
   for (auto const& f : res) {
     // All expand of the same previous
     EXPECT_EQ(f.previous, 0);
-    auto const& v = f.vertex.data();
+    auto const& v = f.vertex.data().toString();
     // We can only range from 1 to 3
-    EXPECT_GE(v, 1);
-    EXPECT_LE(v, 3);
+    EXPECT_GE(v, "1");
+    EXPECT_LE(v, "3");
     // We need to find each exactly once
     auto const [_, didInsert] = found.emplace(v);
     EXPECT_TRUE(didInsert);
