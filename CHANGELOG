@@ -1,9 +1,10 @@
-<<<<<<< HEAD
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
-* Fix a memory leak because cluster internal connections were not cleaned
-  up for agency communication.
+* Fix a memory leak because server internal connections were not cleaned up for
+  agency communication.
+
+* Added compile option USE_JEMALLOC_PROF to enable memory profiling.
 
 * Fixed BTS-233 issue: Fixed invalid IndexId comparator.
 
@@ -38,8 +39,6 @@ v3.7.5 (XXXX-XX-XX)
   descriptive error message for novice users (issue #12871).
 
 * Fixed collection count which could be off after a server crash.
-
-* Added compile option USE_JEMALLOC_PROF to enable memory profiling
 
 
 v3.7.4 (2020-10-16)
