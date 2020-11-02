@@ -395,7 +395,6 @@ void V8DealerFeature::start() {
       << ", node-modules-directory: " << _nodeModulesDirectory;
 
   _startupLoader.setDirectory(_startupDirectory);
-  ServerState::instance()->setJavaScriptPath(_startupDirectory);
 
   // dump paths
   {
