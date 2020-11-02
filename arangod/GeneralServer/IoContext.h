@@ -39,12 +39,12 @@ class IoContext {
 
  private:
   
-  class IoThread final : public Thread {
+  class IoThread final : public TaskThread {
    public:
     explicit IoThread(application_features::ApplicationServer&, IoContext&);
     explicit IoThread(IoThread const&);
     ~IoThread();
-    void run() override;
+    bool runTask() override;
     
    private:
     IoContext& _iocontext;

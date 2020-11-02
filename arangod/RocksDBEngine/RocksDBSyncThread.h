@@ -41,7 +41,7 @@ namespace arangodb {
 
 class RocksDBEngine;
 
-class RocksDBSyncThread final : public Thread {
+class RocksDBSyncThread final : public TaskThread {
  public:
   RocksDBSyncThread(RocksDBEngine& engine, 
                     std::chrono::milliseconds interval,
@@ -60,7 +60,8 @@ class RocksDBSyncThread final : public Thread {
   static Result sync(rocksdb::DB* db);
 
  protected:
-  void run() override;
+  void runSetup() override;
+  bool runTask() override;
 
  private:
   RocksDBEngine& _engine;

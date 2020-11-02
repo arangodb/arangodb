@@ -86,7 +86,7 @@ std::unique_ptr<TRI_vocbase_t> calculationVocbase;
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // i am here for debugging only.
+// I am here for debugging only.
 TRI_vocbase_t* DatabaseFeature::CURRENT_VOCBASE = nullptr;
 #endif
 
@@ -96,178 +96,175 @@ DatabaseFeature* DatabaseFeature::DATABASE = nullptr;
 /// the purpose of this thread is to physically remove directories of databases
 /// that have been dropped
 DatabaseManagerThread::DatabaseManagerThread(ApplicationServer& server)
-    : Thread(server, "DatabaseManager") {}
+    : TaskThread(server, "DatabaseManager"),
+      _cleanupCycles(0) {}
 
 DatabaseManagerThread::~DatabaseManagerThread() { shutdown(); }
 
-void DatabaseManagerThread::run() {
+bool DatabaseManagerThread::runTask() {
   auto& databaseFeature = server().getFeature<DatabaseFeature>();
-  auto& dealer = server().getFeature<V8DealerFeature>();
-  int cleanupCycles = 0;
 
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  // check if we have to drop some database
+  TRI_vocbase_t* database = nullptr;
 
-  while (true) {
-    try {
-      // check if we have to drop some database
-      TRI_vocbase_t* database = nullptr;
+  {
+    auto unuser(databaseFeature._databasesProtector.use());
+    auto theLists = databaseFeature._databasesLists.load();
 
-      {
-        auto unuser(databaseFeature._databasesProtector.use());
-        auto theLists = databaseFeature._databasesLists.load();
-
-        for (TRI_vocbase_t* vocbase : theLists->_droppedDatabases) {
-          if (!vocbase->isDangling()) {
-            continue;
-          }
-
-          // found a database to delete
-          database = vocbase;
-          break;
-        }
+    for (TRI_vocbase_t* vocbase : theLists->_droppedDatabases) {
+      if (!vocbase->isDangling()) {
+        continue;
       }
 
-      if (database != nullptr) {
-        // found a database to delete, now remove it from the struct
-        {
-          MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
+      // found a database to delete
+      database = vocbase;
+      break;
+    }
+  }
 
-          // Build the new value:
-          auto oldLists = databaseFeature._databasesLists.load();
-          decltype(oldLists) newLists = nullptr;
-          try {
-            newLists = new DatabaseFeature::DatabasesLists();
-            newLists->_databases = oldLists->_databases;
-            for (TRI_vocbase_t* vocbase : oldLists->_droppedDatabases) {
-              if (vocbase != database) {
-                newLists->_droppedDatabases.insert(vocbase);
-              }
-            }
-          } catch (...) {
-            delete newLists;
-            continue;  // try again later
-          }
+  if (database != nullptr) {
+    // found a database to delete, now remove it from the struct
+    {
+      MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
 
-          // Replace the old by the new:
-          databaseFeature._databasesLists = newLists;
-          databaseFeature._databasesProtector.scan();
-          delete oldLists;
-
-          // From now on no other thread can possibly see the old
-          // TRI_vocbase_t*,
-          // note that there is only one DatabaseManager thread, so it is
-          // not possible that another thread has seen this very database
-          // and tries to free it at the same time!
-        }
-
-        if (database->type() != TRI_VOCBASE_TYPE_COORDINATOR) {
-          // regular database
-          // ---------------------------
-
-          TRI_ASSERT(!database->isSystem());
-
-          {
-            // remove apps directory for database
-            std::string const& appPath = dealer.appPath();
-            if (database->isOwnAppsDirectory() && !appPath.empty()) {
-              // but only if nobody re-created a database with the same name!
-              MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
-              
-              TRI_vocbase_t* newInstance = databaseFeature.lookupDatabase(database->name());
-              TRI_ASSERT(newInstance == nullptr || newInstance->id() != database->id());
-
-              if (newInstance == nullptr) {
-                std::string path = arangodb::basics::FileUtils::buildFilename(
-                    arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
-                    database->name());
-
-                if (TRI_IsDirectory(path.c_str())) {
-                  LOG_TOPIC("041b1", TRACE, arangodb::Logger::FIXME)
-                    << "removing app directory '" << path << "' of database '"
-                    << database->name() << "'";
-
-                  TRI_RemoveDirectory(path.c_str());
-                }
-              }
-            }
-          }
-
-          // destroy all items in the QueryRegistry for this database
-          auto queryRegistry = QueryRegistryFeature::registry();
-          if (queryRegistry != nullptr) {
-            // but only if nobody re-created a database with the same name!
-            MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
-            TRI_vocbase_t* newInstance = databaseFeature.lookupDatabase(database->name());
-            TRI_ASSERT(newInstance == nullptr || newInstance->id() != database->id());
-
-            if (newInstance == nullptr) {
-              queryRegistry->destroy(database->name());
-            }
-          }
-
-          try {
-            Result res = engine.dropDatabase(*database);
-            if (res.fail()) {
-              LOG_TOPIC("fb244", ERR, Logger::FIXME)
-                << "dropping database '" << database->name() << "' failed: " << res.errorMessage();
-            }
-          } catch (std::exception const& ex) {
-            LOG_TOPIC("d30a2", ERR, Logger::FIXME) << "dropping database '" << database->name()
-                                          << "' failed: " << ex.what();
-          } catch (...) {
-            LOG_TOPIC("0a30c", ERR, Logger::FIXME)
-                << "dropping database '" << database->name() << "' failed";
+      // Build the new value:
+      auto oldLists = databaseFeature._databasesLists.load();
+      decltype(oldLists) newLists = nullptr;
+      try {
+        newLists = new DatabaseFeature::DatabasesLists();
+        newLists->_databases = oldLists->_databases;
+        for (TRI_vocbase_t* vocbase : oldLists->_droppedDatabases) {
+          if (vocbase != database) {
+            newLists->_droppedDatabases.insert(vocbase);
           }
         }
-
-        delete database;
-
-        // directly start next iteration
-      } else {  // if (database != nullptr)
-        // perfom some cleanup tasks
-        if (isStopping()) {
-          // done
-          break;
-        }
-
-        std::this_thread::sleep_for(std::chrono::microseconds(waitTime()));
-
-        // The following is only necessary after a wait:
-        auto queryRegistry = QueryRegistryFeature::registry();
-        if (queryRegistry != nullptr) {
-          queryRegistry->expireQueries();
-        }
-
-        // perform cursor cleanup here
-        if (++cleanupCycles >= 10) {
-          cleanupCycles = 0;
-
-          auto unuser(databaseFeature._databasesProtector.use());
-          auto theLists = databaseFeature._databasesLists.load();
-
-          bool force = isStopping();
-          for (auto& p : theLists->_databases) {
-            TRI_vocbase_t* vocbase = p.second;
-            TRI_ASSERT(vocbase != nullptr);
-
-            try {
-              vocbase->cursorRepository()->garbageCollect(force);
-            } catch (...) {
-            }
-            double const now = []() {
-              using namespace std::chrono;
-              return duration<double>(steady_clock::now().time_since_epoch()).count();
-            }();
-            vocbase->replicationClients().garbageCollect(now);
-          }
-        }
+      } catch (...) {
+        delete newLists;
+        return true;  // try again later
       }
 
-    } catch (...) {
+      // Replace the old by the new:
+      databaseFeature._databasesLists = newLists;
+      databaseFeature._databasesProtector.scan();
+      delete oldLists;
+
+      // From now on no other thread can possibly see the old
+      // TRI_vocbase_t*,
+      // note that there is only one DatabaseManager thread, so it is
+      // not possible that another thread has seen this very database
+      // and tries to free it at the same time!
     }
 
-    // next iteration
+    if (database->type() != TRI_VOCBASE_TYPE_COORDINATOR) {
+      // regular database
+      // ---------------------------
+
+      TRI_ASSERT(!database->isSystem());
+
+      {
+        // remove apps directory for database
+        auto& dealer = server().getFeature<V8DealerFeature>();
+        std::string const& appPath = dealer.appPath();
+        if (database->isOwnAppsDirectory() && !appPath.empty()) {
+          // but only if nobody re-created a database with the same name!
+          MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
+          
+          TRI_vocbase_t* newInstance = databaseFeature.lookupDatabase(database->name());
+          TRI_ASSERT(newInstance == nullptr || newInstance->id() != database->id());
+
+          if (newInstance == nullptr) {
+            std::string path = arangodb::basics::FileUtils::buildFilename(
+                arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
+                database->name());
+
+            if (TRI_IsDirectory(path.c_str())) {
+              LOG_TOPIC("041b1", TRACE, arangodb::Logger::FIXME)
+                << "removing app directory '" << path << "' of database '"
+                << database->name() << "'";
+
+              TRI_RemoveDirectory(path.c_str());
+            }
+          }
+        }
+      }
+
+      // destroy all items in the QueryRegistry for this database
+      auto queryRegistry = QueryRegistryFeature::registry();
+      if (queryRegistry != nullptr) {
+        // but only if nobody re-created a database with the same name!
+        MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
+        TRI_vocbase_t* newInstance = databaseFeature.lookupDatabase(database->name());
+        TRI_ASSERT(newInstance == nullptr || newInstance->id() != database->id());
+
+        if (newInstance == nullptr) {
+          queryRegistry->destroy(database->name());
+        }
+      }
+
+      StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+      try {
+        Result res = engine.dropDatabase(*database);
+        if (res.fail()) {
+          LOG_TOPIC("fb244", ERR, Logger::FIXME)
+            << "dropping database '" << database->name() << "' failed: " << res.errorMessage();
+        }
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("d30a2", ERR, Logger::FIXME) << "dropping database '" << database->name()
+                                      << "' failed: " << ex.what();
+      } catch (...) {
+        LOG_TOPIC("0a30c", ERR, Logger::FIXME)
+            << "dropping database '" << database->name() << "' failed";
+      }
+    }
+
+    delete database;
+
+    // directly start next iteration
+    return true;
   }
+
+  TRI_ASSERT(database == nullptr);
+
+  if (isStopping()) {
+    // done
+    return false;
+  }
+
+  // perfom some cleanup tasks
+  std::this_thread::sleep_for(std::chrono::microseconds(waitTime()));
+
+  // The following is only necessary after a wait:
+  auto queryRegistry = QueryRegistryFeature::registry();
+  if (queryRegistry != nullptr) {
+    queryRegistry->expireQueries();
+  }
+
+  // perform cursor cleanup here
+  if (++_cleanupCycles >= 10) {
+    _cleanupCycles = 0;
+
+    auto unuser(databaseFeature._databasesProtector.use());
+    auto theLists = databaseFeature._databasesLists.load();
+
+    bool force = isStopping();
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
+      TRI_ASSERT(vocbase != nullptr);
+
+      try {
+        vocbase->cursorRepository()->garbageCollect(force);
+      } catch (...) {
+      }
+      double const now = []() {
+        using namespace std::chrono;
+        return duration<double>(steady_clock::now().time_since_epoch()).count();
+      }();
+      vocbase->replicationClients().garbageCollect(now);
+    }
+  }
+
+  // next iteration
+  return true;
 }
 
 DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server)

@@ -172,6 +172,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/SpinLockTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
+  Basics/TaskThreadTest.cpp
   Basics/VelocyPackHelper-test.cpp
   Cache/BucketState.cpp
   Cache/CachedValue.cpp

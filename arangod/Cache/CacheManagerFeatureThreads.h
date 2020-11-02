@@ -36,7 +36,7 @@ namespace application_features {
 class ApplicationServer;
 }
 
-class CacheRebalancerThread final : public Thread {
+class CacheRebalancerThread final : public TaskThread {
  public:
   CacheRebalancerThread(application_features::ApplicationServer& server,
                         cache::Manager* manager, std::uint64_t interval);
@@ -45,7 +45,7 @@ class CacheRebalancerThread final : public Thread {
   void beginShutdown() override;
 
  protected:
-  void run() override;
+  bool runTask() override;
 
  private:
   cache::Manager* _manager;

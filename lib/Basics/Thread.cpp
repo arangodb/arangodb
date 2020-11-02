@@ -100,7 +100,6 @@ void Thread::startThread(void* arg) {
   } catch (std::exception const& ex) {
     LOG_TOPIC("6784f", WARN, Logger::THREADS)
         << "caught exception in thread '" << ptr->_name << "': " << ex.what();
-    ptr->crashNotification(ex);
     throw;
   }
 }
@@ -242,7 +241,7 @@ void Thread::shutdown() {
 }
 
 /// @brief checks if the current thread was asked to stop
-bool Thread::isStopping() const {
+bool Thread::isStopping() const noexcept {
   auto state = _state.load(std::memory_order_relaxed);
 
   return state == ThreadState::STOPPING || state == ThreadState::STOPPED;
@@ -300,7 +299,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   return ok;
 }
 
-void Thread::markAsStopped() {
+void Thread::markAsStopped() noexcept {
   // TODO - marked as stopped before accessing finishedCondition?
   _state.store(ThreadState::STOPPED);
 
@@ -321,14 +320,12 @@ void Thread::runMe() {
     if (!isSilent()) {
       LOG_TOPIC("3a30c", ERR, Logger::THREADS)
           << "exception caught in thread '" << _name << "': " << ex.what();
-      Logger::flush();
     }
     throw;
   } catch (...) {
     if (!isSilent()) {
       LOG_TOPIC("83582", ERR, Logger::THREADS)
           << "unknown exception caught in thread '" << _name << "'";
-      Logger::flush();
     }
     throw;
   }
@@ -340,5 +337,49 @@ void Thread::releaseRef() {
   if (refs == 0 && _deleteOnExit) {
     LOCAL_THREAD_NAME = nullptr;
     delete this;
+  }
+}
+
+/// @brief a simpler-to-use Thread class for executing repeated tasks, which takes 
+/// care of all exception handling inside runTask(). the burden of exception handling
+/// is already implemented inside run(), so runTask() does not need to handle any
+/// exceptions on its own.
+void TaskThread::run() {
+  // if an exception escapes from here, we are intentionally not catching it
+  runSetup();
+
+  while (!isStopping()) {
+    try {
+      if (!runTask()) {
+        // runTask() == false means "stop the thread".
+        break;
+      }
+      // we will directly go on with next invocation of runTask()
+    } catch (std::exception const& ex) {
+      if (!isSilent()) {
+        LOG_TOPIC("65f5f", ERR, Logger::THREADS)
+            << "exception caught in thread '" << name() << "': " << ex.what();
+      }
+      throw;
+    } catch (...) {
+      if (!isSilent()) {
+        LOG_TOPIC("826cb", ERR, Logger::THREADS)
+            << "unknown exception caught in thread '" << name() << "'";
+      }
+    }
+  }
+
+  try {
+    runTeardown();
+  } catch (std::exception const& ex) {
+    if (!isSilent()) {
+      LOG_TOPIC("c5f06", ERR, Logger::THREADS)
+          << "exception caught in teardown of thread '" << name() << "': " << ex.what();
+    }
+  } catch (...) {
+    if (!isSilent()) {
+      LOG_TOPIC("84556", ERR, Logger::THREADS)
+          << "unknown exception caught in teardown of thread '" << name() << "'";
+    }
   }
 }

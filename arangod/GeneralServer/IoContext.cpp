@@ -30,16 +30,19 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 IoContext::IoThread::IoThread(application_features::ApplicationServer& server, IoContext& iocontext)
-    : Thread(server, "Io"), _iocontext(iocontext) {}
+    : TaskThread(server, "Io"), _iocontext(iocontext) {}
 
 IoContext::IoThread::IoThread(IoThread const& other)
-    : Thread(other._server, "Io"), _iocontext(other._iocontext) {}
+    : TaskThread(other._server, "Io"), _iocontext(other._iocontext) {}
 
 IoContext::IoThread::~IoThread() { shutdown(); }
 
-void IoContext::IoThread::run() {
+bool IoContext::IoThread::runTask() {
   // run the asio io context
   _iocontext.io_context.run();
+
+  // as io_context.run() is blocking, always shut down here
+  return false;
 }
 
 IoContext::IoContext(application_features::ApplicationServer& server)

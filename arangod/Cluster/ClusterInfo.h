@@ -361,7 +361,7 @@ class ClusterInfo final {
   typedef std::unordered_map<ViewID, std::shared_ptr<LogicalView>> DatabaseViews;
   typedef std::unordered_map<DatabaseID, DatabaseViews> AllViews;
 
-  class SyncerThread final : public arangodb::Thread {
+  class SyncerThread final : public arangodb::TaskThread {
    public:
     explicit SyncerThread(
       application_features::ApplicationServer&, std::string const& section,
@@ -369,7 +369,9 @@ class ClusterInfo final {
     explicit SyncerThread(SyncerThread const&);
     ~SyncerThread();
     void beginShutdown() override;
-    void run() override;
+    void runSetup() override;
+    bool runTask() override;
+    void runTeardown() override;
     void start();
     bool notify(velocypack::Slice const&);
 

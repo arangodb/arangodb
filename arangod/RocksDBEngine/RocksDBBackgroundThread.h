@@ -32,30 +32,29 @@ namespace arangodb {
 
 class RocksDBEngine;
 
-class RocksDBBackgroundThread final : public Thread {
+class RocksDBBackgroundThread final : public TaskThread {
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief engine pointer
-  //////////////////////////////////////////////////////////////////////////////
-  RocksDBEngine& _engine;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief interval in which we will run
-  //////////////////////////////////////////////////////////////////////////////
-  double const _interval;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief condition variable for heartbeat
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::basics::ConditionVariable _condition;
-
   RocksDBBackgroundThread(RocksDBEngine& eng, double interval);
   ~RocksDBBackgroundThread();
 
   void beginShutdown() override;
 
  protected:
-  void run() override;
+  void runSetup() override;
+  bool runTask() override;
+  void runTeardown() override;
+
+ private:
+  /// @brief engine pointer
+  RocksDBEngine& _engine;
+
+  /// @brief interval in which we will run
+  double const _interval;
+
+  /// @brief condition variable for heartbeat
+  arangodb::basics::ConditionVariable _condition;
+
+  double _startTime;
 };
 }  // namespace arangodb
 

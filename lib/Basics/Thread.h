@@ -96,7 +96,7 @@ class Thread {
   virtual bool isSilent() const { return false; }
 
   /// @brief the underlying application server
-  application_features::ApplicationServer& server() { return _server; }
+  application_features::ApplicationServer& server() noexcept { return _server; }
 
   /// @brief flags the thread as stopping
   /// Classes that override this function must ensure that they
@@ -108,29 +108,29 @@ class Thread {
   }
 
   /// @brief name of a thread
-  std::string const& name() const { return _name; }
+  std::string const& name() const noexcept { return _name; }
 
   /// @brief returns the thread number
   ///
   /// See currentThreadNumber().
-  uint64_t threadNumber() const { return _threadNumber; }
+  uint64_t threadNumber() const noexcept { return _threadNumber; }
 
   /// @brief false, if the thread is just created
-  bool hasStarted() const { return _state.load() != ThreadState::CREATED; }
+  bool hasStarted() const noexcept { return _state.load() != ThreadState::CREATED; }
 
   /// @brief true, if the thread is still running
-  bool isRunning() const {
+  bool isRunning() const noexcept {
     return _state.load(std::memory_order_relaxed) != ThreadState::STOPPED;
   }
 
   /// @brief checks if the current thread was asked to stop
-  bool isStopping() const;
+  bool isStopping() const noexcept;
 
   /// @brief starts the thread
   bool start(basics::ConditionVariable* _finishedCondition = nullptr);
   
   /// @brief return the threads current state
-  ThreadState state() const {
+  ThreadState state() const noexcept {
     return _state.load(std::memory_order_relaxed);
   }
 
@@ -147,16 +147,16 @@ class Thread {
   void shutdown();
 
  protected:
-  /// @brief the thread program
+  /// @brief the thread program. note that any implementation of run() is
+  /// responsible for handling its own exceptions inside run(). failure to do
+  /// so will lead to the thread by aborted, and an exception escaping from
+  /// it!!
   virtual void run() = 0;
-
-  /// @brief optional notification call when thread gets unplanned exception
-  virtual void crashNotification(std::exception const&) {}
 
  private:
   /// @brief static started with access to the private variables
   static void startThread(void* arg);
-  void markAsStopped();
+  void markAsStopped() noexcept;
   void runMe();
   void releaseRef();
  
@@ -184,6 +184,46 @@ class Thread {
   basics::ConditionVariable* _finishedCondition;
 
   std::atomic<ThreadState> _state;
+};
+
+/// @brief a simpler-to-use Thread class for executing repeated tasks, which takes 
+/// care of all exception handling inside runTask(). the burden of exception handling
+/// is already implemented inside run(), so runTask() does not need to handle any
+/// exceptions on its own.
+class TaskThread : public Thread {
+ public:
+  TaskThread(application_features::ApplicationServer& server, std::string const& name,
+             bool deleteOnExit = false, std::uint32_t terminationTimeout = INFINITE)
+    : Thread(server, name, deleteOnExit, terminationTimeout) {}
+ 
+  /// @brief this run() implementation will call runTask() repeated and handle all of
+  /// its exceptions. will call runTask() as long as the thread is not stopping, i.e.
+  /// isStopping() returns false.
+  /// note: run() needs to be public so we can call it
+  void run() override final;
+
+ protected:
+  /// @brief optional code to run once before runTask() is invoked repeatedly. can be
+  /// use to setup instance variables etc.
+  /// if an exception escapes from here, it is intentionally not caught - the rationale
+  /// is that if setup does not work, it makes no sense to go on with running the
+  /// task at all
+  virtual void runSetup() {}
+
+  /// @brief the task to run inside the thread. does not need to handle any exceptions,
+  /// because run() will handle them by logging and simply continuing. 
+  /// the return value indicates whether or not run() shall continue to call runTask().
+  /// if true is returned, runTask() will be called again, if false is returned, it 
+  /// will not be called again and the thread will shut down.
+  /// note that runTask() will be immediately called again if runTask() returns true.
+  /// thus runTask() is expect to got to sleep for a while before returning to avoid
+  /// busy looping
+  virtual bool runTask() = 0;
+  
+  /// @brief optional code to run once after runTask() is invoked repeatedly. can be
+  /// use to properly shutdown everything. exceptions escaping from here are caught 
+  /// and logged.
+  virtual void runTeardown() {}
 };
 }  // namespace arangodb
 

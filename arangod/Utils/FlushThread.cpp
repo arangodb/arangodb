@@ -36,10 +36,12 @@
 using namespace arangodb;
 
 FlushThread::FlushThread(FlushFeature& feature, uint64_t flushInterval)
-    : Thread(feature.server(), "FlushThread"),
+    : TaskThread(feature.server(), "FlushThread"),
       _condition(),
       _feature(feature),
-      _flushInterval(flushInterval) {}
+      _flushInterval(flushInterval),
+      _count(0),
+      _tick(0) {}
 
 /// @brief begin shutdown sequence
 void FlushThread::beginShutdown() {
@@ -56,42 +58,25 @@ void FlushThread::wakeup() {
 }
 
 /// @brief main loop
-void FlushThread::run() {
-  size_t count = 0;
-  TRI_voc_tick_t tick = 0;
+bool FlushThread::runTask() {
+  TRI_IF_FAILURE("FlushThreadDisableAll") {
+    CONDITION_LOCKER(guard, _condition);
+    guard.wait(_flushInterval);
 
-  while (!isStopping()) {
-    try {
-      TRI_IF_FAILURE("FlushThreadDisableAll") {
-        CONDITION_LOCKER(guard, _condition);
-        guard.wait(_flushInterval);
-
-        continue;
-      }
-
-      _feature.releaseUnusedTicks(count, tick);
-
-      LOG_TOPIC_IF("2b2e1", DEBUG, arangodb::Logger::FLUSH, count)
-          << "Flush subscription(s) released: '" << count;
-
-      LOG_TOPIC("2b2e2", DEBUG, arangodb::Logger::FLUSH)
-          << "Tick released: '" << tick << "'";
-
-      // sleep if nothing to do
-      CONDITION_LOCKER(guard, _condition);
-      guard.wait(_flushInterval);
-    } catch (basics::Exception const& ex) {
-      if (ex.code() == TRI_ERROR_SHUTTING_DOWN) {
-        break;
-      }
-      LOG_TOPIC("2b211", ERR, arangodb::Logger::FLUSH)
-          << "caught exception in FlushThread: " << ex.what();
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("a3cfc", ERR, arangodb::Logger::FLUSH)
-          << "caught exception in FlushThread: " << ex.what();
-    } catch (...) {
-      LOG_TOPIC("40b52", ERR, arangodb::Logger::FLUSH)
-          << "caught unknown exception in FlushThread";
-    }
+    return true;
   }
+
+  _feature.releaseUnusedTicks(_count, _tick);
+
+  LOG_TOPIC_IF("2b2e1", DEBUG, arangodb::Logger::FLUSH, _count)
+      << "Flush subscription(s) released: '" << _count;
+
+  LOG_TOPIC("2b2e2", DEBUG, arangodb::Logger::FLUSH)
+      << "Tick released: '" << _tick << "'";
+
+  // sleep if nothing to do
+  CONDITION_LOCKER(guard, _condition);
+  guard.wait(_flushInterval);
+
+  return true;
 }

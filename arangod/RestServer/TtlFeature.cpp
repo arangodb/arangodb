@@ -145,10 +145,12 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
   }
 }
 
-class TtlThread final : public Thread {
+class TtlThread final : public TaskThread {
  public:
   explicit TtlThread(application_features::ApplicationServer& server, TtlFeature& ttlFeature)
-      : Thread(server, "TTL"), _ttlFeature(ttlFeature), _working(false) {}
+      : TaskThread(server, "TTL"), 
+        _ttlFeature(ttlFeature), 
+        _working(false) {}
 
   ~TtlThread() { shutdown(); }
 
@@ -176,50 +178,46 @@ class TtlThread final : public Thread {
   }
 
  protected:
-  void run() override {
+  void runSetup() override {
     TtlProperties properties = _ttlFeature.properties();
     setNextStart(properties.frequency); 
 
     LOG_TOPIC("c2be7", TRACE, Logger::TTL) << "starting TTL background thread with interval " << properties.frequency << " milliseconds, max removals per run: " << properties.maxTotalRemoves << ", max removals per collection per run " << properties.maxCollectionRemoves;
-    
-    while (true) {
-      auto now = std::chrono::steady_clock::now();
+  }
 
-      while (now < _nextStart) {
-        if (isStopping()) {
-          // server shutdown
-          return;
-        }
+  bool runTask() override {
+    auto now = std::chrono::steady_clock::now();
 
-        // wait for our start...
-        CONDITION_LOCKER(guard, _condition);
-        
-        guard.wait(std::chrono::microseconds(std::chrono::duration_cast<std::chrono::microseconds>(_nextStart - now)));
-        now = std::chrono::steady_clock::now();
-      }
-    
+    while (now < _nextStart) {
       if (isStopping()) {
         // server shutdown
-        return;
+        return false;
       }
+
+      // wait for our start...
+      CONDITION_LOCKER(guard, _condition);
       
-      // properties may have changed... update them
-      properties = _ttlFeature.properties();
-      setNextStart(properties.frequency); 
-
-      try {
-        TtlStatistics stats;
-        // note: work() will do nothing if isActive() is false
-        work(stats, properties);
-
-        // merge stats
-        _ttlFeature.updateStats(stats);
-      } catch (std::exception const& ex) {
-        LOG_TOPIC("6d28a", WARN, Logger::TTL) << "caught exception in TTL background thread: " << ex.what();
-      } catch (...) {
-        LOG_TOPIC("44aa8", WARN, Logger::TTL) << "caught unknown exception in TTL background thread";
-      }
+      guard.wait(std::chrono::microseconds(std::chrono::duration_cast<std::chrono::microseconds>(_nextStart - now)));
+      now = std::chrono::steady_clock::now();
     }
+  
+    if (isStopping()) {
+      // server shutdown
+      return false;
+    }
+    
+    // properties may have changed... update them
+    TtlProperties properties = _ttlFeature.properties();
+    setNextStart(properties.frequency); 
+
+    TtlStatistics stats;
+    // note: work() will do nothing if isActive() is false
+    work(stats, properties);
+
+    // merge stats
+    _ttlFeature.updateStats(stats);
+
+    return true;
   }
 
  private:

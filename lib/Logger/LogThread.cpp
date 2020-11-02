@@ -101,7 +101,7 @@ void LogThread::run() {
   processPendingMessages();
 }
 
-bool LogThread::processPendingMessages() {
+bool LogThread::processPendingMessages() noexcept {
   bool worked = false;
   MessageEnvelope env{nullptr, nullptr};
 

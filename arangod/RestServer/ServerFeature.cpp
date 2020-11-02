@@ -30,6 +30,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
@@ -266,8 +267,14 @@ void ServerFeature::waitForHeartbeat() {
     return;
   }
 
+  ClusterFeature& cf = server().getFeature<ClusterFeature>();
+  auto heartbeatThread = cf.heartbeatThread();
+
+  // must be present in a coordinator
+  TRI_ASSERT(heartbeatThread);
+
   while (true) {
-    if (HeartbeatThread::hasRunOnce()) {
+    if (heartbeatThread->hasRunOnce()) {
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));

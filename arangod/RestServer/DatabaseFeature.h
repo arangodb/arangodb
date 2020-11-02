@@ -50,7 +50,7 @@ class Slice; // forward declaration
 
 namespace arangodb {
 
-class DatabaseManagerThread final : public Thread {
+class DatabaseManagerThread final : public TaskThread {
  public:
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
@@ -58,11 +58,12 @@ class DatabaseManagerThread final : public Thread {
   explicit DatabaseManagerThread(application_features::ApplicationServer&);
   ~DatabaseManagerThread();
 
-  void run() override;
+  bool runTask() override;
 
  private:
   // how long will the thread pause between iterations
   static constexpr unsigned long waitTime() { return static_cast<unsigned long>(500U * 1000U); }
+  int _cleanupCycles;
 };
 
 class DatabaseFeature : public application_features::ApplicationFeature {

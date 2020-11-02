@@ -5477,7 +5477,7 @@ CollectionWatcher::~CollectionWatcher() {
 ClusterInfo::SyncerThread::SyncerThread(
   application_features::ApplicationServer& server, std::string const& section,
   std::function<void()> const& f, AgencyCallbackRegistry* cregistry) :
-  arangodb::Thread(server, section + "Syncer"), _news(false), _server(server),
+  arangodb::TaskThread(server, section + "Syncer"), _news(false), _server(server),
   _section(section), _f(f), _cr(cregistry) {}
 
 ClusterInfo::SyncerThread::~SyncerThread() { shutdown(); }
@@ -5490,7 +5490,6 @@ bool ClusterInfo::SyncerThread::notify(velocypack::Slice const& slice) {
 }
 
 void ClusterInfo::SyncerThread::beginShutdown() {
-
   using namespace std::chrono_literals;
 
   // set the shutdown state in parent class
@@ -5507,9 +5506,7 @@ void ClusterInfo::SyncerThread::start() {
   Thread::start();
 }
 
-void ClusterInfo::SyncerThread::run() {
-  using namespace std::chrono_literals;
-
+void ClusterInfo::SyncerThread::runSetup() {
   std::function<bool(VPackSlice const& result)> update =
     [=](VPackSlice const& result) {
       if (!result.isNumber()) {
@@ -5529,48 +5526,50 @@ void ClusterInfo::SyncerThread::run() {
     FATAL_ERROR_EXIT();
   }
 
-
   // This first call needs to be done or else we might miss all potential until
   // such time, that we are ready to receive. Under no circumstances can we assume
   // that this first call can be neglected.
   _f();
+}
 
-  while (!isStopping()) {
-    bool news = false;
-    {
-      std::unique_lock<std::mutex> lk(_m);
-      if (!_news) {
-        // The timeout is strictly speaking not needed. However, we really do
-        // not want to be caught in here in production.
+bool ClusterInfo::SyncerThread::runTask() {
+  bool news = false;
+  {
+    std::unique_lock<std::mutex> lk(_m);
+    if (!_news) {
+      // The timeout is strictly speaking not needed. However, we really do
+      // not want to be caught in here in production.
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        _cv.wait(lk);
+      _cv.wait(lk);
 #else
-        _cv.wait_for(lk, 100ms);
+      using namespace std::chrono_literals;
+      _cv.wait_for(lk, 100ms);
 #endif
-      }
-      news = _news;
     }
-
-    if (news) {
-      {
-        std::unique_lock<std::mutex> lk(_m);
-        _news = false;
-      }
-      try {
-        _f();
-      } catch (std::exception const& ex) {
-        LOG_TOPIC("752c4", ERR, arangodb::Logger::CLUSTER)
-          << "Caught an error while loading " << _section << ": " << ex.what();
-      } catch (...) {
-        LOG_TOPIC("30968", ERR, arangodb::Logger::CLUSTER)
-          << "Caught an error while loading " << _section;
-      }
-    }
-    // next round...
+    news = _news;
   }
 
-  _cr->unregisterCallback(_acb);
+  if (news) {
+    {
+      std::unique_lock<std::mutex> lk(_m);
+      _news = false;
+    }
+    try {
+      _f();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("752c4", ERR, arangodb::Logger::CLUSTER)
+        << "Caught an error while loading " << _section << ": " << ex.what();
+    } catch (...) {
+      LOG_TOPIC("30968", ERR, arangodb::Logger::CLUSTER)
+        << "Caught an error while loading " << _section;
+    }
+  }
+  // next round...
+  return true;
+}
 
+void ClusterInfo::SyncerThread::runTeardown() {
+  _cr->unregisterCallback(_acb);
 }
 
 futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(uint64_t raftIndex) {

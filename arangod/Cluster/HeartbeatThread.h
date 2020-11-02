@@ -24,13 +24,11 @@
 #ifndef ARANGOD_CLUSTER_HEARTBEAT_THREAD_H
 #define ARANGOD_CLUSTER_HEARTBEAT_THREAD_H 1
 
-#include "Basics/Thread.h"
-
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
+#include "Basics/Thread.h"
 #include "Cluster/AgencyCallback.h"
-#include "Cluster/CriticalThread.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "RestServer/MetricsFeature.h"
 
@@ -56,7 +54,7 @@ struct AgencyVersions {
 class AgencyCallbackRegistry;
 class HeartbeatBackgroundJobThread;
 
-class HeartbeatThread : public CriticalThread,
+class HeartbeatThread : public Thread,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
   HeartbeatThread(application_features::ApplicationServer&, AgencyCallbackRegistry*,
@@ -74,7 +72,7 @@ class HeartbeatThread : public CriticalThread,
   /// @brief whether or not the thread is ready
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isReady() const { return _ready.load(); }
+  bool isReady() const noexcept { return _ready.load(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set the thread status to ready
@@ -91,22 +89,15 @@ class HeartbeatThread : public CriticalThread,
   /// this is used on the coordinator only
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool hasRunOnce() {
-    return HasRunOnce.load(std::memory_order_acquire);
+  bool hasRunOnce() const noexcept {
+    return _hasRunOnce.load(std::memory_order_acquire);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief break runDBserver out of wait on condition after setting state in
   /// base class
   //////////////////////////////////////////////////////////////////////////////
-  virtual void beginShutdown() override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief add thread name to ongoing list of threads that have crashed
-  ///        unexpectedly
-  //////////////////////////////////////////////////////////////////////////////
-
-  static void recordThreadDeath(const std::string& threadName);
+  void beginShutdown() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief post list of deadThreads to current log.  Called regularly, but
@@ -146,11 +137,10 @@ class HeartbeatThread : public CriticalThread,
   void runSingleServer();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief heartbeat main loop for agent and single db ... provides thread
-  /// crash reporting
+  /// @brief heartbeat main loop for agent ... provides thread crash reporting
   //////////////////////////////////////////////////////////////////////////////
 
-  void runSimpleServer();
+  void runAgent();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a plan change, coordinator case
@@ -277,7 +267,7 @@ class HeartbeatThread : public CriticalThread,
   /// this is used on the coordinator only
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::atomic<bool> HasRunOnce;
+  std::atomic<bool> _hasRunOnce;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief keeps track of the currently installed versions

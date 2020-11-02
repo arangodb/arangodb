@@ -27,15 +27,12 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 class FlushFeature;
 
-class FlushThread final : public Thread {
- private:
-  FlushThread(FlushThread const&) = delete;
-  FlushThread& operator=(FlushThread const&) = delete;
-
+class FlushThread final : public TaskThread {
  public:
   /// flush interval in microseconds
   explicit FlushThread(FlushFeature& feature, uint64_t flushInterval);
@@ -48,7 +45,7 @@ class FlushThread final : public Thread {
   void wakeup();
 
  private:
-  void run() override;
+  bool runTask() override;
 
  private:
   /// @brief condition variable for the thread
@@ -59,6 +56,9 @@ class FlushThread final : public Thread {
 
   /// @brief wait interval for the flusher thread when idle (in microseconds)
   uint64_t const _flushInterval;
+  
+  size_t _count;
+  TRI_voc_tick_t _tick;
 };
 
 }  // namespace arangodb
