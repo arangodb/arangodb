@@ -6,6 +6,8 @@ v3.7.5 (XXXX-XX-XX)
   This deadlock should rarely ever occur in practice, as it can only be 
   triggered once during the server shutdown sequence.
 
+* Fixed BTS-233 issue: Fixed invalid IndexId comparator.
+
 * Fixed very spurious errors if the `holdReadLockCollection` replication API for
   the getting-in-sync procedure of shards was called during server shutdown.
   In this case that method could ask the transaction manager for a specific
