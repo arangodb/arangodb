@@ -4,6 +4,11 @@ v3.6.9 (XXXX-XX-XX)
 * Added missing exceptions catch clause for some parts of supervision and
   heartbeat threads.
 
+* Fixed potential deadlock in cluster transactions if a transaction is returned
+  that was soft-aborted by transaction garbage collection before.
+  This deadlock should rarely ever occur in practice, as it can only be
+  triggered once during the server shutdown sequence.
+
 * Optimization of empty append entries.
 
 * Fixed BTS-233 issue: Fixed invalid IndexId comparator.
