@@ -23,7 +23,9 @@
 
 #include "TwoSidedEnumerator.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
+#include "Basics/voc-errors.h"
 
 #include "Graph/PathManagement/PathResult.h"
 
@@ -69,6 +71,42 @@ template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::noPathLeft() const
     -> bool {
   return doneWithDepth() && _shell.empty();
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::getDepth() const
+    -> size_t {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::shellSize() const
+    -> size_t {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::startNextDepth()
+    -> void {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNeighbourhoodOfNextVertex(
+    Ball const& other, ResultList& results) -> void {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::matchResultsInShell(
+    Step const& match, ResultList& results) const -> void {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::buildPath(
+    Step const& vertexInShell, PathResult<Step>& path) -> void {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
@@ -178,6 +216,18 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::getNextPath(
 template <class QueueType, class PathStoreType, class ProviderType>
 bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::skipPath() {
   return false;
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::startNextDepth()
+    -> void {
+  if (_right.shellSize() < _left.shellSize()) {
+    _searchLeft = false;
+    _right.startNextDepth();
+  } else {
+    _searchLeft = true;
+    _left.startNextDepth();
+  }
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>

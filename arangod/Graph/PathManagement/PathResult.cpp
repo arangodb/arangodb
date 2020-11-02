@@ -43,14 +43,17 @@ template <class Step>
 auto PathResult<Step>::appendVertex(typename Step::Vertex v) -> void {
   _vertices.push_back(v);
 }
+
 template <class Step>
 auto PathResult<Step>::prependVertex(typename Step::Vertex v) -> void {
   _vertices.insert(_vertices.begin(), v);
 }
+
 template <class Step>
 auto PathResult<Step>::appendEdge(typename Step::Edge e) -> void {
   _edges.push_back(e);
 }
+
 template <class Step>
 auto PathResult<Step>::prependEdge(typename Step::Edge e) -> void {
   _edges.insert(_edges.begin(), e);
@@ -74,4 +77,9 @@ auto PathResult<Step>::toVelocyPack(arangodb::velocypack::Builder& builder) -> v
       e.addToBuilder(builder);
     }
   }
+}
+
+template <class Step>
+auto PathResult<Step>::isValid() const -> bool {
+  return true;
 }
