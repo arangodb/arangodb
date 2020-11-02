@@ -977,6 +977,12 @@ void HeartbeatThread::runSingleServer() {
       LOG_TOPIC("9a79c", ERR, Logger::HEARTBEAT)
           << "got an unknown exception in single server heartbeat";
     }
+    // Periodically prune the connection pool
+    if (++_DBServerUpdateCounter >= 60) {
+      _DBServerUpdateCounter = 0;
+      auto& clusterFeature = server().getFeature<ClusterFeature>();
+      clusterFeature.pruneAsyncAgencyConnectionPool();
+    }
   }
 }
 
