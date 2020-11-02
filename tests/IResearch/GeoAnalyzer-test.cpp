@@ -42,6 +42,9 @@ TEST(GeoOptionsTest, constants) {
   static_assert(S2RegionCoverer::Options::kDefaultMaxCells == GeoOptions::MAX_CELLS);
   static_assert(0 == GeoOptions::MIN_LEVEL);
   static_assert(S2CellId::kMaxLevel == GeoOptions::MAX_LEVEL);
+  static_assert(20 == GeoOptions::DEFAULT_MAX_CELLS);
+  static_assert(4 == GeoOptions::DEFAULT_MIN_LEVEL);
+  static_assert(23 == GeoOptions::DEFAULT_MAX_LEVEL);
 }
 
 TEST(GeoOptionsTest, options) {

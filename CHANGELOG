@@ -1,6 +1,15 @@
 devel
 -----
 
+* Added support of `GEO_DISTANCE`, `GEO_CONTAINS`, `GEO_INTERSECTS`,
+  `GEO_IN_RANGE` to ArangoSearch.
+
+* Added new `GeoJSON` ArangoSearch analyzer.
+
+* Added new `GeoPoint` ArangoSearch analyzer.
+
+* Added new `GEO_IN_RANGE` AQL function.
+
 * Fixed handling of failedLeaderJob. In case of a plan modification, that
   removes a server from the plan, e.g. reduce replication factor. Directly
   followed by a failure of the current shard leader, would reinsert
