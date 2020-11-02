@@ -129,7 +129,7 @@ function ValidationBasicsSuite () {
     testDocumentsShellInsertGood : () => {
       testCollection.insert(goodDoc);
       assertEqual(testCollection.count(), 1);
-      doc = testCollection.any();
+      let doc = testCollection.any();
       assertTrue(Array.isArray(doc.numArray));
     },
 
@@ -145,14 +145,14 @@ function ValidationBasicsSuite () {
     testDocumentsShellInsertBadSkip : () => {
       testCollection.insert(badDoc, skipOptions);
       assertEqual(testCollection.count(), 1);
-      doc = testCollection.any();
+      let doc = testCollection.any();
       assertFalse(Array.isArray(doc.numArray));
     },
 
     testAQLInsertGood : () => {
       db._query(`INSERT { "numArray" : [1, 2, 3, 4] } INTO ${testCollectionName}`);
       assertEqual(testCollection.count(), 1);
-      doc = testCollection.any();
+      let doc = testCollection.any();
       assertTrue(Array.isArray(doc.numArray));
     },
 
@@ -168,7 +168,7 @@ function ValidationBasicsSuite () {
     testAQLInsertBadSkip : () => {
       db._query(`INSERT { "numArray" : "1, 2, 3, 4" } INTO ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
       assertEqual(testCollection.count(), 1);
-      doc = testCollection.any();
+      let doc = testCollection.any();
       assertFalse(Array.isArray(doc.numArray));
     },
 
@@ -704,9 +704,9 @@ function ValidationEdgeSuite () {
   let testCollection;
   let validatorJson;
 
-  const blankEdge = { "_from" : "vert/A", "_to" : "vert/B" }
-  const goodEdge = { ...blankEdge, "name" : "Helge" }
-  const badEdge = { ...blankEdge, "additional" : true }
+  const blankEdge = { "_from" : "vert/A", "_to" : "vert/B" };
+  const goodEdge = { ...blankEdge, "name" : "Helge" };
+  const badEdge = { ...blankEdge, "additional" : true };
 
   return {
 
