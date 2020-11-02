@@ -35,7 +35,7 @@
 #include "utils/locale_utils.hpp"
 #include "query_builder.hpp"
 
-NS_LOCAL
+namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private members
@@ -239,10 +239,6 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
   class ErrorNode: public irs::filter {
    public:
-    static constexpr irs::string_ref type_name() noexcept {
-      return "iresearch::iql::ErrorNode";
-    }
-
     ErrorNode(): filter(irs::type<ErrorNode>::get()) {}
     irs::filter::prepared::ptr prepare(
         const irs::index_reader&,
@@ -263,10 +259,6 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
   ////////////////////////////////////////////////////////////////////////////////
   class LinkNode: public irs::iql::proxy_filter_t<std::shared_ptr<irs::filter>> {
    public:
-    static constexpr irs::string_ref type_name() noexcept {
-      return "iresearch::iql::LinkNode";
-    }
-
     LinkNode(irs::filter* link): proxy_filter_t(irs::type<LinkNode>::get()) {
       filter_ = ptr(link);
     }
@@ -888,10 +880,10 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
       ? SUCCESS : UNKNOWN;
   }
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(iql)
+namespace iresearch {
+namespace iql {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -964,5 +956,5 @@ query query_builder::build(
 
 DEFINE_FACTORY_DEFAULT(proxy_filter)
 
-NS_END // iql
-NS_END // NS_ROOT
+} // iql
+} // namespace iresearch {

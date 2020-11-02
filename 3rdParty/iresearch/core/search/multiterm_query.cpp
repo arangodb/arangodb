@@ -26,7 +26,7 @@
 #include "bitset_doc_iterator.hpp"
 #include "disjunction.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 doc_iterator::ptr multiterm_query::execute(
     const sub_reader& segment,
@@ -111,4 +111,4 @@ doc_iterator::ptr multiterm_query::execute(
     std::move(itrs), ord, merge_type_, state->estimation());
 }
 
-NS_END // ROOT
+} // ROOT

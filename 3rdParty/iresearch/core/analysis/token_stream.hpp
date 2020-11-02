@@ -28,7 +28,7 @@
 
 #include "utils/attribute_provider.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class IRESEARCH_API token_stream : public attribute_provider {
  public:
@@ -38,6 +38,6 @@ class IRESEARCH_API token_stream : public attribute_provider {
   virtual bool next() = 0;
 };
 
-NS_END
+}
 
 #endif

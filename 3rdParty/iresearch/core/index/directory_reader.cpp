@@ -30,7 +30,7 @@
 #include "directory_reader.hpp"
 #include "segment_reader.hpp"
 
-NS_LOCAL
+namespace {
 
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable:4457))) // variable hides function param
@@ -149,9 +149,9 @@ irs::index_file_refs::ref_t load_newest_index_meta(
 }
 MSVC_ONLY(__pragma(warning(pop)))
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // -------------------------------------------------------------------
 // directory_reader
@@ -361,4 +361,4 @@ directory_reader_impl::directory_reader_impl(
   return reader;
 }
 
-NS_END
+}

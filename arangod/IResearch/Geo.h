@@ -29,6 +29,7 @@ namespace arangodb {
 
 namespace velocypack {
 class Slice;
+class Builder;
 }
 
 namespace geo{
@@ -58,6 +59,8 @@ inline S2RegionTermIndexer::Options S2Options(GeoOptions const& opts) {
 
 bool parseShape(velocypack::Slice slice, geo::ShapeContainer& shape, bool onlyPoint);
 bool parsePoint(velocypack::Slice latSlice, velocypack::Slice lngSlice, S2LatLng& out);
+
+void toVelocyPack(velocypack::Builder& builder, S2LatLng const& point);
 
 } // iresearch
 } // arangodb
