@@ -29,8 +29,8 @@
 #include "memory.hpp"
 #include "noncopyable.hpp"
 
-NS_ROOT
-NS_BEGIN(memory)
+namespace iresearch {
+namespace memory {
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class arena_allocator
@@ -178,7 +178,7 @@ using arena = memory_arena<N*sizeof(T), alignof(T)>;
 template<typename T, typename Arena>
 using arena_vector = std::vector<T, arena_allocator<T, Arena>>;
 
-NS_END // memory
-NS_END // ROOT
+} // memory
+} // ROOT
 
 #endif // IRESEARCH_ARENA_ALLOCATOR_H

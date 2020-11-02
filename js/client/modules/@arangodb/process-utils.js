@@ -1606,6 +1606,11 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     ++count;
 
     instanceInfo.arangods.forEach(arangod => {
+      if (arangod.suspended) {
+        // just fake the availability here
+        arangod.upAndRunning = true;
+        return;
+      }
       print(Date() + " tickeling cluster node " + arangod.url);
       const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(instanceInfo.authOpts));
       if (!reply.error && reply.code === 200) {
@@ -1651,6 +1656,9 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
 
   print("Determining server IDs");
   instanceInfo.arangods.forEach(arangod => {
+    if (arangod.suspended) {
+      return;
+    }
     // agents don't support the ID call...
     if ((arangod.role !== "agent") && (arangod.role !== "single")) {
       let reply;
@@ -1799,6 +1807,9 @@ function launchFinalize(options, instanceInfo, startTime) {
   if (!options.cluster) {
     let count = 0;
     instanceInfo.arangods.forEach(arangod => {
+      if (arangod.suspended) {
+        return;
+      }
       while (true) {
         wait(1, false);
         if (options.useReconnect) {
@@ -2107,6 +2118,9 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
 
 function reStartInstance(options, instanceInfo, moreArgs) {
   let launchInstance = function(options, oneInstanceInfo) {
+    if (oneInstanceInfo.pid) {
+      return;
+    }
     try {
       Object.assign(oneInstanceInfo.args, moreArgs);
       oneInstanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(oneInstanceInfo.args), options).pid;
@@ -2129,6 +2143,9 @@ function reStartInstance(options, instanceInfo, moreArgs) {
   const startTime = time();
 
   instanceInfo.arangods.forEach(function (oneInstance, i) {
+    if (oneInstance.pid) {
+      return;
+    }
     delete(oneInstance.exitStatus);
     delete(oneInstance.pid);
     oneInstance.upAndRunning = false;
@@ -2137,6 +2154,9 @@ function reStartInstance(options, instanceInfo, moreArgs) {
   if (options.cluster) {
     let agencyInstance = {arangods: []};
     instanceInfo.arangods.forEach(function (oneInstance, i) {
+      if (oneInstance.pid) {
+        return;
+      }
       if (oneInstance.role === 'agent') {
         print("relaunching: " + JSON.stringify(oneInstance));
         launchInstance(options, oneInstance);
@@ -2150,6 +2170,9 @@ function reStartInstance(options, instanceInfo, moreArgs) {
   }
 
   instanceInfo.arangods.forEach(function (oneInstance, i) {
+    if (oneInstance.pid) {
+      return;
+    }
     if ((oneInstance.role === 'PRIMARY') ||
         (oneInstance.role === 'primary') ||
         (oneInstance.role === 'dbserver')) {
@@ -2158,18 +2181,24 @@ function reStartInstance(options, instanceInfo, moreArgs) {
     }
   });
   instanceInfo.arangods.forEach(function (oneInstance, i) {
+    if (oneInstance.pid) {
+      return;
+    }
     if ((oneInstance.role === 'COORDINATOR') || (oneInstance.role === 'coordinator')) {
       print("relaunching: " + JSON.stringify(oneInstance));
       launchInstance(options, oneInstance);
     }
   });
   instanceInfo.arangods.forEach(function (oneInstance, i) {
+    if (oneInstance.pid) {
+      return;
+    }
     if (oneInstance.role === 'single') {
       launchInstance(options, oneInstance);
     }
   });
 
-  if (options.cluster) {
+  if (options.cluster && !options.skipReconnect) {
     checkClusterAlive(options, instanceInfo, {}); // todo addArgs
     print("reconnecting " + instanceInfo.endpoint);
     arango.reconnect(instanceInfo.endpoint,

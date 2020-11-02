@@ -26,7 +26,7 @@
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/FrontendFeature.h"
-#include "V8Server/FoxxQueuesFeature.h"
+#include "V8Server/FoxxFeature.h"
 
 namespace arangodb {
 namespace application_features {
@@ -37,7 +37,7 @@ FoxxFeaturePhase::FoxxFeaturePhase(ApplicationServer& server)
   startsAfter<ServerFeaturePhase>();
 
   startsAfter<BootstrapFeature>();
-  startsAfter<FoxxQueuesFeature>();
+  startsAfter<FoxxFeature>();
   startsAfter<FrontendFeature>();
 }
 

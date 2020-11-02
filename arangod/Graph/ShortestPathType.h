@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,34 +21,26 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_FOXX_QUEUES_FEATURE_H
-#define APPLICATION_FEATURES_FOXX_QUEUES_FEATURE_H 1
-
-#include "ApplicationFeatures/ApplicationFeature.h"
+#ifndef ARANGOD_GRAPH_SHORTEST_PATH_TYPE_H
+#define ARANGOD_GRAPH_SHORTEST_PATH_TYPE_H 1
 
 namespace arangodb {
+namespace graph {
 
-class FoxxQueuesFeature final : public application_features::ApplicationFeature {
- public:
-  explicit FoxxQueuesFeature(application_features::ApplicationServer& server);
+struct ShortestPathType {
+  enum class Type { KShortestPaths = 0, KPaths = 1 };
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  // no need to create an object of it
+  ShortestPathType() = delete;
 
-  /// @brief return poll interval for foxx queues. returns a negative number if
-  /// foxx queues are turned off
-  double pollInterval() const {
-    if (!_enabled) {
-      return -1.0;
-    }
-    return _pollInterval;
-  }
+  /// @brief get the type from a string
+  static Type fromString(char const* value);
 
- private:
-  double _pollInterval;
-  bool _enabled;
+  /// @brief return the type as a string
+  static char const* toString(Type value);
 };
 
+}  // namespace graph
 }  // namespace arangodb
 
 #endif

@@ -3488,28 +3488,36 @@ Result RestReplicationHandler::createBlockingTransaction(
 
   std::string vn = _vocbase.name();
   try {
-    std::function<void(void)> f = [=]() {
-      try {
-        // Code does not matter, read only access, so we can roll back.
-        transaction::Manager* mgr = transaction::ManagerFeature::manager();
-        if (mgr) {
-          mgr->abortManagedTrx(id, _vocbase.name());
-        }
-      } catch (...) {
-        // All errors that show up here can only be
-        // triggered if the query is destroyed in between.
-      }
-    };
-
-    std::string comment = std::string("SynchronizeShard from ") + serverId +
-                          " for " + col.name() + " access mode " +
-                          AccessMode::typeString(access);
-    
     if (!serverId.empty()) {
+      std::string comment = std::string("SynchronizeShard from ") + serverId +
+                            " for " + col.name() + " access mode " +
+                            AccessMode::typeString(access);
+    
+      std::function<void(void)> f = [=]() {
+        try {
+          // Code does not matter, read only access, so we can roll back.
+          transaction::Manager* mgr = transaction::ManagerFeature::manager();
+          if (mgr) {
+            mgr->abortManagedTrx(id, vn);
+          }
+        } catch (...) {
+          // All errors that show up here can only be
+          // triggered if the query is destroyed in between.
+        }
+      };
+    
       auto rGuard = std::make_unique<RebootCookie>(
         ci.rebootTracker().callMeOnChange(RebootTracker::PeerState(serverId, rebootId),
-                                          f, comment));
-      transaction::Methods trx{mgr->leaseManagedTrx(id, AccessMode::Type::WRITE)};
+                                          std::move(f), std::move(comment)));
+      auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::WRITE);
+    
+      if (!ctx) {
+        // Trx does not exist. So we assume it got cancelled.
+        return {TRI_ERROR_TRANSACTION_INTERNAL, "read transaction was cancelled"};
+      }
+
+      transaction::Methods trx{ctx};
+
       void* key = this; // simon: not important to get it again
       trx.state()->cookie(key, std::move(rGuard));
     }
@@ -3521,7 +3529,7 @@ Result RestReplicationHandler::createBlockingTransaction(
 
   if (isTombstoned(id)) {
     try {
-      return mgr->abortManagedTrx(id, _vocbase.name());
+      return mgr->abortManagedTrx(id, vn);
     } catch (...) {
       // Maybe thrown in shutdown.
     }

@@ -1,5 +1,158 @@
 devel
 -----
+* Fixed BTS-233 issue: Fixed invalid IndexId comparator.
+
+* Fixed handling of failedLeaderJob. In case of a plan modification, that
+  removes a server from the plan, e.g. reduce replication factor. Directly
+  followed by a failure of the current shard leader, would reinsert
+  the just removed server in the plan, which is undesired, we first need
+  to have a full "desync" cycle on this server to be reusable in the plan
+  again.
+
+* Fixed very spurious errors if the `holdReadLockCollection` replication API for
+  the getting-in-sync procedure of shards was called during server shutdown.
+  In this case that method could ask the transaction manager for a specific
+  transaction, but wasn't return one due to the server shutddown. 
+
+* Added new 'aql' type for ArangoSearch analyzers.
+
+* Obsoleted the startup options `--database.throw-collection-not-loaded-error` 
+  and `--ttl.only-loaded-collection`.
+
+  These options were meaningful for the MMFiles storage engine only, but for 
+  the RocksDB storage engine they did not make any difference. Using these startup
+  options is still possible, but will have no effect other than generating a 
+  warning at server startup.
+
+* Added CMake option `USE_MINIMAL_DEBUGINFO`.
+  This option is turned off by default. If turned on, the created binaries
+  will contain only a minimum amount of debug symbols, reducing the size
+  of the executables. If turned off (which is the default), the binaries
+  will contain full debug information, which will make them bigger in size
+  unless the debug information is later stripped again.
+
+* Modified the returned error code for calling the `shards()` function on a
+  collection in single-server from "internal error" (error number 4) to "shards
+  API is only available in cluster" and error number 9, HTTP status code 501.
+
+* Bug-fix: Allow to unlink a view created on a SmartGraphEdge collection.
+
+* If a collection (or database) is dropped during the instantiation of an AQL query,
+  the setup code now aborts with an ERROR_QUERY_COLLECTION_LOCK_FAILED and earlier.
+  Before the setup code could abort with TRI_ERROR_INTERNAL in the same case.
+
+* Added WINDOW keyword to AQL to allow aggregations on related rows.
+
+* Added new graph method K_PATHS to AQL. This will enumerate all paths between a
+  source and a target vertex that match the given length.
+  For example, the query
+  ```
+    FOR path IN 2..4 OUTBOUND K_PATHS "v/source" TO "v/target" GRAPH "g"
+      RETURN path
+  ```
+  will yield all paths in format
+    {
+      vertices: [v/source, ... , v/target],
+      edges: [v/source -> v/1, ...,  v/n -> v/target
+    }
+  that have length exactly 2 or 3 or 4, start at v/source and end at v/target.
+  The order of those paths in the result set is not guaranteed.
+
+* Fixed issue BTS-195: AQL update queries using the `keepNull` option set to
+  false had an inconsistent behavior. For example, given a collection `test`
+  with an empty document with just key `testDoc`, the following query
+  would return different results when running for the first time or the second
+  time:
+
+      UPDATE 'testDoc' 
+          WITH {test: {sub1: true, sub2: null}} IN test
+      OPTIONS { keepNull: false, mergeObjects: true }
+
+  For its first run, the query would return
+
+      {
+        "_key": "testDoc",
+        "test": {
+          "sub1": true,
+          "sub2": null
+        }
+      }
+
+  (with the `null` attribute value not being removed). For all subsequent runs, 
+  the same query would return
+      
+      {
+        "_key": "testDoc",
+        "test": {
+          "sub1": true,
+        }
+      }
+
+  (with the `null` value removed as requested). 
+
+  This inconsistency was due to how the `keepNull` attribute was handled if
+  the attribute already existed in the to-be-updated document or not. The 
+  behavior is now consistent, so `null` values are now properly removed from 
+  sub-attributes even if in the to-be-updated document the target attribute
+  did not yet exist. This makes such updates idempotent again.
+
+  This a behavior change compared previous versions, but it will only have
+  effect when `keepNull` is set to `false` (the default value is `true` however),
+  and only when just-inserted object sub-attributes contained `null` values.
+
+* Optimization of empty append entries.
+
+* Bug-fix: Creating an additional index on the edge collection of a disjoint
+  SmartGraph could falsely result into an error: 
+  `Could not find all smart collections ...`
+  This is now ruled out and indexes can be created as expected.
+
+* Added startup option `--foxx.force-update-on-startup` to toggle waiting 
+  for all Foxx services in all databases to be propagated to a coordinator 
+  before it completes the boot sequence. 
+  In case the option is set to `false` (i.e. no waiting), the coordinator 
+  will complete the boot sequence faster, and the Foxx services will be 
+  propagated lazily. Until the initialization procedure has completed for
+  the local Foxx apps, any request to a Foxx app will be responded to with
+  an HTTP 503 error and message 
+
+    waiting for initialization of Foxx services in this database 
+
+  This can cause an unavailability window for Foxx services on coordinator
+  startup for the initial requests to Foxx apps until the app propagation 
+  has completed.
+  
+  When not using Foxx, this option should be set to `false` (default) to 
+  benefit from a faster coordinator startup.
+  Deployments relying on Foxx apps being available as soon as a coordinator 
+  is integrated or responding should set this option to `true`.
+  The option only has an effect for cluster setups. 
+  On single servers and in active failover mode, all Foxx apps will be 
+  available from the very beginning.
+  Note: ArangoDB 3.6 and 3.7 also introduced this option, but with a default
+  value of `true`. ArangoDB 3.8 changes the default to `false`.
+
+* Changed the server-side implementation of the following internal JavaScript 
+  APIs to no-ops:
+  * `internal.reloadAqlFunctions()`: this is a no-op function now
+  * `@arangodb/actions.buildRouting()`: this is a no-op function now
+  * `@arangodb/actions.routingTree`: will return an empty object
+  * `@arangodb/actions.routingList`: will return an empty object
+
+  All the above APIs were intended to be used for internal means only. These
+  APIs are deprecated now and will be removed in ArangoDB v3.9.
+
+* Instead of failing to connect to INADDR_ANY refuse it as a parameter, with a
+  descriptive error message for novice users (issue #12871).
+
+* Remove any special handling for obsoleted collection attributes
+  `indexBuckets`, `journalSize`, `doCompact` and `isVolatile`. These
+  attributes were meaningful only with the MMFiles storage engine and have
+  no meaning with the RocksDB storage engine. Thus any special handling
+  for these attributes can be removed in the internal code. 
+  Client applications and tests that rely on the behavior that setting
+  any of these attributes produces an error when using the RocksDB engine
+  may need adjustment now.
 
 * Added a --continue options to arango restore. arangorestore now keeps track of the progress
   and can continue the restore operation when some error occured.
@@ -31,6 +184,11 @@ devel
   prefixed with the value of the smart graph attribute". This should
   make it a lot easier to understand what the actual problem is.
 
+* Fixed handling of failoverCandidates. Sometimes, a server can still be a
+  failoverCandidate even though it has been taken out of the Plan. With this
+  fix, such a server is quickly taken out of failoverCandidates and it can never
+  be re-added to the Plan before this has happened.
+
 * Added configuration option `--query.tracking-slow-queries` to decide whether
   slow queries are tracked extra.
 
@@ -61,33 +219,33 @@ devel
   The default log level for the "agencystore" log topic is WARN, meaning no
   agency writes will be logged.
   Turning on this logging can be used for auditing and debugging, but it is
-  not recommended in the general case, as it can lead to large amounts of 
+  not recommended in the general case, as it can lead to large amounts of
   data being logged, which can have a performance impact and will lead to
   higher disk space usage.
-  
+
 * Fix #12693: SORT inside a subquery could sometimes swallow part of its input
   when it crossed boundaries of internal row batches.
 
 * Added configuration option `--rocksdb.sync-delay-threshold`.
-  This option can be used to track if any RocksDB WAL sync operations is 
+  This option can be used to track if any RocksDB WAL sync operation is
   delayed by more than the configured value (in milliseconds). The intention
   is to get aware of severely delayed WAL sync operations.
 
 * Fix for BTS-191: Made transaction API database-aware.
 
-* Minor clean up of and less verbosity in agent callbacks. 
+* Minor clean up of and less verbosity in agent callbacks.
 
-* Speed up initial replication of collections/shards data by not wrapping 
-  each document in a seperate `{"type":2300,"data":...}` envelope. In 
-  addition, the follower side of the replication will request data from 
-  leaders in VelocyPack format if the leader is running at least version 
+* Speed up initial replication of collections/shards data by not wrapping
+  each document in a seperate `{"type":2300,"data":...}` envelope. In
+  addition, the follower side of the replication will request data from
+  leaders in VelocyPack format if the leader is running at least version
   3.8.
-  Stripping the envelopes and using VelocyPack for transfer allows for 
-  smaller data sizes when exchanging the documents and faster processing, 
-  and thus can lead to time savings in document packing and unpacking as 
-  well as reduce the number of required HTTP requests. 
+  Stripping the envelopes and using VelocyPack for transfer allows for
+  smaller data sizes when exchanging the documents and faster processing,
+  and thus can lead to time savings in document packing and unpacking as
+  well as reduce the number of required HTTP requests.
 
-* Add database, shard name and error information to several shard-related log 
+* Add database, shard name and error information to several shard-related log
   messages.
 
 * Display shard names of a collection in the web interface when in the details
@@ -130,7 +288,7 @@ devel
 * Make scheduler react and start new threads slightly faster in case a lot
   of new work arrives.
 
-* Make scheduler propertly count down the number of working threads in case
+* Make scheduler properly count down the number of working threads in case
   an exception happens in a worker thread.
 
 * Added startup option `--database.old-system-collections` to toggle automatic
@@ -151,7 +309,7 @@ devel
   and will be removed in ArangoDB v3.9.
 
   Two side effects of turning this option off (which is the default) are:
-  * there will no be iteration over all databases at server startup just to check
+  * there will be no iteration over all databases at server startup just to check
     the contents of all `_modules` collections.
   * less collections/shards will be around for deployments that create a large
     number of databases.
@@ -176,7 +334,7 @@ devel
 * Reduce the number of dropped followers when running larger (>= 128 MB)
   write transactions.
 
-* Fixed a bug in AQL COLLECT with OPTIONS { "hash" } that lead to a quadratic
+* Fixed a bug in AQL COLLECT with OPTIONS { "hash" } that led to a quadratic
   runtime in the number of output rows.
 
 * Make the reboot tracker catch failed coordinators, too. Previously the
@@ -201,7 +359,7 @@ devel
   system the RocksDB database directory is located in. These metrics will
   always be 0 on Windows.
 
-* Fixed inifinite reload of the login window after logout of an LDAP user.
+* Fixed infinite reload of the login window after logout of an LDAP user.
 
 * Added startup option `--query.max-runtime` to limit the maximum runtime of
   all AQL queries to a specified threshold value (in seconds). By default,
@@ -1879,7 +2037,7 @@ devel
   confusing error messages
 
 * Internal statistics API now uses integer timestamps instead of doubles. The
-  old behaviour sometimes leads to failed requests because of parse errors
+  old behavior sometimes leads to failed requests because of parse errors
   which occured in the internal used JavaScript joi library.
 
 * Support trailing commas in AQL object and array definitions as follows:

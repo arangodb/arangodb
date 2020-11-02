@@ -73,7 +73,7 @@ static std::string const UNKNOWN = "UNKNOWN";
 std::string const LogThreadName("Logging");
 
 class DefaultLogGroup : public LogGroup {
-  std::size_t id() const { return 0; }
+  std::size_t id() const override { return 0; }
 };
 DefaultLogGroup defaultLogGroupInstance;
 

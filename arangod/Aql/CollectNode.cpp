@@ -450,6 +450,7 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
+    case ExecutionNode::WINDOW:
       return false;
     case ExecutionNode::MUTEX: // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
@@ -493,6 +494,7 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
+    case ExecutionNode::WINDOW:
       return false;
     case ExecutionNode::MUTEX: // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
@@ -536,6 +538,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
+    case ExecutionNode::WINDOW:
       return false;
     case ExecutionNode::MUTEX: // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
@@ -645,8 +648,8 @@ void CollectNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 void CollectNode::setAggregateVariables(
-    std::vector<AggregateVarInfo> const& aggregateVariables) {
-  _aggregateVariables = aggregateVariables;
+    std::vector<AggregateVarInfo>&& aggregateVariables) {
+  _aggregateVariables = std::move(aggregateVariables);
 }
 
 /// @brief estimateCost

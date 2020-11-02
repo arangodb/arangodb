@@ -54,8 +54,8 @@
   static_assert(false, "Unknown size_t, ssize_t, ptrdiff_t specifiers");
 #endif
 
-NS_ROOT
-NS_BEGIN(logger)
+namespace iresearch {
+namespace logger {
 
 // use a prefx that does not clash with any predefined macros (e.g. win32 'ERROR')
 enum level_t {
@@ -101,7 +101,7 @@ IRESEARCH_API void stack_trace_level(level_t level); // stack trace output level
   void IRESEARCH_API stack_trace_nomalloc(level_t level, int fd, size_t skip = 1);
 #endif
 
-NS_BEGIN(detail)
+namespace detail {
 // not everyone who includes header actually logs something, that`s ok
 [[maybe_unused]] static void log_formatted(const char* function, const char* file, int line,
                                            level_t level, const char* format, ...) {
@@ -118,14 +118,14 @@ NS_BEGIN(detail)
     log(function, file, line, level, buf.data(), size_t(required_len));
   }
 }
-NS_END // detail
-NS_END // logger
-NS_END
+} // detail
+} // logger
+}
 
 #if defined(_MSC_VER)
   #define IR_LOG_FORMATED(level, format, ...) \
     if (::iresearch::logger::enabled(level)) \
-      ::iresearch::logger::detail::log_formatted(CURRENT_FUNCTION, __FILE__, __LINE__, level, format, __VA_ARGS__)
+      ::iresearch::logger::detail::log_formatted(IRESEARCH_CURRENT_FUNCTION, __FILE__, __LINE__, level, format, __VA_ARGS__)
 
   #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, format, __VA_ARGS__)
   #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, format, __VA_ARGS__)
@@ -136,7 +136,7 @@ NS_END
 #else // use a GNU extension for ignoring the trailing comma: ', ##__VA_ARGS__'
   #define IR_LOG_FORMATED(level, format, ...) \
     if (::iresearch::logger::enabled(level)) \
-      ::iresearch::logger::detail::log_formatted(CURRENT_FUNCTION, __FILE__, __LINE__, level, format, ##__VA_ARGS__)
+      ::iresearch::logger::detail::log_formatted(IRESEARCH_CURRENT_FUNCTION, __FILE__, __LINE__, level, format, ##__VA_ARGS__)
 
   #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, format, ##__VA_ARGS__)
   #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, format, ##__VA_ARGS__)
@@ -148,12 +148,12 @@ NS_END
 
 #define IR_LOG_EXCEPTION() \
   if (::iresearch::logger::enabled(::iresearch::logger::stack_trace_level())) { \
-    IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "@%s\n Exception stack trace:",CURRENT_FUNCTION); \
+    IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "@%s\n Exception stack trace:",IRESEARCH_CURRENT_FUNCTION); \
     ::iresearch::logger::stack_trace(::iresearch::logger::stack_trace_level(), std::current_exception()); \
   }
 #define IR_LOG_STACK_TRACE() \
   if (::iresearch::logger::enabled(::iresearch::logger::stack_trace_level())) { \
-    IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "@%s\nstack trace:", CURRENT_FUNCTION); \
+    IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "@%s\nstack trace:", IRESEARCH_CURRENT_FUNCTION); \
     ::iresearch::logger::stack_trace(::iresearch::logger::stack_trace_level()); \
   }
 

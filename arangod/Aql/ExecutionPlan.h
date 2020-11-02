@@ -349,10 +349,6 @@ class ExecutionPlan {
   /// @brief create an execution plan element from an AST COLLECT node, COUNT
   ExecutionNode* fromNodeCollectCount(ExecutionNode*, AstNode const*);
 
-  /// @brief create an execution plan element from an AST COLLECT node,
-  /// AGGREGATE
-  ExecutionNode* fromNodeCollectAggregate(ExecutionNode*, AstNode const*);
-
   /// @brief create an execution plan element from an AST LIMIT node
   ExecutionNode* fromNodeLimit(ExecutionNode*, AstNode const*);
 
@@ -373,9 +369,14 @@ class ExecutionPlan {
 
   /// @brief create an execution plan element from an AST UPSERT node
   ExecutionNode* fromNodeUpsert(ExecutionNode*, AstNode const*);
+  
+  /// @brief create an execution plan element from an AST WINDOW node
+  ExecutionNode* fromNodeWindow(ExecutionNode*, AstNode const*);
 
   /// @brief create an vertex element for graph nodes
   AstNode const* parseTraversalVertexNode(ExecutionNode*&, AstNode const*);
+  
+  std::vector<AggregateVarInfo> prepareAggregateVars(ExecutionNode** previous, AstNode const* node);
 
  private:
   /// @brief map from node id to the actual node

@@ -780,7 +780,7 @@ constexpr int TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN               
 constexpr int TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES             = 1469;
 
 /// 1470: ERROR_CLUSTER_UNSUPPORTED
-/// "unsupported operation or parameter"
+/// "unsupported operation or parameter for clusters"
 /// Will be raised when there is an attempt to carry out an operation that is
 /// not supported in the context of a sharded collection.
 constexpr int TRI_ERROR_CLUSTER_UNSUPPORTED                                     = 1470;
@@ -1157,6 +1157,12 @@ constexpr int TRI_ERROR_QUERY_USER_ASSERT                                       
 /// "%s"
 /// Will be raised if and user provided expression fails to evaluate to true
 constexpr int TRI_ERROR_QUERY_USER_WARN                                         = 1594;
+
+/// 1595: ERROR_QUERY_WINDOW_AFTER_MODIFICATION
+/// "window operation after data-modification"
+/// Will be raised when a window node is created after a data-modification
+/// operation.
+constexpr int TRI_ERROR_QUERY_WINDOW_AFTER_MODIFICATION                         = 1595;
 
 /// 1600: ERROR_CURSOR_NOT_FOUND
 /// "cursor not found"

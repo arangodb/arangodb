@@ -178,7 +178,7 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
     }
     return {errorNum, "got invalid response from server: HTTP " +
                           itoa(response->getHttpReturnCode()) + ": '" +
-                          errorMsg + "' while executing '" + requestAction +
+                          errorMsg + "' while executing " + requestAction +
                           (originalRequest.empty() ? "" : "' with this payload: '" + originalRequest + "'")};
   }
   return {TRI_ERROR_NO_ERROR};

@@ -189,8 +189,10 @@ void AgencyCache::handleCallbacksNoLock(
       ++it;
     }
     
-    if (k.size() > 8) {
-      std::string_view r(k.c_str() + 8, k.size() - 8);
+    // Paths are normalized. We omit the first 8 characters for "/arango" + "/"
+    const static size_t offset = AgencyCommHelper::path(std::string()).size() + 1;
+    if (k.size() > offset) {
+      std::string_view r(k.c_str() + offset, k.size() - offset);
       auto rs = r.size();
 
       if (rs > strlen(PLAN) && r.compare(0, strlen(PLAN), PLAN) == 0) {
@@ -333,13 +335,16 @@ void AgencyCache::run() {
                     TRI_ASSERT(rs.get("log").isArray());
                     LOG_TOPIC("4579e", TRACE, Logger::CLUSTER) <<
                       "Applying to cache " << rs.get("log").toJson();
+                    std::unordered_set<std::string> pc;  // Plan changes
+                    std::unordered_set<std::string> cc;  // Current changes
                     for (auto const& i : VPackArrayIterator(rs.get("log"))) {
+                      pc.clear();
+                      cc.clear();
                       {
                         std::lock_guard g(_storeLock);
                         _readDB.applyTransaction(i); // apply logs
                         _commitIndex = i.get("index").getNumber<uint64_t>();
 
-                        std::unordered_set<std::string> pc, cc;
                         {
                           std::lock_guard g(_callbacksLock);
                           handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
@@ -598,6 +603,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
   if (last < _lastSnapshot) {
     get_rest = true;
     auto keys = _readDB.nodePtr(AgencyCommHelper::path(what) + "/" + DATABASES)->keys();
+    databases.reserve(keys.size());
     for (auto& i : keys) {
       databases.emplace(std::move(i));
     }
@@ -622,10 +628,10 @@ AgencyCache::change_set_t AgencyCache::changedSince(
     return change_set_t(_commitIndex, version, std::move(db_res), std::move(rest_res));
   }
 
+  auto query = std::make_shared<arangodb::velocypack::Builder>();
   {
     for (auto const& i : databases) {
       if (!i.empty()) { // actual database
-        auto query = std::make_shared<arangodb::velocypack::Builder>();
         { VPackArrayBuilder outer(query.get());
           { VPackArrayBuilder inner(query.get());
             for (auto const& g : goodies) { // Get goodies for database
@@ -642,6 +648,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
           FATAL_ERROR_EXIT();
         }
       }
+      query->clear();
     }
   }
 
@@ -652,8 +659,8 @@ AgencyCache::change_set_t AgencyCache::changedSince(
     keys.erase(
       std::remove_if(
         std::begin(keys), std::end(keys),
-        [&] (auto x) {
-          return std::binary_search(std::begin(exc), std::end(exc),x);}),
+        [&] (auto const& x) {
+          return std::find(std::begin(exc), std::end(exc),x) != std::end(exc);}),
       std::end(keys));
     auto query = std::make_shared<arangodb::velocypack::Builder>();
     {

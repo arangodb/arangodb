@@ -43,7 +43,7 @@
 
 #include <atomic>
 
-NS_ROOT
+namespace iresearch {
 
 class comparer;
 class bitvector;
@@ -1069,6 +1069,6 @@ class IRESEARCH_API index_writer
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_writer
 
-NS_END
+}
 
 #endif // IRESEARCH_INDEX_WRITER_H

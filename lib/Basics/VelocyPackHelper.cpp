@@ -780,11 +780,6 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
   }
 }
 
-VPackBuilder VelocyPackHelper::merge(VPackSlice const& lhs, VPackSlice const& rhs,
-                                     bool nullMeansRemove, bool mergeObjects) {
-  return VPackCollection::merge(lhs, rhs, mergeObjects, nullMeansRemove);
-}
-
 double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
   TRI_ASSERT(!slice.isNone());
 

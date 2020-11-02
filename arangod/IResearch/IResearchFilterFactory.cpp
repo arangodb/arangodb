@@ -349,6 +349,10 @@ Result getLatLong(
       auto const latValue = value.at(1);
       auto const lonValue = value.at(0);
 
+      if (!latValue.isDouble() || !lonValue.isDouble()) {
+        return error::failedToEvaluate(funcName, argIdx);
+      }
+
       double_t lat, lon;
 
       if (!latValue.getDouble(lat) || !lonValue.getDouble(lon)) {
@@ -1053,7 +1057,7 @@ Result fromFuncGeoInRange(
     }
 
     if (argc > 5) {
-      rv = evaluateArg(includeMax, tmpValue, funcName, args, 4, buildFilter, ctx);
+      rv = evaluateArg(includeMax, tmpValue, funcName, args, 5, buildFilter, ctx);
 
       if (rv.fail()) {
         return rv;
@@ -1075,10 +1079,12 @@ Result fromFuncGeoInRange(
     setupGeoFilter(filterCtx.analyzer, options->options);
 
     options->origin = centroid.ToPoint();
-    options->range.min = minDistance;
-    options->range.min_type = includeMin
-      ? irs::BoundType::INCLUSIVE
-      : irs::BoundType::EXCLUSIVE;
+    if (minDistance != 0.) {
+      options->range.min = minDistance;
+      options->range.min_type = includeMin
+        ? irs::BoundType::INCLUSIVE
+        : irs::BoundType::EXCLUSIVE;
+    }
     options->range.max = maxDistance;
     options->range.max_type = includeMax
       ? irs::BoundType::INCLUSIVE
@@ -1092,7 +1098,7 @@ Result fromFuncGeoInRange(
   return {};
 }
 
-// GEO_DISTANCE(.. , ..) <|<=|>|>= Distance
+// GEO_DISTANCE(.. , ..) <|<=|==|>|>= Distance
 Result fromGeoDistanceInterval(
     irs::boolean_filter* filter,
     arangodb::iresearch::NormalizedCmpNode const& node,
@@ -1150,12 +1156,20 @@ Result fromGeoDistanceInterval(
   ScopedAqlValue distanceValue(*node.value);
   if (filter || distanceValue.isConstant()) {
     if (!distanceValue.execute(ctx)) {
-      return error::failedToEvaluate(GEO_DISTANCE_FUNC, 3); // FIXME
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "Failed to evaluate an argument denoting a distance near '"s +
+        GEO_DISTANCE_FUNC + "' function"
+      };
     }
 
     if (SCOPED_VALUE_TYPE_DOUBLE != distanceValue.type() ||
         !distanceValue.getDouble(distance)) {
-      return error::failedToParse(GEO_DISTANCE_FUNC, 3, SCOPED_VALUE_TYPE_DOUBLE); // FIXME
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "Failed to parse an argument denoting a distance as a number near '"s +
+        GEO_DISTANCE_FUNC + "' function"
+      };
     }
   }
 
@@ -1166,24 +1180,42 @@ Result fromGeoDistanceInterval(
       return error::failedToGenerateName(GEO_DISTANCE_FUNC, fieldNodeIdx);
     }
 
-    auto& geo_filter = filter->add<GeoDistanceFilter>();
+    auto& geo_filter = (aql::NODE_TYPE_OPERATOR_BINARY_NE == node.cmp
+                       ? filter->add<irs::Not>().filter<GeoDistanceFilter>()
+                       : filter->add<GeoDistanceFilter>());
+
     geo_filter.boost(filterCtx.boost);
 
     auto* options = geo_filter.mutable_options();
+    setupGeoFilter(filterCtx.analyzer, options->options);
+
     options->origin = centroid.ToPoint();
 
-    auto const type = (aql::NODE_TYPE_OPERATOR_BINARY_GE == node.cmp ||
-                       aql::NODE_TYPE_OPERATOR_BINARY_LE == node.cmp)
-      ? irs::BoundType::INCLUSIVE
-      : irs::BoundType::EXCLUSIVE;
-
-    if (aql::NODE_TYPE_OPERATOR_BINARY_GT == node.cmp ||
-        aql::NODE_TYPE_OPERATOR_BINARY_GE == node.cmp) {
-      options->range.min = distance;
-      options->range.min_type = type;
-    } else {
-      options->range.max = distance;
-      options->range.max_type = type;
+    switch (node.cmp) {
+      case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+      case aql::NODE_TYPE_OPERATOR_BINARY_NE:
+        options->range.min = distance;
+        options->range.min_type = irs::BoundType::INCLUSIVE;
+        options->range.max = distance;
+        options->range.max_type = irs::BoundType::INCLUSIVE;
+        break;
+      case aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      case aql::NODE_TYPE_OPERATOR_BINARY_LE:
+        options->range.max = distance;
+        options->range.max_type = aql::NODE_TYPE_OPERATOR_BINARY_LE == node.cmp
+          ? irs::BoundType::INCLUSIVE
+          : irs::BoundType::EXCLUSIVE;
+        break;
+      case aql::NODE_TYPE_OPERATOR_BINARY_GT:
+      case aql::NODE_TYPE_OPERATOR_BINARY_GE:
+        options->range.min = distance;
+        options->range.min_type = aql::NODE_TYPE_OPERATOR_BINARY_GE == node.cmp
+          ? irs::BoundType::INCLUSIVE
+          : irs::BoundType::EXCLUSIVE;
+        break;
+      default:
+        TRI_ASSERT(false);
+        return {TRI_ERROR_BAD_PARAMETER};
     }
 
     TRI_ASSERT(filterCtx.analyzer);
@@ -1231,6 +1263,12 @@ Result fromBinaryEq(irs::boolean_filter* filter, QueryContext const& ctx,
   arangodb::iresearch::NormalizedCmpNode normalized;
 
   if (!arangodb::iresearch::normalizeCmpNode(node, *ctx.ref, normalized)) {
+    if (arangodb::iresearch::normalizeGeoDistanceCmpNode(node, *ctx.ref, normalized)) {
+      if (fromGeoDistanceInterval(filter, normalized, ctx, filterCtx).ok()) {
+        return {};
+      }
+    }
+
     auto rv = fromExpression(filter, ctx, filterCtx, node);
     return rv.reset(rv.errorNumber(), "in from binary equation" + rv.errorMessage());
   }
@@ -1992,11 +2030,8 @@ Result fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
     auto const* valueNode = node.getMemberUnchecked(i);
     TRI_ASSERT(valueNode);
 
-    auto rv = ::filter(filter, ctx, subFilterCtx, *valueNode);
+    auto const rv = ::filter(filter, ctx, subFilterCtx, *valueNode);
     if (rv.fail()) {
-      auto node = aql::AstNode::toString(valueNode);
-      //return rv.reset(rv.errorNumber(), "error checking subNodes in node: " + node + ": " + rv.errorMessage());
-      //probably too much for the user
       return rv;
     }
   }
@@ -2804,11 +2839,11 @@ Result fromFuncPhraseLevenshteinMatch(char const* funcName,
 
         virtual void prepare(const irs::sub_reader& segment,
                              const irs::term_reader& field,
-                             const irs::seek_term_iterator& terms) {
+                             const irs::seek_term_iterator& terms) override {
           collector.prepare(segment, field, terms);
         }
 
-        virtual void visit(irs::boost_t boost) {
+        virtual void visit(irs::boost_t boost) override {
           collector.visit(boost);
         }
 

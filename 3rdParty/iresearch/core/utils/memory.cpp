@@ -31,8 +31,8 @@
 
 #include "memory.hpp"
 
-NS_ROOT
-NS_BEGIN(memory)
+namespace iresearch {
+namespace memory {
 
 void dump_mem_stats_trace() noexcept {
   #ifndef _MSC_VER
@@ -89,5 +89,5 @@ Topmost releasable block (keepcost):   %lu\n\
   #endif
 }
 
-NS_END // memory
-NS_END
+} // memory
+}

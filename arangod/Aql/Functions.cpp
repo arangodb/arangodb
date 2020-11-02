@@ -967,8 +967,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
         registerInvalidArgumentWarning(expressionContext, funcName);
         return AqlValue(AqlValueHintNull());
       }
-      builder = arangodb::basics::VelocyPackHelper::merge(builder.slice(), it,
-                                                          false, recursive);
+      builder = arangodb::velocypack::Collection::merge(builder.slice(), it, /*mergeObjects*/ recursive, /*nullMeansRemove*/ false);
     }
     return AqlValue(builder.slice(), builder.size());
   }
@@ -990,7 +989,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
     AqlValueMaterializer materializer(&vopts);
     VPackSlice slice = materializer.slice(param, false);
 
-    builder = arangodb::basics::VelocyPackHelper::merge(initialSlice, slice, false, recursive);
+    builder = arangodb::velocypack::Collection::merge(initialSlice, slice, /*mergeObjects*/ recursive, /*nullMeansRemove*/ false);
     initialSlice = builder.slice();
   }
   if (n == 1) {
@@ -5587,15 +5586,18 @@ AqlValue Functions::GeoDistance(ExpressionContext* exprCtx,
 
 /// @brief function GEO_IN_RANGE
 AqlValue Functions::GeoInRange(ExpressionContext* ctx,
-                               AstNode const&,
+                               AstNode const& node,
                                VPackFunctionParameters const& args) {
   TRI_ASSERT(ctx);
-  constexpr char const AFN[] = "GEO_IN_RANGE";
+  TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
+
+  auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
+  TRI_ASSERT(impl);
 
   auto const argc = args.size();
 
   if (argc < 4 || argc > 7) {
-    registerWarning(ctx, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+    registerWarning(ctx, impl->name.c_str(), TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -5603,28 +5605,28 @@ AqlValue Functions::GeoInRange(ExpressionContext* ctx,
   auto res = parseShape(ctx, extractFunctionParameterValue(args, 0), shape1);
 
   if (res.fail()) {
-    registerWarning(ctx, AFN, res);
+    registerWarning(ctx, impl->name.c_str(), res);
     return AqlValue(AqlValueHintNull());
   }
 
   res = parseShape(ctx, extractFunctionParameterValue(args, 1), shape2);
 
   if (res.fail()) {
-    registerWarning(ctx, AFN, res);
+    registerWarning(ctx, impl->name.c_str(), res);
     return AqlValue(AqlValueHintNull());
   }
 
   auto const& lowerBound = extractFunctionParameterValue(args, 2);
 
   if (!lowerBound.isNumber()) {
-    registerWarning(ctx, AFN, {TRI_ERROR_BAD_PARAMETER, "3rd argument requires a number"});
+    registerWarning(ctx, impl->name.c_str(), {TRI_ERROR_BAD_PARAMETER, "3rd argument requires a number"});
     return AqlValue(AqlValueHintNull());
   }
 
   auto const& upperBound = extractFunctionParameterValue(args, 3);
 
   if (!upperBound.isNumber()) {
-    registerWarning(ctx, AFN, {TRI_ERROR_BAD_PARAMETER, "4th argument requires a number"});
+    registerWarning(ctx, impl->name.c_str(), {TRI_ERROR_BAD_PARAMETER, "4th argument requires a number"});
     return AqlValue(AqlValueHintNull());
   }
 
@@ -5636,17 +5638,17 @@ AqlValue Functions::GeoInRange(ExpressionContext* ctx,
     auto const& includeLowerValue = extractFunctionParameterValue(args, 4);
 
     if (!includeLowerValue.isBoolean()) {
-      registerWarning(ctx, AFN, {TRI_ERROR_BAD_PARAMETER, "5th argument requires a bool"});
+      registerWarning(ctx, impl->name.c_str(), {TRI_ERROR_BAD_PARAMETER, "5th argument requires a bool"});
       return AqlValue(AqlValueHintNull());
     }
 
     includeLower = includeLowerValue.toBoolean();
 
     if (argc > 5) {
-      auto const& includeUpperValue = extractFunctionParameterValue(args, 4);
+      auto const& includeUpperValue = extractFunctionParameterValue(args, 5);
 
       if (!includeUpperValue.isBoolean()) {
-        registerWarning(ctx, AFN, {TRI_ERROR_BAD_PARAMETER, "6th argument requires a bool"});
+        registerWarning(ctx, impl->name.c_str(), {TRI_ERROR_BAD_PARAMETER, "6th argument requires a bool"});
         return AqlValue(AqlValueHintNull());
       }
 

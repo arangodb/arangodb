@@ -27,7 +27,7 @@
 #include "search/score.hpp"
 #include "search/cost.hpp"
 
-NS_LOCAL
+namespace {
 
 class all_filter_test_case : public tests::filter_test_case_base { };
 
@@ -207,4 +207,4 @@ INSTANTIATE_TEST_CASE_P(
   tests::to_string
 );
 
-NS_END
+}

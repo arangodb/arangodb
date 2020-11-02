@@ -22,7 +22,6 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "ClusterMethods.h"
 
 #include "Agency/TimeString.h"
@@ -78,6 +77,7 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
+#include <velocypack/HashedStringRef.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include "velocypack/StringRef.h"
@@ -98,6 +98,11 @@ using namespace arangodb::futures;
 using namespace arangodb::rest;
 
 using Helper = arangodb::basics::VelocyPackHelper;
+
+namespace {
+std::string const edgeUrl = "/_internal/traverser/edge/";
+std::string const vertexUrl = "/_internal/traverser/vertex/";
+}
 
 // Timeout for write operations, note that these are used for communication
 // with a shard leader and we always have to assume that some follower has
@@ -572,6 +577,19 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
   return TRI_ERROR_NO_ERROR;
 }
 }  // namespace
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Enterprise Relecant code to filter out hidden collections
+///        that should ne be triggered directly by operations.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef USE_ENTERPRISE
+bool ClusterMethods::filterHiddenCollections(LogicalCollection const& c) {
+  return false;
+}
+#endif
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a shard distribution for a new collection, the list
@@ -1110,6 +1128,13 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   reqOpts.database = dbname;
   reqOpts.retryNotFound = true;
 
+  if (TRI_vocbase_t::IsSystemName(cname)) {
+    // system collection (e.g. _apps, _jobs, _graphs...
+    // very likely this is an internal request that should not block other processing
+    // in case we don't get a timely response
+    reqOpts.timeout = network::Timeout(5.0);
+  }
+
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
 
@@ -1180,6 +1205,13 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
   reqOpts.database = dbname;
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = true;
+  
+  if (TRI_vocbase_t::IsSystemName(collname)) {
+    // system collection (e.g. _apps, _jobs, _graphs...
+    // very likely this is an internal request that should not block other processing
+    // in case we don't get a timely response
+    reqOpts.timeout = network::Timeout(5.0);
+  }
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(shards->size());
@@ -1828,8 +1860,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
                              size_t depth,
                              std::vector<VPackSlice>& result) {
   auto const* engines = travCache.engines();
-  std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache =
-      travCache.cache();
+  auto& cache = travCache.cache();
   auto& datalake = travCache.datalake();
   size_t& filtered = travCache.filteredDocuments();
   size_t& read = travCache.insertedDocuments();
@@ -1837,7 +1868,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
   // TODO map id => ServerID if possible
   // And go fast-path
   transaction::BuilderLeaser leased(&trx);
-  leased->openObject();
+  leased->openObject(true);
   leased->add("depth", VPackValue(depth));
   leased->add("keys", VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
   leased->add(VPackValue("variables"));
@@ -1847,8 +1878,6 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
     leased->close();
   }
   leased->close();
-
-  std::string const url = "/_internal/traverser/edge/";
 
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
 
@@ -1862,7 +1891,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
   for (auto const& engine : *engines) {
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
-                                  url + StringUtils::itoa(engine.second),
+                                  ::edgeUrl + StringUtils::itoa(engine.second),
                                   leased->bufferRef(), reqOpts));
   }
 
@@ -1889,16 +1918,23 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
 
     VPackSlice edges = resSlice.get("edges");
     bool allCached = true;
+    VPackArrayIterator allEdges(edges);
+    // Reserve additional space for allEdges, they will
+    // all be added within this function, the continue case
+    // is only triggered on invalid network requests (unlikely)
+    result.reserve(allEdges.size() + result.size());
 
-    for (VPackSlice e : VPackArrayIterator(edges)) {
+    for (VPackSlice e : allEdges) {
       VPackSlice id = e.get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
         LOG_TOPIC("a23b5", ERR, Logger::GRAPHS)
             << "got invalid edge id type: " << id.typeName();
         continue;
+      
       }
-      arangodb::velocypack::StringRef idRef(id);
+
+      arangodb::velocypack::HashedStringRef idRef(id);
       auto resE = cache.emplace(idRef, e);
       if (resE.second) {
         // This edge is not yet cached.
@@ -1909,6 +1945,10 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
       }
     }
     if (!allCached) {
+      if (datalake.empty()) {
+        //avoid frequent reallocations for some results
+        datalake.reserve(8);
+      }
       datalake.emplace_back(std::move(payload));
     }
   }
@@ -1927,11 +1967,14 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
 ///        the lake is cleared.
 
 Result fetchEdgesFromEngines(transaction::Methods& trx,
-                             std::unordered_map<ServerID, aql::EngineId> const* engines,
-                             VPackSlice const vertexId, bool backward,
-                             std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
+                             graph::ClusterTraverserCache& travCache,
+                             VPackSlice vertexId, 
+                             bool backward,
                              std::vector<VPackSlice>& result,
-                             std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake, size_t& read) {
+                             size_t& read) {
+  auto const* engines = travCache.engines();
+  auto& cache = travCache.cache();
+  auto& datalake = travCache.datalake();
   // TODO map id => ServerID if possible
   // And go fast-path
 
@@ -1939,12 +1982,10 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
   // or for a list of vertices.
   TRI_ASSERT(vertexId.isString() || vertexId.isArray());
   transaction::BuilderLeaser leased(&trx);
-  leased->openObject();
+  leased->openObject(true);
   leased->add("backward", VPackValue(backward));
   leased->add("keys", vertexId);
   leased->close();
-
-  std::string const url = "/_internal/traverser/edge/";
 
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
 
@@ -1958,7 +1999,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
   for (auto const& engine : *engines) {
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
-                                  url + StringUtils::itoa(engine.second),
+                                  ::edgeUrl + StringUtils::itoa(engine.second),
                                   leased->bufferRef(), reqOpts));
   }
 
@@ -1991,8 +2032,13 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
             << "got invalid edge id type: " << id.typeName();
         continue;
       }
-      arangodb::velocypack::StringRef idRef(id);
-      auto resE = cache.emplace(idRef, e);
+
+      if (result.capacity() == 0) {
+        result.reserve(16);
+      }
+
+      arangodb::velocypack::HashedStringRef idRef(id);
+      auto resE = cache.try_emplace(idRef, e);
       if (resE.second) {
         // This edge is not yet cached.
         allCached = false;
@@ -2002,6 +2048,10 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
       }
     }
     if (!allCached) {
+      if (datalake.empty()) {
+        //avoid frequent reallocations for some results
+        datalake.reserve(8);
+      }
       datalake.emplace_back(std::move(payload));
     }
   }
@@ -2019,11 +2069,13 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
 
 void fetchVerticesFromEngines(
     transaction::Methods& trx,
-    std::unordered_map<ServerID, aql::EngineId> const* engines,
-    std::unordered_set<arangodb::velocypack::StringRef>& vertexIds,
-    std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& result,
-    std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake,
+    graph::ClusterTraverserCache& travCache,
+    std::unordered_set<arangodb::velocypack::HashedStringRef>& vertexIds,
+    std::unordered_map<arangodb::velocypack::HashedStringRef, VPackSlice>& result,
     bool forShortestPath) {
+  
+  auto const* engines = travCache.engines();
+  auto& datalake = travCache.datalake();
 
   // TODO map id => ServerID if possible
   // And go fast-path
@@ -2038,8 +2090,6 @@ void fetchVerticesFromEngines(
   leased->close();  // 'keys' Array
   leased->close();  // base object
 
-  std::string const url = "/_internal/traverser/vertex/";
-
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
 
   network::RequestOptions reqOpts;
@@ -2052,7 +2102,7 @@ void fetchVerticesFromEngines(
   for (auto const& engine : *engines) {
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
-                                  url + StringUtils::itoa(engine.second),
+                                  ::vertexUrl + StringUtils::itoa(engine.second),
                                   leased->bufferRef(), reqOpts));
   }
 
@@ -2076,13 +2126,14 @@ void fetchVerticesFromEngines(
 
     bool cached = false;
     for (auto pair : VPackObjectIterator(resSlice, /*sequential*/true)) {
-      arangodb::velocypack::StringRef key(pair.key);
-      if (vertexIds.erase(key) == 0) {
+      arangodb::velocypack::HashedStringRef key(pair.key);
+      if (ADB_UNLIKELY(vertexIds.erase(key) == 0)) {
         // We either found the same vertex twice,
         // or found a vertex we did not request.
         // Anyways something somewhere went seriously wrong
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
       }
+
       TRI_ASSERT(result.find(key) == result.end());
       if (!cached) {
         datalake.emplace_back(std::move(payload));

@@ -234,7 +234,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
   } else if (sub == "shards") {
     // /_api/collection/<identifier>/shards
     if (!ServerState::instance()->isRunningInCluster()) {
-      this->generateError(Result(TRI_ERROR_INTERNAL));
+      this->generateError(Result(TRI_ERROR_NOT_IMPLEMENTED, "shards API is only available in a cluster"));
       return RestStatus::DONE;
     }
 
@@ -534,11 +534,8 @@ RestStatus RestCollectionHandler::handleCommandPut() {
         }));
 
   } else if (sub == "properties") {
-    std::vector<std::string> keep = {StaticStrings::DoCompact,
-                                     StaticStrings::JournalSize,
-                                     StaticStrings::WaitForSyncString,
+    std::vector<std::string> keep = {StaticStrings::WaitForSyncString,
                                      StaticStrings::Schema,
-                                     StaticStrings::IndexBuckets,
                                      StaticStrings::ReplicationFactor,
                                      StaticStrings::MinReplicationFactor,  // deprecated
                                      StaticStrings::WriteConcern,

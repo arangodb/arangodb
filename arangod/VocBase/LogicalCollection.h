@@ -350,8 +350,6 @@ class LogicalCollection : public LogicalDataSource {
 
   bool determineSyncByRevision() const;
 
-  transaction::CountCache _countCache;
-
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
@@ -397,6 +395,8 @@ class LogicalCollection : public LogicalDataSource {
   RevisionId const _minRevision;
 
   std::string _smartJoinAttribute;
+  
+  transaction::CountCache _countCache;
 
   // SECTION: Key Options
 
