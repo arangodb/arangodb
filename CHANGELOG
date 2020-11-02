@@ -1,6 +1,9 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Added missing exceptions catch clause for some parts of supervision and
+  heartbeat threads.
+
 * Fixed BTS-233 issue: Fixed invalid IndexId comparator.
 
 * Fixed very spurious errors if the `holdReadLockCollection` replication API for
