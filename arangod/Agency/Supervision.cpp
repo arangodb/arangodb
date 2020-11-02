@@ -164,7 +164,7 @@ struct HealthRecord {
 std::string Supervision::_agencyPrefix = "/arango";
 
 Supervision::Supervision(application_features::ApplicationServer& server)
-    : arangodb::Thread(server, "Supervision"),
+    : arangodb::CriticalThread(server, "Supervision"),
       _agent(nullptr),
       _spearhead(server, _agent),
       _snapshot(nullptr),
