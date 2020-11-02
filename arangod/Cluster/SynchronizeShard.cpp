@@ -975,7 +975,7 @@ bool SynchronizeShard::first() {
         catchupWithReadLock(ep, database, *collection, clientId, shard,
                             leader, lastTick, builder);
       if (!tickResult.ok()) {
-        LOG_TOPIC("0a4d4", INFO, Logger::MAINTENANCE) << syncRes.errorMessage();
+        LOG_TOPIC("0a4d4", INFO, Logger::MAINTENANCE) << tickResult.errorMessage();
         _result.reset(std::move(tickResult).result());
         return false;
       }
