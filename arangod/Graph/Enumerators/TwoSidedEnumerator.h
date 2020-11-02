@@ -50,12 +50,11 @@ class TwoSidedEnumerator {
   using VertexRef = arangodb::velocypack::HashedStringRef;
   using Step = typename ProviderType::Step;
   using Shell = std::multiset<Step>;
-  using Interior = std::vector<Step>;
   using ResultList = std::vector<std::pair<Step, Step>>;
 
   class Ball {
    public:
-    Ball(Direction dir);
+    Ball(Direction dir, ProviderType&& provider);
     ~Ball();
     auto clear() -> void;
     auto reset(Step center) -> void;
@@ -71,17 +70,26 @@ class TwoSidedEnumerator {
     auto computeNeighbourhoodOfNextVertex(Ball const& other, ResultList& results) -> void;
 
    private:
-    VertexRef _center; // TODO: Use Step::Vertex? Then we need to add copy constructor
+    // Fast path, to test if we find a connecting vertex between left and right.
     Shell _shell{};
-    Interior _interior{};
+    // This stores all paths processed by this ball
+    PathStoreType _interior{};
+
+    // The next elements to process
+    QueueType _queue{};
+
+    // Next steps to be processed.
+    QueueType _nextDepth{};
+
+    ProviderType _provider;
+
     size_t _depth{0};
     size_t _searchIndex{std::numeric_limits<size_t>::max()};
     Direction _direction;
-    bool _cursor;
   };
 
  public:
-  TwoSidedEnumerator(ProviderType&& provider);
+  TwoSidedEnumerator(ProviderType&& forwardProvider, ProviderType&& backwardProvider);
 
   ~TwoSidedEnumerator();
 
@@ -136,9 +144,6 @@ class TwoSidedEnumerator {
   auto startNextDepth() -> void;
 
  private:
-  QueueType _queue;
-  PathStoreType _pathStore;
-  ProviderType _provider;
 
   Ball _left;
   Ball _right;

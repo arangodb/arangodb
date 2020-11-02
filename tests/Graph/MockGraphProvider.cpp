@@ -77,7 +77,7 @@ arangodb::velocypack::HashedStringRef MockGraphProvider::Step::Vertex::getId() c
   return VPackHashedStringRef(builder.slice());
 }
 
-MockGraphProvider::MockGraphProvider(MockGraph const& data) {
+MockGraphProvider::MockGraphProvider(MockGraph const& data, bool reverse) : _reverse(reverse) {
   for (auto const& it : data.edges()) {
     _fromIndex[it._from].push_back(it);
     _toIndex[it._to].push_back(it);
@@ -96,9 +96,17 @@ auto MockGraphProvider::fetch(std::vector<Step> const& looseEnds)
 auto MockGraphProvider::expand(Step const& from, size_t previousIndex)
     -> std::vector<Step> {
   std::vector<Step> result{};
-  if (_fromIndex.find(from.vertex.data()) != _fromIndex.end()) {
-    for (auto const& edge : _fromIndex[from.vertex.data()]) {
-      result.push_back(Step{previousIndex, edge._to, edge});
+  if (_reverse) {
+    if (_toIndex.find(from.vertex.data()) != _toIndex.end()) {
+      for (auto const& edge : _toIndex[from.vertex.data()]) {
+        result.push_back(Step{previousIndex, edge._from, edge});
+      }
+    }
+  } else {
+    if (_fromIndex.find(from.vertex.data()) != _fromIndex.end()) {
+      for (auto const& edge : _fromIndex[from.vertex.data()]) {
+        result.push_back(Step{previousIndex, edge._to, edge});
+      }
     }
   }
   return result;

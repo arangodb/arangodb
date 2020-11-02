@@ -70,7 +70,7 @@ class PathStore {
   bool testPath(Step);
 
   // @brief reset
-  void reset(bool clear = true);
+  void reset();
 
   // @brief Method adds the first element to the schreier vetor
   void setStartVertex(Step startVertex);

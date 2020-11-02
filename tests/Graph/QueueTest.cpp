@@ -51,8 +51,8 @@ class Step {
   Step& operator=(Step const& other) = delete;
   bool operator==(Step const& other) { return _id == other._id; }
 
-  bool isProcessable() { return _isLooseEnd ? false : true; }
-  size_t id() { return _id; }
+  bool isProcessable() const { return _isLooseEnd ? false : true; }
+  size_t id() const { return _id; }
 };
 
 class QueueTest : public ::testing::Test {

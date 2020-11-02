@@ -23,6 +23,7 @@
 
 #include "TwoSidedEnumerator.h"
 
+#include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
 #include "Basics/voc-errors.h"
@@ -37,9 +38,8 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 template <class QueueType, class PathStoreType, class ProviderType>
-TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::Ball(Direction dir)
-    : _direction(dir) {
-  _cursor = false;  // TODO: to be implemented - origin: opts.buildCursor(dir == Direction::BACKWARD);
+TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::Ball(Direction dir, ProviderType&& provider)
+    : _provider(std::move(provider)), _direction(dir) {
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
@@ -48,23 +48,21 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::~Ball() = defa
 template <class QueueType, class PathStoreType, class ProviderType>
 void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::reset(Step center) {
   clear();
-  _center = center.vertex.getId();
-  // _center = center.vertex; // TODO: check - also see workaround above - needs to be cleaned up
   _shell.emplace(center);
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
 void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::clear() {
   _shell.clear();
-  _interior.clear();
+  _interior.reset();
+  _queue.clear();
   _depth = 0;
-  _searchIndex = std::numeric_limits<size_t>::max();
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::doneWithDepth() const
     -> bool {
-  return _searchIndex >= _interior.size();
+  return _queue.isEmpty();
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
@@ -76,31 +74,63 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::noPathLef
 template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::getDepth() const
     -> size_t {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return _depth;
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::shellSize() const
     -> size_t {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return _shell.size();
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::startNextDepth()
     -> void {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  // We start the next depth, build a new queue
+  // based on the shell contents.
+  TRI_ASSERT(_queue.isEmpty());
+  for (auto& step : _shell) {
+    _queue.append(std::move(step));
+  }
+  _shell.clear();
+  _depth++;
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNeighbourhoodOfNextVertex(
     Ball const& other, ResultList& results) -> void {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  // Pull next element from Queue
+  // Do 1 step search
+  TRI_ASSERT(!_queue.isEmpty());
+  TRI_ASSERT(_queue.hasProcessableElement());
+  auto step = _queue.pop();
+  auto previous = _interior.append(step);
+  auto neighbors = _provider.expand(step, previous);
+  // TODO add mindepth check
+  for (auto& n : neighbors) {
+    // Check if other Ball knows this Vertex.
+    // Include it in results.
+    other.matchResultsInShell(n, results);
+    // Add the step to our shell
+    _shell.emplace(std::move(n));
+  }
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::matchResultsInShell(
     Step const& match, ResultList& results) const -> void {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  auto [first, last] = _shell.equal_range(match);
+  if (_direction == FORWARD) {
+    while (first != last) {
+      results.push_back(std::make_pair(*first, match));
+      first++;
+    }
+  } else {
+    while (first != last) {
+      results.push_back(std::make_pair(match, *first));
+      first++;
+    }
+  }
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
@@ -110,8 +140,11 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::buildPath
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
-TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::TwoSidedEnumerator(ProviderType&& provider)
-    : _provider(std::move(provider)), _left{Direction::FORWARD}, _right{Direction::BACKWARD}, _resultPath{} {}
+TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::TwoSidedEnumerator(
+    ProviderType&& forwardProvider, ProviderType&& backwardProvider)
+    : _left{Direction::FORWARD, std::move(forwardProvider)},
+      _right{Direction::BACKWARD, std::move(backwardProvider)},
+      _resultPath{} {}
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::~TwoSidedEnumerator() {}
@@ -119,10 +152,8 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::~TwoSidedEnumerator(
 template <class QueueType, class PathStoreType, class ProviderType>
 void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::clear() {
   // Cases:
-  // - Needs to clear Queue?
-  // - Needs to clear Store?
-  // - Needs to clear Provider?
-  // - Needs to clear itself?
+  // - TODO: Needs to clear left and right?
+  _results.clear();
 }
 
 /**
@@ -133,12 +164,7 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::clear() {
  */
 template <class QueueType, class PathStoreType, class ProviderType>
 bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::isDone() const {
-  // Cases:
-  // - Provider does not have more data
-  // - PathStore does not return / save any additional Paths
-  // - Queue does not contain any looseEnds anymore (?)
-  // - OR: Just local algorithm check?
-  return true;
+  return _results.empty() && searchDone();
 }
 
 /**

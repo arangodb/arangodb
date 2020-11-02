@@ -47,7 +47,7 @@ class FifoQueue {
 
   void append(Step step) { _queue.push_back(step); };
 
-  bool hasProcessableElement() {
+  bool hasProcessableElement() const {
     if (!isEmpty()) {
       auto& first = _queue.front();
       if (first.isProcessable()) {
@@ -58,9 +58,9 @@ class FifoQueue {
     return false;
   };
 
-  size_t size() { return _queue.size(); };
+  size_t size() const { return _queue.size(); };
 
-  bool isEmpty() { return _queue.size() == 0; };
+  bool isEmpty() const { return _queue.size() == 0; };
 
   std::vector<Step*> getLooseEnds(){
     TRI_ASSERT(!hasProcessableElement());

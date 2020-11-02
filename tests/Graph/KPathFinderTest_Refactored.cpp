@@ -96,7 +96,7 @@ class KPathFinderTest_Refactored : public ::testing::Test {
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder& {
     // TODO minDepth, maxDepth
-    _finder = std::make_unique<KPathFinder>(MockGraphProvider(mockGraph));
+    _finder = std::make_unique<KPathFinder>(MockGraphProvider(mockGraph, false), MockGraphProvider(mockGraph, true));
     return *_finder;
   }
 

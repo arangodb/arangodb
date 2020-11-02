@@ -97,7 +97,7 @@ class MockGraphProvider {
     std::optional<Edge> edge;
     size_t previous;
 
-    size_t getPrevious() { return previous; }
+    size_t getPrevious() const { return previous; }
 
     // TODO: remove me - Make the set work on the Vertex attribute only
     bool operator<(Step const& other) const noexcept {
@@ -105,9 +105,11 @@ class MockGraphProvider {
       if (vertex > other.vertex) return 1;
       return 0;
     }
+
+    bool isProcessable() const { return true; }
   };
 
-  MockGraphProvider(MockGraph const& data);
+  MockGraphProvider(MockGraph const& data, bool reverse = false);
   ~MockGraphProvider();
 
   auto startVertex(VertexType vertex) -> Step;
@@ -117,6 +119,7 @@ class MockGraphProvider {
  private:
   std::unordered_map<VertexType, std::vector<MockGraph::EdgeDef>> _fromIndex;
   std::unordered_map<VertexType, std::vector<MockGraph::EdgeDef>> _toIndex;
+  bool _reverse;
 };
 }  // namespace graph
 }  // namespace tests
