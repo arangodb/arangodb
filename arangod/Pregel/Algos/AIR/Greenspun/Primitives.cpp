@@ -1148,6 +1148,28 @@ EvalResult Prim_Sort(Machine& ctx, VPackSlice const paramsList, VPackBuilder& re
   return {};
 }
 
+double rand_source_query() {
+  return static_cast<double>(std::rand()) / RAND_MAX;
+}
+
+EvalResult Prim_Rand(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  result.add(VPackValue(rand_source_query()));
+  return {};
+}
+
+EvalResult Prim_RandRange(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+  auto res = extract<double, double>(paramsList);
+  if (!res) {
+    return res.error();
+  }
+
+  auto&& [min, max] = res.value();
+
+  auto v = min + rand_source_query() * (max - min);
+  result.add(VPackValue(v));
+  return {};
+}
+
 void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_type&& f) {
   ctx.setFunction(name, std::move(f));
 }
@@ -1235,6 +1257,9 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("var-ref", Prim_VarRef);
 
   ctx.setFunction("bind-ref", Prim_VarRef);
+
+  ctx.setFunction("rand", Prim_Rand);
+  ctx.setFunction("rand-range", Prim_RandRange);
 }
 
 }  // namespace arangodb::greenspun
