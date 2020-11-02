@@ -49,9 +49,9 @@ TEST(GeoOptionsTest, constants) {
 
 TEST(GeoOptionsTest, options) {
   GeoOptions opts;
-  ASSERT_EQ(GeoOptions::MAX_CELLS, opts.maxCells);
-  ASSERT_EQ(GeoOptions::MIN_LEVEL, opts.minLevel);
-  ASSERT_EQ(GeoOptions::MAX_LEVEL, opts.maxLevel);
+  ASSERT_EQ(GeoOptions::DEFAULT_MAX_CELLS, opts.maxCells);
+  ASSERT_EQ(GeoOptions::DEFAULT_MIN_LEVEL, opts.minLevel);
+  ASSERT_EQ(GeoOptions::DEFAULT_MAX_LEVEL, opts.maxLevel);
 }
 
 // -----------------------------------------------------------------------------

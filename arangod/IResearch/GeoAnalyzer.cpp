@@ -88,9 +88,9 @@ struct GeoOptionsValidator {
 };
 
 using GeoOptionsDeserializer = utilities::constructing_deserializer<GeoOptions, parameter_list<
-  factory_simple_parameter<MAX_CELLS_PARAM, int32_t, false, values::numeric_value<int32_t, GeoOptions::MAX_CELLS>>,
-  factory_simple_parameter<MIN_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, GeoOptions::MIN_LEVEL>>,
-  factory_simple_parameter<MAX_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, GeoOptions::MAX_LEVEL>>
+  factory_simple_parameter<MAX_CELLS_PARAM, int32_t, false, values::numeric_value<int32_t, GeoOptions::DEFAULT_MAX_CELLS>>,
+  factory_simple_parameter<MIN_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, GeoOptions::DEFAULT_MIN_LEVEL>>,
+  factory_simple_parameter<MAX_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, GeoOptions::DEFAULT_MAX_LEVEL>>
 >>;
 
 using ValidatingGeoOptionsDeserializer = validate<GeoOptionsDeserializer, GeoOptionsValidator>;
