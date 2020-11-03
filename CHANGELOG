@@ -1,6 +1,8 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #12778: fails validation if additionalProperties: false.
+
 * Added missing exceptions catch clause for some parts of supervision and
   heartbeat threads.
 
@@ -19,7 +21,7 @@ v3.7.5 (XXXX-XX-XX)
 * Fixed very spurious errors if the `holdReadLockCollection` replication API for
   the getting-in-sync procedure of shards was called during server shutdown.
   In this case that method could ask the transaction manager for a specific
-  transaction, but wasn't return one due to the server shutdown.
+  transaction, but wasn't returning one due to the server shutdown.
 
 * Agency cache clears change history. This keeps the change history, introduced
   in v3.7.4, from growing in size too much.
@@ -52,7 +54,7 @@ v3.7.5 (XXXX-XX-XX)
 v3.7.4 (2020-10-16)
 -------------------
 
-* Data definition reconsiliation in cluster has been modified
+* Data definition reconciliation in cluster has been modified
   extensively to greatly accelerate the creation of 1000s of
   databases through following means:
   - AgencyCache offers change sets API based on Raft index.
