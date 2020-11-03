@@ -452,7 +452,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   // locking keys and checking for conflicts, so disabling it may be 
   // somewhat expensive. we have to evaluate this change and potentially
   // revert. TODO
-  AccessMode::type const exclusiveLockMode = isFollowerTransactionOnDBServer
+  AccessMode::Type const exclusiveLockMode = isFollowerTransactionOnDBServer
     ? AccessMode::Type::WRITE 
     : AccessMode::Type::EXCLUSIVE;
  
