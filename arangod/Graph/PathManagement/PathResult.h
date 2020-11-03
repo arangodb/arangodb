@@ -24,6 +24,9 @@
 #ifndef ARANGODB_GRAPH_PATHMANAGEMENT_PATH_RESULT_H
 #define ARANGODB_GRAPH_PATHMANAGEMENT_PATH_RESULT_H 1
 
+#include <velocypack/HashedStringRef.h>
+#include "Containers/HashSet.h"
+
 #include <numeric>
 
 namespace arangodb {
@@ -36,6 +39,8 @@ namespace graph {
 
 template <class Step>
 class PathResult {
+  using VertexRef = arangodb::velocypack::HashedStringRef;
+
  public:
   explicit PathResult();
   auto clear() -> void;
@@ -52,6 +57,9 @@ class PathResult {
  private:
   std::vector<typename Step::Vertex> _vertices;
   std::vector<typename Step::Edge> _edges;
+
+  // TODO: UniqueCheck will not be handled here in the future
+  ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> _uniqueVertices;
 };
 }  // namespace graph
 }  // namespace arangodb

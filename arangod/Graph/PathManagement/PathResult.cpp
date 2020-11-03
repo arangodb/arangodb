@@ -37,16 +37,19 @@ template <class Step>
 auto PathResult<Step>::clear() -> void {
   _vertices.clear();
   _edges.clear();
+  _uniqueVertices.clear();
 }
 
 template <class Step>
 auto PathResult<Step>::appendVertex(typename Step::Vertex v) -> void {
   _vertices.push_back(v);
+  _uniqueVertices.emplace(v.data());
 }
 
 template <class Step>
 auto PathResult<Step>::prependVertex(typename Step::Vertex v) -> void {
   _vertices.insert(_vertices.begin(), v);
+  _uniqueVertices.emplace(v.data());
 }
 
 template <class Step>
@@ -86,5 +89,5 @@ auto PathResult<Step>::isEmpty() const -> bool {
 
 template <class Step>
 auto PathResult<Step>::isValid() const -> bool {
-  return true;
+  return _uniqueVertices.size() == _vertices.size();
 }
