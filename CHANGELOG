@@ -52,7 +52,6 @@ devel
     }
   that have length exactly 2 or 3 or 4, start at v/source and end at v/target.
   The order of those paths in the result set is not guaranteed.
->>>>>>> f17db376a0f679a8e6cb966b43ef0f3414d861df
 
 * Fixed issue BTS-195: AQL update queries using the `keepNull` option set to
   false had an inconsistent behavior. For example, given a collection `test`
