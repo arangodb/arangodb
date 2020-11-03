@@ -67,18 +67,13 @@ class MockGraphProvider {
       // key. Although it is a trivial wrapper around a size_t...
       VertexType data() const { return _vertex; }
 
-      // TODO: Check, fix or cleanup
       // Make the set work on the VertexRef attribute only
       bool operator<(Vertex const& other) const noexcept {
-        if (_vertex < other._vertex) return -1;
-        if (_vertex > other._vertex) return 1;
-        return 0;
+        return _vertex < other._vertex;
       }
 
       bool operator>(Vertex const& other) const noexcept {
-        if (_vertex > other._vertex) return -1;
-        if (_vertex < other._vertex) return 1;
-        return 0;
+        return !operator<(other);
       }
 
      private:
@@ -108,11 +103,8 @@ class MockGraphProvider {
 
     size_t getPrevious() const { return previous; }
 
-    // TODO: remove me - Make the set work on the Vertex attribute only
     bool operator<(Step const& other) const noexcept {
-      if (vertex < other.vertex) return -1;
-      if (vertex > other.vertex) return 1;
-      return 0;
+      return vertex < other.vertex;
     }
 
     std::string toString() const {
