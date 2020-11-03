@@ -31,6 +31,7 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 
+#include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/velocypack-aliases.h>
@@ -39,11 +40,9 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 template <class QueueType, class PathStoreType, class ProviderType>
-TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::Ball(Direction dir,
-                                                                       ProviderType&& provider)
-    : _provider(std::move(provider)), _direction(dir) {
-  // _interior.setStartVertex(_queue.pop()); // TODO Discuss
-}
+TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::Ball(
+    Direction dir, ProviderType&& provider, GraphOptions const& options)
+    : _provider(std::move(provider)), _direction(dir), _minDepth(options.getMinDepth()) {}
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::~Ball() = default;
@@ -110,13 +109,23 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNe
   auto step = _queue.pop();
   auto previous = _interior.append(step);
   auto neighbors = _provider.expand(step, previous);
-  // TODO add mindepth check
+
   for (auto& n : neighbors) {
     // Check if other Ball knows this Vertex.
     // Include it in results.
-    other.matchResultsInShell(n, results);
+    if (getDepth() + other.getDepth() >= _minDepth) {
+      other.matchResultsInShell(n, results);
+    }
     // Add the step to our shell
     _shell.emplace(std::move(n));
+  }
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::testDepthZero(
+    Ball const& other, ResultList& results) const {
+  for (auto const& step : _shell) {
+    other.matchResultsInShell(step, results);
   }
 }
 
@@ -151,10 +160,10 @@ template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::TwoSidedEnumerator(
     ProviderType&& forwardProvider, ProviderType&& backwardProvider,
     TwoSidedEnumeratorOptions&& options)
-    : _left{Direction::FORWARD, std::move(forwardProvider)},
-      _right{Direction::BACKWARD, std::move(backwardProvider)},
-      _resultPath{},
-      _options(std::move(options)) {}
+    : _options(std::move(options)),
+      _left{Direction::FORWARD, std::move(forwardProvider), _options},
+      _right{Direction::BACKWARD, std::move(backwardProvider), _options},
+      _resultPath{} {}
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::~TwoSidedEnumerator() {}
@@ -197,8 +206,7 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::reset(VertexRef
 
   // Special depth == 0 case
   if (_options.getMinDepth() == 0 && source == target) {
-    // TODO: _left + _right build paths
-    _results.emplace_back(std::make_pair(Step{source}, Step{target}));
+    _left.testDepthZero(_right, _results);
   }
 }
 
@@ -280,6 +288,12 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::startNextDepth(
 template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::searchDone() const
     -> bool {
-  return _left.noPathLeft() || _right.noPathLeft();
-  // TODO: include getDepth
+  LOG_DEVEL << "left no path: " << std::boolalpha << _left.noPathLeft();
+  LOG_DEVEL << "left depth: " << _left.getDepth();
+  LOG_DEVEL << "right no path: " << std::boolalpha << _right.noPathLeft();
+  LOG_DEVEL << "right depth: " << _right.getDepth();
+  LOG_DEVEL << "options maxDepth: " << _options.getMaxDepth();
+
+  return _left.noPathLeft() || _right.noPathLeft() ||
+         _left.getDepth() + _right.getDepth() > _options.getMaxDepth();
 }

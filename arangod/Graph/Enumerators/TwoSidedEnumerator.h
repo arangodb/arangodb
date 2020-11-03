@@ -58,7 +58,7 @@ class TwoSidedEnumerator {
 
   class Ball {
    public:
-    Ball(Direction dir, ProviderType&& provider);
+    Ball(Direction dir, ProviderType&& provider, GraphOptions const& options);
     ~Ball();
     auto clear() -> void;
     auto reset(VertexRef center) -> void;
@@ -67,6 +67,7 @@ class TwoSidedEnumerator {
     auto getDepth() const -> size_t;
     auto shellSize() const -> size_t;
     auto doneWithDepth() const -> bool;
+    auto testDepthZero(Ball const& other, ResultList& results) const -> void;
 
     auto buildPath(Step const& vertexInShell, PathResult<Step>& path) -> void;
 
@@ -90,6 +91,7 @@ class TwoSidedEnumerator {
     size_t _depth{0};
     size_t _searchIndex{std::numeric_limits<size_t>::max()};
     Direction _direction;
+    size_t _minDepth{0};
   };
 
  public:
@@ -149,13 +151,13 @@ class TwoSidedEnumerator {
   auto startNextDepth() -> void;
 
  private:
+  GraphOptions _options;
   Ball _left;
   Ball _right;
   bool _searchLeft{true};
   ResultList _results{};
 
   PathResult<Step> _resultPath;
-  GraphOptions _options;
 };
 }  // namespace graph
 }  // namespace arangodb
