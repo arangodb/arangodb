@@ -89,8 +89,8 @@ class HeartbeatThread : public Thread,
   /// this is used on the coordinator only
   //////////////////////////////////////////////////////////////////////////////
 
-  bool hasRunOnce() const noexcept {
-    return _hasRunOnce.load(std::memory_order_acquire);
+  static bool hasRunOnce() const noexcept {
+    return HasRunOnce.load(std::memory_order_acquire);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -267,7 +267,7 @@ class HeartbeatThread : public Thread,
   /// this is used on the coordinator only
   //////////////////////////////////////////////////////////////////////////////
 
-  std::atomic<bool> _hasRunOnce;
+  static std::atomic<bool> HasRunOnce;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief keeps track of the currently installed versions

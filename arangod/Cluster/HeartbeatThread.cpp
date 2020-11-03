@@ -63,6 +63,8 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
+std::atomic<bool> HeartbeatThread::HasRunOnce(false);
+
 namespace arangodb {
 
 class HeartbeatBackgroundJobThread : public Thread {
@@ -198,7 +200,6 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _lastSuccessfulVersion(0),
       _currentPlanVersion(0),
       _ready(false),
-      _hasRunOnce(false),
       _currentVersions(0, 0),
       _desiredVersions(std::make_shared<AgencyVersions>(0, 0)),
       _backgroundJobsPosted(0),
@@ -1168,14 +1169,14 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
               << "creating local database '" << dbName
               << "' failed: " << res.errorMessage();
         } else {
-          _hasRunOnce.store(true, std::memory_order_release);
+          HasRunOnce.store(true, std::memory_order_release);
         }
       } else {
         if (vocbase->isSystem()) {
           // workaround: _system collection already exists now on every
-          // coordinator setting _hasRunOnce lets coordinator startup continue
+          // coordinator setting HasRunOnce lets coordinator startup continue
           TRI_ASSERT(vocbase->id() == 1);
-          _hasRunOnce.store(true, std::memory_order_release);
+          HasRunOnce.store(true, std::memory_order_release);
         }
         vocbase->release();
       }
