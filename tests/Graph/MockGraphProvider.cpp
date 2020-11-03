@@ -39,10 +39,10 @@ using namespace arangodb::tests;
 using namespace arangodb::tests::graph;
 
 MockGraphProvider::Step::Step(VertexType v)
-    : vertex(v), previous(std::numeric_limits<size_t>::max()) {}
+    : arangodb::graph::BaseStep<Step>{}, vertex(v) {}
 
 MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e)
-    : vertex(v), edge(e), previous(prev) {}
+    : arangodb::graph::BaseStep<Step>{prev}, vertex(v), edge(e) {}
 
 MockGraphProvider::Step::~Step() {}
 

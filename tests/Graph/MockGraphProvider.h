@@ -31,6 +31,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
+#include "Graph/Providers/BaseStep.h"
+
 #include <velocypack/HashedStringRef.h>
 
 namespace arangodb {
@@ -54,7 +56,8 @@ class MockGraphProvider {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:
-  struct Step {
+  class Step : public arangodb::graph::BaseStep<Step> {
+    public:
     class Vertex {
      public:
       explicit Vertex(VertexType v) : _vertex(v){};
@@ -99,9 +102,6 @@ class MockGraphProvider {
 
     Vertex vertex;
     std::optional<Edge> edge;
-    size_t previous;
-
-    size_t getPrevious() const { return previous; }
 
     bool operator<(Step const& other) const noexcept {
       return vertex < other.vertex;
@@ -111,10 +111,10 @@ class MockGraphProvider {
       if (edge.has_value()) {
         return "<Step><Vertex>: " + vertex.data().toString() +
                ", <Edge>:" + edge.value().toString() +
-               ", previous: " + basics::StringUtils::itoa(previous);
+               ", previous: " + basics::StringUtils::itoa(getPrevious());
       } else {
         return "<Step><Vertex>: " + vertex.data().toString() +
-               ", previous: " + basics::StringUtils::itoa(previous);
+               ", previous: " + basics::StringUtils::itoa(getPrevious());
       }
     }
 
@@ -126,7 +126,6 @@ class MockGraphProvider {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
     }
-    bool isFirst() const { return !edge.has_value(); }
     bool isProcessable() const { return true; }
   };
 
