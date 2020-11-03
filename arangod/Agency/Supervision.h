@@ -30,6 +30,7 @@
 #include "Agency/TimeString.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
+#include "Basics/Thread.h"
 #include "RestServer/MetricsFeature.h"
 
 namespace arangodb {
