@@ -42,7 +42,7 @@ class GraphProviderTest : public ::testing::Test {
   ~GraphProviderTest() {}
 
   auto makeProvider(MockGraph const& graph) -> MockGraphProvider {
-    return MockGraphProvider(graph);
+    return MockGraphProvider(graph, MockGraphProvider::LooseEndBehaviour::NEVER);
   }
 };
 
@@ -68,7 +68,7 @@ TEST_F(GraphProviderTest, should_enumerate_a_single_edge) {
   auto res = testee.expand(start, 0);
   ASSERT_EQ(res.size(), 1);
   auto const& f = res.front();
-  EXPECT_EQ(f.vertex.data().toString(), "1");
+  EXPECT_EQ(f.getVertex().data().toString(), "1");
   EXPECT_EQ(f.getPrevious(), 0);
 }
 
@@ -87,7 +87,7 @@ TEST_F(GraphProviderTest, should_enumerate_all_edges) {
   for (auto const& f : res) {
     // All expand of the same previous
     EXPECT_EQ(f.getPrevious(), 0);
-    auto const& v = f.vertex.data().toString();
+    auto const& v = f.getVertex().data().toString();
     // We can only range from 1 to 3
     EXPECT_GE(v, "1");
     EXPECT_LE(v, "3");

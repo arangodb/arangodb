@@ -38,11 +38,17 @@ using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::tests::graph;
 
-MockGraphProvider::Step::Step(VertexType v)
-    : arangodb::graph::BaseStep<Step>{}, vertex(v) {}
+MockGraphProvider::Step::Step(VertexType v, bool isProcessable)
+    : arangodb::graph::BaseStep<Step>{},
+      _vertex(v),
+      _edge(std::nullopt),
+      _isProcessable(isProcessable) {}
 
-MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e)
-    : arangodb::graph::BaseStep<Step>{prev}, vertex(v), edge(e) {}
+MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e, bool isProcessable)
+    : arangodb::graph::BaseStep<Step>{prev},
+      _vertex(v),
+      _edge(e),
+      _isProcessable(isProcessable) {}
 
 MockGraphProvider::Step::~Step() {}
 
@@ -73,8 +79,8 @@ arangodb::velocypack::HashedStringRef MockGraphProvider::Step::Vertex::getId() c
   return _vertex;
 }
 
-MockGraphProvider::MockGraphProvider(MockGraph const& data, bool reverse)
-    : _reverse(reverse) {
+MockGraphProvider::MockGraphProvider(MockGraph const& data, LooseEndBehaviour looseEnds, bool reverse)
+    : _reverse(reverse), _looseEnds(looseEnds) {
   for (auto const& it : data.edges()) {
     _fromIndex[it._from].push_back(it);
     _toIndex[it._to].push_back(it);
@@ -83,10 +89,19 @@ MockGraphProvider::MockGraphProvider(MockGraph const& data, bool reverse)
 
 MockGraphProvider::~MockGraphProvider() {}
 
+auto MockGraphProvider::decideProcessable() const -> bool {
+  switch (_looseEnds) {
+    case LooseEndBehaviour::NEVER:
+      return true;
+    case LooseEndBehaviour::ALLWAYS:
+      return false;
+  }
+}
+
 auto MockGraphProvider::startVertex(VertexType v) -> Step {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Start Vertex:" << v;
-  return Step(v);
+  return Step(v, decideProcessable());
 }
 
 auto MockGraphProvider::fetch(std::vector<Step> const& looseEnds)
@@ -103,16 +118,16 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
   std::vector<Step> result{};
 
   LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
-      << "<MockGraphProvider> Searching: " << source.vertex.data().toString();
+      << "<MockGraphProvider> Searching: " << source.getVertex().data().toString();
 
   if (_reverse) {
     LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
         << "<MockGraphProvider - reverse> _toIndex size: " << _toIndex.size();
-    if (_toIndex.find(source.vertex.data().toString()) != _toIndex.end()) {
-      for (auto const& edge : _toIndex[source.vertex.data().toString()]) {
+    if (_toIndex.find(source.getVertex().data().toString()) != _toIndex.end()) {
+      for (auto const& edge : _toIndex[source.getVertex().data().toString()]) {
         VPackHashedStringRef fromH{edge._from.c_str(),
                                    static_cast<uint32_t>(edge._from.length())};
-        result.push_back(Step{previousIndex, fromH, edge});
+        result.push_back(Step{previousIndex, fromH, edge, decideProcessable()});
 
         LOG_TOPIC("78158", TRACE, Logger::GRAPHS)
             << "  <MockGraphProvider> added <Step><Vertex>: " << fromH
@@ -122,11 +137,11 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
   } else {
     LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
         << "<MockGraphProvider - default> _fromIndex size: " << _fromIndex.size();
-    if (_fromIndex.find(source.vertex.data().toString()) != _fromIndex.end()) {
-      for (auto const& edge : _fromIndex[source.vertex.data().toString()]) {
+    if (_fromIndex.find(source.getVertex().data().toString()) != _fromIndex.end()) {
+      for (auto const& edge : _fromIndex[source.getVertex().data().toString()]) {
         VPackHashedStringRef toH{edge._to.c_str(),
                                  static_cast<uint32_t>(edge._to.length())};
-        result.push_back(Step{previousIndex, toH, edge});
+        result.push_back(Step{previousIndex, toH, edge, decideProcessable()});
 
         LOG_TOPIC("78159", TRACE, Logger::GRAPHS)
             << "  <MockGraphProvider - default> added <Step><Vertex>: " << toH

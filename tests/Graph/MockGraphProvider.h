@@ -49,13 +49,17 @@ class HashedStringRef;
 
 namespace tests {
 namespace graph {
-
 class MockGraphProvider {
   using VertexType = arangodb::velocypack::HashedStringRef;
   using EdgeType = MockGraph::EdgeDef;
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:
+  enum class LooseEndBehaviour {
+    NEVER,
+    ALLWAYS
+  };
+
   class Step : public arangodb::graph::BaseStep<Step> {
     public:
     class Vertex {
@@ -96,40 +100,55 @@ class MockGraphProvider {
       EdgeType _edge;
     };
 
-    explicit Step(VertexType v);
-    Step(size_t prev, VertexType v, EdgeType e);
+    Step(VertexType v, bool isProcessable);
+    Step(size_t prev, VertexType v, EdgeType e, bool isProcessable);
     ~Step();
 
-    Vertex vertex;
-    std::optional<Edge> edge;
-
     bool operator<(Step const& other) const noexcept {
-      return vertex < other.vertex;
+      return _vertex < other._vertex;
     }
 
     std::string toString() const {
-      if (edge.has_value()) {
-        return "<Step><Vertex>: " + vertex.data().toString() +
-               ", <Edge>:" + edge.value().toString() +
+      if (_edge.has_value()) {
+        return "<Step><Vertex>: " + _vertex.data().toString() +
+               ", <Edge>:" + _edge.value().toString() +
                ", previous: " + basics::StringUtils::itoa(getPrevious());
       } else {
-        return "<Step><Vertex>: " + vertex.data().toString() +
+        return "<Step><Vertex>: " + _vertex.data().toString() +
                ", previous: " + basics::StringUtils::itoa(getPrevious());
       }
     }
 
-    Vertex getVertex() const { return vertex; }
+    Vertex getVertex() const {
+      if (!isProcessable()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "Accessing vertex (" + getVertex().data().toString() +
+                                           "), before fetching it");
+      }
+      return _vertex;
+    }
     Edge getEdge() const {
-      if (edge.has_value()) {
-        return edge.value();
+      if (_edge.has_value()) {
+        if (!isProcessable()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "Accessing edge (" + _edge.value().toString() +
+                                             "), before fetching it");
+        }
+        return _edge.value();
       } else {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
     }
-    bool isProcessable() const { return true; }
+
+    bool isProcessable() const { return _isProcessable; }
+
+    private:
+     Vertex _vertex;
+     std::optional<Edge> _edge;
+     bool _isProcessable;
   };
 
-  MockGraphProvider(MockGraph const& data, bool reverse = false);
+  MockGraphProvider(MockGraph const& data, LooseEndBehaviour looseEnds, bool reverse = false);
   ~MockGraphProvider();
 
   auto startVertex(VertexType vertex) -> Step;
@@ -137,9 +156,13 @@ class MockGraphProvider {
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
 
  private:
+  auto decideProcessable() const -> bool;
+
+ private:
   std::unordered_map<std::string, std::vector<MockGraph::EdgeDef>> _fromIndex;
   std::unordered_map<std::string, std::vector<MockGraph::EdgeDef>> _toIndex;
   bool _reverse;
+  LooseEndBehaviour _looseEnds;
 };
 }  // namespace graph
 }  // namespace tests
