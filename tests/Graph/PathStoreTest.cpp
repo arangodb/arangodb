@@ -24,6 +24,7 @@
 #include "gtest/gtest.h"
 
 #include "Graph/PathManagement/PathStore.cpp"
+#include "Graph/Providers/BaseStep.h"
 
 #include <Basics/StringUtils.h>
 #include <ostream>
@@ -35,20 +36,18 @@ namespace arangodb {
 namespace tests {
 namespace graph_path_store_test {
 
-class Step {
+class Step : public arangodb::graph::BaseStep<Step> {
   using Vertex = size_t;
   using Edge = size_t;
 
   size_t _id;
   double _weight;
-  size_t _previous;
   bool _isLooseEnd;
 
  public:
-  Step(size_t id, double weight, size_t previous, bool isLooseEnd) {
+  Step(size_t id, double weight, size_t previous, bool isLooseEnd) : arangodb::graph::BaseStep<Step>{previous} {
     _id = id;
     _weight = weight;
-    _previous = previous;
     _isLooseEnd = isLooseEnd;  // TODO: needed here?
   };
 
@@ -60,14 +59,10 @@ class Step {
   std::string toString() const {
     return "<Step> _id: " + basics::StringUtils::itoa(_id) +
            ", _weight: " + basics::StringUtils::ftoa(_weight) +
-           ", _previous: " + basics::StringUtils::itoa(_previous);
+           ", _previous: " + basics::StringUtils::itoa(getPrevious());
   }
 
   bool isProcessable() const { return _isLooseEnd ? false : true; }
-  bool isFirst() const {
-    return _previous == std::numeric_limits<size_t>::max();
-  }
-  size_t getPrevious() const { return _previous; }
   size_t getVertex() const { return _id; }  // TODO: adjust
   size_t getEdge() const { return _id; }    // TODO: adjust
 };
