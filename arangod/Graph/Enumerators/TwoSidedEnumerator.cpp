@@ -23,8 +23,8 @@
 
 #include "TwoSidedEnumerator.h"
 
-#include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 #include "Basics/system-compiler.h"
 #include "Basics/voc-errors.h"
 
@@ -38,7 +38,8 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 template <class QueueType, class PathStoreType, class ProviderType>
-TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::Ball(Direction dir, ProviderType&& provider)
+TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::Ball(Direction dir,
+                                                                       ProviderType&& provider)
     : _provider(std::move(provider)), _direction(dir) {
   // _interior.setStartVertex(_queue.pop()); // TODO Discuss
 }
@@ -138,7 +139,11 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::matchResu
 template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::buildPath(
     Step const& vertexInShell, PathResult<Step>& path) -> void {
-  _interior.buildPath(vertexInShell, path);
+  if (_direction == FORWARD) {
+    _interior.buildPath(vertexInShell, path);
+  } else {
+    _interior.reverseBuildPath(vertexInShell, path);
+  }
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>

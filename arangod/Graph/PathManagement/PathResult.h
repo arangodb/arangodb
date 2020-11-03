@@ -44,6 +44,7 @@ class PathResult {
   auto appendEdge(typename Step::Edge e) -> void;
   auto prependEdge(typename Step::Edge e) -> void;
   auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void;
+  auto isEmpty() const -> bool;
 
   // Check uniqueness
   auto isValid() const -> bool;
