@@ -31,9 +31,6 @@
 
 #include <memory>
 #include <thread>
-#ifdef DEBUG_SYNC_REPLICATION
-#include <atomic>
-#endif
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -64,11 +61,6 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
-
-#ifdef DEBUG_SYNC_REPLICATION
-static std::atomic<uint64_t> debugUniqId(1);
-bool AgencyComm::syncReplDebug = false;
-#endif
 
 static void addEmptyVPackObject(std::string const& name, VPackBuilder& builder) {
   builder.add(name, VPackSlice::emptyObjectSlice());
@@ -851,11 +843,6 @@ AgencyCommResult AgencyComm::casValue(std::string const& key, VPackSlice const& 
 }
 
 uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
-#ifdef DEBUG_SYNC_REPLICATION
-  if (AgencyComm::syncReplDebug == true) {
-    return debugUniqId++;
-  }
-#endif
   AgencyCommResult readResult;
   AgencyCommResult writeResult;
 

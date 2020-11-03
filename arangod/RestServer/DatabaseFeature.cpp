@@ -166,8 +166,9 @@ bool DatabaseManagerThread::runTask() {
         auto& dealer = server().getFeature<V8DealerFeature>();
         std::string const& appPath = dealer.appPath();
         if (database->isOwnAppsDirectory() && !appPath.empty()) {
+          MUTEX_LOCKER(mutexLocker1, databaseFeature._databaseCreateLock);
           // but only if nobody re-created a database with the same name!
-          MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
+          MUTEX_LOCKER(mutexLocker2, databaseFeature._databasesMutex);
           
           TRI_vocbase_t* newInstance = databaseFeature.lookupDatabase(database->name());
           TRI_ASSERT(newInstance == nullptr || newInstance->id() != database->id());
@@ -179,7 +180,7 @@ bool DatabaseManagerThread::runTask() {
 
             if (TRI_IsDirectory(path.c_str())) {
               LOG_TOPIC("041b1", TRACE, arangodb::Logger::FIXME)
-                << "removing app directory '" << path << "' of database '"
+                << "removing apps directory '" << path << "' of database '"
                 << database->name() << "'";
 
               TRI_RemoveDirectory(path.c_str());
@@ -1197,12 +1198,14 @@ int DatabaseFeature::createApplicationDirectory(std::string const& name,
       return TRI_ERROR_NO_ERROR;
     }
 
-    LOG_TOPIC("56fc7", WARN, arangodb::Logger::FIXME)
-        << "forcefully removing existing application directory '" << path
-        << "' for database '" << name << "'";
-    // removing is best effort. if it does not succeed, we can still
-    // go on creating the it
-    TRI_RemoveDirectory(path.c_str());
+    if (!basics::FileUtils::listFiles(path).empty()) {
+      LOG_TOPIC("56fc7", INFO, arangodb::Logger::FIXME)
+          << "forcefully removing existing application directory '" << path
+          << "' for database '" << name << "'";
+      // removing is best effort. if it does not succeed, we can still
+      // go on creating the it
+      TRI_RemoveDirectory(path.c_str());
+    }
   }
 
   // directory does not yet exist - this should be the standard case
