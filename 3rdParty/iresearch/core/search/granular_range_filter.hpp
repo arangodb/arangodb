@@ -28,7 +28,7 @@
 #include "search/search_range.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class by_granular_range;
 class numeric_token_stream;
@@ -100,10 +100,6 @@ IRESEARCH_API void set_granular_term(
 class IRESEARCH_API by_granular_range
     : public filter_base<by_granular_range_options> {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::by_granular_range_options";
-  }
-
   DECLARE_FACTORY();
 
   static filter::prepared::ptr prepare(
@@ -133,6 +129,6 @@ class IRESEARCH_API by_granular_range
   }
 }; // by_granular_range
 
-NS_END // ROOT
+} // ROOT
 
 #endif

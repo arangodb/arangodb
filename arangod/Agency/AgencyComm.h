@@ -42,7 +42,6 @@
 #include "Agency/PathComponent.h"
 #include "Basics/Mutex.h"
 #include "Basics/Result.h"
-#include "GeneralServer/GeneralDefinitions.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/Metrics.h"
 

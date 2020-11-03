@@ -59,7 +59,7 @@
 
 #include "index-put.hpp"
 
-NS_LOCAL
+namespace {
 
 const std::string HELP = "help";
 const std::string BATCH_SIZE = "batch-size";
@@ -93,7 +93,7 @@ const irs::flags numeric_features{
   irs::type<irs::granularity_prefix>::get()
 };
 
-NS_END
+}
 
 struct Doc {
   static std::atomic<uint64_t> next_id;

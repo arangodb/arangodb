@@ -23,7 +23,7 @@
 
 #include "IoContext.h"
 
-#include "Basics/cpu-relax.h"
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::basics;

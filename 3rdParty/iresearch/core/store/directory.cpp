@@ -27,7 +27,7 @@
 #include "utils/log.hpp"
 #include "utils/thread_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                        index_lock implementation
@@ -55,4 +55,4 @@ bool index_lock::try_lock(size_t wait_timeout /* = 1000 */) noexcept {
   return false;
 }
 
-NS_END
+}

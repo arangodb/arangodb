@@ -26,7 +26,7 @@
 #include "search/column_existence_filter.hpp"
 #include "search/sort.hpp"
 
-NS_LOCAL
+namespace {
 
 irs::by_column_existence make_filter(const irs::string_ref& field,
                                      bool prefix_match) {
@@ -1067,4 +1067,4 @@ INSTANTIATE_TEST_CASE_P(
   tests::to_string
 );
 
-NS_END
+}

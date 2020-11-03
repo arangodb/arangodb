@@ -32,9 +32,9 @@
 
 #include "utils/utf8_path.hpp"
 
-NS_BEGIN(cmdline)
+namespace cmdline {
 class parser;
-NS_END // cmdline
+} // cmdline
 
 class test_env {
  public:

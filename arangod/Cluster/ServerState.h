@@ -55,8 +55,6 @@ class ServerState {
     STATE_UNDEFINED = 0,  // initial value
     STATE_STARTUP,        // used by all roles
     STATE_SERVING,        // used by all roles
-    STATE_STOPPING,       // primary only
-    STATE_STOPPED,        // primary only
     STATE_SHUTDOWN        // used by all roles
   };
 
@@ -249,12 +247,6 @@ class ServerState {
   /// @brief set the current state
   void setState(StateEnum);
 
-  /// @brief gets the JavaScript startup path
-  std::string getJavaScriptPath();
-
-  /// @brief sets the JavaScript startup path
-  void setJavaScriptPath(std::string const&);
-
   bool isFoxxmaster() const;
 
   std::string getFoxxmaster() const;
@@ -341,9 +333,6 @@ class ServerState {
   /// Changes of rebootIds (i.e. server reboots) are noticed in ClusterInfo and
   /// can be used through a notification architecture from there
   RebootId _rebootId;
-
-  /// @brief the JavaScript startup path, can be set just once
-  std::string _javaScriptStartupPath;
 
   /// @brief the server's own endpoint, can be set just once
   std::string _myEndpoint;

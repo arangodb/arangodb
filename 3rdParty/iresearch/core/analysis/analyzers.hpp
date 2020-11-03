@@ -31,8 +31,8 @@
 #include "utils/text_format.hpp"
 #include "utils/result.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             analyzer registration
@@ -141,7 +141,7 @@ class IRESEARCH_API analyzers {
   analyzers() = delete;
 };
 
-NS_END // NS_BEGIN(analysis)
-NS_END
+} // namespace analysis {
+}
 
 #endif
