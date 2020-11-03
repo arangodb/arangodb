@@ -39,6 +39,8 @@ class HashedStringRef;
 
 namespace graph {
 
+struct TwoSidedEnumeratorOptions;
+
 template <class Step>
 class PathResult;
 
@@ -89,7 +91,9 @@ class TwoSidedEnumerator {
   };
 
  public:
-  TwoSidedEnumerator(ProviderType&& forwardProvider, ProviderType&& backwardProvider);
+  TwoSidedEnumerator(ProviderType&& forwardProvider,
+                     ProviderType&& backwardProvider,
+                     TwoSidedEnumeratorOptions options);
 
   ~TwoSidedEnumerator();
 
@@ -144,7 +148,6 @@ class TwoSidedEnumerator {
   auto startNextDepth() -> void;
 
  private:
-
   Ball _left;
   Ball _right;
   bool _searchLeft{true};

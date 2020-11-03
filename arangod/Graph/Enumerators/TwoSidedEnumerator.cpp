@@ -28,6 +28,7 @@
 #include "Basics/system-compiler.h"
 #include "Basics/voc-errors.h"
 
+#include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 
 #include <velocypack/Builder.h>
@@ -148,7 +149,8 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::buildPath
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::TwoSidedEnumerator(
-    ProviderType&& forwardProvider, ProviderType&& backwardProvider)
+    ProviderType&& forwardProvider, ProviderType&& backwardProvider,
+    TwoSidedEnumeratorOptions options)
     : _left{Direction::FORWARD, std::move(forwardProvider)},
       _right{Direction::BACKWARD, std::move(backwardProvider)},
       _resultPath{} {}

@@ -187,6 +187,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/Enumerators/TwoSidedEnumerator.cpp
   Graph/PathManagement/PathResult.cpp
   Graph/PathManagement/PathStore.cpp
+  Graph/Options/TwoSidedEnumeratorOptions.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   RestHandler/RestGraphHandler.cpp
 )

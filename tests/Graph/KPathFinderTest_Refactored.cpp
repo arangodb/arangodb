@@ -32,6 +32,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
+#include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Queues/FifoQueue.h"
@@ -99,9 +100,9 @@ class KPathFinderTest_Refactored : public ::testing::Test {
   }
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder& {
-    // TODO minDepth, maxDepth
+    arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth};
     _finder = std::make_unique<KPathFinder>(MockGraphProvider(mockGraph, false),
-                                            MockGraphProvider(mockGraph, true));
+                                            MockGraphProvider(mockGraph, true), options);
     return *_finder;
   }
 
@@ -111,7 +112,7 @@ class KPathFinderTest_Refactored : public ::testing::Test {
 
   auto pathStructureValid(VPackSlice path, size_t depth) -> void {
     ASSERT_TRUE(path.isObject());
-    LOG_DEVEL << path.toJson(); // TODO: remove me
+    LOG_DEVEL << path.toJson();  // TODO: remove me
     {
       // Check Vertices
       ASSERT_TRUE(path.hasKey(StaticStrings::GraphQueryVertices));
