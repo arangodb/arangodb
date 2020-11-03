@@ -25,6 +25,7 @@
 #include <Logger/LogMacros.h>
 #include "gtest/gtest.h"
 
+#include "Graph/Providers/BaseStep.h"
 #include "Graph/Queues/FifoQueue.h"
 
 using namespace arangodb;
@@ -34,13 +35,13 @@ namespace arangodb {
 namespace tests {
 namespace queue_graph_cache_test {
 
-class Step {
+class Step : public arangodb::graph::BaseStep<Step> {
   size_t _id;
   double _weight;
   bool _isLooseEnd;
 
  public:
-  Step(size_t id, double weight, bool isLooseEnd) {
+  Step(size_t id, double weight, bool isLooseEnd) : arangodb::graph::BaseStep<Step>{} {
     _id = id;
     _weight = weight;
     _isLooseEnd = isLooseEnd;
