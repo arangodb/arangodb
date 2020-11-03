@@ -1466,6 +1466,37 @@ TEST_CASE("Test [reduce] primitive", "[reduce]") {
     REQUIRE(res.ok());
     REQUIRE(result.slice().toJson() == R"json({"a":2,"b":4,"c":6,"d":4})json");
   }
+
+  SECTION("reduce list with input list and init accumulator list - both dicts contain unique keys") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+        ["reduce",
+          {"a": 1, "b": 2, "c": 3, "e": 5},
+          ["lambda",
+            ["quote", []],
+            ["quote", ["key", "value", "accum" ]],
+            ["seq",
+              ["print", ""],
+              ["quote",
+                [
+                  "attrib-set",
+                  ["var-ref", "accum"],
+                  ["var-ref", "key"],
+                  ["+", ["var-ref", "value"], ["attrib-ref-or", ["var-ref", "accum"], ["var-ref", "key"], 0] ]
+                ]
+              ]
+            ]
+          ],
+          {"a": 1, "b": 2, "c": 3, "d": 4}
+        ]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(res.ok());
+    REQUIRE(result.slice().toJson() == R"json({"a":2,"b":4,"c":6,"d":4,"e":5})json");
+  }
 }
 
 TEST_CASE("Test [sort] primitive", "[sort]") {
