@@ -37,7 +37,7 @@
   #include <Windows.h> // for GetLastError()
 #endif
 
-NS_LOCAL
+namespace {
 
 inline size_t buffer_size(void* file) noexcept {
   UNUSED(file);
@@ -79,9 +79,9 @@ inline int get_posix_fadvice(irs::IOAdvice advice) {
 }
 
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprecated declaration
 
@@ -668,4 +668,4 @@ bool fs_directory::sync(const std::string& name) noexcept {
 }
 
 MSVC_ONLY(__pragma(warning(pop)))
-NS_END
+}

@@ -30,8 +30,8 @@
 #include "utils/std.hpp"
 #include "utils/type_limits.hpp"
 
-NS_ROOT
-NS_BEGIN(detail)
+namespace iresearch {
+namespace detail {
 
 // Need this proxy since Microsoft has heap validity check in std::pop_heap.
 // Our approach is to refresh top iterator (next or seek) and then remove it
@@ -164,7 +164,7 @@ struct empty_score_buffer {
   }
 }; // empty_score_buffer
 
-NS_END // detail
+} // detail
 
 template<typename Adapter>
 struct compound_doc_iterator : doc_iterator {
@@ -1077,10 +1077,16 @@ class block_disjunction final
     if (target <= doc_.value) {
       return doc_.value;
     } else if (target < max_) {
-      target -= (max_ - window());
-      begin_ = mask_ + target / block_size();
-      doc_base_ += doc_id_t(std::distance(mask_, begin_) * bits_required<uint64_t>());
-      cur_ = (*begin_++) & ((~UINT64_C(0)) << target % block_size());
+      const doc_id_t block_base = (max_ - window());
+
+      target -= block_base;
+      const doc_id_t block_offset = target / block_size();
+
+      doc_base_ = block_base + block_offset * block_size();
+      begin_ = mask_ + block_offset + 1;
+
+      assert(begin_ > std::begin(mask_) && begin_ <= std::end(mask_));
+      cur_ = begin_[-1] & ((~UINT64_C(0)) << target % block_size());
 
       next();
     } else {
@@ -1164,9 +1170,11 @@ class block_disjunction final
     return std::max(size_t(1), traits_type::num_blocks());
   }
 
-  static constexpr size_t window() noexcept {
+  static constexpr doc_id_t window() noexcept {
     return block_size()*num_blocks();
   }
+
+  static_assert(block_size()*size_t(num_blocks()) < std::numeric_limits<doc_id_t>::max());
 
   using score_buffer_type = std::conditional_t<traits_type::score(),
     detail::score_buffer,
@@ -1466,6 +1474,6 @@ doc_iterator::ptr make_disjunction(
     std::forward<Args>(args)...);
 }
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_DISJUNCTION_H

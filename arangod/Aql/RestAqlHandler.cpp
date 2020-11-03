@@ -560,7 +560,7 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice) -> ResultT<AqlExecut
   auto expectedPropertiesFound = std::map<std::string_view, bool>{};
   expectedPropertiesFound.emplace(StaticStrings::AqlRemoteCallStack, false);
 
-  auto callStack = std::optional<AqlCallStack>{};
+  std::optional<AqlCallStack> callStack;
 
   for (auto const it : VPackObjectIterator(slice)) {
     auto const keySlice = it.key;

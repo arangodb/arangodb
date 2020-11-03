@@ -23,13 +23,13 @@
 
 #include "attribute_store.hpp"
 
-NS_LOCAL
+namespace {
 
 const iresearch::attribute_store EMPTY_ATTRIBUTE_STORE(0);
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   attribute_store
@@ -42,4 +42,4 @@ attribute_store::attribute_store(size_t /*reserve = 0*/) {
   return EMPTY_ATTRIBUTE_STORE;
 }
 
-NS_END
+}

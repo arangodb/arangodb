@@ -69,8 +69,8 @@
 
 #include "text_token_stream.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -119,10 +119,10 @@ struct text_token_stream::state_t {
   }
 };
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT
 
-NS_LOCAL
+namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -898,10 +898,10 @@ REGISTER_ANALYZER_JSON(irs::analysis::text_token_stream, make_json,
 REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stream, make_text, 
                        normalize_text_config);
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  static variables
@@ -1171,5 +1171,5 @@ bool text_token_stream::next_ngram() {
   return false;
 }
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT

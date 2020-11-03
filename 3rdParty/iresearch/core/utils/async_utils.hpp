@@ -33,8 +33,8 @@
 #include "noncopyable.hpp"
 #include "shared.hpp"
 
-NS_ROOT
-NS_BEGIN(async_utils)
+namespace iresearch {
+namespace async_utils {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief spinlock implementation for Win32 since std::mutex cannot be used
@@ -153,7 +153,7 @@ class IRESEARCH_API thread_pool {
   void run();
 }; // thread_pool
 
-NS_END // async_utils
-NS_END // NS_ROOT
+} // async_utils
+} // namespace iresearch {
 
 #endif
