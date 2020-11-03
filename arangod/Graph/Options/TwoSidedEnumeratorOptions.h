@@ -36,8 +36,8 @@ struct TwoSidedEnumeratorOptions {
 
   ~TwoSidedEnumeratorOptions();
 
-  bool getMinDepth() const;
-  bool getMaxDepth() const;
+  size_t getMinDepth() const;
+  size_t getMaxDepth() const;
 
  private:
   size_t _minDepth;

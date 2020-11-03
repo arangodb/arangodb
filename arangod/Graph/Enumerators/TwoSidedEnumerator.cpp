@@ -288,12 +288,6 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::startNextDepth(
 template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::searchDone() const
     -> bool {
-  LOG_DEVEL << "left no path: " << std::boolalpha << _left.noPathLeft();
-  LOG_DEVEL << "left depth: " << _left.getDepth();
-  LOG_DEVEL << "right no path: " << std::boolalpha << _right.noPathLeft();
-  LOG_DEVEL << "right depth: " << _right.getDepth();
-  LOG_DEVEL << "options maxDepth: " << _options.getMaxDepth();
-
   return _left.noPathLeft() || _right.noPathLeft() ||
          _left.getDepth() + _right.getDepth() > _options.getMaxDepth();
 }
