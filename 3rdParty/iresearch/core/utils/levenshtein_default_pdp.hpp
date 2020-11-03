@@ -25,7 +25,7 @@
 
 #include "shared.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class parametric_description;
 
@@ -40,6 +40,6 @@ IRESEARCH_API const parametric_description& default_pdp(
   byte_type max_distance,
   bool with_transpositions);
 
-NS_END
+}
 
 #endif // IRESEARCH_LEVENSHTEIN_DEFAULT_PDP_H

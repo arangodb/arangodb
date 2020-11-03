@@ -27,7 +27,7 @@
 
 #include <array>
 
-NS_BEGIN(tests)
+namespace tests {
 
 struct test_slow_sobject {
   using ptr = std::shared_ptr<test_slow_sobject>;
@@ -74,7 +74,7 @@ struct test_uobject_nullptr {
 
 /*static*/ size_t test_uobject_nullptr::make_count = 0;
 
-NS_END
+}
 
 using namespace tests;
 

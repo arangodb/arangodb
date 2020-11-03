@@ -30,7 +30,7 @@
 
 #include <streambuf>
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct data_output
@@ -113,6 +113,8 @@ class IRESEARCH_API output_buf final : public std::streambuf, util::noncopyable 
 
   virtual int_type overflow(int_type c) override;
 
+  index_output* internal() const { return out_; }
+
  private:
   index_output* out_;
 }; // output_buf
@@ -122,7 +124,7 @@ class IRESEARCH_API output_buf final : public std::streambuf, util::noncopyable 
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API buffered_index_output : public index_output, util::noncopyable {
  public:
-  static const size_t DEFAULT_BUFFER_SIZE = 1024;
+  static constexpr size_t DEFAULT_BUFFER_SIZE = 1024;
 
   buffered_index_output(size_t buf_size = DEFAULT_BUFFER_SIZE);
 
@@ -162,6 +164,6 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // buffered_index_output
 
-NS_END
+}
 
 #endif // IRESEARCH_DATAOUTPUT_H

@@ -34,6 +34,7 @@ set(IReSearch_tests_sources
   ./analysis/text_token_normalizing_stream_tests.cpp
   ./analysis/text_token_stemming_stream_tests.cpp
   ./analysis/token_masking_stream_tests.cpp
+  ./analysis/token_attributes_test.cpp
   ./analysis/token_stream_tests.cpp
   ./formats/formats_tests.cpp
   ./formats/formats_test_case_base.cpp

@@ -30,7 +30,7 @@
   #include "delta_compression.hpp"
 #endif
 
-NS_LOCAL
+namespace {
 
 struct value{
   explicit value(
@@ -82,10 +82,10 @@ class compression_register
   }
 };
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(compression)
+namespace iresearch {
+namespace compression {
 
 compression_registrar::compression_registrar(
     const type_info& type,
@@ -199,5 +199,5 @@ bool visit(const std::function<bool(const string_ref&)>& visitor) {
 
 REGISTER_COMPRESSION(none, &none::compressor, &none::decompressor);
 
-NS_END // compression
-NS_END
+} // compression
+}

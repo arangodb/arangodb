@@ -33,11 +33,11 @@
 
 #include "utils/io_utils.hpp"
 #include "utils/string.hpp"
-#include "utils/type_id.hpp"
+#include "utils/type_info.hpp"
 #include "utils/attribute_provider.hpp"
 #include "utils/automaton_decl.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 struct segment_meta;
 struct field_meta;
@@ -246,12 +246,12 @@ struct IRESEARCH_API columnstore_writer {
   virtual bool commit() = 0; // @return was anything actually flushed
 }; // columnstore_writer
 
-NS_END
+}
 
 MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t, irs::bytes_ref&)>;) // columnstore_reader::values_reader_f
 MSVC_ONLY(template class IRESEARCH_API std::function<iresearch::columnstore_writer::column_output&(iresearch::doc_id_t)>;) // columnstore_writer::values_writer_f
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct column_meta_writer
@@ -329,9 +329,9 @@ struct IRESEARCH_API columnstore_reader {
   virtual size_t size() const = 0;
 }; // columnstore_reader
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct document_mask_writer
@@ -479,11 +479,11 @@ class IRESEARCH_API format {
   type_info type_;
 }; // format
 
-NS_END
+}
 
 MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<iresearch::format>;) // format::ptr
 
-NS_ROOT
+namespace iresearch {
 
 struct IRESEARCH_API flush_state {
   directory* dir;
@@ -565,6 +565,6 @@ class IRESEARCH_API format_registrar {
 #define REGISTER_FORMAT_MODULE(format_name, module_name) REGISTER_FORMAT_EXPANDER__(format_name, module_name, __FILE__, __LINE__)
 #define REGISTER_FORMAT(format_name) REGISTER_FORMAT_MODULE(format_name, irs::string_ref::NIL)
 
-NS_END
+}
 
 #endif

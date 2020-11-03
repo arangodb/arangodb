@@ -27,7 +27,7 @@
 #include "utils/type_limits.hpp"
 #include <functional>
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class skip_writer
@@ -248,6 +248,6 @@ class IRESEARCH_API skip_reader: util::noncopyable {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // skip_reader
 
-NS_END
+}
 
 #endif

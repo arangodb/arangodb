@@ -37,7 +37,7 @@
 #include <vector>
 #include <atomic>
 
-NS_ROOT
+namespace iresearch {
 
 /* -------------------------------------------------------------------
  * segment_meta
@@ -46,11 +46,11 @@ NS_ROOT
 class format;
 typedef std::shared_ptr<const format> format_ptr;
 
-NS_END
+}
 
 MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<const irs::format>;) // format_ptr
 
-NS_ROOT
+namespace iresearch {
 
 struct IRESEARCH_API segment_meta {
   typedef std::unordered_set<std::string> file_set;
@@ -250,6 +250,6 @@ class IRESEARCH_API index_meta {
   }
 }; // index_meta
 
-NS_END
+}
 
 #endif
