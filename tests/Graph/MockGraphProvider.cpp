@@ -42,7 +42,8 @@ MockGraphProvider::Step::Step(VertexType v)
     : vertex(v), previous(std::numeric_limits<size_t>::max()) {}
 
 MockGraphProvider::Step::Step(size_t prev, VertexType v, EdgeType e)
-    : vertex(v), previous(prev) {}
+    : vertex(v), edge(e), previous(prev) {}
+
 MockGraphProvider::Step::~Step() {}
 
 void MockGraphProvider::Step::Vertex::addToBuilder(arangodb::velocypack::Builder& builder) const {
