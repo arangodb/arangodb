@@ -1077,25 +1077,11 @@ void ClusterInfo::loadPlan() {
     }
 
     auto const& databaseName = database.first;
-
     auto collectionsSlice = database.second->slice()[0];
-
     std::vector<std::string> collectionsPath{
       AgencyCommHelper::path(), "Plan", "Collections", databaseName};
-    if (!collectionsSlice.hasKey(collectionsPath)) {
-      auto it = newCollections.find(databaseName);
-      if (it != newCollections.end()) {
-        for (auto const& collection : *(it->second)) {
-          auto& collectionId = collection.first;
-          newShards.erase(collectionId); // delete from maps with shardID as key
-          newShardToName.erase(collectionId);
-        }
-        it = newCollections.erase(it);
-      }
-      continue;
-    }
-    collectionsSlice = collectionsSlice.get(collectionsPath);
 
+    collectionsSlice = collectionsSlice.get(collectionsPath);
     auto databaseCollections = std::make_shared<DatabaseCollections>();
 
     // Skip databases that are still building.
@@ -1122,7 +1108,37 @@ void ClusterInfo::loadPlan() {
     // we can safely keep this iterator around because we hold the read-lock on _planProt here.
     // reusing the lookup positions helps avoiding redundant lookups into _plannedCollections
     // for the same database
-    AllCollections::const_iterator existingCollections = _plannedCollections.find(databaseName);
+    //AllCollections::const_iterator existingCollections = _plannedCollections.find(databaseName);
+    AllCollections::const_iterator existingCollections = newCollections.find(databaseName);
+    if (existingCollections != newCollections.end()) {
+      auto const& np = newPlan.find(databaseName);
+      if (np != newPlan.end()) {
+        auto nps = np->second->slice()[0];
+        for (auto const& ec : *(existingCollections->second)) {
+          auto const& cid = ec.first;
+          if (!std::isdigit(cid.front())) {
+            continue;
+          }
+
+          collectionsPath.push_back(cid);
+          if (!nps.hasKey(collectionsPath))  { // collection gone
+            collectionsPath.push_back("shards");
+            READ_LOCKER(guard, _planProt.lock);
+            for (auto const& sh :
+                   VPackObjectIterator(_plan.find(databaseName)->second->slice()[0].get(collectionsPath))) {
+              auto const& shardId = sh.key.copyString();
+              newShards.erase(shardId);
+              newShardServers.erase(shardId);
+              newShardToName.erase(shardId);
+              newShardIds.erase(shardId);
+            }
+            collectionsPath.pop_back();
+          }
+          collectionsPath.pop_back();
+        }
+      }
+    }
+
 
     for (auto const& collectionPairSlice : velocypack::ObjectIterator(collectionsSlice)) {
       auto const& collectionSlice = collectionPairSlice.value;
@@ -1142,12 +1158,12 @@ void ClusterInfo::loadPlan() {
 
       auto const collectionId = collectionPairSlice.key.copyString();
 
-        // check if we already know this collection (i.e. have it in our local cache).
-        // we do this to avoid rebuilding LogicalCollection objects from scratch in
-        // every iteration
-        // the cache check is very coarse-grained: it simply hashes the Plan VelocyPack
-        // data for the collection, and will only reuse a collection from the cache if
-        // the hash is identical.
+      // check if we already know this collection (i.e. have it in our local cache).
+      // we do this to avoid rebuilding LogicalCollection objects from scratch in
+      // every iteration
+      // the cache check is very coarse-grained: it simply hashes the Plan VelocyPack
+      // data for the collection, and will only reuse a collection from the cache if
+      // the hash is identical.
       CollectionWithHash cwh = buildCollection(isBuilding, existingCollections, collectionId, collectionSlice, *vocbase, changeSet.version);
       auto& newCollection = cwh.collection;
       TRI_ASSERT(newCollection != nullptr);
