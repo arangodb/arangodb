@@ -1,6 +1,9 @@
 devel
 -----
 
+* Remove extra CMake option `DEBUG_SYNC_REPLICATION` and use the already
+  existing `USE_FAILURE_TESTS` options for its purpose.
+
 * Fixed issue #12778: fails validation if additionalProperties: false.
 
 * Fixed BTS-233 issue: Fixed invalid IndexId comparator.
