@@ -148,9 +148,13 @@ class HeartbeatBackgroundJobThread : public Thread {
       // execute schmutz here
       uint64_t jobNr = ++_backgroundJobsLaunched;
       LOG_TOPIC("9ec42", DEBUG, Logger::HEARTBEAT) << "sync callback started " << jobNr;
-      {
+      try {
         auto& job = _heartbeatThread->agencySync();
         job.work();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("1c9a4", ERR, Logger::HEARTBEAT) << "caught exception during agencySync: " << ex.what();
+      } catch (...) {
+        LOG_TOPIC("659a8", ERR, Logger::HEARTBEAT) << "caught unknown exception during agencySync";
       }
       LOG_TOPIC("71f07", DEBUG, Logger::HEARTBEAT) << "sync callback ended " << jobNr;
     }
