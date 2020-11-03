@@ -80,6 +80,11 @@ auto PathResult<Step>::toVelocyPack(arangodb::velocypack::Builder& builder) -> v
 }
 
 template <class Step>
+auto PathResult<Step>::isEmpty() const -> bool {
+  return _vertices.empty();
+}
+
+template <class Step>
 auto PathResult<Step>::isValid() const -> bool {
   return true;
 }
