@@ -26,6 +26,7 @@
 
 #include "Containers/HashSet.h"
 
+#include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/ShortestPathFinder.h"  // TODO: Change / remove / minimize
 
 #include <set>
@@ -53,6 +54,7 @@ class TwoSidedEnumerator {
   using Step = typename ProviderType::Step;
   using Shell = std::multiset<Step>;
   using ResultList = std::vector<std::pair<Step, Step>>;
+  using GraphOptions = arangodb::graph::TwoSidedEnumeratorOptions;
 
   class Ball {
    public:
@@ -91,9 +93,8 @@ class TwoSidedEnumerator {
   };
 
  public:
-  TwoSidedEnumerator(ProviderType&& forwardProvider,
-                     ProviderType&& backwardProvider,
-                     TwoSidedEnumeratorOptions options);
+  TwoSidedEnumerator(ProviderType&& forwardProvider, ProviderType&& backwardProvider,
+                     TwoSidedEnumeratorOptions&& options);
 
   ~TwoSidedEnumerator();
 
@@ -154,6 +155,7 @@ class TwoSidedEnumerator {
   ResultList _results{};
 
   PathResult<Step> _resultPath;
+  GraphOptions _options;
 };
 }  // namespace graph
 }  // namespace arangodb

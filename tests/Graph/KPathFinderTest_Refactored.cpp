@@ -102,7 +102,8 @@ class KPathFinderTest_Refactored : public ::testing::Test {
   auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder& {
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth};
     _finder = std::make_unique<KPathFinder>(MockGraphProvider(mockGraph, false),
-                                            MockGraphProvider(mockGraph, true), options);
+                                            MockGraphProvider(mockGraph, true),
+                                            std::move(options));
     return *_finder;
   }
 

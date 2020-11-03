@@ -150,10 +150,11 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::buildPath
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::TwoSidedEnumerator(
     ProviderType&& forwardProvider, ProviderType&& backwardProvider,
-    TwoSidedEnumeratorOptions options)
+    TwoSidedEnumeratorOptions&& options)
     : _left{Direction::FORWARD, std::move(forwardProvider)},
       _right{Direction::BACKWARD, std::move(backwardProvider)},
-      _resultPath{} {}
+      _resultPath{},
+      _options(std::move(options)) {}
 
 template <class QueueType, class PathStoreType, class ProviderType>
 TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::~TwoSidedEnumerator() {}
@@ -194,7 +195,11 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::reset(VertexRef
   _right.reset(target);
   _resultPath.clear();
 
-  // TODO Special depth == 0 case
+  // Special depth == 0 case
+  if (_options.getMinDepth() == 0 && source == target) {
+    // TODO: _left + _right build paths
+    _results.emplace_back(std::make_pair(Step{source}, Step{target}));
+  }
 }
 
 /**
