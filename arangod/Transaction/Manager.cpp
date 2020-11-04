@@ -370,6 +370,18 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     // It is important that all these calls succeed, because otherwise one of the calls
     // would just drop db server 3 as a follower.
     options.allowImplicitCollectionsForWrite = true;
+
+    // we should not have any locking conflicts on followers, generally. shard locking
+    // should be performed on leaders first, which will then, eventually replicate
+    // changes to followers. replication to followers is only done once the locks have
+    // been acquired on the leader(s). so if there are any locking issues, they are
+    // supposed to happen first on leaders, and not affect followers.
+    // that's why we can hard-code the lock timeout here to a rather low value on
+    // followers
+    constexpr double followerLockTimeout = 15.0;
+    if (options.lockTimeout == 0.0 || options.lockTimeout >= followerLockTimeout) {
+      options.lockTimeout = followerLockTimeout;
+    }
   } else {
     // for all other transactions, apply a size limitation 
     options.maxTransactionSize =

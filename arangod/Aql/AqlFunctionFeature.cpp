@@ -113,6 +113,11 @@ void AqlFunctionFeature::toVelocyPack(VPackBuilder& builder) {
     } else {
       builder.add(VPackValue("cxx"));
     }
+    // a "stub" here is just a placeholder for a function with no implementation.
+    // this is used for functions which are translated to other constructs during parsing,
+    // e.g. WITHIN_RECTANGLE is translated into a FOR ... FILTER ... loop internally,
+    // so that WITHIN_RECTANGLE is actually never called
+    builder.add("stub", VPackValue(it.second.implementation == &Functions::NotImplemented));
     builder.close();  // implementations
     builder.add("deterministic", VPackValue(it.second.hasFlag(FF::Deterministic)));
     builder.add("cacheable", VPackValue(it.second.hasFlag(FF::Cacheable)));
