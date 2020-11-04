@@ -885,9 +885,7 @@ int RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
       return TRI_ERROR_INTERNAL;
     }
 
-    if (gotLock && waitTime == 0) {
-      // got lock on first iteration!
-      TRI_ASSERT(startTime == 0.0);
+    if (gotLock) {
       // keep the lock and exit the loop
       return TRI_ERROR_NO_ERROR;
     }
