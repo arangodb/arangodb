@@ -43,8 +43,8 @@ const optionsDocumentation = [
 ];
 
 const _ = require('lodash');
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
   'shell_replication': [tu.pathForTesting('common/replication')],

@@ -29,10 +29,10 @@
 const _ = require('lodash');
 const fs = require('fs');
 
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 const rp = require('@arangodb/testutils/result-processing');
 const cu = require('@arangodb/testutils/crash-utils');
-const tu = require('@arangodb/test-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const internal = require('internal');
 const platform = internal.platform;
 
@@ -409,7 +409,7 @@ function autoTest(options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function loadTestSuites () {
-  let testSuites = _.filter(fs.list(fs.join(__dirname, 'testsuites')),
+  let testSuites = _.filter(fs.list(fs.join(__dirname, '..', 'testsuites')),
                             function (p) {
                               return (p.substr(-3) === '.js');
                             }).sort();
