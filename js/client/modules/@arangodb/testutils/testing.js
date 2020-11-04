@@ -409,7 +409,7 @@ function autoTest(options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function loadTestSuites () {
-  let testSuites = _.filter(fs.list(fs.join(__dirname, 'testsuites')),
+  let testSuites = _.filter(fs.list(fs.join(__dirname, '..', 'testsuites')),
                             function (p) {
                               return (p.substr(-3) === '.js');
                             }).sort();
