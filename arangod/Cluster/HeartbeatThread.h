@@ -308,7 +308,7 @@ class HeartbeatThread : public Thread,
   // last value of current which we have noticed:
   std::atomic<uint64_t> _lastCurrentVersionNoticed;
   // For periodic update of the current DBServer list:
-  std::atomic<int> _DBServerUpdateCounter;
+  std::atomic<int> _updateCounter;
 
   /// @brief Sync job
   DBServerAgencySync _agencySync;

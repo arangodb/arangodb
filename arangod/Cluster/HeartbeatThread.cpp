@@ -212,7 +212,7 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _invalidateCoordinators(true),
       _lastPlanVersionNoticed(0),
       _lastCurrentVersionNoticed(0),
-      _DBServerUpdateCounter(0),
+      _updateCounter(0),
       _agencySync(_server, this),
       _heartbeat_send_time_ms(server.getFeature<arangodb::MetricsFeature>().histogram(
           StaticStrings::HeartbeatSendTimeMs, log_scale_t<uint64_t>(2, 4, 8000, 10),
@@ -367,6 +367,16 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
         }
       }
     }
+  }
+
+  // Periodically update the list of DBServers and prune agency comm
+  // connection pool:
+  if (++_updateCounter >= 60) {
+    auto& clusterFeature = server().getFeature<ClusterFeature>();
+    auto& ci = clusterFeature.clusterInfo();
+    ci.loadCurrentDBServers();
+    _updateCounter = 0;
+    clusterFeature.pruneAsyncAgencyConnectionPool();
   }
 }
 
@@ -634,9 +644,11 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
   _invalidateCoordinators = !_invalidateCoordinators;
 
   // Periodically update the list of DBServers:
-  if (++_DBServerUpdateCounter >= 60) {
+  if (++_updateCounter >= 60) {
     ci.loadCurrentDBServers();
-    _DBServerUpdateCounter = 0;
+    _updateCounter = 0;
+    auto& clusterFeature = server().getFeature<ClusterFeature>();
+    clusterFeature.pruneAsyncAgencyConnectionPool();
   }
 }
 
@@ -954,6 +966,12 @@ void HeartbeatThread::runSingleServer() {
     } catch (...) {
       LOG_TOPIC("9a79c", ERR, Logger::HEARTBEAT)
           << "got an unknown exception in single server heartbeat";
+    }
+    // Periodically prune the connection pool
+    if (++_updateCounter >= 60) {
+      _updateCounter = 0;
+      auto& clusterFeature = server().getFeature<ClusterFeature>();
+      clusterFeature.pruneAsyncAgencyConnectionPool();
     }
   }
 }
