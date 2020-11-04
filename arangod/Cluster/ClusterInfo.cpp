@@ -721,7 +721,7 @@ void ClusterInfo::loadPlan() {
   }
 
   bool changed = false;
-  auto changeSet = agencyCache.changedSince(prefixPlan, planIndex); // also delivers plan/version
+  auto changeSet = agencyCache.changedSince("Plan", planIndex); // also delivers plan/version
   decltype(_plan) newPlan;
   {
     READ_LOCKER(readLocker, _planProt.lock);
@@ -746,7 +746,6 @@ void ClusterInfo::loadPlan() {
   std::set<std::string> buildingDatabases;
   decltype(_plannedCollections) newCollections;
   decltype(_shards) newShards;
-  decltype(_shardIds) newShardIds;
   decltype(_shardServers) newShardServers;
   decltype(_shardToName) newShardToName;
   decltype(_dbAnalyzersRevision) newDbAnalyzersRevision;
@@ -764,13 +763,12 @@ void ClusterInfo::loadPlan() {
     newShards = _shards;
     newShardServers = _shardServers;
     newShardToName = _shardToName;
-    newShardIds = _shardIds;
     newDbAnalyzersRevision = _dbAnalyzersRevision;
     auto ende = std::chrono::steady_clock::now();
     LOG_TOPIC("feee1", TRACE, Logger::CLUSTER)
-      << "Time for copy operation in loadPlan: "
-      << std::chrono::duration_cast<std::chrono::nanoseconds>(ende - start).count()
-      << " ns";
+        << "Time for copy operation in loadPlan: "
+        << std::chrono::duration_cast<std::chrono::nanoseconds>(ende - start).count()
+        << " ns";
   }
 
   std::string name;
@@ -810,7 +808,6 @@ void ClusterInfo::loadPlan() {
               newShards.erase(shardName);
               newShardServers.erase(shardName);
               newShardToName.erase(shardName);
-              newShardIds.erase(shardName);
             }
           }
         }
@@ -1077,11 +1074,25 @@ void ClusterInfo::loadPlan() {
     }
 
     auto const& databaseName = database.first;
+
     auto collectionsSlice = database.second->slice()[0];
+
     std::vector<std::string> collectionsPath{
       AgencyCommHelper::path(), "Plan", "Collections", databaseName};
-
+    if (!collectionsSlice.hasKey(collectionsPath)) {
+      auto it = newCollections.find(databaseName);
+      if (it != newCollections.end()) {
+        for (auto const& collection : *(it->second)) {
+          auto& collectionId = collection.first;
+          newShards.erase(collectionId); // delete from maps with shardID as key
+          newShardToName.erase(collectionId);
+        }
+        it = newCollections.erase(it);
+      }
+      continue;
+    }
     collectionsSlice = collectionsSlice.get(collectionsPath);
+
     auto databaseCollections = std::make_shared<DatabaseCollections>();
 
     // Skip databases that are still building.
@@ -1108,8 +1119,8 @@ void ClusterInfo::loadPlan() {
     // we can safely keep this iterator around because we hold the read-lock on _planProt here.
     // reusing the lookup positions helps avoiding redundant lookups into _plannedCollections
     // for the same database
-    //AllCollections::const_iterator existingCollections = _plannedCollections.find(databaseName);
-    AllCollections::const_iterator existingCollections = newCollections.find(databaseName);
+    AllCollections::const_iterator existingCollections = _plannedCollections.find(databaseName);
+
     if (existingCollections != newCollections.end()) {
       auto const& np = newPlan.find(databaseName);
       if (np != newPlan.end()) {
@@ -1119,7 +1130,6 @@ void ClusterInfo::loadPlan() {
           if (!std::isdigit(cid.front())) {
             continue;
           }
-
           collectionsPath.push_back(cid);
           if (!nps.hasKey(collectionsPath))  { // collection gone
             collectionsPath.push_back("shards");
@@ -1130,7 +1140,6 @@ void ClusterInfo::loadPlan() {
               newShards.erase(shardId);
               newShardServers.erase(shardId);
               newShardToName.erase(shardId);
-              newShardIds.erase(shardId);
             }
             collectionsPath.pop_back();
           }
@@ -1138,7 +1147,6 @@ void ClusterInfo::loadPlan() {
         }
       }
     }
-
 
     for (auto const& collectionPairSlice : velocypack::ObjectIterator(collectionsSlice)) {
       auto const& collectionSlice = collectionPairSlice.value;
@@ -1158,12 +1166,12 @@ void ClusterInfo::loadPlan() {
 
       auto const collectionId = collectionPairSlice.key.copyString();
 
-      // check if we already know this collection (i.e. have it in our local cache).
-      // we do this to avoid rebuilding LogicalCollection objects from scratch in
-      // every iteration
-      // the cache check is very coarse-grained: it simply hashes the Plan VelocyPack
-      // data for the collection, and will only reuse a collection from the cache if
-      // the hash is identical.
+        // check if we already know this collection (i.e. have it in our local cache).
+        // we do this to avoid rebuilding LogicalCollection objects from scratch in
+        // every iteration
+        // the cache check is very coarse-grained: it simply hashes the Plan VelocyPack
+        // data for the collection, and will only reuse a collection from the cache if
+        // the hash is identical.
       CollectionWithHash cwh = buildCollection(isBuilding, existingCollections, collectionId, collectionSlice, *vocbase, changeSet.version);
       auto& newCollection = cwh.collection;
       TRI_ASSERT(newCollection != nullptr);
@@ -1270,7 +1278,6 @@ void ClusterInfo::loadPlan() {
     _shards.swap(newShards);
     _shardServers.swap(newShardServers);
     _shardToName.swap(newShardToName);
-    _shardIds.swap(newShardIds);
   }
 
   if (swapViews) {
@@ -1301,7 +1308,6 @@ void ClusterInfo::loadPlan() {
     triggerWaiting(_waitPlanVersion, _planVersion);
   }
 
-  agencyCache.clearChanged(prefixPlan, _planIndex);
   auto diff = duration<float, std::milli>(clock::now() - start).count();
   _lpTotal += static_cast<uint64_t>(diff);
   _lpTimer.count(diff);
@@ -1343,7 +1349,7 @@ void ClusterInfo::loadCurrent() {
   decltype(_current) newCurrent;
 
   bool changed = false;
-  auto changeSet = agencyCache.changedSince(prefixCurrent, currentIndex);
+  auto changeSet = agencyCache.changedSince("Current", currentIndex);
   {
     READ_LOCKER(readLocker, _currentProt.lock);
     newCurrent = _current;
@@ -1388,15 +1394,33 @@ void ClusterInfo::loadCurrent() {
     std::vector<std::string> dbPath{
       AgencyCommHelper::path(), "Current", "Databases", databaseName};
     auto databaseSlice = database.second->slice()[0];
-
-
     if (!databaseSlice.hasKey(dbPath)) {
       newDatabases.erase(databaseName);
-      newCurrent.erase(databaseName);
+
+      // newShardIds
+      /*std::shared_ptr<VPackBuilder> db = nullptr;
+      {
+        READ_LOCKER(guard, _currentProt.lock);
+        auto const it = _current.find(databaseName);
+        if (it != _current.end()) {
+          db = it->second;
+        }
+      }
+      std::vector<std::string> colPath {
+        AgencyCommHelper::path(), "Current", "Collections", databaseName};
+      if (db != nullptr) {
+        auto const colsSlice = db->slice()[0].get(colPath);
+        for (auto const cc : VPackObjectIterator(colsSlice)) {
+          for (auto const cs : VPackObjectIterator(cc.value)) {
+            LOG_DEVEL << "deleting " << cs.key.copyString();
+            newShardIds.erase(cs.key.copyString());
+          }
+        }
+        }*/
+
       swapDatabases = true;
       continue;
     }
-
     databaseSlice = databaseSlice.get(dbPath);
 
     std::unordered_map<ServerID, velocypack::Slice> serverList;
@@ -1430,6 +1454,37 @@ void ClusterInfo::loadCurrent() {
     databaseSlice = databaseSlice.get(dbPath);
 
     DatabaseCollectionsCurrent databaseCollections;
+
+    auto const existingCollections = newCollections.find(databaseName);
+    if (existingCollections != newCollections.end()) {
+      auto const& nc = newCurrent.find(databaseName);
+      if (nc != newCurrent.end()) {
+        auto ncs = nc->second->slice()[0];
+        std::vector<std::string> path{
+          AgencyCommHelper::path(), "Current", "Collections", databaseName};
+        for (auto const& ec : existingCollections->second) {
+          auto const& cid = ec.first;
+          path.push_back(cid);
+          if (ncs.hasKey(path)) {
+            std::shared_ptr<VPackBuilder> cur;
+            {
+              READ_LOCKER(guard, _currentProt.lock);
+              cur = _current.find(databaseName)->second;
+            }
+            auto const cc = cur->slice()[0].get(path);
+            for (auto const& sh : VPackObjectIterator(cc)) {
+              path.push_back(sh.key.copyString());
+              if (!ncs.hasKey(path)) {
+                newShardIds.erase(path.back());
+              }
+              path.pop_back();
+            }
+            path.pop_back();
+          }
+        }
+      }
+    }
+
 
     for (auto const& collectionSlice : VPackObjectIterator(databaseSlice)) {
       std::string collectionName = collectionSlice.key.copyString();
@@ -1501,8 +1556,6 @@ void ClusterInfo::loadCurrent() {
     std::lock_guard w(_waitCurrentVersionLock);
     triggerWaiting(_waitCurrentVersion, _currentVersion);
   }
-
-  agencyCache.clearChanged(prefixCurrent, _currentIndex);
 
   auto diff = duration<float, std::milli>(clock::now() - start).count();
   _lcTotal += static_cast<uint64_t>(diff);
@@ -5690,68 +5743,29 @@ VPackBuilder ClusterInfo::toVelocyPack() {
   VPackBuilder dump;
   {
     { VPackObjectBuilder c(&dump);
-      {
+      dump.add(VPackValue("Plan"));
+      { VPackObjectBuilder d(&dump);
         READ_LOCKER(readLocker, _planProt.lock);
-        dump.add(VPackValue("plan"));
-        { VPackObjectBuilder d(&dump);
-          for (auto const& i : _plan) {
-            dump.add(i.first, i.second->slice());
-          }
+        for (auto const& i : _plan) {
+          dump.add(i.first, i.second->slice());
         }
-        dump.add(VPackValue("plannedCollections"));
-        { VPackObjectBuilder d(&dump);
-          for (auto const& c : _plannedCollections) {
-            dump.add(VPackValue(c.first));
-            VPackArrayBuilder cs(&dump);
-            for (auto const& col : *c.second) {
-              dump.add(VPackValue(col.first));
-            }
-          }
-        }
-        dump.add(VPackValue("shardToName"));
-        { VPackObjectBuilder d(&dump);
-          for (auto const& s : _shardToName) {
-            dump.add(s.first, VPackValue(s.second));
-          }
-        }
-        dump.add(VPackValue("shardServers"));
-        { VPackObjectBuilder d(&dump);
-          for (auto const& s : _shardServers) {
-            dump.add(VPackValue(s.first));
-            VPackArrayBuilder a(&dump);
-            for (auto const& sv : s.second) {
-              dump.add(VPackValue(sv));
-            }
-          }
-        }
-        dump.add(VPackValue("shards"));
-        { VPackObjectBuilder d(&dump);
-          for (auto const& s : _shards) {
-            dump.add(VPackValue(s.first));
-            VPackArrayBuilder a(&dump);
-            for (auto const& sh : *s.second) {
-              dump.add(VPackValue(sh));
-            }
+      }
+      dump.add(VPackValue("PlannedCollections"));
+      { VPackObjectBuilder d(&dump);
+        READ_LOCKER(readLocker, _planProt.lock);
+        for (auto const& db : _plannedCollections) {
+          dump.add(VPackValue(db.first));
+          VPackArrayBuilder cs(&dump);
+          for (auto const& col : *db.second) {
+            dump.add(VPackValue(col.first));
           }
         }
       }
-      {
+      dump.add(VPackValue("Current"));
+      { VPackObjectBuilder d(&dump);
         READ_LOCKER(readLocker, _currentProt.lock);
-        dump.add(VPackValue("current"));
-        { VPackObjectBuilder d(&dump);
-          for (auto const& i : _current) {
-            dump.add(i.first, i.second->slice());
-          }
-        }
-        dump.add(VPackValue("shardIds"));
-        { VPackObjectBuilder d(&dump);
-          for (auto const& i : _shardIds) {
-            dump.add(VPackValue(i.first));
-            VPackArrayBuilder a(&dump);
-            for (auto const& i : *i.second){
-              dump.add(VPackValue(i));
-            }
-          }
+        for (auto const& i : _current) {
+          dump.add(i.first, i.second->slice());
         }
       }
     }
