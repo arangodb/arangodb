@@ -242,7 +242,7 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
   buck._managed.erase(it);  // unlocking not necessary
 }
 
-Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
                                  VPackSlice trxOpts, bool isFollowerTransaction) {
   Result res;
   if (_disallowInserts) {
