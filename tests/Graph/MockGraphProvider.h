@@ -127,6 +127,7 @@ class MockGraphProvider {
       }
       return _vertex;
     }
+    
     Edge getEdge() const {
       if (_edge.has_value()) {
         if (!isProcessable()) {

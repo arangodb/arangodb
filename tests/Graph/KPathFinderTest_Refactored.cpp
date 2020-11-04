@@ -50,18 +50,22 @@ namespace arangodb {
 namespace tests {
 namespace graph {
 
-class KPathFinderTest_Refactored : public ::testing::Test {
+
+class KPathFinderTest_Refactored : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
   using KPathFinder =
       TwoSidedEnumerator<FifoQueue<MockGraphProvider::Step>, PathStore<MockGraphProvider::Step>, MockGraphProvider>;
 
  protected:
+  bool activateLogging{false};
   MockGraph mockGraph;
   mocks::MockAqlServer _server{true};
 
   std::unique_ptr<KPathFinder> _finder;
 
   KPathFinderTest_Refactored() {
-    Logger::GRAPHS.setLogLevel(LogLevel::TRACE);
+    if (activateLogging) {
+      Logger::GRAPHS.setLogLevel(LogLevel::TRACE);
+    }
 
     /* a chain 1->2->3->4 */
     mockGraph.addEdge(1, 2);
@@ -99,10 +103,14 @@ class KPathFinderTest_Refactored : public ::testing::Test {
     mockGraph.addEdge(32, 34);
   }
 
+  auto looseEndBehaviour() const -> MockGraphProvider::LooseEndBehaviour {
+    return GetParam();
+  }
+  
   auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder& {
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth};
-    _finder = std::make_unique<KPathFinder>(MockGraphProvider(mockGraph, MockGraphProvider::LooseEndBehaviour::NEVER, false),
-                                            MockGraphProvider(mockGraph, MockGraphProvider::LooseEndBehaviour::NEVER, true),
+    _finder = std::make_unique<KPathFinder>(MockGraphProvider(mockGraph, looseEndBehaviour(), false),
+                                            MockGraphProvider(mockGraph, looseEndBehaviour(), true),
                                             std::move(options));
     return *_finder;
   }
@@ -181,7 +189,11 @@ class KPathFinderTest_Refactored : public ::testing::Test {
   }
 };
 
-TEST_F(KPathFinderTest_Refactored, no_path_exists) {
+INSTANTIATE_TEST_CASE_P(KPathFinderTestRunner, KPathFinderTest_Refactored,
+                        ::testing::Values(MockGraphProvider::LooseEndBehaviour::NEVER,
+                                          MockGraphProvider::LooseEndBehaviour::ALLWAYS));
+
+TEST_P(KPathFinderTest_Refactored, no_path_exists) {
   VPackBuilder result;
   // No path between those
   auto source = vId(91);
@@ -208,7 +220,7 @@ TEST_F(KPathFinderTest_Refactored, no_path_exists) {
   }
 }
 
-TEST_F(KPathFinderTest_Refactored, path_depth_0) {
+TEST_P(KPathFinderTest_Refactored, path_depth_0) {
   VPackBuilder result;
   // Search 0 depth
   auto& finder = pathFinder(0, 0);
@@ -240,7 +252,7 @@ TEST_F(KPathFinderTest_Refactored, path_depth_0) {
   }
 }
 
-TEST_F(KPathFinderTest_Refactored, path_depth_1) {
+TEST_P(KPathFinderTest_Refactored, path_depth_1) {
   VPackBuilder result;
   auto& finder = pathFinder(1, 1);
 
@@ -271,7 +283,7 @@ TEST_F(KPathFinderTest_Refactored, path_depth_1) {
   }
 }
 
-TEST_F(KPathFinderTest_Refactored, path_depth_2) {
+TEST_P(KPathFinderTest_Refactored, path_depth_2) {
   VPackBuilder result;
   auto& finder = pathFinder(2, 2);
 
@@ -302,7 +314,7 @@ TEST_F(KPathFinderTest_Refactored, path_depth_2) {
   }
 }
 
-TEST_F(KPathFinderTest_Refactored, path_depth_3) {
+TEST_P(KPathFinderTest_Refactored, path_depth_3) {
   VPackBuilder result;
   // Search 0 depth
   auto& finder = pathFinder(3, 3);
@@ -334,7 +346,7 @@ TEST_F(KPathFinderTest_Refactored, path_depth_3) {
   }
 }
 
-TEST_F(KPathFinderTest_Refactored, path_diamond) {
+TEST_P(KPathFinderTest_Refactored, path_diamond) {
   VPackBuilder result;
   // Search 0 depth
   auto& finder = pathFinder(2, 2);
@@ -381,7 +393,7 @@ TEST_F(KPathFinderTest_Refactored, path_diamond) {
   }
 }
 
-TEST_F(KPathFinderTest_Refactored, path_depth_1_to_2) {
+TEST_P(KPathFinderTest_Refactored, path_depth_1_to_2) {
   VPackBuilder result;
   auto& finder = pathFinder(1, 2);
 
@@ -422,7 +434,7 @@ TEST_F(KPathFinderTest_Refactored, path_depth_1_to_2) {
   }
 }
 
-TEST_F(KPathFinderTest_Refactored, path_depth_2_to_3) {
+TEST_P(KPathFinderTest_Refactored, path_depth_2_to_3) {
   VPackBuilder result;
   auto& finder = pathFinder(2, 3);
 
@@ -463,7 +475,7 @@ TEST_F(KPathFinderTest_Refactored, path_depth_2_to_3) {
   }
 }
 
-TEST_F(KPathFinderTest_Refactored, path_loop) {
+TEST_P(KPathFinderTest_Refactored, path_loop) {
   VPackBuilder result;
   auto& finder = pathFinder(1, 10);
 
@@ -494,7 +506,7 @@ TEST_F(KPathFinderTest_Refactored, path_loop) {
   }
 }
 
-TEST_F(KPathFinderTest_Refactored, triangle_loop) {
+TEST_P(KPathFinderTest_Refactored, triangle_loop) {
   VPackBuilder result;
   auto& finder = pathFinder(1, 10);
 
