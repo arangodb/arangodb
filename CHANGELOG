@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed a deadlock between AQL write transactions and hotbackup, since
+  in AQL write transactions follower transactions did not know they are
+  follower transactions.
+
 * Fix a memory leak because cluster internal connections were not cleaned
   up for agency communication.
 
