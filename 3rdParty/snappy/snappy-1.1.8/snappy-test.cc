@@ -48,12 +48,12 @@ DEFINE_bool(run_microbenchmarks, true,
 
 namespace snappy {
 
-string ReadTestDataFile(const string& base, size_t size_limit) {
-  string contents;
+std::string ReadTestDataFile(const std::string& base, size_t size_limit) {
+  std::string contents;
   const char* srcdir = getenv("srcdir");  // This is set by Automake.
-  string prefix;
+  std::string prefix;
   if (srcdir) {
-    prefix = string(srcdir) + "/";
+    prefix = std::string(srcdir) + "/";
   }
   file::GetContents(prefix + "testdata/" + base, &contents, file::Defaults()
       ).CheckSuccess();
@@ -63,11 +63,11 @@ string ReadTestDataFile(const string& base, size_t size_limit) {
   return contents;
 }
 
-string ReadTestDataFile(const string& base) {
+std::string ReadTestDataFile(const std::string& base) {
   return ReadTestDataFile(base, 0);
 }
 
-string StringPrintf(const char* format, ...) {
+std::string StrFormat(const char* format, ...) {
   char buf[4096];
   va_list ap;
   va_start(ap, format);
@@ -79,7 +79,7 @@ string StringPrintf(const char* format, ...) {
 bool benchmark_running = false;
 int64 benchmark_real_time_us = 0;
 int64 benchmark_cpu_time_us = 0;
-string *benchmark_label = NULL;
+std::string* benchmark_label = nullptr;
 int64 benchmark_bytes_processed = 0;
 
 void ResetBenchmarkTiming() {
@@ -163,11 +163,11 @@ void StopBenchmarkTiming() {
   benchmark_running = false;
 }
 
-void SetBenchmarkLabel(const string& str) {
+void SetBenchmarkLabel(const std::string& str) {
   if (benchmark_label) {
     delete benchmark_label;
   }
-  benchmark_label = new string(str);
+  benchmark_label = new std::string(str);
 }
 
 void SetBenchmarkBytesProcessed(int64 bytes) {
@@ -217,8 +217,8 @@ void Benchmark::Run() {
       benchmark_runs[run].cpu_time_us = benchmark_cpu_time_us;
     }
 
-    string heading = StringPrintf("%s/%d", name_.c_str(), test_case_num);
-    string human_readable_speed;
+    std::string heading = StrFormat("%s/%d", name_.c_str(), test_case_num);
+    std::string human_readable_speed;
 
     std::nth_element(benchmark_runs,
                      benchmark_runs + kMedianPos,
@@ -232,15 +232,16 @@ void Benchmark::Run() {
       int64 bytes_per_second =
           benchmark_bytes_processed * 1000000 / cpu_time_us;
       if (bytes_per_second < 1024) {
-        human_readable_speed = StringPrintf("%dB/s", bytes_per_second);
+        human_readable_speed =
+            StrFormat("%dB/s", static_cast<int>(bytes_per_second));
       } else if (bytes_per_second < 1024 * 1024) {
-        human_readable_speed = StringPrintf(
+        human_readable_speed = StrFormat(
             "%.1fkB/s", bytes_per_second / 1024.0f);
       } else if (bytes_per_second < 1024 * 1024 * 1024) {
-        human_readable_speed = StringPrintf(
+        human_readable_speed = StrFormat(
             "%.1fMB/s", bytes_per_second / (1024.0f * 1024.0f));
       } else {
-        human_readable_speed = StringPrintf(
+        human_readable_speed = StrFormat(
             "%.1fGB/s", bytes_per_second / (1024.0f * 1024.0f * 1024.0f));
       }
     }

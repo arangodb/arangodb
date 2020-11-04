@@ -1748,6 +1748,9 @@ again:
       req->header.acceptType(fu::ContentType::VPack);
     }
   }
+  else if (_forceJson && (req->header.acceptType() == fu::ContentType::VPack)) {
+    req->header.acceptType(fu::ContentType::Json);
+  }
   req->timeout(
       correctTimeoutToExecutionDeadline(
         std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout)));
@@ -1827,6 +1830,10 @@ again:
   if (req->header.acceptType() == fu::ContentType::Unset) {
     req->header.acceptType(fu::ContentType::VPack);
   }
+  if (_forceJson && (req->header.acceptType() == fu::ContentType::VPack)) {
+    req->header.acceptType(fu::ContentType::Json);
+  }
+
   req->timeout(
       correctTimeoutToExecutionDeadline(
         std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout)));

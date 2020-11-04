@@ -913,7 +913,7 @@ void IResearchFeature::Async::start() {
     thread.start(&_join);
   }
 
-  LOG_TOPIC("c1b64", DEBUG, arangodb::iresearch::TOPIC)
+  LOG_TOPIC("c1b64", INFO, arangodb::iresearch::TOPIC)
       << "started " << _pool.size() << " ArangoSearch maintenance thread(s)";
 }
 

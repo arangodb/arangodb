@@ -37,7 +37,7 @@
 #include "bytes_utils.hpp"
 #include "misc.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class block_pool_const_iterator
@@ -400,9 +400,9 @@ class block_pool_reader {
 
  private:
   const_iterator where_;
-}; // block_pool_reader 
+}; // block_pool_reader
 
-NS_BEGIN(detail)
+namespace detail {
 
 struct level {
   size_t next; // next level
@@ -420,7 +420,7 @@ constexpr const level LEVELS[] = {
 constexpr const size_t LEVEL_MAX = IRESEARCH_COUNTOF(LEVELS);
 constexpr const size_t LEVEL_SIZE_MAX = 200; // FIXME compile time
 
-NS_END // detail
+} // detail
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class block_pool_sliced_reader_base
@@ -1235,6 +1235,6 @@ class block_pool {
   compact_pair<blocks_t, allocator> rep_;
 }; // block_pool
 
-NS_END
+}
 
 #endif

@@ -30,7 +30,7 @@
 #include "index/field_meta.hpp"
 #include "utils/math_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 const irs::math::sqrt<uint32_t, float_t, 1024> SQRT;
 
@@ -269,9 +269,9 @@ struct term_collector final: public irs::sort::term_collector {
   }
 };
 
-NS_END // LOCAL
+} // LOCAL
 
-NS_ROOT
+namespace iresearch {
 
 // bm25 similarity
 // bm25(doc, term) = idf(term) * ((k + 1) * tf(doc, term)) / (k * (1.0 - b + b * |doc|/avgDL) + tf(doc, term))
@@ -289,7 +289,7 @@ NS_ROOT
 // average document length
 // avgDL = sum(field_term_count) / (# documents with this field)
 
-NS_BEGIN(bm25)
+namespace bm25 {
 
 // empty frequency
 const frequency EMPTY_FREQ;
@@ -348,16 +348,15 @@ struct norm_score_ctx final : public score_ctx {
 
 class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
  public:
-  sort(float_t k, float_t b) noexcept
-    : k_(k), b_(b) {
+  sort(float_t k, float_t b, bool boost_as_score) noexcept
+    : k_(k), b_(b), boost_as_score_(boost_as_score) {
   }
 
   virtual void collect(
-    byte_type* stats_buf,
-    const irs::index_reader& /*index*/,
-    const irs::sort::field_collector* field,
-    const irs::sort::term_collector* term
-  ) const override {
+      byte_type* stats_buf,
+      const irs::index_reader& /*index*/,
+      const irs::sort::field_collector* field,
+      const irs::sort::term_collector* term) const override {
     auto& stats = stats_cast(stats_buf);
 
 #ifdef IRESEARCH_DEBUG
@@ -424,7 +423,19 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
     auto* freq = irs::get<frequency>(doc_attrs);
 
     if (!freq) {
-      return { nullptr, nullptr };
+      if (!boost_as_score_ || 0.f == boost) {
+        return { nullptr, nullptr };
+      }
+
+      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
+      irs::sort::score_cast<score_t>(score_buf) = boost;
+
+      return {
+        reinterpret_cast<score_ctx*>(score_buf),
+        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+          return reinterpret_cast<byte_type*>(ctx);
+        }
+      };
     }
 
     auto& stats = stats_cast(query_stats);
@@ -506,19 +517,25 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
  private:
   float_t k_;
   float_t b_;
+  bool boost_as_score_;
 }; // sort
 
-NS_END // bm25
+} // bm25
 
-DEFINE_FACTORY_DEFAULT(irs::bm25_sort)
+/*static*/ sort::ptr bm25_sort::make(
+    float_t k, float_t b, bool boost_as_score) {
+  return std::make_unique<bm25_sort>(k, b, boost_as_score);
+}
 
 bm25_sort::bm25_sort(
     float_t k /*= 1.2f*/,
-    float_t b /*= 0.75f*/
+    float_t b /*= 0.75f*/,
+    bool boost_as_score /*= false*/
 ) noexcept
   : sort(irs::type<bm25_sort>::get()),
     k_(k),
-    b_(b) {
+    b_(b),
+    boost_as_score_(boost_as_score) {
 }
 
 /*static*/ void bm25_sort::init() {
@@ -526,7 +543,7 @@ bm25_sort::bm25_sort(
 }
 
 sort::prepared::ptr bm25_sort::prepare() const {
-  return memory::make_unique<bm25::sort>(k_, b_);
+  return memory::make_unique<bm25::sort>(k_, b_, boost_as_score_);
 }
 
-NS_END // ROOT
+} // ROOT

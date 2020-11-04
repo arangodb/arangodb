@@ -4,6 +4,33 @@ devel
 * Views on SmartGraph Edge collections do not contain some documents
   twice.
 
+* Remove extra CMake option `DEBUG_SYNC_REPLICATION` and use the already
+  existing `USE_FAILURE_TESTS` options for its purpose.
+
+* Updated bundled version of Snappy compression/decompression library to 1.1.8.
+
+* Fix REST API endpoint PUT `/_api/collection/<collection>/recalculateCount` on
+  coordinators. Coordinators sent a wrong message body to DB servers here, so
+  the request could not be handled properly.
+
+* Fixed issue #12778: fails validation if additionalProperties: false.
+
+* Fixed BTS-233 issue: Fixed invalid IndexId comparator.
+
+* Fixed potential deadlock in cluster transactions if a transaction is
+  returned that was soft-aborted by transaction garbage collection before.
+  This deadlock should rarely ever occur in practice, as it can only be 
+  triggered once during the server shutdown sequence.
+
+* Added support of `GEO_DISTANCE`, `GEO_CONTAINS`, `GEO_INTERSECTS`,
+  `GEO_IN_RANGE` to ArangoSearch.
+
+* Added new `GeoJSON` ArangoSearch analyzer.
+
+* Added new `GeoPoint` ArangoSearch analyzer.
+
+* Added new `GEO_IN_RANGE` AQL function.
+
 * Fixed handling of failedLeaderJob. In case of a plan modification, that
   removes a server from the plan, e.g. reduce replication factor. Directly
   followed by a failure of the current shard leader, would reinsert
@@ -14,7 +41,7 @@ devel
 * Fixed very spurious errors if the `holdReadLockCollection` replication API for
   the getting-in-sync procedure of shards was called during server shutdown.
   In this case that method could ask the transaction manager for a specific
-  transaction, but wasn't return one due to the server shutddown. 
+  transaction, but wasn't returning one due to the server shutdown.
 
 * Added new 'aql' type for ArangoSearch analyzers.
 
@@ -235,7 +262,7 @@ devel
 * Minor clean up of and less verbosity in agent callbacks.
 
 * Speed up initial replication of collections/shards data by not wrapping
-  each document in a seperate `{"type":2300,"data":...}` envelope. In
+  each document in a separate `{"type":2300,"data":...}` envelope. In
   addition, the follower side of the replication will request data from
   leaders in VelocyPack format if the leader is running at least version
   3.8.
@@ -276,7 +303,7 @@ devel
   Consolidation functionality for ArangoSearch view links was able to hit non-
   mergable enormous amount of segments due to improper scheduling logic.
 
-* Data definition reconsiliation in cluster has been modified
+* Data definition reconciliation in cluster has been modified
   extensively to greatly accelerate the creation of 1000s of
   databases through following means:
   - AgencyCache offers change sets API based on Raft index.

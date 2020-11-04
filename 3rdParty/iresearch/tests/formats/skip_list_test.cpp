@@ -27,7 +27,7 @@
 #include "index/iterators.hpp"
 #include "index/index_tests.hpp"
 
-NS_LOCAL
+namespace {
 
 class skip_writer_test : public test_base {
   virtual void SetUp() {
@@ -131,7 +131,7 @@ class skip_reader_test : public test_base {
   }
 };
 
-NS_END
+}
 
 TEST_F(skip_writer_test, prepare) {
   // empty doc count
