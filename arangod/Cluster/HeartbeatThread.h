@@ -89,7 +89,7 @@ class HeartbeatThread : public Thread,
   /// this is used on the coordinator only
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool hasRunOnce() const noexcept {
+  static bool hasRunOnce() noexcept {
     return HasRunOnce.load(std::memory_order_acquire);
   }
 
