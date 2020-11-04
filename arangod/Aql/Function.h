@@ -32,6 +32,10 @@
 #include <type_traits>
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace aql {
 
 struct Function {
@@ -50,36 +54,50 @@ struct Function {
     /// cache
     Cacheable = 2,
 
-    /// @brief whether or not the function may be executed on DB servers
-    CanRunOnDBServer = 4,
+    /// @brief whether or not the function may be executed on DB servers, 
+    /// general cluster case (non-OneShard)
+    CanRunOnDBServerCluster = 4,
+    
+    /// @brief whether or not the function may be executed on DB servers,
+    /// OneShard database
+    CanRunOnDBServerOneShard = 8,
+    
+    /// @brief whether or not the function may read documents from the database
+    CanReadDocuments = 16,
 
     /// @brief exclude the function from being evaluated during AST
     /// optimizations evaluation of function will only happen at query runtime
-    NoEval = 8,
+    NoEval = 32,
   };
 
   /// @brief helper for building flags
   template <typename... Args>
-  static inline std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) {
+  static inline std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) noexcept {
     return static_cast<std::underlying_type<Flags>::type>(flag) + makeFlags(args...);
   }
 
-  static std::underlying_type<Flags>::type makeFlags();
+  static std::underlying_type<Flags>::type makeFlags() noexcept;
 
   Function() = delete;
 
   /// @brief create the function
   Function(std::string const& name, char const* arguments,
            std::underlying_type<Flags>::type flags,
-           FunctionImplementation implementation = nullptr);
+           FunctionImplementation implementation);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   Function(std::string const& name,
            FunctionImplementation implementation);
 #endif
 
+  /// @brief whether or not the function is based on V8
+  bool hasV8Implementation() const noexcept;
+  
+  /// @brief whether or not the function is based on cxx
+  bool hasCxxImplementation() const noexcept;
+
   /// @brief return whether a specific flag is set for the function
-  bool hasFlag(Flags flag) const;
+  bool hasFlag(Flags flag) const noexcept;
 
   /// @brief return the number of required arguments
   std::pair<size_t, size_t> numArguments() const;
@@ -91,6 +109,8 @@ struct Function {
   /// @brief parse the argument list and set the minimum and maximum number of
   /// arguments
   void initializeArguments();
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 
   /// @brief function name (name visible to the end user, may be an alias)
   std::string name;

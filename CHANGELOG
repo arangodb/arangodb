@@ -1,6 +1,10 @@
 devel
 -----
 
+* Make the DOCUMENT AQL function eligible for running on DB servers in
+  OneShard deployment mode. This allows pushing more query parts to DB servers
+  for execution.
+
 * Fix a memory leak because cluster internal connections were not cleaned
   up for agency communication.
 
