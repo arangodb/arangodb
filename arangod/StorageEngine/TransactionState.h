@@ -61,6 +61,7 @@ struct Options;
 }  // namespace transaction
 
 class TransactionCollection;
+struct TransactionStatistics;
 
 /// @brief transaction type
 class TransactionState {
@@ -105,6 +106,16 @@ class TransactionState {
   }
   void setRegistered() noexcept { _registeredTransaction = true; }
   bool wasRegistered() const noexcept { return _registeredTransaction; }
+
+  /// @brief returns the name of the actor the transaction runs on:
+  /// - leader
+  /// - follower
+  /// - coordinator
+  /// - single
+  char const* actorName() const noexcept; 
+  
+  /// @brief return a reference to the global transaction statistics/counters
+  TransactionStatistics& statistics() noexcept;
 
   double lockTimeout() const { return _options.lockTimeout; }
   void lockTimeout(double value) {
@@ -258,10 +269,10 @@ class TransactionState {
   ListType _collections;  // list of participating collections
 
   transaction::Hints _hints;  // hints; set on _nestingLevel == 0
+  
+  ServerState::RoleEnum const _serverRole;  /// role of the server
 
   transaction::Options _options;
-
-  ServerState::RoleEnum const _serverRole;  /// role of the server
 
  private:
   /// a collection of stored cookies

@@ -27,6 +27,7 @@
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
+#include "Basics/system-functions.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"
@@ -34,7 +35,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -91,7 +91,24 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 
   _hints = hints;  // set hints before useCollections
 
-  Result res = useCollections();
+  auto& stats = statistics();
+
+  Result res;
+  if (isReadOnlyTransaction()) {
+    // for read-only transactions there will be no locking. so we will not
+    // even call TRI_microtime() to save some cycles
+    res = useCollections();
+  } else {
+    // measure execution time of "useCollections" operation, which is
+    // responsible for acquring locks as well
+    double start = TRI_microtime();
+    res = useCollections();
+    
+    double diff = TRI_microtime() - start;
+    stats._lockTimeMicros += static_cast<uint64_t>(1000000.0 * diff);
+    stats._lockTimes.count(diff);
+  }
+  
   if (res.fail()) {
     // something is wrong
     updateStatus(transaction::Status::ABORTED);
@@ -101,7 +118,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   // register with manager
   transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
   updateStatus(transaction::Status::RUNNING);
-  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted++;
+  ++stats._transactionsStarted;
 
   setRegistered();
 
@@ -392,7 +409,7 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
   if (res.ok()) {
     updateStatus(transaction::Status::COMMITTED);
     cleanupTransaction();  // deletes trx
-    _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsCommitted++;
+    ++statistics()._transactionsCommitted;
   } else {
     abortTransaction(activeTrx);  // deletes trx
   }
@@ -422,7 +439,7 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
     clearQueryCache();
   }
   TRI_ASSERT(!_rocksTransaction && !_cacheTx && !_readSnapshot);
-  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
+  ++statistics()._transactionsAborted;
 
   return result;
 }
@@ -596,7 +613,7 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
   }
 
   hasPerformedIntermediateCommit = true;
-  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._intermediateCommits++;
+  ++statistics()._intermediateCommits;
 
   TRI_IF_FAILURE("FailAfterIntermediateCommit") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -697,7 +714,7 @@ rocksdb::SequenceNumber RocksDBTransactionState::beginSeq() const {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   return db->GetLatestSequenceNumber();
 }
-
+  
 /// @brief constructor, leases a builder
 RocksDBKeyLeaser::RocksDBKeyLeaser(transaction::Methods* trx)
     : _ctx(trx->transactionContextPtr()),
