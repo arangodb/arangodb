@@ -881,7 +881,7 @@ function dumpTestEnterpriseSuite () {
       let props = view.properties();
       assertEqual("UnitTestsDumpSmartView", view.name());
       assertTrue(props.hasOwnProperty("links"));
-      assertEqual(Object.keys(props.links).length, 4); // virtual collecion + 3 system collections
+      assertEqual(Object.keys(props.links).length, 3); // virtual collecion + 2 system collections
 
       // UnitTestDumpSmartEdges
       assertTrue(props.links.hasOwnProperty("UnitTestDumpSmartEdges"));
