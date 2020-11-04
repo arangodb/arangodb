@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "./MockGraph.h"
+#include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
@@ -122,7 +123,7 @@ class MockGraphProvider {
     Vertex getVertex() const {
       if (!isProcessable()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "Accessing vertex (" + getVertex().data().toString() +
+                                       "Accessing vertex (" + _vertex.data().toString() +
                                            "), before fetching it");
       }
       return _vertex;
@@ -142,6 +143,11 @@ class MockGraphProvider {
     }
 
     bool isProcessable() const { return _isProcessable; }
+    
+    void resolve() {
+      TRI_ASSERT(!isProcessable());
+      _isProcessable = true;
+    }
 
     private:
      Vertex _vertex;
@@ -153,7 +159,7 @@ class MockGraphProvider {
   ~MockGraphProvider();
 
   auto startVertex(VertexType vertex) -> Step;
-  auto fetch(std::vector<Step> const& looseEnds) -> futures::Future<std::vector<Step>>;
+  auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
 
  private:

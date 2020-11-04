@@ -28,8 +28,10 @@
 #include "Basics/system-compiler.h"
 #include "Basics/voc-errors.h"
 
+#include "Futures/Future.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
+
 
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
@@ -100,12 +102,45 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::startNext
 }
 
 template <class QueueType, class PathStoreType, class ProviderType>
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::fetchResults(ResultList& results) -> void {
+  std::vector<Step*> looseEnds{};
+  if (_direction == Direction::FORWARD) {
+    for (auto& [step, unused] : results) {
+      if (!step.isProcessable()) {
+        looseEnds.emplace_back(&step);
+      }
+    }
+  } else {
+    for (auto& [unused, step] : results) {
+      if (!step.isProcessable()) {
+        looseEnds.emplace_back(&step);
+      }
+    }
+  }
+  if (!looseEnds.empty()) {
+    futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
+    // Will throw all network errors here
+    auto&& preparedEnds = futureEnds.get();
+    // TODO we need to ensure that we now have all vertices fetched
+    // or that we need to refetch at some later point.
+    // TODO maybe we can combine this with prefetching of paths
+  }
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::Ball::computeNeighbourhoodOfNextVertex(
     Ball const& other, ResultList& results) -> void {
   // Pull next element from Queue
   // Do 1 step search
   TRI_ASSERT(!_queue.isEmpty());
-  TRI_ASSERT(_queue.hasProcessableElement());
+  if (!_queue.hasProcessableElement()) {
+    std::vector<Step*> looseEnds = _queue.getLooseEnds();
+    futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
+    // Will throw all network errors here
+    auto&& preparedEnds = futureEnds.get();
+    // TODO we somehow need to handover those looseends to
+    // the queue again, in order to remove them from the loosend list.
+  }
   auto step = _queue.pop();
   auto previous = _interior.append(step);
   auto neighbors = _provider.expand(step, previous);
@@ -228,6 +263,7 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::getNextPath(
     arangodb::velocypack::Builder& result) {
   while (!isDone()) {
     while (_results.empty() && !searchDone()) {
+      _resultsFetched = false;
       if (_searchLeft) {
         if (ADB_UNLIKELY(_left.doneWithDepth())) {
           startNextDepth();
@@ -242,6 +278,8 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::getNextPath(
         }
       }
     }
+    
+    fetchResults();
 
     while (!_results.empty()) {
       auto [leftVertex, rightVertex] = _results.back();
@@ -290,4 +328,13 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::searchDone() co
     -> bool {
   return _left.noPathLeft() || _right.noPathLeft() ||
          _left.getDepth() + _right.getDepth() > _options.getMaxDepth();
+}
+
+template <class QueueType, class PathStoreType, class ProviderType>
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType>::fetchResults() -> void {
+  if (!_resultsFetched && !_results.empty()) {
+    _left.fetchResults(_results);
+    _right.fetchResults(_results);
+  }
+  _resultsFetched = true;
 }

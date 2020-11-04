@@ -73,6 +73,13 @@ class TwoSidedEnumerator {
 
     auto matchResultsInShell(Step const& match, ResultList& results) const -> void;
     auto computeNeighbourhoodOfNextVertex(Ball const& other, ResultList& results) -> void;
+    
+    // Ensure that we have fetched all vertices
+    // in the _results list.
+    // Otherwise we will not be able to
+    // generate the resulting path
+    auto fetchResults(ResultList& results) -> void;
+
 
    private:
     // Fast path, to test if we find a connecting vertex between left and right.
@@ -149,6 +156,12 @@ class TwoSidedEnumerator {
  private:
   auto searchDone() const -> bool;
   auto startNextDepth() -> void;
+  
+  // Ensure that we have fetched all vertices
+  // in the _results list.
+  // Otherwise we will not be able to
+  // generate the resulting path
+  auto fetchResults() -> void;
 
  private:
   GraphOptions _options;
@@ -156,6 +169,7 @@ class TwoSidedEnumerator {
   Ball _right;
   bool _searchLeft{true};
   ResultList _results{};
+  bool _resultsFetched{false};
 
   PathResult<Step> _resultPath;
 };

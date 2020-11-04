@@ -104,11 +104,18 @@ auto MockGraphProvider::startVertex(VertexType v) -> Step {
   return Step(v, decideProcessable());
 }
 
-auto MockGraphProvider::fetch(std::vector<Step> const& looseEnds)
-    -> futures::Future<std::vector<Step>> {
+auto MockGraphProvider::fetch(std::vector<Step*> const& looseEnds)
+    -> futures::Future<std::vector<Step*>> {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Fetching...";
-  return futures::makeFuture(std::vector<Step>{});
+  std::vector<Step*> result{};
+  result.reserve(looseEnds.size());
+  for (auto* s : looseEnds) {
+    // We can fake them here.
+    s->resolve();
+    result.emplace_back(s);
+  }
+  return futures::makeFuture(std::move(result));
 }
 
 auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
