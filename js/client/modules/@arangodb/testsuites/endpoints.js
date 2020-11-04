@@ -48,7 +48,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
-  'endpoints': [tu.pathForTesting('client/endpoint-spec.js')]
+  'endpoints': [tu.pathForTesting('client/endpoint.js')]
 };
 
 function endpoints (options) {
@@ -221,7 +221,10 @@ function endpoints (options) {
 
     let serverArgs = testCase.serverArgs();
     if (typeof serverArgs === 'string') {
-      serverArgs = { 'server.endpoint': serverArgs };
+      serverArgs = {
+        'server.endpoint': serverArgs,
+        'http.keep-alive-timeout': 2
+      };
     }
 
     let instanceInfo = pu.startInstance('tcp', Object.assign(options, {useReconnect: true}), serverArgs, testName);
@@ -235,7 +238,7 @@ function endpoints (options) {
       };
     }
 
-    const specFile = testPaths.endpoints[0];
+    const testFile = testPaths.endpoints[0];
     let filtered = {};
 
     testCase.shellTests.forEach(function(testCase) {
@@ -244,11 +247,11 @@ function endpoints (options) {
         let shellEndpoint = testCase.endpoint(serverArgs['server.endpoint']);
         instanceInfo.endpoint = shellEndpoint;
         try {
-          let arangoshOpts = { 'server.connection-timeout': 2, 'server.request-timeout': 2 };
+          let arangoshOpts = { 'server.connection-timeout': 8, 'server.request-timeout': 10 };
           if (testCase.forceJson) {
             arangoshOpts['server.force-json'] = true;
           }
-          let result = tu.runInArangosh(options, instanceInfo, specFile, arangoshOpts);
+          let result = tu.runInArangosh(options, instanceInfo, testFile, arangoshOpts);
           let success = result.status === testCase.success;
           results[endpointName + '-' + testCase.name] = { status: success }; 
           if (!success) {
