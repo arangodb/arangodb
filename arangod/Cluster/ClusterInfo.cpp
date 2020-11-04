@@ -4360,7 +4360,7 @@ std::unordered_map<ServerID, RebootId> ClusterInfo::rebootIds() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
-#ifdef DEBUG_SYNC_REPLICATION
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   if (serverID == "debug-follower") {
     return "tcp://127.0.0.1:3000";
   }
@@ -4411,7 +4411,7 @@ std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterInfo::getServerAdvertisedEndpoint(ServerID const& serverID) {
-#ifdef DEBUG_SYNC_REPLICATION
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   if (serverID == "debug-follower") {
     return "tcp://127.0.0.1:3000";
   }

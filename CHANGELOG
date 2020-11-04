@@ -4,6 +4,15 @@ devel
 * Agency cache clears change history. This keeps the change history,
   introduced in v3.7.4, from growing in size too much.
 
+* Remove extra CMake option `DEBUG_SYNC_REPLICATION` and use the already
+  existing `USE_FAILURE_TESTS` options for its purpose.
+
+* Updated bundled version of Snappy compression/decompression library to 1.1.8.
+
+* Fix REST API endpoint PUT `/_api/collection/<collection>/recalculateCount` on
+  coordinators. Coordinators sent a wrong message body to DB servers here, so
+  the request could not be handled properly.
+
 * Fixed issue #12778: fails validation if additionalProperties: false.
 
 * Fixed BTS-233 issue: Fixed invalid IndexId comparator.
