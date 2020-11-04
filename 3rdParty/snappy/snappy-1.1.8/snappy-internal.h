@@ -36,19 +36,26 @@
 namespace snappy {
 namespace internal {
 
+// Working memory performs a single allocation to hold all scratch space
+// required for compression.
 class WorkingMemory {
  public:
-  WorkingMemory() : large_table_(NULL) { }
-  ~WorkingMemory() { delete[] large_table_; }
+  explicit WorkingMemory(size_t input_size);
+  ~WorkingMemory();
 
   // Allocates and clears a hash table using memory in "*this",
   // stores the number of buckets in "*table_size" and returns a pointer to
   // the base of the hash table.
-  uint16* GetHashTable(size_t input_size, int* table_size);
+  uint16* GetHashTable(size_t fragment_size, int* table_size) const;
+  char* GetScratchInput() const { return input_; }
+  char* GetScratchOutput() const { return output_; }
 
  private:
-  uint16 small_table_[1<<10];    // 2KB
-  uint16* large_table_;          // Allocated only when needed
+  char* mem_;      // the allocated memory, never nullptr
+  size_t size_;    // the size of the allocated memory, never 0
+  uint16* table_;  // the pointer to the hashtable
+  char* input_;    // the pointer to the input scratch buffer
+  char* output_;   // the pointer to the output scratch buffer
 
   // No copying
   WorkingMemory(const WorkingMemory&);
