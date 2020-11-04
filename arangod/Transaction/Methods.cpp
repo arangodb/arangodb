@@ -1160,7 +1160,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     res = workForOneDocument(value, false);
   }
 
-  auto resDocs = resultBuilder.steal();
+  std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
   if (res.ok() && replicationType == ReplicationType::LEADER) {
     TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(followers != nullptr);
@@ -1845,7 +1845,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
           if (res.ok()) {
             _state->removeKnownServer((*followers)[i]);
             LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
-                << "truncateLocal: dropping follower " << (*followers)[i]
+                << "truncateLocal: dropped follower " << (*followers)[i]
                 << " for shard " << collectionName;
           } else {
             LOG_TOPIC("359bc", WARN, Logger::REPLICATION)
@@ -2395,17 +2395,21 @@ Future<Result> Methods::replicateOperations(
 
       if (!replicationWorked) {
         ServerID const& deadFollower = (*followerList)[i];
+        LOG_TOPIC("20f31", INFO, Logger::REPLICATION)
+            << "synchronous replication: dropping follower "
+            << deadFollower << " for shard " << collection->name()
+            << ", status code: " << static_cast<int>(resp.statusCode())
+            << ", message: " << network::fuerteToArangoErrorMessage(resp);
         
         Result res = collection->followers()->remove(deadFollower);
         if (res.ok()) {
-          // TODO: what happens if a server is re-added during a transaction ?
           _state->removeKnownServer(deadFollower);
           LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
-              << "synchronous replication: dropping follower "
+              << "synchronous replication: dropped follower "
               << deadFollower << " for shard " << collection->name()
               << " in database " << collection->vocbase().name();
           LOG_TOPIC("a4c06", WARN, Logger::DEVEL)
-              << "synchronous replication: dropping follower "
+              << "synchronous replication: dropped follower "
               << deadFollower << " for shard " << collection->name()
               << " in database " << collection->vocbase().name()
               << ": " << resp.combinedResult().errorMessage();

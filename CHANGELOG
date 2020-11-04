@@ -1,5 +1,8 @@
-v3.7.5 (XXXX-XX-XX)
+v3.7.6 (XXXX-XX-XX)
 -------------------
+
+* Reduce the number of dropped followers when running larger (>= 128 MB)
+  write transactions.
 
 * Added metrics for collection locks:
   - `arangodb_collection_lock_timeouts_exclusive`: Number of lock timeouts 
@@ -16,6 +19,10 @@ v3.7.5 (XXXX-XX-XX)
   Any shard locking should be performed on leaders first, which will then, 
   eventually replicate changes to followers. replication to followers is only 
   done once the locks have been acquired on the leader(s). 
+
+
+v3.7.5 (XXXX-XX-XX)
+-------------------
 
 * Fix REST API endpoint PUT `/_api/collection/<collection>/recalculateCount` on
   coordinators. Coordinators sent a wrong message body to DB servers here, so
