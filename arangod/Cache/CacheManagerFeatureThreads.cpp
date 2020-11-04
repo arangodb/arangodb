@@ -30,6 +30,7 @@
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
 #include "Cache/Rebalancer.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 
@@ -52,10 +53,16 @@ void CacheRebalancerThread::beginShutdown() {
 
 void CacheRebalancerThread::run() {
   while (!isStopping()) {
-    int result = _rebalancer.rebalance();
-    std::uint64_t interval = (result != TRI_ERROR_ARANGO_BUSY) ? _fullInterval : _shortInterval;
+    try {
+      int result = _rebalancer.rebalance();
+      std::uint64_t interval = (result != TRI_ERROR_ARANGO_BUSY) ? _fullInterval : _shortInterval;
 
-    CONDITION_LOCKER(guard, _condition);
-    guard.wait(interval);
+      CONDITION_LOCKER(guard, _condition);
+      guard.wait(interval);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("e78b8", ERR, Logger::CACHE) << "cache rebalancer thread caught exception: " << ex.what();
+    } catch (...) {
+      LOG_TOPIC("a4fe", ERR, Logger::CACHE) << "cache rebalancer thread caught unknown exception";
+    }
   }
 }
