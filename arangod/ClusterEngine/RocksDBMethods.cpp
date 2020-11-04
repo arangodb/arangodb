@@ -68,6 +68,9 @@ Result recalculateCountsOnAllDBServers(application_features::ApplicationServer& 
   std::string const baseUrl = "/_api/collection/";
 
   VPackBuffer<uint8_t> body;
+  VPackBuilder builder(body);
+  builder.add(VPackSlice::emptyObjectSlice());
+
   network::Headers headers;
   network::RequestOptions options;
   options.database = dbname;
@@ -88,12 +91,13 @@ Result recalculateCountsOnAllDBServers(application_features::ApplicationServer& 
 
   auto responses = futures::collectAll(futures).get();
   for (auto const& r : responses) {
-    if (!r.hasValue() || r.get().fail()) {
-      return TRI_ERROR_FAILED;
+    Result res = r.get().combinedResult();
+    if (res.fail()) {
+      return res;
     }
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 }  // namespace rocksdb

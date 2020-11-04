@@ -28,12 +28,6 @@
 /* Define to 1 if you have the `z' library (-lz). */
 #cmakedefine HAVE_LIBZ 1
 
-/* Define to 1 if you have the <stddef.h> header file. */
-#cmakedefine HAVE_STDDEF_H 1
-
-/* Define to 1 if you have the <stdint.h> header file. */
-#cmakedefine HAVE_STDINT_H 1
-
 /* Define to 1 if you have the <sys/endian.h> header file. */
 #cmakedefine HAVE_SYS_ENDIAN_H 1
 
@@ -54,6 +48,12 @@
 
 /* Define to 1 if you have the <windows.h> header file. */
 #cmakedefine HAVE_WINDOWS_H 1
+
+/* Define to 1 if you target processors with SSSE3+ and have <tmmintrin.h>. */
+#cmakedefine01 SNAPPY_HAVE_SSSE3
+
+/* Define to 1 if you target processors with BMI2+ and have <bmi2intrin.h>. */
+#cmakedefine01 SNAPPY_HAVE_BMI2
 
 /* Define to 1 if your processor stores words with the most significant byte
    first (like Motorola and SPARC, unlike Intel and VAX). */

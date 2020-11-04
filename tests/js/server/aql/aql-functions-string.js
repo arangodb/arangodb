@@ -2132,60 +2132,6 @@ function ahuacatlStringFunctionsTestSuite () {
   },
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief test normalize_UTF8 function
-// //////////////////////////////////////////////////////////////////////////////
-
-  testNormalize1: () => {
-    assertEqual([ 'the quick brown fox jumped殺殺'.normalize() ], getQueryResults(`RETURN NOOPT(NORMALIZE_UTF8('the quick brown fox jumped殺殺'))`));
-  },
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief test normalize_UTF8 function
-// //////////////////////////////////////////////////////////////////////////////
-
-  testNormalize2: () => {
-    assertEqual([ 'äöüÄÖÜß アボカド名称について殺殺'.normalize() ], getQueryResults(`return NOOPT(NORMALIZE_UTF8('äöüÄÖÜß アボカド名称について殺殺'))`));
-  },
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief test normalize_UTF8 function
-// //////////////////////////////////////////////////////////////////////////////
-
-  testNormalize3: () => {
-    assertEqual([ `0123456789<>|,;.:-_#'+*@!"$&/(){[]}?\\殺殺`.normalize() ], getQueryResults(`return NOOPT(NORMALIZE_UTF8('0123456789<>|,;.:-_#\\'+*@!\\"$&/(){[]}?\\\\殺殺'))`));
-    assertEqual([true], getQueryResults(`return MD5(NORMALIZE_UTF8(@str)) != MD5(@str)`,
-                                        { str: `0123456789<>|,;.:-_#\\'+*@!\\"$&/(){[]}?\\\\殺殺`}));
-    assertEqual([true], getQueryResults(`return CONTAINS(NORMALIZE_UTF8(@str), @contains)`,
-                                        {str: `0123456789<>|,;.:-_#\\'+*@!\\"$&/(){[]}?\\\\殺殺`, contains: '殺殺'}));
-  },
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief test normalize_UTF8 function
-// //////////////////////////////////////////////////////////////////////////////
-
-  testNormalizeInvalid: () => {
-    assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN NOOPT(NORMALIZE_UTF8())');
-
-    assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN NORMALIZE_UTF8(NOOPT('yes', 'yes'))`);
-
-    assertEqual([ '' ], getQueryResults('RETURN NOOPT(NORMALIZE_UTF8(null))'));
-
-    assertEqual([ 'true' ], getQueryResults('RETURN NOOPT(NORMALIZE_UTF8(true))'));
-
-    assertEqual([ '3' ], getQueryResults('RETURN NOOPT(NORMALIZE_UTF8(3))'));
-
-    assertEqual([ '[]' ], getQueryResults('RETURN NOOPT(NORMALIZE_UTF8([]))'));
-
-    assertEqual([ '[1,2,3]' ], getQueryResults('RETURN NOOPT(NORMALIZE_UTF8([1,2,3]))'));
-
-    assertEqual([ '{}' ], getQueryResults('RETURN NOOPT(NORMALIZE_UTF8({}))'));
-
-    assertEqual([ '{"A":1,"b":2}' ], getQueryResults('RETURN NOOPT(NORMALIZE_UTF8({A:1,b:2}))'));
-
-    assertEqual([ '{"A":1,"a":2,"b":3}' ], getQueryResults('RETURN NOOPT(NORMALIZE_UTF8({A:1,a:2,b:3}))'));
-  },
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief test lower function
 // //////////////////////////////////////////////////////////////////////////////
 

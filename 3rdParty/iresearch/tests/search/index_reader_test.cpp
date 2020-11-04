@@ -31,7 +31,7 @@
 #include "utils/version_utils.hpp"
 #include "utils/utf8_path.hpp"
 
-NS_LOCAL
+namespace {
 
 irs::format* codec0;
 irs::format* codec1;
@@ -39,7 +39,7 @@ irs::format* codec1;
 irs::format::ptr get_codec0() { return irs::format::ptr(codec0, [](irs::format*)->void{}); }
 irs::format::ptr get_codec1() { return irs::format::ptr(codec1, [](irs::format*)->void{}); }
 
-NS_END
+}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                           Composite index reader
@@ -103,17 +103,8 @@ TEST(directory_reader_test, open_newest_index) {
     virtual irs::columnstore_reader::ptr get_columnstore_reader() const override { return nullptr; }
   };
 
-  struct test_format0 {
-    static constexpr irs::string_ref type_name() noexcept {
-      return "test_format0";
-    }
-  };
-
-  struct test_format1 {
-    static constexpr irs::string_ref type_name() noexcept {
-      return "test_format1";
-    }
-  };
+  struct test_format0 { };
+  struct test_format1 { };
 
   test_format test_codec0(irs::type<test_format0>::get());
   test_format test_codec1(irs::type<test_format1>::get());

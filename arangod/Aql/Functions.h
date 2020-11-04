@@ -104,8 +104,6 @@ struct Functions {
                                   AstNode const&, VPackFunctionParameters const&);
   static AqlValue CharLength(arangodb::aql::ExpressionContext*,
                              AstNode const&, VPackFunctionParameters const&);
-  static AqlValue NormalizeUtf8(arangodb::aql::ExpressionContext*,
-                                AstNode const&, VPackFunctionParameters const&);
   static AqlValue Lower(arangodb::aql::ExpressionContext*,
                         AstNode const&, VPackFunctionParameters const&);
   static AqlValue Upper(arangodb::aql::ExpressionContext*,

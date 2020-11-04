@@ -30,7 +30,7 @@
   #define NOMINMAX
   #include <windows.h>
 
-  NS_LOCAL
+  namespace {
 
   std::string dlerror() {
     auto error = GetLastError();
@@ -64,7 +64,7 @@
     return result;
   }
 
-  NS_END
+  }
 
 #elif defined(__GNUC__) // GNU compiler
   #include <dlfcn.h>
@@ -72,7 +72,7 @@
   #error define your compiler
 #endif
 
-NS_LOCAL
+namespace {
 
 #if defined(_MSC_VER) // Microsoft compiler
   const std::wstring FILENAME_EXTENSION(L".dll");
@@ -84,9 +84,9 @@ NS_LOCAL
   const std::string FILENAME_EXTENSION("");
 #endif
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 void* load_library(const char* soname, int mode /* = 2 */) {
   if (!soname) {
@@ -194,4 +194,4 @@ void load_libraries(
   plugin_path.visit_directory(visitor, false);
 }
 
-NS_END // ROOT
+} // ROOT

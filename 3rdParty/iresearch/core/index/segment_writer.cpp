@@ -38,7 +38,7 @@
 #include <math.h>
 #include <set>
 
-NS_ROOT
+namespace iresearch {
 
 segment_writer::stored_column::stored_column(
     const string_ref& name, 
@@ -375,4 +375,4 @@ void segment_writer::reset(const segment_meta& meta) {
   initialized_ = true;
 }
 
-NS_END
+}

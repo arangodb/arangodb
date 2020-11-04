@@ -27,7 +27,7 @@
 #include "search/term_filter.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
 
-NS_LOCAL
+namespace {
 
 irs::by_term make_term_filter(
     const irs::string_ref& field,
@@ -53,7 +53,7 @@ irs::by_edit_distance make_filter(
   return q;
 }
 
-NS_END
+}
 
 class levenshtein_filter_test_case : public tests::filter_test_case_base { };
 

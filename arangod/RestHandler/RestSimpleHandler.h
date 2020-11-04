@@ -25,12 +25,10 @@
 #define ARANGOD_REST_HANDLER_REST_SIMPLE_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "RestHandler/RestCursorHandler.h"
 
 namespace arangodb {
 namespace aql {
-class Query;
 class QueryRegistry;
 }  // namespace aql
 

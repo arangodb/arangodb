@@ -26,7 +26,7 @@
 #include "utils/type_limits.hpp"
 #include "postings.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           postings implementation
@@ -81,4 +81,4 @@ postings::emplace_result postings::emplace(const bytes_ref& term) {
   );
 }
 
-NS_END
+}

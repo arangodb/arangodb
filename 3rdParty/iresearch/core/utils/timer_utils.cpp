@@ -28,7 +28,7 @@
 #include <unordered_map>
 #include <map>
 
-NS_LOCAL
+namespace {
 
 class timer_states: public iresearch::singleton<timer_states> {
  public:
@@ -97,10 +97,10 @@ class timer_states: public iresearch::singleton<timer_states> {
   bool track_all_keys_;
 };
 
-NS_END // NS_LOCAL
+} // namespace {
 
-NS_ROOT
-NS_BEGIN(timer_utils)
+namespace iresearch {
+namespace timer_utils {
 
 scoped_timer::scoped_timer(timer_stat_t& stat):
   start_(std::chrono::system_clock::now().time_since_epoch().count()), stat_(stat) {
@@ -172,5 +172,5 @@ void flush_stats(std::ostream &out) {
   }
 }
 
-NS_END // timer_utils
-NS_END // NS_ROOT
+} // timer_utils
+} // namespace iresearch {

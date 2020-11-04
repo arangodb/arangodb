@@ -29,7 +29,7 @@
 #include "utils/file_utils.hpp"
 #include "utils/utf8_path.hpp"
 
-NS_LOCAL
+namespace {
 
 class utf8_path_tests: public test_base {
   irs::utf8_path cwd_;
@@ -51,7 +51,7 @@ class utf8_path_tests: public test_base {
   }
 };
 
-NS_END
+}
 
 TEST_F(utf8_path_tests, current) {
   // absolute path
