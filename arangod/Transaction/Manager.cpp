@@ -346,7 +346,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     return res.reset(TRI_ERROR_BAD_PARAMETER,
                      "<lockTimeout> needs to be positive");
   }
-  if (isFollowerTransaction) {
+  if (isFollowerTransaction && ServerState::instance()->isDBServer()) {
     options.isFollowerTransaction = true;
   }
 
