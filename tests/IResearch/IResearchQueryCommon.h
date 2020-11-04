@@ -117,7 +117,8 @@ class IResearchQueryTest
         "_NONDETERM_", ".",
         arangodb::aql::Function::makeFlags(
             // fake non-deterministic
-            arangodb::aql::Function::Flags::CanRunOnDBServer),
+            arangodb::aql::Function::Flags::CanRunOnDBServerCluster, 
+            arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
            arangodb::aql::VPackFunctionParameters const& params) {
           TRI_ASSERT(!params.empty());
@@ -130,7 +131,8 @@ class IResearchQueryTest
         arangodb::aql::Function::makeFlags(
             // fake deterministic
             arangodb::aql::Function::Flags::Deterministic, arangodb::aql::Function::Flags::Cacheable,
-            arangodb::aql::Function::Flags::CanRunOnDBServer),
+            arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+            arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
            arangodb::aql::VPackFunctionParameters const& params) {
           TRI_ASSERT(!params.empty());
@@ -144,7 +146,9 @@ class IResearchQueryTest
         "CUSTOMSCORER", ".|+",
         arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::Deterministic,
                                            arangodb::aql::Function::Flags::Cacheable,
-                                           arangodb::aql::Function::Flags::CanRunOnDBServer));
+                                           arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+                                           arangodb::aql::Function::Flags::CanRunOnDBServerOneShard), 
+        nullptr);
     arangodb::iresearch::addFunction(functions, customScorer);
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();

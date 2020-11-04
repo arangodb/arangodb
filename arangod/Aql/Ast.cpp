@@ -1531,7 +1531,7 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
                                     static_cast<int>(numExpectedArguments.second));
     }
 
-    if (!func->hasFlag(Function::Flags::CanRunOnDBServer)) {
+    if (!func->hasFlag(Function::Flags::CanReadDocuments)) {
       // this also qualifies a query for potentially reading or modifying
       // documents via function calls!
       _functionsMayAccessDocuments = true;
@@ -2138,7 +2138,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
 
-      if (ctx->hasSeenAnyWriteNode && !func->hasFlag(Function::Flags::CanRunOnDBServer)) {
+      if (ctx->hasSeenAnyWriteNode && !func->hasFlag(Function::Flags::CanReadDocuments)) {
         // if canRunOnDBServer is true, then this is an indicator for a
         // document-accessing function
         std::string name("function ");
