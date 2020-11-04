@@ -1,6 +1,10 @@
 v3.6.9 (XXXX-XX-XX)
 -------------------
 
+* Fixed a deadlock between AQL write transactions and hotbackup, since
+  in AQL write transactions follower transactions did not know they are
+  follower transactions.
+
 * Fixed potential deadlock in cluster transactions if a transaction is returned
   that was soft-aborted by transaction garbage collection before.
   This deadlock should rarely ever occur in practice, as it can only be
