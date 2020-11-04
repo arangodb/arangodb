@@ -62,7 +62,7 @@ void CacheRebalancerThread::run() {
     } catch (std::exception const& ex) {
       LOG_TOPIC("e78b8", ERR, Logger::CACHE) << "cache rebalancer thread caught exception: " << ex.what();
     } catch (...) {
-      LOG_TOPIC("a4fe", ERR, Logger::CACHE) << "cache rebalancer thread caught unknown exception";
+      LOG_TOPIC("7269a", ERR, Logger::CACHE) << "cache rebalancer thread caught unknown exception";
     }
   }
 }
