@@ -218,6 +218,46 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
 
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::WRITE);
     ASSERT_TRUE(trx.state()->isEmbeddedTransaction());
+    ASSERT_FALSE(trx.state()->hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
+
+    auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");
+
+    OperationOptions opts;
+    auto opRes = trx.insert(coll->name(), doc->slice(), opts);
+    ASSERT_TRUE(opRes.ok());
+    ASSERT_TRUE(trx.finish(opRes.result).ok());
+  }
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
+  ASSERT_TRUE(mgr->commitManagedTrx(tid).ok());
+  // perform same operation
+  ASSERT_TRUE(mgr->commitManagedTrx(tid).ok());
+  // cannot commit aborted transaction
+  ASSERT_TRUE(mgr->abortManagedTrx(tid).is(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION));
+
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::COMMITTED);
+}
+
+TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
+  std::shared_ptr<LogicalCollection> coll;
+  {
+    auto json =
+        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
+    coll = vocbase.createCollection(json->slice());
+  }
+  ASSERT_NE(coll, nullptr);
+
+  auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"collections\":{\"write\": [\"42\"]}}");
+  Result res = mgr->createManagedTrx(vocbase, tid, json->slice(), true);
+  ASSERT_TRUE(res.ok());
+
+  {
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
+    ASSERT_NE(ctx.get(), nullptr);
+
+    SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::WRITE);
+    ASSERT_TRUE(trx.state()->isEmbeddedTransaction());
+    ASSERT_TRUE(trx.state()->hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
 
     auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");
 
