@@ -261,7 +261,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     return res.reset(TRI_ERROR_BAD_PARAMETER,
                      "<lockTimeout> needs to be positive");
   }
-  if (isFollowerTransaction && ServerState::instance()->isDBServer()) {
+  if (isFollowerTransaction) {
     options.isFollowerTransaction = true;
   }
 
@@ -460,10 +460,12 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   // start the transaction
   transaction::Hints hints;
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
-  if (isFollowerTransactionOnDBServer) {
+  if (options.isFollowerTransaction || tid.isFollowerTransactionId()) {
     hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     // turn on intermediate commits on followers as well. otherwise huge leader
     // transactions could make the follower claim all memory and crash.
+  }
+  if (isFollowerTransactionOnDBServer) {
     hints.set(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
   }
   try {
