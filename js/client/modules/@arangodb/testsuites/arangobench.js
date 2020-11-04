@@ -36,7 +36,7 @@ const optionsDocumentation = [
 ];
 
 const _ = require('lodash');
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
