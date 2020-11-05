@@ -90,9 +90,6 @@ class TwoSidedEnumerator {
     // The next elements to process
     QueueType _queue{};
 
-    // Next steps to be processed.
-    QueueType _nextDepth{};
-
     ProviderType _provider;
 
     size_t _depth{0};

@@ -186,6 +186,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/WeightedEnumerator.cpp
   Graph/Cursors/RefactoredSingleServerEdgeCursor.cpp
   Graph/Enumerators/TwoSidedEnumerator.cpp
+  Graph/Queues/QueueTracer.cpp
   Graph/PathManagement/PathResult.cpp
   Graph/PathManagement/PathStore.cpp
   Graph/Options/TwoSidedEnumeratorOptions.cpp

@@ -31,9 +31,10 @@
 namespace arangodb {
 namespace graph {
 
-template <class Step>
+template <class StepType>
 class FifoQueue {
  public:
+  using Step = StepType;
   // TODOS: Add Sorting (Performance)
   // -> loose ends to the end
 
@@ -62,7 +63,7 @@ class FifoQueue {
 
   bool isEmpty() const { return _queue.size() == 0; };
 
-  std::vector<Step*> getLooseEnds(){
+  std::vector<Step*> getLooseEnds() {
     TRI_ASSERT(!hasProcessableElement());
 
     std::vector<Step*> steps;
