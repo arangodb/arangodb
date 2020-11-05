@@ -185,6 +185,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/TraverserOptions.cpp
   Graph/WeightedEnumerator.cpp
   Graph/Enumerators/TwoSidedEnumerator.cpp
+  Graph/Queues/QueueTracer.cpp
   Graph/PathManagement/PathResult.cpp
   Graph/PathManagement/PathStore.cpp
   Graph/Options/TwoSidedEnumeratorOptions.cpp

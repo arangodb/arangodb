@@ -29,6 +29,9 @@
 #include "Graph/PathManagement/PathResult.cpp"
 #include "Graph/Queues/FifoQueue.h"
 
+#include "Graph/Queues/QueueTracer.h"
+#include "Graph/Queues/QueueTracer.cpp"
+
 
 template class
 ::arangodb::graph::PathResult<::arangodb::tests::graph::MockGraphProvider::Step>;
@@ -40,3 +43,11 @@ template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::FifoQueue<::arangodb::tests::graph::MockGraphProvider::Step>,
     ::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>,
     ::arangodb::tests::graph::MockGraphProvider>;
+
+template class
+::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<::arangodb::tests::graph::MockGraphProvider::Step>>;
+
+template class ::arangodb::graph::TwoSidedEnumerator<
+::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<::arangodb::tests::graph::MockGraphProvider::Step>>,
+::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>,
+::arangodb::tests::graph::MockGraphProvider>;
