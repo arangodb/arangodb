@@ -67,9 +67,9 @@ QueueTracer<QueueImpl>::QueueTracer() :_impl{} {
 
 template<class QueueImpl>
 QueueTracer<QueueImpl>::~QueueTracer() {
-  LOG_DEVEL << "Queue Trace report:";
+  LOG_TOPIC("f39e8", TRACE, Logger::GRAPHS) << "Queue Trace report:";
   for (auto const& [name, trace] : _stats) {
-    LOG_DEVEL << "  " << name << ": " << trace;
+    LOG_TOPIC("f39e9", TRACE, Logger::GRAPHS) << "  " << name << ": " << trace;
   }
 }
 
