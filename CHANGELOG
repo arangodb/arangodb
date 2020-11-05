@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed a deadlock between AQL write transactions and hotbackup, since
+  in AQL write transactions follower transactions did not know they are
+  follower transactions.
+
 * Added metrics for collection locks:
   - `arangodb_collection_lock_timeouts_exclusive`: Number of lock timeouts 
     when trying to acquire collection exclusive locks
