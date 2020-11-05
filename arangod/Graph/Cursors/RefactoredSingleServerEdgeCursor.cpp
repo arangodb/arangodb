@@ -128,7 +128,7 @@ void RefactoredSingleServerEdgeCursor::buildLookupInfo(Step vertex) {
 }
 
 void RefactoredSingleServerEdgeCursor::getDocAndRunCallback(IndexIterator* cursor,
-                                                            EdgeCursor::Callback const& callback) {
+                                                            Callback const& callback) {
   auto collection = cursor->collection();
   EdgeDocumentToken etkn(collection->id(), _cache[_cachePos++]);
   collection->readDocumentWithCallback(
@@ -174,7 +174,7 @@ bool RefactoredSingleServerEdgeCursor::advanceCursor(
   return true;
 }
 
-bool RefactoredSingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
+bool RefactoredSingleServerEdgeCursor::next(Callback const& callback) {
   // fills callback with next EdgeDocumentToken and Slice that contains the
   // ohter side of the edge (we are standing on a node and want to iterate all
   // connected edges
@@ -251,7 +251,6 @@ bool RefactoredSingleServerEdgeCursor::next(EdgeCursor::Callback const& callback
   getDocAndRunCallback(cursor, callback);
   return true;
 }
-
 
 void RefactoredSingleServerEdgeCursor::addCursor(LookupInfo const& info, Step vertex) {
   auto& node = info.indexCondition;

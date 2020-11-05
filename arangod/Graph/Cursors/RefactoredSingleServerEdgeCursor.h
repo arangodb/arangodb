@@ -27,7 +27,6 @@
 
 #include "Aql/Expression.h"
 #include "Aql/QueryContext.h"
-#include "Graph/EdgeCursor.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
 
@@ -43,6 +42,8 @@ class HashedStringRef;
 }  // namespace velocypack
 
 namespace graph {
+
+struct EdgeDocumentToken;
 
 class RefactoredSingleServerEdgeCursor {
   using Step = arangodb::velocypack::HashedStringRef;
@@ -92,6 +93,9 @@ class RefactoredSingleServerEdgeCursor {
                                    arangodb::aql::QueryContext* queryContext);
   ~RefactoredSingleServerEdgeCursor();
 
+  using Callback =
+      std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)>;
+
  private:
   aql::Variable const* _tmpVar;
   std::vector<std::vector<std::unique_ptr<IndexIterator>>> _cursors;
@@ -107,7 +111,7 @@ class RefactoredSingleServerEdgeCursor {
   arangodb::aql::QueryContext* _queryContext;
 
  public:
-  bool next(EdgeCursor::Callback const& callback);
+  bool next(Callback const& callback);
 
   void rearm(Step vertex, uint64_t depth);
 
@@ -116,13 +120,13 @@ class RefactoredSingleServerEdgeCursor {
   bool advanceCursor(IndexIterator*& cursor,
                      std::vector<std::unique_ptr<IndexIterator>>*& cursorSet);
 
-  void getDocAndRunCallback(IndexIterator*, EdgeCursor::Callback const& callback);
+  void getDocAndRunCallback(IndexIterator*, Callback const& callback);
 
   void buildLookupInfo(Step vertex);
 
   void addCursor(LookupInfo const& info, Step vertex);
 
-  transaction::Methods* trx() const;
+  [[nodiscard]] transaction::Methods* trx() const; // TODO check nodiscard
 };
 }  // namespace graph
 }  // namespace arangodb
