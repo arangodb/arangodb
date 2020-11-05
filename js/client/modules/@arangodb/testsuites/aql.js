@@ -38,7 +38,7 @@ const optionsDocumentation = [
 ];
 
 const _ = require('lodash');
-const tu = require('@arangodb/test-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
   'shell_client': [ tu.pathForTesting('common/shell'), tu.pathForTesting('client/http'), tu.pathForTesting('client/shell') ],
