@@ -31,7 +31,6 @@
 #include "Endpoint/EndpointList.h"
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/CommTask.h"
-#include "GeneralServer/GeneralDefinitions.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
