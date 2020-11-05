@@ -35,6 +35,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLink.h"
@@ -273,15 +274,9 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
 }
 
 Result IResearchViewCoordinator::link(IResearchLink const& link) {
-#ifdef USE_ENTERPRISE
-  {
-    auto const& name = link.collection().name();
-    // Guard against duplicate documents in SmartGraphs.
-    if (TRI_vocbase_t::IsSystemName(name) && name.rfind("_to_", 0) != std::string::npos) {
-      return TRI_ERROR_NO_ERROR;
-    }
+  if (!arangodb::ClusterMethods::includeHiddenCollectionInLink(link.collection().name())) {
+    return TRI_ERROR_NO_ERROR;
   }
-#endif
   static const std::function<bool(irs::string_ref const& key)> acceptor = []( // acceptor
     irs::string_ref const& key // key
   ) -> bool {
