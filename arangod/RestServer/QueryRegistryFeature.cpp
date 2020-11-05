@@ -285,7 +285,7 @@ void QueryRegistryFeature::unprepare() {
 void QueryRegistryFeature::trackQuery(double time) { 
   ++_queriesCounter; 
   _queryTimes.count(time);
-  _totalQueryExecutionTime += static_cast<uint64_t>(1000 * time);
+  _totalQueryExecutionTime += static_cast<uint64_t>(1000.0 * time);
 }
 
 void QueryRegistryFeature::trackSlowQuery(double time) { 

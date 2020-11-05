@@ -30,7 +30,7 @@
 
 let jsunity = require('jsunity');
 const _ = require('lodash');
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 const crypto = require('@arangodb/crypto');
 const request = require("@arangodb/request");
 const suspendExternal = require("internal").suspendExternal;
