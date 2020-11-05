@@ -1136,9 +1136,6 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
     }
   }
 
-  TRI_ASSERT(func != nullptr);
-  TRI_ASSERT(func->hasV8Implementation());
-
   // JavaScript function (this includes user-defined functions)
   {
     ISOLATE;
@@ -1174,6 +1171,8 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
       args[2] = TRI_V8_ASCII_STRING(isolate, AFN);
     } else {
       // a call to a built-in V8 function
+      TRI_ASSERT(func->hasV8Implementation());
+
       jsName = "AQL_" + func->name;
       for (int i = 0; i < n; ++i) {
         args[i] = invokeParams[i].toV8(isolate, options);
