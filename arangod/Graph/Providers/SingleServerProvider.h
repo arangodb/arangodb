@@ -97,7 +97,8 @@ struct SingleServerProvider {
   };
 
  public:
-  SingleServerProvider(arangodb::transaction::Methods* trx);
+  SingleServerProvider(arangodb::transaction::Methods* trx,
+                       arangodb::aql::QueryContext* queryContext);
   ~SingleServerProvider();
 
   auto startVertex(arangodb::velocypack::StringRef vertex, bool lazy = false) -> Step;

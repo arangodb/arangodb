@@ -35,8 +35,9 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-SingleServerProvider::SingleServerProvider(arangodb::transaction::Methods* trx)
-    : _trx(trx) {
+SingleServerProvider::SingleServerProvider(arangodb::transaction::Methods* trx,
+                                           arangodb::aql::QueryContext* queryContext)
+    : _trx(trx), _query(queryContext) {
   buildCursor();
 }
 
@@ -61,8 +62,8 @@ auto SingleServerProvider::fetch(std::vector<Step*> const& looseEnds)
       << "<MockGraphProvider> Fetching...";
   std::vector<Step*> result{};
   result.reserve(looseEnds.size());
-  //for (auto* s : looseEnds) {
-    // Get data
+  // for (auto* s : looseEnds) {
+  // Get data
   // // TODO
   return futures::makeFuture(std::move(result));
 }
