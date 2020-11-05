@@ -59,7 +59,7 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge)
 }
 #endif
 
-void RefactoredSingleServerEdgeCursor::rearm(Step vertex, uint64_t /*depth*/) {
+void RefactoredSingleServerEdgeCursor::rearm(arangodb::velocypack::StringRef vertex, uint64_t /*depth*/) {
   _currentCursor = 0;
   _currentSubCursor = 0;
   _cache.clear();
@@ -108,7 +108,7 @@ void RefactoredSingleServerEdgeCursor::rearm(Step vertex, uint64_t /*depth*/) {
   }
 }
 
-void RefactoredSingleServerEdgeCursor::buildLookupInfo(Step vertex) {
+void RefactoredSingleServerEdgeCursor::buildLookupInfo(arangodb::velocypack::StringRef vertex) {
   TRI_ASSERT(_cursors.empty());
   _cursors.reserve(_lookupInfo.size());
 
@@ -252,7 +252,8 @@ bool RefactoredSingleServerEdgeCursor::next(Callback const& callback) {
   return true;
 }
 
-void RefactoredSingleServerEdgeCursor::addCursor(LookupInfo const& info, Step vertex) {
+void RefactoredSingleServerEdgeCursor::addCursor(LookupInfo const& info,
+                                                 arangodb::velocypack::StringRef vertex) {
   auto& node = info.indexCondition;
   TRI_ASSERT(node->numMembers() > 0);
   if (info.conditionNeedUpdate) {

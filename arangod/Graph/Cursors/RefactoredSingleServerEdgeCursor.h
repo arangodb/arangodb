@@ -113,7 +113,7 @@ class RefactoredSingleServerEdgeCursor {
  public:
   bool next(Callback const& callback);
 
-  void rearm(Step vertex, uint64_t depth);
+  void rearm(arangodb::velocypack::StringRef vertex, uint64_t depth);
 
  private:
   // returns false if cursor can not be further advanced
@@ -122,11 +122,11 @@ class RefactoredSingleServerEdgeCursor {
 
   void getDocAndRunCallback(IndexIterator*, Callback const& callback);
 
-  void buildLookupInfo(Step vertex);
+  void buildLookupInfo(arangodb::velocypack::StringRef vertex);
 
-  void addCursor(LookupInfo const& info, Step vertex);
+  void addCursor(LookupInfo const& info, arangodb::velocypack::StringRef vertex);
 
-  [[nodiscard]] transaction::Methods* trx() const; // TODO check nodiscard
+  [[nodiscard]] transaction::Methods* trx() const;  // TODO check nodiscard
 };
 }  // namespace graph
 }  // namespace arangodb

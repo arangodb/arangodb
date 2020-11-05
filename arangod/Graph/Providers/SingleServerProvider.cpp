@@ -27,6 +27,9 @@
 #include "Aql/QueryContext.h"
 #include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
 
+#include "Futures/Future.h"
+#include "Futures/Utilities.h"
+
 #include <vector>
 
 using namespace arangodb;
@@ -39,17 +42,36 @@ SingleServerProvider::SingleServerProvider(arangodb::transaction::Methods* trx)
 
 SingleServerProvider::~SingleServerProvider() = default;
 
-auto SingleServerProvider::startVertex(VertexType v) -> Step {
+auto SingleServerProvider::startVertex(arangodb::velocypack::StringRef vertex,
+                                       bool lazy) -> Step {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
-      << "<MockGraphProvider> Start Vertex:" << v;
-  return Step(v);  // TODO
+      << "<MockGraphProvider> Start Vertex:" << vertex;
+  clearCursor(vertex);
+  if (!lazy) {
+    // get data
+    // return step
+  }
+  // if lazy return loosEnd step
+  return Step();  // TODO
+}
+
+auto SingleServerProvider::fetch(std::vector<Step*> const& looseEnds)
+    -> futures::Future<std::vector<Step*>> {
+  LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
+      << "<MockGraphProvider> Fetching...";
+  std::vector<Step*> result{};
+  result.reserve(looseEnds.size());
+  //for (auto* s : looseEnds) {
+    // Get data
+  // // TODO
+  return futures::makeFuture(std::move(result));
 }
 
 std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor() {
   return std::make_unique<RefactoredSingleServerEdgeCursor>(trx(), query());
 }
 
-void SingleServerProvider::clearCursor(Step vertex) {
+void SingleServerProvider::clearCursor(arangodb::velocypack::StringRef vertex) {
   _cursor->rearm(vertex, 0);
 }
 
