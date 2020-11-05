@@ -1,6 +1,10 @@
 v3.6.9 (XXXX-XX-XX)
 -------------------
 
+* Fixed a deadlock between AQL write transactions and hotbackup, since in AQL
+  write transactions follower transactions did not know they are follower
+  transactions.
+
 * Fix REST API endpoint PUT `/_api/collection/<collection>/recalculateCount` on
   coordinators. Coordinators sent a wrong message body to DB servers here, so
   the request could not be handled properly.
