@@ -36,6 +36,7 @@
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Queues/FifoQueue.h"
+#include "Graph/Queues/QueueTracer.h"
 
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/Iterator.h>
@@ -52,15 +53,18 @@ namespace graph {
 
 
 class KPathFinderTest_Refactored : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
+  
   using KPathFinder =
       TwoSidedEnumerator<FifoQueue<MockGraphProvider::Step>, PathStore<MockGraphProvider::Step>, MockGraphProvider>;
-
+   
+  /*
+  using KPathFinder =
+      TwoSidedEnumerator<QueueTracer<FifoQueue<MockGraphProvider::Step>>, PathStore<MockGraphProvider::Step>, MockGraphProvider>;
+*/
  protected:
   bool activateLogging{false};
   MockGraph mockGraph;
   mocks::MockAqlServer _server{true};
-
-  std::unique_ptr<KPathFinder> _finder;
 
   KPathFinderTest_Refactored() {
     if (activateLogging) {
@@ -107,12 +111,11 @@ class KPathFinderTest_Refactored : public ::testing::TestWithParam<MockGraphProv
     return GetParam();
   }
   
-  auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder& {
+  auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder {
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth};
-    _finder = std::make_unique<KPathFinder>(MockGraphProvider(mockGraph, looseEndBehaviour(), false),
-                                            MockGraphProvider(mockGraph, looseEndBehaviour(), true),
-                                            std::move(options));
-    return *_finder;
+    return KPathFinder{MockGraphProvider(mockGraph, looseEndBehaviour(), false),
+      MockGraphProvider(mockGraph, looseEndBehaviour(), true),
+      std::move(options)};
   }
 
   auto vId(size_t nr) -> std::string {
@@ -198,7 +201,7 @@ TEST_P(KPathFinderTest_Refactored, no_path_exists) {
   // No path between those
   auto source = vId(91);
   auto target = vId(99);
-  auto& finder = pathFinder(1, 1);
+  auto finder = pathFinder(1, 1);
   finder.reset(toHashedStringRef(source), toHashedStringRef(target));
 
   EXPECT_FALSE(finder.isDone());
@@ -223,7 +226,7 @@ TEST_P(KPathFinderTest_Refactored, no_path_exists) {
 TEST_P(KPathFinderTest_Refactored, path_depth_0) {
   VPackBuilder result;
   // Search 0 depth
-  auto& finder = pathFinder(0, 0);
+  auto finder = pathFinder(0, 0);
 
   // Source and target identical
   auto source = vId(91);
@@ -254,7 +257,7 @@ TEST_P(KPathFinderTest_Refactored, path_depth_0) {
 
 TEST_P(KPathFinderTest_Refactored, path_depth_1) {
   VPackBuilder result;
-  auto& finder = pathFinder(1, 1);
+  auto finder = pathFinder(1, 1);
 
   // Source and target are direct neighbors, there is only one path between them
   auto source = vId(1);
@@ -285,7 +288,7 @@ TEST_P(KPathFinderTest_Refactored, path_depth_1) {
 
 TEST_P(KPathFinderTest_Refactored, path_depth_2) {
   VPackBuilder result;
-  auto& finder = pathFinder(2, 2);
+  auto finder = pathFinder(2, 2);
 
   // Source and target are direkt neighbors, there is only one path between them
   auto source = vId(1);
@@ -317,7 +320,7 @@ TEST_P(KPathFinderTest_Refactored, path_depth_2) {
 TEST_P(KPathFinderTest_Refactored, path_depth_3) {
   VPackBuilder result;
   // Search 0 depth
-  auto& finder = pathFinder(3, 3);
+  auto finder = pathFinder(3, 3);
 
   // Source and target are direkt neighbors, there is only one path between them
   auto source = vId(1);
@@ -349,7 +352,7 @@ TEST_P(KPathFinderTest_Refactored, path_depth_3) {
 TEST_P(KPathFinderTest_Refactored, path_diamond) {
   VPackBuilder result;
   // Search 0 depth
-  auto& finder = pathFinder(2, 2);
+  auto finder = pathFinder(2, 2);
 
   // Source and target are direkt neighbors, there is only one path between them
   auto source = vId(5);
@@ -395,7 +398,7 @@ TEST_P(KPathFinderTest_Refactored, path_diamond) {
 
 TEST_P(KPathFinderTest_Refactored, path_depth_1_to_2) {
   VPackBuilder result;
-  auto& finder = pathFinder(1, 2);
+  auto finder = pathFinder(1, 2);
 
   // Source and target are direkt neighbors, there is only one path between them
   auto source = vId(10);
@@ -436,7 +439,7 @@ TEST_P(KPathFinderTest_Refactored, path_depth_1_to_2) {
 
 TEST_P(KPathFinderTest_Refactored, path_depth_2_to_3) {
   VPackBuilder result;
-  auto& finder = pathFinder(2, 3);
+  auto finder = pathFinder(2, 3);
 
   // Source and target are direkt neighbors, there is only one path between them
   auto source = vId(10);
@@ -477,7 +480,7 @@ TEST_P(KPathFinderTest_Refactored, path_depth_2_to_3) {
 
 TEST_P(KPathFinderTest_Refactored, path_loop) {
   VPackBuilder result;
-  auto& finder = pathFinder(1, 10);
+  auto finder = pathFinder(1, 10);
 
   // Source and target are direkt neighbors, there is only one path between them
   auto source = vId(20);
@@ -508,7 +511,7 @@ TEST_P(KPathFinderTest_Refactored, path_loop) {
 
 TEST_P(KPathFinderTest_Refactored, triangle_loop) {
   VPackBuilder result;
-  auto& finder = pathFinder(1, 10);
+  auto finder = pathFinder(1, 10);
 
   // Source and target are direkt neighbors, there is only one path between them
   auto source = vId(30);
