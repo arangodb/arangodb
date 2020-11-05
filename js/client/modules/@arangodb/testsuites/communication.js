@@ -32,7 +32,7 @@ const functionsDocumentation = {
 const optionsDocumentation = [];
 
 const _ = require('lodash');
-const tu = require('@arangodb/test-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
   'communication': [ tu.pathForTesting('client/communication') ],
