@@ -165,7 +165,7 @@ bool stack_trace_libunwind(irs::logger::level_t level, int output_pipe); // pred
 #if defined(_MSC_VER)
   DWORD stack_trace_win32(irs::logger::level_t level, struct _EXCEPTION_POINTERS* ex) {
     static std::mutex mutex;
-    SCOPED_LOCK(mutex); // win32 stack trace API is not thread safe
+    auto lock = irs::make_lock_guard(mutex); // win32 stack trace API is not thread safe
 
     if (!ex || !ex->ContextRecord) {
       IR_LOG_FORMATED(level, "No stack_trace available");
@@ -846,7 +846,7 @@ void stack_trace(level_t level, const std::exception_ptr& eptr) {
 
     if (frames_count > 0 && size_t(frames_count) > skip) {
       static std::mutex mtx;
-      SCOPED_LOCK(mtx);
+      auto lock = irs::make_lock_guard(mtx);
       backtrace_symbols_fd(frames_buf + skip, frames_count - skip, fd);
     }
   }

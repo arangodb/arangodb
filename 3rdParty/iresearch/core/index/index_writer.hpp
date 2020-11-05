@@ -289,7 +289,7 @@ class IRESEARCH_API index_writer
 
       auto clear_busy = make_finally([ctx, segment]()->void {
         if (!--segment->active_count_) {
-          SCOPED_LOCK(ctx->mutex_); // lock due to context modification and notification
+          auto lock = make_lock_guard(ctx->mutex_); // lock due to context modification and notification
           ctx->pending_segment_context_cond_.notify_all(); // in case ctx is in flush_all()
         }
       });
@@ -622,7 +622,7 @@ class IRESEARCH_API index_writer
   /// @returns true if transaction has been sucessflully started
   ////////////////////////////////////////////////////////////////////////////
   bool begin() {
-    SCOPED_LOCK(commit_lock_);
+    auto lock = make_lock_guard(commit_lock_);
 
     return start();
   }
@@ -631,7 +631,7 @@ class IRESEARCH_API index_writer
   /// @brief rollbacks the two-phase transaction 
   ////////////////////////////////////////////////////////////////////////////
   void rollback() {
-    SCOPED_LOCK(commit_lock_);
+    auto lock = make_lock_guard(commit_lock_);
 
     abort();
   }
@@ -644,7 +644,7 @@ class IRESEARCH_API index_writer
   /// relatively lightweight operation 
   ////////////////////////////////////////////////////////////////////////////
   void commit() {
-    SCOPED_LOCK(commit_lock_);
+    auto lock = make_lock_guard(commit_lock_);
 
     start();
     finish();

@@ -260,6 +260,172 @@ namespace arangodb {
 namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @struct Task
+/// @brief base class for async maintenance tasks
+////////////////////////////////////////////////////////////////////////////////
+template<ThreadGroup Id, typename T>
+struct Task {
+  void reschedule(std::chrono::milliseconds delay) const {
+    async->async(Id, delay, static_cast<const T&>(*this));
+  }
+
+  IResearchFeature* async;
+  std::shared_ptr<TypedResourceMutex<IResearchLink>> link;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct CommitTask
+/// @brief represents a commit task
+/// @note thread group 0 is dedicated to commit
+////////////////////////////////////////////////////////////////////////////////
+struct CommitTask : Task<ThreadGroup::_0, CommitTask> {
+  struct State {
+    size_t _cleanupIntervalCount{};
+    size_t _commitIntervalMsec{};
+    size_t _cleanupIntervalStep{};
+    std::chrono::system_clock::time_point _last{ std::chrono::system_clock::now() };
+  };
+
+  void operator()();
+
+  State state;
+}; // CommitTask
+
+void CommitTask::operator()() {
+  auto linkLock = irs::make_unique_lock(link->mutex(), std::try_to_lock);
+
+  if (!linkLock.owns_lock() // failed to acquire the lock, reschedule
+      || !(*link)) {        // link is no longer valid
+    return;
+  }
+
+  auto* link = this->link->get();
+
+  if (link->_asyncTerminate.load()) {
+    return; // termination requested
+  }
+
+  // reload RuntimeState
+  {
+    TRI_ASSERT(link->_dataStore); // must be valid if _asyncSelf->get() is valid
+    ReadMutex mutex(link->_dataStore._mutex); // '_meta' can be asynchronously modified
+    auto lock = irs::make_lock_guard(mutex);
+    auto& meta = link->_dataStore._meta;
+
+    state._commitIntervalMsec = meta._commitIntervalMsec;
+    state._cleanupIntervalStep = meta._cleanupIntervalStep;
+  }
+
+  if (!state._commitIntervalMsec) {
+    // task not enabled
+    return;
+  }
+
+  size_t usedMsec = std::chrono::duration_cast<std::chrono::milliseconds>(
+    std::chrono::system_clock::now() - state._last).count();
+
+  if (usedMsec < state._commitIntervalMsec) {
+    // still need to sleep, reschedule (with possibly updated '_commitIntervalMsec')
+    reschedule(std::chrono::milliseconds(state._commitIntervalMsec - usedMsec));
+    return;
+  }
+
+  state._last = std::chrono::system_clock::now(); // remember last task start time
+
+  auto res = link->commitUnsafe(false); // run commit ('_asyncSelf' locked by async task)
+
+  if (!res.ok()) {
+    LOG_TOPIC("8377b", WARN, iresearch::TOPIC)
+        << "error while committing arangosearch link '" << link->id()
+        << "': " << res.errorNumber() << " " << res.errorMessage();
+  } else if (state._cleanupIntervalStep // if enabled
+             && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
+    state._cleanupIntervalCount = 0; // reset counter
+    res = link->cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
+
+    if (!res.ok()) {
+      LOG_TOPIC("130de", WARN, iresearch::TOPIC)
+          << "error while cleaning up arangosearch link '" << link->id()
+          << "': " << res.errorNumber() << " " << res.errorMessage();
+    }
+  }
+
+  reschedule(std::chrono::milliseconds(state._commitIntervalMsec));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct ConsolidationTask
+/// @brief represents a consolidation task
+/// @note thread group 1 is dedicated to commit
+////////////////////////////////////////////////////////////////////////////////
+struct ConsolidationTask : Task<ThreadGroup::_1, ConsolidationTask> {
+  struct State {
+    IResearchViewMeta::ConsolidationPolicy _consolidationPolicy;
+    size_t _consolidationIntervalMsec{};
+    std::chrono::system_clock::time_point _last{ std::chrono::system_clock::now() };
+  };
+
+  void operator()();
+
+  State state;
+  irs::merge_writer::flush_progress_t _progress;
+}; // ConsolidationTask
+
+void ConsolidationTask::operator()() {
+  auto linkLock = irs::make_unique_lock(link->mutex(), std::try_to_lock);
+
+  if (!linkLock.owns_lock() // failed to acquire the lock, reschedule
+      || !(*link)) {        // link is no longer valid
+    return;
+  }
+
+  auto* link = this->link->get();
+
+  if (link->_asyncTerminate.load()) {
+    return; // termination requested
+  }
+
+  // reload RuntimeState
+  {
+    TRI_ASSERT(link->_dataStore); // must be valid if _asyncSelf->get() is valid
+    ReadMutex mutex(link->_dataStore._mutex); // '_meta' can be asynchronously modified
+    auto lock = irs::make_lock_guard(mutex);
+    auto& meta = link->_dataStore._meta;
+
+    state._consolidationPolicy = meta._consolidationPolicy;
+    state._consolidationIntervalMsec = meta._consolidationIntervalMsec;
+  }
+
+  if (!state._consolidationIntervalMsec // disabled via interval
+      || !state._consolidationPolicy.policy()) { // disabled via policy
+    return;
+  }
+
+  size_t usedMsec = std::chrono::duration_cast<std::chrono::milliseconds>(
+    std::chrono::system_clock::now() - state._last).count();
+
+  if (usedMsec < state._consolidationIntervalMsec) {
+    // reschedule (with possibly updated '_consolidationIntervalMsec')
+    reschedule(std::chrono::milliseconds(state._consolidationIntervalMsec - usedMsec));
+
+    return;
+  }
+
+  state._last = std::chrono::system_clock::now(); // remember last task start time
+
+  // run consolidation ('_asyncSelf' locked by async task)
+  auto res = link->consolidateUnsafe(state._consolidationPolicy, _progress);
+
+  if (!res.ok()) {
+    LOG_TOPIC("bce4f", DEBUG, iresearch::TOPIC)
+        << "error while consolidating arangosearch link '" << link->id()
+        << "': " << res.errorNumber() << " " << res.errorMessage();
+  }
+
+  reschedule(std::chrono::milliseconds(state._consolidationIntervalMsec));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compute the data path to user for iresearch data store
 ///        get base path from DatabaseServerFeature (similar to MMFilesEngine)
 ///        the path is hardcoded to reside under:
@@ -286,7 +452,7 @@ irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeatu
 
 IResearchLink::IResearchLink(arangodb::IndexId iid, LogicalCollection& collection)
     : _engine(nullptr),
-      _asyncFeature(nullptr),
+      _asyncFeature(&_collection.vocbase().server().getFeature<IResearchFeature>()),
       _asyncSelf(irs::memory::make_unique<AsyncLinkPtr::element_type>(nullptr)),  // mark as data store not initialized
       _asyncTerminate(false),
       _collection(collection),
@@ -346,7 +512,7 @@ bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
 
 void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
                                   arangodb::transaction::Methods* trx) {
-  SCOPED_LOCK(_asyncSelf->mutex());  // '_dataStore' can be asynchronously modified
+  auto lock = irs::make_lock_guard(_asyncSelf->mutex());  // '_dataStore' can be asynchronously modified
 
   TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -494,7 +660,7 @@ void IResearchLink::batchInsert(
   };
 
   if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
-    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+    auto lock = irs::make_unique_lock(_asyncSelf->mutex());
     auto ctx = _dataStore._writer->documents();
     batchInsertImpl(ctx); // we need insert to succeed, so  we have things to cleanup in storage
     TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
@@ -516,7 +682,7 @@ void IResearchLink::batchInsert(
 
   if (!ctx) {
     // '_dataStore' can be asynchronously modified
-    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+    auto lock = irs::make_unique_lock(_asyncSelf->mutex());
 
     if (!*_asyncSelf) {
       LOG_TOPIC("7d258", WARN, iresearch::TOPIC)
@@ -586,7 +752,7 @@ Result IResearchLink::cleanupUnsafe() {
 }
 
 Result IResearchLink::commit(bool wait /*= true*/) {
-  SCOPED_LOCK(_asyncSelf->mutex()); // '_dataStore' can be asynchronously modified
+  auto lock = irs::make_lock_guard(_asyncSelf->mutex()); // '_dataStore' can be asynchronously modified
 
   if (!*_asyncSelf) {
     // the current link is no longer valid (checked after ReadLock acquisition)
@@ -619,7 +785,7 @@ Result IResearchLink::commitUnsafe(bool wait) {
   try {
     auto const lastTickBeforeCommit = _engine->currentTick();
 
-    TRY_SCOPED_LOCK_NAMED(_commitMutex, commitLock);
+    auto commitLock = irs::make_unique_lock(_commitMutex, std::try_to_lock);
 
     if (!commitLock.owns_lock()) {
       // commit is already in progress
@@ -1235,7 +1401,7 @@ Result IResearchLink::initDataStore(
 
   return dbFeature.registerPostRecoveryCallback(  // register callback
       [asyncSelf, &flushFeature]() -> Result {
-        SCOPED_LOCK(asyncSelf->mutex());  // ensure link does not get deallocated before callback finishes
+        auto lock = irs::make_lock_guard(asyncSelf->mutex());  // ensure link does not get deallocated before callback finishes
         auto* link = asyncSelf->get();
 
         if (!link) {
@@ -1275,155 +1441,30 @@ Result IResearchLink::initDataStore(
         flushFeature.registerFlushSubscription(link->_flushSubscription);
 
         // setup asynchronous tasks for commit, consolidation, cleanup
-        link->setupMaintenance();
+        link->scheduleCommit();
+        link->scheduleConsolidation();
 
         return res;
       });
 }
 
-void IResearchLink::setupMaintenance() {
-  auto& server = _collection.vocbase().server();
-  if (!server.hasFeature<iresearch::IResearchFeature>()) {
-    return;
-  }
-  _asyncFeature = &(server.getFeature<iresearch::IResearchFeature>());
+void IResearchLink::scheduleCommit() {
+  CommitTask task;
+  task.link = _asyncSelf;
+  task.async = _asyncFeature;
 
-  struct CommitState: public IResearchViewMeta {
-    size_t _cleanupIntervalCount{ 0 };
-    std::chrono::system_clock::time_point _last{ std::chrono::system_clock::now() };
-  } commitState;
+  // group 0 is reserved for commit
+  _asyncFeature->async(ThreadGroup::_0, 0ms, task);
+}
 
-  _asyncFeature->async( // register asynchronous commit task
-    _asyncSelf, // mutex
-    [this, commitState](size_t& timeoutMsec, bool) mutable ->bool {
-      auto& state = commitState;
+void IResearchLink::scheduleConsolidation() {
+  ConsolidationTask task;
+  task.link = _asyncSelf;
+  task.async = _asyncFeature;
+  task._progress = [this]()->bool { return !_asyncTerminate.load(); };
 
-      if (_asyncTerminate.load()) {
-        return false; // termination requested
-      }
-
-      // reload RuntimeState
-      {
-        TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
-        ReadMutex mutex(_dataStore._mutex); // '_meta' can be asynchronously modified
-        SCOPED_LOCK(mutex);
-        auto& stateMeta = static_cast<IResearchViewMeta&>(state);
-
-        if (stateMeta != _dataStore._meta) {
-          stateMeta = _dataStore._meta;
-        }
-      }
-
-      if (!state._commitIntervalMsec) {
-        timeoutMsec = 0; // task not enabled
-
-        return true; // reschedule
-      }
-
-      size_t usedMsec = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now() - state._last // consumed msec from interval
-      ).count();
-
-      if (usedMsec < state._commitIntervalMsec) {
-        timeoutMsec = state._commitIntervalMsec - usedMsec; // still need to sleep
-
-        return true; // reschedule (with possibly updated '_commitIntervalMsec')
-      }
-
-      state._last = std::chrono::system_clock::now(); // remember last task start time
-      timeoutMsec = state._commitIntervalMsec;
-
-      auto res = commitUnsafe(false); // run commit ('_asyncSelf' locked by async task)
-
-      if (!res.ok()) {
-        LOG_TOPIC("8377b", WARN, iresearch::TOPIC)
-            << "error while committing arangosearch link '" << id()
-            << "': " << res.errorNumber() << " " << res.errorMessage();
-      } else if (state._cleanupIntervalStep // if enabled
-                 && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
-        state._cleanupIntervalCount = 0; // reset counter
-        res = cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
-
-        if (!res.ok()) {
-          LOG_TOPIC("130de", WARN, iresearch::TOPIC)
-              << "error while cleaning up arangosearch link '" << id()
-              << "': " << res.errorNumber() << " " << res.errorMessage();
-        }
-      }
-
-      return true; // reschedule
-    }
-  );
-
-  struct ConsolidateState: public CommitState {
-    irs::merge_writer::flush_progress_t _progress;
-  } consolidateState;
-
-  consolidateState._progress = // consolidation termination condition
-    [this]()->bool { return !_asyncTerminate.load(); };
-  _asyncFeature->async( // register asynchronous consolidation task
-    _asyncSelf, // mutex
-    [this, consolidateState](size_t& timeoutMsec, bool) mutable ->bool {
-      auto& state = consolidateState;
-
-      if (_asyncTerminate.load()) {
-        return false; // termination requested
-      }
-
-      // reload RuntimeState
-      {
-        TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
-        ReadMutex mutex(_dataStore._mutex); // '_meta' can be asynchronously modified
-        SCOPED_LOCK(mutex);
-        auto& stateMeta = static_cast<IResearchViewMeta&>(state);
-
-        if (stateMeta != _dataStore._meta) {
-          stateMeta = _dataStore._meta;
-        }
-      }
-
-      if (!state._consolidationIntervalMsec // disabled via interval
-          || !state._consolidationPolicy.policy()) { // disabled via policy
-        timeoutMsec = 0; // task not enabled
-
-        return true; // reschedule
-      }
-
-      size_t usedMsec = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now() - state._last
-      ).count();
-
-      if (usedMsec < state._consolidationIntervalMsec) {
-        timeoutMsec = state._consolidationIntervalMsec - usedMsec; // still need to sleep
-
-        return true; // reschedule (with possibly updated '_consolidationIntervalMsec')
-      }
-
-      state._last = std::chrono::system_clock::now(); // remember last task start time
-      timeoutMsec = state._consolidationIntervalMsec;
-
-      // run consolidation ('_asyncSelf' locked by async task)
-      auto res = consolidateUnsafe(state._consolidationPolicy, state._progress);
-
-      if (!res.ok()) {
-        LOG_TOPIC("bce4f", DEBUG, iresearch::TOPIC)
-            << "error while consolidating arangosearch link '" << id()
-            << "': " << res.errorNumber() << " " << res.errorMessage();
-      } else if (state._cleanupIntervalStep // if enabled
-                 && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
-        state._cleanupIntervalCount = 0; // reset counter
-        res = cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
-
-        if (!res.ok()) {
-          LOG_TOPIC("31941", WARN, iresearch::TOPIC)
-              << "error while cleaning up arangosearch link '" << id()
-              << "': " << res.errorNumber() << " " << res.errorMessage();
-        }
-      }
-
-      return true; // reschedule
-    }
-  );
+  // group 1 is reserved for consolidation
+  _asyncFeature->async(ThreadGroup::_1, 0ms, task);
 }
 
 Result IResearchLink::insert(
@@ -1477,7 +1518,7 @@ Result IResearchLink::insert(
   }
 
   if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
-    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+    auto lock = irs::make_unique_lock(_asyncSelf->mutex());
     auto ctx = _dataStore._writer->documents();
 
     TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
@@ -1500,7 +1541,7 @@ Result IResearchLink::insert(
 
   if (!ctx) {
     // '_dataStore' can be asynchronously modified
-    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+    auto lock = irs::make_unique_lock(_asyncSelf->mutex());
 
     if (!*_asyncSelf) {
       // the current link is no longer valid (checked after ReadLock acquisition)
@@ -1592,7 +1633,8 @@ Result IResearchLink::properties(
 }
 
 Result IResearchLink::properties(IResearchViewMeta const& meta) {
-  SCOPED_LOCK(_asyncSelf->mutex());  // '_dataStore' can be asynchronously modified
+  // '_dataStore' can be asynchronously modified
+  auto lock = irs::make_lock_guard(_asyncSelf->mutex());
 
   if (!*_asyncSelf) {
     // the current link is no longer valid (checked after ReadLock acquisition)
@@ -1606,10 +1648,11 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
 
   {
     WriteMutex mutex(_dataStore._mutex); // '_meta' can be asynchronously read
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
     _dataStore._meta = meta;
   }
 
+  // FIXME reschedule tasks if needed
   if (_asyncFeature) {
     _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
   }
@@ -1667,7 +1710,7 @@ Result IResearchLink::remove(
 
   if (!ctx) {
     // '_dataStore' can be asynchronously modified
-    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+    auto lock = irs::make_unique_lock(_asyncSelf->mutex());
 
     if (!*_asyncSelf) {
       // the current link is no longer valid (checked after ReadLock acquisition)
@@ -1732,7 +1775,7 @@ Result IResearchLink::remove(
 
 IResearchLink::Snapshot IResearchLink::snapshot() const {
   // '_dataStore' can be asynchronously modified
-  SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+  auto lock = irs::make_unique_lock(_asyncSelf->mutex());
 
   if (!*_asyncSelf) {
     LOG_TOPIC("f42dc", WARN, iresearch::TOPIC)
@@ -1819,7 +1862,7 @@ IResearchLink::Stats IResearchLink::stats() const {
   Stats stats;
 
   // '_dataStore' can be asynchronously modified
-  SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+  auto lock = irs::make_unique_lock(_asyncSelf->mutex());
 
   if (_dataStore) {
     stats.numBufferedDocs = _dataStore._writer->buffered_docs();

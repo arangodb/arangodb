@@ -37,7 +37,7 @@ struct test_slow_sobject {
   }
   static std::atomic<size_t> TOTAL_COUNT; // # number of objects created
   static ptr make(int i) {
-    irs::sleep_ms(2000);
+    std::this_thread::sleep_for(std::chrono::seconds(2)); // wait 1 sec to ensure index file timestamps differ
     return ptr(new test_slow_sobject(i));
   }
 };
@@ -96,7 +96,7 @@ TEST(bounded_object_pool_tests, check_total_number_of_instances) {
   auto job = [&mutex, &ready_cv, &pool, &ready, &id](){
     // wait for all threads to be ready
     {
-      SCOPED_LOCK_NAMED(mutex, lock);
+      auto lock = irs::make_unique_lock(mutex);
 
       while (!ready) {
         ready_cv.wait(lock);
@@ -109,7 +109,7 @@ TEST(bounded_object_pool_tests, check_total_number_of_instances) {
   auto job_shared = [&mutex, &ready_cv, &pool, &ready, &id](){
     // wait for all threads to be ready
     {
-      SCOPED_LOCK_NAMED(mutex, lock);
+      auto lock = irs::make_unique_lock(mutex);
 
       while (!ready) {
         ready_cv.wait(lock);
@@ -147,9 +147,14 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
     auto obj = pool.emplace(1).release();
 
     {
-      SCOPED_LOCK_NAMED(mutex, lock);
+      auto lock = irs::make_unique_lock(mutex);
       std::atomic<bool> emplace(false);
-      std::thread thread([&cond, &mutex, &pool, &emplace]()->void{ auto obj = pool.emplace(2); emplace = true; SCOPED_LOCK(mutex); cond.notify_all(); });
+      std::thread thread([&cond, &mutex, &pool, &emplace]()->void{
+        auto obj = pool.emplace(2);
+        emplace = true;
+        auto lock = irs::make_unique_lock(mutex);
+        cond.notify_all();
+      });
 
       auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
 
@@ -175,14 +180,14 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
     ASSERT_EQ(1, test_sobject_nullptr::make_count);
 
     {
-      SCOPED_LOCK_NAMED(mutex, lock);
+      auto lock = irs::make_unique_lock(mutex);
       std::atomic<bool> emplace(false);
       std::thread thread([&cond, &mutex, &pool, &emplace]()->void {
         auto obj = pool.emplace();
         ASSERT_FALSE(obj);
         ASSERT_EQ(2, test_sobject_nullptr::make_count);
         emplace = true;
-        SCOPED_LOCK(mutex);
+        auto lock = irs::make_unique_lock(mutex);
         cond.notify_all();
       });
 
@@ -215,13 +220,13 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
     ASSERT_TRUE(obj);
     std::condition_variable cond;
     std::mutex mutex;
-    SCOPED_LOCK_NAMED(mutex, lock);
+    auto lock = irs::make_unique_lock(mutex);
     std::atomic<bool> visit(false);
     std::thread thread([&cond, &mutex, &pool, &visit]()->void {
       auto visitor = [](test_sobject& obj)->bool { return true; };
       pool.visit(visitor);
       visit = true;
-      SCOPED_LOCK(mutex);
+      auto lock = irs::make_unique_lock(mutex);
       cond.notify_all();
     });
     auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread finishes in 1000ms
@@ -251,9 +256,14 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
     auto obj = pool.emplace(1);
 
     {
-      SCOPED_LOCK_NAMED(mutex, lock);
+      auto lock = irs::make_unique_lock(mutex);
       std::atomic<bool> emplace(false);
-      std::thread thread([&cond, &mutex, &pool, &emplace]()->void{ auto obj = pool.emplace(2); emplace = true; SCOPED_LOCK(mutex); cond.notify_all(); });
+      std::thread thread([&cond, &mutex, &pool, &emplace]()->void{
+        auto obj = pool.emplace(2);
+        emplace = true;
+        auto lock = irs::make_unique_lock(mutex);
+        cond.notify_all();
+      });
 
       auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
 
@@ -280,10 +290,9 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
     ASSERT_EQ(1, test_uobject_nullptr::make_count);
 
     {
-      SCOPED_LOCK_NAMED(mutex, lock);
-      std::atomic<bool> emplace(false);
-      std::thread thread([&cond, &mutex, &pool, &emplace]()->void {
-        SCOPED_LOCK(mutex);
+      auto lock = irs::make_unique_lock(mutex);
+      std::thread thread([&cond, &mutex, &pool]()->void {
+        auto lock = irs::make_unique_lock(mutex);
         auto obj = pool.emplace();
         ASSERT_FALSE(obj);
         ASSERT_EQ(2, test_uobject_nullptr::make_count);
@@ -319,13 +328,13 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
     auto obj = pool.emplace(1);
     std::condition_variable cond;
     std::mutex mutex;
-    SCOPED_LOCK_NAMED(mutex, lock);
+    auto lock = irs::make_unique_lock(mutex);
     std::atomic<bool> visit(false);
     std::thread thread([&cond, &mutex, &pool, &visit]()->void {
-      auto visitor = [](test_uobject& obj)->bool { return true; };
+      auto visitor = [](test_uobject&)->bool { return true; };
       pool.visit(visitor);
       visit = true;
-      SCOPED_LOCK(mutex);
+      auto lock = irs::make_unique_lock(mutex);
       cond.notify_all();
     });
     auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread finishes in 1000ms
@@ -359,8 +368,12 @@ TEST(unbounded_object_pool_tests, test_sobject_pool) {
     auto obj = pool.emplace(1).release();
 
     {
-      SCOPED_LOCK_NAMED(mutex, lock);
-      std::thread thread([&cond, &mutex, &pool]()->void{ auto obj = pool.emplace(2); SCOPED_LOCK(mutex); cond.notify_all(); });
+      auto lock = irs::make_unique_lock(mutex);
+      std::thread thread([&cond, &mutex, &pool]()->void{
+        auto obj = pool.emplace(2);
+        auto lock = irs::make_unique_lock(mutex);
+        cond.notify_all();
+      });
       ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume threads start within 1000msec
       lock.unlock();
       thread.join();
@@ -488,8 +501,12 @@ TEST(unbounded_object_pool_tests, test_uobject_pool) {
     auto obj = pool.emplace(1).release();
 
     {
-      SCOPED_LOCK_NAMED(mutex, lock);
-      std::thread thread([&cond, &mutex, &pool]()->void{ auto obj = pool.emplace(2); SCOPED_LOCK(mutex); cond.notify_all(); });
+      auto lock = irs::make_unique_lock(mutex);
+      std::thread thread([&cond, &mutex, &pool]()->void{
+        auto obj = pool.emplace(2);
+        auto lock = irs::make_unique_lock(mutex);
+        cond.notify_all();
+      });
       ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume threads start within 1000msec
       lock.unlock();
       thread.join();
@@ -726,8 +743,12 @@ TEST(unbounded_object_pool_volatile_tests, test_sobject_pool) {
     ASSERT_EQ(1, pool.generation_size());
 
     {
-      SCOPED_LOCK_NAMED(mutex, lock);
-      std::thread thread([&cond, &mutex, &pool]()->void{ auto obj = pool.emplace(2); SCOPED_LOCK(mutex); cond.notify_all(); });
+      auto lock = irs::make_unique_lock(mutex);
+      std::thread thread([&cond, &mutex, &pool]()->void{
+        auto obj = pool.emplace(2);
+        auto lock = irs::make_unique_lock(mutex);
+        cond.notify_all();
+      });
       ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume threads start within 1000msec
       lock.unlock();
       thread.join();
@@ -910,8 +931,12 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool) {
     auto obj = pool.emplace(1);
 
     {
-      SCOPED_LOCK_NAMED(mutex, lock);
-      std::thread thread([&cond, &mutex, &pool]()->void{ auto obj = pool.emplace(2); SCOPED_LOCK(mutex); cond.notify_all(); });
+      auto lock = irs::make_unique_lock(mutex);
+      std::thread thread([&cond, &mutex, &pool]()->void{
+        auto obj = pool.emplace(2);
+        auto lock = irs::make_unique_lock(mutex);
+        cond.notify_all();
+      });
       ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume threads start within 1000msec
       lock.unlock();
       thread.join();
@@ -1184,7 +1209,7 @@ TEST(concurrent_linked_list_test, concurrent_pop) {
 
   // start threads
   {
-    SCOPED_LOCK_NAMED(mutex, lock);
+    auto lock = irs::make_unique_lock(mutex);
     for (size_t i = 0; i < threads_data.size(); ++i) {
       auto& thread_data = threads_data[i];
       threads.emplace_back([&list, &wait_for_all, &thread_data]() {
@@ -1241,7 +1266,7 @@ TEST(concurrent_linked_list_test, concurrent_push) {
 
   auto wait_for_all = [&mutex, &ready, &ready_cv]() {
     // wait for all threads to be registered
-    SCOPED_LOCK_NAMED(mutex, lock);
+    auto lock = irs::make_unique_lock(mutex);
     while (!ready) {
       ready_cv.wait(lock);
     }
@@ -1249,7 +1274,7 @@ TEST(concurrent_linked_list_test, concurrent_push) {
 
   // start threads
   {
-    SCOPED_LOCK_NAMED(mutex, lock);
+    auto lock = irs::make_unique_lock(mutex);
     for (size_t i = 0; i < threads_data.size(); ++i) {
       auto& thread_data = threads_data[i];
       threads.emplace_back([&list, &wait_for_all, &thread_data]() {
@@ -1320,7 +1345,7 @@ TEST(concurrent_linked_list_test, concurrent_pop_push) {
 
   auto wait_for_all = [&mutex, &ready, &ready_cv]() {
     // wait for all threads to be registered
-    SCOPED_LOCK_NAMED(mutex, lock);
+    auto lock = irs::make_unique_lock(mutex);
     while (!ready) {
       ready_cv.wait(lock);
     }
@@ -1328,7 +1353,7 @@ TEST(concurrent_linked_list_test, concurrent_pop_push) {
 
   // start threads
   {
-    SCOPED_LOCK_NAMED(mutex, lock);
+    auto lock = irs::make_unique_lock(mutex);
     for (size_t i = 0; i < THREADS; ++i) {
       threads.emplace_back([NODES, &list, &wait_for_all]() {
         wait_for_all();
@@ -1358,7 +1383,7 @@ TEST(concurrent_linked_list_test, concurrent_pop_push) {
 
   // all threads are registered... go, go, go...
   {
-    SCOPED_LOCK_NAMED(mutex, lock);
+    auto lock = irs::make_unique_lock(mutex);
     ready = true;
     ready_cv.notify_all();
   }

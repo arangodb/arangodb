@@ -1667,7 +1667,7 @@ Result IResearchAnalyzerFeature::emplace(
     }
 
     WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
 
     // validate and emplace an analyzer
     EmplaceAnalyzerResult itr;
@@ -1862,7 +1862,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     }
 
     WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
 
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     TRI_ASSERT(!engine.inRecovery());
@@ -1999,7 +1999,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
           }
           {
             ReadMutex mutex(_mutex);
-            SCOPED_LOCK(mutex);
+            auto lock = irs::make_lock_guard(mutex);
             auto itr = _lastLoad.find(name.first);
             if (itr != _lastLoad.end() && itr->second >= revision) {
               break; // expected or later revision is loaded
@@ -2019,7 +2019,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     }
 
     ReadMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
     auto itr = _analyzers.find(irs::make_hashed_ref(normalizedName, std::hash<irs::string_ref>()));
 
     if (itr == _analyzers.end()) {
@@ -2296,7 +2296,8 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
   try {
     WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex); // '_analyzers'/'_lastLoad' can be asynchronously read
+    // '_analyzers'/'_lastLoad' can be asynchronously read
+    auto lock = irs::make_lock_guard(mutex);
 
     // load all databases
     if (database.null()) {
@@ -2759,7 +2760,7 @@ Result IResearchAnalyzerFeature::remove(
     //}
 
     WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
 
     auto itr = _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
 
@@ -2963,7 +2964,8 @@ void IResearchAnalyzerFeature::stop() {
 
   {
     WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex); // '_analyzers' can be asynchronously read
+    // '_analyzers' can be asynchronously read
+    auto lock = irs::make_lock_guard(mutex);
 
     _analyzers = getStaticAnalyzers();  // clear cache and reload static analyzers
   }
@@ -3080,7 +3082,7 @@ bool IResearchAnalyzerFeature::visit(
 
   {
     ReadMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
     analyzers = _analyzers;
   }
 
@@ -3121,7 +3123,7 @@ bool IResearchAnalyzerFeature::visit(
 
   {
     ReadMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
     analyzers = _analyzers;
   }
 
@@ -3154,7 +3156,7 @@ void IResearchAnalyzerFeature::cleanupAnalyzers(irs::string_ref const& database)
 
 void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
   WriteMutex mutex(_mutex);
-  SCOPED_LOCK(mutex);
+  auto lock = irs::make_lock_guard(mutex);
   auto database = irs::string_ref(vocbase.name());
   auto itr = _lastLoad.find(
       irs::make_hashed_ref(database, std::hash<irs::string_ref>()));

@@ -369,7 +369,7 @@ ref_tracking_directory::ref_tracking_directory(
 }
 
 void ref_tracking_directory::clear_refs() const noexcept {
-  SCOPED_LOCK(mutex_);
+  auto lock = make_lock_guard(mutex_);
   refs_.clear();
 }
 
@@ -383,7 +383,7 @@ index_output::ptr ref_tracking_directory::create(
     if (result) {
       auto ref = attribute_->add(name);
 
-      SCOPED_LOCK(mutex_);
+      auto lock = make_lock_guard(mutex_);
       refs_.emplace(ref);
     }
 
@@ -409,7 +409,7 @@ index_input::ptr ref_tracking_directory::open(
   if (result) {
     try {
       auto ref = attribute_->add(name);
-      SCOPED_LOCK(mutex_);
+      auto lock = make_lock_guard(mutex_);
 
       refs_.emplace(ref);
     } catch (...) {
@@ -436,7 +436,7 @@ bool ref_tracking_directory::remove(const std::string& name) noexcept {
       &name
     );
 
-    SCOPED_LOCK(mutex_);
+    auto lock = make_lock_guard(mutex_);
 
     refs_.erase(ref);
     return true;
@@ -465,7 +465,7 @@ bool ref_tracking_directory::rename(
         &src
       );
 
-      SCOPED_LOCK(mutex_);
+      auto lock = make_lock_guard(mutex_);
 
       refs_.emplace(ref);
       refs_.erase(src_ref);
@@ -481,9 +481,8 @@ bool ref_tracking_directory::rename(
 }
 
 bool ref_tracking_directory::visit_refs(
-  const std::function<bool(const index_file_refs::ref_t& ref)>& visitor
-) const {
-  SCOPED_LOCK(mutex_);
+    const std::function<bool(const index_file_refs::ref_t& ref)>& visitor) const {
+  auto lock = make_lock_guard(mutex_);
 
   for (const auto& ref: refs_) {
     if (!visitor(ref)) {

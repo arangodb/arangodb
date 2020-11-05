@@ -221,7 +221,8 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
     VPackBuilder tmp;
 
     ReadMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);  // '_collections' can be asynchronously modified
+    // '_collections' can be asynchronously modified
+    auto lock = irs::make_lock_guard(mutex);
 
     builder.add(StaticStrings::LinksField, VPackValue(VPackValueType::Object));
     for (auto& entry : _collections) {
@@ -310,7 +311,7 @@ Result IResearchViewCoordinator::link(IResearchLink const& link) {
   sanitizedBuilder.close();
 
   WriteMutex mutex(_mutex); // '_collections' can be asynchronously read
-  SCOPED_LOCK(mutex);
+  auto lock = irs::make_lock_guard(mutex);
   auto [it, emplaced] = _collections.try_emplace(
     cid,
     link.collection().name(), std::move(sanitizedBuilder));
@@ -343,7 +344,8 @@ IResearchViewCoordinator::IResearchViewCoordinator(TRI_vocbase_t& vocbase,
 
 bool IResearchViewCoordinator::visitCollections(CollectionVisitor const& visitor) const {
   ReadMutex mutex(_mutex);
-  SCOPED_LOCK(mutex);  // '_collections' can be asynchronously modified
+  // '_collections' can be asynchronously modified
+  auto lock = irs::make_lock_guard(mutex);
 
   for (auto& entry : _collections) {
     if (!visitor(entry.first)) {
@@ -443,7 +445,8 @@ Result IResearchViewCoordinator::properties(velocypack::Slice const& slice,
 
     {
       ReadMutex mutex(_mutex);
-      SCOPED_LOCK(mutex);  // '_collections' can be asynchronously modified
+      // '_collections' can be asynchronously modified
+      auto lock = irs::make_lock_guard(mutex);
 
       currentLinks.openObject();
 

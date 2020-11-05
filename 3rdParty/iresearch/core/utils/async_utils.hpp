@@ -30,8 +30,10 @@
 #include <queue>
 #include <thread>
 
-#include "noncopyable.hpp"
 #include "shared.hpp"
+#include "noncopyable.hpp"
+#include "string.hpp"
+#include "thread_utils.hpp"
 
 namespace iresearch {
 namespace async_utils {
@@ -124,33 +126,58 @@ class IRESEARCH_API read_write_mutex final {
 
 class IRESEARCH_API thread_pool {
  public:
-  explicit thread_pool(size_t max_threads = 0, size_t max_idle = 0);
-  virtual ~thread_pool();
-  virtual size_t max_idle();
-  virtual void max_idle(size_t value);
-  virtual void max_idle_delta(int delta); // change value by delta
-  virtual size_t max_threads();
-  virtual void max_threads(size_t value);
-  virtual void max_threads_delta(int delta); // change value by delta
-  virtual bool run(std::function<void()>&& fn);
-  virtual void stop(bool skip_pending = false); // always a blocking call
-  virtual size_t tasks_active();
-  virtual size_t tasks_pending();
-  virtual size_t threads();
+  using native_char_t = std::remove_pointer_t<thread_name_t>;
+  using clock_t = std::chrono::steady_clock;
+  using func_t = std::function<void()>;
+
+  explicit thread_pool(
+    size_t max_threads = 0,
+    size_t max_idle = 0,
+    basic_string_ref<native_char_t> worker_name = basic_string_ref<native_char_t>::EMPTY);
+  ~thread_pool();
+  size_t max_idle();
+  void max_idle(size_t value);
+  void max_idle_delta(int delta); // change value by delta
+  size_t max_threads();
+  void max_threads(size_t value);
+  void max_threads_delta(int delta); // change value by delta
+  bool run(func_t&& fn, clock_t::duration delay = {});
+  void stop(bool skip_pending = false); // always a blocking call
+  size_t tasks_active();
+  size_t tasks_pending();
+  size_t threads();
 
  private:
+  enum class State { ABORT, FINISH, RUN };
+
+  struct task {
+    explicit task(
+        func_t&& fn,
+        clock_t::time_point at)
+      : at(at), fn(std::move(fn)) {
+    }
+
+    clock_t::time_point at;
+    func_t fn;
+
+    bool operator<(const task& rhs) const noexcept {
+      return rhs.at < at;
+    }
+  };
+
+  void worker();
+
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  size_t active_;
   std::condition_variable cond_;
   std::mutex lock_;
+  size_t active_{ 0 };
   size_t max_idle_;
   size_t max_threads_;
   std::vector<std::thread> pool_;
-  std::queue<std::function<void()>> queue_;
-  enum class State { ABORT, FINISH, RUN } state_;
+  std::priority_queue<task> queue_;
+  std::basic_string<native_char_t> worker_name_;
+  State state_{ State::RUN };
   IRESEARCH_API_PRIVATE_VARIABLES_END
-
-  void run();
 }; // thread_pool
 
 } // async_utils

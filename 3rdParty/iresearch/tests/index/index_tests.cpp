@@ -2672,10 +2672,10 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
     std::mutex mutex;
     auto query_doc1_doc2 = iresearch::iql::query_builder().build("name==A || name==B", std::locale::classic());
     auto writer = open_writer();
-    SCOPED_LOCK_NAMED(mutex, lock);
+    auto lock = irs::make_unique_lock(mutex);
     std::atomic<bool> stop(false);
     std::thread thread([&cond, &mutex, &writer, &stop]()->void {
-      SCOPED_LOCK(mutex);
+      auto lock = irs::make_lock_guard(mutex);
       writer->commit();
       stop = true;
       cond.notify_all();
@@ -2713,7 +2713,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
       // commit from a separate thread before end of add
       lock.unlock();
       std::mutex cond_mutex;
-      SCOPED_LOCK_NAMED(cond_mutex, cond_lock);
+      auto cond_lock = irs::make_unique_lock(cond_mutex);
       auto result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)); // assume thread commits within 100 msec
 
       // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
@@ -2809,10 +2809,10 @@ TEST_P(index_test_case, document_context) {
     const irs::flags& features() const { return irs::flags::empty_instance(); }
     bool write(irs::data_output& out) {
       {
-        SCOPED_LOCK(cond_mutex);
+        auto cond_lock = irs::make_lock_guard(cond_mutex);
         cond.notify_all();
       }
-      SCOPED_LOCK(mutex);
+      auto lock = irs::make_lock_guard(mutex);
       return true;
     }
   } field;
@@ -2820,8 +2820,8 @@ TEST_P(index_test_case, document_context) {
   // during insert across commit blocks
   {
     auto writer = open_writer();
-    SCOPED_LOCK_NAMED(field.cond_mutex, field_cond_lock); // wait for insertion to start
-    SCOPED_LOCK_NAMED(field.mutex, field_lock); // prevent field from finishing
+    auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start
+    auto field_lock = irs::make_unique_lock(field.mutex); // prevent field from finishing
 
     writer->documents().insert().insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end()); // ensure segment is prsent in the active flush_context
 
@@ -2835,7 +2835,7 @@ TEST_P(index_test_case, document_context) {
     std::thread thread1([&writer, &field, &stop]()->void {
       writer->commit();
       stop = true;
-      SCOPED_LOCK(field.cond_mutex);
+      auto lock = irs::make_lock_guard(field.cond_mutex);
       field.cond.notify_all();
     });
 
@@ -2862,8 +2862,9 @@ TEST_P(index_test_case, document_context) {
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    SCOPED_LOCK_NAMED(field.cond_mutex, field_cond_lock); // wait for insertion to start
-    SCOPED_LOCK_NAMED(field.mutex, field_lock); // prevent field from finishing
+
+    auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start
+    auto field_lock = irs::make_unique_lock(field.mutex); // prevent field from finishing
 
     std::thread thread0([&writer, &query_doc1, &field]()->void {
       writer->documents().replace(*query_doc1.filter).insert<irs::Action::STORE>(field);
@@ -2875,7 +2876,7 @@ TEST_P(index_test_case, document_context) {
     std::thread thread1([&writer, &field, &commit]()->void {
       writer->commit();
       commit = true;
-      SCOPED_LOCK(field.cond_mutex);
+      auto lock = irs::make_lock_guard(field.cond_mutex);
       field.cond.notify_all();
     });
 
@@ -2902,8 +2903,8 @@ TEST_P(index_test_case, document_context) {
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    SCOPED_LOCK_NAMED(field.cond_mutex, field_cond_lock); // wait for insertion to start
-    SCOPED_LOCK_NAMED(field.mutex, field_lock); // prevent field from finishing
+    auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start
+    auto field_lock = irs::make_unique_lock(field.mutex); // prevent field from finishing
 
     std::thread thread0([&writer, &query_doc1, &field]()->void {
       writer->documents().replace(
@@ -2921,7 +2922,7 @@ TEST_P(index_test_case, document_context) {
     std::thread thread1([&writer, &field, &commit]()->void {
       writer->commit();
       commit = true;
-      SCOPED_LOCK(field.cond_mutex);
+      auto lock = irs::make_lock_guard(field.cond_mutex);
       field.cond.notify_all();
     });
 
@@ -2943,7 +2944,7 @@ TEST_P(index_test_case, document_context) {
   {
     auto writer = open_writer();
     auto ctx = writer->documents();
-    SCOPED_LOCK_NAMED(field.cond_mutex, field_cond_lock); // wait for insertion to start
+    auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
@@ -2951,7 +2952,7 @@ TEST_P(index_test_case, document_context) {
     ));
     std::thread thread1([&writer, &field]()->void {
       writer->commit();
-      SCOPED_LOCK(field.cond_mutex);
+      auto lock = irs::make_lock_guard(field.cond_mutex);
       field.cond.notify_all();
     });
 
@@ -2991,13 +2992,13 @@ TEST_P(index_test_case, document_context) {
     ));
 
     auto ctx = writer->documents();
-    SCOPED_LOCK_NAMED(field.cond_mutex, field_cond_lock); // wait for insertion to start
+    auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start
     ctx.remove(*(query_doc1.filter));
     std::atomic<bool> commit(false); // FIXME TODO remove once segment_context will not block flush_all()
     std::thread thread1([&writer, &field, &commit]()->void {
       writer->commit();
       commit = true;
-      SCOPED_LOCK(field.cond_mutex);
+      auto lock = irs::make_lock_guard(field.cond_mutex);
       field.cond.notify_all();
     });
 
@@ -3043,7 +3044,8 @@ TEST_P(index_test_case, document_context) {
     ));
 
     auto ctx = writer->documents();
-    SCOPED_LOCK_NAMED(field.cond_mutex, field_cond_lock); // wait for insertion to start
+    auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start
+
     {
       auto doc = ctx.replace(*(query_doc1.filter));
       doc.insert<irs::Action::INDEX>(doc2->indexed.begin(), doc2->indexed.end());
@@ -3053,7 +3055,7 @@ TEST_P(index_test_case, document_context) {
     std::thread thread1([&writer, &field, &commit]()->void {
       writer->commit();
       commit = true;
-      SCOPED_LOCK(field.cond_mutex);
+      auto lock = irs::make_lock_guard(field.cond_mutex);
       field.cond.notify_all();
     });
 
@@ -3099,7 +3101,7 @@ TEST_P(index_test_case, document_context) {
     ));
 
     auto ctx = writer->documents();
-    SCOPED_LOCK_NAMED(field.cond_mutex, field_cond_lock); // wait for insertion to start
+    auto field_cond_lock = irs::make_unique_lock(field.cond_mutex); // wait for insertion to start
     ctx.replace(
       *(query_doc1.filter),
       [&doc2](irs::segment_writer::document& doc)->bool {
@@ -3112,7 +3114,7 @@ TEST_P(index_test_case, document_context) {
     std::thread thread1([&writer, &field, &commit]()->void {
       writer->commit();
       commit = true;
-      SCOPED_LOCK(field.cond_mutex);
+      auto lock = irs::make_lock_guard(field.cond_mutex);
       field.cond.notify_all();
     });
 
@@ -7260,7 +7262,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       dir.exists(has, dir.blocker);
       ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
-      SCOPED_LOCK_NAMED(dir.policy_lock, policy_guard);
+      auto policy_guard = irs::make_unique_lock(dir.policy_lock);
       dir.policy_applied.wait_for(policy_guard, std::chrono::milliseconds(1000));
     }
 
@@ -7416,7 +7418,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       dir.exists(has, dir.blocker);
       ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
-      SCOPED_LOCK_NAMED(dir.policy_lock, policy_guard);
+      auto policy_guard = irs::make_unique_lock(dir.policy_lock);
       dir.policy_applied.wait_for(policy_guard, std::chrono::milliseconds(1000));
     }
 
@@ -7578,7 +7580,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       dir.exists(has, dir.blocker);
       ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
-      SCOPED_LOCK_NAMED(dir.policy_lock, policy_guard);
+      auto policy_guard = irs::make_unique_lock(dir.policy_lock);
       dir.policy_applied.wait_for(policy_guard, std::chrono::milliseconds(1000));
     }
 
@@ -7715,7 +7717,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       dir.exists(has, dir.blocker);
       ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
-      SCOPED_LOCK_NAMED(dir.policy_lock, policy_guard);
+      auto policy_guard = irs::make_unique_lock(dir.policy_lock);
       dir.policy_applied.wait_for(policy_guard, std::chrono::milliseconds(1000));
     }
 
@@ -13225,7 +13227,7 @@ TEST_P(index_test_case, segment_options) {
 
     std::condition_variable cond;
     std::mutex mutex;
-    SCOPED_LOCK_NAMED(mutex, lock);
+    auto lock = irs::make_unique_lock(mutex);
     std::atomic<bool> stop(false);
 
     std::thread thread([&writer, &doc2, &cond, &mutex, &stop]()->void {
@@ -13234,7 +13236,7 @@ TEST_P(index_test_case, segment_options) {
         doc2->stored.begin(), doc2->stored.end()
       ));
       stop = true;
-      SCOPED_LOCK(mutex);
+      auto lock = irs::make_lock_guard(mutex);
       cond.notify_all();
     });
 

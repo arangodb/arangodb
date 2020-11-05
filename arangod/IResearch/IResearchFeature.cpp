@@ -28,6 +28,7 @@
 #endif
 
 #include "search/scorers.hpp"
+#include "utils/async_utils.hpp"
 #include "utils/log.hpp"
 
 #include "ApplicationServerHelper.h"
@@ -273,8 +274,8 @@ class IResearchLogTopic final : public arangodb::LogTopic {
 };  // IResearchLogTopic
 
 size_t computeThreadPoolSize(size_t threads, size_t threadsLimit) {
-  static const size_t MAX_THREADS = 8;  // arbitrary limit on the upper bound of threads in pool
-  static const size_t MIN_THREADS = 1;  // at least one thread is required
+  constexpr size_t MAX_THREADS = 8;  // arbitrary limit on the upper bound of threads in pool
+  constexpr size_t MIN_THREADS = 1;  // at least one thread is required
   auto maxThreads = threadsLimit ? threadsLimit : MAX_THREADS;
 
   return threads ? threads
@@ -611,7 +612,7 @@ void registerTransactionDataSourceRegistrationCallback() {
 std::string const FEATURE_NAME("ArangoSearch");
 IResearchLogTopic LIBIRESEARCH("libiresearch");
 
-void IResearchLogTopic::log_appender(void* context, const char* function, const char* file, int line,
+void IResearchLogTopic::log_appender(void* /*context*/, const char* function, const char* file, int line,
                                      irs::logger::level_t level, const char* message,
                                      size_t message_len) {
   auto const arangoLevel = static_cast<arangodb::LogLevel>(level + 1);
@@ -623,6 +624,29 @@ void IResearchLogTopic::log_appender(void* context, const char* function, const 
 
 namespace arangodb {
 namespace iresearch {
+
+class IResearchAsync{
+ public:
+  using ThreadPool = irs::async_utils::thread_pool;
+
+  ~IResearchAsync() {
+    stop();
+  }
+
+  ThreadPool& get(ThreadGroup id) noexcept {
+    TRI_ASSERT(static_cast<size_t>(id) < 2);
+    return (ThreadGroup::_0 == id) ? _0 : _1;
+  }
+
+  void stop() noexcept {
+    try { _0.stop(true); } catch (...) { }
+    try { _1.stop(true); } catch (...) { }
+  }
+
+ private:
+  ThreadPool _0{0, 0, "ARS-0"};
+  ThreadPool _1{0, 0, "ARS-1"};
+}; // IResearchMaintenance
 
 bool isFilter(arangodb::aql::Function const& func) noexcept {
   return func.implementation == &dummyFilterFunc ||
@@ -646,8 +670,7 @@ class IResearchFeature::Async {
  public:
   typedef std::function<bool(size_t& timeoutMsec, bool timeout)> Fn;
 
-  explicit Async(IResearchFeature& feature, size_t poolSize = 0);
-  Async(IResearchFeature& feature, size_t poolSize, Async&& other);
+  Async(size_t consolidationPoolSize, size_t commitPoolSize);
   ~Async();
 
   void emplace(std::shared_ptr<ResourceMutex> const& mutex,
@@ -705,6 +728,9 @@ class IResearchFeature::Async {
     virtual void run() override;
   };
 
+  irs::async_utils::thread_pool _consolidationPool;
+  irs::async_utils::thread_pool _commitPool;
+
   arangodb::basics::ConditionVariable _join;  // mutex to join on
   std::vector<Thread> _pool;  // thread pool (size fixed for the entire life of object)
   std::atomic<bool> _terminate;  // unconditionally terminate async tasks
@@ -722,8 +748,8 @@ void IResearchFeature::Async::Thread::run() {
     auto pendingStart = _tasks.size();
 
     {
-      SCOPED_LOCK_NAMED(_mutex, lock);  // acquire before '_terminate' check so
-                                        // that don't miss notify()
+      // acquire before '_terminate' check so that don't miss notify()
+      auto lock = irs::make_unique_lock(_mutex);
 
       if (_terminate->load()) {
         break;  // termination requested
@@ -780,7 +806,7 @@ void IResearchFeature::Async::Thread::run() {
     if (!pendingRedelegate.empty() ||
         (_size.load() > _next->_size.load() * 2 && _tasks.size() > 1)) {
       {
-        SCOPED_LOCK(_next->_mutex);
+        auto lock = irs::make_lock_guard(_next->_mutex);
 
         // reassign to '_next' tasks that failed resourceMutex aquisition
         while (!pendingRedelegate.empty()) {
@@ -844,7 +870,9 @@ void IResearchFeature::Async::Thread::run() {
   // ...........................................................................
   // move all tasks back into _pending in case the may need to be reassigned
   // ...........................................................................
-  SCOPED_LOCK_NAMED(_mutex, lock);  // '_pending' may be modified asynchronously
+
+  // '_pending' may be modified asynchronously
+  auto lock = irs::make_unique_lock(_mutex);
 
   for (auto& task : pendingRedelegate) {
     _pending.emplace_back(std::move(task));
@@ -857,31 +885,22 @@ void IResearchFeature::Async::Thread::run() {
   _tasks.clear();
 }
 
-IResearchFeature::Async::Async(IResearchFeature& feature, size_t poolSize)
-    : _terminate(false) {
-  poolSize = std::max(size_t(1), poolSize);  // need at least one thread
-
-  for (size_t i = 0; i < poolSize; ++i) {
-    _pool.emplace_back(feature.server(),
-                       std::string("ArangoSearch #") + std::to_string(i));
-  }
-
-  auto* last = &(_pool.back());
-
-  // build circular list
-  for (auto& thread : _pool) {
-    last->_next = &thread;
-    last = &thread;
-    thread._terminate = &_terminate;
-  }
+IResearchFeature::Async::Async(
+    size_t consolidationPoolSize,
+    size_t commitPoolSize)
+  : _consolidationPool(consolidationPoolSize, consolidationPoolSize, "ARS-Consolidation"),
+    _commitPool(commitPoolSize, commitPoolSize, "ARS-Commit"),
+    _terminate(false) {
+  // need at least one thread
+  TRI_ASSERT(consolidationPoolSize);
+  TRI_ASSERT(commitPoolSize);
 }
 
-IResearchFeature::Async::Async(IResearchFeature& feature, size_t poolSize, Async&& other)
-    : Async(feature, poolSize) {
-  other.stop(&_pool[0]);
+IResearchFeature::Async::~Async() {
+  try {
+    stop();
+  } catch (...) { }
 }
-
-IResearchFeature::Async::~Async() { stop(); }
 
 void IResearchFeature::Async::emplace(std::shared_ptr<ResourceMutex> const& mutex, Fn&& fn) {
   if (!fn) {
@@ -890,7 +909,7 @@ void IResearchFeature::Async::emplace(std::shared_ptr<ResourceMutex> const& mute
 
   auto& thread = _pool[0];
   {
-    SCOPED_LOCK(thread._mutex);
+    auto lock = irs::make_lock_guard(thread._mutex);
     thread._pending.emplace_back(mutex, std::move(fn));
     ++thread._size;
   }
@@ -901,20 +920,10 @@ void IResearchFeature::Async::emplace(std::shared_ptr<ResourceMutex> const& mute
 void IResearchFeature::Async::notify() const {
   // notify all threads
   for (auto& thread : _pool) {
-    SCOPED_LOCK(thread._mutex);
+    auto lock = irs::make_lock_guard(thread._mutex);
     thread._cond.notify_all();
     thread._wasNotified = true;
   }
-}
-
-void IResearchFeature::Async::start() {
-  // start threads
-  for (auto& thread : _pool) {
-    thread.start(&_join);
-  }
-
-  LOG_TOPIC("c1b64", INFO, arangodb::iresearch::TOPIC)
-      << "started " << _pool.size() << " ArangoSearch maintenance thread(s)";
 }
 
 void IResearchFeature::Async::stop(Thread* redelegate /*= nullptr*/) {
@@ -934,7 +943,7 @@ void IResearchFeature::Async::stop(Thread* redelegate /*= nullptr*/) {
     // redelegate all thread tasks if requested
     if (redelegate) {
       {
-        SCOPED_LOCK(redelegate->_mutex);
+        auto lock = irs::make_lock_guard(redelegate->_mutex);
 
         for (auto& task : thread._pending) {
           redelegate->_pending.emplace_back(std::move(task));
@@ -951,8 +960,10 @@ void IResearchFeature::Async::stop(Thread* redelegate /*= nullptr*/) {
 
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer& server)
     : ApplicationFeature(server, IResearchFeature::name()),
-      _async(std::make_unique<Async>(*this)),
+      _async(std::make_unique<IResearchAsync>()),
       _running(false),
+      _consolidationThreads(0),
+      _commitThreads(0),
       _threads(0),
       _threadsLimit(0) {
   setOptional(true);
@@ -963,11 +974,14 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
   startsAfter<arangodb::aql::AqlFunctionFeature>();
 }
 
-void IResearchFeature::async(std::shared_ptr<ResourceMutex> const& mutex, Async::Fn&& fn) {
-  _async->emplace(mutex, std::move(fn));
+void IResearchFeature::async(
+    ThreadGroup id,
+    std::chrono::steady_clock::duration delay,
+    std::function<void()>&& fn) {
+  _async->get(id).run(std::move(fn), delay);
 }
 
-void IResearchFeature::asyncNotify() const { _async->notify(); }
+void IResearchFeature::asyncNotify() const { /*_async->notify();*/ }
 
 void IResearchFeature::beginShutdown() {
   _running.store(false);
@@ -975,21 +989,30 @@ void IResearchFeature::beginShutdown() {
 }
 
 void IResearchFeature::collectOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) {
-  auto section = FEATURE_NAME;
-
   _running.store(false);
-  std::transform(section.begin(), section.end(), section.begin(), ::tolower);
   ApplicationFeature::collectOptions(options);
-  options->addSection(section,
+  options->addSection("arangosearch",
                       std::string("Configure the ") + FEATURE_NAME + " feature");
-  options->addOption(std::string("--") + section + ".threads",
+  options->addOption("--arangosearch.threads",
                      "the exact number of threads to use for asynchronous "
                      "tasks (0 == autodetect)",
-                     new arangodb::options::UInt64Parameter(&_threads));
-  options->addOption(std::string("--") + section + ".threads-limit",
+                     new arangodb::options::UInt64Parameter(&_threads))
+                     .setDeprecatedIn(30800);
+  options->addOption("--arangosearch.threads-limit",
                      "upper limit to the autodetected number of threads to use "
                      "for asynchronous tasks (0 == use default)",
-                     new arangodb::options::UInt64Parameter(&_threadsLimit));
+                     new arangodb::options::UInt64Parameter(&_threadsLimit))
+                     .setDeprecatedIn(30800);
+
+  options->addOption("--arangosearch.consolidation-threads",
+                     "the exact number of consolidation threads (0 == autodetect)",
+                     new arangodb::options::UInt64Parameter(&_consolidationThreads));
+  options->addOption("--arangosearch.consolidation-threads",
+                     "the exact number of consolidation threads (0 == autodetect)",
+                     new arangodb::options::UInt64Parameter(&_consolidationThreads));
+  options->addOption("--arangosearch.commit-threads",
+                     "the exact number of commit threads (0 == autodetect)",
+                     new arangodb::options::UInt64Parameter(&_commitThreads));
 }
 
 /*static*/ std::string const& IResearchFeature::name() { return FEATURE_NAME; }
@@ -1018,15 +1041,26 @@ void IResearchFeature::prepare() {
   registerRecoveryHelper(server());
 
   // start the async task thread pool
-  if (!ServerState::instance()->isCoordinator() // not a coordinator
-      && !ServerState::instance()->isAgent()) {
-    auto poolSize = computeThreadPoolSize(_threads, _threadsLimit);
+  if (ServerState::instance()->isDBServer() &&
+      ServerState::instance()->isSingleServer()) {
+    auto commitThreads = _commitThreads;
+    auto consolidationThreads = _consolidationThreads;
 
-    if (_async->poolSize() != poolSize) {
-      _async = std::make_unique<Async>(*this, poolSize, std::move(*_async));
+    if (0 != _threads && 0 == commitThreads && 0 == consolidationThreads) {
+      commitThreads = std::max(_threads/2, UINT64_C(1));
+      consolidationThreads = commitThreads;
     }
 
-    _async->start();
+    commitThreads        = computeThreadPoolSize(commitThreads, _threadsLimit);
+    consolidationThreads = computeThreadPoolSize(consolidationThreads, _threadsLimit);
+
+    _async->get(ThreadGroup::_0).max_threads(commitThreads);
+    _async->get(ThreadGroup::_1).max_threads(consolidationThreads);
+
+    LOG_TOPIC("c1b64", INFO, arangodb::iresearch::TOPIC)
+        << "ArangoSearch maintenance: "
+        << commitThreads << " commit thread(s), "
+        << consolidationThreads << " consolidation thread(s)";
   }
 }
 

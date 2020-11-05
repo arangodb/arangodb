@@ -309,7 +309,8 @@ IResearchView::IResearchView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice
 
     databaseFeature.registerPostRecoveryCallback([view]() -> arangodb::Result {
       auto& viewMutex = view->mutex();
-      SCOPED_LOCK(viewMutex); // ensure view does not get deallocated before call back finishes
+      // ensure view does not get deallocated before call back finishes
+      auto lock = irs::make_lock_guard(viewMutex);
       auto* viewPtr = view->get();
 
       if (viewPtr) {
@@ -331,7 +332,7 @@ IResearchView::IResearchView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice
       return; // NOOP
     }
 
-    SCOPED_LOCK(self->mutex());
+    auto lock = irs::make_lock_guard(self->mutex());
     auto* view = self->get();
 
     // populate snapshot when view is registred with a transaction on single-server
@@ -386,7 +387,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
 
   {
     ReadMutex mutex(_mutex);  // '_meta'/'_links' can be asynchronously modified
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
     arangodb::velocypack::Builder sanitizedBuilder;
 
     sanitizedBuilder.openObject();
@@ -565,7 +566,7 @@ arangodb::Result IResearchView::dropImpl() {
   // drop all known links
   {
     ReadMutex mutex(_mutex);  // '_metaState' can be asynchronously updated
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
 
     for (auto& entry : _links) {
       stale.emplace(entry.first);
@@ -597,7 +598,7 @@ arangodb::Result IResearchView::dropImpl() {
         );
       }
 
-      ADOPT_SCOPED_LOCK_NAMED(_updateLinksLock, lock);
+      auto lock = irs::make_unique_lock(_updateLinksLock, std::adopt_lock);
 
       res = IResearchLinkHelper::updateLinks( // update links
         collections, // modified collection ids
@@ -618,7 +619,7 @@ arangodb::Result IResearchView::dropImpl() {
   _asyncSelf->reset(); // the view data-stores are being deallocated, view use is no longer valid (wait for all the view users to finish)
 
   WriteMutex mutex(_mutex); // members can be asynchronously updated
-  SCOPED_LOCK(mutex);
+  auto lock = irs::make_lock_guard(mutex);
 
   for (auto& entry : _links) {
     collections.emplace(entry.first);
@@ -663,7 +664,8 @@ arangodb::Result IResearchView::link(AsyncLinkPtr const& link) {
     );
   }
 
-  SCOPED_LOCK(link->mutex()); // prevent the link from being deallocated
+  // prevent the link from being deallocated
+  auto linkLock = irs::make_lock_guard(link->mutex());
 
   if (!link->get()) {
     return arangodb::Result( // result
@@ -674,7 +676,7 @@ arangodb::Result IResearchView::link(AsyncLinkPtr const& link) {
 
   auto cid = link->get()->collection().id();
   WriteMutex mutex(_mutex); // '_meta'/'_links' can be asynchronously read
-  SCOPED_LOCK(mutex);
+  auto lock = irs::make_lock_guard(mutex);
   auto itr = _links.find(cid);
 
   if (itr == _links.end()) {
@@ -716,7 +718,7 @@ arangodb::Result IResearchView::link(AsyncLinkPtr const& link) {
 
 arangodb::Result IResearchView::commit() {
   ReadMutex mutex(_mutex); // '_links' can be asynchronously updated
-  SCOPED_LOCK(mutex);
+  auto lock = irs::make_lock_guard(mutex);
 
   for (auto& entry: _links) {
     auto cid = entry.first;
@@ -729,7 +731,8 @@ arangodb::Result IResearchView::commit() {
               name() + "'");
     }
 
-    SCOPED_LOCK(entry.second->mutex()); // ensure link is not deallocated for the duration of the operation
+    // ensure link is not deallocated for the duration of the operation
+    auto lock = irs::make_lock_guard(entry.second->mutex());
     auto* link = entry.second->get();
 
     if (!link) {
@@ -871,7 +874,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
   }
 
   ReadMutex mutex(_mutex);  // '_metaState' can be asynchronously modified
-  SCOPED_LOCK(mutex);
+  auto lock = irs::make_lock_guard(mutex);
 
   try {
     // collect snapshots from all requested links
@@ -936,7 +939,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
 arangodb::Result IResearchView::unlink(DataSourceId cid) noexcept {
   try {
     WriteMutex mutex(_mutex);  // '_links' can be asynchronously read
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
     auto itr = _links.find(cid);
 
     if (itr == _links.end()) {
@@ -995,7 +998,7 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
     }
 
     WriteMutex mutex(_mutex);  // '_meta'/'_metaState' can be asynchronously read
-    SCOPED_LOCK_NAMED(mutex, mtx);
+    auto mtx = irs::make_unique_lock(mutex);
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
     if (!arangodb::ExecContext::current().isSuperuser()) {
@@ -1039,7 +1042,8 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
     // update properties of links
     for (auto& entry: _links) {
       auto& link = entry.second;
-      SCOPED_LOCK(link->mutex()); // prevent the link from being deallocated
+      // prevent the link from being deallocated
+      auto lock = irs::make_lock_guard(link->mutex());
 
       if (link->get()) {
         auto result = link->get()->properties(_meta);
@@ -1065,7 +1069,7 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
     if (partialUpdate) {
       mtx.unlock(); // release lock
 
-      SCOPED_LOCK(_updateLinksLock);
+      auto lock = irs::make_lock_guard(_updateLinksLock);
 
       return IResearchLinkHelper::updateLinks(collections, *this, links);
     }
@@ -1078,7 +1082,7 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
 
     mtx.unlock(); // release lock
 
-    SCOPED_LOCK(_updateLinksLock);
+    auto lock = irs::make_lock_guard(_updateLinksLock);
 
     return IResearchLinkHelper::updateLinks(collections, *this, links, stale);
   } catch (arangodb::basics::Exception& e) {
@@ -1115,7 +1119,7 @@ bool IResearchView::visitCollections( // visit collections
     LogicalView::CollectionVisitor const& visitor // visitor to call
 ) const {
   ReadMutex mutex(_mutex); // '_links' can be asynchronously modified
-  SCOPED_LOCK(mutex);
+  auto lock = irs::make_lock_guard(mutex);
 
   for (auto& entry: _links) {
     if (!visitor(entry.first)) {
@@ -1129,7 +1133,7 @@ bool IResearchView::visitCollections( // visit collections
 void IResearchView::verifyKnownCollections() {
   bool modified = false;
   WriteMutex mutex(_mutex);  // '_links' can be asynchronously read
-  SCOPED_LOCK(mutex);
+  auto lock = irs::make_lock_guard(mutex);
 
   // verify existence of all known links
   for (auto itr = _links.begin(); itr != _links.end();) {

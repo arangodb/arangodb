@@ -307,7 +307,7 @@ irs::analysis::analyzer::ptr construct(
   cached_options_t* options_ptr;
 
   {
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
 
     options_ptr = &(irs::map_utils::try_emplace_update_key(
       cached_state_by_key,
@@ -328,11 +328,10 @@ irs::analysis::analyzer::ptr construct(
 /// @brief create an analyzer based on the supplied cache_key
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr construct(
-  const std::locale& locale
-) {
+    const std::locale& locale) {
   const auto& cache_key = irs::locale_utils::name(locale);
   {
-    SCOPED_LOCK(mutex);
+    auto lock = irs::make_lock_guard(mutex);
     auto itr = cached_state_by_key.find(
       irs::make_hashed_ref(irs::string_ref(cache_key))
     );
@@ -830,7 +829,7 @@ bool make_json_config(
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   try {
     {
-      SCOPED_LOCK(mutex);
+      auto lock = irs::make_lock_guard(mutex);
       auto itr = cached_state_by_key.find(irs::make_hashed_ref(args));
 
       if (itr != cached_state_by_key.end()) {
@@ -934,7 +933,7 @@ text_token_stream::text_token_stream(const options_t& options, const stopwords_t
 }
 
 /*static*/ void text_token_stream::clear_cache() {
-  SCOPED_LOCK(::mutex);
+  auto lock = make_lock_guard(::mutex);
   cached_state_by_key.clear();
 }
 

@@ -78,8 +78,7 @@ struct flush_segment_context {
 };
 
 std::vector<irs::index_file_refs::ref_t> extract_refs(
-    const irs::ref_tracking_directory& dir
-) {
+    const irs::ref_tracking_directory& dir) {
   std::vector<irs::index_file_refs::ref_t> refs;
   // FIXME reserve
 
@@ -542,7 +541,7 @@ segment_reader readers_cache::emplace(const segment_meta& meta) {
   segment_reader cached_reader;
 
   // FIXME consider moving open/reopen out of the scope of the lock
-  SCOPED_LOCK(lock_);
+  auto lock = make_lock_guard(lock_);
   auto& reader = cache_[meta];
 
   cached_reader = std::move(reader); // clear existing reader
@@ -556,20 +555,19 @@ segment_reader readers_cache::emplace(const segment_meta& meta) {
 }
 
 void readers_cache::clear() noexcept {
-  SCOPED_LOCK(lock_);
+  auto lock = make_lock_guard(lock_);
   cache_.clear();
 }
 
 size_t readers_cache::purge(
-    const std::unordered_set<key_t, key_hash_t>& segments
-) noexcept {
+    const std::unordered_set<key_t, key_hash_t>& segments) noexcept {
   if (segments.empty()) {
     return 0;
   }
 
   size_t erased = 0;
 
-  SCOPED_LOCK(lock_);
+  auto lock = make_lock_guard(lock_);
 
   for (auto it = cache_.begin(); it != cache_.end(); ) {
     if (segments.end() != segments.find(it->first)) {
@@ -602,7 +600,7 @@ index_writer::active_segment_context::active_segment_context(
 #ifdef IRESEARCH_DEBUG
   if (flush_ctx) {
     // ensure there are no active struct update operations (only needed for assert)
-    SCOPED_LOCK_NAMED(flush_ctx->mutex_, lock);
+    auto lock = make_lock_guard(flush_ctx->mutex_);
     // assert that flush_ctx and ctx are compatible
     assert(flush_ctx->pending_segment_contexts_[pending_segment_context_offset_].segment_ == ctx_);
   }
@@ -622,7 +620,7 @@ index_writer::active_segment_context::~active_segment_context() {
     ctx_.reset();
 
     try {
-      SCOPED_LOCK(flush_ctx_->mutex_);
+      auto lock = make_lock_guard(flush_ctx_->mutex_);
       flush_ctx_->pending_segment_context_cond_.notify_all();
     } catch (...) {
       // lock may throw
@@ -697,7 +695,9 @@ index_writer::documents_context::document::~document() noexcept {
 
   // optimization to notify any ongoing flush_all() operations so they wake up earlier
   if (!--segment_->active_count_) {
-    TRY_SCOPED_LOCK_NAMED(ctx_.mutex_, lock); // lock due to context modification and notification, note: std::mutex::try_lock() does not throw exceptions as per documentation @see https://en.cppreference.com/w/cpp/named_req/Mutex
+    // lock due to context modification and notification, note: std::mutex::try_lock() does not throw exceptions as per
+    // documentation @see https://en.cppreference.com/w/cpp/named_req/Mutex
+    auto lock = make_unique_lock(ctx_.mutex_, std::try_to_lock);
 
     if (lock.owns_lock()) {
       ctx_.pending_segment_context_cond_.notify_all(); // ignore if lock failed because it imples that flush_all() is not waiting for a notification
@@ -884,10 +884,14 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
   freelist_t::node_type* freelist_node = nullptr;
   size_t generation_base;
   size_t modification_count;
-  DEFER_SCOPED_LOCK_NAMED(ctx.flush_mutex_, flush_lock); // prevent concurrent flush related modifications, i.e. if segment is also owned by another flush_context
+
+  // prevent concurrent flush related modifications,
+  // i.e. if segment is also owned by another flush_context
+  auto flush_lock = make_unique_lock(ctx.flush_mutex_, std::defer_lock);
 
   {
-    SCOPED_LOCK(mutex_); // pending_segment_contexts_ may be asynchronously read
+    // pending_segment_contexts_ may be asynchronously read
+    auto lock = make_lock_guard(mutex_);
 
     // update pending_segment_context
     // this segment_context has not yet been seen by this flush_context
@@ -1047,7 +1051,8 @@ index_writer::segment_context::segment_context(
 }
 
 uint64_t index_writer::segment_context::flush() {
-  SCOPED_LOCK(flush_mutex_); // prevent concurrent flush related modifications
+  // prevent concurrent flush related modifications
+  auto lock = make_lock_guard(flush_mutex_);
 
   if (!writer_ || !writer_->initialized() || !writer_->docs_cached()) {
     return 0; // skip flushing an empty writer
@@ -1240,7 +1245,7 @@ index_writer::index_writer(
 }
 
 void index_writer::clear(uint64_t tick) {
-  SCOPED_LOCK(commit_lock_);
+  auto commit_lock = make_lock_guard(commit_lock_);
 
   if (!pending_state_
       && meta_.empty()
@@ -1249,7 +1254,7 @@ void index_writer::clear(uint64_t tick) {
   }
 
   auto ctx = get_flush_context(false);
-  SCOPED_LOCK(ctx->mutex_); // ensure there are no active struct update operations
+  auto ctx_lock = make_lock_guard(ctx->mutex_); // ensure there are no active struct update operations
 
   auto pending_commit = memory::make_shared<committed_state_t::element_type>(
     std::piecewise_construct,
@@ -1296,7 +1301,7 @@ void index_writer::clear(uint64_t tick) {
   cached_readers_.clear(); // original readers no longer required
 
   // clear consolidating segments
-  SCOPED_LOCK(consolidation_lock_);
+  auto lock = make_lock_guard(consolidation_lock_);
   consolidating_segments_.clear();
 }
 
@@ -1390,7 +1395,8 @@ index_writer::~index_writer() noexcept {
 uint64_t index_writer::buffered_docs() const {
   uint64_t docs_in_ram = 0;
   auto ctx = const_cast<index_writer*>(this)->get_flush_context();
-  SCOPED_LOCK(ctx->mutex_); // 'pending_used_segment_contexts_'/'pending_free_segment_contexts_' may be modified
+  // 'pending_used_segment_contexts_'/'pending_free_segment_contexts_' may be modified
+  auto lock = make_lock_guard(ctx->mutex_);
 
   for (auto& entry: ctx->pending_segment_contexts_) {
     docs_in_ram += entry.segment_->buffered_docs_.load(); // reading segment_writer::docs_count() is not thread safe
@@ -1422,7 +1428,7 @@ bool index_writer::consolidate(
 
   // collect a list of consolidation candidates
   {
-    SCOPED_LOCK(consolidation_lock_);
+    auto lock = make_lock_guard(consolidation_lock_);
     // FIXME TODO remove from 'consolidating_segments_' any segments in 'committed_state_' or 'pending_state_' to avoid data duplication
     policy(candidates, *committed_meta, consolidating_segments_);
 
@@ -1471,7 +1477,7 @@ bool index_writer::consolidate(
     if (candidates.empty()) {
       return;
     }
-    SCOPED_LOCK(consolidation_lock_);
+    auto lock = make_lock_guard(consolidation_lock_);
     for (const auto* candidate : candidates) {
       consolidating_segments_.erase(candidate);
     }
@@ -1537,7 +1543,8 @@ bool index_writer::consolidate(
 
   // commit merge
   {
-    SCOPED_LOCK_NAMED(commit_lock_, lock); // ensure committed_state_ segments are not modified by concurrent consolidate()/commit()
+    // ensure committed_state_ segments are not modified by concurrent consolidate()/commit()
+    auto lock = make_unique_lock(commit_lock_);
     const auto current_committed_meta = committed_state_->first;
     assert(current_committed_meta);
 
@@ -1608,7 +1615,7 @@ bool index_writer::consolidate(
       // no commits happened in since consolidation was started
 
       auto ctx = get_flush_context();
-      SCOPED_LOCK(ctx->mutex_); // lock due to context modification
+      auto ctx_lock = make_lock_guard(ctx->mutex_); // lock due to context modification
 
       lock.unlock(); // can release commit lock, we guarded against commit by locked flush context
 
@@ -1651,7 +1658,7 @@ bool index_writer::consolidate(
       auto unregister_missing_cached_readers = irs::make_finally(std::move(cleanup_cached_readers));
 
       auto ctx = get_flush_context();
-      SCOPED_LOCK(ctx->mutex_); // lock due to context modification
+      auto ctx_lock = make_lock_guard(ctx->mutex_); // lock due to context modification
 
       lock.unlock(); // can release commit lock, we guarded against commit by locked flush context
 
@@ -1772,7 +1779,7 @@ bool index_writer::import(
   auto refs = extract_refs(dir);
 
   auto ctx = get_flush_context();
-  SCOPED_LOCK(ctx->mutex_); // lock due to context modification
+  auto lock = make_lock_guard(ctx->mutex_); // lock due to context modification
 
   ctx->pending_segments_.emplace_back(
     std::move(segment),
@@ -1789,7 +1796,7 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
   if (!shared) {
     for(;;) {
       async_utils::read_write_mutex::write_mutex mutex(ctx->flush_mutex_);
-      SCOPED_LOCK_NAMED(mutex, lock); // lock ctx exchange (write-lock)
+      auto lock = make_unique_lock(mutex); // lock ctx exchange (write-lock)
 
       // aquire the current flush_context and its lock
       if (!flush_context_.compare_exchange_strong(ctx, ctx->next_context_)) {
@@ -1803,7 +1810,7 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
         ctx,
         [](flush_context* ctx) noexcept ->void {
           async_utils::read_write_mutex::write_mutex mutex(ctx->flush_mutex_);
-          ADOPT_SCOPED_LOCK_NAMED(mutex, lock);
+          auto lock = make_unique_lock(mutex, std::adopt_lock);
 
           ctx->reset(); // reset context and make ready for reuse
         }
@@ -1813,7 +1820,7 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
 
   for(;;) {
     async_utils::read_write_mutex::read_mutex mutex(ctx->flush_mutex_);
-    TRY_SCOPED_LOCK_NAMED(mutex, lock); // lock current ctx (read-lock)
+    auto lock = make_unique_lock(mutex, std::try_to_lock); // lock current ctx (read-lock)
 
     if (!lock) {
       std::this_thread::yield(); // allow flushing thread to finish exchange
@@ -1837,7 +1844,7 @@ index_writer::flush_context_ptr index_writer::get_flush_context(bool shared /*= 
       ctx,
       [](flush_context* ctx) noexcept ->void {
         async_utils::read_write_mutex::read_mutex mutex(ctx->flush_mutex_);
-        ADOPT_SCOPED_LOCK_NAMED(mutex, lock);
+        auto lock = make_unique_lock(mutex, std::adopt_lock);
       }
     };
   }
@@ -1897,6 +1904,8 @@ index_writer::active_segment_context index_writer::get_segment_context(
 
 index_writer::pending_context_t index_writer::flush_all() {
   REGISTER_TIMER_DETAILED();
+  using namespace std::chrono_literals;
+
   bool modified = !type_limits<type_t::index_gen_t>::valid(meta_.last_gen_);
   sync_context to_sync;
   document_mask docs_mask;
@@ -1907,7 +1916,7 @@ index_writer::pending_context_t index_writer::flush_all() {
   auto ctx = get_flush_context(false);
   auto& dir = *(ctx->dir_);
   std::vector<std::unique_lock<decltype(segment_context::flush_mutex_)>> segment_flush_locks;
-  SCOPED_LOCK_NAMED(ctx->mutex_, lock); // ensure there are no active struct update operations
+  auto lock = make_unique_lock(ctx->mutex_); // ensure there are no active struct update operations
 
   // register consolidating segments cleanup.
   // we need raw ptr as ctx may be moved
@@ -1917,7 +1926,8 @@ index_writer::pending_context_t index_writer::flush_all() {
       if (ctx_raw->pending_segments_.empty()) {
         return;
       }
-      SCOPED_LOCK(consolidation_lock_);
+      auto lock = make_lock_guard(consolidation_lock_);
+
       for (auto& pending_segment : ctx_raw->pending_segments_) {
         auto& candidates = pending_segment.consolidation_ctx.candidates;
         for (const auto* candidate : candidates) {
@@ -1945,9 +1955,7 @@ index_writer::pending_context_t index_writer::flush_all() {
     // because it was started by a different 'flush_context', i.e. by 'ctx'
     while (entry.segment_->active_count_.load()
            || entry.segment_.use_count() != 1) { // FIXME TODO remove this condition once col_writer tail is writen correctly
-      ctx->pending_segment_context_cond_.wait_for(
-        lock, std::chrono::milliseconds(1000) // arbitrary sleep interval
-      );
+      ctx->pending_segment_context_cond_.wait_for(lock, 1000ms); // arbitrary sleep interval
     }
 
     // FIXME TODO flush_all() blocks flush_context::emplace(...) and insert()/remove()/replace()

@@ -360,13 +360,13 @@ TEST_F(IResearchFeatureTest, test_async_schedule_test_null_resource_mutex) {
   feature.prepare();  // start thread pool
   std::condition_variable cond;
   std::mutex mutex;
-  SCOPED_LOCK_NAMED(mutex, lock);
+  auto lock = irs::make_unique_lock(mutex);
 
   {
     std::shared_ptr<bool> flag(&deallocated,
                                [](bool* ptr) -> void { *ptr = true; });
     feature.async(nullptr, [&cond, &mutex, flag](size_t&, bool) -> bool {
-      SCOPED_LOCK(mutex);
+      auto scopedLock = irs::make_lock_guard(mutex);
       cond.notify_all();
       return false;
     });
@@ -384,13 +384,13 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_null_resource_mutex_value)
   auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(nullptr);
   std::condition_variable cond;
   std::mutex mutex;
-  SCOPED_LOCK_NAMED(mutex, lock);
+  auto lock = irs::make_unique_lock(mutex);
 
   {
     std::shared_ptr<bool> flag(&deallocated,
                                [](bool* ptr) -> void { *ptr = true; });
     feature.async(resourceMutex, [&cond, &mutex, flag](size_t&, bool) -> bool {
-      SCOPED_LOCK(mutex);
+      auto scopedLock = irs::make_lock_guard(mutex);
       cond.notify_all();
       return false;
     });
@@ -408,7 +408,7 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_null_functr) {
       std::make_shared<arangodb::iresearch::ResourceMutex>(&server.server());
   std::condition_variable cond;
   std::mutex mutex;
-  SCOPED_LOCK_NAMED(mutex, lock);
+  auto lock = irs::make_unique_lock(mutex);
 
   feature.async(resourceMutex, {});
   EXPECT_TRUE((std::cv_status::timeout ==
@@ -423,14 +423,14 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_wait_indefinite) {
   std::condition_variable cond;
   std::mutex mutex;
   size_t count = 0;
-  SCOPED_LOCK_NAMED(mutex, lock);
+  auto lock = irs::make_unique_lock(mutex);
 
   {
     std::shared_ptr<bool> flag(&deallocated,
                                [](bool* ptr) -> void { *ptr = true; });
     feature.async(nullptr, [&cond, &mutex, flag, &count](size_t&, bool) -> bool {
       ++count;
-      SCOPED_LOCK(mutex);
+      auto scopedLock = irs::make_lock_guard(mutex);
       cond.notify_all();
       return true;
     });
@@ -452,13 +452,13 @@ TEST_F(IResearchFeatureTest, test_async_single_run_task) {
       std::make_shared<arangodb::iresearch::ResourceMutex>(&server.server());
   std::condition_variable cond;
   std::mutex mutex;
-  SCOPED_LOCK_NAMED(mutex, lock);
+  auto lock = irs::make_unique_lock(mutex);
 
   {
     std::shared_ptr<bool> flag(&deallocated,
                                [](bool* ptr) -> void { *ptr = true; });
     feature.async(resourceMutex, [&cond, &mutex, flag](size_t&, bool) -> bool {
-      SCOPED_LOCK(mutex);
+      auto scopedLock = irs::make_lock_guard(mutex);
       cond.notify_all();
       return false;
     });
@@ -480,7 +480,7 @@ TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
   size_t count = 0;
   auto last = std::chrono::system_clock::now();
   std::chrono::system_clock::duration diff;
-  SCOPED_LOCK_NAMED(mutex, lock);
+  auto lock = irs::make_unique_lock(mutex);
 
   {
     std::shared_ptr<bool> flag(&deallocated,
@@ -491,7 +491,7 @@ TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
                     last = std::chrono::system_clock::now();
                     timeoutMsec = 100;
                     if (++count <= 1) return true;
-                    SCOPED_LOCK(mutex);
+                    auto scopedLock = irs::make_lock_guard(mutex);
                     cond.notify_all();
                     return false;
                   });
@@ -515,7 +515,7 @@ TEST_F(IResearchFeatureTest, test_async_trigger_task_by_notify) {
   std::mutex mutex;
   size_t count = 0;
   auto last = std::chrono::system_clock::now();
-  SCOPED_LOCK_NAMED(mutex, lock);
+  auto lock = irs::make_unique_lock(mutex);
 
   {
     std::shared_ptr<bool> flag(&deallocated,
@@ -523,7 +523,7 @@ TEST_F(IResearchFeatureTest, test_async_trigger_task_by_notify) {
     feature.async(resourceMutex,
                   [&cond, &mutex, flag, &execVal, &count](size_t&, bool exec) -> bool {
                     execVal = exec;
-                    SCOPED_LOCK(mutex);
+                    auto scopedLock = irs::make_lock_guard(mutex);
                     cond.notify_all();
                     return ++count < 2;
                   });
@@ -555,7 +555,7 @@ TEST_F(IResearchFeatureTest, test_async_trigger_by_timeout) {
   std::mutex mutex;
   size_t count = 0;
   auto last = std::chrono::system_clock::now();
-  SCOPED_LOCK_NAMED(mutex, lock);
+  auto lock = irs::make_unique_lock(mutex);
 
   {
     std::shared_ptr<bool> flag(&deallocated,
@@ -563,7 +563,7 @@ TEST_F(IResearchFeatureTest, test_async_trigger_by_timeout) {
     feature.async(resourceMutex,
                   [&cond, &mutex, flag, &execVal, &count](size_t& timeoutMsec, bool exec) -> bool {
                     execVal = exec;
-                    SCOPED_LOCK(mutex);
+                    auto scopedLock = irs::make_lock_guard(mutex);
                     cond.notify_all();
                     timeoutMsec = 100;
                     return ++count < 2;
@@ -592,7 +592,7 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
   bool deallocated = false;
   std::condition_variable cond;
   std::mutex mutex;
-  SCOPED_LOCK_NAMED(mutex, lock);
+  auto lock = irs::make_unique_lock(mutex);
 
   {
     arangodb::iresearch::IResearchFeature feature(server.server());
@@ -601,7 +601,7 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
                                [](bool* ptr) -> void { *ptr = true; });
 
     feature.async(resourceMutex, [&cond, &mutex, flag](size_t& timeoutMsec, bool) -> bool {
-      SCOPED_LOCK(mutex);
+      auto scopedLock = irs::make_lock_guard(mutex);
       cond.notify_all();
       timeoutMsec = 100;
       return true;
@@ -623,7 +623,7 @@ TEST_F(IResearchFeatureTest, test_async_multiple_tasks_with_same_resource_mutex)
   std::condition_variable cond;
   std::mutex mutex;
   size_t count = 0;
-  SCOPED_LOCK_NAMED(mutex, lock);
+  auto lock = irs::make_unique_lock(mutex);
 
   {
     std::shared_ptr<bool> flag(&deallocated0,
@@ -632,7 +632,7 @@ TEST_F(IResearchFeatureTest, test_async_multiple_tasks_with_same_resource_mutex)
                   [&cond, &mutex, flag, &count](size_t& timeoutMsec, bool) -> bool {
                     if (++count > 1) return false;
                     timeoutMsec = 100;
-                    SCOPED_LOCK_NAMED(mutex, lock);
+                    auto lock = irs::make_unique_lock(mutex);
                     cond.notify_all();
                     cond.wait(lock);
                     return true;
@@ -645,7 +645,7 @@ TEST_F(IResearchFeatureTest, test_async_multiple_tasks_with_same_resource_mutex)
   std::this_thread::sleep_for(std::chrono::milliseconds(100));  // hopefully a write-lock aquisition attempt is in progress
 
   {
-    TRY_SCOPED_LOCK_NAMED(resourceMutex->mutex(), resourceLock);
+    auto resourceLock = irs::make_unique_lock(resourceMutex->mutex(), std::try_to_lock);
     EXPECT_FALSE(resourceLock.owns_lock());  // write-lock acquired successfully (read-locks blocked)
   }
 
@@ -670,7 +670,7 @@ TEST_F(IResearchFeatureTest, test_async_multiple_tasks_with_same_resource_mutex)
   //  221   // guaranteed that we can succesfully acquire the mutex here. and if we don't,
   //  222   // there is no guarantee that the notify_all will wake up queued waiter.
   //  223
-  //  224   TRY_SCOPED_LOCK_NAMED(mutex_, lock); // try to acquire mutex for use with cond
+  //  224   auto lock = irs::make_unique_lock(mutex_, std::try_to_lock); // try to acquire mutex for use with cond
   //  225
   //  226   // wake only writers since this is a reader
   //  227   // wake even without lock since writer may be waiting in lock_write() on cond
@@ -698,7 +698,7 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
   size_t count = 0;
   auto last = std::chrono::system_clock::now();
   std::chrono::system_clock::duration diff;
-  SCOPED_LOCK_NAMED(mutex, lock);
+  auto lock = irs::make_unique_lock(mutex);
 
   {
     std::shared_ptr<bool> flag(&deallocated,
@@ -709,7 +709,7 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
                     last = std::chrono::system_clock::now();
                     timeoutMsec = 100;
                     if (++count <= 1) return true;
-                    SCOPED_LOCK(mutex);
+                    auto lock = irs::make_lock_guard(mutex);
                     cond.notify_all();
                     return false;
                   });

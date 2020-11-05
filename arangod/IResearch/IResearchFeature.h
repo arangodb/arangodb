@@ -46,6 +46,13 @@ class ResourceMutex;  // forward declaration
 bool isFilter(arangodb::aql::Function const& func) noexcept;
 bool isScorer(arangodb::aql::Function const& func) noexcept;
 
+struct IResearchAsync;
+
+enum class ThreadGroup : size_t {
+  _0 = 0,
+  _1 = 1
+};
+
 class IResearchFeature final : public application_features::ApplicationFeature {
  public:
   explicit IResearchFeature(arangodb::application_features::ApplicationServer& server);
@@ -63,8 +70,9 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   ///           by notification)
   ///           @return continue/reschedule
   //////////////////////////////////////////////////////////////////////////////
-  void async(std::shared_ptr<ResourceMutex> const& mutex,
-             std::function<bool(size_t& timeoutMsec, bool timeout)>&& fn);
+  void async(ThreadGroup id,
+             std::chrono::steady_clock::duration delay,
+             std::function<void()>&& fn);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief notify all currently running async tasks
@@ -86,8 +94,10 @@ class IResearchFeature final : public application_features::ApplicationFeature {
  private:
   class Async;  // forward declaration
 
-  std::shared_ptr<Async> _async;  // object managing async jobs (never null!!!)
+  std::shared_ptr<IResearchAsync> _async;
   std::atomic<bool> _running;
+  size_t _consolidationThreads;
+  size_t _commitThreads;
   uint64_t _threads;
   uint64_t _threadsLimit;
   std::map<std::type_index, std::shared_ptr<arangodb::IndexTypeFactory>> _factories;

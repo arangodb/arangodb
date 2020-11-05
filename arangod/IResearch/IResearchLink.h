@@ -270,6 +270,9 @@ class IResearchLink {
   Stats stats() const;
 
  private:
+  friend struct CommitTask;
+  friend struct ConsolidationTask;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying iresearch data store
   //////////////////////////////////////////////////////////////////////////////
@@ -288,7 +291,7 @@ class IResearchLink {
       _reader.reset(); 
       _writer.reset();
       _directory.reset();
-    } 
+    }
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -308,10 +311,9 @@ class IResearchLink {
   /// @brief run segment consolidation on the data store
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  Result consolidateUnsafe( // consolidate segments
-    IResearchViewMeta::ConsolidationPolicy const& policy, // policy to apply
-    irs::merge_writer::flush_progress_t const& progress // policy progress to use
-  );
+  Result consolidateUnsafe(
+    IResearchViewMeta::ConsolidationPolicy const& policy,
+    irs::merge_writer::flush_progress_t const& progress);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
@@ -322,9 +324,14 @@ class IResearchLink {
     irs::type_info::type_id primarySortCompression);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief set up asynchronous maintenance tasks
+  /// @brief schedule a commit job
   //////////////////////////////////////////////////////////////////////////////
-  void setupMaintenance();
+  void scheduleCommit();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief schedule a consolidation job
+  //////////////////////////////////////////////////////////////////////////////
+  void scheduleConsolidation();
 
   StorageEngine* _engine;
   VPackComparer _comparer;
