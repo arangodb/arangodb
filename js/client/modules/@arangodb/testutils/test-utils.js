@@ -28,7 +28,7 @@
 /* Modules: */
 const _ = require('lodash');
 const fs = require('fs');
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 const yaml = require('js-yaml');
 
 const toArgv = require('internal').toArgv;
