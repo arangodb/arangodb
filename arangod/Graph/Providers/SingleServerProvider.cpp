@@ -26,6 +26,10 @@
 
 #include "Aql/QueryContext.h"
 #include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
+#include "Transaction/Helpers.h"
+//#include "Graph/TraverserCacheFactory.h" // TODO: remove
+//#include "Graph/TraverserDocumentCache.h" // TODO: remove
+//#include "Cache/CacheManagerFeature.h" // TODO: remove
 
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
@@ -37,43 +41,79 @@ using namespace arangodb::graph;
 
 SingleServerProvider::SingleServerProvider(arangodb::transaction::Methods* trx,
                                            arangodb::aql::QueryContext* queryContext)
-    : _trx(trx), _query(queryContext) {
+    : _trx(trx), _query(queryContext), _cache(RefactoredTraverserCache{trx, queryContext}) {
+  // activateCache(false); // TODO CHECK RefactoredTraverserCache
   buildCursor();
 }
 
 SingleServerProvider::~SingleServerProvider() = default;
 
-auto SingleServerProvider::startVertex(arangodb::velocypack::StringRef vertex,
-                                       bool lazy) -> Step {
+void SingleServerProvider::activateCache(bool enableDocumentCache) {
+  // Do not call this twice.
+  // TRI_ASSERT(_cache == nullptr);
+  // TODO: enableDocumentCache check + opts check + cacheManager check
+  /*
+  if (enableDocumentCache) {
+    auto cacheManager = CacheManagerFeature::MANAGER;
+    if (cacheManager != nullptr) {
+      // TODO CHECK: cacheManager functionality
+      //  std::shared_ptr<arangodb::cache::Cache> cache = cacheManager->createCache(cache::CacheType::Plain);
+      if (cache != nullptr) {
+        TraverserCache(query, options) return new TraverserCache(query, std::move(cache));
+      }
+    }
+    // fallthrough intentional
+  }*/
+  //  _cache = new RefactoredTraverserCache(query());
+}
+
+auto SingleServerProvider::startVertex(arangodb::velocypack::StringRef vertex) -> Step {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Start Vertex:" << vertex;
-  clearCursor(vertex);
-  if (!lazy) {
-    // get data
-    // return step
-  }
-  // if lazy return loosEnd step
-  return Step();  // TODO
+  // Should not clear anything: clearCursor(vertex);
+
+  // Create default initial step
+  return Step(vertex);
 }
 
 auto SingleServerProvider::fetch(std::vector<Step*> const& looseEnds)
     -> futures::Future<std::vector<Step*>> {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Fetching...";
-  std::vector<Step*> result{};
+  std::vector<Step*> result{}; // TODO: Question: Modify inplace or build up new result vector
   result.reserve(looseEnds.size());
-  // for (auto* s : looseEnds) {
-  // Get data
-  // // TODO
+  for (auto* step : looseEnds) {
+    TRI_ASSERT(step->isLooseEnd());
+    auto const& vertex = step->getVertex();
+    _cursor->rearm(vertex.getId(), 0);
+    _cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
+      VertexRef id = _cache.persistString(([&]() -> auto {
+        if (edge.isString()) {
+          return VertexRef(edge);
+        } else {
+          VertexRef other(transaction::helpers::extractFromFromDocument(edge));
+          if (other == vertex.getId()) { // TODO: Check getId
+            other = VertexRef(transaction::helpers::extractToFromDocument(edge));
+          }
+          return other;
+        }
+      })());
+
+      LOG_DEVEL << id; // TODO: remove me - right now just for compilation
+
+      step->setLooseEnd(false);
+      // TODO: Where to emplace results? Should be already part of the cache? Right?
+      // TODO IMPORTANT: Otherwise, what is the best method to store the data itself.
+      //VertexIdentifier match{id, _searchIndex, std::move(eid)};
+      //_shell.emplace(std::move(match));
+    });
+    result.emplace_back(step);
+  }
   return futures::makeFuture(std::move(result));
 }
 
 std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor() {
   return std::make_unique<RefactoredSingleServerEdgeCursor>(trx(), query());
-}
-
-void SingleServerProvider::clearCursor(arangodb::velocypack::StringRef vertex) {
-  _cursor->rearm(vertex, 0);
 }
 
 arangodb::transaction::Methods* SingleServerProvider::trx() const {

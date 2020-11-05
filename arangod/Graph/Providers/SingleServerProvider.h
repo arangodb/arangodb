@@ -25,6 +25,7 @@
 #ifndef ARANGOD_GRAPH_PROVIDERS_SINGLESERVERPROVIDER_H
 #define ARANGOD_GRAPH_PROVIDERS_SINGLESERVERPROVIDER_H 1
 
+#include "Graph/Cache/RefactoredTraverserCache.h"
 #include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
 #include "Graph/Providers/BaseStep.h"
 #include "Transaction/Methods.h"
@@ -50,8 +51,8 @@ class HashedStringRef;
 namespace graph {
 
 struct SingleServerProvider {
-  using VertexType = arangodb::velocypack::HashedStringRef;
-  using VertexRef = arangodb::velocypack::HashedStringRef;
+  using VertexType = arangodb::velocypack::StringRef;
+  using VertexRef = arangodb::velocypack::StringRef; // TODO: Change back to HashRef
 
   enum Direction { FORWARD, BACKWARD };  // TODO check
   enum class LooseEndBehaviour { NEVER, ALLWAYS };
@@ -63,7 +64,7 @@ struct SingleServerProvider {
       explicit Vertex(VertexType v) : _vertex(v){};
 
       void addToBuilder(arangodb::velocypack::Builder& builder) const;
-      VertexRef getId() const;
+      VertexType getId() const;  // TODO hashed?
       VertexType data() const { return _vertex; }
 
       // Make the set work on the VertexRef attribute only
@@ -79,7 +80,7 @@ struct SingleServerProvider {
       VertexType _vertex;
     };
 
-    Step();
+    Step(VertexType v);
     Step(VertexType v, size_t prev, bool isLooseEnd);
     ~Step();
 
@@ -90,6 +91,7 @@ struct SingleServerProvider {
     Vertex getVertex() const { return _vertex; }
 
     bool isLooseEnd() const { return _isLooseEnd; }
+    void setLooseEnd(bool isLooseEnd) { _isLooseEnd = false; }
 
    private:
     Vertex _vertex;
@@ -101,23 +103,24 @@ struct SingleServerProvider {
                        arangodb::aql::QueryContext* queryContext);
   ~SingleServerProvider();
 
-  auto startVertex(arangodb::velocypack::StringRef vertex, bool lazy = false) -> Step;
+  auto startVertex(arangodb::velocypack::StringRef vertex) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;                           // rocks
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;  // index
 
  private:
+  void activateCache(bool enableDocumentCache);
+
   std::unique_ptr<RefactoredSingleServerEdgeCursor> buildCursor();
-  void clearCursor(arangodb::velocypack::StringRef vertex);
-  transaction::Methods* trx() const;
-  arangodb::aql::QueryContext* query() const;
+  [[nodiscard]] transaction::Methods* trx() const;           // TODO nodiscard?
+  [[nodiscard]] arangodb::aql::QueryContext* query() const;  // TODO nodiscard?
 
  private:
   std::unique_ptr<RefactoredSingleServerEdgeCursor> _cursor;
-
- protected:
+  // We DO take responsibility for the Cache (TODO?)
   arangodb::transaction::Methods* _trx;
   arangodb::aql::QueryContext* _query;
+  RefactoredTraverserCache _cache;
 };
 }  // namespace graph
 }  // namespace arangodb

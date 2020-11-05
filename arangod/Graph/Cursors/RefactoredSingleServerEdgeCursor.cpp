@@ -174,6 +174,54 @@ bool RefactoredSingleServerEdgeCursor::advanceCursor(
   return true;
 }
 
+void RefactoredSingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
+  TRI_ASSERT(!_cursors.empty());
+  size_t cursorId = 0;
+  for (_currentCursor = 0; _currentCursor < _cursors.size(); ++_currentCursor) {
+    if (_internalCursorMapping != nullptr) {
+      TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
+      cursorId = _internalCursorMapping->at(_currentCursor);
+    } else {
+      cursorId = _currentCursor;
+    }
+    auto& cursorSet = _cursors[_currentCursor];
+    for (auto& cursor : cursorSet) {
+      LogicalCollection* collection = cursor->collection();
+      auto cid = collection->id();
+      if (cursor->hasExtra()) {
+        cursor->allExtra([&](LocalDocumentId const& token, VPackSlice edge) {
+#ifdef USE_ENTERPRISE
+          if (_trx->skipInaccessible() &&
+              CheckInaccessible(_trx, edge)) {
+            return false;
+          }
+#endif
+          callback(EdgeDocumentToken(cid, token), edge, cursorId);
+          return true;
+        });
+      } else {
+        cursor->all([&](LocalDocumentId const& token) {
+          return collection->readDocumentWithCallback(_trx, token, [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+#ifdef USE_ENTERPRISE
+            if (_trx->skipInaccessible()) {
+              // TODO: we only need to check one of these
+              VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
+              VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
+              if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
+                return false;
+              }
+            }
+#endif
+            // _opts->cache()->increaseCounter(); TODO CHECK
+            callback(EdgeDocumentToken(cid, token), edgeDoc, cursorId);
+            return true;
+          });
+        });
+      }
+    }
+  }
+}
+
 bool RefactoredSingleServerEdgeCursor::next(Callback const& callback) {
   // fills callback with next EdgeDocumentToken and Slice that contains the
   // ohter side of the edge (we are standing on a node and want to iterate all

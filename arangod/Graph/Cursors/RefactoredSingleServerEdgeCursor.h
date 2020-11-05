@@ -113,6 +113,8 @@ class RefactoredSingleServerEdgeCursor {
  public:
   bool next(Callback const& callback);
 
+  void readAll(Callback const& callback);
+
   void rearm(arangodb::velocypack::StringRef vertex, uint64_t depth);
 
  private:
