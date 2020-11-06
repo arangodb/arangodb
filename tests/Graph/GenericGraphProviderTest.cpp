@@ -62,6 +62,8 @@ class GraphProviderTest : public ::testing::Test {
       singleServer =
           std::make_unique<MockGraphDatabase>(s->server, "testVocbase");
       singleServer->addGraph(graph);
+
+      // We now have collections "v" and "e"
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -73,7 +75,7 @@ TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
   MockGraph empty{};
 
   auto testee = this->makeProvider(empty);
-  std::string startString = "0";
+  std::string startString = "v/0";
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
   auto start = testee.startVertex(startH);
@@ -86,14 +88,14 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
   g.addEdge(0, 1);
 
   auto testee = this->makeProvider(g);
-  std::string startString = "0";
+  std::string startString = "v/0";
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
   auto start = testee.startVertex(startH);
   auto res = testee.expand(start, 0);
   ASSERT_EQ(res.size(), 1);
   auto const& f = res.front();
-  EXPECT_EQ(f.getVertex().data().toString(), "1");
+  EXPECT_EQ(f.getVertex().data().toString(), "v/1");
   EXPECT_EQ(f.getPrevious(), 0);
 }
 
@@ -105,7 +107,7 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
   std::unordered_set<std::string> found{};
 
   auto testee = this->makeProvider(g);
-  std::string startString = "0";
+  std::string startString = "v/0";
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
   auto start = testee.startVertex(startH);
@@ -116,8 +118,8 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
     EXPECT_EQ(f.getPrevious(), 0);
     auto const& v = f.getVertex().data().toString();
     // We can only range from 1 to 3
-    EXPECT_GE(v, "1");
-    EXPECT_LE(v, "3");
+    EXPECT_GE(v, "v/1");
+    EXPECT_LE(v, "v/3");
     // We need to find each exactly once
     auto const [_, didInsert] = found.emplace(v);
     EXPECT_TRUE(didInsert);
