@@ -231,11 +231,35 @@ void BenchFeature::start() {
         << "file already exists: '" << _jsonReportFile << "' - won't overwrite it.";
     FATAL_ERROR_EXIT();
   }
-    
   ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
   client.setRetries(3);
   client.setWarn(true);
 
+  if (_createDatabase) {
+    auto connectDB = client.databaseName();
+    client.setDatabaseName("_system");
+    auto createDbClient = client.createHttpClient();
+    auto createStr = std::string("{\"name\":\"") + connectDB + "\"}";
+    auto result = createDbClient->request(rest::RequestType::POST,
+                                          "/_api/database",
+                                          createStr.c_str(),
+                                          createStr.length());
+
+    if (!result || !result->isComplete()) {
+      std::string msg;
+      if (result) {
+        msg = result->getHttpReturnMessage();
+        delete result;
+      }
+
+      LOG_TOPIC("5cda8", FATAL, arangodb::Logger::FIXME)
+        << "failed to create the specified database " << msg;
+      FATAL_ERROR_EXIT();
+    }
+
+    delete result;
+    client.setDatabaseName(connectDB);
+  }
   int ret = EXIT_SUCCESS;
 
   *_result = ret;
