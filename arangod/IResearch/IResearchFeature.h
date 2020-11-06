@@ -40,44 +40,36 @@ struct Function;
 
 namespace iresearch {
 
-class IResearchLink; // forward declaration
-class ResourceMutex;  // forward declaration
+struct IResearchAsync;
+class IResearchLink;
+class ResourceMutex;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @enum ThreadGroup
+/// @brief there are 2 thread groups for execution of asynchronous maintenance
+///        jobs.
+////////////////////////////////////////////////////////////////////////////////
+enum class ThreadGroup : size_t { _0 = 0, _1 };
 
 bool isFilter(arangodb::aql::Function const& func) noexcept;
 bool isScorer(arangodb::aql::Function const& func) noexcept;
 
-struct IResearchAsync;
-
-enum class ThreadGroup : size_t {
-  _0 = 0,
-  _1 = 1
-};
-
+////////////////////////////////////////////////////////////////////////////////
+/// @class IResearchFeature
+////////////////////////////////////////////////////////////////////////////////
 class IResearchFeature final : public application_features::ApplicationFeature {
  public:
   explicit IResearchFeature(arangodb::application_features::ApplicationServer& server);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief execute an asynchronous task
-  /// @note each task will be invoked by its first of timeout or 'asyncNotify()'
-  /// @param mutex a mutex to check/prevent resource deallocation (nullptr ==
-  /// not required)
+  /// @brief schedule an asynchronous task for execution
+  /// @param id thread group to handle the execution
   /// @param fn the function to execute
-  ///           @param timeoutMsec how log to sleep in msec before the next
-  ///           iteration (0 == sleep until previously set timeout or until
-  ///           notification if first run)
-  ///           @param timeout the timeout has been reached (false == triggered
-  ///           by notification)
-  ///           @return continue/reschedule
+  /// @param delay how log to sleep in before the next
   //////////////////////////////////////////////////////////////////////////////
-  void async(ThreadGroup id,
+  void queue(ThreadGroup id,
              std::chrono::steady_clock::duration delay,
              std::function<void()>&& fn);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief notify all currently running async tasks
-  //////////////////////////////////////////////////////////////////////////////
-  void asyncNotify() const;
 
   void beginShutdown() override;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -92,8 +84,6 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   IndexTypeFactory& factory();
 
  private:
-  class Async;  // forward declaration
-
   std::shared_ptr<IResearchAsync> _async;
   std::atomic<bool> _running;
   size_t _consolidationThreads;

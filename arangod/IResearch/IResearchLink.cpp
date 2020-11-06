@@ -261,17 +261,24 @@ namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct Task
-/// @brief base class for async maintenance tasks
+/// @brief base class for asynchronous maintenance tasks
 ////////////////////////////////////////////////////////////////////////////////
 template<ThreadGroup Id, typename T>
 struct Task {
-  void reschedule(std::chrono::milliseconds delay) const {
-    async->async(Id, delay, static_cast<const T&>(*this));
+  void schedule(std::chrono::milliseconds delay) const {
+    LOG_TOPIC("eb0da", DEBUG, iresearch::TOPIC)
+        << "scheduled a task to thread group '" << static_cast<size_t>(Id)
+        << "' for arangosearch link '" << id
+        << "', delay '" << delay.count() << "'";
+
+    async->queue(Id, delay, static_cast<const T&>(*this));
   }
 
   IResearchFeature* async;
   std::shared_ptr<TypedResourceMutex<IResearchLink>> link;
-};
+  std::chrono::steady_clock::time_point last{ std::chrono::steady_clock::now() };
+  IndexId id;
+}; // Task
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct CommitTask
@@ -279,16 +286,11 @@ struct Task {
 /// @note thread group 0 is dedicated to commit
 ////////////////////////////////////////////////////////////////////////////////
 struct CommitTask : Task<ThreadGroup::_0, CommitTask> {
-  struct State {
-    size_t _cleanupIntervalCount{};
-    size_t _commitIntervalMsec{};
-    size_t _cleanupIntervalStep{};
-    std::chrono::system_clock::time_point _last{ std::chrono::system_clock::now() };
-  };
-
   void operator()();
 
-  State state;
+  size_t cleanupIntervalCount{};
+  size_t commitIntervalMsec{};
+  size_t cleanupIntervalStep{};
 }; // CommitTask
 
 void CommitTask::operator()() {
@@ -312,25 +314,25 @@ void CommitTask::operator()() {
     auto lock = irs::make_lock_guard(mutex);
     auto& meta = link->_dataStore._meta;
 
-    state._commitIntervalMsec = meta._commitIntervalMsec;
-    state._cleanupIntervalStep = meta._cleanupIntervalStep;
+    commitIntervalMsec = meta._commitIntervalMsec;
+    cleanupIntervalStep = meta._cleanupIntervalStep;
   }
 
-  if (!state._commitIntervalMsec) {
+  if (!commitIntervalMsec) {
     // task not enabled
     return;
   }
 
   size_t usedMsec = std::chrono::duration_cast<std::chrono::milliseconds>(
-    std::chrono::system_clock::now() - state._last).count();
+    std::chrono::steady_clock::now() - last).count();
 
-  if (usedMsec < state._commitIntervalMsec) {
+  if (usedMsec < commitIntervalMsec) {
     // still need to sleep, reschedule (with possibly updated '_commitIntervalMsec')
-    reschedule(std::chrono::milliseconds(state._commitIntervalMsec - usedMsec));
+    schedule(std::chrono::milliseconds(commitIntervalMsec - usedMsec));
     return;
   }
 
-  state._last = std::chrono::system_clock::now(); // remember last task start time
+  last = std::chrono::steady_clock::now(); // remember last task start time
 
   auto res = link->commitUnsafe(false); // run commit ('_asyncSelf' locked by async task)
 
@@ -338,9 +340,9 @@ void CommitTask::operator()() {
     LOG_TOPIC("8377b", WARN, iresearch::TOPIC)
         << "error while committing arangosearch link '" << link->id()
         << "': " << res.errorNumber() << " " << res.errorMessage();
-  } else if (state._cleanupIntervalStep // if enabled
-             && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
-    state._cleanupIntervalCount = 0; // reset counter
+  } else if (cleanupIntervalStep // if enabled
+             && cleanupIntervalCount++ > cleanupIntervalStep) {
+    cleanupIntervalCount = 0; // reset counter
     res = link->cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
 
     if (!res.ok()) {
@@ -350,7 +352,7 @@ void CommitTask::operator()() {
     }
   }
 
-  reschedule(std::chrono::milliseconds(state._commitIntervalMsec));
+  schedule(std::chrono::milliseconds(commitIntervalMsec));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -359,16 +361,11 @@ void CommitTask::operator()() {
 /// @note thread group 1 is dedicated to commit
 ////////////////////////////////////////////////////////////////////////////////
 struct ConsolidationTask : Task<ThreadGroup::_1, ConsolidationTask> {
-  struct State {
-    IResearchViewMeta::ConsolidationPolicy _consolidationPolicy;
-    size_t _consolidationIntervalMsec{};
-    std::chrono::system_clock::time_point _last{ std::chrono::system_clock::now() };
-  };
-
   void operator()();
 
-  State state;
-  irs::merge_writer::flush_progress_t _progress;
+  irs::merge_writer::flush_progress_t progress;
+  IResearchViewMeta::ConsolidationPolicy consolidationPolicy;
+  size_t consolidationIntervalMsec{};
 }; // ConsolidationTask
 
 void ConsolidationTask::operator()() {
@@ -392,29 +389,28 @@ void ConsolidationTask::operator()() {
     auto lock = irs::make_lock_guard(mutex);
     auto& meta = link->_dataStore._meta;
 
-    state._consolidationPolicy = meta._consolidationPolicy;
-    state._consolidationIntervalMsec = meta._consolidationIntervalMsec;
+    consolidationPolicy = meta._consolidationPolicy;
+    consolidationIntervalMsec = meta._consolidationIntervalMsec;
   }
 
-  if (!state._consolidationIntervalMsec // disabled via interval
-      || !state._consolidationPolicy.policy()) { // disabled via policy
+  if (!consolidationIntervalMsec // disabled via interval
+      || !consolidationPolicy.policy()) { // disabled via policy
     return;
   }
 
   size_t usedMsec = std::chrono::duration_cast<std::chrono::milliseconds>(
-    std::chrono::system_clock::now() - state._last).count();
+    std::chrono::steady_clock::now() - last).count();
 
-  if (usedMsec < state._consolidationIntervalMsec) {
+  if (usedMsec < consolidationIntervalMsec) {
     // reschedule (with possibly updated '_consolidationIntervalMsec')
-    reschedule(std::chrono::milliseconds(state._consolidationIntervalMsec - usedMsec));
-
+    schedule(std::chrono::milliseconds(consolidationIntervalMsec - usedMsec));
     return;
   }
 
-  state._last = std::chrono::system_clock::now(); // remember last task start time
+  last = std::chrono::steady_clock::now(); // remember last task start time
 
   // run consolidation ('_asyncSelf' locked by async task)
-  auto res = link->consolidateUnsafe(state._consolidationPolicy, _progress);
+  auto res = link->consolidateUnsafe(consolidationPolicy, progress);
 
   if (!res.ok()) {
     LOG_TOPIC("bce4f", DEBUG, iresearch::TOPIC)
@@ -422,7 +418,7 @@ void ConsolidationTask::operator()() {
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
 
-  reschedule(std::chrono::milliseconds(state._consolidationIntervalMsec));
+  schedule(std::chrono::milliseconds(consolidationIntervalMsec));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -452,7 +448,7 @@ irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeatu
 
 IResearchLink::IResearchLink(arangodb::IndexId iid, LogicalCollection& collection)
     : _engine(nullptr),
-      _asyncFeature(&_collection.vocbase().server().getFeature<IResearchFeature>()),
+      _asyncFeature(&collection.vocbase().server().getFeature<IResearchFeature>()),
       _asyncSelf(irs::memory::make_unique<AsyncLinkPtr::element_type>(nullptr)),  // mark as data store not initialized
       _asyncTerminate(false),
       _collection(collection),
@@ -942,11 +938,6 @@ Result IResearchLink::drop() {
   }
 
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
-
-  if (_asyncFeature) {
-    _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
-  }
-
   _flushSubscription.reset(); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
@@ -1191,11 +1182,6 @@ Result IResearchLink::initDataStore(
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
     irs::type_info::type_id primarySortCompression) {
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
-
-  if (_asyncFeature) {
-    _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
-  }
-
   _flushSubscription.reset(); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
@@ -1441,30 +1427,30 @@ Result IResearchLink::initDataStore(
         flushFeature.registerFlushSubscription(link->_flushSubscription);
 
         // setup asynchronous tasks for commit, consolidation, cleanup
-        link->scheduleCommit();
-        link->scheduleConsolidation();
+        link->scheduleCommit(0ms);
+        link->scheduleConsolidation(0ms);
 
         return res;
       });
 }
 
-void IResearchLink::scheduleCommit() {
+void IResearchLink::scheduleCommit(std::chrono::milliseconds delay) {
   CommitTask task;
   task.link = _asyncSelf;
   task.async = _asyncFeature;
+  task.id = id();
 
-  // group 0 is reserved for commit
-  _asyncFeature->async(ThreadGroup::_0, 0ms, task);
+  task.schedule(delay);
 }
 
-void IResearchLink::scheduleConsolidation() {
+void IResearchLink::scheduleConsolidation(std::chrono::milliseconds delay) {
   ConsolidationTask task;
   task.link = _asyncSelf;
   task.async = _asyncFeature;
-  task._progress = [this]()->bool { return !_asyncTerminate.load(); };
+  task.id = id();
+  task.progress = [this]()->bool { return !_asyncTerminate.load(); };
 
-  // group 1 is reserved for consolidation
-  _asyncFeature->async(ThreadGroup::_1, 0ms, task);
+  task.schedule(delay);
 }
 
 Result IResearchLink::insert(
@@ -1649,12 +1635,16 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
   {
     WriteMutex mutex(_dataStore._mutex); // '_meta' can be asynchronously read
     auto lock = irs::make_lock_guard(mutex);
+
     _dataStore._meta = meta;
   }
 
-  // FIXME reschedule tasks if needed
-  if (_asyncFeature) {
-    _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
+  if (meta._commitIntervalMsec) {
+    scheduleCommit(std::chrono::milliseconds(meta._commitIntervalMsec));
+  }
+
+  if (meta._consolidationIntervalMsec && meta._commitIntervalMsec) {
+    scheduleConsolidation(std::chrono::milliseconds(meta._consolidationIntervalMsec));
   }
 
   irs::index_writer::segment_options properties;
@@ -1811,11 +1801,6 @@ Result IResearchLink::unload() {
   }
 
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
-
-  if (_asyncFeature) {
-    _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
-  }
-
   _flushSubscription.reset(); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 

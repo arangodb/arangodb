@@ -625,6 +625,10 @@ void IResearchLogTopic::log_appender(void* /*context*/, const char* function, co
 namespace arangodb {
 namespace iresearch {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class IResearchAsync
+/// @brief helper class for holding thread groups
+////////////////////////////////////////////////////////////////////////////////
 class IResearchAsync{
  public:
   using ThreadPool = irs::async_utils::thread_pool;
@@ -646,7 +650,7 @@ class IResearchAsync{
  private:
   ThreadPool _0{0, 0, "ARS-0"};
   ThreadPool _1{0, 0, "ARS-1"};
-}; // IResearchMaintenance
+}; // IResearchAsync
 
 bool isFilter(arangodb::aql::Function const& func) noexcept {
   return func.implementation == &dummyFilterFunc ||
@@ -666,298 +670,6 @@ bool isScorer(arangodb::aql::Function const& func) noexcept {
   return func.implementation == &dummyScorerFunc;
 }
 
-class IResearchFeature::Async {
- public:
-  typedef std::function<bool(size_t& timeoutMsec, bool timeout)> Fn;
-
-  Async(size_t consolidationPoolSize, size_t commitPoolSize);
-  ~Async();
-
-  void emplace(std::shared_ptr<ResourceMutex> const& mutex,
-               Fn&& fn);  // add an asynchronous task
-  void notify() const;    // notify all tasks
-  size_t poolSize() { return _pool.size(); }
-  void start();
-
- private:
-  struct Pending {
-    Fn _fn;                                 // the function to execute
-    std::shared_ptr<ResourceMutex> _mutex;  // mutex for the task resources
-    std::chrono::system_clock::time_point _timeout;  // when the task should be notified
-                                                     // (std::chrono::milliseconds::max() == disabled)
-
-    Pending(std::shared_ptr<ResourceMutex> const& mutex, Fn&& fn)
-        : _fn(std::move(fn)),
-          _mutex(mutex),
-          _timeout(std::chrono::system_clock::time_point::max()) {}
-  };
-
-  struct Task : public Pending {
-    std::unique_lock<ReadMutex> _lock;  // prevent resource deallocation
-
-    explicit Task(Pending&& pending) : Pending(std::move(pending)) {}
-  };
-
-  struct Thread : public arangodb::Thread {
-    mutable std::condition_variable _cond;  // trigger task run
-    mutable std::mutex _mutex;  // mutex used with '_cond' and '_pending'
-    Thread* _next;  // next thread in circular-list (never null!!!) (need to
-                    // store pointer for move-assignment)
-    std::vector<Pending> _pending;  // pending tasks
-    std::atomic<size_t> _size;  // approximate size of the active+pending task list
-    std::vector<Task> _tasks;       // the tasks to perform
-    std::atomic<bool>* _terminate;  // trigger termination of this thread (need
-                                    // to store pointer for move-assignment)
-    mutable bool _wasNotified;  // a notification was raised from another thread
-
-    explicit Thread(arangodb::application_features::ApplicationServer& server,
-                    std::string const& name)
-        : arangodb::Thread(server, name),
-          _next(nullptr),
-          _terminate(nullptr),
-          _wasNotified(false) {}
-    Thread(Thread&& other)  // used in constructor before tasks are started
-        : arangodb::Thread(other._server, other.name()),
-          _next(nullptr),
-          _terminate(nullptr),
-          _wasNotified(false) {}
-    ~Thread() { shutdown(); }
-    virtual bool isSystem() const override {
-      return true;
-    }  // or start(...) will fail
-    virtual void run() override;
-  };
-
-  irs::async_utils::thread_pool _consolidationPool;
-  irs::async_utils::thread_pool _commitPool;
-
-  arangodb::basics::ConditionVariable _join;  // mutex to join on
-  std::vector<Thread> _pool;  // thread pool (size fixed for the entire life of object)
-  std::atomic<bool> _terminate;  // unconditionally terminate async tasks
-
-  void stop(Thread* redelegate = nullptr);
-};
-
-void IResearchFeature::Async::Thread::run() {
-  std::vector<Pending> pendingRedelegate;
-  std::chrono::system_clock::time_point timeout;
-  bool timeoutSet = false;
-
-  for (;;) {
-    bool onlyPending;
-    auto pendingStart = _tasks.size();
-
-    {
-      // acquire before '_terminate' check so that don't miss notify()
-      auto lock = irs::make_unique_lock(_mutex);
-
-      if (_terminate->load()) {
-        break;  // termination requested
-      }
-
-      // transfer any new pending tasks into active tasks
-      for (auto& pending : _pending) {
-        _tasks.emplace_back(std::move(pending));  // will acquire resource lock
-
-        auto& task = _tasks.back();
-
-        if (task._mutex) {
-          task._lock = std::unique_lock<ReadMutex>(task._mutex->mutex(), std::try_to_lock);
-
-          if (!task._lock.owns_lock()) {
-            // if can't lock 'task._mutex' then reassign the task to the next
-            // worker
-            pendingRedelegate.emplace_back(std::move(task));
-          } else if (*(task._mutex)) {
-            continue;  // resourceMutex acquisition successful
-          }
-
-          _tasks.pop_back();  // resource no longer valid
-        }
-      }
-
-      _pending.clear();
-      _size.store(_tasks.size());
-
-      // do not sleep if a notification was raised or pending tasks were added
-      if (_wasNotified || pendingStart < _tasks.size() || !pendingRedelegate.empty()) {
-        timeout = std::chrono::system_clock::now();
-        timeoutSet = true;
-      }
-
-      // sleep until timeout
-      if (!timeoutSet) {
-        _cond.wait(lock);  // wait forever
-      } else {
-        _cond.wait_until(lock, timeout);  // wait for timeout or notify
-      }
-
-      onlyPending = !_wasNotified; // process all tasks if a notification was raised
-      _wasNotified = false;  // ignore notification since woke up
-
-      if (_terminate->load()) {  // check again after sleep
-        break;                   // termination requested
-      }
-    }
-
-    timeoutSet = false;
-
-    // transfer some tasks to '_next' if have too many
-    if (!pendingRedelegate.empty() ||
-        (_size.load() > _next->_size.load() * 2 && _tasks.size() > 1)) {
-      {
-        auto lock = irs::make_lock_guard(_next->_mutex);
-
-        // reassign to '_next' tasks that failed resourceMutex aquisition
-        while (!pendingRedelegate.empty()) {
-          _next->_pending.emplace_back(std::move(pendingRedelegate.back()));
-          pendingRedelegate.pop_back();
-          ++_next->_size;
-        }
-
-        // transfer some tasks to '_next' if have too many
-        while (_size.load() > _next->_size.load() * 2 && _tasks.size() > 1) {
-          _next->_pending.emplace_back(std::move(_tasks.back()));
-          _tasks.pop_back();
-          ++_next->_size;
-          --_size;
-        }
-      }
-      _next->_cond.notify_all();  // notify thread about a new task (thread may
-                                  // be sleeping indefinitely)
-    }
-
-    onlyPending &= (pendingStart < _tasks.size());
-
-    for (size_t i = onlyPending ? pendingStart : 0,
-                count = _tasks.size();  // optimization to skip previously run
-                                        // tasks if a notification was not raised
-         i < count;) {
-      auto& task = _tasks[i];
-      auto exec = std::chrono::system_clock::now() >= task._timeout;
-      size_t timeoutMsec = 0;  // by default reschedule for the same time span
-
-      try {
-        if (!task._fn(timeoutMsec, exec)) {
-          if (i + 1 < count) {
-            std::swap(task, _tasks[count - 1]);  // swap 'i' with tail
-          }
-
-          _tasks.pop_back();  // remove stale tail
-          --count;
-
-          continue;
-        }
-      } catch (...) {
-        LOG_TOPIC("d43ee", WARN, arangodb::iresearch::TOPIC)
-            << "caught error while executing asynchronous task";
-        IR_LOG_EXCEPTION();
-        timeoutMsec = 0;  // sleep until previously set timeout
-      }
-
-      // task reschedule time modification requested
-      if (timeoutMsec) {
-        task._timeout = std::chrono::system_clock::now() +
-                        std::chrono::milliseconds(timeoutMsec);
-      }
-
-      timeout = timeoutSet ? std::min(timeout, task._timeout) : task._timeout;
-      timeoutSet = true;
-      ++i;
-    }
-  }
-
-  // ...........................................................................
-  // move all tasks back into _pending in case the may need to be reassigned
-  // ...........................................................................
-
-  // '_pending' may be modified asynchronously
-  auto lock = irs::make_unique_lock(_mutex);
-
-  for (auto& task : pendingRedelegate) {
-    _pending.emplace_back(std::move(task));
-  }
-
-  for (auto& task : _tasks) {
-    _pending.emplace_back(std::move(task));
-  }
-
-  _tasks.clear();
-}
-
-IResearchFeature::Async::Async(
-    size_t consolidationPoolSize,
-    size_t commitPoolSize)
-  : _consolidationPool(consolidationPoolSize, consolidationPoolSize, "ARS-Consolidation"),
-    _commitPool(commitPoolSize, commitPoolSize, "ARS-Commit"),
-    _terminate(false) {
-  // need at least one thread
-  TRI_ASSERT(consolidationPoolSize);
-  TRI_ASSERT(commitPoolSize);
-}
-
-IResearchFeature::Async::~Async() {
-  try {
-    stop();
-  } catch (...) { }
-}
-
-void IResearchFeature::Async::emplace(std::shared_ptr<ResourceMutex> const& mutex, Fn&& fn) {
-  if (!fn) {
-    return;  // skip empty functers
-  }
-
-  auto& thread = _pool[0];
-  {
-    auto lock = irs::make_lock_guard(thread._mutex);
-    thread._pending.emplace_back(mutex, std::move(fn));
-    ++thread._size;
-  }
-  thread._cond.notify_all();  // notify thread about a new task (thread may be
-                              // sleeping indefinitely)
-}
-
-void IResearchFeature::Async::notify() const {
-  // notify all threads
-  for (auto& thread : _pool) {
-    auto lock = irs::make_lock_guard(thread._mutex);
-    thread._cond.notify_all();
-    thread._wasNotified = true;
-  }
-}
-
-void IResearchFeature::Async::stop(Thread* redelegate /*= nullptr*/) {
-  _terminate.store(true);  // request stop asynchronous tasks
-  notify();                // notify all threads
-
-  CONDITION_LOCKER(lock, _join);
-
-  // join with all threads in pool
-  for (auto& thread : _pool) {
-    if (thread.hasStarted()) {
-      while (thread.isRunning()) {
-        _join.wait();
-      }
-    }
-
-    // redelegate all thread tasks if requested
-    if (redelegate) {
-      {
-        auto lock = irs::make_lock_guard(redelegate->_mutex);
-
-        for (auto& task : thread._pending) {
-          redelegate->_pending.emplace_back(std::move(task));
-          ++redelegate->_size;
-        }
-
-        thread._pending.clear();
-      }
-      redelegate->_cond.notify_all();  // notify thread about a new task (thread
-                                       // may be sleeping indefinitely)
-    }
-  }
-}
-
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer& server)
     : ApplicationFeature(server, IResearchFeature::name()),
       _async(std::make_unique<IResearchAsync>()),
@@ -967,21 +679,17 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
       _threads(0),
       _threadsLimit(0) {
   setOptional(true);
-  startsAfter<arangodb::application_features::V8FeaturePhase>();
-
-  startsAfter<IResearchAnalyzerFeature>();  // used for retrieving IResearch
-                                            // analyzers for functions
-  startsAfter<arangodb::aql::AqlFunctionFeature>();
+  startsAfter<application_features::V8FeaturePhase>();
+  startsAfter<IResearchAnalyzerFeature>();
+  startsAfter<aql::AqlFunctionFeature>();
 }
 
-void IResearchFeature::async(
+void IResearchFeature::queue(
     ThreadGroup id,
     std::chrono::steady_clock::duration delay,
     std::function<void()>&& fn) {
   _async->get(id).run(std::move(fn), delay);
 }
-
-void IResearchFeature::asyncNotify() const { /*_async->notify();*/ }
 
 void IResearchFeature::beginShutdown() {
   _running.store(false);
@@ -1041,7 +749,7 @@ void IResearchFeature::prepare() {
   registerRecoveryHelper(server());
 
   // start the async task thread pool
-  if (ServerState::instance()->isDBServer() &&
+  if (ServerState::instance()->isDBServer() ||
       ServerState::instance()->isSingleServer()) {
     auto commitThreads = _commitThreads;
     auto consolidationThreads = _consolidationThreads;
