@@ -294,10 +294,17 @@ struct CommitTask : Task<ThreadGroup::_0, CommitTask> {
 }; // CommitTask
 
 void CommitTask::operator()() {
+  const char runId = 0;
   auto linkLock = irs::make_unique_lock(link->mutex(), std::try_to_lock);
 
-  if (!linkLock.owns_lock() // failed to acquire the lock, reschedule
-      || !(*link)) {        // link is no longer valid
+  if (!linkLock.owns_lock()) {
+    LOG_TOPIC("eb0de", DEBUG, iresearch::TOPIC)
+        << "failed to acquire the lock while committing the link '" << id
+        << ", runId '" << size_t(&runId) << "'";
+    return;
+  } else if (!(*link)) {
+    LOG_TOPIC("eb0du", DEBUG, iresearch::TOPIC)
+        << "link '" << id << " is no longer valid, runId '" << size_t(&runId) << "'";
     return;
   }
 
@@ -369,10 +376,17 @@ struct ConsolidationTask : Task<ThreadGroup::_1, ConsolidationTask> {
 }; // ConsolidationTask
 
 void ConsolidationTask::operator()() {
+  const char runId = 0;
   auto linkLock = irs::make_unique_lock(link->mutex(), std::try_to_lock);
 
-  if (!linkLock.owns_lock() // failed to acquire the lock, reschedule
-      || !(*link)) {        // link is no longer valid
+  if (!linkLock.owns_lock()) {
+    LOG_TOPIC("eb0dc", DEBUG, iresearch::TOPIC)
+        << "failed to acquire the lock while consolidating the link '" << id
+        << ", run id '" << size_t(&runId) << "'";
+    return;
+  } else if (!(*link)) {
+    LOG_TOPIC("eb0d1", DEBUG, iresearch::TOPIC)
+        << "link '" << id << " is no longer valid, run id '" << size_t(&runId) << "'";
     return;
   }
 
@@ -410,12 +424,17 @@ void ConsolidationTask::operator()() {
   last = std::chrono::steady_clock::now(); // remember last task start time
 
   // run consolidation ('_asyncSelf' locked by async task)
-  auto res = link->consolidateUnsafe(consolidationPolicy, progress);
+  auto const res = link->consolidateUnsafe(consolidationPolicy, progress);
 
-  if (!res.ok()) {
+  if (res.ok()) {
+    LOG_TOPIC("7e828", DEBUG, iresearch::TOPIC)
+        << "successful consolidation of arangosearch link '" << link->id()
+        << "', run id '" << size_t(&runId) << "'";
+  } else {
     LOG_TOPIC("bce4f", DEBUG, iresearch::TOPIC)
         << "error while consolidating arangosearch link '" << link->id()
-        << "': " << res.errorNumber() << " " << res.errorMessage();
+        << "', run id '" << size_t(&runId)
+        << "':" << res.errorNumber() << " " << res.errorMessage();
   }
 
   schedule(std::chrono::milliseconds(consolidationIntervalMsec));
@@ -865,15 +884,12 @@ Result IResearchLink::commitUnsafe(bool wait) {
 Result IResearchLink::consolidateUnsafe(
     IResearchViewMeta::ConsolidationPolicy const& policy,
     irs::merge_writer::flush_progress_t const& progress) {
-  char runId = 0; // value not used
-
   if (!policy.policy()) {
     return {
         TRI_ERROR_BAD_PARAMETER,
         "unset consolidation policy while executing consolidation policy '" +
             policy.properties().toString() + "' on arangosearch link '" +
-            std::to_string(id().id()) + "' run id '" +
-            std::to_string(size_t(&runId)) + "'"};
+            std::to_string(id().id()) + "'"};
   }
 
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
@@ -884,26 +900,19 @@ Result IResearchLink::consolidateUnsafe(
       return {TRI_ERROR_INTERNAL,
               "failure while executing consolidation policy '" +
                   policy.properties().toString() + "' on arangosearch link '" +
-                  std::to_string(id().id()) + "' run id '" +
-                  std::to_string(size_t(&runId)) + "'"};
+                  std::to_string(id().id()) + "'"};
     }
   } catch (std::exception const& e) {
     return {TRI_ERROR_INTERNAL,
             "caught exception while executing consolidation policy '" +
                 policy.properties().toString() + "' on arangosearch link '" +
-                std::to_string(id().id()) + "' run id '" +
-                std::to_string(size_t(&runId)) + "': " + e.what()};
+                std::to_string(id().id()) + "'"};
   } catch (...) {
     return {TRI_ERROR_INTERNAL,
             "caught exception while executing consolidation policy '" +
                 policy.properties().toString() + "' on arangosearch link '" +
-                std::to_string(id().id()) + "' run id '" +
-                std::to_string(size_t(&runId)) + "'"};
+                std::to_string(id().id()) + "'"};
   }
-
-  LOG_TOPIC("7e828", TRACE, iresearch::TOPIC)
-      << "successful consolidation of arangosearch link '" << id()
-      << "', run id '" << size_t(&runId) << "'";
 
   return {};
 }
