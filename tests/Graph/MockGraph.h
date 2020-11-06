@@ -56,7 +56,7 @@ class MockGraph {
     void addToBuilder(arangodb::velocypack::Builder& builder) const {
       std::string fromId = _from;
       std::string toId = _to;
-      std::string keyId = _from.substr(2) + "->" + _to.substr(2);
+      std::string keyId = _from.substr(2) + "-" + _to.substr(2);
 
       builder.openObject();
       builder.add(StaticStrings::IdString, VPackValue("e/" + keyId));
