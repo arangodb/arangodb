@@ -184,11 +184,14 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/TraverserDocumentCache.cpp
   Graph/TraverserOptions.cpp
   Graph/WeightedEnumerator.cpp
+  Graph/Cursors/RefactoredSingleServerEdgeCursor.cpp
+  Graph/Cache/RefactoredTraverserCache.cpp
   Graph/Enumerators/TwoSidedEnumerator.cpp
   Graph/Queues/QueueTracer.cpp
   Graph/PathManagement/PathResult.cpp
   Graph/PathManagement/PathStore.cpp
   Graph/Options/TwoSidedEnumeratorOptions.cpp
+  Graph/Providers/SingleServerProvider.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   RestHandler/RestGraphHandler.cpp
 )
