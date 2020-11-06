@@ -154,6 +154,11 @@ const benchTodos = [{
   'concurrency': '3',
   'test-case': 'multitrx',
   'transaction': true
+}, {
+  'duration': 15,
+  'concurrency': '2',
+  'test-case': 'skiplist',
+  'complexity': '1'
 }];
 
 function arangobench (options) {
@@ -218,6 +223,15 @@ function arangobench (options) {
       let oneResult = pu.run.arangoBenchmark(options, instanceInfo, args, instanceInfo.rootDir, options.coreCheck);
       print();
 
+      if (benchTodo.hasOwnProperty('duration')) {
+        oneResult.status = oneResult.status && oneResult.duration >= benchTodo['duration'];
+        if (!oneResult.status) {
+          oneResult.message += ` didn't run for the expected time ${benchTodo.duration} but only ${oneResult.duration}`;
+        }
+        if (!oneResult.status && options.extremeVerbosity){
+          print("Duration test failed: " + JSON.stringify(oneResult));
+        }
+      }
       results[name] = oneResult;
       results[name].total++;
       results[name].failed = 0;

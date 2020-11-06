@@ -43,6 +43,8 @@
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
@@ -74,11 +76,14 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
       _async(false),
       _concurrency(1),
       _operations(1000),
+      _realOperations(0),
       _batchSize(0),
+      _duration(0),
       _keepAlive(true),
       _collection("ArangoBenchmark"),
       _testCase("version"),
       _complexity(1),
+      _createDatabase(false),
       _delay(false),
       _progress(true),
       _verbose(false),
@@ -146,6 +151,14 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--wait-for-sync",
                      "use waitForSync for created collections",
                      new BooleanParameter(&_waitForSync));
+
+  options->addOption("--create-database",
+                     "whether we should create the database specified via the server connection",
+                     new BooleanParameter(&_createDatabase));
+
+  options->addOption("--duration",
+                     "test for duration seconds instead of a fixed test count",
+                     new UInt64Parameter(&_duration));
 
   std::unordered_set<std::string> cases = {
       "version",         "stream-cursor",
@@ -237,6 +250,11 @@ void BenchFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
+  if (_duration != 0) {
+    _operations = std::numeric_limits<uint64_t>::max();
+  } else {
+    _realOperations = _operations;
+  }
   double const stepSize = (double)_operations / (double)_concurrency;
   int64_t realStep = (int64_t)stepSize;
 
@@ -267,7 +285,11 @@ void BenchFeature::start() {
 
   for (uint64_t j = 0; j < _runs; j++) {
     status("starting threads...");
-    BenchmarkCounter<unsigned long> operationsCounter(0, (unsigned long)_operations);
+    double runUntil = 0.0;
+    if (_duration != 0) {
+      runUntil = TRI_microtime() + _duration;
+    }
+    BenchmarkCounter<unsigned long> operationsCounter(0, (unsigned long)_operations, runUntil);
     ConditionVariable startCondition;
     // start client threads
     _started = 0;
@@ -276,7 +298,8 @@ void BenchFeature::start() {
           new BenchmarkThread(server(), benchmark.get(), &startCondition,
                               &BenchFeature::updateStartCounter, static_cast<int>(i),
                               (unsigned long)_batchSize, &operationsCounter,
-                              client, _keepAlive, _async, _verbose, _histogramIntervalSize, _histogramNumIntervals);
+                              client, _keepAlive, _async, _verbose,
+                              _histogramIntervalSize, _histogramNumIntervals);
       thread->setOffset((size_t)(i * realStep));
       thread->start();
       threads.push_back(thread);
@@ -341,6 +364,9 @@ void BenchFeature::start() {
         requestTime,
     });
     for (size_t i = 0; i < static_cast<size_t>(_concurrency); ++i) {
+      if (_duration != 0) {
+        _realOperations = threads[i]->_counter;
+      }
       threads[i]->aggregateValues(minTime, maxTime, avgTime, counter);
       double scope;
       auto res = threads[i]->getPercentiles(_percentiles, scope);
@@ -378,7 +404,7 @@ void BenchFeature::start() {
 bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> results, double minTime, double maxTime, double avgTime, std::string const& histogram, VPackBuilder& builder) {
   std::cout << std::endl;
 
-  std::cout << "Total number of operations: " << _operations << ", runs: " << _runs
+  std::cout << "Total number of operations: " << _realOperations << ", runs: " << _runs
             << ", keep alive: " << (_keepAlive ? "yes" : "no")
             << ", async: " << (_async ? "yes" : "no") << ", batch size: " << _batchSize
             << ", replication factor: " << _replicationFactor
@@ -390,7 +416,7 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
             << ", database: '" << client.databaseName() << "', collection: '"
             << _collection << "'" << std::endl;
 
-  builder.add("totalNumberOfOperations", VPackValue(_operations));
+  builder.add("totalNumberOfOperations", VPackValue(_realOperations));
   builder.add("runs", VPackValue(_runs));
   builder.add("keepAlive", VPackValue(_keepAlive));
   builder.add("async", VPackValue(_async));
@@ -513,18 +539,18 @@ void BenchFeature::printResult(BenchRunResult const& result, VPackBuilder& build
 
   std::cout << "Time needed per operation: " << std::fixed
             << (result.time / _operations) << " s" << std::endl;
-  builder.add("timeNeededPerOperation", VPackValue(result.time / _operations));
+  builder.add("timeNeededPerOperation", VPackValue(result.time / _realOperations));
   
   std::cout << "Time needed per operation per thread: " << std::fixed
-            << (result.time / (double)_operations * (double)_concurrency)
+            << (result.time / (double)_realOperations * (double)_concurrency)
             << " s" << std::endl;
   builder.add("timeNeededPerOperationPerThread", VPackValue(
-                result.time / (double)_operations * (double)_concurrency));
+                result.time / (double)_realOperations * (double)_concurrency));
   
   std::cout << "Operations per second rate: " << std::fixed
-            << ((double)_operations / result.time) << std::endl;
+            << ((double)_realOperations / result.time) << std::endl;
   builder.add("operationsPerSecondRate", 
-              VPackValue((double)_operations / result.time));
+              VPackValue((double)_realOperations / result.time));
   
   std::cout << "Elapsed time since start: " << std::fixed << result.time << " s"
             << std::endl
