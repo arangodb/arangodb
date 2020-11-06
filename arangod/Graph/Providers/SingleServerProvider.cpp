@@ -39,9 +39,29 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
+IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx,
+                             aql::AstNode* condition, std::optional<size_t> memberToUpdate)
+    : _idx(idx), _indexCondition(condition), _memberToUpdate(memberToUpdate) {}
 
-IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx, aql::AstNode* condition) : _idx(idx), _indexCondition((condition)){}
+aql::AstNode* IndexAccessor::getCondition() const { return _indexCondition; }
+transaction::Methods::IndexHandle IndexAccessor::indexHandle() const {
+  return _idx;
+}
+std::optional<size_t> IndexAccessor::getMemberToUpdate() const {
+  return _memberToUpdate;
+}
 
+BaseProviderOptions::BaseProviderOptions(aql::Variable const* tmpVar,
+                                         std::vector<IndexAccessor> indexInfo)
+    : _temporaryVariable(tmpVar), _indexInformation(std::move(indexInfo)) {}
+
+aql::Variable const* BaseProviderOptions::tmpVar() const {
+  return _temporaryVariable;
+}
+
+std::vector<IndexAccessor> const& BaseProviderOptions::indexInformations() const {
+  return _indexInformation;
+}
 
 SingleServerProvider::Step::Step(VertexType v)
     : _vertex(v), _edge(std::nullopt) {}
@@ -53,10 +73,12 @@ SingleServerProvider::Step::~Step() = default;
 
 VertexType SingleServerProvider::Step::Vertex::data() const { return _vertex; }
 
-SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryContext)
+SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryContext,
+                                           BaseProviderOptions opts)
     : _trx{queryContext.newTrxContext()},
       _query(queryContext),
-      _cache(RefactoredTraverserCache{&_trx, &queryContext}) {
+      _cache(RefactoredTraverserCache{&_trx, &queryContext}),
+      _opts(std::move(opts)) {
   // activateCache(false); // TODO CHECK RefactoredTraverserCache
   _cursor = buildCursor();
 }
@@ -130,7 +152,9 @@ auto SingleServerProvider::expand(Step const& step, size_t previous) -> std::vec
 }
 
 std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor() {
-  return std::make_unique<RefactoredSingleServerEdgeCursor>(trx(), query());
+  return std::make_unique<RefactoredSingleServerEdgeCursor>(trx(), query(),
+                                                            _opts.tmpVar(),
+                                                            _opts.indexInformations());
 }
 
 arangodb::transaction::Methods* SingleServerProvider::trx() { return &_trx; }

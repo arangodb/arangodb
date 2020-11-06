@@ -51,6 +51,8 @@ class GraphProviderTest : public ::testing::Test {
   // Only used to mock a singleServer
   std::unique_ptr<GraphTestSetup> s{nullptr};
   std::unique_ptr<MockGraphDatabase> singleServer{nullptr};
+  std::unique_ptr<arangodb::aql::Query> query{nullptr};
+
   GraphProviderTest() {}
   ~GraphProviderTest() {}
 
@@ -66,15 +68,18 @@ class GraphProviderTest : public ::testing::Test {
       singleServer->addGraph(graph);
 
       // We now have collections "v" and "e"
-      auto query = singleServer->getQuery("RETURN 1", {"v", "e"});
+      query = singleServer->getQuery("RETURN 1", {"v", "e"});
 
       auto edgeIndexHandle = singleServer->getEdgeIndexHandle("e");
       auto tmpVar = singleServer->generateTempVar(query.get());
       auto indexCondition = singleServer->buildOutboundCondition(query.get(), tmpVar);
+      indexCondition->dump(0);
 
-      IndexAccessor acc(edgeIndexHandle, indexCondition);
+      std::vector<IndexAccessor> usedIndexes{
+          IndexAccessor{edgeIndexHandle, indexCondition, 0}};
 
-      return SingleServerProvider(*query.get());
+      BaseProviderOptions opts(tmpVar, std::move(usedIndexes));
+      return SingleServerProvider(*query.get(), std::move(opts));
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }

@@ -44,60 +44,67 @@ class HashedStringRef;
 }  // namespace velocypack
 
 namespace graph {
+struct IndexAccessor;
 
+/*
+
+// brauche ich als standalone input
+transaction::Methods* _trx; // Liefert das Query (geteilt)
+
+
+
+// Packet:
+Variable, liste<IndexAccessor>
+
+Variable* _variable; // "" (geteilt)
+struct IndexAccessor const { //definition
+  IndexHande const& _index; // Muss das query vorher ausrechnen, der Provider muss es bekommen (pro collection)
+  AstNode* _searchCondition; // "" (pro index) _from == X  || _to == X
+}
+// keine ahnung von Rearm, baut den ersten Cursor?
+
+// Action.
+=> IndexCursor := _trx->indexScanForCondition()
+=> rearm
+*/
 struct EdgeDocumentToken;
 
 class RefactoredSingleServerEdgeCursor {
  public:
   struct LookupInfo {
-    LookupInfo();
+    LookupInfo(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
+               std::optional<size_t> memberToUpdate);
     ~LookupInfo();
 
-    LookupInfo(LookupInfo const&);
+    LookupInfo(LookupInfo const&) = delete;
+    LookupInfo(LookupInfo&&) noexcept;
     LookupInfo& operator=(LookupInfo const&) = delete;
 
-    LookupInfo(arangodb::aql::QueryContext&, arangodb::velocypack::Slice const&,
-               arangodb::velocypack::Slice const&);
+    void rearmVertex(VertexType vertex, transaction::Methods* trx,
+                     arangodb::aql::Variable const* tmpVar);
 
-    void rearmVertex(VertexType vertex);
-
-    aql::AstNode const* indexCondition() const;
-
-    std::vector<transaction::Methods::IndexHandle> const& indexHandles() const;
-
-    /// @brief Build a velocypack containing all relevant information
-    ///        for DBServer traverser engines.
-    void buildEngineInfo(arangodb::velocypack::Builder&) const;
-
-    double estimateCost(size_t& nrItems) const;
-
-    void addLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
-                       std::string const& attributeName,
-                       aql::AstNode* condition, bool onlyEdgeIndexes = false);
-
-   protected:
-    void injectLookupInfoInList(std::vector<LookupInfo>&, aql::ExecutionPlan* plan,
-                                std::string const& collectionName,
-                                std::string const& attributeName,
-                                aql::AstNode* condition, bool onlyEdgeIndexes = false);
+    IndexIterator& cursor();
 
    private:
     // This struct does only take responsibility for the expression
     // NOTE: The expression can be nullptr!
-    std::vector<transaction::Methods::IndexHandle> _idxHandles;
+    transaction::Methods::IndexHandle _idxHandle;
     std::unique_ptr<aql::Expression> _expression;
     aql::AstNode* _indexCondition;
-    // Flag if we have to update _from / _to in the index search condition
-    bool _conditionNeedUpdate;
+
+    std::unique_ptr<IndexIterator> _cursor;
+
     // Position of _from / _to in the index search condition
-    size_t _conditionMemberToUpdate;
+    std::optional<size_t> _conditionMemberToUpdate;
   };
 
   enum Direction { FORWARD, BACKWARD };
 
  public:
   RefactoredSingleServerEdgeCursor(arangodb::transaction::Methods* trx,
-                                   arangodb::aql::QueryContext* queryContext);
+                                   arangodb::aql::QueryContext* queryContext,
+                                   arangodb::aql::Variable const* tmpVar,
+                                   std::vector<IndexAccessor> const& indexConditions);
   ~RefactoredSingleServerEdgeCursor();
 
   using Callback =
@@ -105,9 +112,7 @@ class RefactoredSingleServerEdgeCursor {
 
  private:
   aql::Variable const* _tmpVar;
-  std::vector<std::vector<std::unique_ptr<IndexIterator>>> _cursors;
   size_t _currentCursor;
-  size_t _currentSubCursor;
   std::vector<LocalDocumentId> _cache;
   size_t _cachePos;
   std::vector<size_t> const* _internalCursorMapping;
@@ -118,22 +123,19 @@ class RefactoredSingleServerEdgeCursor {
   arangodb::aql::QueryContext* _queryContext;
 
  public:
+#if 0
   bool next(Callback const& callback);
-
+#endif
   void readAll(Callback const& callback);
 
   void rearm(VertexType vertex, uint64_t depth);
 
  private:
+#if 0
   // returns false if cursor can not be further advanced
-  bool advanceCursor(IndexIterator*& cursor,
-                     std::vector<std::unique_ptr<IndexIterator>>*& cursorSet);
-
+  bool advanceCursor(IndexIterator& cursor);
+#endif
   void getDocAndRunCallback(IndexIterator*, Callback const& callback);
-
-  void buildLookupInfo(VertexType vertex);
-
-  void addCursor(LookupInfo& info, VertexType vertex);
 
   [[nodiscard]] transaction::Methods* trx() const;  // TODO check nodiscard
 };

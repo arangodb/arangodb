@@ -359,7 +359,7 @@ struct MockGraphDatabase {
     auto ast = plan->getAst();
     auto fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
     AstNode* tmpId1 = plan->getAst()->createNodeReference(tmpVar);
-    AstNode* tmpId2 = plan->getAst()->createNodeValueString("", 0);
+    AstNode* tmpId2 = plan->getAst()->createNodeValueMutableString("", 0);
 
     auto const* access =
         ast->createNodeAttributeAccess(tmpId1, StaticStrings::FromString.c_str(),

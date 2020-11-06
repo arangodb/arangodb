@@ -56,15 +56,33 @@ namespace graph {
 // Todo this needs to be placed in a more public space.
 // It is not depending on this provider
 struct IndexAccessor {
-  IndexAccessor(transaction::Methods::IndexHandle idx, aql::AstNode* condition);
-  
-  aql::AstNode* getCondition() { return _indexCondition ;}
-  
-private:
+  IndexAccessor(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
+                std::optional<size_t> memberToUpdate);
+
+  aql::AstNode* getCondition() const;
+  transaction::Methods::IndexHandle indexHandle() const;
+  std::optional<size_t> getMemberToUpdate() const;
+
+ private:
   transaction::Methods::IndexHandle _idx;
   aql::AstNode* _indexCondition;
+  std::optional<size_t> _memberToUpdate;
 };
 
+struct BaseProviderOptions {
+ public:
+  BaseProviderOptions(aql::Variable const* tmpVar, std::vector<IndexAccessor> indexInfo);
+
+  aql::Variable const* tmpVar() const;
+  std::vector<IndexAccessor> const& indexInformations() const;
+
+ private:
+  // The temporary Variable used in the Indexes
+  aql::Variable const* _temporaryVariable;
+  // One entry per collection, ShardTranslation needs
+  // to be done by Provider
+  std::vector<IndexAccessor> _indexInformation;
+};
 
 // TODO we need to control from the outside if and which ports of the vertex
 // data should be returned THis is most-likely done via Template Parameter like
@@ -124,7 +142,7 @@ struct SingleServerProvider {
   };
 
  public:
-  SingleServerProvider(arangodb::aql::QueryContext& queryContext);
+  SingleServerProvider(arangodb::aql::QueryContext& queryContext, BaseProviderOptions opts);
   ~SingleServerProvider();
 
   auto startVertex(VertexType vertex) -> Step;
@@ -145,6 +163,8 @@ struct SingleServerProvider {
   arangodb::transaction::Methods _trx;
   arangodb::aql::QueryContext& _query;
   RefactoredTraverserCache _cache;
+
+  BaseProviderOptions _opts;
 };
 }  // namespace graph
 }  // namespace arangodb
