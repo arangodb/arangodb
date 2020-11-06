@@ -2197,8 +2197,8 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
       auto func = static_cast<Function*>(node->getData());
 
       if (ctx->hasSeenAnyWriteNode && !func->hasFlag(Function::Flags::CanReadDocuments)) {
-        // if canRunOnDBServer is true, then this is an indicator for a
-        // document-accessing function
+        // we have a document-reading function _after_ a modification/write
+        // operation. this is disallowed
         std::string name("function ");
         name.append(func->name);
         THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION,

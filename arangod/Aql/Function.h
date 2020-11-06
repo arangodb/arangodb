@@ -54,12 +54,24 @@ struct Function {
     /// cache
     Cacheable = 2,
 
+    // the following two flags control separately if a function can be pushed
+    // down to DB servers for execution. In almost cases we want to have the
+    // "Cluster" flag set for functions that have the "OneShard" flag set,
+    // but this is currently only enforced via assertions - and we may want
+    // to change this in the future so we can have functions that are _not_
+    // pushed down to DB servers in OneShard mode but are in normal Cluster
+    // mode.
+
     /// @brief whether or not the function may be executed on DB servers, 
     /// general cluster case (non-OneShard)
+    /// note: in almost all circumstances it is also useful to set the flag
+    /// CanRunOnDBServerOneShard in addition!
     CanRunOnDBServerCluster = 4,
     
     /// @brief whether or not the function may be executed on DB servers,
-    /// OneShard database
+    /// OneShard databases. 
+    /// note: this flag must be set in addition to CanRunOnDBServerCluster
+    /// to make a function run on DB servers in OneShard mode! 
     CanRunOnDBServerOneShard = 8,
     
     /// @brief whether or not the function may read documents from the database

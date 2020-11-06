@@ -1769,6 +1769,12 @@ bool AstNode::canRunOnDBServer(bool isOneShard) const {
   if (type == NODE_TYPE_FCALL) {
     // built-in function
     auto func = static_cast<Function*>(getData());
+  
+    // currently being able to run on a DB server in cluster always includes being able to run
+    // on a DB server in OneShard mode. this may change at some point in the future.
+    TRI_ASSERT(!func->hasFlag(Function::Flags::CanRunOnDBServerCluster) || 
+               func->hasFlag(Function::Flags::CanRunOnDBServerOneShard));
+
     if ((isOneShard && func->hasFlag(Function::Flags::CanRunOnDBServerOneShard)) ||
         (!isOneShard && func->hasFlag(Function::Flags::CanRunOnDBServerCluster))) {
       setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
