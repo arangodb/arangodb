@@ -30,6 +30,8 @@
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
 
+#include "Graph/Providers/TypeAliases.h"
+
 #include <vector>
 
 namespace arangodb {
@@ -46,20 +48,8 @@ namespace graph {
 struct EdgeDocumentToken;
 
 class RefactoredSingleServerEdgeCursor {
-  using Step = arangodb::velocypack::HashedStringRef;
-
  public:
   struct LookupInfo {
-    // This struct does only take responsibility for the expression
-    // NOTE: The expression can be nullptr!
-    std::vector<transaction::Methods::IndexHandle> idxHandles;
-    std::unique_ptr<aql::Expression> expression;
-    aql::AstNode* indexCondition;
-    // Flag if we have to update _from / _to in the index search condition
-    bool conditionNeedUpdate;
-    // Position of _from / _to in the index search condition
-    size_t conditionMemberToUpdate;
-
     LookupInfo();
     ~LookupInfo();
 
@@ -68,6 +58,12 @@ class RefactoredSingleServerEdgeCursor {
 
     LookupInfo(arangodb::aql::QueryContext&, arangodb::velocypack::Slice const&,
                arangodb::velocypack::Slice const&);
+
+    void rearmVertex(VertexType vertex);
+
+    aql::AstNode const* indexCondition() const;
+
+    std::vector<transaction::Methods::IndexHandle> const& indexHandles() const;
 
     /// @brief Build a velocypack containing all relevant information
     ///        for DBServer traverser engines.
@@ -84,6 +80,17 @@ class RefactoredSingleServerEdgeCursor {
                                 std::string const& collectionName,
                                 std::string const& attributeName,
                                 aql::AstNode* condition, bool onlyEdgeIndexes = false);
+
+   private:
+    // This struct does only take responsibility for the expression
+    // NOTE: The expression can be nullptr!
+    std::vector<transaction::Methods::IndexHandle> _idxHandles;
+    std::unique_ptr<aql::Expression> _expression;
+    aql::AstNode* _indexCondition;
+    // Flag if we have to update _from / _to in the index search condition
+    bool _conditionNeedUpdate;
+    // Position of _from / _to in the index search condition
+    size_t _conditionMemberToUpdate;
   };
 
   enum Direction { FORWARD, BACKWARD };
@@ -115,7 +122,7 @@ class RefactoredSingleServerEdgeCursor {
 
   void readAll(Callback const& callback);
 
-  void rearm(arangodb::velocypack::StringRef vertex, uint64_t depth);
+  void rearm(VertexType vertex, uint64_t depth);
 
  private:
   // returns false if cursor can not be further advanced
@@ -124,9 +131,9 @@ class RefactoredSingleServerEdgeCursor {
 
   void getDocAndRunCallback(IndexIterator*, Callback const& callback);
 
-  void buildLookupInfo(arangodb::velocypack::StringRef vertex);
+  void buildLookupInfo(VertexType vertex);
 
-  void addCursor(LookupInfo const& info, arangodb::velocypack::StringRef vertex);
+  void addCursor(LookupInfo& info, VertexType vertex);
 
   [[nodiscard]] transaction::Methods* trx() const;  // TODO check nodiscard
 };

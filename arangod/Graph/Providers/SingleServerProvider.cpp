@@ -39,21 +39,22 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
+SingleServerProvider::Step::Step(VertexType v)
+    : _vertex(v), _edge(std::nullopt) {}
 
+SingleServerProvider::Step::Step(VertexType v, EdgeDocumentToken edge, size_t prev)
+    : BaseStep(prev), _vertex(v), _edge(std::in_place, std::move(edge)) {}
 
-SingleServerProvider::Step::Step(VertexType v) : _vertex(v), _edge(std::nullopt) {
+SingleServerProvider::Step::~Step() = default;
 
-}
+VertexType SingleServerProvider::Step::Vertex::data() const { return _vertex; }
 
-SingleServerProvider::Step::Step(VertexType v, EdgeDocumentToken edge, size_t prev) : BaseStep(prev), _vertex(v), _edge(std::in_place, std::move(edge)) {
-  
-}
-
-SingleServerProvider::SingleServerProvider(arangodb::transaction::Methods* trx,
-                                           arangodb::aql::QueryContext* queryContext)
-    : _trx(trx), _query(queryContext), _cache(RefactoredTraverserCache{trx, queryContext}) {
+SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryContext)
+    : _trx{queryContext.newTrxContext()},
+      _query(queryContext),
+      _cache(RefactoredTraverserCache{&_trx, &queryContext}) {
   // activateCache(false); // TODO CHECK RefactoredTraverserCache
-  buildCursor();
+  _cursor = buildCursor();
 }
 
 SingleServerProvider::~SingleServerProvider() = default;
@@ -77,13 +78,13 @@ void SingleServerProvider::activateCache(bool enableDocumentCache) {
   //  _cache = new RefactoredTraverserCache(query());
 }
 
-auto SingleServerProvider::startVertex(arangodb::velocypack::StringRef vertex) -> Step {
+auto SingleServerProvider::startVertex(VertexType vertex) -> Step {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Start Vertex:" << vertex;
   // Should not clear anything: clearCursor(vertex);
 
   // Create default initial step
-  
+
   // TODO Implement minimal variant of _cache in the Provider
   // This should only handle the HashedStringRef storage (string heap, and Lookup List)
   return Step(_cache.persistString(vertex));
@@ -93,7 +94,7 @@ auto SingleServerProvider::fetch(std::vector<Step*> const& looseEnds)
     -> futures::Future<std::vector<Step*>> {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Fetching...";
-  std::vector<Step*> result{}; // TODO: Question: Modify inplace or build up new result vector
+  std::vector<Step*> result{};  // TODO: Question: Modify inplace or build up new result vector
   result.reserve(looseEnds.size());
   // TODO do we need to do something at all?
   // We may want to cache the Vertex Data
@@ -101,25 +102,25 @@ auto SingleServerProvider::fetch(std::vector<Step*> const& looseEnds)
 }
 
 auto SingleServerProvider::expand(Step const& step, size_t previous) -> std::vector<Step> {
-  TRI_ASSERT(step.isLooseEnd());
+  TRI_ASSERT(!step.isLooseEnd());
   std::vector<Step> result{};
   auto const& vertex = step.getVertex();
-  _cursor->rearm(vertex.getId(), 0);
+  TRI_ASSERT(_cursor != nullptr);
+  _cursor->rearm(vertex.data(), 0);
   _cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
-    VertexRef id = _cache.persistString(([&]() -> auto {
+    VertexType id = _cache.persistString(([&]() -> auto {
       if (edge.isString()) {
-        return VertexRef(edge);
+        return VertexType(edge);
       } else {
-        VertexRef other(transaction::helpers::extractFromFromDocument(edge));
-        if (other == vertex.getId()) { // TODO: Check getId
-          other = VertexRef(transaction::helpers::extractToFromDocument(edge));
+        VertexType other(transaction::helpers::extractFromFromDocument(edge));
+        if (other == vertex.data()) {  // TODO: Check getId
+          other = VertexType(transaction::helpers::extractToFromDocument(edge));
         }
         return other;
       }
-      
+
       result.emplace_back(id, std::move(eid), previous);
     })());
-
   });
   return result;
 }
@@ -128,10 +129,8 @@ std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCur
   return std::make_unique<RefactoredSingleServerEdgeCursor>(trx(), query());
 }
 
-arangodb::transaction::Methods* SingleServerProvider::trx() const {
-  return _trx;
-}
+arangodb::transaction::Methods* SingleServerProvider::trx() { return &_trx; }
 
 arangodb::aql::QueryContext* SingleServerProvider::query() const {
-  return _query;
+  return &_query;
 }

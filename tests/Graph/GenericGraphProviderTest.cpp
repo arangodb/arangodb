@@ -26,12 +26,15 @@
 #include "./MockGraph.h"
 #include "./MockGraphProvider.h"
 
+#include "Graph/Providers/SingleServerProvider.h"
+
 #include <velocypack/velocypack-aliases.h>
 #include <unordered_set>
 
 using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::tests::graph;
+using namespace arangodb::graph;
 
 namespace arangodb {
 namespace tests {
@@ -40,7 +43,7 @@ namespace generic_graph_provider_test {
 static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
 // Add more providers here
-using TypesToTest = ::testing::Types<MockGraphProvider>;
+using TypesToTest = ::testing::Types<MockGraphProvider, SingleServerProvider>;
 
 template <class ProviderType>
 class GraphProviderTest : public ::testing::Test {
@@ -56,17 +59,15 @@ class GraphProviderTest : public ::testing::Test {
     if constexpr (std::is_same_v<ProviderType, MockGraphProvider>) {
       return MockGraphProvider(graph, MockGraphProvider::LooseEndBehaviour::NEVER);
     }
-    // TODO add a constexpr for SingleServerProvider
-    {
+    if constexpr (std::is_same_v<ProviderType, SingleServerProvider>) {
       s = std::make_unique<GraphTestSetup>();
       singleServer =
           std::make_unique<MockGraphDatabase>(s->server, "testVocbase");
       singleServer->addGraph(graph);
 
       // We now have collections "v" and "e"
-      auto query = singleServer->getQuery("RETURN 1", {"v","e"});
-
-
+      auto query = singleServer->getQuery("RETURN 1", {"v", "e"});
+      return SingleServerProvider(*query.get());
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }

@@ -27,8 +27,9 @@
 
 #include "Graph/Cache/RefactoredTraverserCache.h"
 #include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
-#include "Graph/Providers/BaseStep.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "Graph/Providers/BaseStep.h"
+#include "Graph/Providers/TypeAliases.h"
 
 #include "Transaction/Methods.h"
 
@@ -51,10 +52,10 @@ class HashedStringRef;
 }  // namespace velocypack
 
 namespace graph {
+// TODO we need to control from the outside if and which ports of the vertex
+// data should be returned THis is most-likely done via Template Parameter like
+// this: template<ProduceVertexData>
 struct SingleServerProvider {
-  using VertexType = arangodb::velocypack::StringRef;
-  using VertexRef = arangodb::velocypack::StringRef; // TODO: Change back to HashRef
-
   enum Direction { FORWARD, BACKWARD };  // TODO check
   enum class LooseEndBehaviour { NEVER, ALLWAYS };
 
@@ -64,11 +65,13 @@ struct SingleServerProvider {
      public:
       explicit Vertex(VertexType v) : _vertex(v){};
 
-      void addToBuilder(arangodb::velocypack::Builder& builder) const;
-      VertexType getId() const;  // TODO hashed?
-      VertexType data() const { return _vertex; }
+      // NUr implementiert wenn baseOptions>produceVertices()
+      // Sonst add `null`.
 
-      // Make the set work on the VertexRef attribute only
+      void addToBuilder(arangodb::velocypack::Builder& builder) const;
+
+      VertexType data() const;
+
       bool operator<(Vertex const& other) const noexcept {
         return _vertex < other._vertex;
       }
@@ -80,12 +83,12 @@ struct SingleServerProvider {
      private:
       VertexType _vertex;
     };
-    
+
     class Edge {
-    public:
+     public:
       explicit Edge(EdgeDocumentToken tkn) : _token(std::move(tkn)) {}
-      
-    private:
+
+     private:
       EdgeDocumentToken _token;
     };
 
@@ -107,11 +110,10 @@ struct SingleServerProvider {
   };
 
  public:
-  SingleServerProvider(arangodb::transaction::Methods* trx,
-                       arangodb::aql::QueryContext* queryContext);
+  SingleServerProvider(arangodb::aql::QueryContext& queryContext);
   ~SingleServerProvider();
 
-  auto startVertex(arangodb::velocypack::StringRef vertex) -> Step;
+  auto startVertex(VertexType vertex) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;                           // rocks
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;  // index
@@ -120,14 +122,14 @@ struct SingleServerProvider {
   void activateCache(bool enableDocumentCache);
 
   std::unique_ptr<RefactoredSingleServerEdgeCursor> buildCursor();
-  [[nodiscard]] transaction::Methods* trx() const;           // TODO nodiscard?
-  [[nodiscard]] arangodb::aql::QueryContext* query() const;  // TODO nodiscard?
+  [[nodiscard]] transaction::Methods* trx();
+  [[nodiscard]] arangodb::aql::QueryContext* query() const;
 
  private:
   std::unique_ptr<RefactoredSingleServerEdgeCursor> _cursor;
   // We DO take responsibility for the Cache (TODO?)
-  arangodb::transaction::Methods* _trx;
-  arangodb::aql::QueryContext* _query;
+  arangodb::transaction::Methods _trx;
+  arangodb::aql::QueryContext& _query;
   RefactoredTraverserCache _cache;
 };
 }  // namespace graph
