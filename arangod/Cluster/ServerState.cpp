@@ -79,14 +79,8 @@ static ServerState* Instance = nullptr;
 ServerState::ServerState(application_features::ApplicationServer& server)
     : _server(server),
       _role(RoleEnum::ROLE_UNDEFINED),
-      _lock(),
-      _id(),
       _shortId(0),
       _rebootId(0),
-      _javaScriptStartupPath(),
-      _myEndpoint(),
-      _advertisedEndpoint(),
-      _host(),
       _state(STATE_UNDEFINED),
       _initialized(false),
       _foxxmasterSince(0),
@@ -233,10 +227,6 @@ std::string ServerState::stateToString(StateEnum state) {
       return "UNDEFINED";
     case STATE_STARTUP:
       return "STARTUP";
-    case STATE_STOPPING:
-      return "STOPPING";
-    case STATE_STOPPED:
-      return "STOPPED";
     case STATE_SERVING:
       return "SERVING";
     case STATE_SHUTDOWN:
@@ -252,10 +242,13 @@ std::string ServerState::stateToString(StateEnum state) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerState::StateEnum ServerState::stringToState(std::string const& value) {
-  if (value == "SHUTDOWN") {
+  if (value == "STARTUP") {
+    return STATE_STARTUP;
+  } else if (value == "SERVING") {
+    return STATE_SERVING;
+  } else if (value == "SHUTDOWN") {
     return STATE_SHUTDOWN;
   }
-  // TODO MAX: do we need to understand other states, too?
 
   return STATE_UNDEFINED;
 }
@@ -990,24 +983,6 @@ void ServerState::setState(StateEnum state) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the JavaScript startup path
-////////////////////////////////////////////////////////////////////////////////
-
-std::string ServerState::getJavaScriptPath() {
-  READ_LOCKER(readLocker, _lock);
-  return _javaScriptStartupPath;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the arangod path
-////////////////////////////////////////////////////////////////////////////////
-
-void ServerState::setJavaScriptPath(std::string const& value) {
-  WRITE_LOCKER(writeLocker, _lock);
-  _javaScriptStartupPath = value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a state transition for a primary server
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1016,13 +991,9 @@ bool ServerState::checkPrimaryState(StateEnum state) {
     // startup state can only be set once
     return (_state == STATE_UNDEFINED);
   } else if (state == STATE_SERVING) {
-    return (_state == STATE_STARTUP || _state == STATE_STOPPED);
-  } else if (state == STATE_STOPPING) {
-    return _state == STATE_SERVING;
-  } else if (state == STATE_STOPPED) {
-    return (_state == STATE_STOPPING);
+    return (_state == STATE_STARTUP);
   } else if (state == STATE_SHUTDOWN) {
-    return (_state == STATE_STARTUP || _state == STATE_STOPPED || _state == STATE_SERVING);
+    return (_state == STATE_STARTUP || _state == STATE_SERVING);
   }
 
   // anything else is invalid

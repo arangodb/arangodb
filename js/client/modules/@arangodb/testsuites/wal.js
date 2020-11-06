@@ -29,7 +29,7 @@ const functionsDocumentation = {
   'wal_cleanup': 'wal file cleanup tests'
 };
 
-const tu = require('@arangodb/test-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;

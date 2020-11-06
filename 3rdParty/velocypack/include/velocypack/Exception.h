@@ -90,7 +90,7 @@ class Exception : public virtual std::exception {
   
   ~Exception() = default;
 
-  char const* what() const noexcept { return _msg; }
+  char const* what() const noexcept override { return _msg; }
 
   ExceptionType errorCode() const noexcept { return _type; }
 

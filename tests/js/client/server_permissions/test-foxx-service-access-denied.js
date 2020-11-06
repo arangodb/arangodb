@@ -3,7 +3,7 @@
 'use strict';
 const fs = require('fs');
 const internal = require('internal');
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 
 if (getOptions === true) {
   let users = require("@arangodb/users");
