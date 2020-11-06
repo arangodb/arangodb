@@ -199,7 +199,9 @@ static void JS_EnabledStatistics(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  v8::Handle<v8::Value> result = v8::Boolean::New(isolate, StatisticsFeature::enabled());
+  TRI_GET_GLOBALS();
+  bool enabled = v8g->_server.getFeature<StatisticsFeature>().isEnabled();
+  v8::Handle<v8::Value> result = v8::Boolean::New(isolate, enabled);
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
