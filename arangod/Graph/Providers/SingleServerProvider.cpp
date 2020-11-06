@@ -39,6 +39,10 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
+
+IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx, aql::AstNode* condition) : _idx(idx), _indexCondition((condition)){}
+
+
 SingleServerProvider::Step::Step(VertexType v)
     : _vertex(v), _edge(std::nullopt) {}
 

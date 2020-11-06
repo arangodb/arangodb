@@ -52,6 +52,20 @@ class HashedStringRef;
 }  // namespace velocypack
 
 namespace graph {
+
+// Todo this needs to be placed in a more public space.
+// It is not depending on this provider
+struct IndexAccessor {
+  IndexAccessor(transaction::Methods::IndexHandle idx, aql::AstNode* condition);
+  
+  aql::AstNode* getCondition() { return _indexCondition ;}
+  
+private:
+  transaction::Methods::IndexHandle _idx;
+  aql::AstNode* _indexCondition;
+};
+
+
 // TODO we need to control from the outside if and which ports of the vertex
 // data should be returned THis is most-likely done via Template Parameter like
 // this: template<ProduceVertexData>
