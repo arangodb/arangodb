@@ -64,6 +64,9 @@ class GraphProviderTest : public ::testing::Test {
       singleServer->addGraph(graph);
 
       // We now have collections "v" and "e"
+      auto query = singleServer->getQuery("RETURN 1", {"v","e"});
+
+
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }

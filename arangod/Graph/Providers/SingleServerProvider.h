@@ -28,6 +28,8 @@
 #include "Graph/Cache/RefactoredTraverserCache.h"
 #include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
 #include "Graph/Providers/BaseStep.h"
+#include "Graph/EdgeDocumentToken.h"
+
 #include "Transaction/Methods.h"
 
 #include <vector>
@@ -49,7 +51,6 @@ class HashedStringRef;
 }  // namespace velocypack
 
 namespace graph {
-
 struct SingleServerProvider {
   using VertexType = arangodb::velocypack::StringRef;
   using VertexRef = arangodb::velocypack::StringRef; // TODO: Change back to HashRef
@@ -79,9 +80,17 @@ struct SingleServerProvider {
      private:
       VertexType _vertex;
     };
+    
+    class Edge {
+    public:
+      explicit Edge(EdgeDocumentToken tkn) : _token(std::move(tkn)) {}
+      
+    private:
+      EdgeDocumentToken _token;
+    };
 
     Step(VertexType v);
-    Step(VertexType v, size_t prev, bool isLooseEnd);
+    Step(VertexType v, EdgeDocumentToken edge, size_t prev);
     ~Step();
 
     bool operator<(Step const& other) const noexcept {
@@ -90,12 +99,11 @@ struct SingleServerProvider {
 
     Vertex getVertex() const { return _vertex; }
 
-    bool isLooseEnd() const { return _isLooseEnd; }
-    void setLooseEnd(bool isLooseEnd) { _isLooseEnd = false; }
+    bool isLooseEnd() const { return false; }
 
    private:
     Vertex _vertex;
-    bool _isLooseEnd;
+    std::optional<Edge> _edge;
   };
 
  public:

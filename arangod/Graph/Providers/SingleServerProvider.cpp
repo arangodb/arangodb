@@ -39,6 +39,16 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
+
+
+SingleServerProvider::Step::Step(VertexType v) : _vertex(v), _edge(std::nullopt) {
+
+}
+
+SingleServerProvider::Step::Step(VertexType v, EdgeDocumentToken edge, size_t prev) : BaseStep(prev), _vertex(v), _edge(std::in_place, std::move(edge)) {
+  
+}
+
 SingleServerProvider::SingleServerProvider(arangodb::transaction::Methods* trx,
                                            arangodb::aql::QueryContext* queryContext)
     : _trx(trx), _query(queryContext), _cache(RefactoredTraverserCache{trx, queryContext}) {
@@ -73,7 +83,10 @@ auto SingleServerProvider::startVertex(arangodb::velocypack::StringRef vertex) -
   // Should not clear anything: clearCursor(vertex);
 
   // Create default initial step
-  return Step(vertex);
+  
+  // TODO Implement minimal variant of _cache in the Provider
+  // This should only handle the HashedStringRef storage (string heap, and Lookup List)
+  return Step(_cache.persistString(vertex));
 }
 
 auto SingleServerProvider::fetch(std::vector<Step*> const& looseEnds)
@@ -82,34 +95,33 @@ auto SingleServerProvider::fetch(std::vector<Step*> const& looseEnds)
       << "<MockGraphProvider> Fetching...";
   std::vector<Step*> result{}; // TODO: Question: Modify inplace or build up new result vector
   result.reserve(looseEnds.size());
-  for (auto* step : looseEnds) {
-    TRI_ASSERT(step->isLooseEnd());
-    auto const& vertex = step->getVertex();
-    _cursor->rearm(vertex.getId(), 0);
-    _cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
-      VertexRef id = _cache.persistString(([&]() -> auto {
-        if (edge.isString()) {
-          return VertexRef(edge);
-        } else {
-          VertexRef other(transaction::helpers::extractFromFromDocument(edge));
-          if (other == vertex.getId()) { // TODO: Check getId
-            other = VertexRef(transaction::helpers::extractToFromDocument(edge));
-          }
-          return other;
-        }
-      })());
-
-      LOG_DEVEL << id; // TODO: remove me - right now just for compilation
-
-      step->setLooseEnd(false);
-      // TODO: Where to emplace results? Should be already part of the cache? Right?
-      // TODO IMPORTANT: Otherwise, what is the best method to store the data itself.
-      //VertexIdentifier match{id, _searchIndex, std::move(eid)};
-      //_shell.emplace(std::move(match));
-    });
-    result.emplace_back(step);
-  }
+  // TODO do we need to do something at all?
+  // We may want to cache the Vertex Data
   return futures::makeFuture(std::move(result));
+}
+
+auto SingleServerProvider::expand(Step const& step, size_t previous) -> std::vector<Step> {
+  TRI_ASSERT(step.isLooseEnd());
+  std::vector<Step> result{};
+  auto const& vertex = step.getVertex();
+  _cursor->rearm(vertex.getId(), 0);
+  _cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
+    VertexRef id = _cache.persistString(([&]() -> auto {
+      if (edge.isString()) {
+        return VertexRef(edge);
+      } else {
+        VertexRef other(transaction::helpers::extractFromFromDocument(edge));
+        if (other == vertex.getId()) { // TODO: Check getId
+          other = VertexRef(transaction::helpers::extractToFromDocument(edge));
+        }
+        return other;
+      }
+      
+      result.emplace_back(id, std::move(eid), previous);
+    })());
+
+  });
+  return result;
 }
 
 std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor() {
