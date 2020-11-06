@@ -81,11 +81,14 @@ class BenchFeature final : public application_features::ApplicationFeature {
   bool _async;
   uint64_t _concurrency;
   uint64_t _operations;
+  uint64_t _realOperations;
   uint64_t _batchSize;
+  uint64_t _duration;
   bool _keepAlive;
   std::string _collection;
   std::string _testCase;
   uint64_t _complexity;
+  bool _createDatabase;
   bool _delay;
   bool _progress;
   bool _verbose;
