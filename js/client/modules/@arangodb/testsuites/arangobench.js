@@ -37,6 +37,7 @@ const optionsDocumentation = [
 
 const _ = require('lodash');
 const pu = require('@arangodb/process-utils');
+const internal = require('internal');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -159,6 +160,13 @@ const benchTodos = [{
   'concurrency': '2',
   'test-case': 'skiplist',
   'complexity': '1'
+},{
+  'requests': '1',
+  'concurrency': '1',
+  'test-case': 'version',
+  'keep-alive': 'true',
+  'server.database': 'arangobench_testdb',
+  'create-database': true
 }];
 
 function arangobench (options) {
@@ -232,6 +240,17 @@ function arangobench (options) {
           print("Duration test failed: " + JSON.stringify(oneResult));
         }
       }
+
+      if (benchTodo.hasOwnProperty('create-database') && benchTodo['create-database']) {
+        if (internal.db._databases().find(
+          dbName => dbName === benchTodo['server.database']) === undefined) {
+          oneResult.message += " no database was created!";
+          oneResult.status = false;
+        } else {
+          internal.db._dropDatabase(benchTodo['server.database']);
+        }
+      }
+
       results[name] = oneResult;
       results[name].total++;
       results[name].failed = 0;
