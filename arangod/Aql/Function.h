@@ -85,7 +85,7 @@ struct Function {
   /// @brief helper for building flags
   template <typename... Args>
   static inline std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) noexcept {
-    return static_cast<std::underlying_type<Flags>::type>(flag) + makeFlags(args...);
+    return static_cast<std::underlying_type<Flags>::type>(flag) | makeFlags(args...);
   }
 
   static std::underlying_type<Flags>::type makeFlags() noexcept;
