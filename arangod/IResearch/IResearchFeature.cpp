@@ -273,7 +273,7 @@ class IResearchLogTopic final : public arangodb::LogTopic {
   }
 };  // IResearchLogTopic
 
-size_t computeThreadPoolSize(size_t threads, size_t threadsLimit) {
+size_t computeThreadPoolSize(size_t threads, size_t threadsLimit) noexcept {
   constexpr size_t MAX_THREADS = 8;  // arbitrary limit on the upper bound of threads in pool
   constexpr size_t MIN_THREADS = 1;  // at least one thread is required
   auto maxThreads = threadsLimit ? threadsLimit : MAX_THREADS;
@@ -282,6 +282,22 @@ size_t computeThreadPoolSize(size_t threads, size_t threadsLimit) {
                  : std::max(MIN_THREADS,
                             std::min(maxThreads,
                                      arangodb::NumberOfCores::getValue() / 4));
+}
+
+// first - number of threads in group 0,
+// second - number of threads in group 1
+std::pair<size_t, size_t> estimateThreadGroups(
+    size_t threads, size_t threadsLimit,
+    size_t group0Threads, size_t group1Threads) noexcept {
+  if (0 != threads && 0 == group0Threads && 0 == group1Threads) {
+    group0Threads = std::max(threads/2, UINT64_C(1));
+    group1Threads = group0Threads ;
+  }
+
+  return {
+    computeThreadPoolSize(group0Threads, threadsLimit),
+    computeThreadPoolSize(group1Threads, threadsLimit)
+  };
 }
 
 bool upgradeSingleServerArangoSearchView0_1(
@@ -751,16 +767,11 @@ void IResearchFeature::prepare() {
   // start the async task thread pool
   if (ServerState::instance()->isDBServer() ||
       ServerState::instance()->isSingleServer()) {
-    auto commitThreads = _commitThreads;
-    auto consolidationThreads = _consolidationThreads;
 
-    if (0 != _threads && 0 == commitThreads && 0 == consolidationThreads) {
-      commitThreads = std::max(_threads/2, UINT64_C(1));
-      consolidationThreads = commitThreads;
-    }
-
-    commitThreads        = computeThreadPoolSize(commitThreads, _threadsLimit);
-    consolidationThreads = computeThreadPoolSize(consolidationThreads, _threadsLimit);
+    auto const [commitThreads, consolidationThreads]
+      = estimateThreadGroups(_threads, _threadsLimit,
+                             _commitThreads,
+                             _consolidationThreads);
 
     _async->get(ThreadGroup::_0).max_threads(commitThreads);
     _async->get(ThreadGroup::_1).max_threads(consolidationThreads);
