@@ -253,7 +253,7 @@ void BenchFeature::start() {
       }
 
       LOG_TOPIC("5cda8", FATAL, arangodb::Logger::FIXME)
-        << "failed to create the specified database " << msg;
+        << "failed to create the specified database: " << msg;
       FATAL_ERROR_EXIT();
     }
 
