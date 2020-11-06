@@ -22,6 +22,7 @@
 
 #include "gtest/gtest.h"
 
+#include "./GraphTestTools.h"
 #include "./MockGraph.h"
 #include "./MockGraphProvider.h"
 
@@ -36,34 +37,58 @@ namespace arangodb {
 namespace tests {
 namespace generic_graph_provider_test {
 
+static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
+
+// Add more providers here
+using TypesToTest = ::testing::Types<MockGraphProvider>;
+
+template <class ProviderType>
 class GraphProviderTest : public ::testing::Test {
  protected:
+  // Only used to mock a singleServer
+  std::unique_ptr<GraphTestSetup> s{nullptr};
+  std::unique_ptr<MockGraphDatabase> singleServer{nullptr};
   GraphProviderTest() {}
   ~GraphProviderTest() {}
 
-  auto makeProvider(MockGraph const& graph) -> MockGraphProvider {
-    return MockGraphProvider(graph, MockGraphProvider::LooseEndBehaviour::NEVER);
+  auto makeProvider(MockGraph const& graph) -> ProviderType {
+    // Setup code for each provider type
+    if constexpr (std::is_same_v<ProviderType, MockGraphProvider>) {
+      return MockGraphProvider(graph, MockGraphProvider::LooseEndBehaviour::NEVER);
+    }
+    // TODO add a constexpr for SingleServerProvider
+    {
+      s = std::make_unique<GraphTestSetup>();
+      singleServer =
+          std::make_unique<MockGraphDatabase>(s->server, "testVocbase");
+      singleServer->addGraph(graph);
+    }
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 };
 
-TEST_F(GraphProviderTest, no_results_if_graph_is_empty) {
+TYPED_TEST_CASE(GraphProviderTest, TypesToTest);
+
+TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
   MockGraph empty{};
-  
-  auto testee = makeProvider(empty);
+
+  auto testee = this->makeProvider(empty);
   std::string startString = "0";
-  VPackHashedStringRef startH {startString.c_str(), static_cast<uint32_t>(startString.length())};
+  VPackHashedStringRef startH{startString.c_str(),
+                              static_cast<uint32_t>(startString.length())};
   auto start = testee.startVertex(startH);
   auto res = testee.expand(start, 0);
   EXPECT_EQ(res.size(), 0);
 }
 
-TEST_F(GraphProviderTest, should_enumerate_a_single_edge) {
+TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
   MockGraph g{};
   g.addEdge(0, 1);
-  
-  auto testee = makeProvider(g);
+
+  auto testee = this->makeProvider(g);
   std::string startString = "0";
-  VPackHashedStringRef startH {startString.c_str(), static_cast<uint32_t>(startString.length())};
+  VPackHashedStringRef startH{startString.c_str(),
+                              static_cast<uint32_t>(startString.length())};
   auto start = testee.startVertex(startH);
   auto res = testee.expand(start, 0);
   ASSERT_EQ(res.size(), 1);
@@ -72,17 +97,19 @@ TEST_F(GraphProviderTest, should_enumerate_a_single_edge) {
   EXPECT_EQ(f.getPrevious(), 0);
 }
 
-TEST_F(GraphProviderTest, should_enumerate_all_edges) {
+TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
   MockGraph g{};
   g.addEdge(0, 1);
   g.addEdge(0, 2);
   g.addEdge(0, 3);
   std::unordered_set<std::string> found{};
-  
-  auto testee = makeProvider(g);
+
+  auto testee = this->makeProvider(g);
   std::string startString = "0";
-  VPackHashedStringRef startH {startString.c_str(), static_cast<uint32_t>(startString.length())};
-  auto start = testee.startVertex(startH);  auto res = testee.expand(start, 0);
+  VPackHashedStringRef startH{startString.c_str(),
+                              static_cast<uint32_t>(startString.length())};
+  auto start = testee.startVertex(startH);
+  auto res = testee.expand(start, 0);
   ASSERT_EQ(res.size(), 3);
   for (auto const& f : res) {
     // All expand of the same previous
@@ -97,6 +124,6 @@ TEST_F(GraphProviderTest, should_enumerate_all_edges) {
   }
 }
 
-}
-}
-}
+}  // namespace generic_graph_provider_test
+}  // namespace tests
+}  // namespace arangodb

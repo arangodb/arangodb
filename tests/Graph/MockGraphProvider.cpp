@@ -62,24 +62,15 @@ void MockGraphProvider::Step::Vertex::addToBuilder(arangodb::velocypack::Builder
 }
 
 void MockGraphProvider::Step::Edge::addToBuilder(arangodb::velocypack::Builder& builder) const {
-  std::string fromId = _edge._from;
-  std::string toId = _edge._to;
-  std::string keyId = _edge._from + "->" + _edge._to;
-
-  builder.openObject();
-  builder.add(StaticStrings::IdString, VPackValue("e/" + keyId));
-  builder.add(StaticStrings::KeyString, VPackValue(keyId));
-  builder.add(StaticStrings::FromString, VPackValue(fromId));
-  builder.add(StaticStrings::ToString, VPackValue(toId));
-  builder.add("weight", VPackValue(_edge._weight));
-  builder.close();
+  _edge.addToBuilder(builder);
 }
 
 arangodb::velocypack::HashedStringRef MockGraphProvider::Step::Vertex::getId() const {
   return _vertex;
 }
 
-MockGraphProvider::MockGraphProvider(MockGraph const& data, LooseEndBehaviour looseEnds, bool reverse)
+MockGraphProvider::MockGraphProvider(MockGraph const& data,
+                                     LooseEndBehaviour looseEnds, bool reverse)
     : _reverse(reverse), _looseEnds(looseEnds) {
   for (auto const& it : data.edges()) {
     _fromIndex[it._from].push_back(it);
