@@ -67,6 +67,13 @@ class GraphProviderTest : public ::testing::Test {
 
       // We now have collections "v" and "e"
       auto query = singleServer->getQuery("RETURN 1", {"v", "e"});
+
+      auto edgeIndexHandle = singleServer->getEdgeIndexHandle("e");
+      auto tmpVar = singleServer->generateTempVar(query.get());
+      auto indexCondition = singleServer->buildOutboundCondition(query.get(), tmpVar);
+
+      IndexAccessor acc(edgeIndexHandle, indexCondition);
+
       return SingleServerProvider(*query.get());
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
