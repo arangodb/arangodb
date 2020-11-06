@@ -293,6 +293,18 @@ struct MockGraphDatabase {
     return vertices;
   }
 
+  std::shared_ptr<Index> getEdgeIndexHandle(std::string name) {
+    std::shared_ptr<arangodb::LogicalCollection> coll = vocbase.lookupCollection(name);
+    TRI_ASSERT(coll != nullptr);    // no edge collection of this name
+    TRI_ASSERT(coll->type() == 3);  // Is not an edge collection
+    for (auto const& idx : coll->getIndexes()) {
+      if (idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        return idx;
+      }
+    }
+    TRI_ASSERT(false);  // Index not found
+  }
+
   std::unique_ptr<arangodb::aql::Query> getQuery(std::string qry,
                                                  std::vector<std::string> collections) {
     auto queryString = arangodb::aql::QueryString(qry);
@@ -316,9 +328,10 @@ struct MockGraphDatabase {
     auto ast = plan->getAst();
 
     auto _toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-    auto _fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
 
-    auto tmpVar = plan->getAst()->variables()->createTemporaryVariable();
+    auto tmpVar = generateTempVar(query);
+
+    auto _fromCondition = buildOutboundCondition(query, tmpVar);
 
     AstNode* tmpId1 = plan->getAst()->createNodeReference(tmpVar);
     AstNode* tmpId2 = plan->getAst()->createNodeValueString("", 0);
@@ -332,15 +345,6 @@ struct MockGraphDatabase {
       _toCondition->addMember(cond);
     }
 
-    {
-      auto const* access =
-          ast->createNodeAttributeAccess(tmpId1, StaticStrings::FromString.c_str(),
-                                         StaticStrings::FromString.length());
-      auto const* cond =
-          ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
-      _fromCondition->addMember(cond);
-    }
-
     auto spo = std::make_unique<ShortestPathOptions>(*query);
     spo->setVariable(tmpVar);
     spo->addLookupInfo(plan, "e", StaticStrings::FromString, _fromCondition->clone(ast));
@@ -348,6 +352,29 @@ struct MockGraphDatabase {
 
     return spo;
   }
+
+  arangodb::aql::AstNode* buildOutboundCondition(arangodb::aql::Query* query,
+                                                 arangodb::aql::Variable const* tmpVar) {
+    auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
+    auto ast = plan->getAst();
+    auto fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+    AstNode* tmpId1 = plan->getAst()->createNodeReference(tmpVar);
+    AstNode* tmpId2 = plan->getAst()->createNodeValueString("", 0);
+
+    auto const* access =
+        ast->createNodeAttributeAccess(tmpId1, StaticStrings::FromString.c_str(),
+                                       StaticStrings::FromString.length());
+    auto const* cond =
+        ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
+    fromCondition->addMember(cond);
+    return fromCondition;
+  }
+
+  arangodb::aql::Variable* generateTempVar(arangodb::aql::Query* query) {
+    auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
+    return plan->getAst()->variables()->createTemporaryVariable();
+  }
+
 };  // namespace graph
 
 bool checkPath(ShortestPathOptions* spo, ShortestPathResult result,
