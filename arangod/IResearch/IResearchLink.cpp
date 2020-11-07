@@ -262,15 +262,15 @@ bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tick) noexcept {
 /// @struct Task
 /// @brief base class for asynchronous maintenance tasks
 ////////////////////////////////////////////////////////////////////////////////
-template<ThreadGroup Id, typename T>
+template<typename T>
 struct Task {
   void schedule(std::chrono::milliseconds delay) const {
     LOG_TOPIC("eb0da", DEBUG, arangodb::iresearch::TOPIC)
-        << "scheduled a task to thread group '" << static_cast<size_t>(Id)
-        << "' for arangosearch link '" << id
+        << "scheduled a " << T::typeName()
+        << " task for arangosearch link '" << id
         << "', delay '" << delay.count() << "'";
 
-    async->queue(Id, delay, static_cast<const T&>(*this));
+    async->queue(T::threadGroup(), delay, static_cast<const T&>(*this));
   }
 
   IResearchFeature* async;
@@ -289,7 +289,15 @@ namespace iresearch {
 /// @brief represents a commit task
 /// @note thread group 0 is dedicated to commit
 ////////////////////////////////////////////////////////////////////////////////
-struct CommitTask : Task<ThreadGroup::_0, CommitTask> {
+struct CommitTask : Task<CommitTask> {
+  static constexpr ThreadGroup threadGroup() noexcept {
+    return ThreadGroup::_0;
+  }
+
+  static constexpr const char* typeName() noexcept {
+    return "commit";
+  }
+
   void operator()();
 
   size_t cleanupIntervalCount{};
@@ -315,6 +323,9 @@ void CommitTask::operator()() {
   auto* link = this->link->get();
 
   if (link->_asyncTerminate.load()) {
+    LOG_TOPIC("eba1a", DEBUG, iresearch::TOPIC)
+        << "termination requested while committing the link '" << id
+        << "', runId '" << size_t(&runId) << "'";
     return; // termination requested
   }
 
@@ -330,7 +341,9 @@ void CommitTask::operator()() {
   }
 
   if (!commitIntervalMsec) {
-    // task not enabled
+    LOG_TOPIC("eba4a", DEBUG, iresearch::TOPIC)
+        << "sync is disabled for the link '" << id
+        << "', runId '" << size_t(&runId) << "'";
     return;
   }
 
@@ -382,7 +395,15 @@ void CommitTask::operator()() {
 /// @brief represents a consolidation task
 /// @note thread group 1 is dedicated to commit
 ////////////////////////////////////////////////////////////////////////////////
-struct ConsolidationTask : Task<ThreadGroup::_1, ConsolidationTask> {
+struct ConsolidationTask : Task<ConsolidationTask> {
+  static constexpr ThreadGroup threadGroup() noexcept {
+    return ThreadGroup::_1;
+  }
+
+  static constexpr const char* typeName() noexcept {
+    return "consolidation";
+  }
+
   void operator()();
 
   irs::merge_writer::flush_progress_t progress;
@@ -408,6 +429,9 @@ void ConsolidationTask::operator()() {
   auto* link = this->link->get();
 
   if (link->_asyncTerminate.load()) {
+    LOG_TOPIC("eba2a", DEBUG, iresearch::TOPIC)
+        << "termination requested while consolidating the link '" << id
+        << "', runId '" << size_t(&runId) << "'";
     return; // termination requested
   }
 
@@ -424,6 +448,9 @@ void ConsolidationTask::operator()() {
 
   if (!consolidationIntervalMsec // disabled via interval
       || !consolidationPolicy.policy()) { // disabled via policy
+    LOG_TOPIC("eba3a", DEBUG, iresearch::TOPIC)
+        << "consolidation is disabled for the link '" << id
+        << "', runId '" << size_t(&runId) << "'";
     return;
   }
 
@@ -1640,7 +1667,7 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
     scheduleCommit(std::chrono::milliseconds(meta._commitIntervalMsec));
   }
 
-  if (meta._consolidationIntervalMsec && meta._commitIntervalMsec) {
+  if (meta._consolidationIntervalMsec && meta._consolidationPolicy.policy()) {
     scheduleConsolidation(std::chrono::milliseconds(meta._consolidationIntervalMsec));
   }
 
