@@ -563,6 +563,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   }
 
   if (needWwwAuthenticate) {
+    TRI_ASSERT(response.responseCode() == rest::ResponseCode::UNAUTHORIZED);
     _header.append(TRI_CHAR_LENGTH_PAIR("Www-Authenticate: Basic, realm=\"ArangoDB\"\r\n"));
     _header.append(TRI_CHAR_LENGTH_PAIR("Www-Authenticate: Bearer, token_type=\"JWT\", realm=\"ArangoDB\"\r\n"));
   }
