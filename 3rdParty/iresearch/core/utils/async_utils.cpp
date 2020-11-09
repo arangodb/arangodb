@@ -411,8 +411,6 @@ void thread_pool::worker() {
 
   auto lock = make_unique_lock(lock_);
 
-  ++active_;
-
   for (;;) {
     const auto now = clock_t::now();
 
@@ -433,6 +431,7 @@ void thread_pool::worker() {
         }
 
         queue_.pop();
+        ++active_;
 
         // if have more tasks but no idle thread and can grow pool
         if (!queue_.empty() && active_ == pool_.size() && pool_.size() < max_threads_) {
@@ -456,32 +455,25 @@ void thread_pool::worker() {
         }
 
         lock.lock();
+        --active_;
       } else {
         // we have some tasks pending tasks, let's wait
-        --active_;
-        const auto sleep_time = std::min(clock_t::duration(50ms), top.at - now);
+        const auto sleep_time = std::max(clock_t::duration(50ms), top.at - now);
         try { cond_.wait_for(lock, sleep_time); } catch (...) { }
-        ++active_;
       }
 
       continue;
     }
 
     assert(lock.owns_lock());
-    --active_;
 
     assert(active_ <= pool_.size());
     if (State::RUN == state_ && // thread pool is still running
         pool_.size() <= max_threads_ && // pool does not exceed requested limit
         pool_.size() - active_ <= max_idle_) { // idle does not exceed requested limit
-           IR_FRMT_ERROR("WAITING %d, %d, %d", pool_.size(), active_, max_idle_);
-
       try { cond_.wait(lock); } catch (...) { }
-      ++active_;
       continue;
     }
-
-           IR_FRMT_ERROR("BYEBYE %d, %d, %d", pool_.size(), active_, max_idle_);
 
     // ...........................................................................
     // too many idle threads

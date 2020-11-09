@@ -321,7 +321,7 @@ struct CommitTask : Task<CommitTask> {
   void operator()();
 
   size_t cleanupIntervalCount{};
-  size_t commitIntervalMsec{};
+  std::chrono::milliseconds commitIntervalMsec{};
   size_t cleanupIntervalStep{};
 }; // CommitTask
 
@@ -356,23 +356,23 @@ void CommitTask::operator()() {
     auto lock = irs::make_lock_guard(mutex);
     auto& meta = link->_dataStore._meta;
 
-    commitIntervalMsec = meta._commitIntervalMsec;
+    commitIntervalMsec = std::chrono::milliseconds(meta._commitIntervalMsec);
     cleanupIntervalStep = meta._cleanupIntervalStep;
   }
 
-  if (!commitIntervalMsec) {
+  if (std::chrono::milliseconds::zero() == commitIntervalMsec) {
     LOG_TOPIC("eba4a", DEBUG, iresearch::TOPIC)
         << "sync is disabled for the link '" << id
         << "', runId '" << size_t(&runId) << "'";
     return;
   }
 
-  size_t usedMsec = std::chrono::duration_cast<std::chrono::milliseconds>(
-    std::chrono::steady_clock::now() - last).count();
+  const auto usedMsec = std::chrono::duration_cast<std::chrono::milliseconds>(
+    std::chrono::steady_clock::now() - last);
 
   if (usedMsec < commitIntervalMsec) {
     // still need to sleep, reschedule (with possibly updated '_commitIntervalMsec')
-    schedule(std::chrono::milliseconds(commitIntervalMsec - usedMsec));
+    schedule(commitIntervalMsec - usedMsec);
     return;
   }
 
@@ -384,6 +384,8 @@ void CommitTask::operator()() {
     LOG_TOPIC("7e323", DEBUG, iresearch::TOPIC)
         << "successful sync of arangosearch link '" << id
         << "', run id '" << size_t(&runId) << "'";
+
+    // FIXME don't cleanup if there were no commit
 
     if (cleanupIntervalStep && cleanupIntervalCount++ > cleanupIntervalStep) { // if enabled
       cleanupIntervalCount = 0; // reset counter
@@ -407,7 +409,7 @@ void CommitTask::operator()() {
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
 
-  schedule(std::chrono::milliseconds(commitIntervalMsec));
+  schedule(commitIntervalMsec);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -428,7 +430,7 @@ struct ConsolidationTask : Task<ConsolidationTask> {
 
   irs::merge_writer::flush_progress_t progress;
   IResearchViewMeta::ConsolidationPolicy consolidationPolicy;
-  size_t consolidationIntervalMsec{};
+  std::chrono::milliseconds consolidationIntervalMsec{};
 }; // ConsolidationTask
 
 void ConsolidationTask::operator()() {
@@ -463,10 +465,10 @@ void ConsolidationTask::operator()() {
     auto& meta = link->_dataStore._meta;
 
     consolidationPolicy = meta._consolidationPolicy;
-    consolidationIntervalMsec = meta._consolidationIntervalMsec;
+    consolidationIntervalMsec = std::chrono::milliseconds(meta._consolidationIntervalMsec);
   }
 
-  if (!consolidationIntervalMsec // disabled via interval
+  if (std::chrono::milliseconds::zero() == consolidationIntervalMsec // disabled via interval
       || !consolidationPolicy.policy()) { // disabled via policy
     LOG_TOPIC("eba3a", DEBUG, iresearch::TOPIC)
         << "consolidation is disabled for the link '" << id
@@ -474,12 +476,12 @@ void ConsolidationTask::operator()() {
     return;
   }
 
-  size_t usedMsec = std::chrono::duration_cast<std::chrono::milliseconds>(
-    std::chrono::steady_clock::now() - last).count();
+  auto const usedMsec = std::chrono::duration_cast<std::chrono::milliseconds>(
+    std::chrono::steady_clock::now() - last);
 
   if (usedMsec < consolidationIntervalMsec) {
     // reschedule (with possibly updated '_consolidationIntervalMsec')
-    schedule(std::chrono::milliseconds(consolidationIntervalMsec - usedMsec));
+    schedule(consolidationIntervalMsec - usedMsec);
     return;
   }
 
@@ -499,7 +501,7 @@ void ConsolidationTask::operator()() {
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
 
-  schedule(std::chrono::milliseconds(consolidationIntervalMsec));
+  schedule(consolidationIntervalMsec);
 }
 
 // -----------------------------------------------------------------------------
