@@ -1812,7 +1812,7 @@ void RestoreFeature::start() {
       FATAL_ERROR_EXIT();
     }
 
-    LOG_TOPIC_IF("52b23", INFO, arangodb::Logger::RESTORE, _options.continueRestore) << "try to continue old restore";
+    LOG_TOPIC_IF("52b23", INFO, arangodb::Logger::RESTORE, _options.continueRestore) << "try to continue previous restore";
     _progressTracker = std::make_unique<RestoreProgressTracker>(*_directory, !_options.continueRestore);
 
     // run the actual restore

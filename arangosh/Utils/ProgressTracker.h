@@ -105,4 +105,4 @@ ProgressTracker<T>::ProgressTracker(ManagedDirectory& directory, bool ignoreExis
 
 }
 
-#endif  // ARANGODB3_PROGRESSTRACKER_H
+#endif 
