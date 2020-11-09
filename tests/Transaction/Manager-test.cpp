@@ -225,14 +225,14 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
     ASSERT_TRUE(opRes.ok());
     ASSERT_TRUE(trx.finish(opRes.result).ok());
   }
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()), transaction::Status::RUNNING);
-  ASSERT_TRUE(mgr->commitManagedTrx(tid, vocbase.name()).ok());
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
+  ASSERT_TRUE(mgr->commitManagedTrx(tid).ok());
   // perform same operation
-  ASSERT_TRUE(mgr->commitManagedTrx(tid, vocbase.name()).ok());
+  ASSERT_TRUE(mgr->commitManagedTrx(tid).ok());
   // cannot commit aborted transaction
-  ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).is(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION));
+  ASSERT_TRUE(mgr->abortManagedTrx(tid).is(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION));
 
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()), transaction::Status::COMMITTED);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::COMMITTED);
 }
 
 TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
