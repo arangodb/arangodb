@@ -42,7 +42,6 @@
 #include "Agency/PathComponent.h"
 #include "Basics/Mutex.h"
 #include "Basics/Result.h"
-#include "GeneralServer/GeneralDefinitions.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/Metrics.h"
 
@@ -573,11 +572,6 @@ class AgencyComm {
   static std::string const AGENCY_URL_PREFIX;
   static uint64_t const INITIAL_SLEEP_TIME = 5000; // microseconds
   static uint64_t const MAX_SLEEP_TIME = 50000; // microseconds
-
-#ifdef DEBUG_SYNC_REPLICATION
- public:
-  static bool syncReplDebug;
-#endif
 
  public:
   explicit AgencyComm(application_features::ApplicationServer&);

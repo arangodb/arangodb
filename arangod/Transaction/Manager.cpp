@@ -243,7 +243,7 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
 }
 
 Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
-                                 VPackSlice trxOpts) {
+                                 VPackSlice trxOpts, bool isFollowerTransaction) {
   Result res;
   if (_disallowInserts) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
@@ -260,6 +260,9 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   if (options.lockTimeout < 0.0) {
     return res.reset(TRI_ERROR_BAD_PARAMETER,
                      "<lockTimeout> needs to be positive");
+  }
+  if (isFollowerTransaction) {
+    options.isFollowerTransaction = true;
   }
 
   auto fillColls = [](VPackSlice const& slice, std::vector<std::string>& cols) {
@@ -305,18 +308,23 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
+  
+  bool const isFollowerTransactionOnDBServer = 
+      (ServerState::instance()->isDBServer() &&
+      (tid.isFollowerTransactionId() || options.isFollowerTransaction));
 
   LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS) << "managed trx creating: " << tid.id();
 
-  const size_t bucket = getBucket(tid);
+  size_t const bucket = getBucket(tid);
 
-  {  // quick check whether ID exists
+  {  
+    // quick check whether ID exists
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
     if (it != buck._managed.end()) {
-      if (ServerState::instance()->isDBServer() && tid.isFollowerTransactionId()) {
+      if (isFollowerTransactionOnDBServer) {
         // it is ok for two different leaders to try to create the same
         // follower transaction on a leader.
         // for example, if we have 3 database servers and 2 shards, so that
@@ -337,8 +345,10 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     }
   }
 
+  // no transaction with ID exists yet, so start a new transaction
+
   // enforce size limit per DBServer
-  if (ServerState::instance()->isDBServer() && tid.isFollowerTransactionId()) {
+  if (isFollowerTransactionOnDBServer) {
     // if we are a follower, we reuse the leader's max transaction size and slightly
     // increase it. this is to ensure that the follower can process at least as many
     // data as the leader, even if the data representation is slightly varied for
@@ -364,6 +374,18 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     // It is important that all these calls succeed, because otherwise one of the calls
     // would just drop db server 3 as a follower.
     options.allowImplicitCollectionsForWrite = true;
+
+    // we should not have any locking conflicts on followers, generally. shard locking
+    // should be performed on leaders first, which will then, eventually replicate
+    // changes to followers. replication to followers is only done once the locks have
+    // been acquired on the leader(s). so if there are any locking issues, they are
+    // supposed to happen first on leaders, and not affect followers.
+    // that's why we can hard-code the lock timeout here to a rather low value on
+    // followers
+    constexpr double followerLockTimeout = 15.0;
+    if (options.lockTimeout == 0.0 || options.lockTimeout >= followerLockTimeout) {
+      options.lockTimeout = followerLockTimeout;
+    }
   } else {
     // for all other transactions, apply a size limitation 
     options.maxTransactionSize =
@@ -435,6 +457,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     }
     return true;
   };
+ 
   if (!lockCols(exclusiveCollections, AccessMode::Type::EXCLUSIVE) ||
       !lockCols(writeCollections, AccessMode::Type::WRITE) ||
       !lockCols(readCollections, AccessMode::Type::READ)) {
@@ -449,9 +472,12 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   // start the transaction
   transaction::Hints hints;
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
-  if (ServerState::instance()->isDBServer() && tid.isFollowerTransactionId()) {
+  if (options.isFollowerTransaction || tid.isFollowerTransactionId()) {
+    hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     // turn on intermediate commits on followers as well. otherwise huge leader
     // transactions could make the follower claim all memory and crash.
+  }
+  if (isFollowerTransactionOnDBServer) {
     hints.set(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
   }
   try {
@@ -586,26 +612,39 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TransactionId tid
 }
 
 void Manager::returnManagedTrx(TransactionId tid) noexcept {
-  const size_t bucket = getBucket(tid);
-  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+  bool isSoftAborted = false;
+  
+  {
+    size_t const bucket = getBucket(tid);
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
-  auto it = _transactions[bucket]._managed.find(tid);
-  if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user)) {
-    LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS)
-        << "managed transaction was not found";
-    TRI_ASSERT(false);
-    return;
-  }
+    auto it = _transactions[bucket]._managed.find(tid);
+    if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user)) {
+      LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS)
+          << "managed transaction was not found";
+      TRI_ASSERT(false);
+      return;
+    }
 
-  TRI_ASSERT(it->second.state != nullptr);
+    TRI_ASSERT(it->second.state != nullptr);
 
-  // garbageCollection might soft abort used transactions
-  const bool isSoftAborted = it->second.expiryTime == 0;
-  if (!isSoftAborted) {
-    it->second.updateExpiry();
+    // garbageCollection might soft abort used transactions
+    isSoftAborted = it->second.expiryTime == 0;
+    if (!isSoftAborted) {
+      it->second.updateExpiry();
+    }
+    
+    it->second.rwlock.unlock();
   }
   
-  it->second.rwlock.unlock();
+  // it is important that we release the write lock for the bucket here,
+  // because abortManagedTrx will call statusChangeWithTimeout, which will
+  // call updateTransaction, which then will try to acquire the same 
+  // write lock
+  
+  TRI_IF_FAILURE("returnManagedTrxForceSoftAbort") {
+    isSoftAborted = true;
+  }
 
   if (isSoftAborted) {
     abortManagedTrx(tid, "" /* any database */);

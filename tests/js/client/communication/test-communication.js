@@ -27,7 +27,7 @@ let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
 let fs = require('fs');
-let pu = require('@arangodb/process-utils');
+let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 
 function CommunicationSuite () {
