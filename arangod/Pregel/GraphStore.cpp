@@ -153,10 +153,9 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
         << "loading pregel graph";
       }
     }
-    // we can only load one vertex collection at a time
-    while (_runningThreads > 0) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
+  }
+  while (_runningThreads > 0) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
 
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
