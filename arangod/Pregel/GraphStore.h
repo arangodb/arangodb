@@ -92,7 +92,8 @@ class GraphStore final {
                   ShardID const& edgeShard,
                   std::string const& documentID,
                   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>&,
-                  std::vector<std::unique_ptr<TypedBuffer<char>>>&);
+                  std::vector<std::unique_ptr<TypedBuffer<char>>>&,
+                  uint64_t numVertices);
   
   void _storeVertices(std::vector<ShardID> const& globalShards,
                       RangeIterator<Vertex<V,E>>& it);

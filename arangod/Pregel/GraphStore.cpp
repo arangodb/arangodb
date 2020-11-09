@@ -58,6 +58,30 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
+namespace {
+static constexpr size_t minStringChunkSize = 16 * 1024 * sizeof(char);
+static constexpr size_t maxStringChunkSize = 32 * 1024 * 1024 * sizeof(char);
+static constexpr size_t chunkUnit = 4 * 1024 * sizeof(char);
+
+static_assert(minStringChunkSize % chunkUnit == 0, "invalid chunkUnit value");
+static_assert(maxStringChunkSize % chunkUnit == 0, "invalid chunkUnit value");
+
+size_t stringChunkSize(size_t /*numberOfChunks*/, uint64_t numVerticesLeft, bool isVertex) {
+  // we assume a conservative 64 bytes per document key
+  size_t numBytes = numVerticesLeft * 64;
+  if (!isVertex) {
+    // assume 16 edges per vertex
+    numBytes *= 16;
+  }
+  numBytes = (numBytes + chunkUnit - 1) & (-chunkUnit);
+  numBytes = std::max<size_t>(minStringChunkSize, numBytes);
+  numBytes = std::min<size_t>(maxStringChunkSize, numBytes);
+
+  TRI_ASSERT(numBytes % chunkUnit == 0);
+  return numBytes;
+}
+} // namespace
+
 template <typename V, typename E>
 GraphStore<V, E>::GraphStore(TRI_vocbase_t& vb, GraphFormat<V, E>* graphFormat)
     : _vocbaseGuard(vb),
@@ -262,8 +286,6 @@ std::unique_ptr<TypedBuffer<M>> createBuffer(WorkerConfig const& config, size_t 
 }
 }
 
-static constexpr size_t stringChunkSize = 32 * 1024 * 1024 * sizeof(char);
-
 template <typename V, typename E>
 void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
                                      std::vector<ShardID> const& edgeShards) {
@@ -316,14 +338,14 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
     char const* key = keySlice.getString(keyLen);
     if (keyBuff == nullptr || keyLen > keyBuff->remainingCapacity()) {
-      TRI_ASSERT(keyLen < stringChunkSize);
-      vKeys.push_back(createBuffer<char>(*_config, stringChunkSize));
+      TRI_ASSERT(keyLen < ::maxStringChunkSize);
+      vKeys.push_back(createBuffer<char>(*_config, ::stringChunkSize(vKeys.size(), numVertices, true)));
       keyBuff = vKeys.back().get();
     }
-    
-    ventry->_shard = sourceShard;
-    ventry->_key = keyBuff->end();
-    ventry->_keyLength = static_cast<uint16_t>(keyLen);
+   
+    ventry->setShard(sourceShard);
+    ventry->setKey(keyBuff->end(), static_cast<uint16_t>(keyLen));
+    ventry->setActive(true);
     TRI_ASSERT(keyLen <= std::numeric_limits<uint16_t>::max());
     
     // actually copy in the key
@@ -340,7 +362,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     ventry->_edgeCount = 0;
     // load edges
     for (ShardID const& edgeShard : edgeShards) {
-      _loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys);
+      _loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys, numVertices);
     }
     return true;
   };
@@ -376,7 +398,8 @@ template <typename V, typename E>
 void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
                                   ShardID const& edgeShard, std::string const& documentID,
                                   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
-                                  std::vector<std::unique_ptr<TypedBuffer<char>>>& edgeKeys) {
+                                  std::vector<std::unique_ptr<TypedBuffer<char>>>& edgeKeys,
+                                  size_t numVertices) {
 
   traverser::EdgeCollectionInfo info(&trx, edgeShard);
   ManagedDocumentResult mmdr;
@@ -391,8 +414,8 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       edgeBuff = edges.back().get();
     }
     if (keyBuff == nullptr || keyLen > keyBuff->remainingCapacity()) {
-      TRI_ASSERT(keyLen < stringChunkSize);
-      edgeKeys.push_back(createBuffer<char>(*_config, stringChunkSize));
+      TRI_ASSERT(keyLen < ::maxStringChunkSize);
+      edgeKeys.push_back(createBuffer<char>(*_config, ::stringChunkSize(edgeKeys.size(), numVertices, false)));
       keyBuff = edgeKeys.back().get();
     }
   };
@@ -428,7 +451,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
     
     // PregelShard sourceShard = (PregelShard)_config->shardId(edgeShard);
     edge->_targetShard = (PregelShard)_config->shardId(responsibleShard);
-    if (edge->_targetShard == (PregelShard) InvalidPregelShard) {
+    if (edge->_targetShard == InvalidPregelShard) {
       LOG_TOPIC("1f413", ERR, Logger::PREGEL)
       << "Could not resolve target shard of edge";
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
@@ -495,7 +518,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
   std::unique_ptr<arangodb::SingleCollectionTransaction> trx;
 
   ShardID shard;
-  PregelShard currentShard = (PregelShard) InvalidPregelShard;
+  PregelShard currentShard = InvalidPregelShard;
   Result res;
   
   VPackBuilder builder;
@@ -503,11 +526,36 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
 
   auto commitTransaction = [&]() {
     if (trx) {
+      builder.close();
+
+      OperationResult opRes = trx->update(shard, builder.slice(), options);
+      if (!opRes.countErrorCodes.empty()) {
+        int code = (*(opRes.countErrorCodes.begin())).first;
+        if (opRes.countErrorCodes.size() > 1) {
+          // more than a single error code. let's just fail this
+          THROW_ARANGO_EXCEPTION(code);
+        }
+        // got only a single error code. now let's use it, whatever it is.
+        opRes.result.reset(code);
+      }
+
+      if (opRes.fail() &&
+          opRes.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
+          opRes.isNot(TRI_ERROR_ARANGO_CONFLICT)) {
+        THROW_ARANGO_EXCEPTION(opRes.result);
+      }
+      if (opRes.is(TRI_ERROR_ARANGO_CONFLICT)) {
+        LOG_TOPIC("4e632", WARN, Logger::PREGEL) << "conflict while storing " << builder.toJson();
+      }
+
       res = trx->finish(res);
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
       }
     }
+
+    builder.clear();
+    builder.openArray(true);
   };
   
   // loop over vertices
@@ -532,7 +580,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
     VPackStringRef const key = it->key();
     V const& data = it->data();
     
-    builder.clear();
+    //builder.clear();
     // This loop will fill a buffer of vertices until we run into a new
     // collection
     // or there are no more vertices for to store (or the buffer is full)
@@ -550,18 +598,9 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
       trx.reset();
       break;
     }
-        
-    OperationResult opRes = trx->update(shard, builder.slice(), options);
-    if (opRes.fail() &&
-        opRes.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
-        opRes.isNot(TRI_ERROR_ARANGO_CONFLICT)) {
-      THROW_ARANGO_EXCEPTION(opRes.result);
-    }
-    if (opRes.is(TRI_ERROR_ARANGO_CONFLICT)) {
-      LOG_TOPIC("4e632", WARN, Logger::PREGEL) << "conflict while storing " << builder.toJson();
-    }
   }
-  
+ 
+  // commit the remainders in our buffer
   // will throw if it fails
   commitTransaction();
 }
@@ -574,18 +613,20 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
   double now = TRI_microtime();
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   
-  size_t numSegments = _vertices.size();
+  size_t const numSegments = _vertices.size();
+  
+  uint32_t numThreads = 1;
   if (_localVertexCount > 100000) {
     // We expect at least parallelism to fit in a uint32_t.
-    _runningThreads = static_cast<uint32_t>(std::min<size_t>(_config->parallelism(), numSegments));
-  } else {
-    _runningThreads = 1;
+    numThreads = static_cast<uint32_t>(std::min<size_t>(_config->parallelism(), numSegments));
   }
-  size_t numT = _runningThreads;
+
+  _runningThreads.store(numThreads, std::memory_order_relaxed);
+  size_t const numT = numThreads;
   LOG_TOPIC("f3fd9", DEBUG, Logger::PREGEL) << "Storing vertex data using " <<
     numT << " threads";
   
-  for (size_t i = 0; i < numT; i++) {
+  for (size_t i = 0; i < numT; ++i) {
     bool queued = SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [=] {
       size_t startI = i * (numSegments / numT);
       size_t endI = (i + 1) * (numSegments / numT);
@@ -596,18 +637,24 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
         _storeVertices(_config->globalShardIDs(), it);
         // TODO can't just write edges with SmartGraphs
       } catch (std::exception const& e) {
-        LOG_TOPIC("e22c8", ERR, Logger::PREGEL) << "Storing vertex data failed: '" << e.what() << "'";
+        LOG_TOPIC("e22c8", ERR, Logger::PREGEL) << "Storing vertex data failed: " << e.what();
       } catch (...) {
         LOG_TOPIC("51b87", ERR, Logger::PREGEL) << "Storing vertex data failed";
       }
-      _runningThreads--;
-      if (_runningThreads == 0) {
+
+      uint32_t numRunning = _runningThreads.fetch_sub(1, std::memory_order_relaxed);
+      TRI_ASSERT(numRunning > 0);
+      if (numRunning - 1 == 0) {
         LOG_TOPIC("b5a21", DEBUG, Logger::PREGEL)
             << "Storing data took " << (TRI_microtime() - now) << "s";
         cb();
       }
     });
+
     if (!queued) {
+      // couldn't queue this storage task. so now at least count down
+      _runningThreads.fetch_sub(1, std::memory_order_relaxed);
+
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
                                      "No thread available to queue vertex "
                                      "storage, canceling execution");
