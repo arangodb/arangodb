@@ -23,6 +23,7 @@
 #include "GraphStore.h"
 
 #include "Basics/Common.h"
+#include "Basics/LocalTaskQueue.h"
 #include "Basics/MutexLocker.h"
 #include "Indexes/IndexIterator.h"
 #include "Pregel/CommonFormats.h"
@@ -38,8 +39,8 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
@@ -81,8 +82,10 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
   TRI_ASSERT(_runningThreads == 0);
 
   LOG_TOPIC("27f1e", DEBUG, Logger::PREGEL)
-      << "Using " << config->localVertexShardIDs().size() << " threads to load data. memory-mapping is turned " << (config->useMemoryMaps() ? "on" : "off");
-  
+      << "Using up to " << _config->parallelism()
+      << " threads to load data. memory-mapping is turned "
+      << (config->useMemoryMaps() ? "on" : "off");
+
   // hold the current position where the ith vertex shard can
   // start to write its data. At the end the offset should equal the
   // sum of the counts of all ith edge shards
@@ -97,7 +100,14 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
   std::map<CollectionID, std::vector<ShardID>> const& edgeCollMap =
   _config->edgeCollectionShards();
   size_t numShards = SIZE_MAX;
-  
+
+  auto poster = [](std::function<void()> fn) -> bool {
+    return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
+  };
+  auto queue =
+      std::make_shared<basics::LocalTaskQueue>(_vocbaseGuard.database().server(), poster);
+  queue->setConcurrency(_config->parallelism());
+
   for (auto const& pair : vertexCollMap) {
     std::vector<ShardID> const& vertexShards = pair.second;
     if (numShards == SIZE_MAX) {
@@ -126,12 +136,10 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
           continue;
         }
         _loadedShards.insert(vertexShard);
-        _runningThreads++;
         Scheduler* scheduler = SchedulerFeature::SCHEDULER;
         TRI_ASSERT(scheduler);
-        bool queued =
-            scheduler->queue(RequestLane::INTERNAL_LOW, [this, vertexShard, edges] {
-              TRI_DEFER(_runningThreads--);  // exception safe
+        auto task =
+            std::make_shared<basics::LambdaTask>(queue, [this, vertexShard, edges]() -> Result {
               try {
                 _loadVertices(vertexShard, edges);
               } catch (std::exception const& ex) {
@@ -139,11 +147,9 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
                     << "caught exception while "
                     << "loading pregel graph: " << ex.what();
               }
+              return Result();
             });
-        if (!queued) {
-          LOG_TOPIC("38da2", WARN, Logger::PREGEL)
-              << "No thread available to queue vertex loading";
-        }
+        queue->enqueue(task);
       } catch (basics::Exception const& ex) {
         LOG_TOPIC("3f283", WARN, Logger::PREGEL)
             << "unhandled exception while "
@@ -154,8 +160,9 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
       }
     }
   }
-  while (_runningThreads > 0) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  queue->dispatchAndWait();
+  if (queue->status().fail()) {
+    THROW_ARANGO_EXCEPTION(queue->status());
   }
 
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;

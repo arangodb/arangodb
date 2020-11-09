@@ -1016,12 +1016,14 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
     TRI_ASSERT(l != nullptr);
-    l->batchInsert(trx, docs, taskQueuePtr);
+    for (auto const& pair : docs) {
+      l->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+    }
   } else {
     TRI_ASSERT(false);
   }
 
-  if (TRI_ERROR_NO_ERROR != taskQueue.status()) {
+  if (taskQueue.status().fail()) {
     return nullptr;
   }
 

@@ -53,7 +53,7 @@ LocalTask::~LocalTask() {
 
 void LocalTask::dispatch() {
   _dispatched = true;
-  _queue->post([self = shared_from_this(), this]() {
+  bool queued = _queue->post([self = shared_from_this(), this]() {
     _queue->startTask();
     try {
       run();
@@ -64,6 +64,20 @@ void LocalTask::dispatch() {
     }
     return true;
   });
+  if (!queued && _queue->status().ok()) {
+    _queue->setStatus({TRI_ERROR_QUEUE_FULL, "could not post task"});
+  }
+}
+
+LambdaTask::LambdaTask(std::shared_ptr<LocalTaskQueue> const& queue,
+                       std::function<Result()>&& fn)
+    : LocalTask(queue), _fn(std::move(fn)) {}
+
+void LambdaTask::run() {
+  Result res = _fn();
+  if (res.fail()) {
+    _queue->setStatus(res);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,7 +93,7 @@ LocalTaskQueue::LocalTaskQueue(application_features::ApplicationServer& server, 
       _dispatched(0),
       _concurrency(std::numeric_limits<std::size_t>::max()),
       _started(0),
-      _status(TRI_ERROR_NO_ERROR) {}
+      _status() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the queue.
@@ -109,12 +123,7 @@ void LocalTaskQueue::enqueue(std::shared_ptr<LocalTask> task) {
 /// by task dispatch.
 //////////////////////////////////////////////////////////////////////////////
 
-void LocalTaskQueue::post(std::function<bool()> fn) { 
-  bool result = _poster(fn); 
-  if (!result) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
-  }
-}
+bool LocalTaskQueue::post(std::function<bool()> fn) { return _poster(fn); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief join a single task. reduces the number of waiting tasks and wakes
@@ -143,7 +152,7 @@ void LocalTaskQueue::dispatchAndWait() {
       std::unique_lock<std::mutex> guard(_mutex);
 
       // dispatch all newly queued tasks
-      if (_status == TRI_ERROR_NO_ERROR) {
+      if (_status.ok()) {
         while (_dispatched < _concurrency && !_queue.empty()) {
           auto task = _queue.front();
           task->dispatch();
@@ -169,7 +178,7 @@ void LocalTaskQueue::dispatchAndWait() {
 /// @brief set status of queue
 //////////////////////////////////////////////////////////////////////////////
 
-void LocalTaskQueue::setStatus(int status) {
+void LocalTaskQueue::setStatus(Result status) {
   std::unique_lock<std::mutex> guard(_mutex);
   _status = status;
 }
@@ -178,7 +187,7 @@ void LocalTaskQueue::setStatus(int status) {
 /// @brief return overall status of queue tasks
 //////////////////////////////////////////////////////////////////////////////
 
-int LocalTaskQueue::status() {
+Result LocalTaskQueue::status() {
   std::unique_lock<std::mutex> guard(_mutex);
   return _status;
 }

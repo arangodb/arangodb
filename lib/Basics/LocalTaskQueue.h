@@ -31,6 +31,8 @@
 #include <mutex>
 #include <queue>
 
+#include "Basics/Result.h"
+
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
@@ -60,6 +62,17 @@ class LocalTask : public std::enable_shared_from_this<LocalTask> {
   bool _dispatched;
 };
 
+/// @brief a helper task type to dispatch simple lambdas
+class LambdaTask : public LocalTask {
+ public:
+  LambdaTask(std::shared_ptr<LocalTaskQueue> const&, std::function<Result()>&&);
+
+  virtual void run();
+
+ private:
+  std::function<Result()> _fn;
+};
+
 class LocalTaskQueue {
  public:
   typedef std::function<bool(std::function<void()>)> PostFn;
@@ -86,7 +99,7 @@ class LocalTaskQueue {
   /// by task dispatch.
   //////////////////////////////////////////////////////////////////////////////
 
-  void post(std::function<bool()> fn);
+  bool post(std::function<bool()> fn);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief join a single task. reduces the number of waiting tasks and wakes
@@ -107,13 +120,13 @@ class LocalTaskQueue {
   /// @brief set status of queue
   //////////////////////////////////////////////////////////////////////////////
 
-  void setStatus(int);
+  void setStatus(Result);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return overall status of queue tasks
   //////////////////////////////////////////////////////////////////////////////
 
-  int status();
+  Result status();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set limit for concurrently dispatched tasks
@@ -173,7 +186,7 @@ class LocalTaskQueue {
   /// @brief overall status of queue tasks
   //////////////////////////////////////////////////////////////////////////////
 
-  int _status;
+  Result _status;
 };
 
 }  // namespace basics
