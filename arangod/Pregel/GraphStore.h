@@ -60,7 +60,6 @@ template <typename V, typename E>
 class GraphStore final {
  public:
   GraphStore(TRI_vocbase_t& vocbase, GraphFormat<V, E>* graphFormat);
-  ~GraphStore();
 
   uint64_t numberVertexSegments() const {
     return _vertices.size();
@@ -127,7 +126,6 @@ class GraphStore final {
   std::atomic<size_t> _localVertexCount;
   std::atomic<size_t> _localEdgeCount;
   std::atomic<uint32_t> _runningThreads;
-  bool _destroyed = false;
 };
 
 }  // namespace pregel

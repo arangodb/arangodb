@@ -90,11 +90,6 @@ GraphStore<V, E>::GraphStore(TRI_vocbase_t& vb, GraphFormat<V, E>* graphFormat)
       _localEdgeCount(0),
       _runningThreads(0) {}
 
-template <typename V, typename E>
-GraphStore<V, E>::~GraphStore() {
-  _destroyed = true;
-}
-
 static const char* shardError =
     "Collections need to have the same number of shards,"
     " use distributeShardsLike";
@@ -164,6 +159,11 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
         TRI_ASSERT(scheduler);
         auto task =
             std::make_shared<basics::LambdaTask>(queue, [this, vertexShard, edges]() -> Result {
+              if (_vocbaseGuard.database().server().isStopping()) {
+                LOG_TOPIC("4355b", WARN, Logger::PREGEL)
+                    << "Aborted loading graph";
+                return {TRI_ERROR_SHUTTING_DOWN};
+              }
               try {
                 _loadVertices(vertexShard, edges);
               } catch (std::exception const& ex) {
@@ -185,7 +185,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
     }
   }
   queue->dispatchAndWait();
-  if (queue->status().fail()) {
+  if (queue->status().fail() && !queue->status().is(TRI_ERROR_SHUTTING_DOWN)) {
     THROW_ARANGO_EXCEPTION(queue->status());
   }
 
@@ -370,7 +370,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   while (hasMore && numVertices > 0) {
     TRI_ASSERT(segmentSize > 0);
     hasMore = cursor->nextDocument(cb, segmentSize);
-    if (_destroyed) {
+    if (_vocbaseGuard.database().server().isStopping()) {
       LOG_TOPIC("4355a", WARN, Logger::PREGEL) << "Aborted loading graph";
       break;
     }
@@ -480,7 +480,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       return true;
     };
     while (cursor->nextExtra(cb, 1000)) {
-      if (_destroyed) {
+      if (_vocbaseGuard.database().server().isStopping()) {
         LOG_TOPIC("29018", WARN, Logger::PREGEL) << "Aborted loading graph";
         break;
       }
@@ -500,7 +500,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       return true;
     };
     while (cursor->nextDocument(cb, 1000)) {
-      if (_destroyed) {
+      if (_vocbaseGuard.database().server().isStopping()) {
         LOG_TOPIC("191f5", WARN, Logger::PREGEL) << "Aborted loading graph";
         break;
       }
@@ -597,7 +597,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
     builder.close();
     
     ++numDocs;
-    if (_destroyed) {
+    if (_vocbaseGuard.database().server().isStopping()) {
       LOG_TOPIC("73ec2", WARN, Logger::PREGEL)
           << "Storing data was canceled prematurely";
       trx->abort();
