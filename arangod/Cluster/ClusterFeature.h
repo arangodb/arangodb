@@ -115,6 +115,11 @@ class ClusterFeature : public application_features::ApplicationFeature {
    */
   bool isDirty(std::string const& database) const;
 
+  /// @brief hand out async agency comm connection pool pruning:
+  void pruneAsyncAgencyConnectionPool() {
+    _asyncAgencyCommPool->pruneConnections();
+  }
+
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                             uint64_t interval_ms, uint64_t maxFailsBeforeWarning,

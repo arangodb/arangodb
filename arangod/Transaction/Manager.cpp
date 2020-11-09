@@ -243,7 +243,7 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
 }
 
 Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
-                                 VPackSlice trxOpts) {
+                                 VPackSlice trxOpts, bool isFollowerTransaction) {
   Result res;
   if (_disallowInserts) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
@@ -260,6 +260,9 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   if (options.lockTimeout < 0.0) {
     return res.reset(TRI_ERROR_BAD_PARAMETER,
                      "<lockTimeout> needs to be positive");
+  }
+  if (isFollowerTransaction) {
+    options.isFollowerTransaction = true;
   }
 
   auto fillColls = [](VPackSlice const& slice, std::vector<std::string>& cols) {
@@ -307,7 +310,8 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   }
   
   bool const isFollowerTransactionOnDBServer = 
-      (ServerState::instance()->isDBServer() && tid.isFollowerTransactionId());
+      (ServerState::instance()->isDBServer() &&
+      (tid.isFollowerTransactionId() || options.isFollowerTransaction));
 
   LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS) << "managed trx creating: " << tid.id();
 
@@ -370,6 +374,18 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
     // It is important that all these calls succeed, because otherwise one of the calls
     // would just drop db server 3 as a follower.
     options.allowImplicitCollectionsForWrite = true;
+
+    // we should not have any locking conflicts on followers, generally. shard locking
+    // should be performed on leaders first, which will then, eventually replicate
+    // changes to followers. replication to followers is only done once the locks have
+    // been acquired on the leader(s). so if there are any locking issues, they are
+    // supposed to happen first on leaders, and not affect followers.
+    // that's why we can hard-code the lock timeout here to a rather low value on
+    // followers
+    constexpr double followerLockTimeout = 15.0;
+    if (options.lockTimeout == 0.0 || options.lockTimeout >= followerLockTimeout) {
+      options.lockTimeout = followerLockTimeout;
+    }
   } else {
     // for all other transactions, apply a size limitation 
     options.maxTransactionSize =
@@ -456,9 +472,12 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   // start the transaction
   transaction::Hints hints;
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
-  if (isFollowerTransactionOnDBServer) {
+  if (options.isFollowerTransaction || tid.isFollowerTransactionId()) {
+    hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     // turn on intermediate commits on followers as well. otherwise huge leader
     // transactions could make the follower claim all memory and crash.
+  }
+  if (isFollowerTransactionOnDBServer) {
     hints.set(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
   }
   try {

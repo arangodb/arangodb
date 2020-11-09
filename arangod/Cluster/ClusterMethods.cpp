@@ -740,7 +740,7 @@ bool shardKeysChanged(LogicalCollection const& collection, VPackSlice const& old
     // expecting two objects. everything else is an error
     return true;
   }
-#ifdef DEBUG_SYNC_REPLICATION
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   if (collection.vocbase().name() == "sync-replication-test") {
     return false;
   }

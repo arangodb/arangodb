@@ -39,7 +39,7 @@
 #ifndef THIRD_PARTY_SNAPPY_SNAPPY_H__
 #define THIRD_PARTY_SNAPPY_SNAPPY_H__
 
-#include <stddef.h>
+#include <cstddef>
 #include <string>
 
 #include "snappy-stubs-public.h"
@@ -69,11 +69,12 @@ namespace snappy {
   // Higher-level string based routines (should be sufficient for most users)
   // ------------------------------------------------------------------------
 
-  // Sets "*output" to the compressed version of "input[0,input_length-1]".
-  // Original contents of *output are lost.
+  // Sets "*compressed" to the compressed version of "input[0,input_length-1]".
+  // Original contents of *compressed are lost.
   //
-  // REQUIRES: "input[]" is not an alias of "*output".
-  size_t Compress(const char* input, size_t input_length, string* output);
+  // REQUIRES: "input[]" is not an alias of "*compressed".
+  size_t Compress(const char* input, size_t input_length,
+                  std::string* compressed);
 
   // Decompresses "compressed[0,compressed_length-1]" to "*uncompressed".
   // Original contents of "*uncompressed" are lost.
@@ -82,7 +83,7 @@ namespace snappy {
   //
   // returns false if the message is corrupted and could not be decompressed
   bool Uncompress(const char* compressed, size_t compressed_length,
-                  string* uncompressed);
+                  std::string* uncompressed);
 
   // Decompresses "compressed" to "*uncompressed".
   //
@@ -193,11 +194,14 @@ namespace snappy {
   // Note that there might be older data around that is compressed with larger
   // block sizes, so the decompression code should not rely on the
   // non-existence of long backreferences.
-  static const int kBlockLog = 16;
-  static const size_t kBlockSize = 1 << kBlockLog;
+  static constexpr int kBlockLog = 16;
+  static constexpr size_t kBlockSize = 1 << kBlockLog;
 
-  static const int kMaxHashTableBits = 14;
-  static const size_t kMaxHashTableSize = 1 << kMaxHashTableBits;
+  static constexpr int kMinHashTableBits = 8;
+  static constexpr size_t kMinHashTableSize = 1 << kMinHashTableBits;
+
+  static constexpr int kMaxHashTableBits = 14;
+  static constexpr size_t kMaxHashTableSize = 1 << kMaxHashTableBits;
 }  // end namespace snappy
 
 #endif  // THIRD_PARTY_SNAPPY_SNAPPY_H__
