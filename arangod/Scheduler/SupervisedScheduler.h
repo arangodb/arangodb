@@ -41,7 +41,7 @@ class SupervisedScheduler final : public Scheduler {
  public:
   SupervisedScheduler(application_features::ApplicationServer& server,
                       uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
-                      uint64_t fifo1Size, uint64_t fifo2Size);
+                      uint64_t fifo1Size, uint64_t fifo2Size, double inFlightMultiplier);
   virtual ~SupervisedScheduler();
 
   bool queue(RequestLane lane, fu2::unique_function<void()>) override ADB_WARN_UNUSED_RESULT;
@@ -134,6 +134,7 @@ class SupervisedScheduler final : public Scheduler {
   };
   size_t const _minNumWorker;
   size_t const _maxNumWorker;
+  size_t const _maxInFlight;
   std::list<std::shared_ptr<WorkerState>> _workerStates;
   std::list<std::shared_ptr<WorkerState>> _abandonedWorkerStates;
   std::atomic<uint64_t> _nrWorking;   // Number of threads actually working

@@ -104,6 +104,12 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
                      new UInt64Parameter(&_nrMinimalThreads),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
+    // max / min number of threads
+  options->addOption("--server.in-flight-multiplier",
+                     std::string("controls the number of requests that can be in flight at a given point in time, relative to the number of request handling threads"),
+                     new DoubleParameter(&_inFlightMultiplier),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic, arangodb::options::Flags::Hidden));
+
   options->addOption("--server.maximal-queue-size",
                      "size of the priority 2 fifo", new UInt64Parameter(&_fifo2Size));
 
@@ -147,6 +153,13 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> 
     _nrMinimalThreads = 2;
   }
 
+  if (_inFlightMultiplier < 1.0) {
+    LOG_TOPIC("0a93a", WARN, arangodb::Logger::THREADS)
+        << "--server.in-flight-multiplier (" << _inFlightMultiplier
+        << ") is less than 1.0, setting to default (4.0)";
+    _inFlightMultiplier = 4.0;
+  }
+
   if (_nrMinimalThreads >= _nrMaximalThreads) {
     LOG_TOPIC("48e02", WARN, arangodb::Logger::THREADS)
         << "--server.maximal-threads (" << _nrMaximalThreads
@@ -177,7 +190,7 @@ void SchedulerFeature::prepare() {
 #endif
   auto sched = std::make_unique<SupervisedScheduler>(server(), _nrMinimalThreads,
                                                      _nrMaximalThreads, _queueSize,
-                                                     _fifo1Size, _fifo2Size);
+                                                     _fifo1Size, _fifo2Size, _inFlightMultiplier);
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif

@@ -157,6 +157,10 @@ class Scheduler {
       });
     }
 
+    std::size_t inFlight() const;
+    void increaseInFlight();
+    void decreaseInFlight();
+
   // ---------------------------------------------------------------------------
   // CronThread and delayed tasks
   // ---------------------------------------------------------------------------
@@ -190,6 +194,7 @@ class Scheduler {
   std::mutex _cronQueueMutex;
   std::condition_variable _croncv;
   std::unique_ptr<SchedulerCronThread> _cronThread;
+  std::atomic<std::size_t> _inFlight;
 
   // ---------------------------------------------------------------------------
   // Statistics stuff

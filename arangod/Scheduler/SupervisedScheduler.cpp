@@ -146,7 +146,8 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer& server,
                                          uint64_t minThreads, uint64_t maxThreads,
                                          uint64_t maxQueueSize,
-                                         uint64_t fifo1Size, uint64_t fifo2Size)
+                                         uint64_t fifo1Size, uint64_t fifo2Size,
+                                         double inFlightMultiplier)
     : Scheduler(server),
       _numWorkers(0),
       _stopping(false),
@@ -159,6 +160,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _definitiveWakeupTime_ns(100000),
       _minNumWorker(minThreads),
       _maxNumWorker(maxThreads),
+      _maxInFlight(ServerState::instance()->isCoordinator() ? static_cast<std::size_t>(inFlightMultiplier * _maxNumWorker) : std::numeric_limits<std::size_t>::max()),
       _nrWorking(0),
       _nrAwake(0),
       _maxFifoSize(maxQueueSize),
@@ -599,8 +601,19 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const {
     return (jobsDequeued - jobsDone) < (_maxNumWorker * 3 / 4);
   }
 
+  // For low priority we also throttle user jobs on the coordinator if we have
+  // too many requests in flight internally; If we aren't a coordinator, then
+  // _maxInFlight is just the max size_t
+  std::size_t const inFlight = this->inFlight();
+  std::size_t const flip = RandomGenerator::interval(0, _maxInFlight);
+  if ((inFlight > _maxInFlight) ||
+      ((_maxInFlight < std::numeric_limits<std::size_t>::max()) && (flip < inFlight))) {
+    LOG_DEVEL << "NO GOOD, " << inFlight << " inflight, flip " << flip << " vs. " << _maxInFlight << " max";
+    return false;
+  }
+
   // We can work on low if less than 50% of the workers are busy
-  return (jobsDequeued - jobsDone) < (_maxNumWorker / 2);
+  return ((jobsDequeued - jobsDone) < (_maxNumWorker / 2));
 }
 
 std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
@@ -611,6 +624,7 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     WorkItem* res = nullptr;
     for (uint64_t i = 0; i < 3; ++i) {
       if (this->canPullFromQueue(i) && this->_queues[i].pop(res)) {
+        LOG_DEVEL << "grabbed work from queue " << i;
         return res;
       }
     }
@@ -661,12 +675,15 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     }
 
     if (state->_sleepTimeout_ms == 0) {
+      LOG_DEVEL << "sleeping thread indefinitely";
       state->_conditionWork.wait(guard);
     } else {
+      LOG_DEVEL << "sleeping thread for " << state->_sleepTimeout_ms << "ms";
       state->_conditionWork.wait_for(guard, std::chrono::milliseconds(state->_sleepTimeout_ms));
     }
     state->_sleeping = false;
     _nrAwake.fetch_add(1, std::memory_order_relaxed);
+    LOG_DEVEL << "waking thread";
   }  // while
 
   return nullptr;
