@@ -129,7 +129,6 @@ function basicTestSuite() {
                     { _from: vColl + '/I', _to: vColl + '/E', vertex: 'I' },
                     { _from: vColl + '/J', _to: vColl + '/E', vertex: 'J' },
                     { _from: vColl + '/K', _to: vColl + '/E', vertex: 'K' }]);
-      edges.toArray();
     },
 
     ////////////////////////////////////////////////////////////////////////////////
