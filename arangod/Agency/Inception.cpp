@@ -48,7 +48,7 @@ void handleGossipResponse(arangodb::network::Response const& r,
   if (r.ok()) {
     velocypack::Slice payload = r.response->slice();
 
-    switch (r.response->statusCode()) {
+    switch (r.statusCode()) {
       case 200:  // Digest other configuration
         LOG_TOPIC("4995a", DEBUG, Logger::AGENCY)
             << "Got result of gossip message, code: 200"
@@ -85,7 +85,7 @@ void handleGossipResponse(arangodb::network::Response const& r,
         break;
 
       default:
-        LOG_TOPIC("bed89", ERR, Logger::AGENCY) << "Got error " << r.response->statusCode()
+        LOG_TOPIC("bed89", ERR, Logger::AGENCY) << "Got error " << r.statusCode()
         << " from gossip endpoint";
         std::this_thread::sleep_for(std::chrono::seconds(40));
         break;
@@ -296,7 +296,7 @@ bool Inception::restartingActiveAgent() {
       auto comres = network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
                                          greetBuffer, reqOpts).get();
       
-      if (comres.ok() && comres.response->statusCode() == fuerte::StatusOK) {
+      if (comres.ok() && comres.statusCode() == fuerte::StatusOK) {
         
         VPackSlice const theirConfig = comres.slice();
 
