@@ -188,25 +188,30 @@ set(LIB_ARANGO_GRAPH_SOURCES
   RestHandler/RestGraphHandler.cpp
 )
 
+set(LIB_ARANGO_AIR_SOURCES
+  Pregel/Algos/AIR/Greenspun/Interpreter.cpp
+  Pregel/Algos/AIR/Greenspun/Primitives.cpp
+  Pregel/Algos/AIR/Greenspun/lib/DateTime.cpp
+  Pregel/Algos/AIR/Greenspun/lib/Math.cpp
+  Pregel/Algos/AIR/Greenspun/lib/Strings.cpp)
+
 set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/AggregatorHandler.cpp
   Pregel/AlgoRegistry.cpp
   Pregel/Algos/AIR/AIR.cpp
   Pregel/Algos/AIR/AbstractAccumulator.cpp
   Pregel/Algos/AIR/AccumulatorOptionsDeserializer.cpp
-  Pregel/Algos/AIR/Greenspun/Interpreter.cpp
-  Pregel/Algos/AIR/Greenspun/Primitives.cpp
-  Pregel/Algos/AIR/Greenspun/lib/DateTime.cpp
-  Pregel/Algos/AIR/MessageData.cpp
-  Pregel/Algos/AIR/VertexData.cpp
+  Pregel/Algos/AIR/Accumulators.cpp
+  Pregel/Algos/AIR/EdgeData.cpp
   Pregel/Algos/AIR/EdgeData.cpp
   Pregel/Algos/AIR/GraphFormat.cpp
+  Pregel/Algos/AIR/MasterContext.cpp
+  Pregel/Algos/AIR/MessageData.cpp
+  Pregel/Algos/AIR/MessageData.cpp
   Pregel/Algos/AIR/MessageFormat.cpp
   Pregel/Algos/AIR/VertexComputation.cpp
   Pregel/Algos/AIR/VertexData.cpp
-  Pregel/Algos/AIR/EdgeData.cpp
-  Pregel/Algos/AIR/MessageData.cpp
-  Pregel/Algos/AIR/MasterContext.cpp
+  Pregel/Algos/AIR/VertexData.cpp
   Pregel/Algos/AIR/WorkerContext.cpp
   Pregel/Algos/AsyncSCC.cpp
   Pregel/Algos/ConnectedComponents.cpp
@@ -230,6 +235,8 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/OutgoingCache.cpp
   Pregel/PregelFeature.cpp
   Pregel/Recovery.cpp
+  Pregel/Reports.cpp
+  Pregel/Reports.h
   Pregel/Utils.cpp
   Pregel/Worker-templates-algorithms.cpp
   Pregel/Worker-templates-native-types.cpp
@@ -237,11 +244,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/WorkerConfig.cpp
   RestHandler/RestControlPregelHandler.cpp
   RestHandler/RestPregelHandler.cpp
-  Pregel/Reports.cpp
-  Pregel/Reports.h
-  Pregel/Algos/AIR/Accumulators.cpp
-  Pregel/Algos/AIR/Greenspun/lib/Math.cpp
-        Pregel/Algos/AIR/Greenspun/lib/Strings.cpp Pregel/Algos/AIR/Greenspun/lib/Strings.h)
+        )
 
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
@@ -790,6 +793,9 @@ endif()
 include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 
+add_library(arango-greenspun STATIC
+        ${LIB_ARANGO_AIR_SOURCES})
+
 add_library(arango_graph STATIC
   ${LIB_ARANGO_GRAPH_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_GRAPH_SOURCES}
@@ -946,9 +952,11 @@ target_link_libraries(arango_network llhttp)
 target_link_libraries(arango_network nghttp2)
 target_link_libraries(arango_network arango::validation)
 
+target_link_libraries(arango-greenspun arango)
 target_link_libraries(arango_pregel arango_agency)
 target_link_libraries(arango_pregel boost_boost)
 target_link_libraries(arango_pregel boost_system)
+target_link_libraries(arango_pregel arango-greenspun)
 
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)

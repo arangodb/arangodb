@@ -880,14 +880,82 @@ TEST_CASE("Test [int-to-str] primitive", "[int-to-str]") {
  * Access operators
  */
 
-TEST_CASE("Test [attrib-ref] primitive", "[attrib-ref]") { REQUIRE(false); }
+TEST_CASE("Test [attrib-ref] primitive", "[attrib-ref]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("Reference existing value") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["attrib-ref", {"hello": 1}, "hello"]
+    )aql");
+
+    Evaluate(m, program->slice(), result);
+    REQUIRE(result.slice().getNumber<int>() == 1);
+  }
+
+  SECTION("Reference non-existing value") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["attrib-ref", {"XXXX": 1}, "hello"]
+    )aql");
+
+    Evaluate(m, program->slice(), result);
+    REQUIRE(result.slice().isNone());
+  }
+}
+
+TEST_CASE("Test [attrib-ref-or] primitive", "[attrib-ref-or]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("Reference existing value") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["attrib-ref-or", {"hello": 1}, "hello", 4]
+    )aql");
+
+    Evaluate(m, program->slice(), result);
+    REQUIRE(result.slice().getNumber<int>() == 1);
+  }
+
+  SECTION("Reference non-existing value") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["attrib-ref-or", {"XXXX": 1}, "hello", 4]
+    )aql");
+
+    Evaluate(m, program->slice(), result);
+    REQUIRE(result.slice().getNumber<int>() == 4);
+  }
+}
+
+TEST_CASE("Test [attrib-ref-or-fail] primitive", "[attrib-ref-or-fail]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("Reference existing value") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["attrib-ref-or-fail", {"hello": 1}, "hello"]
+    )aql");
+
+    Evaluate(m, program->slice(), result);
+    REQUIRE(result.slice().getNumber<int>() == 1);
+  }
+
+  SECTION("Reference non-existing value") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["attrib-ref-or-fail", {"XXXX": 1}, "hello"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+}
 
 TEST_CASE("Test [var-ref] primitive", "[var-ref]") {
   Machine m;
   InitMachine(m);
   VPackBuilder result;
-  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
-  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
 
   // TODO: add variables to m (vertexData)
   SECTION("Test get non existing variable") {
@@ -899,12 +967,6 @@ TEST_CASE("Test [var-ref] primitive", "[var-ref]") {
     REQUIRE(result.slice().isNone());
   }
 }
-
-TEST_CASE("Test [var-set!] primitive", "[var-set!]") { REQUIRE(false); }
-
-TEST_CASE("Test [bind-ref] primitive", "[bind-ref]") { REQUIRE(false); }
-
-TEST_CASE("Test [for-each] primitive", "[for-each]") { REQUIRE(false); }
 
 TEST_CASE("Test [lambda] primitive", "[lambda]") {
   Machine m;

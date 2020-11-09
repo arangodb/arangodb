@@ -90,28 +90,6 @@ void AddSomeFunctions(greenspun::Machine& m) {
   m.setFunction("var-set", Func_VarSet);
 }
 
-std::string TRI_HomeDirectory() {
-  char const* result = getenv("HOME");
-
-  if (result == nullptr) {
-    return std::string(".");
-  }
-
-  return std::string(result);
-}
-
-namespace arangodb::basics::StringUtils {
-bool isPrefix(std::string const& str, std::string const& prefix) {
-  if (prefix.length() > str.length()) {
-    return false;
-  } else if (prefix.length() == str.length()) {
-    return str == prefix;
-  } else {
-    return str.compare(0, prefix.length(), prefix) == 0;
-  }
-}
-}  // namespace arangodb::basics::StringUtils
-
 struct LispCompleter : arangodb::Completer {
   bool isComplete(std::string const& source, size_t /*lineno*/) final {
     int openParen = 0;

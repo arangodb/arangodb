@@ -34,6 +34,8 @@ set(LIB_ARANGO_LINENOISE
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/linenoise.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/wcwidth.cpp
   Utilities/LinenoiseShell.cpp
+  Utilities/LineEditor.cpp
+  Utilities/ShellBase.cpp
 )
 
 set(LIB_ARANGO_DATE
@@ -90,6 +92,8 @@ endif()
 if (USE_LOCAL_CLOCK_GETTIME)
   set(LIB_CLOCK_GETTIME Utilities/clock_gettime.cpp)
 endif ()
+
+add_library(arango-vpack STATIC ${LIB_ARANGO_VPACK})
 
 add_library(arango STATIC
   ${LIB_ARANGO_APPLE}
@@ -228,9 +232,7 @@ add_library(arango STATIC
   Ssl/SslFeature.cpp
   Ssl/SslInterface.cpp
   Ssl/ssl-helper.cpp
-  Utilities/LineEditor.cpp
   Utilities/ScriptLoader.cpp
-  Utilities/ShellBase.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp
