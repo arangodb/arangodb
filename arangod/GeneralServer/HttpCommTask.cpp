@@ -504,6 +504,11 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   _header.append(GeneralResponse::responseString(response.responseCode()));
   _header.append("\r\n", 2);
 
+  // if we return HTTP 401, we need to send a www-authenticate header back with
+  // the response. in this case we need to check if the header was already set 
+  // or if we need to set it ourselves
+  bool needWwwAuthenticate = response.responseCode() == rest::ResponseCode::UNAUTHORIZED;
+
   bool seenServerHeader = false;
   // bool seenConnectionHeader = false;
   for (auto const& it : response.headers()) {
@@ -517,6 +522,8 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
     if (key == StaticStrings::Server) {
       seenServerHeader = true;
+    } else if (needWwwAuthenticate && key == StaticStrings::WwwAuthenticate) {
+      needWwwAuthenticate = false;
     }
 
     // reserve enough space for header name + ": " + value + "\r\n"
@@ -553,6 +560,11 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   // add "Server" response header
   if (!seenServerHeader && !HttpResponse::HIDE_PRODUCT_HEADER) {
     _header.append(TRI_CHAR_LENGTH_PAIR("Server: ArangoDB\r\n"));
+  }
+
+  if (needWwwAuthenticate) {
+    _header.append(TRI_CHAR_LENGTH_PAIR("Www-Authenticate: Basic, realm=\"ArangoDB\"\r\n"));
+    _header.append(TRI_CHAR_LENGTH_PAIR("Www-Authenticate: Bearer, token_type=\"JWT\", realm=\"ArangoDB\"\r\n"));
   }
 
   // turn on the keepAlive timer

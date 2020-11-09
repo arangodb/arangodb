@@ -1,6 +1,9 @@
 devel
 -----
 
+* Automatically add "www-authenticate" headers to server HTTP 401 responses,
+  as required by the HTTP specification.
+
 * Fixed a deadlock between AQL write transactions and hotbackup, since
   in AQL write transactions follower transactions did not know they are
   follower transactions.
