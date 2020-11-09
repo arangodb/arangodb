@@ -273,31 +273,24 @@ class IResearchLogTopic final : public arangodb::LogTopic {
   }
 };  // IResearchLogTopic
 
-size_t computeThreadPoolSize(size_t threads, size_t threadsLimit) noexcept {
+size_t computeIdleThreadsCount(size_t idleThreads, size_t threads) noexcept {
+  if (0 == idleThreads) {
+    return std::max(threads/2, size_t(1));
+  } else {
+    return std::min(idleThreads, threads);
+  }
+}
+
+size_t computeThreadsCount(size_t threads, size_t threadsLimit, size_t div) noexcept {
+  TRI_ASSERT(div);
   constexpr size_t MAX_THREADS = 8;  // arbitrary limit on the upper bound of threads in pool
   constexpr size_t MIN_THREADS = 1;  // at least one thread is required
-  auto maxThreads = threadsLimit ? threadsLimit : MAX_THREADS;
+  size_t const maxThreads = threadsLimit ? threadsLimit : MAX_THREADS;
 
   return threads ? threads
                  : std::max(MIN_THREADS,
                             std::min(maxThreads,
-                                     arangodb::NumberOfCores::getValue() / 4));
-}
-
-// first - number of threads in group 0,
-// second - number of threads in group 1
-std::pair<size_t, size_t> estimateThreadGroups(
-    size_t threads, size_t threadsLimit,
-    size_t group0Threads, size_t group1Threads) noexcept {
-  if (0 != threads && 0 == group0Threads && 0 == group1Threads) {
-    group0Threads = std::max(threads/2, UINT64_C(1));
-    group1Threads = group0Threads ;
-  }
-
-  return {
-    computeThreadPoolSize(group0Threads, threadsLimit),
-    computeThreadPoolSize(group1Threads, threadsLimit)
-  };
+                                     arangodb::NumberOfCores::getValue() / div));
 }
 
 bool upgradeSingleServerArangoSearchView0_1(
@@ -628,6 +621,13 @@ void registerTransactionDataSourceRegistrationCallback() {
 std::string const FEATURE_NAME("ArangoSearch");
 IResearchLogTopic LIBIRESEARCH("libiresearch");
 
+std::string const THREADS_PARAM("--arangosearch.threads");
+std::string const THREADS_LIMIT_PARAM("--arangosearch.threads-limit");
+std::string const COMMIT_THREADS_PARAM("--arangosearch.commit-threads");
+std::string const COMMIT_THREADS_IDLE_PARAM("--arangosearch.commit-threads-idle");
+std::string const CONSOLIDATION_THREADS_PARAM("--arangosearch.consolidation-threads");
+std::string const CONSOLIDATION_THREADS_IDLE_PARAM("--arangosearch.consolidation-threads-idle");
+
 void IResearchLogTopic::log_appender(void* /*context*/, const char* function, const char* file, int line,
                                      irs::logger::level_t level, const char* message,
                                      size_t message_len) {
@@ -691,20 +691,15 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
       _async(std::make_unique<IResearchAsync>()),
       _running(false),
       _consolidationThreads(0),
+      _consolidationThreadsIdle(0),
       _commitThreads(0),
+      _commitThreadsIdle(0),
       _threads(0),
       _threadsLimit(0) {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
   startsAfter<IResearchAnalyzerFeature>();
   startsAfter<aql::AqlFunctionFeature>();
-}
-
-void IResearchFeature::queue(
-    ThreadGroup id,
-    std::chrono::steady_clock::duration delay,
-    std::function<void()>&& fn) {
-  _async->get(id).run(std::move(fn), delay);
 }
 
 void IResearchFeature::beginShutdown() {
@@ -717,26 +712,61 @@ void IResearchFeature::collectOptions(std::shared_ptr<arangodb::options::Program
   ApplicationFeature::collectOptions(options);
   options->addSection("arangosearch",
                       std::string("Configure the ") + FEATURE_NAME + " feature");
-  options->addOption("--arangosearch.threads",
+  options->addOption(THREADS_PARAM,
                      "the exact number of threads to use for asynchronous "
                      "tasks (0 == autodetect)",
                      new arangodb::options::UInt64Parameter(&_threads))
                      .setDeprecatedIn(30800);
-  options->addOption("--arangosearch.threads-limit",
+  options->addOption(THREADS_LIMIT_PARAM,
                      "upper limit to the autodetected number of threads to use "
                      "for asynchronous tasks (0 == use default)",
                      new arangodb::options::UInt64Parameter(&_threadsLimit))
                      .setDeprecatedIn(30800);
+  options->addOption(CONSOLIDATION_THREADS_PARAM,
+                     "upper limit to the allowed number of consolidation threads "
+                     "(0 == autodetect)",
+                     new arangodb::options::UInt64Parameter(&_consolidationThreads))
+                     .setIntroducedIn(30760);
+  options->addOption(CONSOLIDATION_THREADS_IDLE_PARAM,
+                     "upper limit to the allowed number of idle threads to use "
+                     "for consolidation tasks (0 == autodetect)",
+                     new arangodb::options::UInt64Parameter(&_consolidationThreadsIdle))
+                     .setIntroducedIn(30760);
+  options->addOption(COMMIT_THREADS_PARAM,
+                     "upper limit to the allowed number of commit threads "
+                     "(0 == autodetect)",
+                     new arangodb::options::UInt64Parameter(&_commitThreads))
+                     .setIntroducedIn(30760);
+  options->addOption(COMMIT_THREADS_IDLE_PARAM,
+                     "upper limit to the allowed number of idle threads to use "
+                     "for commit tasks (0 == autodetect)",
+                     new arangodb::options::UInt64Parameter(&_commitThreadsIdle))
+                     .setIntroducedIn(30760);
+}
 
-  options->addOption("--arangosearch.consolidation-threads",
-                     "the exact number of consolidation threads (0 == autodetect)",
-                     new arangodb::options::UInt64Parameter(&_consolidationThreads));
-  options->addOption("--arangosearch.consolidation-threads",
-                     "the exact number of consolidation threads (0 == autodetect)",
-                     new arangodb::options::UInt64Parameter(&_consolidationThreads));
-  options->addOption("--arangosearch.commit-threads",
-                     "the exact number of commit threads (0 == autodetect)",
-                     new arangodb::options::UInt64Parameter(&_commitThreads));
+void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) {
+  auto const& args = options->processingResult();
+  bool const threadsSet = args.touched(THREADS_PARAM);
+  bool const threadsLimitSet = args.touched(THREADS_LIMIT_PARAM);
+  bool const commitThreadsSet = args.touched(COMMIT_THREADS_PARAM);
+  bool const consolidationThreadsSet = args.touched(CONSOLIDATION_THREADS_PARAM);
+
+  if ((threadsLimitSet || threadsSet) &&
+      !commitThreadsSet && !consolidationThreadsSet) {
+    // backwards compatibility
+    size_t const threads    = computeThreadsCount(_threads, _threadsLimit, 4);
+    _commitThreads          = std::max(threads/2, size_t(1));
+    _consolidationThreads   = _commitThreads;
+  } else {
+    size_t const threadsLimit = 4*arangodb::NumberOfCores::getValue();
+    _commitThreads          = computeThreadsCount(_commitThreads, threadsLimit, 6);
+    _consolidationThreads   = computeThreadsCount(_consolidationThreads, threadsLimit, 6);
+  }
+
+  _commitThreadsIdle        = computeIdleThreadsCount(_commitThreadsIdle, _commitThreads);
+  _consolidationThreadsIdle = computeIdleThreadsCount(_consolidationThreadsIdle, _consolidationThreads);
+
+  _running.store(false);
 }
 
 /*static*/ std::string const& IResearchFeature::name() { return FEATURE_NAME; }
@@ -767,19 +797,16 @@ void IResearchFeature::prepare() {
   // start the async task thread pool
   if (ServerState::instance()->isDBServer() ||
       ServerState::instance()->isSingleServer()) {
+    TRI_ASSERT(_commitThreads && _commitThreadsIdle);
+    TRI_ASSERT(_consolidationThreads && _consolidationThreadsIdle);
 
-    auto const [commitThreads, consolidationThreads]
-      = estimateThreadGroups(_threads, _threadsLimit,
-                             _commitThreads,
-                             _consolidationThreads);
-
-    _async->get(ThreadGroup::_0).max_threads(commitThreads);
-    _async->get(ThreadGroup::_1).max_threads(consolidationThreads);
+    _async->get(ThreadGroup::_0).set_limits(_commitThreads, _commitThreadsIdle);
+    _async->get(ThreadGroup::_1).set_limits(_consolidationThreads, _consolidationThreadsIdle);
 
     LOG_TOPIC("c1b64", INFO, arangodb::iresearch::TOPIC)
         << "ArangoSearch maintenance: "
-        << commitThreads << " commit thread(s), "
-        << consolidationThreads << " consolidation thread(s)";
+        << "[" << _commitThreadsIdle << ".." << _commitThreads << "] commit thread(s), "
+        << "[" << _consolidationThreadsIdle << ".." << _consolidationThreads << "] consolidation thread(s)";
   }
 }
 
@@ -818,12 +845,19 @@ void IResearchFeature::unprepare() {
   ApplicationFeature::unprepare();
 }
 
-void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) {
-  _running.store(false);
-  ApplicationFeature::validateOptions(options);
+void IResearchFeature::queue(
+    ThreadGroup id,
+    std::chrono::steady_clock::duration delay,
+    std::function<void()>&& fn) {
+  _async->get(id).run(std::move(fn), delay);
 }
 
-template <typename Engine, typename std::enable_if<std::is_base_of<StorageEngine, Engine>::value, int>::type>
+std::tuple<size_t, size_t, size_t, size_t, size_t>
+IResearchFeature::stats(ThreadGroup id) const {
+  return _async->get(id).stats();
+}
+
+template <typename Engine, typename std::enable_if_t<std::is_base_of_v<StorageEngine, Engine>, int>>
 IndexTypeFactory& IResearchFeature::factory() {
   TRI_ASSERT(_factories.find(std::type_index(typeid(Engine))) != _factories.end());
   return *_factories.find(std::type_index(typeid(Engine)))->second;

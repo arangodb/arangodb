@@ -258,6 +258,22 @@ bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tick) noexcept {
   return true;
 }
 
+struct ThreadGroupStats : std::tuple<size_t, size_t, size_t, size_t, size_t> {
+  explicit ThreadGroupStats(
+      std::tuple<size_t, size_t, size_t, size_t, size_t> const& stats)
+    : std::tuple<size_t, size_t, size_t, size_t, size_t>(stats) {
+  }
+};
+
+std::ostream& operator<<(std::ostream& out, ThreadGroupStats const& stats) {
+  out << "Active=" << std::get<0>(stats)
+      << ", Pending=" << std::get<1>(stats)
+      << ", Threads=" << std::get<2>(stats)
+      << ", MaxThreads=" << std::get<3>(stats)
+      << ", MaxIdleThreads=" << std::get<4>(stats);
+  return out;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct Task
 /// @brief base class for asynchronous maintenance tasks
@@ -269,6 +285,10 @@ struct Task {
         << "scheduled a " << T::typeName()
         << " task for arangosearch link '" << id
         << "', delay '" << delay.count() << "'";
+
+    LOG_TOPIC("eb0d2", TRACE, arangodb::iresearch::TOPIC)
+        << "'" << T::typeName() << "' stats: "
+        << ThreadGroupStats(async->stats(T::threadGroup()));
 
     async->queue(T::threadGroup(), delay, static_cast<const T&>(*this));
   }
@@ -873,10 +893,12 @@ Result IResearchLink::commitUnsafe(bool wait) {
     aql::QueryCache::instance()->invalidate(&(_collection.vocbase()), _viewGuid);
 
     LOG_TOPIC("7e328", TRACE, iresearch::TOPIC)
-        << "successful sync of arangosearch link '" << id() << "', docs count '"
-        << reader->docs_count() << "', live docs count '"
-        << reader->live_docs_count() << "', last operation tick '"
-        << _lastCommittedTick << "'";
+        << "successful sync of arangosearch link '" << id()
+        << "', segments '" << reader->size()
+        << "', docs count '" << reader->docs_count()
+        << "', live docs count '" << reader->docs_count()
+        << "', live docs count '" << reader->live_docs_count()
+        << "', last operation tick '" << _lastCommittedTick << "'";
   } catch (basics::Exception const& e) {
     return {e.code(), "caught exception while committing arangosearch link '" +
                        std::to_string(id().id()) + "': " + e.what()};

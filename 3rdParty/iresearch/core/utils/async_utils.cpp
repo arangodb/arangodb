@@ -251,7 +251,7 @@ thread_pool::~thread_pool() {
   } catch (...) { }
 }
 
-size_t thread_pool::max_idle() {
+size_t thread_pool::max_idle() const {
   auto lock = make_lock_guard(lock_);
 
   return max_idle_;
@@ -267,19 +267,22 @@ void thread_pool::max_idle(size_t value) {
 }
 
 void thread_pool::max_idle_delta(int delta) {
-  auto lock = make_lock_guard(lock_);
-  auto max_idle = max_idle_ + delta;
+  {
+    auto lock = make_lock_guard(lock_);
+    auto max_idle = max_idle_ + delta;
 
-  if (delta > 0 && max_idle < max_idle_) {
-    max_idle_ = std::numeric_limits<size_t>::max();
-  } else if (delta < 0 && max_idle > max_idle_) {
-    max_idle_ = std::numeric_limits<size_t>::min();
-  } else {
-    max_idle_ = max_idle;
+    if (delta > 0 && max_idle < max_idle_) {
+      max_idle_ = std::numeric_limits<size_t>::max();
+    } else if (delta < 0 && max_idle > max_idle_) {
+      max_idle_ = std::numeric_limits<size_t>::min();
+    } else {
+      max_idle_ = max_idle;
+    }
   }
+  cond_.notify_all(); // wake any idle threads if they need termination
 }
 
-size_t thread_pool::max_threads() {
+size_t thread_pool::max_threads() const {
   auto lock = make_lock_guard(lock_);
 
   return max_threads_;
@@ -359,19 +362,43 @@ void thread_pool::stop(bool skip_pending /*= false*/) {
   }
 }
 
-size_t thread_pool::tasks_active() {
+
+void thread_pool::set_limits(size_t max_threads, size_t max_idle) {
+  {
+    auto lock = make_lock_guard(lock_);
+
+    max_threads_ = max_threads;
+    max_idle_ = max_idle;
+
+    // create extra thread if all threads are busy and can grow pool
+    if (State::ABORT != state_ && !queue_.empty() &&
+        active_ == pool_.size() && pool_.size() < max_threads_) {
+      pool_.emplace_back(&thread_pool::worker, this);
+    }
+  }
+
+  cond_.notify_all(); // wake any idle threads if they need termination
+}
+
+std::tuple<size_t, size_t, size_t, size_t, size_t> thread_pool::stats() const {
+  auto lock = make_lock_guard(lock_);
+
+  return { active_, queue_.size(), pool_.size(), max_threads_, max_idle_ };
+}
+
+size_t thread_pool::tasks_active() const {
   auto lock = make_lock_guard(lock_);
 
   return active_;
 }
 
-size_t thread_pool::tasks_pending() {
+size_t thread_pool::tasks_pending() const {
   auto lock = make_lock_guard(lock_);
 
   return queue_.size();
 }
 
-size_t thread_pool::threads() {
+size_t thread_pool::threads() const {
   auto lock = make_lock_guard(lock_);
 
   return pool_.size();
@@ -411,8 +438,10 @@ void thread_pool::worker() {
         if (!queue_.empty() && active_ == pool_.size() && pool_.size() < max_threads_) {
           try {
             pool_.emplace_back(&thread_pool::worker, this); // add one thread
+          } catch (const std::exception& e) {
+            IR_FRMT_ERROR("Failed to grow pool, error '%s'", e.what());
           } catch (...) {
-            IR_LOG_EXCEPTION(); // log and ignore exception, new tasks will start new thread
+            IR_FRMT_ERROR("Failed to grow pool");
           }
         }
 
@@ -420,32 +449,39 @@ void thread_pool::worker() {
 
         try {
           fn();
+        } catch (const std::exception& e) {
+          IR_FRMT_ERROR("Failed to execute task, error '%s'", e.what());
         } catch (...) {
-          IR_LOG_EXCEPTION();
+          IR_FRMT_ERROR("Failed to execute task");
         }
 
         lock.lock();
-        continue;
       } else {
         // we have some tasks pending tasks, let's wait
         --active_;
         const auto sleep_time = std::min(clock_t::duration(50ms), top.at - now);
         try { cond_.wait_for(lock, sleep_time); } catch (...) { }
         ++active_;
-        continue;
       }
+
+      continue;
     }
 
     assert(lock.owns_lock());
     --active_;
 
+    assert(active_ <= pool_.size());
     if (State::RUN == state_ && // thread pool is still running
         pool_.size() <= max_threads_ && // pool does not exceed requested limit
         pool_.size() - active_ <= max_idle_) { // idle does not exceed requested limit
-      cond_.wait(lock);
+           IR_FRMT_ERROR("WAITING %d, %d, %d", pool_.size(), active_, max_idle_);
+
+      try { cond_.wait(lock); } catch (...) { }
       ++active_;
       continue;
     }
+
+           IR_FRMT_ERROR("BYEBYE %d, %d, %d", pool_.size(), active_, max_idle_);
 
     // ...........................................................................
     // too many idle threads

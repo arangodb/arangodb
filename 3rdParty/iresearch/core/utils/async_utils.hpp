@@ -135,24 +135,33 @@ class IRESEARCH_API thread_pool {
     size_t max_idle = 0,
     basic_string_ref<native_char_t> worker_name = basic_string_ref<native_char_t>::EMPTY);
   ~thread_pool();
-  size_t max_idle();
+  size_t max_idle() const;
   void max_idle(size_t value);
   void max_idle_delta(int delta); // change value by delta
-  size_t max_threads();
+  size_t max_threads() const;
   void max_threads(size_t value);
   void max_threads_delta(int delta); // change value by delta
-  bool run(func_t&& fn, clock_t::duration delay = {});
+  bool run(std::function<void()>&& fn, clock_t::duration delay = {});
   void stop(bool skip_pending = false); // always a blocking call
-  size_t tasks_active();
-  size_t tasks_pending();
-  size_t threads();
+  size_t tasks_active() const;
+  size_t tasks_pending() const;
+  size_t threads() const;
+
+  void set_limits(size_t max_threads, size_t max_idle);
+
+  // 1st : tasks active()
+  // 2nd : tasks pending()
+  // 3rd : threads()
+  // 4th : max_threads()
+  // 5th : max_idle()
+  std::tuple<size_t, size_t, size_t, size_t, size_t> stats() const;
 
  private:
   enum class State { ABORT, FINISH, RUN };
 
   struct task {
     explicit task(
-        func_t&& fn,
+        std::function<void()>&& fn,
         clock_t::time_point at)
       : at(at), fn(std::move(fn)) {
     }
@@ -169,7 +178,7 @@ class IRESEARCH_API thread_pool {
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::condition_variable cond_;
-  std::mutex lock_;
+  mutable std::mutex lock_;
   size_t active_{ 0 };
   size_t max_idle_;
   size_t max_threads_;

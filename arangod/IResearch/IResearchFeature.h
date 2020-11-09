@@ -51,46 +51,60 @@ class ResourceMutex;
 ////////////////////////////////////////////////////////////////////////////////
 enum class ThreadGroup : size_t { _0 = 0, _1 };
 
-bool isFilter(arangodb::aql::Function const& func) noexcept;
-bool isScorer(arangodb::aql::Function const& func) noexcept;
+////////////////////////////////////////////////////////////////////////////////
+/// @returns true if the specified 'func' is an ArangoSearch filter function,
+///          false otherwise
+////////////////////////////////////////////////////////////////////////////////
+bool isFilter(aql::Function const& func) noexcept;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @returns true if the specified 'func' is an ArangoSearch scorer function,
+///          false otherwise
+////////////////////////////////////////////////////////////////////////////////
+bool isScorer(aql::Function const& func) noexcept;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchFeature
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchFeature final : public application_features::ApplicationFeature {
  public:
-  explicit IResearchFeature(arangodb::application_features::ApplicationServer& server);
+  static std::string const& name();
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief schedule an asynchronous task for execution
-  /// @param id thread group to handle the execution
-  /// @param fn the function to execute
-  /// @param delay how log to sleep in before the next
-  //////////////////////////////////////////////////////////////////////////////
-  void queue(ThreadGroup id,
-             std::chrono::steady_clock::duration delay,
-             std::function<void()>&& fn);
+  explicit IResearchFeature(application_features::ApplicationServer& server);
 
   void beginShutdown() override;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  static std::string const& name();
   void prepare() override;
   void start() override;
   void stop() override;
   void unprepare() override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
-  template <typename Engine, typename std::enable_if<std::is_base_of<StorageEngine, Engine>::value, int>::type = 0>
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief schedule an asynchronous task for execution
+  /// @param id thread group to handle the execution
+  /// @param fn the function to execute
+  /// @param delay how log to sleep before the execution
+  //////////////////////////////////////////////////////////////////////////////
+  void queue(ThreadGroup id,
+             std::chrono::steady_clock::duration delay,
+             std::function<void()>&& fn);
+
+  std::tuple<size_t, size_t, size_t, size_t, size_t> stats(ThreadGroup id) const;
+
+  template <typename Engine, typename std::enable_if_t<std::is_base_of_v<StorageEngine, Engine>, int> = 0>
   IndexTypeFactory& factory();
 
  private:
   std::shared_ptr<IResearchAsync> _async;
   std::atomic<bool> _running;
   size_t _consolidationThreads;
+  size_t _consolidationThreadsIdle;
   size_t _commitThreads;
+  size_t _commitThreadsIdle;
   uint64_t _threads;
   uint64_t _threadsLimit;
-  std::map<std::type_index, std::shared_ptr<arangodb::IndexTypeFactory>> _factories;
+  std::map<std::type_index, std::shared_ptr<IndexTypeFactory>> _factories;
 };
 
 }  // namespace iresearch
