@@ -371,7 +371,7 @@ void PregelFeature::cleanupAll() {
                                                    std::string const& path,
                                                    VPackSlice const& body,
                                                    VPackBuilder& outBuilder) {
-  if (vocbase.server().isStopping()) {
+  if (vocbase.server().isStopping() && path != Utils::finalizeExecutionPath) {
     return;  // shutdown ongoing
   }
 
