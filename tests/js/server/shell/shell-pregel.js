@@ -821,10 +821,10 @@ function multiCollectionTestSuite() {
   };
 }
 
-/*jsunity.run(basicTestSuite);
+jsunity.run(basicTestSuite);
 jsunity.run(exampleTestSuite);
 jsunity.run(randomTestSuite);
-jsunity.run(componentsTestSuite);*/
+jsunity.run(componentsTestSuite);
 jsunity.run(multiCollectionTestSuite);
 
 return jsunity.done();
