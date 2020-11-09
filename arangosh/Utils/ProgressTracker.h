@@ -62,18 +62,14 @@ void ProgressTracker<T>::updateStatus(std::string const& collectionName,
 
   {
     std::unique_lock guard(_writeFileMutex);
-    ScopeGuard scopeGuard{[&]{
-      std::unique_lock guardState{_collectionStatesMutex};
-      _writeQueued = false;
-    }};
+    VPackBufferUInt8 buffer;
 
-    VPackBuilder builder;
     {
       std::unique_lock guardState(_collectionStatesMutex);
       _writeQueued = false;
-      scopeGuard.cancel();
-      VPackObjectBuilder object(&builder);
 
+      VPackBuilder builder{buffer};
+      VPackObjectBuilder object(&builder);
       for (auto const& [filename, state] : _collectionStates) {
         builder.add(VPackValue(filename));
         state.toVelocyPack(builder);
@@ -81,7 +77,7 @@ void ProgressTracker<T>::updateStatus(std::string const& collectionName,
     }
 
     arangodb::basics::VelocyPackHelper::velocyPackToFile(directory.pathToFile("continue.json"),
-                                                         builder.slice(), true);
+                                                         VPackSlice(buffer.data()), true);
   }
 }
 
@@ -113,4 +109,4 @@ ProgressTracker<T>::ProgressTracker(ManagedDirectory& directory, bool ignoreExis
 
 }
 
-#endif 
+#endif
