@@ -7,4 +7,5 @@ target_link_libraries(greenspun_repl arango-greenspun)
 add_executable(greenspun_test PrimitivesTest.cpp)
 target_link_libraries(greenspun_test arango)
 target_link_libraries(greenspun_test arango-greenspun)
+target_link_libraries(greenspun_test gtest)
 
