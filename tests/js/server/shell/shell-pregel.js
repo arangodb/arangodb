@@ -787,7 +787,7 @@ function multiCollectionTestSuite() {
       graph_module._drop(graphName, true);
     },
 
-    testWCC: function () {
+    testMultiWCC: function () {
       var pid = pregel.start("wcc", graphName, { resultField: "result", store: true });
       var i = 10000;
       do {
