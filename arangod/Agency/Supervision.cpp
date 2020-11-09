@@ -164,7 +164,7 @@ struct HealthRecord {
 std::string Supervision::_agencyPrefix = "/arango";
 
 Supervision::Supervision(application_features::ApplicationServer& server)
-    : arangodb::CriticalThread(server, "Supervision"),
+    : arangodb::Thread(server, "Supervision"),
       _agent(nullptr),
       _spearhead(server, _agent),
       _snapshot(nullptr),
@@ -963,160 +963,168 @@ void Supervision::run() {
     TRI_ASSERT(_agent != nullptr);
 
     while (!this->isStopping()) {
-      auto lapStart = std::chrono::steady_clock::now();
+      try {
+        auto lapStart = std::chrono::steady_clock::now();
 
-      {
-        MUTEX_LOCKER(locker, _lock);
+        {
+          MUTEX_LOCKER(locker, _lock);
 
-        if (_snapshot != nullptr && isShuttingDown()) {
-          handleShutdown();
-        } else if (_selfShutdown) {
-          shutdown = true;
-          break;
-        }
-
-        // Only modifiy this condition with extreme care:
-        // Supervision needs to wait until the agent has finished leadership
-        // preparation or else the local agency snapshot might be behind its
-        // last state.
-        if (_agent->leading() && _agent->getPrepareLeadership() == 0) {
-          if (_jobId == 0 || _jobId == _jobIdMax) {
-            getUniqueIds();  // cannot fail but only hang
-          }
-          LOG_TOPIC("edeee", TRACE, Logger::SUPERVISION)
-              << "Begin updateSnapshot";
-          updateSnapshot();
-          LOG_TOPIC("aaabb", TRACE, Logger::SUPERVISION)
-              << "Finished updateSnapshot";
-
-          if (!_upgraded) {
-            upgradeAgency();
+          if (_snapshot != nullptr && isShuttingDown()) {
+            handleShutdown();
+          } else if (_selfShutdown) {
+            shutdown = true;
+            break;
           }
 
-          bool maintenanceMode = false;
-          if (snapshot().has(supervisionMaintenance)) {
-            try {
-              if (snapshot().get(supervisionMaintenance).isString()) {
-                std::string tmp = snapshot().get(supervisionMaintenance).getString();
-                if (tmp.size() < 18) {  // legacy behaviour
-                  maintenanceMode = true;
-                } else {
-                  auto const maintenanceExpires = stringToTimepoint(tmp);
-                  if (maintenanceExpires >= std::chrono::system_clock::now()) {
-                    maintenanceMode = true;
-                  }
-                }
-              } else {  // legacy behaviour
-                maintenanceMode = true;
-              }
-            } catch (std::exception const& e) {
-              LOG_TOPIC("cf236", ERR, Logger::SUPERVISION)
-                  << "Supervision maintenace key in agency is not a string. "
-                     "This should never happen and will prevent hot backups. "
-                  << e.what();
-              return;
+          // Only modifiy this condition with extreme care:
+          // Supervision needs to wait until the agent has finished leadership
+          // preparation or else the local agency snapshot might be behind its
+          // last state.
+          if (_agent->leading() && _agent->getPrepareLeadership() == 0) {
+            if (_jobId == 0 || _jobId == _jobIdMax) {
+              getUniqueIds();  // cannot fail but only hang
             }
-          }
+            LOG_TOPIC("edeee", TRACE, Logger::SUPERVISION)
+                << "Begin updateSnapshot";
+            updateSnapshot();
+            LOG_TOPIC("aaabb", TRACE, Logger::SUPERVISION)
+                << "Finished updateSnapshot";
 
-          if (!maintenanceMode) {
-            reportStatus("Normal");
+            if (!_upgraded) {
+              upgradeAgency();
+            }
 
-            _haveAborts = false;
-
-            if (_agent->leaderFor() > 55 || earlyBird()) {
-              // 55 seconds is less than a minute, which fits to the
-              // 60 seconds timeout in /_admin/cluster/health
-
-              // wait 5 min or until next scheduled run
-              if (_agent->leaderFor() > 300 &&
-                  _nextServerCleanup < std::chrono::system_clock::now()) {
-                LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION)
-                    << "Begin cleanupExpiredServers";
-                cleanupExpiredServers(snapshot(), _transient);
-                LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION)
-                    << "Finished cleanupExpiredServers";
-              }
-
+            bool maintenanceMode = false;
+            if (snapshot().has(supervisionMaintenance)) {
               try {
-                LOG_TOPIC("aa565", TRACE, Logger::SUPERVISION)
-                    << "Begin doChecks";
-                doChecks();
-                LOG_TOPIC("675fc", TRACE, Logger::SUPERVISION)
-                    << "Finished doChecks";
+                if (snapshot().get(supervisionMaintenance).isString()) {
+                  std::string tmp = snapshot().get(supervisionMaintenance).getString();
+                  if (tmp.size() < 18) {  // legacy behaviour
+                    maintenanceMode = true;
+                  } else {
+                    auto const maintenanceExpires = stringToTimepoint(tmp);
+                    if (maintenanceExpires >= std::chrono::system_clock::now()) {
+                      maintenanceMode = true;
+                    }
+                  }
+                } else {  // legacy behaviour
+                  maintenanceMode = true;
+                }
               } catch (std::exception const& e) {
-                LOG_TOPIC("e0869", ERR, Logger::SUPERVISION)
-                    << e.what() << " " << __FILE__ << " " << __LINE__;
-              } catch (...) {
-                LOG_TOPIC("ac4c4", ERR, Logger::SUPERVISION)
-                    << "Supervision::doChecks() generated an uncaught "
-                       "exception.";
+                LOG_TOPIC("cf236", ERR, Logger::SUPERVISION)
+                    << "Supervision maintenace key in agency is not a string. "
+                       "This should never happen and will prevent hot backups. "
+                    << e.what();
+                return;
+              }
+            }
+
+            if (!maintenanceMode) {
+              reportStatus("Normal");
+
+              _haveAborts = false;
+
+              if (_agent->leaderFor() > 55 || earlyBird()) {
+                // 55 seconds is less than a minute, which fits to the
+                // 60 seconds timeout in /_admin/cluster/health
+
+                // wait 5 min or until next scheduled run
+                if (_agent->leaderFor() > 300 &&
+                    _nextServerCleanup < std::chrono::system_clock::now()) {
+                  LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION)
+                      << "Begin cleanupExpiredServers";
+                  cleanupExpiredServers(snapshot(), _transient);
+                  LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION)
+                      << "Finished cleanupExpiredServers";
+                }
+
+                try {
+                  LOG_TOPIC("aa565", TRACE, Logger::SUPERVISION)
+                      << "Begin doChecks";
+                  doChecks();
+                  LOG_TOPIC("675fc", TRACE, Logger::SUPERVISION)
+                      << "Finished doChecks";
+                } catch (std::exception const& e) {
+                  LOG_TOPIC("e0869", ERR, Logger::SUPERVISION)
+                      << e.what() << " " << __FILE__ << " " << __LINE__;
+                } catch (...) {
+                  LOG_TOPIC("ac4c4", ERR, Logger::SUPERVISION)
+                      << "Supervision::doChecks() generated an uncaught "
+                         "exception.";
+                }
+              } else {
+                LOG_TOPIC("7928f", INFO, Logger::SUPERVISION)
+                    << "Postponing supervision for now, waiting for incoming "
+                       "heartbeats: "
+                    << _agent->leaderFor();
+              }
+              try {
+                LOG_TOPIC("7895a", TRACE, Logger::SUPERVISION)
+                    << "Begin handleJobs";
+                handleJobs();
+                LOG_TOPIC("febbc", TRACE, Logger::SUPERVISION)
+                    << "Finished handleJobs";
+              } catch (std::exception const& e) {
+                LOG_TOPIC("76123", WARN, Logger::SUPERVISION)
+                    << "Caught exception in handleJobs(), error message: " << e.what();
               }
             } else {
-              LOG_TOPIC("7928f", INFO, Logger::SUPERVISION)
-                  << "Postponing supervision for now, waiting for incoming "
-                     "heartbeats: "
-                  << _agent->leaderFor();
-            }
-            try {
-              LOG_TOPIC("7895a", TRACE, Logger::SUPERVISION)
-                  << "Begin handleJobs";
-              handleJobs();
-              LOG_TOPIC("febbc", TRACE, Logger::SUPERVISION)
-                  << "Finished handleJobs";
-            } catch (std::exception const& e) {
-              LOG_TOPIC("76123", WARN, Logger::SUPERVISION)
-                  << "Caught exception in handleJobs(), error message: " << e.what();
+              reportStatus("Maintenance");
             }
           } else {
-            reportStatus("Maintenance");
-          }
-        } else {
-          // Once we lose leadership, we need to restart building our snapshot
-          if (_lastUpdateIndex > 0) {
-            _lastUpdateIndex = 0;
-          }
-        }
-      }
-
-      // If anything was rafted, we need to wait until it is replicated,
-      // otherwise it is not "committed" in the Raft sense. However, let's
-      // only wait for our changes not for new ones coming in during the wait.
-      if (_agent->leading()) {
-        index_t leaderIndex = _agent->index();
-        if (leaderIndex != 0) {
-          auto wait_for_repl_start = std::chrono::steady_clock::now();
-
-          while (!this->isStopping() && _agent->leading()) {
-            auto result = _agent->waitFor(leaderIndex);
-            if (result == Agent::raft_commit_t::TIMEOUT) {  // Oh snap
-              // Note that we can get UNKNOWN if we have lost leadership or
-              // if we are shutting down. In both cases we just leave the loop.
-              LOG_TOPIC("c72b0", WARN, Logger::SUPERVISION)
-                  << "Waiting for commits to be done ... ";
-              continue;
-            } else {  // Good we can continue
-              break;
+            // Once we lose leadership, we need to restart building our snapshot
+            if (_lastUpdateIndex > 0) {
+              _lastUpdateIndex = 0;
             }
           }
-
-          auto wait_for_repl_end = std::chrono::steady_clock::now();
-          auto repl_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                             wait_for_repl_end - wait_for_repl_start)
-                             .count();
-          _supervision_runtime_wait_for_sync_msec.count(repl_ms);
-          _supervision_accum_runtime_wait_for_sync_msec.count(repl_ms);
         }
-      }
 
-      auto lapTime = std::chrono::duration_cast<std::chrono::microseconds>(
-                         std::chrono::steady_clock::now() - lapStart)
-                         .count();
+        // If anything was rafted, we need to wait until it is replicated,
+        // otherwise it is not "committed" in the Raft sense. However, let's
+        // only wait for our changes not for new ones coming in during the wait.
+        if (_agent->leading()) {
+          index_t leaderIndex = _agent->index();
+          if (leaderIndex != 0) {
+            auto wait_for_repl_start = std::chrono::steady_clock::now();
 
-      _supervision_runtime_msec.count(lapTime / 1000);
-      _supervision_accum_runtime_msec.count(lapTime / 1000);
+            while (!this->isStopping() && _agent->leading()) {
+              auto result = _agent->waitFor(leaderIndex);
+              if (result == Agent::raft_commit_t::TIMEOUT) {  // Oh snap
+                // Note that we can get UNKNOWN if we have lost leadership or
+                // if we are shutting down. In both cases we just leave the loop.
+                LOG_TOPIC("c72b0", WARN, Logger::SUPERVISION)
+                    << "Waiting for commits to be done ... ";
+                continue;
+              } else {  // Good we can continue
+                break;
+              }
+            }
 
-      if (lapTime < 1000000) {
-        _cv.wait(static_cast<uint64_t>((1000000 - lapTime) * _frequency));
+            auto wait_for_repl_end = std::chrono::steady_clock::now();
+            auto repl_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                               wait_for_repl_end - wait_for_repl_start)
+                               .count();
+            _supervision_runtime_wait_for_sync_msec.count(repl_ms);
+            _supervision_accum_runtime_wait_for_sync_msec.count(repl_ms);
+          }
+        }
+
+        auto lapTime = std::chrono::duration_cast<std::chrono::microseconds>(
+                           std::chrono::steady_clock::now() - lapStart)
+                           .count();
+
+        _supervision_runtime_msec.count(lapTime / 1000);
+        _supervision_accum_runtime_msec.count(lapTime / 1000);
+
+        if (lapTime < 1000000) {
+          _cv.wait(static_cast<uint64_t>((1000000 - lapTime) * _frequency));
+        }
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("f5af1", ERR, Logger::SUPERVISION) << "caught exception in supervision thread: " << ex.what();
+        // continue without throwing
+      } catch (...) {
+        LOG_TOPIC("c82bb", ERR, Logger::SUPERVISION) << "caught unknown exception in supervision thread";
+        // continue without throwing
       }
     }
   }
