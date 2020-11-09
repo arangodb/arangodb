@@ -342,10 +342,10 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
       vKeys.push_back(createBuffer<char>(*_config, ::stringChunkSize(vKeys.size(), numVertices, true)));
       keyBuff = vKeys.back().get();
     }
-    
-    ventry->_shard = sourceShard;
-    ventry->_key = keyBuff->end();
-    ventry->_keyLength = static_cast<uint16_t>(keyLen);
+   
+    ventry->setShard(sourceShard);
+    ventry->setKey(keyBuff->end(), static_cast<uint16_t>(keyLen));
+    ventry->setActive(true);
     TRI_ASSERT(keyLen <= std::numeric_limits<uint16_t>::max());
     
     // actually copy in the key

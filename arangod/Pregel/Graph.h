@@ -93,7 +93,7 @@ template <typename V, typename E>
 class Vertex {
   friend class GraphStore<V,E>;
   
-  const char* _key; // uint64_t
+  char const* _key; // uint64_t
   
   // these members are initialized by the GraphStore
   Edge<E>* _edges; // uint64_t
@@ -101,28 +101,44 @@ class Vertex {
   
   uint16_t _keyLength; // uint16_t
   PregelShard _shard; // uint16_t
+
+  bool _active;
   
   V _data; // variable byte size
-  
-  bool _active = true; // bool8_t
 
  public:
+
+  Vertex() noexcept 
+    : _key(nullptr), 
+      _edges(nullptr), 
+      _edgeCount(0), 
+      _keyLength(0), 
+      _shard(InvalidPregelShard),
+      _active(true) {}
+
+  // note: the destructor for this type is never called,
+  // so it must not allocate any memory or take ownership
+  // of anything
   
   Edge<E>* getEdges() const { return _edges; }
   size_t getEdgeCount() const { return _edgeCount; }
   
-  bool active() const { return _active; }
   void setActive(bool bb) { _active = bb; }
+  bool active() const { return _active; }
 
+  void setShard(PregelShard shard) { _shard = shard; }
   PregelShard shard() const { return _shard; }
-  velocypack::StringRef key() const { return velocypack::StringRef(_key, _keyLength); };
+
+  void setKey(char const* key, uint16_t keyLength) {
+    _key = key;
+    _keyLength = keyLength;
+  }
+
+  velocypack::StringRef key() const { return velocypack::StringRef(_key, _keyLength); }
   V const& data() const& { return _data; }
   V& data() & { return _data; }
   
   PregelID pregelId() const { return PregelID(_shard, std::string(_key, _keyLength)); }
-  /*std::string const& key() const {
-    return std::string(_key, _keySize);
-  };*/
 };
 
 // unused right now
