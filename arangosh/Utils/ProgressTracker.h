@@ -24,6 +24,8 @@
 #define ARANGOSH_UTILS_PROGRESS_TRACKER_H 1
 
 #include "ManagedDirectory.h"
+#include "Basics/ScopeGuard.h"
+
 namespace arangodb {
 template <typename T>
 struct ProgressTracker {
@@ -60,10 +62,16 @@ void ProgressTracker<T>::updateStatus(std::string const& collectionName,
 
   {
     std::unique_lock guard(_writeFileMutex);
+    ScopeGuard scopeGuard{[&]{
+      std::unique_lock guardState{_collectionStatesMutex};
+      _writeQueued = false;
+    }};
+
     VPackBuilder builder;
     {
       std::unique_lock guardState(_collectionStatesMutex);
       _writeQueued = false;
+      scopeGuard.cancel();
       VPackObjectBuilder object(&builder);
 
       for (auto const& [filename, state] : _collectionStates) {
