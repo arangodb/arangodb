@@ -115,7 +115,7 @@ class WorkerConfig {
 
   inline PregelShard shardId(ShardID const& responsibleShard) const {
     auto const& it = _pregelShardIDs.find(responsibleShard);
-    return it != _pregelShardIDs.end() ? it->second : (PregelShard)-1;
+    return it != _pregelShardIDs.end() ? it->second : InvalidPregelShard;
   }
 
   // index in globalShardIDs

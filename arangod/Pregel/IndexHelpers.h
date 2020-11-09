@@ -57,10 +57,9 @@ class EdgeCollectionInfo {
 
   std::string _collectionName;
 
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Temporary builder for index search values
-  ///        NOTE: Single search builder is NOT thread-save
+  ///        NOTE: Single search builder is NOT thread-safe
   //////////////////////////////////////////////////////////////////////////////
 
   aql::EdgeConditionBuilderContainer _searchBuilder;

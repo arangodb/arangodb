@@ -358,8 +358,6 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
       _graphFormat->copyVertexData(documentId, slice, ventry->_data);
     }
     
-    ventry->_edges = nullptr;
-    ventry->_edgeCount = 0;
     // load edges
     for (ShardID const& edgeShard : edgeShards) {
       _loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys, numVertices);
@@ -402,7 +400,6 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
                                   size_t numVertices) {
 
   traverser::EdgeCollectionInfo info(&trx, edgeShard);
-  ManagedDocumentResult mmdr;
   auto cursor = info.getEdges(documentID);
   
   TypedBuffer<Edge<E>>* edgeBuff = edges.empty() ? nullptr : edges.back().get();
@@ -419,7 +416,11 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       keyBuff = edgeKeys.back().get();
     }
   };
-  
+   
+  bool const isCluster = ServerState::instance()->isRunningInCluster();
+  auto& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+ 
+  std::string collectionName; // will be reused
   size_t addedEdges = 0;
   auto buildEdge = [&](Edge<E>* edge, VPackStringRef toValue) {
     ++addedEdges;
@@ -428,7 +429,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
     }
     
     std::size_t pos = toValue.find('/');
-    VPackStringRef collectionName = toValue.substr(0, pos);
+    collectionName = toValue.substr(0, pos).toString();
     VPackStringRef key = toValue.substr(pos + 1);
     edge->_toKey = keyBuff->end();
     edge->_toKeyLength = static_cast<uint16_t>(key.size());
@@ -438,19 +439,24 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
     // actually copy in the key
     memcpy(edge->_toKey, key.data(), key.size());
     
-    // resolve the shard of the target vertex.
-    ShardID responsibleShard;
-    auto& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-    int res = Utils::resolveShard(ci, _config, collectionName.toString(),
-                                  StaticStrings::KeyString, key, responsibleShard);
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC("b80ba", ERR, Logger::PREGEL)
-      << "Could not resolve target shard of edge";
-      return res;
-    }
+    if (isCluster) {
+      // resolve the shard of the target vertex.
+      ShardID responsibleShard;
+
+      int res = Utils::resolveShard(ci, _config, collectionName,
+                                    StaticStrings::KeyString, key, responsibleShard);
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG_TOPIC("b80ba", ERR, Logger::PREGEL)
+        << "Could not resolve target shard of edge";
+        return res;
+      }
     
-    // PregelShard sourceShard = (PregelShard)_config->shardId(edgeShard);
-    edge->_targetShard = (PregelShard)_config->shardId(responsibleShard);
+      edge->_targetShard = (PregelShard) _config->shardId(responsibleShard);
+    } else {
+      // single server is much simpler
+      edge->_targetShard = (PregelShard) _config->shardId(collectionName);
+    }
+
     if (edge->_targetShard == InvalidPregelShard) {
       LOG_TOPIC("1f413", ERR, Logger::PREGEL)
       << "Could not resolve target shard of edge";
@@ -462,8 +468,8 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
   // allow for rocksdb edge index optimization
   if (cursor->hasExtra() &&
       _graphFormat->estimatedEdgeSize() == 0) {
-    
-    auto cb = [&](LocalDocumentId const& token, VPackSlice edgeSlice) {
+ 
+    auto cb = [&](LocalDocumentId const& /*token*/, VPackSlice edgeSlice) {
       TRI_ASSERT(edgeSlice.isString());
       
       VPackStringRef toValue(edgeSlice);
@@ -481,7 +487,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
     }
     
   } else {
-    auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
+    auto cb = [&](LocalDocumentId const& /*token*/, VPackSlice slice) {
       slice = slice.resolveExternal();
       
       VPackStringRef toValue(transaction::helpers::extractToFromDocument(slice));

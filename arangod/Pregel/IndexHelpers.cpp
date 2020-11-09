@@ -53,7 +53,7 @@ std::unique_ptr<arangodb::IndexIterator> EdgeCollectionInfo::getEdges(std::strin
   
   for (std::shared_ptr<arangodb::Index> const& idx : doc->getIndexes()) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
-      auto fields = idx->fieldNames();
+      auto const& fields = idx->fieldNames();
       if (fields.size() == 1 && fields[0].size() == 1 &&
           fields[0][0] == StaticStrings::FromString) {
         indexId = idx;

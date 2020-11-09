@@ -32,7 +32,6 @@
 namespace arangodb {
 namespace pregel {
 
-// typedef uint64_t PregelKey;
 typedef uint16_t PregelShard;
 const PregelShard InvalidPregelShard = -1;
 

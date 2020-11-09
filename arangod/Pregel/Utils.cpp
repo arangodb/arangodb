@@ -88,7 +88,7 @@ std::string Utils::baseUrl(std::string const& prefix) {
 int Utils::resolveShard(ClusterInfo& ci, WorkerConfig const* config,
                         std::string const& collectionName, std::string const& shardKey,
                         VPackStringRef vertexKey, std::string& responsibleShard) {
-  if (ServerState::instance()->isRunningInCluster() == false) {
+  if (!ServerState::instance()->isRunningInCluster()) {
     responsibleShard = collectionName;
     return TRI_ERROR_NO_ERROR;
   }
