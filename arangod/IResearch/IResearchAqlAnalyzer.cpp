@@ -366,7 +366,9 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
             // some nodes are ok with restrictions
             case arangodb::aql::NODE_TYPE_FCALL: {
               auto func = static_cast<arangodb::aql::Function*>(node->getData());
-              if (!func->hasFlag(arangodb::aql::Function::Flags::CanRunOnDBServer) ||
+              if (!func->hasFlag(arangodb::aql::Function::Flags::CanRunOnDBServerCluster) ||
+                  !func->hasFlag(arangodb::aql::Function::Flags::CanRunOnDBServerOneShard) ||
+                  func->hasFlag(arangodb::aql::Function::Flags::CanReadDocuments) ||
                   forbiddenFunctions.find(func->name) != forbiddenFunctions.end()) {
                 errorMessage = "Function '";
                 errorMessage.append(func->name)

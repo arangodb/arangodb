@@ -54,8 +54,8 @@ class AqlFunctionFeature final : public application_features::ApplicationFeature
   // add a function alias
   void addAlias(std::string const& alias, std::string const& original);
 
-  void toVelocyPack(arangodb::velocypack::Builder&);
-  Function const* byName(std::string const& name);
+  void toVelocyPack(arangodb::velocypack::Builder&) const;
+  Function const* byName(std::string const& name) const;
 
   bool exists(std::string const& name) const;
 

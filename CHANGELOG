@@ -1,6 +1,17 @@
 devel
 -----
 
+* Make the DOCUMENT AQL function eligible for running on DB servers in
+  OneShard deployment mode. This allows pushing more query parts to DB servers
+  for execution.
+
+* Enable HTTP request statistics and provide metrics even in case 
+  `--server.statistics-history` is set to `false` (this option will set
+  itself to off automatically on agency instances on startup if not
+  explicitly set).
+  This change provides more metrics on all server instances, without the
+  need to persist them in the instance's RocksDB storage engine. 
+
 * Fixed a deadlock between AQL write transactions and hotbackup, since
   in AQL write transactions follower transactions did not know they are
   follower transactions.

@@ -252,8 +252,9 @@ class IResearchOrderTest
     auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
     arangodb::aql::Function invalid("INVALID", "|.",
                                     arangodb::aql::Function::makeFlags(
-                                        arangodb::aql::Function::Flags::CanRunOnDBServer));
-
+                                        arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+                                        arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
+                                    nullptr);
     functions.add(invalid);
   }
 
