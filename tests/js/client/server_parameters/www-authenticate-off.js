@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertFalse, assertTrue */
+/* global getOptions, assertEqual, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for security-related server options
@@ -30,30 +30,16 @@
 
 if (getOptions === true) {
   return {
-    'server.authentication': 'true',
-    'server.jwt-secret': 'haxxmann',
+    'server.authentication': 'false'
   };
 }
 const jsunity = require('jsunity');
 const request = require('@arangodb/request').request;
-const crypto = require('@arangodb/crypto');
 
 function testSuite() {
   return {
-    testUnauthorized : function() {
+    testHeader : function() {
       let result = request({ url: "/_api/version", method: "get" });
-      assertEqual(401, result.status);
-      assertTrue(result.headers.hasOwnProperty('www-authenticate'));
-    },
-    
-    testAuthorized : function() {
-      const jwtSecret = 'haxxmann';
-      const jwtRoot = crypto.jwtEncode(jwtSecret, {
-        "preferred_username": "root",
-        "iss": "arangodb",
-        "exp": Math.floor(Date.now() / 1000) + 3600
-      }, 'HS256');
-      let result = request({ url: "/_api/version", method: "get", auth: { bearer: jwtRoot } });
       assertEqual(200, result.status);
       assertFalse(result.headers.hasOwnProperty('www-authenticate'));
     },
