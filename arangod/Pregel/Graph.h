@@ -72,9 +72,7 @@ class Edge {
   template <typename V, typename E2>
   friend class GraphStore;
 
-  static_assert(sizeof(std::string) > 2, "");
-
-  // these members are initialized by the GrapStore
+  // these members are initialized by the GraphStore
   char* _toKey;             // uint64_t
   uint16_t _toKeyLength;    // uint16_t
   PregelShard _targetShard; // uint16_t
@@ -83,13 +81,10 @@ class Edge {
 
  public:
 
-  // size_t getSize() { return sizeof(EdgeEntry) + _vertexIDSize + _dataSize; }
   velocypack::StringRef toKey() const { return velocypack::StringRef(_toKey, _toKeyLength); }
-  // size_t getDataSize() { return _dataSize; }
   E& data() {
-    return _data;  // static_cast<E>(this + sizeof(EdgeEntry) + _vertexIDSize);
+    return _data;
   }
-  // PregelShard sourceShard() const { return _sourceShard; }
   PregelShard targetShard() const { return _targetShard; }
 };
 
@@ -100,7 +95,7 @@ class Vertex {
   
   const char* _key; // uint64_t
   
-  // these members are initialized by the GrapStore
+  // these members are initialized by the GraphStore
   Edge<E>* _edges; // uint64_t
   size_t _edgeCount; // uint64_t
   

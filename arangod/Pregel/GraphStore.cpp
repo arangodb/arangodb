@@ -428,7 +428,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
     
     // PregelShard sourceShard = (PregelShard)_config->shardId(edgeShard);
     edge->_targetShard = (PregelShard)_config->shardId(responsibleShard);
-    if (edge->_targetShard == (PregelShard)-1) {
+    if (edge->_targetShard == (PregelShard) InvalidPregelShard) {
       LOG_TOPIC("1f413", ERR, Logger::PREGEL)
       << "Could not resolve target shard of edge";
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
@@ -488,30 +488,40 @@ template <typename V, typename E>
 void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
                                       RangeIterator<Vertex<V, E>>& it) {
   // transaction on one shard
+  OperationOptions options;
+  options.silent = true;
+  options.waitForSync = false;
+
   std::unique_ptr<arangodb::SingleCollectionTransaction> trx;
-  PregelShard currentShard = (PregelShard)-1;
-  Result res = TRI_ERROR_NO_ERROR;
+
+  ShardID shard;
+  PregelShard currentShard = (PregelShard) InvalidPregelShard;
+  Result res;
   
   VPackBuilder builder;
   size_t numDocs = 0;
+
+  auto commitTransaction = [&]() {
+    if (trx) {
+      res = trx->finish(res);
+      if (!res.ok()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
+  };
   
   // loop over vertices
   for (; it.hasMore(); ++it) {
     if (it->shard() != currentShard || numDocs >= 1000) {
-      if (trx) {
-        res = trx->finish(res);
-        if (!res.ok()) {
-          THROW_ARANGO_EXCEPTION(res);
-        }
-      }
+      commitTransaction();
       
       currentShard = it->shard();
+      shard = globalShards[currentShard];
       
       auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.database());
-      ShardID const& shard = globalShards[currentShard];
-      transaction::Options to;
-      trx.reset(new SingleCollectionTransaction(ctx, shard, AccessMode::Type::WRITE));
+      trx = std::make_unique<SingleCollectionTransaction>(ctx, shard, AccessMode::Type::WRITE);
       trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+      
       res = trx->begin();
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
@@ -526,10 +536,9 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
     // This loop will fill a buffer of vertices until we run into a new
     // collection
     // or there are no more vertices for to store (or the buffer is full)
-    builder.openObject();
+    builder.openObject(true);
     builder.add(StaticStrings::KeyString, VPackValuePair(key.data(), key.size(),
                                                          VPackValueType::String));
-    /// bool store =
     _graphFormat->buildVertexDocument(builder, &data, sizeof(V));
     builder.close();
     
@@ -542,8 +551,6 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
       break;
     }
         
-    ShardID const& shard = globalShards[currentShard];
-    OperationOptions options;
     OperationResult opRes = trx->update(shard, builder.slice(), options);
     if (opRes.fail() &&
         opRes.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
@@ -551,16 +558,12 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
       THROW_ARANGO_EXCEPTION(opRes.result);
     }
     if (opRes.is(TRI_ERROR_ARANGO_CONFLICT)) {
-       LOG_TOPIC("4e632", WARN, Logger::PREGEL) << "conflict while storing " << builder.toJson();
+      LOG_TOPIC("4e632", WARN, Logger::PREGEL) << "conflict while storing " << builder.toJson();
     }
   }
   
-  if (trx) {
-    res = trx->finish(res);
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  }
+  // will throw if it fails
+  commitTransaction();
 }
 
 template <typename V, typename E>
