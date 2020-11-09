@@ -224,7 +224,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
    * locking or a leased transaction.
    */
   std::unique_ptr<transaction::Methods> createTransaction(std::string const& cname,
-                                                          AccessMode::Type mode) const;
+                                                          AccessMode::Type mode,
+                                                          OperationOptions const& opOptions) const;
   
   /// @brief create proper transaction context, including the proper IDs
   std::shared_ptr<transaction::Context> createTransactionContext(AccessMode::Type mode) const;

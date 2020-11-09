@@ -238,7 +238,8 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
 }
 
 Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
-                                 VPackSlice const trxOpts) {
+                                 VPackSlice const trxOpts,
+                                 bool isFollowerTransaction) {
   Result res;
   if (_disallowInserts) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
@@ -255,6 +256,9 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   if (options.lockTimeout < 0.0) {
     return res.reset(TRI_ERROR_BAD_PARAMETER,
                      "<lockTimeout> needs to be positive");
+  }
+  if (isFollowerTransaction) {
+    options.isFollowerTransaction = true;
   }
 
   auto fillColls = [](VPackSlice const& slice, std::vector<std::string>& cols) {
@@ -401,6 +405,9 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   // start the transaction
   transaction::Hints hints;
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
+  if (options.isFollowerTransaction || transaction::isFollowerTransactionId(tid)) {
+    hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+  }
   try {
     res = state->beginTransaction(hints);  // registers with transaction manager
   } catch (basics::Exception const& ex) {
