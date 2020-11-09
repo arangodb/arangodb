@@ -438,7 +438,8 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   auto flags =
       arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::Deterministic,
                                          arangodb::aql::Function::Flags::Cacheable,
-                                         arangodb::aql::Function::Flags::CanRunOnDBServer);
+                                         arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+                                         arangodb::aql::Function::Flags::CanRunOnDBServerOneShard);
   addFunction(functions, { "EXISTS", ".|.,.", flags, &dummyFilterFunc });  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ])
   addFunction(functions, { "STARTS_WITH", ".,.|.,.", flags, &startsWithFunc });  // (attribute, [ '[' ] prefix [, prefix, ... ']' ] [, scoring-limit|min-match-count ] [, scoring-limit ])
   addFunction(functions, { "PHRASE", ".,.|.+", flags, &dummyFilterFunc });  // (attribute, input [, offset, input... ] [, analyzer])
@@ -503,7 +504,8 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
             std::move(upperName), args.c_str(),
             arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::Deterministic,
                                                arangodb::aql::Function::Flags::Cacheable,
-                                               arangodb::aql::Function::Flags::CanRunOnDBServer),
+                                               arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+                                               arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
             &dummyScorerFunc  // function implementation
         });
 

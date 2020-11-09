@@ -864,9 +864,19 @@ endfunction()
 # JEMALLOC
 # ------------------------------------------------------------------------------
 
+option(USE_JEMALLOC_PROF "use jemalloc profiler" OFF)
+
 if (USE_JEMALLOC)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
 endif ()
+
+if (USE_JEMALLOC_PROF)
+  add_definitions("-DUSE_MEMORY_PROFILE=1")
+endif ()
+
+# ------------------------------------------------------------------------------
+# LIBUNWIND
+# ------------------------------------------------------------------------------
 
 if (USE_LIBUNWIND)
   add_definitions("-DARANGODB_HAVE_LIBUNWIND=1")
@@ -951,7 +961,7 @@ else () # NOT MSVC
   # flags for builds with debug symbols
   if (USE_MINIMAL_DEBUGINFO)
     # minimal debug symbols
-    set(DEBUGINFO_FLAGS "-g1 -feliminate-unused-debug-symbols")
+    set(DEBUGINFO_FLAGS "-g1 -gno-column-info -gz -feliminate-unused-debug-symbols")
   else ()
     # full debug symbols
     set(DEBUGINFO_FLAGS "-g")

@@ -1391,14 +1391,17 @@ void ClusterInfo::loadCurrent() {
       continue;
     }
 
+    std::vector<std::string> colsPath {
+      AgencyCommHelper::path(), "Current", "Collections", databaseName};
     std::vector<std::string> dbPath{
       AgencyCommHelper::path(), "Current", "Databases", databaseName};
     auto databaseSlice = database.second->slice()[0];
+
+    // Database missing in Current
     if (!databaseSlice.hasKey(dbPath)) {
-      newDatabases.erase(databaseName);
 
       // newShardIds
-      /*std::shared_ptr<VPackBuilder> db = nullptr;
+      std::shared_ptr<VPackBuilder> db = nullptr;
       {
         READ_LOCKER(guard, _currentProt.lock);
         auto const it = _current.find(databaseName);
@@ -1408,16 +1411,21 @@ void ClusterInfo::loadCurrent() {
       }
       std::vector<std::string> colPath {
         AgencyCommHelper::path(), "Current", "Collections", databaseName};
+
       if (db != nullptr) {
-        auto const colsSlice = db->slice()[0].get(colPath);
-        for (auto const cc : VPackObjectIterator(colsSlice)) {
-          for (auto const cs : VPackObjectIterator(cc.value)) {
-            LOG_DEVEL << "deleting " << cs.key.copyString();
-            newShardIds.erase(cs.key.copyString());
+        if (db->slice()[0].hasKey(colPath)) {
+          auto const colsSlice = db->slice()[0].get(colPath);
+          if (colsSlice.isObject()) {
+            for (auto const cc : VPackObjectIterator(colsSlice)) {
+              if (cc.value.isObject()) {
+                for (auto const cs : VPackObjectIterator(cc.value)) {
+                  newShardIds.erase(cs.key.copyString());
+                }
+              }
+            }
           }
         }
-        }*/
-
+      }
       swapDatabases = true;
       continue;
     }
@@ -5743,29 +5751,68 @@ VPackBuilder ClusterInfo::toVelocyPack() {
   VPackBuilder dump;
   {
     { VPackObjectBuilder c(&dump);
-      dump.add(VPackValue("Plan"));
-      { VPackObjectBuilder d(&dump);
+      {
         READ_LOCKER(readLocker, _planProt.lock);
-        for (auto const& i : _plan) {
-          dump.add(i.first, i.second->slice());
+        dump.add(VPackValue("plan"));
+        { VPackObjectBuilder d(&dump);
+          for (auto const& i : _plan) {
+            dump.add(i.first, i.second->slice());
+          }
         }
-      }
-      dump.add(VPackValue("PlannedCollections"));
-      { VPackObjectBuilder d(&dump);
-        READ_LOCKER(readLocker, _planProt.lock);
-        for (auto const& db : _plannedCollections) {
-          dump.add(VPackValue(db.first));
-          VPackArrayBuilder cs(&dump);
-          for (auto const& col : *db.second) {
-            dump.add(VPackValue(col.first));
+        dump.add(VPackValue("plannedCollections"));
+        { VPackObjectBuilder d(&dump);
+          for (auto const& c : _plannedCollections) {
+            dump.add(VPackValue(c.first));
+            VPackArrayBuilder cs(&dump);
+            for (auto const& col : *c.second) {
+              dump.add(VPackValue(col.first));
+            }
+          }
+        }
+        dump.add(VPackValue("shardToName"));
+        { VPackObjectBuilder d(&dump);
+          for (auto const& s : _shardToName) {
+            dump.add(s.first, VPackValue(s.second));
+          }
+        }
+        dump.add(VPackValue("shardServers"));
+        { VPackObjectBuilder d(&dump);
+          for (auto const& s : _shardServers) {
+            dump.add(VPackValue(s.first));
+            VPackArrayBuilder a(&dump);
+            for (auto const& sv : s.second) {
+              dump.add(VPackValue(sv));
+            }
+          }
+        }
+        dump.add(VPackValue("shards"));
+        { VPackObjectBuilder d(&dump);
+          for (auto const& s : _shards) {
+            dump.add(VPackValue(s.first));
+            VPackArrayBuilder a(&dump);
+            for (auto const& sh : *s.second) {
+              dump.add(VPackValue(sh));
+            }
           }
         }
       }
-      dump.add(VPackValue("Current"));
-      { VPackObjectBuilder d(&dump);
+      {
         READ_LOCKER(readLocker, _currentProt.lock);
-        for (auto const& i : _current) {
-          dump.add(i.first, i.second->slice());
+        dump.add(VPackValue("current"));
+        { VPackObjectBuilder d(&dump);
+          for (auto const& i : _current) {
+            dump.add(i.first, i.second->slice());
+          }
+        }
+        dump.add(VPackValue("shardIds"));
+        { VPackObjectBuilder d(&dump);
+          for (auto const& i : _shardIds) {
+            dump.add(VPackValue(i.first));
+            VPackArrayBuilder a(&dump);
+            for (auto const& i : *i.second){
+              dump.add(VPackValue(i));
+            }
+          }
         }
       }
     }
