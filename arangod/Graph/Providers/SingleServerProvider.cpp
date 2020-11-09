@@ -144,9 +144,9 @@ auto SingleServerProvider::expand(Step const& step, size_t previous) -> std::vec
         }
         return other;
       }
-
-      result.emplace_back(id, std::move(eid), previous);
     })());
+
+    result.emplace_back(id, std::move(eid), previous);
   });
   return result;
 }
