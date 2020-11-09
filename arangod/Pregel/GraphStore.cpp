@@ -529,10 +529,9 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
     // This loop will fill a buffer of vertices until we run into a new
     // collection
     // or there are no more vertices for to store (or the buffer is full)
-    builder.openObject();
+    builder.openObject(true);
     builder.add(StaticStrings::KeyString, VPackValuePair(key.data(), key.size(),
                                                          VPackValueType::String));
-    /// bool store =
     _graphFormat->buildVertexDocument(builder, &data, sizeof(V));
     builder.close();
     
