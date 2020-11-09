@@ -118,7 +118,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
-    std::pair<bool, bool> volatility, IResearchViewExecutorInfos::VarInfoMap const& varInfoMap,
+    std::pair<bool, bool> volatility, bool emitCount, IResearchViewExecutorInfos::VarInfoMap const& varInfoMap,
     int depth, IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs)
     : _scoreRegisters(std::move(scoreRegisters)),
       _reader(std::move(reader)),
@@ -130,6 +130,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _outVariable(outVariable),
       _filterCondition(filterCondition),
       _volatileSort(volatility.second),
+      _emitCount(emitCount),
       // `_volatileSort` implies `_volatileFilter`
       _volatileFilter(_volatileSort || volatility.first),
       _varInfoMap(varInfoMap),
@@ -433,7 +434,7 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
       documentWritten = next(ctx);
 
       if (documentWritten) {
-        stats.incrScanned();
+        stats.incrScanned();// TODO: adjust stats properly
         output.advanceRow();
       } else {
         _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -696,7 +697,14 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
     }
   } else if constexpr (Traits::MaterializeType == MaterializeType::NotMaterialize &&
                        !Traits::Ordered) {
-    ctx.outputRow.copyRow(ctx.inputRow);
+    if (_infos.emitCount()) {
+      auto index = bufferEntry.getKeyIdx();
+      AqlValue a(AqlValueHintUInt(reinterpret_cast<uint64_t>(&index)));
+      AqlValueGuard guard{a, true};
+      ctx.outputRow.moveValueInto(ctx.getDocumentReg(), ctx.inputRow, guard);
+    } else {
+      ctx.outputRow.copyRow(ctx.inputRow);
+    }
   }
   // in the ordered case we have to write scores as well as a document
   if constexpr (Traits::Ordered) {
@@ -853,6 +861,19 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
   size_t const atMost = ctx.outputRow.numRowsLeft();
 
   size_t const count = this->_reader->size();
+
+  if (_infos.emitCount()) {
+    size_t total = 0;
+    TRI_ASSERT(_readerOffset == 0);
+    for (; _readerOffset < count;) {
+      auto& segmentReader = (*this->_reader)[_readerOffset];
+      total += segmentReader.live_docs_count();
+      ++_readerOffset;
+    }
+    this->_indexReadBuffer.pushValue(total);
+    return;
+  }
+
   for (; _readerOffset < count;) {
     if (!_itr) {
       if (!this->_indexReadBuffer.empty()) {

@@ -56,7 +56,8 @@ enum class MaterializeType {
   NotMaterialize = 1,   // do not materialize a document
   LateMaterialize = 2,  // a document will be materialized later
   Materialize = 4,      // materialize a document
-  UseStoredValues = 8   // use stored or sort column values
+  UseStoredValues = 8,  // use stored or sort column values
+  EmitCount = 16,       // emit only total row count in out variable
 };
 
 ENABLE_BITMASK_ENUM(MaterializeType);
@@ -79,6 +80,10 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
     /// @brief try not to materialize documents
     bool noMaterialization{true};
+
+    /// @brief node should try emit just total count of documents if possible
+    /// TODO: implement serialization/desiarelization and restricting onlyCount optimization
+    bool emitOnlyCount{true};
 
     /// @brief condition optimization Auto - condition will be transformed to DNF.
     arangodb::aql::ConditionOptimization conditionOptimization{
@@ -201,6 +206,14 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   void setNoMaterialization() noexcept { _noMaterialization = true; }
 
+  bool emitOnlyCount() const noexcept { return _emitOnlyCount; }
+
+  void setEmitOnlyCount(aql::Variable const* countVariable) noexcept {
+    TRI_ASSERT(!isLateMaterialized());
+    _outVariable = countVariable;
+    _emitOnlyCount = true;
+  }
+
   static const ptrdiff_t SortColumnNumber;
 
   // A variable with a field number in a column
@@ -265,6 +278,10 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   OptimizationState& state() noexcept { return _optState; }
 
+  bool hasNonMaterializedVariables() const noexcept {
+    return !_outNonMaterializedViewVars.empty();
+  }
+
  private:
   /// @brief the database
   TRI_vocbase_t& _vocbase;
@@ -293,6 +310,10 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief is no materialization should be applied
   bool _noMaterialization;
+
+  /// @brief emit only count optimization should be applied
+  /// TODO: serialization!
+  bool _emitOnlyCount;
 
   OptimizationState _optState;
 

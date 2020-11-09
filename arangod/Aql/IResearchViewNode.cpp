@@ -1361,14 +1361,14 @@ std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHe
   // collection + docId or document
   if (isLateMaterialized()) {
     reserve += 2;
-  } else if (!noMaterialization()) {
+  } else if (!noMaterialization() || emitOnlyCount()) {
     reserve += 1;
   }
   vars.reserve(reserve);
 
   std::transform(_scorers.cbegin(), _scorers.cend(), std::back_inserter(vars),
                  [](auto const& scorer) { return scorer.var; });
-  if (isLateMaterialized() || noMaterialization()) {
+  if (isLateMaterialized() || (noMaterialization() && !emitOnlyCount() )) {
     if (isLateMaterialized()) {
       vars.emplace_back(_outNonMaterializedColPtr);
       vars.emplace_back(_outNonMaterializedDocId);
@@ -1388,6 +1388,7 @@ aql::RegIdSet IResearchViewNode::calcInputRegs() const {
   auto inputRegs = aql::RegIdSet{};
 
   if (!::filterConditionIsEmpty(_filterCondition)) {
+    TRI_ASSERT(!emitOnlyCount());
     aql::VarSet vars;
     aql::Ast::getReferencedVariables(_filterCondition, vars);
 
@@ -1493,6 +1494,10 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     } else if (noMaterialization()) {
       TRI_ASSERT(options().noMaterialization);
       materializeType = MaterializeType::NotMaterialize;
+      if (emitOnlyCount()) {
+        TRI_ASSERT(options().emitOnlyCount);
+        materializeType |= MaterializeType::EmitCount;
+      }
     } else {
       materializeType = MaterializeType::Materialize;
       numDocumentRegs += 1;
@@ -1529,7 +1534,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         writableOutputRegisters.emplace(documentRegId);
         writableOutputRegisters.emplace(collectionRegId);
         return aql::IResearchViewExecutorInfos::LateMaterializeRegister{documentRegId, collectionRegId};
-      } else if (noMaterialization()) {
+      } else if (noMaterialization() && !emitOnlyCount()) {
         return aql::IResearchViewExecutorInfos::NoMaterializeRegisters{};
       } else {
         auto outReg = variableToRegisterId(_outVariable);
@@ -1581,6 +1586,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                         outVariable(),
                                         filterCondition(),
                                         volatility(),
+                                        emitOnlyCount(),
                                         getRegisterPlan()->varInfo,   // ??? do we need this?
                                         getDepth(),
                                         std::move(outNonMaterializedViewRegs)};
@@ -1604,6 +1610,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   bool const ordered = !_scorers.empty();
   switch (materializeType) {
     case MaterializeType::NotMaterialize:
+    case MaterializeType::NotMaterialize | MaterializeType::EmitCount:
       return ::executors<MaterializeType::NotMaterialize>[getExecutorIndex(_sort.first != nullptr, ordered)](
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::LateMaterialize:

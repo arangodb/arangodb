@@ -26,6 +26,7 @@
 
 #include "Aql/CalculationNodeVarFinder.h"
 #include "Aql/ClusterNodes.h"
+#include "Aql/CollectNode.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -716,6 +717,33 @@ void handleViewsRule(Optimizer* opt,
         "Non ArangoSearch view variable '%s' is used in scorer function '%s'",
         scorer.var->name.c_str(), funcName.c_str());
   });
+  // TODO: make it separate rule ?
+  for (auto* node : viewNodes) {
+    TRI_ASSERT(node && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
+    auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
+    if (viewNode.noMaterialization() &&
+        !viewNode.hasNonMaterializedVariables() &&
+        viewNode.scorers().empty() &&
+        viewNode.filterConditionIsEmpty()) {
+      // check if we have query like FOR d IN view COLLECT_WITH_COUNT_INTO c RETURN c 
+      auto current = viewNode.getFirstParent();
+      while (current != nullptr) {
+        if (current->getType() == ExecutionNode::COLLECT) {
+          auto& collectNode = *ExecutionNode::castTo<CollectNode*>(current);
+          if (collectNode.count()) {
+            auto collectOutVars = collectNode.getVariablesSetHere();
+            if (collectOutVars.size() == 1) {
+              // only count. So we could optimize it out and get collect directly
+              viewNode.setEmitOnlyCount(collectOutVars[0]);
+              plan->unlinkNode(current);
+            }
+          }
+          break;
+        }
+        current = current->getFirstParent();
+      }
+    }
+  }
 }
 
 void scatterViewInClusterRule(Optimizer* opt,
