@@ -46,6 +46,12 @@ function testSuite() {
       assertTrue(result.headers.hasOwnProperty('www-authenticate'));
     },
     
+    testUnauthorizedOmit : function() {
+      let result = request({ url: "/_api/version", method: "get", headers: { 'x-omit-WWW-authenticate': 'abc' } });
+      assertEqual(401, result.status);
+      assertFalse(result.headers.hasOwnProperty('www-authenticate'));
+    },
+    
     testAuthorized : function() {
       const jwtSecret = 'haxxmann';
       const jwtRoot = crypto.jwtEncode(jwtSecret, {

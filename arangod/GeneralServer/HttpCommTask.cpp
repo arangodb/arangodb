@@ -506,8 +506,12 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
   // if we return HTTP 401, we need to send a www-authenticate header back with
   // the response. in this case we need to check if the header was already set 
-  // or if we need to set it ourselves
-  bool needWwwAuthenticate = response.responseCode() == rest::ResponseCode::UNAUTHORIZED;
+  // or if we need to set it ourselves.
+  // note that clients can suppress sending the www-authenticate header by 
+  // sending us an x-omit-www-authenticate header.
+  bool needWwwAuthenticate = 
+      (response.responseCode() == rest::ResponseCode::UNAUTHORIZED &&
+      (!_request || _request->header("x-omit-www-authenticate").empty()));
 
   bool seenServerHeader = false;
   // bool seenConnectionHeader = false;
