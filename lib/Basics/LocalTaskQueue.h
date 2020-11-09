@@ -24,13 +24,12 @@
 #ifndef ARANGODB_BASICS_LOCAL_TASK_QUEUE_H
 #define ARANGODB_BASICS_LOCAL_TASK_QUEUE_H 1
 
+#include <atomic>
+#include <condition_variable>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <queue>
-
-#include "Basics/Common.h"
-#include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 
 namespace arangodb {
 namespace application_features {
@@ -47,45 +46,18 @@ class LocalTask : public std::enable_shared_from_this<LocalTask> {
   LocalTask& operator=(LocalTask const&) = delete;
 
   explicit LocalTask(std::shared_ptr<LocalTaskQueue> const& queue);
-  virtual ~LocalTask() = default;
+  virtual ~LocalTask();
 
   virtual void run() = 0;
   void dispatch();
 
  protected:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying queue
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<LocalTaskQueue> _queue;
-};
-
-class LocalCallbackTask : public std::enable_shared_from_this<LocalCallbackTask> {
- public:
-  LocalCallbackTask() = delete;
-  LocalCallbackTask(LocalCallbackTask const&) = delete;
-  LocalCallbackTask& operator=(LocalCallbackTask const&) = delete;
-
-  LocalCallbackTask(std::shared_ptr<LocalTaskQueue> const& queue,
-                    std::function<void()> const& cb);
-  virtual ~LocalCallbackTask() = default;
-
-  virtual void run();
-  void dispatch();
-
- protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the underlying queue
-  //////////////////////////////////////////////////////////////////////////////
-
   std::shared_ptr<LocalTaskQueue> _queue;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the callback executed by run() (any exceptions will be caught and
-  /// ignored; must not call queue->setStatus() or queue->enqueue())
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::function<void()> _cb;
+ private:
+  /// @brief whether the task has been dispatched (and needs to be joined)
+  bool _dispatched;
 };
 
 class LocalTaskQueue {
@@ -108,13 +80,6 @@ class LocalTaskQueue {
   //////////////////////////////////////////////////////////////////////////////
 
   void enqueue(std::shared_ptr<LocalTask>);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief enqueue a callback task to be run after all normal tasks finish;
-  /// useful for cleanup tasks
-  //////////////////////////////////////////////////////////////////////////////
-
-  void enqueueCallback(std::shared_ptr<LocalCallbackTask>);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief post a function to the scheduler. Should only be used internally
@@ -150,6 +115,12 @@ class LocalTaskQueue {
 
   int status();
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set limit for concurrently dispatched tasks
+  //////////////////////////////////////////////////////////////////////////////
+
+  void setConcurrency(std::size_t);
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief underlying application server
@@ -169,34 +140,34 @@ class LocalTaskQueue {
   std::queue<std::shared_ptr<LocalTask>> _queue;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief internal callback task queue
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::queue<std::shared_ptr<LocalCallbackTask>> _callbackQueue;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief condition variable
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::ConditionVariable _condition;
+  std::condition_variable _condition;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal mutex
   //////////////////////////////////////////////////////////////////////////////
 
-  Mutex _mutex;
+  std::mutex _mutex;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief number of dispatched, non-joined tasks
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t _missing;
+  std::size_t _dispatched;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief maximum number of concurrently dispatched tasks
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::size_t _concurrency;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief number of dispatched and started tasks
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t _started;
+  std::atomic<std::size_t> _started;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief overall status of queue tasks
