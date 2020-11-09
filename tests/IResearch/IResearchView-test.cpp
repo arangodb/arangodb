@@ -2002,8 +2002,6 @@ TEST_F(IResearchViewTest, test_insert) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -2019,13 +2017,18 @@ TEST_F(IResearchViewTest, test_insert) {
       EXPECT_TRUE((trx.begin().ok()));
       // insert operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      link->batchInsert(trx, batch, taskQueuePtr);
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+      }
       StorageEngineMock::recoveryTickResult = 42;
-      link->batchInsert(trx, batch, taskQueuePtr);
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+      }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+      }
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2197,8 +2200,6 @@ TEST_F(IResearchViewTest, test_insert) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -2214,9 +2215,12 @@ TEST_F(IResearchViewTest, test_insert) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      link->batchInsert(trx, batch, taskQueuePtr);
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+      }
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+      }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2249,8 +2253,6 @@ TEST_F(IResearchViewTest, test_insert) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Options options;
       arangodb::transaction::Methods trx(
@@ -2267,9 +2269,12 @@ TEST_F(IResearchViewTest, test_insert) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      link->batchInsert(trx, batch, taskQueuePtr);
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+      }
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+      }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
     }
 
@@ -2396,8 +2401,6 @@ TEST_F(IResearchViewTest, test_remove) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -2413,13 +2416,18 @@ TEST_F(IResearchViewTest, test_remove) {
       EXPECT_TRUE((trx.begin().ok()));
       // insert operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      link->batchInsert(trx, batch, taskQueuePtr);
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+      }
       StorageEngineMock::recoveryTickResult = 42;
-      link->batchInsert(trx, batch, taskQueuePtr);
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+      }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+      }
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2591,8 +2599,6 @@ TEST_F(IResearchViewTest, test_remove) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -2608,9 +2614,12 @@ TEST_F(IResearchViewTest, test_remove) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      link->batchInsert(trx, batch, taskQueuePtr);
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+      }
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+      }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2643,8 +2652,6 @@ TEST_F(IResearchViewTest, test_remove) {
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::basics::LocalTaskQueue taskQueue(server.server(), nullptr);
-      auto taskQueuePtr = std::shared_ptr<arangodb::basics::LocalTaskQueue>(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Options options;
       arangodb::transaction::Methods trx(
@@ -2661,9 +2668,12 @@ TEST_F(IResearchViewTest, test_remove) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      link->batchInsert(trx, batch, taskQueuePtr);
-      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == taskQueue.status()));
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+      }
+      for (auto const& pair : batch) {
+        link->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+      }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
     }
 
