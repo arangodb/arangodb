@@ -34,7 +34,7 @@ const executeExternalAndWait = internal.executeExternalAndWait;
 const statusExternal = internal.statusExternal;
 const killExternal = internal.killExternal;
 const sleep = internal.sleep;
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 
 const abortSignal = 6;
 const termSignal = 15;

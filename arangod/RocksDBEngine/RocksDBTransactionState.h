@@ -56,7 +56,6 @@ struct Transaction;
 }
 
 class LogicalCollection;
-struct RocksDBDocumentOperation;
 class RocksDBMethods;
 
 /// @brief transaction type
@@ -90,7 +89,7 @@ class RocksDBTransactionState final : public TransactionState {
   uint64_t numUpdates() const { return _numUpdates; }
   /// @brief number of remove operations
   uint64_t numRemoves() const { return _numRemoves; }
-
+  
   inline bool hasOperations() const {
     return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
   }

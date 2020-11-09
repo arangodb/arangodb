@@ -574,12 +574,16 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
 }
 
 std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
-    std::string const& collectionName, AccessMode::Type type) const {
+    std::string const& collectionName, AccessMode::Type type, OperationOptions const& opOptions) const {
   bool found = false;
   std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (!found) {
-    return std::make_unique<SingleCollectionTransaction>(transaction::StandaloneContext::Create(_vocbase),
+    auto tmp = std::make_unique<SingleCollectionTransaction>(transaction::StandaloneContext::Create(_vocbase),
                                                          collectionName, type);
+    if (!opOptions.isSynchronousReplicationFrom.empty() && ServerState::instance()->isDBServer()) {
+      tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+    }
+    return tmp;
   }
   
   TransactionId tid = TransactionId::none();
@@ -604,7 +608,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
     if (found) {
       auto trxOpts = VPackParser::fromJson(trxDef);
-      Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());
+      Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice(), !opOptions.isSynchronousReplicationFrom.empty());
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -652,7 +656,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
       std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
       if (found) {
         auto trxOpts = VPackParser::fromJson(trxDef);
-        Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());
+        Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice(), false);
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
         }

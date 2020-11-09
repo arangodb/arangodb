@@ -1,6 +1,37 @@
 devel
 -----
 
+* Make the DOCUMENT AQL function eligible for running on DB servers in
+  OneShard deployment mode. This allows pushing more query parts to DB servers
+  for execution.
+
+* Enable HTTP request statistics and provide metrics even in case 
+  `--server.statistics-history` is set to `false` (this option will set
+  itself to off automatically on agency instances on startup if not
+  explicitly set).
+  This change provides more metrics on all server instances, without the
+  need to persist them in the instance's RocksDB storage engine. 
+
+* Fixed a deadlock between AQL write transactions and hotbackup, since
+  in AQL write transactions follower transactions did not know they are
+  follower transactions.
+
+* Added metrics for collection locks:
+  - `arangodb_collection_lock_timeouts_exclusive`: Number of lock timeouts 
+    when trying to acquire collection exclusive locks
+  - `arangodb_collection_lock_timeouts_write`: Number of lock timeouts when 
+    trying to acquire collection write locks
+  - `arangodb_collection_lock_acquisition_micros`: Total amount of collection 
+    lock acquisition time [μs]
+  - `arangodb_collection_lock_acquisition_time`: Total collection lock 
+    acquisition time histogram [s]
+
+* Reduce lock timeout on followers to 15 seconds.
+  Rationale: we should not have any locking conflicts on followers, generally. 
+  Any shard locking should be performed on leaders first, which will then, 
+  eventually replicate changes to followers. replication to followers is only 
+  done once the locks have been acquired on the leader(s). 
+
 * Fix a memory leak because cluster internal connections were not cleaned
   up for agency communication.
 

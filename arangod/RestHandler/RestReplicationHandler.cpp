@@ -1125,7 +1125,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     toMerge.add("id", VPackValue(newId));
 
     if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-        _vocbase.isShardingSingle()) {
+        _vocbase.isOneShard()) {
       auto const isSatellite =
           VelocyPackHelper::getStringRef(parameters, StaticStrings::ReplicationFactor,
                                          velocypack::StringRef{""}) == StaticStrings::Satellite;
