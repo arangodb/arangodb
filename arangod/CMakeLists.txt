@@ -626,7 +626,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ClusterUpgradeFeature.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
-  Cluster/CriticalThread.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/DropCollection.cpp
   Cluster/DropDatabase.cpp

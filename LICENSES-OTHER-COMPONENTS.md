@@ -467,8 +467,8 @@ _Enterprise Edition only_
 ### snappy
 
 * Name: snappy
-* Version: 1.1.7
-* Date: 2017-08-25 00:37:10Z
+* Version: 1.1.8
+* Date: 2020-10-29 23:00:50Z
 * Project Home: https://github.com/google/snappy
 * License: https://raw.githubusercontent.com/google/snappy/master/COPYING
 * License Name: BSD 3-clause "New" or "Revised" License

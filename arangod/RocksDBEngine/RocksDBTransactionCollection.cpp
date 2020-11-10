@@ -31,6 +31,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "Statistics/ServerStatistics.h"
 #include "StorageEngine/RocksDBOptionFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
@@ -294,6 +295,7 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
   }
   
   if (!AccessMode::isWriteOrExclusive(type)) {
+    // read operations do not require any locks in RocksDB
     _lockType = type;
     return {};
   }
@@ -309,7 +311,7 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
   auto* physical = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
-  const double timeout = _transaction->lockTimeout();
+  double const timeout = _transaction->lockTimeout();
 
   Result res;
   LOG_TRX("f1246", TRACE, _transaction) << "write-locking collection " << _cid.id();
@@ -329,11 +331,21 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
     // acquired the lock ourselves
     res.reset(TRI_ERROR_LOCKED);
   } else if (res.is(TRI_ERROR_LOCK_TIMEOUT) && timeout >= 0.1) {
+    char const* actor = _transaction->actorName();
+    TRI_ASSERT(actor != nullptr);
     std::string message = "timed out after " + std::to_string(timeout) + " s waiting for "
         + AccessMode::typeString(type) + "-lock on collection "
-        + _transaction->vocbase().name() + "/" + _collection->name();
+        + _transaction->vocbase().name() + "/" + _collection->name() + " on " + actor;
     LOG_TOPIC("4512c", WARN, Logger::QUERIES) << message;
     res.reset(TRI_ERROR_LOCK_TIMEOUT, std::move(message));
+      
+    // increase counter for lock timeouts
+    auto& stats = _transaction->statistics();
+    if (AccessMode::isExclusive(type)) {
+      ++stats._exclusiveLockTimeouts;
+    } else {
+      ++stats._writeLockTimeouts;
+    }
   }
 
   return res;

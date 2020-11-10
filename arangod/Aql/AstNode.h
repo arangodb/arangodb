@@ -413,7 +413,7 @@ struct AstNode {
 
   /// @brief whether or not a node (and its subnodes) can safely be executed on
   /// a DB server
-  bool canRunOnDBServer() const;
+  bool canRunOnDBServer(bool isOneShard) const;
 
   /// @brief whether or not an object's keys must be checked for uniqueness
   bool mustCheckUniqueness() const;

@@ -1,6 +1,51 @@
 devel
 -----
 
+* Make the DOCUMENT AQL function eligible for running on DB servers in
+  OneShard deployment mode. This allows pushing more query parts to DB servers
+  for execution.
+
+* Enable HTTP request statistics and provide metrics even in case 
+  `--server.statistics-history` is set to `false` (this option will set
+  itself to off automatically on agency instances on startup if not
+  explicitly set).
+  This change provides more metrics on all server instances, without the
+  need to persist them in the instance's RocksDB storage engine. 
+
+* Fixed a deadlock between AQL write transactions and hotbackup, since
+  in AQL write transactions follower transactions did not know they are
+  follower transactions.
+
+* Added metrics for collection locks:
+  - `arangodb_collection_lock_timeouts_exclusive`: Number of lock timeouts 
+    when trying to acquire collection exclusive locks
+  - `arangodb_collection_lock_timeouts_write`: Number of lock timeouts when 
+    trying to acquire collection write locks
+  - `arangodb_collection_lock_acquisition_micros`: Total amount of collection 
+    lock acquisition time [μs]
+  - `arangodb_collection_lock_acquisition_time`: Total collection lock 
+    acquisition time histogram [s]
+
+* Reduce lock timeout on followers to 15 seconds.
+  Rationale: we should not have any locking conflicts on followers, generally. 
+  Any shard locking should be performed on leaders first, which will then, 
+  eventually replicate changes to followers. replication to followers is only 
+  done once the locks have been acquired on the leader(s). 
+
+* Fix a memory leak because cluster internal connections were not cleaned
+  up for agency communication.
+
+* Added compile option USE_JEMALLOC_PROF to enable memory profiling.
+
+* Remove extra CMake option `DEBUG_SYNC_REPLICATION` and use the already
+  existing `USE_FAILURE_TESTS` options for its purpose.
+
+* Updated bundled version of Snappy compression/decompression library to 1.1.8.
+
+* Fix REST API endpoint PUT `/_api/collection/<collection>/recalculateCount` on
+  coordinators. Coordinators sent a wrong message body to DB servers here, so
+  the request could not be handled properly.
+
 * Fixed issue #12778: fails validation if additionalProperties: false.
 
 * Fixed BTS-233 issue: Fixed invalid IndexId comparator.
@@ -81,7 +126,7 @@ devel
   would return different results when running for the first time or the second
   time:
 
-      UPDATE 'testDoc' 
+      UPDATE 'testDoc'
           WITH {test: {sub1: true, sub2: null}} IN test
       OPTIONS { keepNull: false, mergeObjects: true }
 
@@ -95,9 +140,9 @@ devel
         }
       }
 
-  (with the `null` attribute value not being removed). For all subsequent runs, 
+  (with the `null` attribute value not being removed). For all subsequent runs,
   the same query would return
-      
+
       {
         "_key": "testDoc",
         "test": {
@@ -105,11 +150,11 @@ devel
         }
       }
 
-  (with the `null` value removed as requested). 
+  (with the `null` value removed as requested).
 
   This inconsistency was due to how the `keepNull` attribute was handled if
-  the attribute already existed in the to-be-updated document or not. The 
-  behavior is now consistent, so `null` values are now properly removed from 
+  the attribute already existed in the to-be-updated document or not. The
+  behavior is now consistent, so `null` values are now properly removed from
   sub-attributes even if in the to-be-updated document the target attribute
   did not yet exist. This makes such updates idempotent again.
 
@@ -120,36 +165,36 @@ devel
 * Optimization of empty append entries.
 
 * Bug-fix: Creating an additional index on the edge collection of a disjoint
-  SmartGraph could falsely result into an error: 
+  SmartGraph could falsely result into an error:
   `Could not find all smart collections ...`
   This is now ruled out and indexes can be created as expected.
 
-* Added startup option `--foxx.force-update-on-startup` to toggle waiting 
-  for all Foxx services in all databases to be propagated to a coordinator 
-  before it completes the boot sequence. 
-  In case the option is set to `false` (i.e. no waiting), the coordinator 
-  will complete the boot sequence faster, and the Foxx services will be 
+* Added startup option `--foxx.force-update-on-startup` to toggle waiting
+  for all Foxx services in all databases to be propagated to a coordinator
+  before it completes the boot sequence.
+  In case the option is set to `false` (i.e. no waiting), the coordinator
+  will complete the boot sequence faster, and the Foxx services will be
   propagated lazily. Until the initialization procedure has completed for
   the local Foxx apps, any request to a Foxx app will be responded to with
-  an HTTP 503 error and message 
+  an HTTP 503 error and message
 
-    waiting for initialization of Foxx services in this database 
+    waiting for initialization of Foxx services in this database
 
   This can cause an unavailability window for Foxx services on coordinator
-  startup for the initial requests to Foxx apps until the app propagation 
+  startup for the initial requests to Foxx apps until the app propagation
   has completed.
-  
-  When not using Foxx, this option should be set to `false` (default) to 
+
+  When not using Foxx, this option should be set to `false` (default) to
   benefit from a faster coordinator startup.
-  Deployments relying on Foxx apps being available as soon as a coordinator 
+  Deployments relying on Foxx apps being available as soon as a coordinator
   is integrated or responding should set this option to `true`.
-  The option only has an effect for cluster setups. 
-  On single servers and in active failover mode, all Foxx apps will be 
+  The option only has an effect for cluster setups.
+  On single servers and in active failover mode, all Foxx apps will be
   available from the very beginning.
   Note: ArangoDB 3.6 and 3.7 also introduced this option, but with a default
   value of `true`. ArangoDB 3.8 changes the default to `false`.
 
-* Changed the server-side implementation of the following internal JavaScript 
+* Changed the server-side implementation of the following internal JavaScript
   APIs to no-ops:
   * `internal.reloadAqlFunctions()`: this is a no-op function now
   * `@arangodb/actions.buildRouting()`: this is a no-op function now
@@ -173,9 +218,9 @@ devel
 
 * Added the following metrics for synchronous replication in the cluster:
 
-  - `arangodb_refused_followers_count`: Number of times a shard leader received 
+  - `arangodb_refused_followers_count`: Number of times a shard leader received
     a refusal answer from a follower during synchronous replication.
-  - `arangodb_sync_wrong_checksum`: Number of times a mismatching shard 
+  - `arangodb_sync_wrong_checksum`: Number of times a mismatching shard
     checksum was detected when syncing shards. In case this happens, a resync
     will be triggered for the shard.
 
@@ -207,14 +252,14 @@ devel
   slow queries are tracked extra.
 
 * Added configuration option `--query.tracking-with-querystring` to decide
-  whether the query string is shown in the slow query log and the list of 
-  currently running queries. The option is true by default. 
+  whether the query string is shown in the slow query log and the list of
+  currently running queries. The option is true by default.
   When turned off, querystrings in the slow query log and the list of currently
   running queries are just shown as "<hidden>".
 
 * Added configuration option `--query.tracking-with-datasources` to toggle
-  whether the names of data sources used by queries are shown in the slow query 
-  log and the list of currently running queries. The option is false by default. 
+  whether the names of data sources used by queries are shown in the slow query
+  log and the list of currently running queries. The option is false by default.
   When turned on, the names of data sources used by the query will be shown in
   the slow query log and the list of currently running queries.
 
@@ -2036,7 +2081,6 @@ devel
 
   Like for the existing variant the `overwrite` flag has to be set to true.
   Then the update version can be selected by setting the `overwriteMode` to `"update"`.
-
 
 * Updated ArangoDB Starter to 0.14.13.
 
