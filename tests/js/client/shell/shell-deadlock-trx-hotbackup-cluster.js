@@ -94,7 +94,7 @@ function trxWriteHotbackupDeadlock () {
       }
       // And now to execute exclusive write locking transactions:
       for (let i = 1; i <= 750; ++i) {
-        db._query(`LET m = (FOR d IN ${cn} 
+        db._query(`LET m = (FOR d IN ${cn}
                               SORT d.Hallo DESC
                               LIMIT 1
                               RETURN d)

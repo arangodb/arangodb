@@ -32,8 +32,8 @@ var console = require('console');
 var arangodb = require('@arangodb');
 var ArangoError = arangodb.ArangoError;
 var errors = require("internal").errors;
+var wait = require('internal').wait;
 var isEnterprise = require('internal').isEnterprise();
-var request = require('@arangodb/request');
 var _ = require('lodash');
 
 var endpointToURL = function (endpoint) {
