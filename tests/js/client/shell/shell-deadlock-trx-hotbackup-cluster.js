@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertFalse, assertEqual, assertNotUndefined, arango */
+/* global fail, assertTrue, assertFalse, assertEqual, assertNotUndefined, arango, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoDeadLockTests
