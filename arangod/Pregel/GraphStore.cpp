@@ -202,6 +202,8 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
   if (queue->status().fail() && !queue->status().is(TRI_ERROR_SHUTTING_DOWN)) {
     THROW_ARANGO_EXCEPTION(queue->status());
   }
+  
+  //LOG_DEVEL << "LOCAL VERTEX COUNT: " << _localVertexCount.load() << ", LOCAL EDGE COUNT: " << _localEdgeCount.load();
 
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, cb);
@@ -404,6 +406,25 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
   ::moveAppend(edges, _edges);
   ::moveAppend(eKeys, _edgeKeys);
 
+  /*
+  LOG_DEVEL << "VERTICES1: " << _vertices.size() << ", VKEYS: " << _vertexKeys.size() << ", EDGES: " << _edges.size() << ", EKEYS: " << _edgeKeys.size();
+  {
+    size_t n1 = 0, n2 = 0, n3 = 0, n4 = 0;
+    for (auto const& it : _vertices) {
+      n1 += it->size();
+    }
+    for (auto const& it : _vertexKeys) {
+      n2 += it->size();
+    }
+    for (auto const& it : _edges) {
+      n3 += it->size();
+    }
+    for (auto const& it : _edgeKeys) {
+      n4 += it->size();
+    }
+    LOG_DEVEL << "VERTICES2: " << n1 << ", VKEYS: " << n2 << ", EDGES: " << n3 << ", EKEYS: " << n4;
+  }
+  */
   LOG_TOPIC("6d389", DEBUG, Logger::PREGEL)
     << "Pregel worker: done loading from vertex shard " << vertexShard;
 }

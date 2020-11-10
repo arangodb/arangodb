@@ -61,6 +61,7 @@ const char* arangodb::pregel::ExecutionStateNames[7] = {
 Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
                      std::vector<CollectionID> const& vertexCollections,
                      std::vector<CollectionID> const& edgeCollections,
+                     std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
                      std::string const& algoName, VPackSlice const& config)
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
@@ -73,38 +74,21 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
     _userParams.add(config);
   }
 
-  // parse edge collection restrictions
-  if (config.isObject() && config.hasKey(Utils::edgeCollectionRestrictionsKey)) {
-    VPackSlice s = config.get(Utils::edgeCollectionRestrictionsKey);
-    if (s.isObject()) {
-      for (auto const& r : VPackObjectIterator(s)) {
-        if (!r.value.isArray()) {
-          continue;
-        }
-
-        if (ServerState::instance()->isCoordinator()) {
-          for (auto const& shardId : getShardIds(r.key.copyString())) {
-            // intentionally create key in map
-            auto& restrictions = _edgeCollectionRestrictions[shardId];
-            for (auto const& cn : VPackArrayIterator(r.value)) {
-              if (cn.isString()) {
-                for (auto const& edgeShardId : getShardIds(cn.copyString())) {
-                  restrictions.push_back(edgeShardId);
-                }
-              }
-            }
-          }
-        } else {
-          // intentionally create key in map
-          auto& restrictions = _edgeCollectionRestrictions[r.key.copyString()];
-          for (auto const& cn : VPackArrayIterator(r.value)) {
-            if (cn.isString()) {
-              restrictions.push_back(cn.copyString());
-            }
+  // handle edge collection restrictions
+  if (ServerState::instance()->isCoordinator()) {
+    for (auto const& it : edgeCollectionRestrictions) {
+      for (auto const& shardId : getShardIds(it.first)) {
+        // intentionally create key in map
+        auto& restrictions = _edgeCollectionRestrictions[shardId];
+        for (auto const& cn : it.second) {
+          for (auto const& edgeShardId : getShardIds(cn)) {
+            restrictions.push_back(edgeShardId);
           }
         }
       }
     }
+  } else {
+    _edgeCollectionRestrictions = edgeCollectionRestrictions;
   }
 
   if (!_algorithm) {

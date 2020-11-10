@@ -88,10 +88,12 @@ var startExecution = function(algo, data, params) {
       let edgeCollection = ed.collection;
       let from = ed.from;
       if (Array.isArray(from) && from.length > 0) {
-        if (!restrictions[from]) {
-          restrictions[from] = {};
-        }
-        restrictions[from][edgeCollection] = 1;
+        from.forEach((f) => {
+          if (!restrictions[from]) {
+            restrictions[from] = {};
+          }
+          restrictions[from][edgeCollection] = 1;
+        });
       }
     });
     Object.keys(restrictions).forEach((v) => {

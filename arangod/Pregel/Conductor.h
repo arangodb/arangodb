@@ -123,6 +123,7 @@ class Conductor {
   Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
             std::vector<CollectionID> const& vertexCollections,
             std::vector<CollectionID> const& edgeCollections,
+            std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
             std::string const& algoName, VPackSlice const& userConfig);
 
   ~Conductor();
