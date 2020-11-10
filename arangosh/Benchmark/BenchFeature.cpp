@@ -195,6 +195,7 @@ void BenchFeature::start() {
     auto connectDB = client.databaseName();
     client.setDatabaseName("_system");
     auto createDbClient = client.createHttpClient();
+    createDbClient->params().setUserNamePassword("/", client.username(), client.password());
     auto createStr = std::string("{\"name\":\"") + connectDB + "\"}";
     auto result = createDbClient->request(rest::RequestType::POST,
                                           "/_api/database",
