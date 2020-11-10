@@ -29,6 +29,7 @@
 #include "Aql/Graphs.h"
 
 namespace arangodb {
+class Index;
 class IndexIterator;
 
 namespace transaction{
@@ -56,6 +57,9 @@ class EdgeCollectionInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string _collectionName;
+
+  /// @brief index used for iteration
+  std::shared_ptr<arangodb::Index> _indexId;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Temporary builder for index search values
