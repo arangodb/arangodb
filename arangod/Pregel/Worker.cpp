@@ -348,10 +348,12 @@ void Worker<V, E, M>::_startProcessing() {
         LOG_TOPIC("f0e3d", WARN, Logger::PREGEL) << "Execution aborted prematurely.";
         return;
       }
-      size_t startI = i * (numSegments / numT);
-      size_t endI = (i+1) * (numSegments / numT);
+      size_t dividend = numSegments / numT;
+      size_t remainder = numSegments % numT;
+      size_t startI = (i * dividend) + std::min(i, remainder);
+      size_t endI = ((i + 1) * dividend) + std::min(i + 1, remainder);
       TRI_ASSERT(endI <= numSegments);
-      
+
       auto vertices = _graphStore->vertexIterator(startI, endI);
       // should work like a join operation
       if (_processVertices(i, vertices) && _state == WorkerState::COMPUTING) {
