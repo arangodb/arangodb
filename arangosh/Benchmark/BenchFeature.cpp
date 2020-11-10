@@ -245,7 +245,7 @@ void BenchFeature::start() {
                                           createStr.c_str(),
                                           createStr.length());
 
-    if (!result || !result->isComplete()) {
+    if (!result || result->wasHttpError()) {
       std::string msg;
       if (result) {
         msg = result->getHttpReturnMessage();
