@@ -171,7 +171,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
                 return {TRI_ERROR_SHUTTING_DOWN};
               }
               try {
-                _loadVertices(vertexShard, edges);
+                loadVertices(vertexShard, edges);
               } catch (std::exception const& ex) {
                 LOG_TOPIC("c87c9", WARN, Logger::PREGEL)
                     << "caught exception while "
@@ -293,9 +293,8 @@ std::unique_ptr<TypedBuffer<M>> createBuffer(WorkerConfig const& config, size_t 
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
-                                     std::vector<ShardID> const& edgeShards) {
-  
+void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
+                                    std::vector<ShardID> const& edgeShards) {
   LOG_TOPIC("24837", DEBUG, Logger::PREGEL)
     << "Pregel worker: loading from vertex shard " << vertexShard << ", edge shards: " << edgeShards;
   
@@ -329,7 +328,8 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   TypedBuffer<Vertex<V, E>>* vertexBuff = nullptr;
   TypedBuffer<char>* keyBuff = nullptr;
   size_t segmentSize = std::min<size_t>(numVertices, vertexSegmentSize());
-  
+ 
+
   std::string documentId; // temp buffer for _id of vertex
   auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
     if (vertexBuff == nullptr || vertexBuff->remainingCapacity() == 0) {
@@ -364,7 +364,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     
     // load edges
     for (ShardID const& edgeShard : edgeShards) {
-      _loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys, numVertices);
+      loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys, numVertices);
     }
     return true;
   };
@@ -375,7 +375,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     TRI_ASSERT(segmentSize > 0);
     hasMore = cursor->nextDocument(cb, segmentSize);
     if (_vocbaseGuard.database().server().isStopping()) {
-      LOG_TOPIC("4355a", WARN, Logger::PREGEL) << "Aborted loading graph";
+      LOG_TOPIC("4355a", WARN, Logger::PREGEL) << "Aborting graph loading";
       break;
     }
     
@@ -397,11 +397,11 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
-                                  ShardID const& edgeShard, std::string const& documentID,
-                                  std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
-                                  std::vector<std::unique_ptr<TypedBuffer<char>>>& edgeKeys,
-                                  size_t numVertices) {
+void GraphStore<V, E>::loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
+                                 ShardID const& edgeShard, std::string const& documentID,
+                                 std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
+                                 std::vector<std::unique_ptr<TypedBuffer<char>>>& edgeKeys,
+                                 size_t numVertices) {
 
   traverser::EdgeCollectionInfo info(&trx, edgeShard);
   auto cursor = info.getEdges(documentID);
@@ -420,7 +420,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       keyBuff = edgeKeys.back().get();
     }
   };
-   
+      
   bool const isCluster = ServerState::instance()->isRunningInCluster();
   auto& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
  
@@ -473,7 +473,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
   if (cursor->hasExtra() &&
       _graphFormat->estimatedEdgeSize() == 0) {
  
-    auto cb = [&](LocalDocumentId const& /*token*/, VPackSlice edgeSlice) {
+    while (cursor->nextExtra([&](LocalDocumentId const& /*token*/, VPackSlice edgeSlice) {
       TRI_ASSERT(edgeSlice.isString());
       
       VPackStringRef toValue(edgeSlice);
@@ -482,16 +482,10 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       Edge<E>* edge = edgeBuff->appendElement();
       buildEdge(edge, toValue);
       return true;
-    };
-    while (cursor->nextExtra(cb, 1000)) {
-      if (_vocbaseGuard.database().server().isStopping()) {
-        LOG_TOPIC("29018", WARN, Logger::PREGEL) << "Aborted loading graph";
-        break;
-      }
-    }
+    }, 1000)) { /* continue loading */ }
     
   } else {
-    auto cb = [&](LocalDocumentId const& /*token*/, VPackSlice slice) {
+    while (cursor->nextDocument([&](LocalDocumentId const& /*token*/, VPackSlice slice) {
       slice = slice.resolveExternal();
       
       VPackStringRef toValue(transaction::helpers::extractToFromDocument(slice));
@@ -502,13 +496,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
         _graphFormat->copyEdgeData(slice, edge->data());
       }
       return true;
-    };
-    while (cursor->nextDocument(cb, 1000)) {
-      if (_vocbaseGuard.database().server().isStopping()) {
-        LOG_TOPIC("191f5", WARN, Logger::PREGEL) << "Aborted loading graph";
-        break;
-      }
-    }
+    }, 1000)) { /* continue loading */ }
   }
   
   // Add up all added elements
@@ -518,8 +506,8 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
 /// Loops over the array starting a new transaction for different shards
 /// Should not dead-lock unless we have to wait really long for other threads
 template <typename V, typename E>
-void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
-                                      RangeIterator<Vertex<V, E>>& it) {
+void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
+                                     RangeIterator<Vertex<V, E>>& it) {
   // transaction on one shard
   OperationOptions options;
   options.silent = true;
@@ -644,7 +632,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
       
       try {
         RangeIterator<Vertex<V, E>> it = vertexIterator(startI, endI);
-        _storeVertices(_config->globalShardIDs(), it);
+        storeVertices(_config->globalShardIDs(), it);
         // TODO can't just write edges with SmartGraphs
       } catch (std::exception const& e) {
         LOG_TOPIC("e22c8", ERR, Logger::PREGEL) << "Storing vertex data failed: " << e.what();

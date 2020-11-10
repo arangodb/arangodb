@@ -86,17 +86,17 @@ class GraphStore final {
 
  private:
   
-  void _loadVertices(ShardID const& vertexShard,
-                     std::vector<ShardID> const& edgeShards);
-  void _loadEdges(transaction::Methods& trx, Vertex<V,E>& vertexEntry,
-                  ShardID const& edgeShard,
-                  std::string const& documentID,
-                  std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>&,
-                  std::vector<std::unique_ptr<TypedBuffer<char>>>&,
-                  uint64_t numVertices);
+  void loadVertices(ShardID const& vertexShard,
+                    std::vector<ShardID> const& edgeShards);
+  void loadEdges(transaction::Methods& trx, Vertex<V,E>& vertexEntry,
+                 ShardID const& edgeShard,
+                 std::string const& documentID,
+                 std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>&,
+                 std::vector<std::unique_ptr<TypedBuffer<char>>>&,
+                 uint64_t numVertices);
   
-  void _storeVertices(std::vector<ShardID> const& globalShards,
-                      RangeIterator<Vertex<V,E>>& it);
+  void storeVertices(std::vector<ShardID> const& globalShards,
+                     RangeIterator<Vertex<V,E>>& it);
   
   constexpr size_t vertexSegmentSize () const {
     return 64 * 1024 * 1024 / sizeof(Vertex<V,E>);
