@@ -199,7 +199,7 @@ function demand_propagation_demo_program(resultField) {
                             ["accum-ref", "demandSumBuckets"]],
                         ["accum-clear!", "demandSumBuckets"],
                         false]
-                ]
+                ]]
         }]
     };
 }

@@ -238,7 +238,7 @@ function exec_test_vertex_degrees() {
     checkVertexCount
   ));
 
-  let spec = examplegraphs.create_line_graph("LineGraph1000", 1000, 5);
+  spec = examplegraphs.create_line_graph("LineGraph1000", 1000, 5);
   // YOLO, graph sometimes arrives too late.
   internal.print("waiting?");
   internal.wait(5);
