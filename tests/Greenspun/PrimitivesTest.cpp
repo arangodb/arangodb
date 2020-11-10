@@ -20,9 +20,7 @@ struct GreenspunTest : public ::testing::Test {
   Machine m;
   VPackBuilder result;
 
-  GreenspunTest() {
-    InitMachine(m);
-  }
+  GreenspunTest() { InitMachine(m); }
 };
 
 TEST_F(GreenspunTest, dict_x_tract_value_found) {
@@ -31,7 +29,7 @@ TEST_F(GreenspunTest, dict_x_tract_value_found) {
     )aql");
 
   auto res = Evaluate(m, program->slice(), result);
-  if(res.fail()) {
+  if (res.fail()) {
     FAIL() << res.error().toString();
   }
   ASSERT_TRUE(result.slice().isObject());
@@ -54,7 +52,7 @@ TEST_F(GreenspunTest, dict_x_tract_x_value_found) {
     )aql");
 
   auto res = Evaluate(m, program->slice(), result);
-  if(res.fail()) {
+  if (res.fail()) {
     FAIL() << res.error().toString();
   }
   ASSERT_TRUE(result.slice().isObject());
@@ -208,21 +206,21 @@ TEST_F(GreenspunTest, false_huh_int) {
 }
 
 TEST_F(GreenspunTest, true_huh_true) {
-auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["true?", true]
     )aql");
 
-Evaluate(m, program->slice(), result);
-ASSERT_TRUE(result.slice().getBoolean());
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().getBoolean());
 }
 
 TEST_F(GreenspunTest, true_huh_false) {
-auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["true?", false]
     )aql");
 
-Evaluate(m, program->slice(), result);
-ASSERT_FALSE(result.slice().getBoolean());
+  Evaluate(m, program->slice(), result);
+  ASSERT_FALSE(result.slice().getBoolean());
 }
 
 /*
@@ -301,417 +299,364 @@ TEST_F(GreenspunTest, eq_huh_not_equal_string) {
   ASSERT_FALSE(result.slice().getBoolean());
 }
 
-#if 0
-
-TEST_CASE("Test [gt?] primitive", "[greater]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
-  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
-
-  SECTION("Test greater than with int greater") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, gt_int_greater) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["gt?", 2, 1]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().getBoolean());
+}
 
-  SECTION("Test greater than with int lower") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, gt_int_equal) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["gt?", 2, 2]
+    )aql");
+
+  Evaluate(m, program->slice(), result);
+  ASSERT_FALSE(result.slice().getBoolean());
+}
+
+TEST_F(GreenspunTest, gt_int_less) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["gt?", 1, 2]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_FALSE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_FALSE(result.slice().getBoolean());
+}
 
-  SECTION("Test greater than with double greater") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, gt_double_greater) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["gt?", 2.4, 1.3]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().getBoolean());
+}
 
-  SECTION("Test greater than with double lower") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, gt_double_equal) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["gt?", 2.4, 2.4]
+    )aql");
+
+  Evaluate(m, program->slice(), result);
+  ASSERT_FALSE(result.slice().getBoolean());
+}
+
+TEST_F(GreenspunTest, gt_double_less) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["gt?", 1.1, 2.3]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_FALSE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_FALSE(result.slice().getBoolean());
+}
 
-  SECTION("Test greater than with true first") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, gt_error_bool) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["gt?", true, false]
     )aql");
 
-    EvalResult res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  EvalResult res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
+}
 
-  SECTION("Test greater than with true first") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["gt?", false, true]
-    )aql");
-
-    EvalResult res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
-
-  SECTION("Test greater than equal bool true") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["gt?", true, true]
-    )aql");
-
-    EvalResult res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
-
-  SECTION("Test greater than equal bool false") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["gt?", false, false]
-    )aql");
-
-    EvalResult res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
-
-  SECTION("Test greater than strings") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, gt_error_string) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["gt?", "astring", "bstring"]
     )aql");
 
-    EvalResult res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  EvalResult res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
 }
 
-TEST_CASE("Test [ge?] primitive", "[greater equal]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
-  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
-
-  SECTION("Test greater equal with int greater") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, ge_int_greater) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ge?", 2, 1]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().getBoolean());
+}
 
-  SECTION("Test greater equal with int greater") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, ge_int_equal) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ge?", 2, 2]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().getBoolean());
+}
 
-  SECTION("Test greater equal with int lower") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, ge_int_less) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ge?", 1, 2]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_FALSE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_FALSE(result.slice().getBoolean());
+}
 
-  SECTION("Test greater equal with double greater") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, ge_double_greater) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ge?", 2.4, 1.3]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().getBoolean());
+}
 
-  SECTION("Test greater equal with double greater") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, ge_double_equal) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ge?", 2.4, 2.4]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().getBoolean());
+}
 
-  SECTION("Test greater equal with double lower") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, ge_double_less) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ge?", 1.1, 2.3]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_FALSE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_FALSE(result.slice().getBoolean());
+}
 
-  SECTION("Test greater equal with true first") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, ge_error_bool) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ge?", true, false]
     )aql");
 
-    EvalResult res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  EvalResult res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
+}
 
-  SECTION("Test greater equal strings") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, ge_error_string) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ge?", "astring", "bstring"]
     )aql");
 
-    EvalResult res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  EvalResult res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
 }
 
-TEST_CASE("Test [le?] primitive", "[less equal]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
-  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
-
-  SECTION("Test less equal with int greater") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, le_int_greater) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["le?", 2, 1]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_FALSE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_FALSE(result.slice().getBoolean());
+}
 
-  SECTION("Test less equal with int greater") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, le_int_equal) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["le?", 2, 2]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().getBoolean());
+}
 
-  SECTION("Test less equal with int lower") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, le_int_less) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["le?", 1, 2]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().getBoolean());
+}
 
-  SECTION("Test less equal with double greater") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, le_double_greater) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["le?", 2.4, 1.3]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_FALSE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_FALSE(result.slice().getBoolean());
+}
 
-  SECTION("Test less equal with double greater") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, le_double_equal) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["le?", 2.4, 2.4]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().getBoolean());
+}
 
-  SECTION("Test less equal with double lower") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, le_double_less) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["le?", 1.1, 2.3]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().getBoolean());
+}
 
-  SECTION("Test less equal with true first") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, le_error_bool) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["le?", true, false]
     )aql");
 
-    EvalResult res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  EvalResult res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
+}
 
-  SECTION("Test less equal strings") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, le_error_string) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["le?", "astring", "bstring"]
     )aql");
 
-    EvalResult res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  EvalResult res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
 }
 
-TEST_CASE("Test [lt?] primitive", "[less]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
-  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
-
-  SECTION("Test less than with int greater") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, lt_int_greater) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["lt?", 2, 1]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_FALSE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_FALSE(result.slice().getBoolean());
+}
 
-  SECTION("Test less than with int greater") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, lt_int_equal) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["lt?", 2, 2]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_FALSE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_FALSE(result.slice().getBoolean());
+}
 
-  SECTION("Test less than with int lower") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, lt_int_less) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["lt?", 1, 2]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().getBoolean());
+}
 
-  SECTION("Test less than with double greater") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, lt_double_greater) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["lt?", 2.4, 1.3]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_FALSE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_FALSE(result.slice().getBoolean());
+}
 
-  SECTION("Test less than with double greater") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, lt_double_equal) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["lt?", 2.4, 2.4]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_FALSE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_FALSE(result.slice().getBoolean());
+}
 
-  SECTION("Test less than with double lower") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, lt_double_less) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["lt?", 1.1, 2.3]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().getBoolean());
+}
 
-  SECTION("Test less than with true first") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, lt_error_bool) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["lt?", true, false]
     )aql");
 
-    EvalResult res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  EvalResult res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
+}
 
-  SECTION("Test less than strings") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, lt_error_string) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["lt?", "astring", "bstring"]
     )aql");
 
-    EvalResult res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  EvalResult res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
 }
 
-TEST_CASE("Test [ne?] primitive", "[not equal]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
-  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
-
-  SECTION("Test equality with ints") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, ne_int) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ne?", 2, 2]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_FALSE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_FALSE(result.slice().getBoolean());
+}
 
-  SECTION("Test non equality with ints") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, ne_int_not_equal) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ne?", 3, 2]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().getBoolean());
+}
 
-  SECTION("Test equality with doubles") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, ne_doubles) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ne?", 2.2, 2.2]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_FALSE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_FALSE(result.slice().getBoolean());
+}
 
-  SECTION("Test non equality with doubles") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, ne_doubles_not_equal) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ne?", 2.4, 2.2]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().getBoolean());
+}
 
-  SECTION("Test equality with bools") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, ne_bool) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ne?", true, true]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_FALSE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_FALSE(result.slice().getBoolean());
+}
 
-  SECTION("Test non equality with bools") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, ne_bool_not_equal) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ne?", true, false]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().getBoolean());
-  }
-  SECTION("Test equality with string") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().getBoolean());
+}
+TEST_F(GreenspunTest, ne_string) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ne?", "hello", "hello"]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_FALSE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_FALSE(result.slice().getBoolean());
+}
 
-  SECTION("Test non equality with string") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, ne_string_not_equal) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ne?", "hello", "world"]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().getBoolean());
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().getBoolean());
 }
-#endif
-
 
 /*
  * List operators
@@ -853,7 +798,7 @@ TEST_F(GreenspunTest, lambda_constant) {
   if (res.fail()) {
     FAIL() << res.error().toString();
   }
-    ASSERT_EQ(result.slice().getNumericValue<double>(), 12);
+  ASSERT_EQ(result.slice().getNumericValue<double>(), 12);
 }
 
 TEST_F(GreenspunTest, lambda_expression) {
@@ -865,7 +810,7 @@ TEST_F(GreenspunTest, lambda_expression) {
   if (res.fail()) {
     FAIL() << res.error().toString();
   }
-    ASSERT_EQ(result.slice().getNumericValue<double>(), 12);
+  ASSERT_EQ(result.slice().getNumericValue<double>(), 12);
 }
 
 TEST_F(GreenspunTest, lambda_single_param) {
@@ -877,7 +822,7 @@ TEST_F(GreenspunTest, lambda_single_param) {
   if (res.fail()) {
     FAIL() << res.error().toString();
   }
-    ASSERT_EQ(result.slice().getNumericValue<double>(), 12);
+  ASSERT_EQ(result.slice().getNumericValue<double>(), 12);
 }
 
 TEST_F(GreenspunTest, lambda_multi_param) {
@@ -893,7 +838,7 @@ TEST_F(GreenspunTest, lambda_multi_param) {
   if (res.fail()) {
     FAIL() << res.error().toString();
   }
-    ASSERT_EQ(result.slice().getNumericValue<double>(), 12);
+  ASSERT_EQ(result.slice().getNumericValue<double>(), 12);
 }
 
 TEST_F(GreenspunTest, lambda_single_capture) {
@@ -910,7 +855,7 @@ TEST_F(GreenspunTest, lambda_single_capture) {
   if (res.fail()) {
     FAIL() << res.error().toString();
   }
-    ASSERT_EQ(result.slice().getNumericValue<double>(), 12);
+  ASSERT_EQ(result.slice().getNumericValue<double>(), 12);
 }
 
 TEST_F(GreenspunTest, lambda_param_capture) {
@@ -928,7 +873,7 @@ TEST_F(GreenspunTest, lambda_param_capture) {
   if (res.fail()) {
     FAIL() << res.error().toString();
   }
-    ASSERT_EQ(result.slice().getNumericValue<double>(), 12);
+  ASSERT_EQ(result.slice().getNumericValue<double>(), 12);
 }
 
 TEST_F(GreenspunTest, lambda_variable_isolation) {
@@ -960,7 +905,7 @@ TEST_F(GreenspunTest, lambda_call_eval_parameter) {
   if (res.fail()) {
     FAIL() << res.error().toString();
   }
-    ASSERT_EQ(result.slice().getNumericValue<double>(), 12);
+  ASSERT_EQ(result.slice().getNumericValue<double>(), 12);
 }
 
 TEST_F(GreenspunTest, let_simple_statement) {
@@ -1132,102 +1077,79 @@ TEST_F(GreenspunTest, filter_dict_keys) {
   ASSERT_EQ(result.slice().toJson(), "{\"d\":4}");
 }
 
-#if 0
-
-
-// TODO: HACK HACK HACK FIXME DO A COMPARE FUNCTION FOR OBJECTS
-TEST_CASE("Test [dict] primitive", "[dict]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-
-  SECTION("no content") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, dict_empty) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["dict"]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().toJson(), "{}");
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_EQ(result.slice().toJson(), "{}");
+}
 
-  SECTION("one content") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, dict_single_pair) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["dict", ["quote", ["a", 5]]]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().toJson(), R"json({"a":5})json");
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_EQ(result.slice().toJson(), R"json({"a":5})json");
+}
 
-  SECTION("two content") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, dict_two_pairs) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["dict", ["quote", ["a", 5]], ["quote", ["b", "abc"]]]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().toJson(), R"json({"a":5,"b":"abc"})json");
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_EQ(result.slice().toJson(), R"json({"a":5,"b":"abc"})json");
 }
 
-TEST_CASE("Test [dict-keys] primitive", "[dict-keys]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-
-  SECTION("empty dict") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, dict_keys_empty) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["dict-keys", {}]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().toJson(), "[]");
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_EQ(result.slice().toJson(), "[]");
+}
 
-  SECTION("dict with 3 tuples") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, dict_keys_object) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["dict-keys", {"a": 1, "b": 2, "c": 3}]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_TRUE(result.slice().isArray());
-    ASSERT_EQ(result.slice().length(), 3);
-    ASSERT_EQ(result.slice().toJson(), "[\"a\",\"b\",\"c\"]");
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_TRUE(result.slice().isArray());
+  ASSERT_EQ(result.slice().length(), 3);
+  ASSERT_EQ(result.slice().toJson(), "[\"a\",\"b\",\"c\"]");
+}
 
-  SECTION("no content") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, dict_keys_error) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["dict-keys"]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
 }
 
-TEST_CASE("Test [reduce] primitive", "[reduce]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-
-  /* Arrays */
-
-  SECTION("reduce list") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, reduce_list) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
         ["reduce",
           ["list", 1, 2, 3],
           ["lambda",
@@ -1242,13 +1164,13 @@ TEST_CASE("Test [reduce] primitive", "[reduce]") {
         ]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    // Definition does not allow reduce without initial accumulator being set
-    ASSERT_TRUE(res.fail());
-  }
+  auto res = Evaluate(m, program->slice(), result);
+  // Definition does not allow reduce without initial accumulator being set
+  ASSERT_TRUE(res.fail());
+}
 
-  SECTION("reduce list with init accumulator value (number)") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, reduce_list_init) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
         ["reduce",
           ["list", 1, 2, 3],
           ["lambda",
@@ -1264,15 +1186,15 @@ TEST_CASE("Test [reduce] primitive", "[reduce]") {
         ]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().getNumericValue<double>(), 106);
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_EQ(result.slice().getNumericValue<double>(), 106);
+}
 
-  SECTION("reduce list with input list and init accumulator list") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, reduce_list_init_list) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
         ["reduce",
           ["list", 1, 2, 3],
           ["lambda",
@@ -1291,18 +1213,18 @@ TEST_CASE("Test [reduce] primitive", "[reduce]") {
         ]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_TRUE(res.ok());
-    ASSERT_EQ(result.slice().toJson(), "[2,4,6]");
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_TRUE(res.ok());
+  ASSERT_EQ(result.slice().toJson(), "[2,4,6]");
+}
 
-  /* Objects */
+/* Objects */
 
-  SECTION("reduce object") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, reduce_dict) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
         ["reduce",
           {"a": 1, "b": 2, "c": 3},
           ["lambda",
@@ -1317,12 +1239,12 @@ TEST_CASE("Test [reduce] primitive", "[reduce]") {
         ]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
+}
 
-  SECTION("reduce object with init accumulator value (number)") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, reduce_dict_init) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
         ["reduce",
           {"a": 1, "b": 2, "c": 3},
           ["lambda",
@@ -1338,28 +1260,27 @@ TEST_CASE("Test [reduce] primitive", "[reduce]") {
         ]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().getNumericValue<double>(), 106);
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_EQ(result.slice().getNumericValue<double>(), 106);
+}
 
-  /*
-   * Input:  {"a": 1, "b": 2, "c": 3}
-   * Accum:  {"a": 1, "b": 2, "c": 3, "d": 4}
-   * Result: {"a": 2, "b": 4, "c": 6, "d": 4}
-   */
+/*
+ * Input:  {"a": 1, "b": 2, "c": 3}
+ * Accum:  {"a": 1, "b": 2, "c": 3, "d": 4}
+ * Result: {"a": 2, "b": 4, "c": 6, "d": 4}
+ */
 
-  SECTION("reduce list with input list and init accumulator list") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, reduce_dict_init_list) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
         ["reduce",
           {"a": 1, "b": 2, "c": 3},
           ["lambda",
             ["quote", []],
             ["quote", ["key", "value", "accum" ]],
             ["seq",
-              ["print", ""],
               ["quote",
                 [
                   "attrib-set",
@@ -1374,23 +1295,22 @@ TEST_CASE("Test [reduce] primitive", "[reduce]") {
         ]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_TRUE(res.ok());
-    ASSERT_EQ(result.slice().toJson(), R"json({"a":2,"b":4,"c":6,"d":4})json");
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_TRUE(res.ok());
+  ASSERT_EQ(result.slice().toJson(), R"json({"a":2,"b":4,"c":6,"d":4})json");
+}
 
-  SECTION("reduce list with input list and init accumulator list - both dicts contain unique keys") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, reduce_dict_init_dicts) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
         ["reduce",
           {"a": 1, "b": 2, "c": 3, "e": 5},
           ["lambda",
             ["quote", []],
             ["quote", ["key", "value", "accum" ]],
             ["seq",
-              ["print", ""],
               ["quote",
                 [
                   "attrib-set",
@@ -1405,542 +1325,451 @@ TEST_CASE("Test [reduce] primitive", "[reduce]") {
         ]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_TRUE(res.ok());
-    ASSERT_EQ(result.slice().toJson(), R"json({"a":2,"b":4,"c":6,"d":4,"e":5})json");
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_TRUE(res.ok());
+  ASSERT_EQ(result.slice().toJson(), R"json({"a":2,"b":4,"c":6,"d":4,"e":5})json");
 }
 
-TEST_CASE("Test [sort] primitive", "[sort]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-
-  SECTION("sort ints") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, sort) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["sort", "lt?", ["list", 3, 1, 2]]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().toJson(), "[1,2,3]");
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_EQ(result.slice().toJson(), "[1,2,3]");
 }
 
-TEST_CASE("Test [str] primitive", "[str]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-
-  SECTION("no content") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, str_empty) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["str"]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_TRUE(result.slice().isString());
-    ASSERT_EQ(result.slice().copyString(), "");
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_TRUE(result.slice().isString());
+  ASSERT_EQ(result.slice().copyString(), "");
+}
 
-  SECTION("one content") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, str_single) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["str", "yello"]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_TRUE(result.slice().isString());
-    ASSERT_EQ(result.slice().copyString(), "yello");
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_TRUE(result.slice().isString());
+  ASSERT_EQ(result.slice().copyString(), "yello");
+}
 
-  SECTION("two content") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, str_multi) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["str", "yello", "world"]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_TRUE(result.slice().isString());
-    ASSERT_EQ(result.slice().copyString(), "yelloworld");
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
-
-  // TODO error testing
+  ASSERT_TRUE(result.slice().isString());
+  ASSERT_EQ(result.slice().copyString(), "yelloworld");
 }
 
-TEST_CASE("Test [dict-merge] primitive", "[dict-merge]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
+// TODO error testing for str
 
-  SECTION("Merge with empty (left) object") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, dict_merge_left_empty) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["dict-merge", ["dict"], ["dict", ["quote", ["hello", "world"]]] ]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().isObject());
-    ASSERT_TRUE(result.slice().get("hello").isString());
-    ASSERT_EQ(result.slice().get("hello").toString(), "world");
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().isObject());
+  ASSERT_TRUE(result.slice().get("hello").isString());
+  ASSERT_EQ(result.slice().get("hello").toString(), "world");
+}
 
-  SECTION("Merge with empty (right) object") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, dict_merge_right_empty) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["dict-merge", ["dict", ["quote", ["hello", "world"]]], ["dict"]]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().isObject());
-    ASSERT_TRUE(result.slice().get("hello").isString());
-    ASSERT_EQ(result.slice().get("hello").toString(), "world");
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().isObject());
+  ASSERT_TRUE(result.slice().get("hello").isString());
+  ASSERT_EQ(result.slice().get("hello").toString(), "world");
+}
 
-  SECTION("Merge with overwrite") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, dict_merge_overwrite) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["dict-merge", ["dict", ["quote", ["hello", "world"]]], ["dict", ["quote", ["hello", "newWorld"]]]]
     )aql");
 
-    Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(result.slice().isObject());
-    ASSERT_TRUE(result.slice().get("hello").isString());
-    ASSERT_EQ(result.slice().get("hello").toString(), "newWorld");
-  }
+  Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(result.slice().isObject());
+  ASSERT_TRUE(result.slice().get("hello").isString());
+  ASSERT_EQ(result.slice().get("hello").toString(), "newWorld");
+}
 
-  SECTION("Merge with invalid type string") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, dict_merge_error_invalid_type) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["dict-merge", ["dict", ["quote", ["hello", "world"]]], "peter"]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
-
-  SECTION("Merge with invalid type double") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["dict-merge", ["dict", ["quote", ["hello", "world"]]], "2.0"]
-    )aql");
-
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
-
-  SECTION("Merge with invalid type bool") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["dict-merge", ["dict", ["quote", ["hello", "world"]]], true]
-    )aql");
-
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
-
-  SECTION("Merge with invalid type array") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["dict-merge", ["dict", ["quote", ["hello", "world"]]], [1,2,3]]
-    )aql");
-
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
 }
 
-TEST_CASE("Test [attrib-set] primitive", "[attrib-set]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-
-  SECTION("Set string value with key") {
-    // ["attrib-set", dict, key, value]
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, attrib_set_key) {
+  // ["attrib-set", dict, key, value]
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["attrib-set",
         ["dict", ["quote", ["hello", "world"]]],
         "hello", "newWorld"
       ]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_TRUE(result.slice().isObject());
-    ASSERT_TRUE(result.slice().get("hello").isString());
-    ASSERT_EQ(result.slice().get("hello").toString(), "newWorld");
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_TRUE(result.slice().isObject());
+  ASSERT_TRUE(result.slice().get("hello").isString());
+  ASSERT_EQ(result.slice().get("hello").toString(), "newWorld");
+}
 
-  SECTION("Set string value with path (array)") {
-    // ["attrib-set", dict, [path...], value]
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, attrib_set_path) {
+  // ["attrib-set", dict, [path...], value]
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["attrib-set",
         {"first": {"second": "oldWorld"}},
         ["quote", ["first", "second"]], "newWorld"
       ]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_TRUE(result.slice().isObject());
-    ASSERT_TRUE(result.slice().get("first").isObject());
-    ASSERT_TRUE(result.slice().get("first").get("second").isString());
-    ASSERT_EQ(result.slice().get("first").get("second").toString(), "newWorld");
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_TRUE(result.slice().isObject());
+  ASSERT_TRUE(result.slice().get("first").isObject());
+  ASSERT_TRUE(result.slice().get("first").get("second").isString());
+  ASSERT_EQ(result.slice().get("first").get("second").toString(), "newWorld");
+}
 
-  SECTION("Set array value with path (array)") {
-    // ["attrib-set", dict, [path...], value]
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, attrib_set_path_array) {
+  // ["attrib-set", dict, [path...], value]
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["attrib-set",
         {"first": {"second": "oldWorld"}},
         ["quote", ["first", "second"]], ["quote", ["new", "world"]]
       ]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_TRUE(result.slice().isObject());
-    ASSERT_TRUE(result.slice().get("first").isObject());
-    ASSERT_TRUE(result.slice().get("first").get("second").isArray());
-    ASSERT_EQ(result.slice().get("first").get("second").length(), 2);
-    ASSERT_TRUE(result.slice().get("first").get("second").at(0).copyString() ==
-            "new");
-    ASSERT_TRUE(result.slice().get("first").get("second").at(1).copyString() ==
-            "world");
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_TRUE(result.slice().isObject());
+  ASSERT_TRUE(result.slice().get("first").isObject());
+  ASSERT_TRUE(result.slice().get("first").get("second").isArray());
+  ASSERT_EQ(result.slice().get("first").get("second").length(), 2);
+  ASSERT_TRUE(result.slice().get("first").get("second").at(0).copyString() ==
+              "new");
+  ASSERT_TRUE(result.slice().get("first").get("second").at(1).copyString() ==
+              "world");
 }
 
-TEST_CASE("Test [min] primitive", "[min]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-
-  SECTION("empty min") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, min_empty) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["min"]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_TRUE(result.slice().isNone());
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_TRUE(result.slice().isNone());
+}
 
-  SECTION("single min") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, min_one) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["min", 1]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().getNumericValue<double>(), 1);
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_EQ(result.slice().getNumericValue<double>(), 1);
+}
 
-  SECTION("double min") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, min_two) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["min", 1, 2]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().getNumericValue<double>(), 1);
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_EQ(result.slice().getNumericValue<double>(), 1);
+}
 
-  SECTION("double min 2.0") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, min_two_reversed) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["min", 2, 1]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().getNumericValue<double>(), 1);
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
-
-  SECTION("triple min") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+  ASSERT_EQ(result.slice().getNumericValue<double>(), 1);
+}
+TEST_F(GreenspunTest, min_three) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["min", 2, 1, 3]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().getNumericValue<double>(), 1);
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_EQ(result.slice().getNumericValue<double>(), 1);
+}
 
-  SECTION("min fail") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, min_error) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["min", 1, "foo"]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
 }
 
-TEST_CASE("Test [array-ref] primitive", "[array-ref]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-
-  SECTION("get with valid index") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, array_ref_valid_index) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["array-ref", ["quote", [1, 2, 3, 4]], 0]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_TRUE(result.slice().isNumber());
-    ASSERT_EQ(result.slice().getNumericValue<uint64_t>(), 1);
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_TRUE(result.slice().isNumber());
+  ASSERT_EQ(result.slice().getNumericValue<uint64_t>(), 1);
+}
 
-  SECTION("get with invalid index") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, array_ref_invalid_index) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["array-ref", ["quote", [1, 2, 3, 4]], 6]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
+}
 
-  SECTION("array not an array") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, array_ref_error_no_array) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["array-ref", "aString", 1]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
+}
 
-  SECTION("index not a number") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, array_ref_error_bad_index) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["array-ref", ["quote", [1, 2, 3, 4]], "notAValidIndex"]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
+}
 
-  SECTION("index is a number but negative") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, array_ref_index_negative) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["array-ref", ["quote", [1, 2, 3, 4]], -1]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
 }
 
-TEST_CASE("Test [array-set] primitive", "[array-set]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-
-  SECTION("get with valid index") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, array_set_valid_index) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["array-set", ["quote", [1, 2, 3, 4]], 0, "newValue"]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_TRUE(result.slice().isArray());
-    ASSERT_EQ(result.slice().at(0).copyString(), "newValue");
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_TRUE(result.slice().isArray());
+  ASSERT_EQ(result.slice().at(0).copyString(), "newValue");
+}
 
-  SECTION("get with invalid index") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, array_set_invalid_index) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["array-set", ["quote", [1, 2, 3, 4]], 6, 10]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
+}
 
-  SECTION("array not an array") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, array_error_no_array) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["array-set", "aString", 1, "peter"]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
+}
 
-  SECTION("index not a number") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, array_error_bad_index) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["array-set", ["quote", [1, 2, 3, 4]], "notAValidIndex", "hehe"]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
 }
 
-TEST_CASE("Test [apply] primitive", "[apply]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-
-  SECTION("Apply sum") {
-    // ["attrib-set", dict, key, value]
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, apply_sum) {
+  // ["attrib-set", dict, key, value]
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["apply", "+", ["quote", [1, 2, 3]]]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().getNumericValue<double>(), 6);
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_EQ(result.slice().getNumericValue<double>(), 6);
+}
 
-  SECTION("Apply sum, unknown function") {
-    // ["attrib-set", dict, key, value]
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, apply_unknown) {
+  // ["attrib-set", dict, key, value]
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["apply", "function-not-found", ["quote", [1, 2, 3]]]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
+}
 
-  SECTION("Apply sum, no function type") {
-    // ["attrib-set", dict, key, value]
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, apply_invalid_type) {
+  // ["attrib-set", dict, key, value]
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["apply", 12, ["quote", [1, 2, 3]]]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
+}
 
-  SECTION("Apply sum, no argument list") {
-    // ["attrib-set", dict, key, value]
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, apply_no_args) {
+  // ["attrib-set", dict, key, value]
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["apply", "+", "string"]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
+}
 
-  SECTION("Apply sum, lambda") {
-    // ["attrib-set", dict, key, value]
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, apply_lambda) {
+  // ["attrib-set", dict, key, value]
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["apply", ["lambda", ["quote", []], ["quote", ["x"]], ["quote", ["var-ref", "x"]]], ["quote", [2]]]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().getNumericValue<double>(), 2);
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_EQ(result.slice().getNumericValue<double>(), 2);
+}
 
-  SECTION("Apply not reevaluate parameter") {
-    // ["attrib-set", dict, key, value]
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, apply_no_reevaluate_parameters) {
+  // ["attrib-set", dict, key, value]
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["apply", ["lambda", ["quote", []], ["quote", ["x"]], 2], ["quote", [["error"]]]]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().getNumericValue<double>(), 2);
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_EQ(result.slice().getNumericValue<double>(), 2);
 }
 
-TEST_CASE("Test [quasi-quote] primitive", "[quasi-quote]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-
-  SECTION("quasi-quote empty") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, quasi_quote_empty) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["array-empty?", ["quasi-quote", []]]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_TRUE(result.slice().isTrue());
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_TRUE(result.slice().isTrue());
+}
 
-  SECTION("quasi-quote single") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, quasi_quote_one) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["array-length", ["quasi-quote", [1]]]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().getNumber<double>(), 1);
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_EQ(result.slice().getNumber<double>(), 1);
+}
 
-  SECTION("quasi-quote unquote") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, quasi_quote_unquote) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["quasi-quote", ["unquote", ["+", 1, 2]]]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().getNumber<double>(), 3);
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_EQ(result.slice().getNumber<double>(), 3);
+}
 
-  SECTION("quasi-quote unquote multiple params") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, quasi_quote_unquote_multiple) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["quasi-quote", ["unquote", ["+", 1, 2], 5]]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
+}
 
-  SECTION("quasi-quote unquote multiple params") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["quasi-quote", ["unquote", ["+", 1, 2], 5]]
-    )aql");
-
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
-
-  SECTION("quasi-quote unquote no params") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, quasi_quote_unquote_no_params) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["quasi-quote", ["unquote"]]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    ASSERT_TRUE(res.fail());
-  }
+  auto res = Evaluate(m, program->slice(), result);
+  ASSERT_TRUE(res.fail());
+}
 
-  SECTION("quasi-quote unquote quasi-quote") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, quasi_quote_unquote_quasi_quote) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["quasi-quote",
         ["unquote",
           ["array-length",
@@ -1955,63 +1784,49 @@ TEST_CASE("Test [quasi-quote] primitive", "[quasi-quote]") {
       ]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().getNumber<double>(), 2);
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_EQ(result.slice().getNumber<double>(), 2);
+}
 
-  SECTION("quasi-quote unquote quasi-quote") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, quasi_quote_unquote_splice) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["quasi-quote", [["foo"], ["unquote", ["list", 1, 2]], ["unquote-splice", ["list", 1, 2]]]]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_EQ(result.slice().toJson(), R"=([["foo"],[1,2],1,2])=");
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_EQ(result.slice().toJson(), R"=([["foo"],[1,2],1,2])=");
 }
 
-TEST_CASE("Test [rand] primitive", "[rand]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-
-  SECTION("rand") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, rand) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["rand"]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_TRUE(result.slice().isNumber<double>());
-    ASSERT_TRUE(result.slice().getDouble() <= 1.0);
-    ASSERT_TRUE(result.slice().getDouble() >= 0.0);
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_TRUE(result.slice().isNumber<double>());
+  ASSERT_TRUE(result.slice().getDouble() <= 1.0);
+  ASSERT_TRUE(result.slice().getDouble() >= 0.0);
 }
 
-TEST_CASE("Test [rand-range] primitive", "[rand-range]") {
-  Machine m;
-  InitMachine(m);
-  VPackBuilder result;
-
-  SECTION("rand-range") {
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+TEST_F(GreenspunTest, rand_range) {
+  auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["rand-range", 5, 9]
     )aql");
 
-    auto res = Evaluate(m, program->slice(), result);
-    if (res.fail()) {
-      FAIL() << res.error().toString();
-    }
-    ASSERT_TRUE(result.slice().isNumber<double>());
-    ASSERT_TRUE(result.slice().getDouble() <= 9.0);
-    ASSERT_TRUE(result.slice().getDouble() >= 5.0);
+  auto res = Evaluate(m, program->slice(), result);
+  if (res.fail()) {
+    FAIL() << res.error().toString();
   }
+  ASSERT_TRUE(result.slice().isNumber<double>());
+  ASSERT_TRUE(result.slice().getDouble() <= 9.0);
+  ASSERT_TRUE(result.slice().getDouble() >= 5.0);
 }
-#endif
