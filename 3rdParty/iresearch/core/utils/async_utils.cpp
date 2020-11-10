@@ -410,7 +410,6 @@ void thread_pool::worker() {
   }
 
   auto lock = make_unique_lock(lock_);
-  ++active_;
 
   for (;;) {
     const auto now = clock_t::now();
@@ -432,6 +431,7 @@ void thread_pool::worker() {
         }
 
         queue_.pop();
+        ++active_;
 
         // if have more tasks but no idle thread and can grow pool
         if (!queue_.empty() && active_ == pool_.size() && pool_.size() < max_threads_) {
@@ -455,27 +455,24 @@ void thread_pool::worker() {
         }
 
         lock.lock();
+        --active_;
+        continue;
       }
     }
-
-    --active_;
 
     assert(lock.owns_lock());
     assert(active_ <= pool_.size());
 
-    if (State::RUN == state_ && // thread pool is still running
-        pool_.size() <= max_threads_ && // pool does not exceed requested limit
-        pool_.size() - active_ <= max_idle_) { // idle does not exceed requested limit
-      if (!queue_.empty()) {
-        // we have some tasks pending tasks, let's wait
-        const auto sleep_time = std::min(clock_t::duration(50ms), queue_.top().at - now);
-        try { cond_.wait_for(lock, sleep_time); } catch (...) { }
-      } else {
-        try { cond_.wait(lock); } catch (...) { }
-      }
+    if (State::RUN == state_ &&         // thread pool is still running
+        pool_.size() <= max_threads_) { // pool does not exceed requested limit
 
       if (!queue_.empty()) {
-        ++active_;
+        // we have some tasks pending tasks, let's wait
+        cond_.wait_until(lock, queue_.top().at);
+        continue;
+      } else if (pool_.size() - active_ <= max_idle_) {
+        // idle does not exceed requested limit
+        cond_.wait(lock);
         continue;
       }
     }

@@ -559,8 +559,7 @@ class IRESEARCH_API index_writer
   bool consolidate(
     const consolidation_policy_t& policy,
     format::ptr codec = nullptr,
-    const merge_writer::flush_progress_t& progress = {},
-    bool* modified = nullptr
+    const merge_writer::flush_progress_t& progress = {}
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -640,15 +639,17 @@ class IRESEARCH_API index_writer
   ////////////////////////////////////////////////////////////////////////////
   /// @brief make all buffered changes visible for readers
   /// @param payload arbitrary user supplied data to store in the index
+  /// @return whether any changes were committed
   ///
   /// @note that if begin() has been already called commit() is
   /// relatively lightweight operation 
   ////////////////////////////////////////////////////////////////////////////
-  void commit() {
+  bool commit() {
     auto lock = make_lock_guard(commit_lock_);
 
-    start();
+    const bool modified = start();
     finish();
+    return modified;
   }
 
   ////////////////////////////////////////////////////////////////////////////
