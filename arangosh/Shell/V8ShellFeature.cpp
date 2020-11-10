@@ -511,6 +511,31 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
       input = "help()";
     }
 
+    if (i[0] == 'a') {
+      auto pos = i.find(' ');
+      if (pos != std::string::npos) {
+        i = i.substr(0, pos);
+      }
+      if (i == "arangobackup" ||
+          i == "arangobench" ||
+          i == "arangod" ||
+          i == "arangodbtests" ||
+          i == "arangodump" ||
+          i == "arangoexport" ||
+          i == "arangoimp" ||
+          i == "arangoimport" ||
+          i == "arango-init-database" ||
+          i == "arangoinspect" ||
+          i == "arangorestore" ||
+          i == "arango-secure-installation" ||
+          i == "arangosh" ||
+          i == "arangovpack"
+          ) {
+        LOG_TOPIC("abeec", ERR, arangodb::Logger::FIXME)
+          << "These commands must be executed from a system shell and may not directly be used from within arangosh: '" << i << "'";
+        continue;
+      }
+    }
     v8LineEditor.addHistory(input);
 
     v8::TryCatch tryCatch(isolate);
