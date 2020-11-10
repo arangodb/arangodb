@@ -511,10 +511,14 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
       input = "help()";
     }
 
+    bool foundShellTool = false;
     if (i[0] == 'a') {
       auto pos = i.find(' ');
       if (pos != std::string::npos) {
-        i = i.substr(0, pos);
+        // is it a variable name assignment?
+        if (i.find('=', pos) == std::string::npos) {
+          i = i.substr(0, pos);
+        }
       }
       if (i == "arangobackup" ||
           i == "arangobench" ||
@@ -531,9 +535,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
           i == "arangosh" ||
           i == "arangovpack"
           ) {
-        LOG_TOPIC("abeec", WARN, arangodb::Logger::FIXME)
-          << "This command must be executed from with a system shell and cannot be used inside arangosh: '" << i << "'";
-        continue;
+        foundShellTool = true;
       }
     }
     v8LineEditor.addHistory(input);
@@ -575,6 +577,10 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
       console.printErrorLine(exception);
       console.log(exception);
+      if (foundShellTool) {
+        LOG_TOPIC("abeec", WARN, arangodb::Logger::FIXME)
+          << "This command must be executed from with a system shell and cannot be used inside arangosh: '" << i << "'";
+      }
 
       // this will change the prompt for the next round
       promptError = true;
