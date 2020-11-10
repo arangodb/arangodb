@@ -43,7 +43,8 @@ function trxWriteHotbackupDeadlock () {
 
     setUp: function () {
       db._drop(cn);
-      c = db._create(cn, {numberOfShards: 1, replicationFactor: 2});
+      c = db._create(cn, {numberOfShards: 1, replicationFactor: 2},
+                     {waitForSyncReplication: true});
     },
 
     tearDown: function () {
@@ -59,12 +60,34 @@ function trxWriteHotbackupDeadlock () {
         return true;
       }
 
-      wait(3);   // give the cluster some time to settle before we start
-                 // the hotbackups
-
       let start = time();
       // This will create lots of hotbackups for approximately 60 seconds
-      db._connection.POST("_admin/execute",`require("@arangodb/cluster.js").createManyBackups(60); return true;`,{"x-arango-async":"store"});
+      let res = arango.POST_RAW("/_api/transaction",
+        { action: `function() {
+                    let console = require("console");
+                    let internal = require("internal");
+                    let wait = internal.wait;
+                    let time = internal.time;
+                    let start = time();
+                    let good = 0;
+                    let bad = 0;
+                    while (time() - start < 60) {
+                      try {
+                        internal.createHotbackup({});
+                        console.log("Created a hotbackup!");
+                        good++;
+                      } catch(e) {
+                        console.error("Caught exception when creating a hotbackup!", e);
+                        bad++;
+                      }
+                    }
+                    return {good,bad};
+                  }`,
+          collections: {} }, {"x-arango-async":"store"});
+      assertFalse(res.error, "Could not POST transaction.");
+      assertEqual(202, res.code, "Bad response code.");
+      let jobid = res.headers["x-arango-async-id"];
+
       // Now we try to write something:
       for (let i = 0; i < 1000; ++i) {
         c.insert({Hallo:i});
@@ -86,7 +109,14 @@ function trxWriteHotbackupDeadlock () {
       let diff = time() - start;
       print("Done 750 exclusive transactions in", diff, "seconds!");
       assertTrue(diff < 60, "750 transactions took too long, probably some deadlock with hotbackups");
-      while (time() - start < 65) {
+      while (time() - start < 80) {
+        res = arango.PUT(`/_api/job/${jobid}`, {});
+        if (res.code !== 204) {
+          assertEqual(200, res.code, "Response code bad.");
+          assertEqual(0, res.result.bad, "Not all hotbackups went through!");
+          print("Managed to perform", res.result.good, "hotbackups.");
+          break;
+        }
         wait(1.0);
         print("Waiting for hotbackups to finish...");
       }
