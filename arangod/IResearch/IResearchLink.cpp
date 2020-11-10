@@ -493,8 +493,7 @@ void ConsolidationTask::operator()() {
   last = std::chrono::steady_clock::now(); // remember last task start time
 
   // run consolidation ('_asyncSelf' locked by async task)
-  bool modified = false;
-  auto const res = link->consolidateUnsafe(consolidationPolicy, progress, &modified);
+  auto const res = link->consolidateUnsafe(consolidationPolicy, progress);
 
   ++link->_numConsolidationTasks;
   auto decRef = scopeGuard([link](){ --link->_numConsolidationTasks; });
@@ -510,9 +509,7 @@ void ConsolidationTask::operator()() {
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
 
-  if (modified || link->_numConsolidationTasks <= 1) {
-    schedule(consolidationIntervalMsec);
-  }
+  schedule(consolidationIntervalMsec);
 }
 
 // -----------------------------------------------------------------------------
@@ -871,11 +868,26 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
 
     try {
       // _lastCommittedTick is being updated in '_before_commit'
-      _dataStore._writer->commit();
+      *code = _dataStore._writer->commit()
+        ? CommitResult::DONE
+        : CommitResult::NO_CHANGES;
     } catch (...) {
       // restore last committed tick in case of any error
       _lastCommittedTick = lastCommittedTick;
       throw;
+    }
+
+    if (CommitResult::NO_CHANGES == *code) {
+      TRI_ASSERT(_dataStore._reader.reopen() == _dataStore._reader);
+
+      LOG_TOPIC("7e319", TRACE, iresearch::TOPIC)
+          << "no changes registered for arangosearch link '" << id() << "' got last operation tick '"
+          << _lastCommittedTick << "'";
+
+      // no changes, can release the latest tick before commit
+      subscription->tick(lastTickBeforeCommit);
+
+      return {};
     }
 
     // get new reader
@@ -887,19 +899,6 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
           << "failed to update snapshot after commit, reuse "
              "the existing snapshot for arangosearch link '" <<  id() << "'";
 
-      *code = CommitResult::NO_CHANGES;
-      return {};
-    }
-
-    if (_dataStore._reader == reader) {
-      LOG_TOPIC("7e319", TRACE, iresearch::TOPIC)
-          << "no changes registered for arangosearch link '" << id() << "' got last operation tick '"
-          << _lastCommittedTick << "'";
-
-      // no changes, can release the latest tick before commit
-      subscription->tick(lastTickBeforeCommit);
-
-      *code = CommitResult::NO_CHANGES;
       return {};
     }
 
@@ -932,7 +931,6 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
                 std::to_string(id().id()) };
   }
 
-  *code = CommitResult::DONE;
   return {};
 }
 
@@ -941,8 +939,7 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
 ////////////////////////////////////////////////////////////////////////////////
 Result IResearchLink::consolidateUnsafe(
     IResearchViewMeta::ConsolidationPolicy const& policy,
-    irs::merge_writer::flush_progress_t const& progress,
-    bool* modified) {
+    irs::merge_writer::flush_progress_t const& progress) {
   if (!policy.policy()) {
     return {
         TRI_ERROR_BAD_PARAMETER,
@@ -955,7 +952,7 @@ Result IResearchLink::consolidateUnsafe(
   TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
   try {
-    if (!_dataStore._writer->consolidate(policy.policy(), nullptr, progress, modified)) {
+    if (!_dataStore._writer->consolidate(policy.policy(), nullptr, progress)) {
       return {TRI_ERROR_INTERNAL,
               "failure while executing consolidation policy '" +
                   policy.properties().toString() + "' on arangosearch link '" +
