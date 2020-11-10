@@ -1408,11 +1408,16 @@ uint64_t index_writer::buffered_docs() const {
 bool index_writer::consolidate(
     const consolidation_policy_t& policy,
     format::ptr codec /*= nullptr*/,
-    const merge_writer::flush_progress_t& progress /*= {}*/) {
+    const merge_writer::flush_progress_t& progress /*= {}*/,
+    bool* modified) {
   REGISTER_TIMER_DETAILED();
   if (!codec) {
     // use default codec if not specified
     codec = codec_;
+  }
+
+  if (modified) {
+    *modified = false;
   }
 
   std::set<const segment_meta*> candidates;
@@ -1742,6 +1747,9 @@ bool index_writer::consolidate(
     }
   }
 
+  if (modified) {
+    *modified = true;
+  }
   return true;
 }
 

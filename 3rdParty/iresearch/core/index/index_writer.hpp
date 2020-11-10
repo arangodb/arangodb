@@ -559,7 +559,8 @@ class IRESEARCH_API index_writer
   bool consolidate(
     const consolidation_policy_t& policy,
     format::ptr codec = nullptr,
-    const merge_writer::flush_progress_t& progress = {}
+    const merge_writer::flush_progress_t& progress = {},
+    bool* modified = nullptr
   );
 
   //////////////////////////////////////////////////////////////////////////////

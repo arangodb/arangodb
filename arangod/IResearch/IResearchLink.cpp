@@ -412,8 +412,7 @@ void CommitTask::operator()() {
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
 
-  constexpr size_t MAX_TASKS = 1;
-  if (link->_numCommitTasks <= MAX_TASKS) {
+  if (link->_numCommitTasks <= 1) {
     schedule(commitIntervalMsec);
   }
 }
@@ -450,7 +449,7 @@ void ConsolidationTask::operator()() {
     return;
   } else if (!(*link)) {
     LOG_TOPIC("eb0d1", DEBUG, iresearch::TOPIC)
-        << "link '" << id << " is no longer valid, run id '" << size_t(&runId) << "'";
+        << "link '" << id << "' is no longer valid, run id '" << size_t(&runId) << "'";
     return;
   }
 
@@ -494,7 +493,11 @@ void ConsolidationTask::operator()() {
   last = std::chrono::steady_clock::now(); // remember last task start time
 
   // run consolidation ('_asyncSelf' locked by async task)
-  auto const res = link->consolidateUnsafe(consolidationPolicy, progress);
+  bool modified = false;
+  auto const res = link->consolidateUnsafe(consolidationPolicy, progress, &modified);
+
+  ++link->_numConsolidationTasks;
+  auto decRef = scopeGuard([link](){ --link->_numConsolidationTasks; });
 
   if (res.ok()) {
     LOG_TOPIC("7e828", DEBUG, iresearch::TOPIC)
@@ -507,7 +510,9 @@ void ConsolidationTask::operator()() {
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
 
-  schedule(consolidationIntervalMsec);
+  if (modified || link->_numConsolidationTasks <= 1) {
+    schedule(consolidationIntervalMsec);
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -522,6 +527,7 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _id(iid),
       _lastCommittedTick(0),
       _numCommitTasks(0),
+      _numConsolidationTasks(0),
       _asyncTerminate(false),
       _createdInRecovery(false) {
   auto* key = this;
@@ -935,7 +941,8 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
 ////////////////////////////////////////////////////////////////////////////////
 Result IResearchLink::consolidateUnsafe(
     IResearchViewMeta::ConsolidationPolicy const& policy,
-    irs::merge_writer::flush_progress_t const& progress) {
+    irs::merge_writer::flush_progress_t const& progress,
+    bool* modified) {
   if (!policy.policy()) {
     return {
         TRI_ERROR_BAD_PARAMETER,
@@ -948,7 +955,7 @@ Result IResearchLink::consolidateUnsafe(
   TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
   try {
-    if (!_dataStore._writer->consolidate(policy.policy(), nullptr, progress)) {
+    if (!_dataStore._writer->consolidate(policy.policy(), nullptr, progress, modified)) {
       return {TRI_ERROR_INTERNAL,
               "failure while executing consolidation policy '" +
                   policy.properties().toString() + "' on arangosearch link '" +
@@ -1701,12 +1708,14 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
     _dataStore._meta = meta;
   }
 
-  if (meta._commitIntervalMsec) {
-    scheduleCommit(std::chrono::milliseconds(meta._commitIntervalMsec));
-  }
+  if (!_dataStore._inRecovery) {
+    if (meta._commitIntervalMsec) {
+      scheduleCommit(std::chrono::milliseconds(meta._commitIntervalMsec));
+    }
 
-  if (meta._consolidationIntervalMsec && meta._consolidationPolicy.policy()) {
-    scheduleConsolidation(std::chrono::milliseconds(meta._consolidationIntervalMsec));
+    if (meta._consolidationIntervalMsec && meta._consolidationPolicy.policy()) {
+      scheduleConsolidation(std::chrono::milliseconds(meta._consolidationIntervalMsec));
+    }
   }
 
   irs::index_writer::segment_options properties;

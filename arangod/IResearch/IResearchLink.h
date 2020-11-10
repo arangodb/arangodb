@@ -45,10 +45,9 @@ struct FlushSubscription;
 
 namespace iresearch {
 
-class AsyncMeta; // forward declaration
-class IResearchFeature; // forward declaration
-class IResearchView; // forward declaration
-template<typename T> class TypedResourceMutex; // forward declaration
+class IResearchFeature;
+class IResearchView;
+template<typename T> class TypedResourceMutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common base class for functionality required to link an ArangoDB
@@ -96,7 +95,7 @@ class IResearchLink {
   }
 
   void afterTruncate(TRI_voc_tick_t tick,
-                     arangodb::transaction::Methods* trx); // arangodb::Index override
+                     transaction::Methods* trx); // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert a set of ArangoDB documents into an iResearch View using
@@ -333,7 +332,8 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   Result consolidateUnsafe(
     IResearchViewMeta::ConsolidationPolicy const& policy,
-    irs::merge_writer::flush_progress_t const& progress);
+    irs::merge_writer::flush_progress_t const& progress,
+    bool* modified);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
@@ -367,12 +367,13 @@ class IResearchLink {
   std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback; // for insert(...)/remove(...)
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
   std::atomic<size_t> _numCommitTasks;
+  std::atomic<size_t> _numConsolidationTasks;
   std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
   bool _createdInRecovery; // link was created based on recovery marker
 };  // IResearchLink
 
-irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeature,
-                                arangodb::iresearch::IResearchLink const& link);
+irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
+                                iresearch::IResearchLink const& link);
 
 }  // namespace iresearch
 }  // namespace arangodb
