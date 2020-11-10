@@ -571,11 +571,11 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
 
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, aap.attribute, aap.value);
+    return createEqIterator(trx, aap.attribute, aap.value, opts.enableCache);
   } else if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // a.b IN values
     if (aap.value->isArray()) {
-      return createInIterator(trx, aap.attribute, aap.value);
+      return createInIterator(trx, aap.attribute, aap.value, opts.enableCache);
     }
 
     // a.b IN non-array
@@ -850,27 +850,31 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
 // ===================== Helpers ==================
 
 /// @brief create the iterator
-std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createEqIterator(transaction::Methods* trx,
-                                                                  arangodb::aql::AstNode const* attrNode,
-                                                                  arangodb::aql::AstNode const* valNode) const {
+std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createEqIterator(
+    transaction::Methods* trx, arangodb::aql::AstNode const* attrNode,
+    arangodb::aql::AstNode const* valNode, bool useCache) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
 
   fillLookupValue(*keys, valNode);
-  return std::make_unique<RocksDBEdgeIndexLookupIterator>(&_collection, trx, this, std::move(keys), _cache);
+  return std::make_unique<RocksDBEdgeIndexLookupIterator>(&_collection, trx,
+                                                          this, std::move(keys),
+                                                          useCache ? _cache : nullptr);
 }
 
 /// @brief create the iterator
-std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createInIterator(transaction::Methods* trx,
-                                                                  arangodb::aql::AstNode const* attrNode,
-                                                                  arangodb::aql::AstNode const* valNode) const {
+std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createInIterator(
+    transaction::Methods* trx, arangodb::aql::AstNode const* attrNode,
+    arangodb::aql::AstNode const* valNode, bool useCache) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
 
   fillInLookupValues(trx, *(keys.get()), valNode);
-  return std::make_unique<RocksDBEdgeIndexLookupIterator>(&_collection, trx, this, std::move(keys), _cache);
+  return std::make_unique<RocksDBEdgeIndexLookupIterator>(&_collection, trx,
+                                                          this, std::move(keys),
+                                                          useCache ? _cache : nullptr);
 }
 
 void RocksDBEdgeIndex::fillLookupValue(VPackBuilder& keys,
