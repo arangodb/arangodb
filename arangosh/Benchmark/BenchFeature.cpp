@@ -336,7 +336,7 @@ void BenchFeature::start() {
     });
     for (size_t i = 0; i < static_cast<size_t>(_concurrency); ++i) {
       if (_duration != 0) {
-        _realOperations = threads[i]->_counter;
+        _realOperations += threads[i]->_counter;
       }
       delete threads[i];
     }
