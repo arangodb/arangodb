@@ -100,12 +100,12 @@ function create_graph(graphSpec) {
     { smartGraphAttribute: graphSpec.smartGraphAttribute, numberOfShards: graphSpec.numberOfShards }
   );
 
-  vids = db._collection(graphSpec.vname).save(graphSpec.vertices);
+  let vids = db._collection(graphSpec.vname).save(graphSpec.vertices);
 
   // TODO: edge weights/costs/docs?
   const ecoll = db._collection(graphSpec.ename);
   graphSpec.edges.forEach( function(e) {
-    edgeDoc = {_from: vids[e[0]]._id, _to: vids[e[1]]._id};
+    let edgeDoc = {_from: vids[e[0]]._id, _to: vids[e[1]]._id};
     ecoll.save(edgeDoc);
   });
 }
@@ -114,12 +114,12 @@ exports.create_graph = create_graph;
 function create_disjoint_circle_and_complete_graph(name, shards) {
   var spec = create_graph_spec(name, "id", shards);
 
-  for (var i = 0; i < 10; i++) {
+  for (let i = 0; i < 10; i++) {
     spec.vertices.push({ "id": "A" + i});
   }
   add_circle(spec, _.range(10));
 
-  for (var i = 0; i < 10; i++) {
+  for (let i = 0; i < 10; i++) {
     spec.vertices.push({ "id": "B" + i});
   }
   add_complete(spec, _.range(10,20));

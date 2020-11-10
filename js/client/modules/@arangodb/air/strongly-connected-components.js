@@ -28,6 +28,7 @@ const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
 const {listAccumulator, orAccumulator, storeAccumulator, minAccumulator} = require("@arangodb/air/accumulators");
 const _ = require("lodash");
+const db = internal.db;
 /*
 
 

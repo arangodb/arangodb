@@ -148,7 +148,7 @@ function exec_test_write_vertex_on_graph(graphSpec, amount) {
 // TODO: Also add tests for nested paths e.g.: {a: {b: "value"}}
 
 function array_compare(a1, a2) {
-  if (a1.length != a2.length) {
+  if (a1.length !== a2.length) {
     return false;
   }
   for (var i in a1) {

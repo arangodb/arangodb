@@ -27,6 +27,8 @@ const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
 const sexptoair = require("@arangodb/air/sexpression-syntax");
 
+const internal = require("internal");
+const db = internal.db;
 /*
 
   This file demos the translation of S-Expression syntax into AIR

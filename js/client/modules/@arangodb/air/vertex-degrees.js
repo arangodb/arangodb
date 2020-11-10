@@ -26,6 +26,9 @@ const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
 
+const internal = require("internal");
+const db = internal.db;
+
 exports.vertex_degrees_program = vertex_degrees_program;
 exports.vertex_degrees = vertex_degrees;
 exports.test = test;

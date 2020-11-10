@@ -149,7 +149,7 @@ function foldAccumulator(operator, initValue) {
                 "hot"
             ],
         };
-    }
+    };
 }
 
 function listAccumulator() {
@@ -168,7 +168,7 @@ function listAccumulator() {
             ["this-set!", ["list-cat", ["current-value"], ["input-state"]]],
             "hot"
         ],
-    }
+    };
 }
 
 exports.minAccumulator = cmpAccumulator("lt?");

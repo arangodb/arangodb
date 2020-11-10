@@ -133,74 +133,75 @@ function bucketizedSumAccumulator(nrBuckets) {
  *
  */
 function demand_propagation_demo_program(resultField) {
- return {
-   /* The field into which we write the result (which is currently an object
-    * containing all accumulator values)
-    */
-  "resultField": "demand_prop_result",
-   /*
-    * Maximal number of global supersteps (i.e. iterations);
-    * ideally this is just a safety net to make sure the
-    * algorithm doesn't run indefinitely
-    *
-    */
-  "maxGSS": 1000,
-   /* Global accumulators exist once per program and can
-      receive values from all vertices */
-  "globalAccumulators": {
-    "converged": {
-    "accumulatorType": "or",
-    "valueType": "bool"
-    }
-  },
-  /* Vertex accumulators are instanciated per vertex
-     for each run of the algorithm */
-  "vertexAccumulators": {
-    "demandSumBuckets": {
-      "accumulatorType": "custom",
-      "customType": "bucketizedSum",
-      "valueType": "slice"
-    },
-    "finalDemandSumBuckets": {
-      "accumulatorType": "custom",
-      "customType": "bucketizedSum",
-      "valueType": "slice"
-    },
-  },
-   "customAccumulators": {
-     bucketizedSum: bucketizedSumAccumulator()
-   }
-  /* A pregel program is structured into *phases*,
+    return {
+        /* The field into which we write the result (which is currently an object
+         * containing all accumulator values)
+         */
+        "resultField": "demand_prop_result",
+        /*
+         * Maximal number of global supersteps (i.e. iterations);
+         * ideally this is just a safety net to make sure the
+         * algorithm doesn't run indefinitely
+         *
+         */
+        "maxGSS": 1000,
+        /* Global accumulators exist once per program and can
+           receive values from all vertices */
+        "globalAccumulators": {
+            "converged": {
+                "accumulatorType": "or",
+                "valueType": "bool"
+            }
+        },
+        /* Vertex accumulators are instanciated per vertex
+           for each run of the algorithm */
+        "vertexAccumulators": {
+            "demandSumBuckets": {
+                "accumulatorType": "custom",
+                "customType": "bucketizedSum",
+                "valueType": "slice"
+            },
+            "finalDemandSumBuckets": {
+                "accumulatorType": "custom",
+                "customType": "bucketizedSum",
+                "valueType": "slice"
+            },
+        },
+        "customAccumulators": {
+            bucketizedSum: bucketizedSumAccumulator()
+        },
+        /* A pregel program is structured into *phases*,
 
-     On entry into a phase, `initProgram` runs once on each vertex,
-     then `updateProgram` runs until either all vertices have
-     voted to halt, no updates have happened, or the maximum number
-     of "global supersteps" has been reached.
+           On entry into a phase, `initProgram` runs once on each vertex,
+           then `updateProgram` runs until either all vertices have
+           voted to halt, no updates have happened, or the maximum number
+           of "global supersteps" has been reached.
 
-     The execution of `initProgam` and `updateProgram` are lockstepped: *All*
-     vertices have to finish running `initProgram` before `updateProgram` is started,
-     and *all* vertices have to finish their i-th iteration of `updateProgram`
-     before the next one is started.
-  */
-  "phases": [ {
-    "name": "init",
-    "initProgram": [ "seq",
-      ["accum-set!", "demandSumBuckets", ["attrib-ref", "init_demandSumBuckets", ["this-doc"]]],
-      ["send-to-all-neighbours", "predecessors", ["this-pregel-id"]],
-      false ],
-    "updateProgram": [ "seq",
-                       ["send-to-accum", ["this-pregel-id"], "finalDemandSumBuckets", ["accum-ref", "demandSumBuckets"]],
-                       ["for-each",
-                        ["pred", ["accum-ref", "predecessors"]],
-                        ["seq",
-                         ["send-to-accum",
-                          ["var-ref", "pred"],
-                          "demandSumBuckets",
-                          ["accum-ref", "demandSumBuckets"]],
-                         ["accum-clear!", "demandSumBuckets"],
-                         false ]
-                       ] } ]
-};
+           The execution of `initProgam` and `updateProgram` are lockstepped: *All*
+           vertices have to finish running `initProgram` before `updateProgram` is started,
+           and *all* vertices have to finish their i-th iteration of `updateProgram`
+           before the next one is started.
+        */
+        "phases": [{
+            "name": "init",
+            "initProgram": ["seq",
+                ["accum-set!", "demandSumBuckets", ["attrib-ref", "init_demandSumBuckets", ["this-doc"]]],
+                ["send-to-all-neighbours", "predecessors", ["this-pregel-id"]],
+                false],
+            "updateProgram": ["seq",
+                ["send-to-accum", ["this-pregel-id"], "finalDemandSumBuckets", ["accum-ref", "demandSumBuckets"]],
+                ["for-each",
+                    ["pred", ["accum-ref", "predecessors"]],
+                    ["seq",
+                        ["send-to-accum",
+                            ["var-ref", "pred"],
+                            "demandSumBuckets",
+                            ["accum-ref", "demandSumBuckets"]],
+                        ["accum-clear!", "demandSumBuckets"],
+                        false]
+                ]
+        }]
+    };
 }
 
 /* As a possible surface syntax example:

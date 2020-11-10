@@ -229,7 +229,7 @@ function exec_test_global_accumulators_test_on_graph(graphSpec, checkProc) {
 
 function exec_test_vertex_degrees() {
   let results = [];
-  spec = examplegraphs.create_line_graph("LineGraph100", 100, 5);
+  let spec = examplegraphs.create_line_graph("LineGraph100", 100, 5);
   // YOLO, graph sometimes arrives too late.
   internal.print("waiting?");
   internal.wait(5);
@@ -238,7 +238,7 @@ function exec_test_vertex_degrees() {
     checkVertexCount
   ));
 
-  spec = examplegraphs.create_line_graph("LineGraph1000", 1000, 5),
+  let spec = examplegraphs.create_line_graph("LineGraph1000", 1000, 5);
   // YOLO, graph sometimes arrives too late.
   internal.print("waiting?");
   internal.wait(5);
@@ -247,7 +247,7 @@ function exec_test_vertex_degrees() {
     checkVertexCount
   ));
 
-  spec = examplegraphs.create_wiki_vote_graph("WikiVote", 1),
+  spec = examplegraphs.create_wiki_vote_graph("WikiVote", 1);
   // YOLO, graph sometimes arrives too late.
   internal.print("waiting?");
   internal.wait(5);

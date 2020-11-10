@@ -58,7 +58,7 @@ const expressionDispatch = {
   'CallExpression': function(expr) {
     return [toAir(expr.callee)].concat(expr.arguments.map(toAir));
   }
-}
+};
 
 const dispatch = {
   'Program': function(node) {
@@ -107,7 +107,7 @@ const dispatch = {
     return [toAir(node.callee)].concat(node.arguments.map(toAir));
   }
 
-}
+};
 
 function toAir(astNode) {
   let nodeType = astNode.type;
