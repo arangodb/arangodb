@@ -278,7 +278,7 @@ void BenchFeature::start() {
   if (_duration != 0) {
     _operations = std::numeric_limits<uint64_t>::max();
   } else {
-    _realOperations = _operations;
+    _realOperations += _operations;
   }
   double const stepSize = (double)_operations / (double)_concurrency;
   int64_t realStep = (int64_t)stepSize;
