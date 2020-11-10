@@ -34,54 +34,31 @@ namespace arangodb {
 namespace agency {
 
 namespace detail {
-template <typename T>
-struct moving_ptr {
-  explicit moving_ptr(T* p) : _ptr(p) {}
-  ~moving_ptr() noexcept = default;
-
-  moving_ptr& operator=(moving_ptr const&) = delete;
-  moving_ptr(moving_ptr const&) = delete;
-
-  moving_ptr(moving_ptr&& o) { *this = std::move(o); }
-  moving_ptr& operator=(moving_ptr&& o) {
-    reset(o.release());
-    return *this;
-  }
-
-  T* release() noexcept {
-    T* result = _ptr;
-    _ptr = nullptr;
-    return result;
-  }
-  void reset(T* p) { _ptr = p; }
-
-  T* operator->() { return _ptr; }
-  T* get() { return _ptr; }
-  T& operator*() { return *_ptr; }
-  operator bool() { return _ptr != nullptr; }
-
- private:
-  T* _ptr = nullptr;
+struct no_op_deleter {
+    void operator()(void *) const {};
 };
 
+template<typename T>
+using moving_ptr = std::unique_ptr<T, no_op_deleter>;
+
 template <typename V>
-void add_to_builder(VPackBuilder* b, V const& v) {
-  b->add(VPackValue(v));
+void add_to_builder(VPackBuilder& b, V const& v) {
+  b.add(VPackValue(v));
 }
 
 template <>
-inline void add_to_builder(VPackBuilder* b, VPackSlice const& v) {
-  b->add(v);
+inline void add_to_builder(VPackBuilder& b, VPackSlice const& v) {
+  b.add(v);
 }
 
 template <typename K, typename V>
-void add_to_builder(VPackBuilder* b, K const& key, V const& v) {
-  b->add(key, VPackValue(v));
+void add_to_builder(VPackBuilder& b, K const& key, V const& v) {
+  b.add(key, VPackValue(v));
 }
 
 template <typename K>
-inline void add_to_builder(VPackBuilder* b, K const& key, VPackSlice const& v) {
-  b->add(key, v);
+inline void add_to_builder(VPackBuilder& b, K const& key, VPackSlice const& v) {
+  b.add(key, v);
 }
 }  // namespace detail
 
@@ -95,7 +72,7 @@ struct envelope {
     }
     template <typename K>
     read_trx& key(K&& k) {
-      detail::add_to_builder(_builder.get(), std::forward<K>(k));
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       return *this;
     }
     ~read_trx() noexcept {
@@ -119,17 +96,17 @@ struct envelope {
   struct precs_trx {
     template <typename K, typename V>
     precs_trx&& isEqual(K&& k, V&& v) && {
-      detail::add_to_builder(_builder.get(), std::forward<K>(k));
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
-      detail::add_to_builder(_builder.get(), "old");
-      detail::add_to_builder(_builder.get(), std::forward<V>(v));
+      detail::add_to_builder(*_builder.get(), "old");
+      detail::add_to_builder(*_builder.get(), std::forward<V>(v));
       _builder->close();
       return std::move(*this);
     }
 
     template <typename K>
     precs_trx&& isEmpty(K&& k) && {
-      detail::add_to_builder(_builder.get(), std::forward<K>(k));
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
       _builder->add("oldEmpty", VPackValue(true));
       _builder->close();
@@ -169,13 +146,13 @@ struct envelope {
     }
     template <typename K, typename V>
     write_trx&& key(K&& k, V&& v) {
-      detail::add_to_builder(_builder.get(), std::forward<K>(k));
-      detail::add_to_builder(_builder.get(), std::forward<V>(v));
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
+      detail::add_to_builder(*_builder.get(), std::forward<V>(v));
       return std::move(*this);
     }
     template <typename K, typename F>
     write_trx&& emplace(K&& k, F&& f) {
-      detail::add_to_builder(_builder.get(), std::forward<K>(k));
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
       std::forward<F>(f)(*_builder);
       _builder->close();
@@ -184,17 +161,17 @@ struct envelope {
 
     template <typename K, typename V>
     write_trx&& set(K&& k, V&& v) {
-      detail::add_to_builder(_builder.get(), std::forward<K>(k));
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
       _builder->add("op", VPackValue("set"));
-      detail::add_to_builder(_builder.get(), "new", std::forward<V>(v));
+      detail::add_to_builder(*_builder.get(), "new", std::forward<V>(v));
       _builder->close();
       return std::move(*this);
     }
 
     template <typename K>
     write_trx&& remove(K&& k) {
-      detail::add_to_builder(_builder.get(), std::forward<K>(k));
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
       _builder->add("op", VPackValue("delete"));
       _builder->close();
@@ -203,7 +180,7 @@ struct envelope {
 
     template <typename K>
     write_trx&& inc(K&& k, uint64_t delta = 1) && {
-      detail::add_to_builder(_builder.get(), std::forward<K>(k));
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
       this->key("op", "increment");
       this->key("delta", delta);
