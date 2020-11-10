@@ -531,8 +531,8 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
           i == "arangosh" ||
           i == "arangovpack"
           ) {
-        LOG_TOPIC("abeec", ERR, arangodb::Logger::FIXME)
-          << "These commands must be executed from a system shell and may not directly be used from within arangosh: '" << i << "'";
+        LOG_TOPIC("abeec", WARN, arangodb::Logger::FIXME)
+          << "This command must be executed from with a system shell and cannot be used inside arangosh: '" << i << "'";
         continue;
       }
     }
