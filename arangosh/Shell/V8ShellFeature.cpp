@@ -512,7 +512,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
     }
 
     bool foundShellTool = false;
-    if (i[0] == 'a') {
+    if (i.length() > 0 && i[0] == 'a') {
       auto pos = i.find(' ');
       if (pos != std::string::npos) {
         // is it a variable name assignment?
