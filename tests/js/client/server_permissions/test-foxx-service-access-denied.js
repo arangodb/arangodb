@@ -3,7 +3,7 @@
 'use strict';
 const fs = require('fs');
 const internal = require('internal');
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 
 if (getOptions === true) {
   let users = require("@arangodb/users");
@@ -31,6 +31,8 @@ if (getOptions === true) {
 
 
 const jsunity = require('jsunity');
+
+require("@arangodb/test-helper").waitForFoxxInitialized();
 
 function testSuite() {
   const db = internal.db;

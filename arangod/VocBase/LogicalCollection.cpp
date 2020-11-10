@@ -177,6 +177,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       _smartJoinAttribute(
           Helper::getStringValue(info, StaticStrings::SmartJoinAttribute, "")),
 #endif
+      _countCache(/*ttl*/ system() ? 900.0 : 15.0), 
       _physical(vocbase.server().getFeature<EngineSelectorFeature>().engine().createPhysicalCollection(
           *this, info)) {
   
@@ -434,9 +435,11 @@ uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
     // always return from the cache, regardless what's in it
     documents = _countCache.get();
   } else if (type == transaction::CountType::TryCache) {
-    documents = _countCache.get(transaction::CountCache::Ttl);
+    // get data from cache, but only if not expired
+    documents = _countCache.getWithTtl();
   }
   if (documents == transaction::CountCache::NotPopulated) {
+    // cache was not populated before or cache value has expired
     documents = getPhysical()->numberDocuments(trx);
     _countCache.store(documents);
   }
@@ -829,7 +832,6 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   // - _name
   // - _type
   // - _isSystem
-  // - _isVolatile
   // ... probably a few others missing here ...
       
   if (!vocbase().server().hasFeature<DatabaseFeature>()) {

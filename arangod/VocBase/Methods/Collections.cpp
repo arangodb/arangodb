@@ -362,7 +362,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-            vocbase.isShardingSingle()) {
+            vocbase.isOneShard()) {
           auto const isSatellite =
               Helper::getStringRef(info.properties, StaticStrings::ReplicationFactor,
                                    velocypack::StringRef{""}) == StaticStrings::Satellite;
@@ -1061,12 +1061,9 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
 
 arangodb::velocypack::Builder Collections::filterInput(arangodb::velocypack::Slice properties) {
   return velocypack::Collection::keep(properties,
-      std::unordered_set<std::string>{StaticStrings::DoCompact,
+      std::unordered_set<std::string>{
                                       StaticStrings::DataSourceSystem,
                                       StaticStrings::DataSourceId,
-                                      "isVolatile",
-                                      StaticStrings::JournalSize,
-                                      StaticStrings::IndexBuckets,
                                       "keyOptions",
                                       StaticStrings::WaitForSyncString,
                                       StaticStrings::CacheEnabled,

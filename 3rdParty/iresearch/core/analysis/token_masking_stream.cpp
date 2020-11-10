@@ -26,7 +26,7 @@
 
 #include "token_masking_stream.hpp"
 
-NS_LOCAL
+namespace {
 
 bool hex_decode(irs::bstring& buf, const irs::string_ref& value) {
   static const uint8_t map[256] = {
@@ -197,10 +197,10 @@ bool normalize_json_config(const irs::string_ref&, std::string&) {
 REGISTER_ANALYZER_JSON(irs::analysis::token_masking_stream, make_json, normalize_json_config);
 REGISTER_ANALYZER_TEXT(irs::analysis::token_masking_stream, make_text, normalize_text_config);
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 token_masking_stream::token_masking_stream(std::unordered_set<irs::bstring>&& mask)
   : attributes{{
@@ -242,5 +242,5 @@ bool token_masking_stream::reset(const string_ref& data) {
   return true;
 }
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT

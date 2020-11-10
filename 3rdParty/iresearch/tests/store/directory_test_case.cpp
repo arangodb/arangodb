@@ -42,7 +42,7 @@
 #include <algorithm>
 #include <fstream>
 
-NS_LOCAL
+namespace {
 
 using namespace iresearch;
 
@@ -1413,4 +1413,4 @@ TEST(memory_directory_test, file_reset_allocator) {
   ASSERT_NE(buf0.data, buf1.data);
 }
 
-NS_END
+}

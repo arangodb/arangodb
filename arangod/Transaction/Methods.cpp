@@ -300,7 +300,13 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
     : _state(nullptr),
       _transactionContext(transactionContext),
       _mainTransaction(false) {
+
   TRI_ASSERT(transactionContext != nullptr);
+  if (ADB_UNLIKELY(transactionContext == nullptr)) {
+    // in production, we must not go on with undefined behavior, so we bail out
+    // here with an exception as last resort
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid transaction context pointer");
+  }
 
   // initialize the transaction
   _state = _transactionContext->acquireState(options, _mainTransaction);
@@ -717,17 +723,30 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   }
 
   if (_state->isCoordinator()) {
-    OperationOptions options;  // use default configuration
-
+    OperationOptions options;
     OperationResult opRes = documentCoordinator(collectionName, value, options).get();
     if (opRes.fail()) {
       return opRes.result;
     }
     result.add(opRes.slice());
     return Result();
-  }
+  } 
 
-  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  auto translateName = [this](std::string const& collectionName) { 
+    if (_state->isDBServer() && vocbase().isOneShard()) {
+      auto collection = resolver()->getCollectionStructCluster(collectionName);
+      if (collection != nullptr) {
+        auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+        auto shards = ci.getShardList(std::to_string(collection->id().id()));
+        if (shards != nullptr && shards->size() == 1) {
+          return (*shards)[0];
+        }
+      }
+    }
+    return collectionName;
+  };
+
+  DataSourceId cid = addCollectionAtRuntime(translateName(collectionName), AccessMode::Type::READ);
   auto const& collection = trxCollection(cid)->collection();
 
   arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
@@ -1894,7 +1913,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
     // always return from the cache, regardless what's in it
     documents = cache.get();
   } else if (type == transaction::CountType::TryCache) {
-    documents = cache.get(CountCache::Ttl);
+    documents = cache.getWithTtl();
   }
 
   if (documents == CountCache::NotPopulated) {

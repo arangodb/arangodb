@@ -51,13 +51,13 @@ class ClusterTraverserCache;
 
 namespace velocypack {
 class Builder;
+class HashedStringRef;
 }
 
 namespace traverser {
 struct TraverserOptions;
 }
 
-struct ClusterCommResult;
 class ClusterFeature;
 struct OperationOptions;
 
@@ -161,9 +161,11 @@ futures::Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& 
 ///        the lake is cleared.
 ///        TraversalVariant
 
-Result fetchEdgesFromEngines(transaction::Methods& trx, graph::ClusterTraverserCache& travCache,
+Result fetchEdgesFromEngines(transaction::Methods& trx, 
+                             graph::ClusterTraverserCache& travCache,
                              traverser::TraverserOptions const* opts,
-                             arangodb::velocypack::StringRef vertexId, size_t depth,
+                             arangodb::velocypack::StringRef vertexId, 
+                             size_t depth,
                              std::vector<arangodb::velocypack::Slice>& result);
 
 /// @brief fetch edges from TraverserEngines
@@ -180,11 +182,10 @@ Result fetchEdgesFromEngines(transaction::Methods& trx, graph::ClusterTraverserC
 
 Result fetchEdgesFromEngines(
             transaction::Methods& trx,
-            std::unordered_map<ServerID, aql::EngineId> const* engines,
-            arangodb::velocypack::Slice vertexId, bool backward,
-            std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& cache,
+            graph::ClusterTraverserCache& travCache,
+            arangodb::velocypack::Slice vertexId, bool 
+            backward,
             std::vector<arangodb::velocypack::Slice>& result,
-            std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>>& datalake,
             size_t& read);
 
 /// @brief fetch vertices from TraverserEngines
@@ -198,10 +199,9 @@ Result fetchEdgesFromEngines(
 
 void fetchVerticesFromEngines(
     transaction::Methods& trx,
-    std::unordered_map<ServerID, aql::EngineId> const*,
-    std::unordered_set<arangodb::velocypack::StringRef>&,
-    std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>&,
-    std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>& datalake,
+    graph::ClusterTraverserCache& travCache,
+    std::unordered_set<arangodb::velocypack::HashedStringRef>& vertexId,
+    std::unordered_map<arangodb::velocypack::HashedStringRef, arangodb::velocypack::Slice>& result,
     bool forShortestPath);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -326,6 +326,13 @@ class ClusterMethods {
       bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
       bool enforceReplicationFactor, bool isNewDatabase,
       std::shared_ptr<LogicalCollection> const& colPtr);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Enterprise Relecant code to filter out hidden collections
+  ///        that should ne be triggered directly by operations.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static bool filterHiddenCollections(LogicalCollection const& c);
 
  private:
   ////////////////////////////////////////////////////////////////////////////////

@@ -53,7 +53,7 @@ function CollectionSuite () {
         c.shards();
         fail();
       } catch (err) {
-        assertEqual(ERRORS.ERROR_INTERNAL.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, err.errorNum);
       }
       db._drop(cn);
     },

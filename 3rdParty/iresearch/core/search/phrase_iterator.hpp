@@ -25,7 +25,7 @@
 
 #include "disjunction.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class fixed_phrase_frequency {
  public:
@@ -504,6 +504,6 @@ class phrase_iterator final : public doc_iterator {
   cost cost_;
 }; // phrase_iterator
 
-NS_END // ROOT
+} // ROOT
 
 #endif

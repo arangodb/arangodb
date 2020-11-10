@@ -27,7 +27,7 @@
 #include <cassert>
 #include <cstring>
 
-NS_LOCAL
+namespace {
 
 #if defined(_MSC_VER)
   __pragma(warning(push))
@@ -551,10 +551,10 @@ uint64_t __fastpack_at(const uint64_t* in, const size_t i, const uint32_t bits) 
 }
 MSVC_ONLY(__pragma(warning(push)))
 
-NS_END // NS_LOCAL
+} // namespace {
 
-NS_ROOT
-NS_BEGIN(packed)
+namespace iresearch {
+namespace packed {
 
 void pack_block(const uint32_t* RESTRICT in,
                 uint32_t* RESTRICT out,
@@ -828,5 +828,5 @@ void unpack(uint64_t* first, uint64_t* last,
   }
 }
 
-NS_END // packed
-NS_END
+} // packed
+}
