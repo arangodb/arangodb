@@ -274,6 +274,26 @@ class IResearchLink {
   friend struct ConsolidationTask;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief detailed commit result
+  //////////////////////////////////////////////////////////////////////////////
+  enum class CommitResult {
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief no changes were made
+    ////////////////////////////////////////////////////////////////////////////
+    NO_CHANGES = 0,
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief another commit is in progress
+    ////////////////////////////////////////////////////////////////////////////
+    IN_PROGRESS,
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief commit is done
+    ////////////////////////////////////////////////////////////////////////////
+    DONE
+  }; // CommitResult
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying iresearch data store
   //////////////////////////////////////////////////////////////////////////////
   struct DataStore {
@@ -305,7 +325,7 @@ class IResearchLink {
   /// @param wait even if other thread is committing
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  Result commitUnsafe(bool wait);
+  Result commitUnsafe(bool wait, CommitResult* code);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
@@ -337,7 +357,6 @@ class IResearchLink {
   VPackComparer _comparer;
   IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
   AsyncLinkPtr _asyncSelf; // 'this' for the lifetime of the link (for use with asynchronous calls)
-  std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
   LogicalCollection& _collection; // the linked collection
   DataStore _dataStore; // the iresearch data store, protected by _asyncSelf->mutex()
   std::shared_ptr<FlushSubscription> _flushSubscription;
@@ -347,6 +366,8 @@ class IResearchLink {
   std::mutex _commitMutex; // prevents data store sequential commits
   std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback; // for insert(...)/remove(...)
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
+  std::atomic<size_t> _numCommitTasks;
+  std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
   bool _createdInRecovery; // link was created based on recovery marker
 };  // IResearchLink
 

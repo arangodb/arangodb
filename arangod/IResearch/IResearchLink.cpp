@@ -378,17 +378,20 @@ void CommitTask::operator()() {
 
   last = std::chrono::steady_clock::now(); // remember last task start time
 
-  auto res = link->commitUnsafe(false); // run commit ('_asyncSelf' locked by async task)
+  ++link->_numCommitTasks;
+  auto decRef = scopeGuard([link](){ --link->_numCommitTasks; });
+
+  IResearchLink::CommitResult code;
+  auto res = link->commitUnsafe(false, &code); // run commit ('_asyncSelf' locked by async task)
 
   if (res.ok()) {
     LOG_TOPIC("7e323", DEBUG, iresearch::TOPIC)
         << "successful sync of arangosearch link '" << id
         << "', run id '" << size_t(&runId) << "'";
 
-    // FIXME don't cleanup if there were no commit
-
-    if (cleanupIntervalStep && cleanupIntervalCount++ > cleanupIntervalStep) { // if enabled
-      cleanupIntervalCount = 0; // reset counter
+    if (code == IResearchLink::CommitResult::DONE &&
+        cleanupIntervalStep && cleanupIntervalCount++ > cleanupIntervalStep) { // if enabled
+      cleanupIntervalCount = 0;
       res = link->cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
 
       if (res.ok()) {
@@ -409,7 +412,10 @@ void CommitTask::operator()() {
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
 
-  schedule(commitIntervalMsec);
+  constexpr size_t MAX_TASKS = 1;
+  if (link->_numCommitTasks <= MAX_TASKS) {
+    schedule(commitIntervalMsec);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -512,10 +518,11 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
     : _engine(nullptr),
       _asyncFeature(&collection.vocbase().server().getFeature<IResearchFeature>()),
       _asyncSelf(irs::memory::make_unique<AsyncLinkPtr::element_type>(nullptr)),  // mark as data store not initialized
-      _asyncTerminate(false),
       _collection(collection),
       _id(iid),
       _lastCommittedTick(0),
+      _numCommitTasks(0),
+      _asyncTerminate(false),
       _createdInRecovery(false) {
   auto* key = this;
 
@@ -813,13 +820,14 @@ Result IResearchLink::commit(bool wait /*= true*/) {
             std::to_string(id().id()) + "'"};
   }
 
-  return commitUnsafe(wait);
+  [[maybe_unused]] CommitResult code;
+  return commitUnsafe(wait, &code);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
 ////////////////////////////////////////////////////////////////////////////////
-Result IResearchLink::commitUnsafe(bool wait) {
+Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
@@ -827,6 +835,7 @@ Result IResearchLink::commitUnsafe(bool wait) {
 
   if (!subscription) {
     // already released
+    *code = CommitResult::NO_CHANGES;
     return {};
   }
 
@@ -841,6 +850,7 @@ Result IResearchLink::commitUnsafe(bool wait) {
             << "commit for arangosearch link '" << id()
             << "' is already in progress, skipping";
 
+        *code = CommitResult::IN_PROGRESS;
         return {};
       }
 
@@ -871,6 +881,7 @@ Result IResearchLink::commitUnsafe(bool wait) {
           << "failed to update snapshot after commit, reuse "
              "the existing snapshot for arangosearch link '" <<  id() << "'";
 
+      *code = CommitResult::NO_CHANGES;
       return {};
     }
 
@@ -882,6 +893,7 @@ Result IResearchLink::commitUnsafe(bool wait) {
       // no changes, can release the latest tick before commit
       subscription->tick(lastTickBeforeCommit);
 
+      *code = CommitResult::NO_CHANGES;
       return {};
     }
 
@@ -914,6 +926,7 @@ Result IResearchLink::commitUnsafe(bool wait) {
                 std::to_string(id().id()) };
   }
 
+  *code = CommitResult::DONE;
   return {};
 }
 
@@ -1466,7 +1479,8 @@ Result IResearchLink::initDataStore(
         LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
             << "starting sync for arangosearch link '" << link->id() << "'";
 
-        auto res = link->commitUnsafe(true);
+        [[maybe_unused]] CommitResult code;
+        auto res = link->commitUnsafe(true, &code);
 
         LOG_TOPIC("0e0ca", TRACE, iresearch::TOPIC)
             << "finished sync for arangosearch link '" << link->id() << "'";
