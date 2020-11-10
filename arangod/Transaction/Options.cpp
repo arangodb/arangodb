@@ -41,11 +41,11 @@ Options::Options()
       intermediateCommitSize(defaultIntermediateCommitSize),
       intermediateCommitCount(defaultIntermediateCommitCount),
       allowImplicitCollections(true),
-      waitForSync(false)
+      waitForSync(false),
 #ifdef USE_ENTERPRISE
-      ,
-      skipInaccessibleCollections(false)
+      skipInaccessibleCollections(false),
 #endif
+      isFollowerTransaction(false)
 {
 }
 
@@ -90,6 +90,10 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
     skipInaccessibleCollections = value.getBool();
   }
 #endif
+  value = slice.get("isFollowerTransaction");
+  if (value.isBool()) {
+    isFollowerTransaction = value.getBool();
+  }
 }
 
 /// @brief add the options to an opened vpack builder
@@ -105,4 +109,5 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
 #ifdef USE_ENTERPRISE
   builder.add("skipInaccessibleCollections", VPackValue(skipInaccessibleCollections));
 #endif
+  builder.add("isFollowerTransaction", VPackValue(isFollowerTransaction));
 }

@@ -26,6 +26,7 @@
 
 #include "Agency/Store.h"
 #include "AgencyCommon.h"
+#include "RestServer/MetricsFeature.h"
 #include "Utils/OperationOptions.h"
 
 #include <cstdint>
@@ -56,7 +57,7 @@ class Agent;
 class State {
  public:
   /// @brief Default constructor
-  State();
+  State(application_features::ApplicationServer& server);
 
   /// @brief Default Destructor
   virtual ~State();
@@ -82,7 +83,7 @@ class State {
   ///        Default: [first, last]
   std::vector<log_t> get(index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
-  
+
   uint64_t toVelocyPack(index_t lastIndex, VPackBuilder& builder) const;
 
  private:
@@ -254,6 +255,9 @@ class State {
   bool removeObsolete(arangodb::consensus::index_t cind);
 
   /// @brief Our agent
+  application_features::ApplicationServer& _server;
+
+  /// @brief Our agent
   Agent* _agent;
 
   /// @brief Our vocbase
@@ -290,8 +294,11 @@ class State {
 
   /// @brief Protect writing into configuration collection
   arangodb::Mutex _configurationWriteLock;
-};
 
+  /// @brief Current state deque size in bytes
+  Gauge<uint64_t>& _log_size;
+
+};
 }  // namespace consensus
 }  // namespace arangodb
 
