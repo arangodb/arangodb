@@ -26,6 +26,7 @@ const internal = require("internal");
 const pregel = require("@arangodb/pregel");
 const examplegraphs = require("@arangodb/air/pregel-example-graphs");
 const testhelpers = require("@arangodb/air/test-helpers");
+const db = internal.db;
 
 /*
 
@@ -107,6 +108,7 @@ function create_demo_propagation_graph(graphName, numberOfShards) {
 /* Todo: can we fold "update sums" into this accumulator (i.e. we keep an update and the sum,
    and fold these two things into one accumulator) */
 function bucketizedSumAccumulator(nrBuckets) {
+    let entry = null;
     return {
       updateProgram: [
                 ["seq",
