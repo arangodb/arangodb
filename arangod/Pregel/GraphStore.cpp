@@ -149,8 +149,8 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, shardError);
         }
 
-        if (ServerState::instance()->isRunningInCluster() ||
-            edgeCollectionRestrictions.empty() ||
+        // optionally restrict edge collections to a positive list
+        if (edgeCollectionRestrictions.empty() ||
             std::find(edgeCollectionRestrictions.begin(), edgeCollectionRestrictions.end(), edgeShards[i]) != edgeCollectionRestrictions.end()) {
           edges.emplace_back(edgeShards[i]);
         }
@@ -167,17 +167,25 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
             std::make_shared<basics::LambdaTask>(queue, [this, vertexShard, edges]() -> Result {
               if (_vocbaseGuard.database().server().isStopping()) {
                 LOG_TOPIC("4355b", WARN, Logger::PREGEL)
-                    << "Aborted loading graph";
+                    << "Aborting graph loading";
                 return {TRI_ERROR_SHUTTING_DOWN};
               }
               try {
                 loadVertices(vertexShard, edges);
+                return Result();
+              } catch (basics::Exception const& ex) {
+                LOG_TOPIC("8682a", WARN, Logger::PREGEL)
+                    << "caught exception while loading pregel graph: " << ex.what();
+                return Result(ex.code(), ex.what());
               } catch (std::exception const& ex) {
                 LOG_TOPIC("c87c9", WARN, Logger::PREGEL)
-                    << "caught exception while "
-                    << "loading pregel graph: " << ex.what();
+                    << "caught exception while loading pregel graph: " << ex.what();
+                return Result(TRI_ERROR_INTERNAL, ex.what());
+              } catch (...) {
+                LOG_TOPIC("c7240", WARN, Logger::PREGEL)
+                    << "caught unknown exception while loading pregel graph";
+                return Result(TRI_ERROR_INTERNAL, "unknown exception while loading pregel graph");
               }
-              return Result();
             });
         queue->enqueue(task);
       } catch (basics::Exception const& ex) {
@@ -328,7 +336,6 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
   TypedBuffer<Vertex<V, E>>* vertexBuff = nullptr;
   TypedBuffer<char>* keyBuff = nullptr;
   size_t segmentSize = std::min<size_t>(numVertices, vertexSegmentSize());
- 
 
   std::string documentId; // temp buffer for _id of vertex
   auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
@@ -370,17 +377,15 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
   };
   
   _localVertexCount += numVertices;
-  bool hasMore = true;
-  while (hasMore && numVertices > 0) {
-    TRI_ASSERT(segmentSize > 0);
-    hasMore = cursor->nextDocument(cb, segmentSize);
+ 
+  constexpr uint64_t batchSize = 5000;
+  while (cursor->nextDocument(cb, batchSize)) {
     if (_vocbaseGuard.database().server().isStopping()) {
       LOG_TOPIC("4355a", WARN, Logger::PREGEL) << "Aborting graph loading";
       break;
     }
     
-    TRI_ASSERT(numVertices >= segmentSize);
-    numVertices -= segmentSize;
+    numVertices -= batchSize;
     LOG_TOPIC("b9ed9", DEBUG, Logger::PREGEL) << "Shard '" << vertexShard << "', "
       << numVertices << " remaining vertices";
     segmentSize = std::min<size_t>(numVertices, vertexSegmentSize());

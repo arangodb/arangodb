@@ -117,6 +117,8 @@ class Conductor {
   void finishedWorkerFinalize(VPackSlice data);
   void finishedRecoveryStep(VPackSlice const& data);
 
+  std::vector<ShardID> getShardIds(ShardID const& collection) const;
+
  public:
   Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
             std::vector<CollectionID> const& vertexCollections,

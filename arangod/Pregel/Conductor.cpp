@@ -81,17 +81,31 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
         if (!r.value.isArray()) {
           continue;
         }
-        // intentionally create key in map
-        auto& restrictions = _edgeCollectionRestrictions[r.key.copyString()];
-        for (auto const& cn : VPackArrayIterator(r.value)) {
-          if (cn.isString()) {
-            restrictions.push_back(cn.copyString());
+
+        if (ServerState::instance()->isCoordinator()) {
+          for (auto const& shardId : getShardIds(r.key.copyString())) {
+            // intentionally create key in map
+            auto& restrictions = _edgeCollectionRestrictions[shardId];
+            for (auto const& cn : VPackArrayIterator(r.value)) {
+              if (cn.isString()) {
+                for (auto const& edgeShardId : getShardIds(cn.copyString())) {
+                  restrictions.push_back(edgeShardId);
+                }
+              }
+            }
+          }
+        } else {
+          // intentionally create key in map
+          auto& restrictions = _edgeCollectionRestrictions[r.key.copyString()];
+          for (auto const& cn : VPackArrayIterator(r.value)) {
+            if (cn.isString()) {
+              restrictions.push_back(cn.copyString());
+            }
           }
         }
       }
     }
   }
-
 
   if (!_algorithm) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -421,8 +435,9 @@ void Conductor::cancelNoLock() {
   _callbackMutex.assertLockedByCurrentThread();
   _state = ExecutionState::CANCELED;
   bool ok = basics::function_utils::retryUntilTimeout(
-      [this]() -> bool { return (_finalizeWorkers() != TRI_ERROR_QUEUE_FULL); },
-      Logger::PREGEL, "cancel worker execution");
+      [this]() -> bool { 
+        return (_finalizeWorkers() != TRI_ERROR_QUEUE_FULL); 
+      }, Logger::PREGEL, "cancel worker execution");
   if (!ok) {
     LOG_TOPIC("f8b3c", ERR, Logger::PREGEL)
         << "Failed to cancel worker execution for five minutes, giving up.";
@@ -644,7 +659,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     }
     b.close();
     b.close();
-
+  
     // hack for single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
       TRI_ASSERT(vertexMap.size() == 1);
@@ -916,4 +931,23 @@ void Conductor::_ensureUniqueResponse(VPackSlice body) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CONFLICT);
   }
   _respondedServers.insert(sender);
+}
+
+std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
+  TRI_vocbase_t& vocbase = _vocbaseGuard.database();
+  ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+
+  std::vector<ShardID> result;
+  try {
+    std::shared_ptr<LogicalCollection> lc = ci.getCollection(vocbase.name(), collection);
+    std::shared_ptr<std::vector<ShardID>> shardIDs = ci.getShardList(std::to_string(lc->id()));
+    result.reserve(shardIDs->size());
+    for (auto const& it : *shardIDs) {
+      result.emplace_back(it);
+    }
+  } catch (...) {
+    result.clear();
+  }
+
+  return result;
 }
