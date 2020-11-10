@@ -33,7 +33,9 @@ var arangodb = require('@arangodb');
 var ArangoError = arangodb.ArangoError;
 var errors = require("internal").errors;
 var wait = require('internal').wait;
+var time = require('internal').time;
 var isEnterprise = require('internal').isEnterprise();
+var request = require('@arangodb/request');
 var _ = require('lodash');
 
 var endpointToURL = function (endpoint) {
@@ -435,6 +437,18 @@ function queryAgencyJob(id) {
   return {error: true, errorMsg: "Did not find job.", id, job: null};
 }
 
+function createManyBackups(t) {
+  let start = time();
+  while (time() - start < t) {
+    try {
+      require("internal").createHotbackup({});
+      console.log("Created a hotbackup!");
+    } catch(e) {
+      console.error("Caught exception when creating a hotbackup!", e);
+    }
+  }
+}
+
 exports.coordinatorId = coordinatorId;
 exports.isCluster = isCluster;
 exports.isCoordinator = isCoordinator;
@@ -450,3 +464,4 @@ exports.supervisionState = supervisionState;
 exports.waitForSyncRepl = waitForSyncRepl;
 exports.endpoints = endpoints;
 exports.queryAgencyJob = queryAgencyJob;
+exports.createManyBackups = createManyBackups;
