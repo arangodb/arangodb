@@ -83,6 +83,21 @@ var startExecution = function(algo, data, params) {
       vertexCollections.push(vcs[key].name());
     }
     let edges = graph._edgeCollections();
+    let restrictions = {};
+    (graph.__edgeDefinitions || []).forEach((ed) => {
+      let edgeCollection = ed.collection;
+      let from = ed.from;
+      if (Array.isArray(from) && from.length > 0) {
+        if (!restrictions[from]) {
+          restrictions[from] = {};
+        }
+        restrictions[from][edgeCollection] = 1;
+      }
+    });
+    Object.keys(restrictions).forEach((v) => {
+      restrictions[v] = Object.keys(restrictions[v]);
+    });
+    params.edgeCollectionRestrictions = restrictions;
     if (edges.length > 0) {
       var edgeCollections = edges.map(e => e.name());
       return db._pregelStart(algo, vertexCollections,
@@ -91,7 +106,7 @@ var startExecution = function(algo, data, params) {
       throw "No edge collection specified";
     }
   } else {
-    throw 'invalid graphname';
+    throw 'invalid graph name';
   }
 };
 

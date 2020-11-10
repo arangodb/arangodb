@@ -68,11 +68,30 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
       _vertexCollections(vertexCollections),
       _edgeCollections(edgeCollections) {
   if (!config.isObject()) {
-    _userParams.openObject();
-    _userParams.close();
+    _userParams.add(VPackSlice::emptyObjectSlice());
   } else {
     _userParams.add(config);
   }
+
+  // parse edge collection restrictions
+  if (config.isObject() && config.hasKey(Utils::edgeCollectionRestrictionsKey)) {
+    VPackSlice s = config.get(Utils::edgeCollectionRestrictionsKey);
+    if (s.isObject()) {
+      for (auto const& r : VPackObjectIterator(s)) {
+        if (!r.value.isArray()) {
+          continue;
+        }
+        // intentionally create key in map
+        auto& restrictions = _edgeCollectionRestrictions[r.key.copyString()];
+        for (auto const& cn : VPackArrayIterator(r.value)) {
+          if (cn.isString()) {
+            restrictions.push_back(cn.copyString());
+          }
+        }
+      }
+    }
+  }
+
 
   if (!_algorithm) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -95,7 +114,7 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
     LOG_TOPIC("464dd", DEBUG, Logger::PREGEL) << "Enabled lazy loading";
   }
   _useMemoryMaps = VelocyPackHelper::getBooleanValue(_userParams.slice(),
-                                                      Utils::useMemoryMaps, _useMemoryMaps);
+                                                      Utils::useMemoryMapsKey, _useMemoryMaps);
   VPackSlice storeSlice = config.get("store");
   _storeResults = !storeSlice.isBool() || storeSlice.getBool();
   if (!_storeResults) {
@@ -552,7 +571,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
   for (auto const& pair : vertexMap) {
     _dbServers.push_back(pair.first);
   }
-  // do not reload all shard id's, this list is must stay in the same order
+  // do not reload all shard id's, this list must stay in the same order
   if (_allShards.size() == 0) {
     _allShards = shardList;
   }
@@ -577,12 +596,23 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
     b.add(Utils::asyncModeKey, VPackValue(_asyncMode));
     b.add(Utils::lazyLoadingKey, VPackValue(_lazyLoading));
-    b.add(Utils::useMemoryMaps, VPackValue(_useMemoryMaps));
+    b.add(Utils::useMemoryMapsKey, VPackValue(_useMemoryMaps));
     if (additional.isObject()) {
       for (auto pair : VPackObjectIterator(additional)) {
         b.add(pair.key.copyString(), pair.value);
       }
     }
+    
+    // edge collection restrictions
+    b.add(Utils::edgeCollectionRestrictionsKey, VPackValue(VPackValueType::Object));
+    for (auto const& pair : _edgeCollectionRestrictions) {
+      b.add(pair.first, VPackValue(VPackValueType::Array));
+      for (ShardID const& shard: pair.second) {
+        b.add(VPackValue(shard));
+      }
+      b.close();
+    }
+    b.close();
 
     b.add(Utils::vertexShardsKey, VPackValue(VPackValueType::Object));
     for (auto const& pair : vertexShardMap) {
@@ -601,6 +631,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
       }
       b.close();
     }
+    
     b.close();
     b.add(Utils::collectionPlanIdMapKey, VPackValue(VPackValueType::Object));
     for (auto const& pair : collectionPlanIdMap) {

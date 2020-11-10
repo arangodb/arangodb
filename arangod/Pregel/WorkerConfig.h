@@ -81,8 +81,8 @@ class WorkerConfig {
 
   inline std::unordered_map<CollectionID, std::string> const& collectionPlanIdMap() const {
     return _collectionPlanIdMap;
-  };
-
+  }
+  
   std::string const& shardIDToCollectionName(ShardID const& shard) const {
     auto const& it = _shardToCollectionName.find(shard);
     if (it != _shardToCollectionName.end()) {
@@ -94,19 +94,19 @@ class WorkerConfig {
   // same content on every worker, has to stay equal!!!!
   inline std::vector<ShardID> const& globalShardIDs() const {
     return _globalShardIDs;
-  };
+  }
 
   // convenvience access without guaranteed order, same values as in
   // vertexCollectionShards
   inline std::vector<ShardID> const& localVertexShardIDs() const {
     return _localVertexShardIDs;
-  };
+  }
 
   // convenvience access without guaranteed order, same values as in
   // edgeCollectionShards
   inline std::vector<ShardID> const& localEdgeShardIDs() const {
     return _localEdgeShardIDs;
-  };
+  }
 
   /// Actual set of pregel shard id's located here
   inline std::set<PregelShard> const& localPregelShardIDs() const {
@@ -123,6 +123,8 @@ class WorkerConfig {
     // TODO cache this? prob small
     return _localPShardIDs_hash.find(shardIndex) != _localPShardIDs_hash.end();
   }
+  
+  std::vector<ShardID> const& edgeCollectionRestrictions(ShardID const& shard) const;
 
   // convert an arangodb document id to a pregel id
   PregelID documentIdToPregel(std::string const& documentID) const;
@@ -151,6 +153,8 @@ class WorkerConfig {
 
   // Map from edge collection to their shards, only iterated over keep sorted
   std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards, _edgeCollectionShards;
+  
+  std::unordered_map<CollectionID, std::vector<ShardID>> _edgeCollectionRestrictions;
 
   /// cache these ids as much as possible, since we access them often
   std::unordered_map<std::string, PregelShard> _pregelShardIDs;

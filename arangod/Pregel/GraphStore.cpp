@@ -137,6 +137,8 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
     
     for (size_t i = 0; i < vertexShards.size(); i++) {
       ShardID const& vertexShard = vertexShards[i];
+
+      auto const& edgeCollectionRestrictions = _config->edgeCollectionRestrictions(vertexShard);
       
       // distributeshardslike should cause the edges for a vertex to be
       // in the same shard index. x in vertexShard2 => E(x) in edgeShard2
@@ -146,15 +148,19 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
         if (vertexShards.size() != edgeShards.size()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, shardError);
         }
-        edges.emplace_back(edgeShards[i]);
+
+        if (ServerState::instance()->isRunningInCluster() ||
+            edgeCollectionRestrictions.empty() ||
+            std::find(edgeCollectionRestrictions.begin(), edgeCollectionRestrictions.end(), edgeShards[i]) != edgeCollectionRestrictions.end()) {
+          edges.emplace_back(edgeShards[i]);
+        }
       }
 
       try {
         // we might have already loaded these shards
-        if (_loadedShards.find(vertexShard) != _loadedShards.end()) {
+        if (!_loadedShards.emplace(vertexShard).second) {
           continue;
         }
-        _loadedShards.insert(vertexShard);
         Scheduler* scheduler = SchedulerFeature::SCHEDULER;
         TRI_ASSERT(scheduler);
         auto task =
@@ -291,7 +297,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
                                      std::vector<ShardID> const& edgeShards) {
   
   LOG_TOPIC("24837", DEBUG, Logger::PREGEL)
-    << "Pregel worker: loading from vertex shard " << vertexShard;
+    << "Pregel worker: loading from vertex shard " << vertexShard << ", edge shards: " << edgeShards;
   
   transaction::Options trxOpts;
   trxOpts.waitForSync = false;
@@ -326,8 +332,6 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   
   std::string documentId; // temp buffer for _id of vertex
   auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
-    slice = slice.resolveExternal();
-    
     if (vertexBuff == nullptr || vertexBuff->remainingCapacity() == 0) {
       vertices.push_back(createBuffer<Vertex<V, E>>(*_config, segmentSize));
       vertexBuff = vertices.back().get();
