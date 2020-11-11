@@ -52,6 +52,7 @@ LocalTask::~LocalTask() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LocalTask::dispatch() {
+  // only called once by _queue, while _queue->_mutex is held
   _dispatched = true;
   bool queued = _queue->post([self = shared_from_this(), this]() {
     _queue->startTask();
@@ -64,8 +65,8 @@ void LocalTask::dispatch() {
     }
     return true;
   });
-  if (!queued && _queue->status().ok()) {
-    _queue->setStatus({TRI_ERROR_QUEUE_FULL, "could not post task"});
+  if (!queued && _queue->_status.ok()) {
+    _queue->_status.reset(TRI_ERROR_QUEUE_FULL, "could not post task");
   }
 }
 
