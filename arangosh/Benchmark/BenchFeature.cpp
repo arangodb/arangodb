@@ -34,6 +34,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/files.h"
+#include "Basics/system-functions.h"
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
@@ -65,11 +67,14 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
       _async(false),
       _concurrency(1),
       _operations(1000),
+      _realOperations(0),
       _batchSize(0),
+      _duration(0),
       _keepAlive(true),
       _collection("ArangoBenchmark"),
       _testCase("version"),
       _complexity(1),
+      _createDatabase(false),
       _delay(false),
       _progress(true),
       _verbose(false),
@@ -118,6 +123,14 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--wait-for-sync",
                      "use waitForSync for created collections",
                      new BooleanParameter(&_waitForSync));
+
+  options->addOption("--create-database",
+                     "whether we should create the database specified via the server connection",
+                     new BooleanParameter(&_createDatabase));
+
+  options->addOption("--duration",
+                     "test for duration seconds instead of a fixed test count",
+                     new UInt64Parameter(&_duration));
 
   std::unordered_set<std::string> cases = {
       "version",         "stream-cursor",
@@ -178,6 +191,32 @@ void BenchFeature::start() {
   client.setRetries(3);
   client.setWarn(true);
 
+  if (_createDatabase) {
+    auto connectDB = client.databaseName();
+    client.setDatabaseName("_system");
+    auto createDbClient = client.createHttpClient();
+    createDbClient->params().setUserNamePassword("/", client.username(), client.password());
+    auto createStr = std::string("{\"name\":\"") + connectDB + "\"}";
+    auto result = createDbClient->request(rest::RequestType::POST,
+                                          "/_api/database",
+                                          createStr.c_str(),
+                                          createStr.length());
+
+    if (!result || result->wasHttpError()) {
+      std::string msg;
+      if (result) {
+        msg = result->getHttpReturnMessage();
+        delete result;
+      }
+
+      LOG_TOPIC("5cda8", FATAL, arangodb::Logger::FIXME)
+        << "failed to create the specified database: " << msg;
+      FATAL_ERROR_EXIT();
+    }
+
+    delete result;
+    client.setDatabaseName(connectDB);
+  }
   int ret = EXIT_SUCCESS;
 
   *_result = ret;
@@ -192,6 +231,11 @@ void BenchFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
+  if (_duration != 0) {
+    _operations = std::numeric_limits<uint64_t>::max();
+  } else {
+    _realOperations = _operations;
+  }
   double const stepSize = (double)_operations / (double)_concurrency;
   int64_t realStep = (int64_t)stepSize;
 
@@ -213,7 +257,11 @@ void BenchFeature::start() {
   std::vector<BenchRunResult> results;
   for (uint64_t j = 0; j < _runs; j++) {
     status("starting threads...");
-    BenchmarkCounter<unsigned long> operationsCounter(0, (unsigned long)_operations);
+    double runUntil = 0.0;
+    if (_duration != 0) {
+      runUntil = TRI_microtime() + _duration;
+    }
+    BenchmarkCounter<unsigned long> operationsCounter(0, (unsigned long)_operations, runUntil);
     ConditionVariable startCondition;
     // start client threads
     _started = 0;
@@ -287,6 +335,9 @@ void BenchFeature::start() {
         requestTime,
     });
     for (size_t i = 0; i < static_cast<size_t>(_concurrency); ++i) {
+      if (_duration != 0) {
+        _realOperations += threads[i]->_counter;
+      }
       delete threads[i];
     }
     threads.clear();
@@ -309,7 +360,7 @@ void BenchFeature::start() {
 bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> results) {
   std::cout << std::endl;
 
-  std::cout << "Total number of operations: " << _operations << ", runs: " << _runs
+  std::cout << "Total number of operations: " << _realOperations << ", runs: " << _runs
             << ", keep alive: " << (_keepAlive ? "yes" : "no")
             << ", async: " << (_async ? "yes" : "no") << ", batch size: " << _batchSize
             << ", replication factor: " << _replicationFactor
@@ -408,14 +459,14 @@ void BenchFeature::printResult(BenchRunResult const& result) {
             << (result.requestTime / (double)_concurrency) << " s" << std::endl;
 
   std::cout << "Time needed per operation: " << std::fixed
-            << (result.time / _operations) << " s" << std::endl;
+            << (result.time / _realOperations) << " s" << std::endl;
 
   std::cout << "Time needed per operation per thread: " << std::fixed
-            << (result.time / (double)_operations * (double)_concurrency)
+            << (result.time / (double)_realOperations * (double)_concurrency)
             << " s" << std::endl;
 
   std::cout << "Operations per second rate: " << std::fixed
-            << ((double)_operations / result.time) << std::endl;
+            << ((double)_realOperations / result.time) << std::endl;
 
   std::cout << "Elapsed time since start: " << std::fixed << result.time << " s"
             << std::endl

@@ -65,6 +65,10 @@ v3.6.10 (XXXX-XX-XX)
   All the above APIs were intended to be used for internal means only. These
   APIs are deprecated now and will be removed in ArangoDB v3.9.
 
+* Added arangobench options:
+  `--create-database` to create the test database on start
+	`--duration` to run test for a duration rather than a defined count
+
 
 v3.6.9 (2020-11-05)
 -------------------
