@@ -817,9 +817,42 @@ function multiCollectionTestSuite() {
       }
     },
     
-    testMultiWCCConcurrency: function () {
-      [ 1, 2, 4, 8 ].forEach((concurrency) => {
-        let pid = pregel.start("wcc", graphName, { resultField: "result", store: true, concurrency });
+    testMultiWCCParallelism: function () {
+      [ 1, 2, 4, 8 ].forEach((parallelism) => {
+        let pid = pregel.start("wcc", graphName, { resultField: "result", store: true, parallelism });
+        let i = 10000;
+        do {
+          internal.wait(0.2);
+          let stats = pregel.status(pid);
+          if (stats.state !== "running" && stats.state !== "storing") {
+            assertEqual(500, stats.gss);
+            assertEqual(stats.vertexCount, numComponents * n, stats);
+            assertEqual(stats.edgeCount, numComponents * (m + n), stats);
+
+            let mySet = new Set();
+            for (let j = 0; j < cn; ++j) {
+              let c = db[`${vColl}_${j}`].all();
+              while (c.hasNext()) {
+                let doc = c.next();
+                assertTrue(doc.result !== undefined, doc);
+                mySet.add(doc.result);
+              }
+            }
+
+            assertEqual(mySet.size, numComponents);
+
+            break;
+          }
+        } while (i-- >= 0);
+        if (i === 0) {
+          assertTrue(false, "timeout in WCC execution");
+        }
+      });
+    },
+    
+    testMultiWCCParallelismMemoryMapping: function () {
+      [ 1, 2, 4, 8 ].forEach((parallelism) => {
+        let pid = pregel.start("wcc", graphName, { resultField: "result", store: true, parallelism, useMemoryMaps: true });
         let i = 10000;
         do {
           internal.wait(0.2);
