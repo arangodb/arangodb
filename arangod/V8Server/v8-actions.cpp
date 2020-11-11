@@ -1768,9 +1768,10 @@ static void JS_CreateHotbackup(v8::FunctionCallbackInfo<v8::Value> const& args) 
     TRI_V8_THROW_EXCEPTION_USAGE("createHotbackup(obj)");
   }
   VPackBuilder obj;
-  int res = TRI_V8ToVPack(isolate, obj, args[0], false, true);
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_USAGE("createHotbackup(obj): could not convert body to object");
+  try {
+    TRI_V8ToVPack(isolate, obj, args[0], false, true);
+  } catch(std::exception const& e) {
+    TRI_V8_THROW_EXCEPTION_USAGE(std::string("createHotbackup(obj): could not convert body to object: ") + e.what());
   }
 
   VPackBuilder result;
