@@ -299,6 +299,8 @@ struct Task {
   IndexId id;
 }; // Task
 
+std::atomic<size_t> ConsolidationsCounter{0};
+
 }  // namespace
 
 namespace arangodb {
@@ -333,6 +335,7 @@ void CommitTask::operator()() {
     LOG_TOPIC("eb0de", DEBUG, iresearch::TOPIC)
         << "failed to acquire the lock while committing the link '" << id
         << "', runId '" << size_t(&runId) << "'";
+    schedule(commitIntervalMsec);
     return;
   } else if (!(*link)) {
     LOG_TOPIC("eb0du", DEBUG, iresearch::TOPIC)
@@ -439,6 +442,9 @@ struct ConsolidationTask : Task<ConsolidationTask> {
 }; // ConsolidationTask
 
 void ConsolidationTask::operator()() {
+  ++ConsolidationsCounter;
+  auto decCounter = scopeGuard([](){--ConsolidationsCounter;});
+
   const char runId = 0;
   auto linkLock = irs::make_unique_lock(link->mutex(), std::try_to_lock);
 
@@ -446,6 +452,7 @@ void ConsolidationTask::operator()() {
     LOG_TOPIC("eb0dc", DEBUG, iresearch::TOPIC)
         << "failed to acquire the lock while consolidating the link '" << id
         << "', run id '" << size_t(&runId) << "'";
+    schedule(consolidationIntervalMsec);
     return;
   } else if (!(*link)) {
     LOG_TOPIC("eb0d1", DEBUG, iresearch::TOPIC)

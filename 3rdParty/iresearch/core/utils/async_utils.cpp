@@ -445,6 +445,7 @@ void thread_pool::worker() {
         }
 
         lock.unlock();
+        cond_.notify_one();
 
         try {
           fn();
@@ -456,51 +457,52 @@ void thread_pool::worker() {
 
         lock.lock();
         --active_;
-        continue;
+      } else {
+        // we have some tasks pending tasks, let's wait
+        try {
+          cond_.wait_until(lock, queue_.top().at);
+        } catch (...) {
+          break; // terminate thread
+        }
       }
+      continue;
     }
 
     assert(lock.owns_lock());
     assert(active_ <= pool_.size());
 
-    if (State::RUN == state_ &&         // thread pool is still running
-        pool_.size() <= max_threads_) { // pool does not exceed requested limit
-
-      if (!queue_.empty()) {
-        // we have some tasks pending tasks, let's wait
-        cond_.wait_until(lock, queue_.top().at);
-        continue;
-      } else if (pool_.size() - active_ <= max_idle_) {
-        // idle does not exceed requested limit
+    if (State::RUN == state_ &&                // thread pool is still running
+        pool_.size() <= max_threads_ &&        // pool does not exceed requested limit
+        pool_.size() - active_ <= max_idle_) { // idle does not exceed requested limit
+      try {
         cond_.wait(lock);
-        continue;
+      } catch (...) {
+        break; // terminate thread
       }
+
+      continue;
     }
 
-    // ...........................................................................
-    // too many idle threads
-    // ...........................................................................
+    // too many idle threadsb
+    break;
+  }
 
-    assert(lock.owns_lock());
+  // swap current thread handle with one at end of pool and remove end
+  const auto it = std::find_if(
+    std::begin(pool_), std::end(pool_),
+    [this_id = std::this_thread::get_id()](const auto& thread) noexcept {
+      return thread.get_id() == this_id; });
 
-    // swap current thread handle with one at end of pool and remove end
-    const auto it = std::find_if(
-      std::begin(pool_), std::end(pool_),
-      [this_id = std::this_thread::get_id()](const auto& thread) noexcept {
-        return thread.get_id() == this_id;
-    });
-
-    if (it != std::end(pool_)) {
+  if (it != std::end(pool_)) {
+    try {
       it->detach();
-      irstd::swap_remove(pool_, it);
-    }
+    } catch (...) { }
+    irstd::swap_remove(pool_, it);
+  }
 
-    if (State::RUN != state_) {
-      lock.unlock();
-      cond_.notify_all(); // wake up thread_pool::stop(...)
-    }
-
-    return; // terminate thread
+  if (State::RUN != state_) {
+    lock.unlock();
+    cond_.notify_all(); // wake up thread_pool::stop(...)
   }
 }
 
