@@ -162,6 +162,7 @@ void QueryList::remove(Query* query) {
         auto bp = query->bindParameters();
         if (bp != nullptr && !bp->slice().isNone()) {
           bindParameters.append(", bind vars: ");
+
           bindParameters.append(bp->slice().toJson());
           if (bindParameters.size() > _maxQueryStringLength) {
             bindParameters.resize(_maxQueryStringLength - 3);

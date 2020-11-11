@@ -1158,18 +1158,19 @@ static void JS_getFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> cons
 static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
+  
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("setFoxxmasterQueueupdate(bool)");
+    TRI_V8_THROW_EXCEPTION_USAGE("setFoxxmasterQueueupdate(<value>)");
   }
+      
+  bool value = TRI_ObjectToBoolean(isolate, args[0]);
 
-  bool queueUpdate = TRI_ObjectToBoolean(isolate, args[0]);
-  ServerState::instance()->setFoxxmasterQueueupdate(queueUpdate);
+  ServerState::instance()->setFoxxmasterQueueupdate(value);
 
   if (AgencyCommManager::isEnabled()) {
     AgencyComm comm;
     std::string key = "Current/FoxxmasterQueueupdate";
-    VPackSlice val = queueUpdate ? VPackSlice::trueSlice() : VPackSlice::falseSlice();
+    VPackSlice val = value ? VPackSlice::trueSlice() : VPackSlice::falseSlice();
     AgencyCommResult result = comm.setValue(key, val, 0.0);
     if (result.successful()) {
       result = comm.increment("Current/Version");

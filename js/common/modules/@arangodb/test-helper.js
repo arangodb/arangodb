@@ -1,4 +1,5 @@
-/* jshint strict: false */
+/*jshint strict: false */
+/*global arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Helper for JavaScript Tests
@@ -30,6 +31,39 @@
 var internal = require('internal'); // OK: processCsvFile
 
 var processCsvFile = internal.processCsvFile;
+
+// wait for initial selfHeal in cluster
+exports.waitForFoxxInitialized = function () {
+  let internal = require("internal");
+  if (!internal.isCluster()) {
+    // the initial selfHeal is only required in cluster.
+    // single server runs the selfHeal directly at startup.
+    return;
+  }
+
+  let tries = 0;
+  while (++tries < 4 * 30) {
+    let isServer = require('@arangodb').isServer;
+    if (isServer) {
+      // arangod
+      if (!global.KEYSPACE_EXISTS('FoxxFirstSelfHeal')) {
+        return;
+      }
+    } else {
+      // arangosh
+      let result = arango.GET("/wenn-der-fuxxmann-zweimal-klingelt");
+      if (result.code === 404) {
+        // selfHeal was already executed - Foxx is ready!
+        return;
+      }
+    }
+    // otherwise we will likely see HTTP 500
+    if (tries % 4 === 0) {
+      require("console").warn("waiting for initial Foxx selfHeal to kick in");
+    }
+    internal.sleep(0.25);
+  }
+};
 
 exports.Helper = {
   process: function (file, processor) {

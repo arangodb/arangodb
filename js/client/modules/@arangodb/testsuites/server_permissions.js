@@ -99,6 +99,9 @@ function server_permissions(options) {
       }
       let shutdownStatus = pu.shutdownInstance(instanceInfo, clonedOpts, false);                                     // stop
       if (shutdownStatus) {
+        instanceInfo.arangods.forEach(function(arangod) {
+          arangod.pid = null;
+        });
         pu.reStartInstance(clonedOpts, instanceInfo, paramsSecondRun);      // restart with restricted permissions
         results[testFile] = tu.runInLocalArangosh(options, instanceInfo, testFile, {});
         shutdownStatus = pu.shutdownInstance(instanceInfo, clonedOpts, false);

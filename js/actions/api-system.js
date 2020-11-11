@@ -28,7 +28,8 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var actions = require('@arangodb/actions');
+const actions = require('@arangodb/actions');
+const internal = require('internal');
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief main routing action
@@ -51,6 +52,14 @@ actions.defineHttp({
     try {
       actions.routeRequest(req, res);
     } catch (e) {
+      if (e instanceof internal.ArangoError &&
+          e.errorNum === actions.HTTP_SERVICE_UNAVAILABLE) {
+        // return any HTTP 503 response as it is
+        actions.resultException(req, res, e, null, false);
+        // and finish the routing
+        return;
+      }
+
       var msg = 'A runtime error occurred while executing an action\n';
       let err = e;
       while (err) {
