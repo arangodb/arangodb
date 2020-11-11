@@ -1,3 +1,11 @@
+v3.6.10 (2020-XX-XX)
+--------------------
+
+* Added arangobench options:
+  `--create-database` to create the test database on start
+	`--duration` to run test for a duration rather than a defined count
+
+
 v3.6.9 (2020-11-05)
 -------------------
 
