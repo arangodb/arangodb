@@ -70,6 +70,8 @@ class LambdaTask : public LocalTask {
 };
 
 class LocalTaskQueue {
+  friend class LocalTask;
+
  public:
   typedef std::function<bool(std::function<void()>)> PostFn;
 

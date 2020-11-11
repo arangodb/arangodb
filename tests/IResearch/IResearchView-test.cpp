@@ -51,7 +51,6 @@
 #include "Aql/SortCondition.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/LocalTaskQueue.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterFeature.h"

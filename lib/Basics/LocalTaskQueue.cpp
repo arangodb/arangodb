@@ -45,7 +45,8 @@ LocalTask::~LocalTask() = default;
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LocalTask::dispatch() {
-  bool queued = _queue->post([self = shared_from_this(), this]() {
+  // only called once by _queue, while _queue->_mutex is held
+  return _queue->post([self = shared_from_this(), this]() {
     _queue->startTask();
     try {
       run();
@@ -56,7 +57,6 @@ bool LocalTask::dispatch() {
     }
     return true;
   });
-  return queued;
 }
   
 LambdaTask::LambdaTask(std::shared_ptr<LocalTaskQueue> const& queue,
