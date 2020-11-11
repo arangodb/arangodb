@@ -29,17 +29,12 @@ const internal = require('internal');
 // //////////////////////////////////////////////////////////////////////////////
 var startExecution = function(algo, data, params) {
   if (typeof algo !== 'string' || !data) {
-    throw "Invalid parameters: pregel(algorithm, graph, params)" +
+    throw "Invalid parameters: _pregelStart(algorithm, graph, params)" +
           "<graph> can be either {vertexCollections:['',..], edgeCollection: ''}" +
           " or {graphName:'<graph>'} or graph name";
     ;
   }
 
-  // check start vertex
-  // -----------------------------------------
-  if (!algo || typeof algo !== 'string') {
-    throw "Invalid parameters: pregel(<algorithm>, <graph>, <params>)";
-  }
   params = params || {};
 
   let db = internal.db;  

@@ -247,13 +247,14 @@ function exampleTestSuite() {
     },
 
     testSocial: function () {
-      var key = db._pregelStart("effectivecloseness",
-        ['female', 'male'], ['relation'],
-        { resultField: "closeness" });
+      var key = pregel.start("effectivecloseness", {
+        vertexCollections: ['female', 'male'], 
+        edgeCollections: ['relation'],
+      }, { resultField: "closeness" });
       var i = 10000;
       do {
         internal.wait(0.2);
-        var stats = db._pregelStatus(key);
+        var stats = pregel.status(key);
         if (stats.state !== "running") {
           assertEqual(stats.vertexCount, 4, stats);
           assertEqual(stats.edgeCount, 4, stats);
