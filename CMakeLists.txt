@@ -750,6 +750,14 @@ endif (ASM_OPTIMIZATIONS)
 ## MAINTAINER MODE
 ################################################################################
 
+option(USE_LOG_MAINTAINER_MODE
+  "whether log strings should be generated regardles of active loglevel"
+  OFF
+  )
+if (USE_LOG_MAINTAINER_MODE)
+  add_definitions("-DARANGODB_ENABLE_LOG_MAINTAINER_MODE=1")
+endif()
+
 option(USE_MAINTAINER_MODE
   "whether we want to have assertions and other development features"
   OFF

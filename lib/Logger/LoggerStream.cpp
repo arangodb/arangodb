@@ -131,6 +131,12 @@ LoggerStreamBase& LoggerStreamBase::operator<<(Logger::LOGID const& logid) noexc
 
 LoggerStream::~LoggerStream() {
   try {
+#if ARANGODB_ENABLE_LOG_MAINTAINER_MODE
+    // log maintainer mode disables this if in the macro, do it here:
+    if (!::arangodb::Logger::isEnabled(_level)) {
+      return;
+    }
+#endif
     Logger::log(_logid, _function, _file, _line, _level, _topicId, _out.str());
   } catch (...) {
     try {

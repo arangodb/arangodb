@@ -58,9 +58,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs a message for a topic
-////////////////////////////////////////////////////////////////////////////////
 
 #define ARANGO_INTERNAL_LOG_HELPER(id)                        \
   ::arangodb::Logger::LINE(__LINE__)                          \
@@ -68,6 +65,28 @@
   << ::arangodb::Logger::FUNCTION(__FUNCTION__)               \
   << ::arangodb::Logger::LOGID((id))
 
+#if ARANGODB_ENABLE_LOG_MAINTAINER_MODE
+// these versions *allways* generate the log string, only to discard it
+// just before logging them. This is good for ASAN or coverage.
+// DONT use in production.
+#define LOG_TOPIC(id, level, topic)                                     \
+  ::arangodb::LoggerStream() <<  (::arangodb::LogLevel::level)          \
+                             << (topic)                                 \
+                             << ARANGO_INTERNAL_LOG_HELPER(id)
+
+#define LOG_TOPIC_IF(id, level, topic, cond)                            \
+  true && (cond)                                                        \
+  ? (void)nullptr :                                                     \
+  ::arangodb::LogVoidify() & (::arangodb::LoggerStream()                \
+                              << (::arangodb::LogLevel::level))         \
+                              << (topic                                 \
+                              << ARANGO_INTERNAL_LOG_HELPER(id)
+
+#else
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a message for a topic
+////////////////////////////////////////////////////////////////////////////////
 #define LOG_TOPIC(id, level, topic)                                         \
   !::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (topic))    \
     ? (void)nullptr                                                         \
@@ -87,7 +106,7 @@
       << (::arangodb::LogLevel::level))                                                 \
       << (topic)                                                                        \
       << ARANGO_INTERNAL_LOG_HELPER(id)
-
+#endif
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for debugging during development
 ////////////////////////////////////////////////////////////////////////////////
