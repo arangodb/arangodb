@@ -335,7 +335,10 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>> edges;
   std::vector<std::unique_ptr<TypedBuffer<char>>> eKeys;
 
-  std::unordered_map<ShardID, traverser::EdgeCollectionInfo> edgeCollectionInfos;
+  std::vector<std::unique_ptr<traverser::EdgeCollectionInfo>> edgeCollectionInfos;
+  for (ShardID const& edgeShard : edgeShards) {
+    edgeCollectionInfos.emplace_back(std::make_unique<traverser::EdgeCollectionInfo>(&trx, edgeShard));
+  }
 
   TypedBuffer<Vertex<V, E>>* vertexBuff = nullptr;
   TypedBuffer<char>* keyBuff = nullptr;
@@ -374,13 +377,10 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
     }
     
     // load edges
-    for (ShardID const& edgeShard : edgeShards) {
-      auto it = edgeCollectionInfos.find(edgeShard);
-      if (it == edgeCollectionInfos.end()) {
-        it = edgeCollectionInfos.emplace(std::piecewise_construct,
-          std::forward_as_tuple(edgeShard), std::forward_as_tuple(&trx, edgeShard)).first;
-      }
-      loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys, numVertices, it->second);
+    for (std::size_t i = 0; i < edgeShards.size(); ++i) {
+      auto edgeShard = edgeShards[i];
+      auto& info = *edgeCollectionInfos[i];
+      loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys, numVertices, info);
     }
     return true;
   };
