@@ -1,9 +1,9 @@
 v3.7.3.2 (2020-XX-XX)
 ---------------------
 
-* Fixed a deadlock between AQL write transactions and hotbackup, since
-  in AQL write transactions follower transactions did not know they are
-  follower transactions.
+* Fixed a deadlock between AQL write transactions and hotbackup, since in AQL
+  write transactions follower transactions did not know they are follower
+  transactions.
 
 
 v3.7.3.1 (2020-11-01)
