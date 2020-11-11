@@ -176,7 +176,7 @@ void RestTransactionHandler::executeBegin() {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
     
-  Result res = mgr->createManagedTrx(_vocbase, tid, slice);
+  Result res = mgr->createManagedTrx(_vocbase, tid, slice, false);
   if (res.fail()) {
     generateError(res);
   } else {

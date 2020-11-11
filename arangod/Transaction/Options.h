@@ -64,6 +64,7 @@ struct Options {
 #ifdef USE_ENTERPRISE
   bool skipInaccessibleCollections;
 #endif
+  bool isFollowerTransaction;
 };
 
 }  // namespace transaction

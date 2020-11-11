@@ -68,8 +68,33 @@ v3.6.10 (XXXX-XX-XX)
   APIs are deprecated now and will be removed in ArangoDB v3.9.
 
 
-v3.6.9 (XXXX-XX-XX)
+v3.6.9 (2020-11-05)
 -------------------
+
+* Fixed a deadlock between AQL write transactions and hotbackup, since in AQL
+  write transactions follower transactions did not know they are follower
+  transactions.
+
+* Fix REST API endpoint PUT `/_api/collection/<collection>/recalculateCount` on
+  coordinators. Coordinators sent a wrong message body to DB servers here, so
+  the request could not be handled properly.
+
+* Added missing exceptions catch clause for some parts of supervision and
+  heartbeat threads.
+
+* Fixed potential deadlock in cluster transactions if a transaction is returned
+  that was soft-aborted by transaction garbage collection before.
+  This deadlock should rarely ever occur in practice, as it can only be
+  triggered once during the server shutdown sequence.
+
+* Optimization of empty append entries.
+
+* Fixed BTS-233 issue: Fixed invalid IndexId comparator.
+
+* If a collection (or database) is dropped during the instantiation of an AQL
+  query, the setup code now aborts with an ERROR_QUERY_COLLECTION_LOCK_FAILED
+  and earlier.
+  Before the setup code could abort with TRI_ERROR_INTERNAL in the same case.
 
 * Bug-fix: Allow to unlink a view created on a SmartGraphEdge collection.
 
