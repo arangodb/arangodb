@@ -117,6 +117,9 @@ struct SenderMessage {
   SenderMessage() {}
   SenderMessage(PregelID const& pid, T const& val)
       : senderId(pid), value(val) {}
+  
+  SenderMessage(PregelID&& pid, T const& val)
+      : senderId(std::move(pid)), value(val) {}
 
   PregelID senderId;
   T value;

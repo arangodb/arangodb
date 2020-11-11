@@ -90,7 +90,7 @@ class Edge {
 template <typename V, typename E>
 // cppcheck-suppress noConstructor
 class Vertex {
-  friend class GraphStore<V,E>;
+  friend class GraphStore<V, E>;
   
   char const* _key; // uint64_t
   

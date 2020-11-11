@@ -75,19 +75,21 @@ struct WCCComputation : public VertexComputation<uint64_t, uint64_t, SenderMessa
         voteActive();
       }
     }
-        
-    SenderMessage<uint64_t> message(pregelId(), currentComponent);    
-    RangeIterator<Edge<uint64_t>> edges = this->getEdges();
-    for (; edges.hasMore(); ++edges) {
-      Edge<uint64_t>* edge = *edges;
-      if (edge->toKey() == this->key()) {
-        continue; // no need to send message to self
-      }
-    
-      // remember the value we send
-      edge->data() = currentComponent;
+       
+    if (this->getEdgeCount() > 0) {
+      SenderMessage<uint64_t> message(pregelId(), currentComponent);    
+      RangeIterator<Edge<uint64_t>> edges = this->getEdges();
+      for (; edges.hasMore(); ++edges) {
+        Edge<uint64_t>* edge = *edges;
+        if (edge->toKey() == this->key()) {
+          continue; // no need to send message to self
+        }
+      
+        // remember the value we send
+        edge->data() = currentComponent;
 
-      sendMessage(edge, message);
+        sendMessage(edge, message);
+      }
     }
   }
 };

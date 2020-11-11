@@ -334,6 +334,8 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
   std::vector<std::unique_ptr<TypedBuffer<char>>> eKeys;
 
   std::vector<std::unique_ptr<traverser::EdgeCollectionInfo>> edgeCollectionInfos;
+  edgeCollectionInfos.reserve(edgeShards.size());
+
   for (ShardID const& edgeShard : edgeShards) {
     edgeCollectionInfos.emplace_back(std::make_unique<traverser::EdgeCollectionInfo>(&trx, edgeShard));
   }
@@ -376,7 +378,7 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
     
     // load edges
     for (std::size_t i = 0; i < edgeShards.size(); ++i) {
-      auto edgeShard = edgeShards[i];
+      auto const& edgeShard = edgeShards[i];
       auto& info = *edgeCollectionInfos[i];
       loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys, numVertices, info);
     }
