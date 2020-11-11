@@ -157,8 +157,20 @@ class TraversalNode : public virtual GraphNode {
     return vars;
   }
 
-  /// @brief checks if the path out variable is used
+  /// @brief checks if the path out variable is used by other nodes
   bool usesPathOutVariable() const;
+
+  /// @brief checks if the path out variable is used by other nodes
+  /// or accessed in a prune expression
+  bool isPathOutVariableAccessed() const;
+
+  /// @brief checks if the edge out variable is used by other nodes
+  /// or accessed in a prune expression
+  bool isEdgeOutVariableAccessed() const;
+
+  /// @brief checks if the vertex out variable is used by other nodes
+  /// or accessed in a prune expression
+  bool isVertexOutVariableAccessed() const;
 
   /// @brief return the path out variable
   Variable const* pathOutVariable() const;
