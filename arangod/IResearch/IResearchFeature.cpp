@@ -690,6 +690,7 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
     : ApplicationFeature(server, IResearchFeature::name()),
       _async(std::make_unique<IResearchAsync>()),
       _running(false),
+      _numIndices(0),
       _consolidationThreads(0),
       _consolidationThreadsIdle(0),
       _commitThreads(0),

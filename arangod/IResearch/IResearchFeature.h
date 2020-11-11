@@ -98,6 +98,7 @@ class IResearchFeature final : public application_features::ApplicationFeature {
  private:
   std::shared_ptr<IResearchAsync> _async;
   std::atomic<bool> _running;
+  std::atomic<size_t> _numIndices;
   size_t _consolidationThreads;
   size_t _consolidationThreadsIdle;
   size_t _commitThreads;

@@ -299,8 +299,6 @@ struct Task {
   IndexId id;
 }; // Task
 
-std::atomic<size_t> ConsolidationsCounter{0};
-
 }  // namespace
 
 namespace arangodb {
@@ -335,6 +333,8 @@ void CommitTask::operator()() {
     LOG_TOPIC("eb0de", DEBUG, iresearch::TOPIC)
         << "failed to acquire the lock while committing the link '" << id
         << "', runId '" << size_t(&runId) << "'";
+
+    // blindly reschedule commit task
     schedule(commitIntervalMsec);
     return;
   } else if (!(*link)) {
@@ -416,6 +416,7 @@ void CommitTask::operator()() {
   }
 
   if (link->_numCommitTasks <= 1) {
+    // having more than 1 consolidation per link is useless
     schedule(commitIntervalMsec);
   }
 }
@@ -436,14 +437,18 @@ struct ConsolidationTask : Task<ConsolidationTask> {
 
   void operator()();
 
+  static std::atomic<size_t> TotalCounter;
+
   irs::merge_writer::flush_progress_t progress;
   IResearchViewMeta::ConsolidationPolicy consolidationPolicy;
   std::chrono::milliseconds consolidationIntervalMsec{};
 }; // ConsolidationTask
 
+/*static*/ std::atomic<size_t> ConsolidationTask::TotalCounter{0};
+
 void ConsolidationTask::operator()() {
-  ++ConsolidationsCounter;
-  auto decCounter = scopeGuard([](){--ConsolidationsCounter;});
+  ++TotalCounter;
+  auto decCounter = scopeGuard([](){--TotalCounter;});
 
   const char runId = 0;
   auto linkLock = irs::make_unique_lock(link->mutex(), std::try_to_lock);
@@ -452,6 +457,8 @@ void ConsolidationTask::operator()() {
     LOG_TOPIC("eb0dc", DEBUG, iresearch::TOPIC)
         << "failed to acquire the lock while consolidating the link '" << id
         << "', run id '" << size_t(&runId) << "'";
+
+    // blindly reschedule consolidation task
     schedule(consolidationIntervalMsec);
     return;
   } else if (!(*link)) {
@@ -499,11 +506,11 @@ void ConsolidationTask::operator()() {
 
   last = std::chrono::steady_clock::now(); // remember last task start time
 
-  // run consolidation ('_asyncSelf' locked by async task)
-  auto const res = link->consolidateUnsafe(consolidationPolicy, progress);
-
   ++link->_numConsolidationTasks;
   auto decRef = scopeGuard([link](){ --link->_numConsolidationTasks; });
+
+  // run consolidation ('_asyncSelf' locked by async task)
+  auto const res = link->consolidateUnsafe(consolidationPolicy, progress);
 
   if (res.ok()) {
     LOG_TOPIC("7e828", DEBUG, iresearch::TOPIC)
@@ -568,7 +575,10 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
 }
 
 IResearchLink::~IResearchLink() {
-  auto res = unload();  // disassociate from view if it has not been done yet
+  Result res;
+  try {
+    res = unload();  // disassociate from view if it has not been done yet
+  } catch (...) { }
 
   if (!res.ok()) {
     LOG_TOPIC("2b41f", ERR, iresearch::TOPIC)
