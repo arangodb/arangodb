@@ -34,6 +34,7 @@
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
+#include "Utilities/IsArangoExecuteabel.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -511,33 +512,6 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
       input = "help()";
     }
 
-    bool foundShellTool = false;
-    if (i.length() > 0 && i[0] == 'a') {
-      auto pos = i.find(' ');
-      if (pos != std::string::npos) {
-        // is it a variable name assignment?
-        if (i.find('=', pos) == std::string::npos) {
-          i = i.substr(0, pos);
-        }
-      }
-      if (i == "arangobackup" ||
-          i == "arangobench" ||
-          i == "arangod" ||
-          i == "arangodbtests" ||
-          i == "arangodump" ||
-          i == "arangoexport" ||
-          i == "arangoimp" ||
-          i == "arangoimport" ||
-          i == "arango-init-database" ||
-          i == "arangoinspect" ||
-          i == "arangorestore" ||
-          i == "arango-secure-installation" ||
-          i == "arangosh" ||
-          i == "arangovpack"
-          ) {
-        foundShellTool = true;
-      }
-    }
     v8LineEditor.addHistory(input);
 
     v8::TryCatch tryCatch(isolate);
@@ -577,7 +551,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
       console.printErrorLine(exception);
       console.log(exception);
-      if (foundShellTool) {
+      if (HasShellExecuteableNameInIt(i)) {
         LOG_TOPIC("abeec", WARN, arangodb::Logger::FIXME)
           << "This command must be executed from with a system shell and cannot be used inside arangosh: '" << i << "'";
       }
