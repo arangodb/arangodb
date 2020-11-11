@@ -1,4 +1,4 @@
-v3.7.3.2 (2020-XX-XX)
+v3.7.3.2 (2020-11-11)
 ---------------------
 
 * Fixed a deadlock between AQL write transactions and hotbackup, since in AQL
