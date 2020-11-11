@@ -591,7 +591,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
                                          bool const withProperties) const {
-  if (usesVertexOutVariable()) {
+  if (isVertexOutVariableAccessed()) {
     auto vertexOutVariable = _vertexOutVariable;
     if (withProperties) {
       vertexOutVariable = plan.getAst()->variables()->createVariable(vertexOutVariable);
@@ -600,7 +600,7 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
     c.setVertexOutput(vertexOutVariable);
   }
 
-  if (usesEdgeOutVariable()) {
+  if (isEdgeOutVariableAccessed()) {
     auto edgeOutVariable = _edgeOutVariable;
     if (withProperties) {
       edgeOutVariable = plan.getAst()->variables()->createVariable(edgeOutVariable);
@@ -609,7 +609,7 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
     c.setEdgeOutput(edgeOutVariable);
   }
 
-  if (usesPathOutVariable()) {
+  if (isPathOutVariableAccessed()) {
     auto pathOutVariable = _pathOutVariable;
     if (withProperties) {
       pathOutVariable = plan.getAst()->variables()->createVariable(pathOutVariable);
@@ -625,6 +625,16 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
       c._conditionVariables.emplace(it->clone());
     } else {
       c._conditionVariables.emplace(it);
+    }
+  }
+
+  c._pruneExpression = _pruneExpression->clone(plan.getAst());
+  c._pruneVariables.reserve(_pruneVariables.size());
+  for (auto const& it : _pruneVariables) {
+    if (withProperties) {
+      c._pruneVariables.emplace(it->clone());
+    } else {
+      c._pruneVariables.emplace(it);
     }
   }
 
@@ -838,6 +848,30 @@ void TraversalNode::getPruneVariables(std::vector<Variable const*>& res) const {
 
 bool TraversalNode::usesPathOutVariable() const {
   return _pathOutVariable != nullptr && options()->producePaths();
+}
+
+bool TraversalNode::isPathOutVariableAccessed() const {
+	if (_pathOutVariable != nullptr) {
+		return usesPathOutVariable() || _pruneVariables.contains(_pathOutVariable);
+	} else {
+		return false;
+	}
+}
+
+bool TraversalNode::isEdgeOutVariableAccessed() const {
+	if (_edgeOutVariable != nullptr) {
+		return usesEdgeOutVariable() || _pruneVariables.contains(_edgeOutVariable);
+	} else {
+		return false;
+	}
+}
+
+bool TraversalNode::isVertexOutVariableAccessed() const {
+	if (_vertexOutVariable != nullptr) {
+		return usesVertexOutVariable() || _pruneVariables.contains(_vertexOutVariable);
+	} else {
+		return false;
+	}
 }
 
 auto TraversalNode::options() const -> TraverserOptions* {
