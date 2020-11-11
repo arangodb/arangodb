@@ -1,6 +1,11 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* arangobench: add option to create the test database on start
+
+* arangobench: add option to run test for a duration rather than a defined
+  count
+
 * Fix REST API endpoint PUT `/_api/collection/<collection>/recalculateCount` on
   coordinators. Coordinators sent a wrong message body to DB servers here, so
   the request could not be handled properly.
