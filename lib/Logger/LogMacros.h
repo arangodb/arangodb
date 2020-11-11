@@ -65,7 +65,7 @@
   << ::arangodb::Logger::FUNCTION(__FUNCTION__)               \
   << ::arangodb::Logger::LOGID((id))
 
-#if ARANGODB_ENABLE_LOG_MAINTAINER_MODE
+#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
 // these versions *allways* generate the log string, only to discard it
 // just before logging them. This is good for ASAN or coverage.
 // DONT use in production.
@@ -75,7 +75,7 @@
                              << ARANGO_INTERNAL_LOG_HELPER(id)
 
 #define LOG_TOPIC_IF(id, level, topic, cond)                            \
-  true && (cond)                                                        \
+  false && (cond)                                                       \
   ? (void)nullptr :                                                     \
   ::arangodb::LogVoidify() & (::arangodb::LoggerStream()                \
                               << (::arangodb::LogLevel::level))         \
