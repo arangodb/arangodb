@@ -129,6 +129,7 @@ LoggerStreamBase& LoggerStreamBase::operator<<(Logger::LOGID const& logid) noexc
   return *this;
 }
 
+#define ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES 1
 LoggerStream::~LoggerStream() {
   try {
 #if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
