@@ -20,12 +20,12 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILITIES_IS_EXECUTEABLE_H
-#define ARANGODB_UTILITIES_IS_EXECUTEABLE_H 1
+#ifndef ARANGODB_UTILITIES_IS_EXECUTABLE_H
+#define ARANGODB_UTILITIES_IS_EXECUTABLE_H 1
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief tell whether str contains a string matching one of our executeables
+/// @brief tell whether str contains a string matching one of our executables
 //////////////////////////////////////////////////////////////////////////////
-bool HasShellExecuteableNameInIt(std::string& str);
+bool HasShellExecutableNameInIt(std::string& str);
 
 #endif

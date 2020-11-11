@@ -20,10 +20,10 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 #include <string>
-#include "Utilities/IsArangoExecuteabel.h"
+#include "Utilities/IsArangoExecutable.h"
 
 
-bool HasShellExecuteableNameInIt(std::string& str) {
+bool HasShellExecutableNameInIt(std::string& str) {
     bool foundShellTool = false;
     if (str.length() > 0 && str[0] == 'a') {
       auto pos = str.find(' ');

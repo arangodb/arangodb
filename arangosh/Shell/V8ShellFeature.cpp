@@ -34,7 +34,7 @@
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
-#include "Utilities/IsArangoExecuteabel.h"
+#include "Utilities/IsArangoExecutable.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -551,9 +551,9 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
       console.printErrorLine(exception);
       console.log(exception);
-      if (HasShellExecuteableNameInIt(i)) {
+      if (HasShellExecutableNameInIt(i)) {
         LOG_TOPIC("abeec", WARN, arangodb::Logger::FIXME)
-          << "This command must be executed from with a system shell and cannot be used inside arangosh: '" << i << "'";
+          << "This command must be executed in a system shell and cannot be used inside of arangosh: '" << i << "'";
       }
 
       // this will change the prompt for the next round
