@@ -78,12 +78,7 @@ RocksDBEdgeIndexWarmupTask::RocksDBEdgeIndexWarmupTask(
       _upper(upper.data(), upper.size()) {}
 
 void RocksDBEdgeIndexWarmupTask::run() {
-  try {
-    _index->warmupInternal(_trx, _lower, _upper);
-  } catch (...) {
-    _queue->setStatus(TRI_ERROR_INTERNAL);
-  }
-  _queue->join();
+  _index->warmupInternal(_trx, _lower, _upper);
 }
 
 namespace arangodb {

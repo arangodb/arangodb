@@ -887,10 +887,112 @@ function multiCollectionTestSuite() {
   };
 }
 
+function edgeCollectionRestrictionsTestSuite() {
+  'use strict';
+
+  const cn = 'UnitTestCollection';
+
+  let checkResult = function(pid) {
+    var i = 10000;
+    do {
+      internal.wait(0.2);
+      let stats = pregel.status(pid);
+      if (stats.state !== "running" && stats.state !== "storing") {
+        assertEqual(200, stats.vertexCount, stats);
+        assertEqual(90, stats.edgeCount, stats);
+        assertEqual(135, stats.sendCount, stats);
+        assertEqual(135, stats.receivedCount, stats);
+
+        for (let i = 0; i < 10; ++i) {
+          let fromName = cn + 'VertexFrom' + i;
+          let fromDocs = db._query(`FOR doc IN ${fromName} SORT doc._key RETURN doc`).toArray();
+          assertEqual(10, fromDocs.length);
+          fromDocs.forEach((doc, index) => {
+            let expected = index + i * 10;
+            assertEqual(expected, doc.result, { doc: doc.result, i, index, expected, fromDocs }); 
+          });
+
+          let toName = cn + 'VertexTo' + i;
+          let toDocs = db._query(`FOR doc IN ${toName} SORT doc._key RETURN doc`).toArray();
+          assertEqual(10, toDocs.length);
+          toDocs.forEach((doc, index) => {
+            let expected = 100 + i * 10 + index;
+            if (index === i && i > 0) {
+              expected -= 100;
+            }
+            assertEqual(expected, doc.result, { doc: doc.result, i, index, expected, toDocs }); 
+          });
+        }
+        break;
+      }
+    } while (i-- >= 0);
+    if (i === 0) {
+      assertTrue(false, "timeout in algorithm execution");
+    }
+  };
+
+  return {
+
+    setUp: function () {
+      try {
+        db._dropDatabase('PregelTest');
+      } catch {}
+
+      db._createDatabase('PregelTest');
+      db._useDatabase('PregelTest');
+
+      let edgeDefinitions = [];
+
+      let vertices = [];
+      for (let i = 0; i < 10; ++i) {
+        vertices.push({ _key: "test" + i });
+      }
+      for (let i = 0; i < 10; ++i) {
+        let fromName = cn + 'VertexFrom' + i;
+        let toName = cn + 'VertexTo' + i;
+        let f = db._create(fromName, { numberOfShards: 3, distributeShardsLike: '_graphs' });
+        f.insert(vertices);
+        let t = db._create(toName, { numberOfShards: 3, distributeShardsLike: '_graphs' });
+        t.insert(vertices);
+
+        let edges = [];
+        for (let j = 0; j < i; ++j) {
+          // requirement for connectedcomponents is that we have edges in both directions!
+          edges.push({ _from: fromName + "/test" + i, _to: toName + "/test" + i });
+          edges.push({ _to: fromName + "/test" + i, _from: toName + "/test" + i });
+        }
+        let edgeName = cn + 'Edge_' + fromName + '_' + toName;
+        let e = db._createEdgeCollection(edgeName, { numberOfShards: 3, distributeShardsLike: '_graphs' });
+        e.insert(edges);
+
+        edgeDefinitions.push(graph_module._relation(edgeName, [fromName], [toName]));
+      }
+
+      graph_module._create(graphName, edgeDefinitions, [], {});
+    },
+
+    tearDown: function () {
+      db._useDatabase('_system');
+      db._dropDatabase('PregelTest');
+    },
+
+    testWithEdgeCollectionRestrictions: function () {
+      let pid = pregel.start("connectedcomponents", graphName, { resultField: "result", store: true });
+      checkResult(pid);
+    },
+    
+    testNoEdgeCollectionRestrictions: function () {
+      let pid = pregel.start("connectedcomponents", graphName, { resultField: "result", store: true, edgeCollectionRestrictions: {} });
+      checkResult(pid);
+    },
+  };
+}
+
 jsunity.run(basicTestSuite);
 jsunity.run(exampleTestSuite);
 jsunity.run(randomTestSuite);
 jsunity.run(componentsTestSuite);
 jsunity.run(multiCollectionTestSuite);
+jsunity.run(edgeCollectionRestrictionsTestSuite);
 
 return jsunity.done();

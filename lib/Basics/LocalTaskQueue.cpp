@@ -36,23 +36,15 @@ namespace basics {
 ////////////////////////////////////////////////////////////////////////////////
 
 LocalTask::LocalTask(std::shared_ptr<LocalTaskQueue> const& queue)
-    : _queue(queue), _dispatched(false) {}
+    : _queue(queue) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief notify the queue that the task is completely finished
-////////////////////////////////////////////////////////////////////////////////
-LocalTask::~LocalTask() {
-  if (_dispatched) {
-    _queue->join();
-  }
-}
+LocalTask::~LocalTask() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dispatch this task to the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
-void LocalTask::dispatch() {
-  _dispatched = true;
+bool LocalTask::dispatch() {
   bool queued = _queue->post([self = shared_from_this(), this]() {
     _queue->startTask();
     try {
@@ -64,11 +56,9 @@ void LocalTask::dispatch() {
     }
     return true;
   });
-  if (!queued && _queue->status().ok()) {
-    _queue->setStatus({TRI_ERROR_QUEUE_FULL, "could not post task"});
-  }
+  return queued;
 }
-
+  
 LambdaTask::LambdaTask(std::shared_ptr<LocalTaskQueue> const& queue,
                        std::function<Result()>&& fn)
     : LocalTask(queue), _fn(std::move(fn)) {}
@@ -102,11 +92,14 @@ LocalTaskQueue::LocalTaskQueue(application_features::ApplicationServer& server, 
 LocalTaskQueue::~LocalTaskQueue() = default;
 
 void LocalTaskQueue::startTask() {
-  ++_started;
+  _started.fetch_add(1, std::memory_order_relaxed);
 }
 
 void LocalTaskQueue::stopTask() {
-  --_started;
+  std::size_t old = _started.fetch_sub(1, std::memory_order_relaxed);
+  TRI_ASSERT(old > 0);
+  old = _dispatched.fetch_sub(1, std::memory_order_release);
+  TRI_ASSERT(old > 0);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -115,7 +108,7 @@ void LocalTaskQueue::stopTask() {
 
 void LocalTaskQueue::enqueue(std::shared_ptr<LocalTask> task) {
   std::unique_lock<std::mutex> guard(_mutex);
-  _queue.push(task);
+  _queue.push(std::move(task));
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -123,21 +116,7 @@ void LocalTaskQueue::enqueue(std::shared_ptr<LocalTask> task) {
 /// by task dispatch.
 //////////////////////////////////////////////////////////////////////////////
 
-bool LocalTaskQueue::post(std::function<bool()> fn) { return _poster(fn); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief join a single task. reduces the number of waiting tasks and wakes
-/// up the queue's dispatchAndWait() routine
-////////////////////////////////////////////////////////////////////////////////
-
-void LocalTaskQueue::join() {
-  {
-    std::unique_lock<std::mutex> guard(_mutex);
-    TRI_ASSERT(_dispatched > 0);
-    --_dispatched;
-  }
-  _condition.notify_one();
-}
+bool LocalTaskQueue::post(std::function<bool()>&& fn) { return _poster(std::move(fn)); }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief dispatch all tasks, including those that are queued while running,
@@ -147,30 +126,65 @@ void LocalTaskQueue::join() {
 
 void LocalTaskQueue::dispatchAndWait() {
   // regular task loop
-  if (!_queue.empty()) {
-    while (true) {
-      std::unique_lock<std::mutex> guard(_mutex);
+  {
+    std::unique_lock<std::mutex> guard(_mutex);
+    if (_queue.empty()) {
+      return;
+    }
+  }
 
-      // dispatch all newly queued tasks
-      if (_status.ok()) {
-        while (_dispatched < _concurrency && !_queue.empty()) {
-          auto task = _queue.front();
-          task->dispatch();
-          _queue.pop();
-          ++_dispatched;
+  while (true) {
+    std::unique_lock<std::mutex> guard(_mutex);
+
+    // dispatch all newly queued tasks
+    if (_status.ok()) {
+      while (_dispatched.load(std::memory_order_acquire) < _concurrency && !_queue.empty()) {
+        // all your task are belong to us
+        auto task = std::move(_queue.front());
+        _queue.pop();
+
+        // increase _dispatched by one, now. if dispatching fails, we will count it
+        // down again
+        _dispatched.fetch_add(1, std::memory_order_release);
+        bool dispatched = false;
+        try {
+          dispatched = task->dispatch();
+        } catch (basics::Exception const& ex) {
+          TRI_ASSERT(!dispatched);
+          _status.reset({ex.code(), ex.what()});
+        } catch (std::exception const& ex) {
+          TRI_ASSERT(!dispatched);
+          _status.reset({TRI_ERROR_INTERNAL, ex.what()});
+        } catch (...) {
+          TRI_ASSERT(!dispatched);
+          _status.reset({TRI_ERROR_QUEUE_FULL, "could not post task"});
+        }
+
+        if (!dispatched) {
+          // dispatching the task has failed.
+          // count down _dispatched again
+          std::size_t old = _dispatched.fetch_sub(1, std::memory_order_release);;
+          TRI_ASSERT(old > 0);
+          
+          if (_status.ok()) {
+            // now register an error in the queue
+           _status.reset({TRI_ERROR_QUEUE_FULL, "could not post task"});
+          }
         }
       }
-
-      if (_dispatched == 0) {
-        break;
-      }
-
-      if (_dispatched > 0 && _server.isStopping() && _started.load() == 0) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-      }
-
-      _condition.wait_for(guard, std::chrono::milliseconds(10));
     }
+
+    std::size_t dispatched = _dispatched.load(std::memory_order_acquire);
+
+    if (dispatched == 0) {
+      break;
+    }
+
+    if (_server.isStopping() && _started.load() == 0) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    _condition.wait_for(guard, std::chrono::milliseconds(10));
   }
 }
 

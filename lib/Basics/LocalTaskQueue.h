@@ -51,15 +51,11 @@ class LocalTask : public std::enable_shared_from_this<LocalTask> {
   virtual ~LocalTask();
 
   virtual void run() = 0;
-  void dispatch();
+  bool dispatch();
 
  protected:
   /// @brief the underlying queue
   std::shared_ptr<LocalTaskQueue> _queue;
-
- private:
-  /// @brief whether the task has been dispatched (and needs to be joined)
-  bool _dispatched;
 };
 
 /// @brief a helper task type to dispatch simple lambdas
@@ -99,14 +95,7 @@ class LocalTaskQueue {
   /// by task dispatch.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool post(std::function<bool()> fn);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief join a single task. reduces the number of waiting tasks and wakes
-  /// up the queues's dispatchAndWait() routine
-  //////////////////////////////////////////////////////////////////////////////
-
-  void join();
+  bool post(std::function<bool()>&& fn);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dispatch all tasks, including those that are queued while running,
@@ -168,7 +157,7 @@ class LocalTaskQueue {
   /// @brief number of dispatched, non-joined tasks
   //////////////////////////////////////////////////////////////////////////////
 
-  std::size_t _dispatched;
+  std::atomic<std::size_t> _dispatched;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief maximum number of concurrently dispatched tasks
