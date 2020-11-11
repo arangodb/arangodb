@@ -48,11 +48,7 @@ function trxWriteHotbackupDeadlock () {
     },
 
     tearDown: function () {
-      if (c !== null) {
-        c.drop();
-      }
-      c = null;
-      internal.wait(0);
+      db._drop(cn);
     },
 
     testRunAQLWritingTransactionsDuringHotbackup: function () {
@@ -81,7 +77,7 @@ function trxWriteHotbackupDeadlock () {
                         bad++;
                       }
                     }
-                    return {good,bad};
+                    return {good, bad};
                   }`,
           collections: {} }, {"x-arango-async":"store"});
       assertFalse(res.error, "Could not POST transaction.");
@@ -115,11 +111,13 @@ function trxWriteHotbackupDeadlock () {
           assertEqual(200, res.code, "Response code bad.");
           assertEqual(0, res.result.bad, "Not all hotbackups went through!");
           print("Managed to perform", res.result.good, "hotbackups.");
-          break;
+          return;
         }
         wait(1.0);
         print("Waiting for hotbackups to finish...");
       }
+      arango.DELETE(`/_api/job/${jobid}`);
+      assertFalse(true, "Did not finish in expected time.");
     }
   };
 
