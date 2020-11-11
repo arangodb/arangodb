@@ -1,44 +1,42 @@
 v3.6.10 (XXXX-XX-XX)
 --------------------
 
-* Added startup option `--foxx.force-update-on-startup` to toggle waiting 
-  for all Foxx services in all databases to be propagated to a coordinator 
-  before it completes the boot sequence. 
-  In case the option is set to `false` (i.e. no waiting), the coordinator 
-  will complete the boot sequence faster, and the Foxx services will be 
-  propagated lazily. Until the initialization procedure has completed for
-  the local Foxx apps, any request to a Foxx app will be responded to with
-  an HTTP 503 error and message 
-
-    waiting for initialization of Foxx services in this database 
+* Added startup option `--foxx.force-update-on-startup` to toggle waiting for
+  all Foxx services in all databases to be propagated to a coordinator before it
+  completes the boot sequence.
+  In case the option is set to `false` (i.e. no waiting), the coordinator will
+  complete the boot sequence faster, and the Foxx services will be propagated
+  lazily. Until the initialization procedure has completed for the local Foxx
+  apps, any request to a Foxx app will be responded to with an HTTP 503 error
+  and message "waiting for initialization of Foxx services in this database".
 
   This can cause an unavailability window for Foxx services on coordinator
-  startup for the initial requests to Foxx apps until the app propagation 
-  has completed.
+  startup for the initial requests to Foxx apps until the app propagation has
+  completed.
   
-  When not using Foxx, this option should be set to `false` to benefit from 
-  a faster coordinator startup.
-  Deployments relying on Foxx apps being available as soon as a coordinator 
-  is integrated or responding should set this option to `true` (which is 
-  the default value).
+  When not using Foxx, this option should be set to `false` to benefit from a
+  faster coordinator startup.
+  Deployments relying on Foxx apps being available as soon as a coordinator is
+  integrated or responding should set this option to `true` (which is the
+  default value).
   The option only has an effect for cluster setups.
-  On single servers and in active failover mode, all Foxx apps will be 
-  available from the very beginning.
+  On single servers and in active failover mode, all Foxx apps will be available
+  from the very beginning.
   Note: ArangoDB 3.8 changes the default value to `false` for this option.
 
 * Added startup option `--database.old-system-collections` to toggle automatic
   creation of system collections `_modules` and `_fishbowl`, along with their
-  internal usage. These collections are useful only in very few cases, so it
-  is normally not worth to create them in all databases.
+  internal usage. These collections are useful only in very few cases, so it is
+  normally not worth to create them in all databases.
   The `_modules` collection is only used to register custom JavaScript modules,
   for which there exists no API, and `_fishbowl` is used to store the temporary
   list of Foxx apps retrieved from the Github Foxx store.
   If the option value is `false` (which is the default from v3.8 onwards, but
-  for v3.6 and 3.7 the default value is `true` for downwards-compatibility), the 
+  for v3.6 and 3.7 the default value is `true` for downwards-compatibility), the
   two collections will not be created for any new database. The `_fishbowl`
   collection will still be created dynamically when needed. If the option value
-  is `true` (the default value in v3.6 and v3.7), the collections will be created
-  regularly as before.
+  is `true` (the default value in v3.6 and v3.7), the collections will be
+  created regularly as before.
   The default value for the option is going to change to `false` in v3.8,
   meaning the collections will not be created anymore there by default.
 
@@ -57,7 +55,7 @@ v3.6.10 (XXXX-XX-XX)
   routing information. This is not necessary, as the routing information is
   global and not tied to a specific database.
 
-* Changed the server-side implementation of the following internal JavaScript 
+* Changed the server-side implementation of the following internal JavaScript
   APIs to no-ops:
   * `internal.reloadAqlFunctions()`: this is a no-op function now
   * `@arangodb/actions.buildRouting()`: this is a no-op function now
