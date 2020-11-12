@@ -900,22 +900,26 @@ function edgeCollectionRestrictionsTestSuite() {
       if (stats.state !== "running" && stats.state !== "storing") {
         assertEqual(200, stats.vertexCount, stats);
         assertEqual(90, stats.edgeCount, stats);
+        // TODO: adjust values so that this works in single server & cluster alike
         //assertEqual(135, stats.sendCount, stats);
         //assertEqual(135, stats.receivedCount, stats);
 
         for (let i = 0; i < 10; ++i) {
           let fromName = cn + 'VertexFrom' + i;
-          let fromDocs = db._query(`FOR doc IN ${fromName} SORT doc._key RETURN doc`).toArray();
+          let fromDocs = db._query(`FOR doc IN ${fromName} SORT doc.order RETURN doc`).toArray();
           assertEqual(10, fromDocs.length);
+
           fromDocs.forEach((doc, index) => {
-            //let expected = 100 + i * 10 + index;
+            // TODO: sometimes fails. reason unknown
+            //let expected = i * 10 + index;
             //assertEqual(expected, doc.result, { doc: doc.result, i, index, expected, fromDocs }); 
           });
 
           let toName = cn + 'VertexTo' + i;
-          let toDocs = db._query(`FOR doc IN ${toName} SORT doc._key RETURN doc`).toArray();
+          let toDocs = db._query(`FOR doc IN ${toName} SORT doc.order RETURN doc`).toArray();
           assertEqual(10, toDocs.length);
           toDocs.forEach((doc, index) => {
+            // TODO: figure out the correct values here
             //let expected = 100 + i * 10 + index;
             //assertEqual(expected, doc.result, { doc: doc.result, i, index, expected, toDocs }); 
           });
@@ -946,7 +950,7 @@ function edgeCollectionRestrictionsTestSuite() {
 
       let vertices = [];
       for (let i = 0; i < 10; ++i) {
-        vertices.push({ vertex: i });
+        vertices.push({ vertex: i, order: i });
       }
       for (let i = 0; i < 10; ++i) {
         let fromName = cn + 'VertexFrom' + i;
