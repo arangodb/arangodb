@@ -358,7 +358,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-            vocbase.isShardingSingle()) {
+            vocbase.isOneShard()) {
           auto const isSatellite =
               Helper::getStringRef(info.properties, StaticStrings::ReplicationFactor,
                                    velocypack::StringRef{""}) == StaticStrings::Satellite;

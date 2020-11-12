@@ -48,7 +48,7 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
   std::string path = "";
   std::string type = "";
 
-  for (auto const& entry : VPackObjectIterator(def, false)) {
+  for (auto const entry : VPackObjectIterator(def, false)) {
     std::string key = entry.key.copyString();
 
     if (key == "type") {
