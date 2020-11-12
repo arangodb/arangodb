@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed a bug that ignored prune statements in the one shard setup.
+
 * Make the DOCUMENT AQL function eligible for running on DB servers in
   OneShard deployment mode. This allows pushing more query parts to DB servers
   for execution.
