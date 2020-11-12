@@ -23,6 +23,8 @@
 #ifndef ARANGODB_PREGEL_GRAPH_STRUCTURE_H
 #define ARANGODB_PREGEL_GRAPH_STRUCTURE_H 1
 
+#include "Basics/debugging.h"
+
 #include <velocypack/StringRef.h>
 
 #include <cstdint>
@@ -81,29 +83,36 @@ class Edge {
  public:
 
   velocypack::StringRef toKey() const { return velocypack::StringRef(_toKey, _toKeyLength); }
-  E& data() {
+  E& data() noexcept {
     return _data;
   }
-  PregelShard targetShard() const { return _targetShard; }
+  PregelShard targetShard() const noexcept { return _targetShard; }
 };
 
 template <typename V, typename E>
 // cppcheck-suppress noConstructor
 class Vertex {
-  friend class GraphStore<V, E>;
+//  friend class GraphStore<V, E>;
   
   char const* _key; // uint64_t
   
   // these members are initialized by the GraphStore
   Edge<E>* _edges; // uint64_t
-  size_t _edgeCount; // uint64_t
-  
-  uint16_t _keyLength; // uint16_t
+
+  // the number of edges per vertex is limited to 4G.
+  // this should be more than enough
+  uint32_t _edgeCount; // uint32_t
+
+  // combined attribute fusing the active bit (as its highest significant bit)
+  // and the length of the key in its lowest 15 significants bits. we do this
+  // to save RAM/space (we may have _lots_ of vertices)
+  uint16_t _keyLengthAndActive; // uint16_t
   PregelShard _shard; // uint16_t
 
-  bool _active;
-  
   V _data; // variable byte size
+
+  // highest bit set. this is the active bit
+  static constexpr decltype(_keyLengthAndActive) activeBit = 1U << ((sizeof(decltype(_keyLengthAndActive)) * 8) - 1);
 
  public:
 
@@ -111,33 +120,65 @@ class Vertex {
     : _key(nullptr), 
       _edges(nullptr), 
       _edgeCount(0), 
-      _keyLength(0), 
-      _shard(InvalidPregelShard),
-      _active(true) {}
+      _keyLengthAndActive(1U << ((sizeof(decltype(_keyLengthAndActive)) * 8) - 1)), // keyLength = 0, active = true 
+      _shard(InvalidPregelShard) {
+    TRI_ASSERT(keyLength() == 0);
+    TRI_ASSERT(active());
+  }
 
   // note: the destructor for this type is never called,
   // so it must not allocate any memory or take ownership
   // of anything
   
-  Edge<E>* getEdges() const { return _edges; }
-  size_t getEdgeCount() const { return _edgeCount; }
-  
-  void setActive(bool bb) { _active = bb; }
-  bool active() const { return _active; }
+  Edge<E>* getEdges() const noexcept { return _edges; }
 
-  void setShard(PregelShard shard) { _shard = shard; }
-  PregelShard shard() const { return _shard; }
+  // adds an edge for the vertex. returns the number of edges
+  // after the addition. note that the caller must make sure that
+  // we don't end up with more than 4GB edges per verte.
+  size_t addEdge(Edge<E>* edge) noexcept {
+    // must only be called during initial vertex creation
+    TRI_ASSERT(active());
+    TRI_ASSERT(_edgeCount < maxEdgeCount());
 
-  void setKey(char const* key, uint16_t keyLength) {
-    _key = key;
-    _keyLength = keyLength;
+    if (_edges == nullptr) {
+      _edges = edge;
+    }
+    return static_cast<size_t>(++_edgeCount);
   }
 
-  velocypack::StringRef key() const { return velocypack::StringRef(_key, _keyLength); }
+  // returns the number of associated edges
+  size_t getEdgeCount() const noexcept { return static_cast<size_t>(_edgeCount); }
+
+  // maximum number of edges that can be added for each vertex
+  static constexpr size_t maxEdgeCount() { return static_cast<size_t>(std::numeric_limits<decltype(_edgeCount)>::max()); }
+  
+  void setActive(bool bb) noexcept { 
+    _keyLengthAndActive = (_keyLengthAndActive & ~activeBit) | (bb ? activeBit : 0U);
+    TRI_ASSERT((bb && active()) || (!bb && !active())); 
+  }
+
+  bool active() const noexcept { return (_keyLengthAndActive & activeBit) != 0; }
+
+  void setShard(PregelShard shard) noexcept { _shard = shard; }
+  PregelShard shard() const noexcept { return _shard; }
+
+  void setKey(char const* key, uint16_t keyLength) noexcept {
+    // must only be called during initial vertex creation
+    TRI_ASSERT(active());
+    TRI_ASSERT(this->keyLength() == 0);
+    _key = key;
+    _keyLengthAndActive = (_keyLengthAndActive & activeBit) | (keyLength & ~activeBit);
+    TRI_ASSERT(active());
+    TRI_ASSERT(this->keyLength() == keyLength);
+  }
+
+  uint16_t keyLength() const noexcept { return (_keyLengthAndActive & ~activeBit); }
+
+  velocypack::StringRef key() const { return velocypack::StringRef(_key, keyLength()); }
   V const& data() const& { return _data; }
   V& data() & { return _data; }
   
-  PregelID pregelId() const { return PregelID(_shard, std::string(_key, _keyLength)); }
+  PregelID pregelId() const { return PregelID(_shard, std::string(_key, keyLength())); }
 };
 
 // unused right now

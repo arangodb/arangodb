@@ -373,7 +373,7 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
     // load vertex data
     documentId = trx.extractIdString(slice);
     if (_graphFormat->estimatedVertexSize() > 0) {
-      _graphFormat->copyVertexData(documentId, slice, ventry->_data);
+      _graphFormat->copyVertexData(documentId, slice, ventry->data());
     }
     
     // load edges
@@ -440,8 +440,8 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex
   size_t addedEdges = 0;
   auto buildEdge = [&](Edge<E>* edge, VPackStringRef toValue) {
     ++addedEdges;
-    if (++(vertex._edgeCount) == 1) {
-      vertex._edges = edge;
+    if (vertex.addEdge(edge) == vertex.maxEdgeCount()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "too many edges for vertex");
     }
     
     std::size_t pos = toValue.find('/');
