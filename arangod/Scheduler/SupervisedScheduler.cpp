@@ -601,6 +601,7 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const {
     return (jobsDequeued - jobsDone) < (_maxNumWorker * 3 / 4);
   }
 
+#if 0
   // For low priority we also throttle user jobs on the coordinator if we have
   // too many requests in flight internally; If we aren't a coordinator, then
   // _maxInFlight is just the max size_t
@@ -609,6 +610,13 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const {
   if ((inFlight > _maxInFlight) ||
       ((_maxInFlight < std::numeric_limits<std::size_t>::max()) && (flip < inFlight))) {
     LOG_DEVEL << "NO GOOD, " << inFlight << " inflight, flip " << flip << " vs. " << _maxInFlight << " max";
+    return false;
+  }
+#endif
+
+  std::size_t const ongoing = this->onGoing();
+  if (ongoing > _maxInFlight) {
+    LOG_DEVEL << "REFUSED to dequeue because " << ongoing << " low prio things are ongoing.";
     return false;
   }
 
@@ -624,7 +632,7 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     WorkItem* res = nullptr;
     for (uint64_t i = 0; i < 3; ++i) {
       if (this->canPullFromQueue(i) && this->_queues[i].pop(res)) {
-        LOG_DEVEL << "grabbed work from queue " << i;
+        LOG_DEVEL << "grabbed work from queue " << i << " ongoing: " << onGoing();
         return res;
       }
     }
