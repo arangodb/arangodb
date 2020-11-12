@@ -36,6 +36,7 @@ bool HasShellExecutableNameInIt(std::string& str) {
       if (str == "arangobackup" ||
           str == "arangobench" ||
           str == "arangod" ||
+          str == "arangodb" ||
           str == "arangodbtests" ||
           str == "arangodump" ||
           str == "arangoexport" ||
