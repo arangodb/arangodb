@@ -115,7 +115,7 @@ class FlushFeatureTest
 
 TEST_F(FlushFeatureTest, test_subscription_retention) {
   struct TestFlushSubscripion : arangodb::FlushSubscription {
-    TRI_voc_tick_t tick() const noexcept { return _tick; }
+    TRI_voc_tick_t tick() const noexcept override { return _tick; }
 
     TRI_voc_tick_t _tick{};
   };

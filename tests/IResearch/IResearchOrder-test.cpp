@@ -46,6 +46,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "RestServer/AqlFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -233,6 +234,7 @@ class IResearchOrderTest
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), false);  // required for IResearchFeature
     features.emplace_back(server.addFeature<arangodb::aql::AqlFunctionFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::iresearch::IResearchFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false); // required for calculationVocbase
 
     for (auto& f : features) {
       f.first.prepare();
@@ -250,8 +252,9 @@ class IResearchOrderTest
     auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
     arangodb::aql::Function invalid("INVALID", "|.",
                                     arangodb::aql::Function::makeFlags(
-                                        arangodb::aql::Function::Flags::CanRunOnDBServer));
-
+                                        arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+                                        arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
+                                    nullptr);
     functions.add(invalid);
   }
 

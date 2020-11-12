@@ -402,11 +402,6 @@ class VelocyPackHelper {
     return compare(lhs, rhs, useUTF8, options, lhsBase, rhsBase) == 0;
   }
 
-  /// @brief Merges two VelocyPack Slices
-  static arangodb::velocypack::Builder merge(arangodb::velocypack::Slice const&,
-                                             arangodb::velocypack::Slice const&,
-                                             bool, bool);
-
   /// @brief Transforms any VelocyPack to a double value. The second parameter
   ///        indicates if the transformation was successful.
   static double toDouble(VPackSlice const&, bool&);
@@ -459,21 +454,6 @@ struct less<arangodb::velocypack::StringRef> {
   bool operator()(arangodb::velocypack::StringRef const& lhs,
                   arangodb::velocypack::StringRef const& rhs) const noexcept {
     return lhs.compare(rhs) < 0;
-  }
-};
-
-template <>
-struct hash<arangodb::basics::VPackHashedSlice> {
-  inline size_t operator()(arangodb::basics::VPackHashedSlice const& slice) const noexcept {
-    return slice.hash;
-  }
-};
-
-template <>
-struct equal_to<arangodb::basics::VPackHashedSlice> {
-  bool operator()(arangodb::basics::VPackHashedSlice const& lhs,
-                  arangodb::basics::VPackHashedSlice const& rhs) const {
-    return lhs.slice.binaryEquals(rhs.slice);
   }
 };
 

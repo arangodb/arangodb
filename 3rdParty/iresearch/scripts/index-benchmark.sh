@@ -7,7 +7,7 @@ export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/bin"
 ulimit -c unlimited
 
 for i in `seq 1 1`; do
-    for j in 25 ; do
+    for j in 1 ; do
         MAX_LINES=${j}000000
 
         rm -r iresearch.data || {

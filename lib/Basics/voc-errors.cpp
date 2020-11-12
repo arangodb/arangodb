@@ -151,7 +151,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS, "got contradicting answers from different shards");
   REG_ERROR(ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN, "not all sharding attributes given");
   REG_ERROR(ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES, "must not change the value of a shard key attribute");
-  REG_ERROR(ERROR_CLUSTER_UNSUPPORTED, "unsupported operation or parameter");
+  REG_ERROR(ERROR_CLUSTER_UNSUPPORTED, "unsupported operation or parameter for clusters");
   REG_ERROR(ERROR_CLUSTER_ONLY_ON_COORDINATOR, "this operation is only valid on a coordinator in a cluster");
   REG_ERROR(ERROR_CLUSTER_READING_PLAN_AGENCY, "error reading Plan in agency");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION, "could not truncate collection");
@@ -218,6 +218,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_NOT_FOUND, "query ID not found");
   REG_ERROR(ERROR_QUERY_USER_ASSERT, "%s");
   REG_ERROR(ERROR_QUERY_USER_WARN, "%s");
+  REG_ERROR(ERROR_QUERY_WINDOW_AFTER_MODIFICATION, "window operation after data-modification");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_CURSOR_BUSY, "cursor is busy");
   REG_ERROR(ERROR_VALIDATION_FAILED, "schema validation failed");

@@ -144,6 +144,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::Applica
                              emptyBuilder, emptyBuilder);
 
   query.queryOptions().cache = false;
+  query.queryOptions().ttl = 30;
+  query.queryOptions().maxRuntime = 30;
 
   LOG_TOPIC("f3eec", DEBUG, arangodb::Logger::AUTHENTICATION)
       << "starting to load authentication and authorization information";

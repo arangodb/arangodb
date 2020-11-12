@@ -27,8 +27,8 @@
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,7 +135,7 @@ class ngram_token_stream: public ngram_token_stream_base {
   inline bool next_symbol(const byte_type*& it) const noexcept;
 }; // ngram_token_stream
 
-NS_END
+}
 
 // use ngram_token_stream_base type for ancestors
 template<analysis::ngram_token_stream_base::InputType StreamType>
@@ -143,6 +143,6 @@ struct type<analysis::ngram_token_stream<StreamType>>
     : type<analysis::ngram_token_stream_base> {
 };
 
-NS_END
+}
 
 #endif // IRESEARCH_NGRAM_TOKEN_STREAM_H

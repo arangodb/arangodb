@@ -34,7 +34,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-NS_ROOT
+namespace iresearch {
 
 // <16, 8> => buffer sizes 256B, 512B, 1K, 2K, 4K, 8K, 16K, 32K, 64K, 128K, 256K, 512K, 1M, 2M, 4M, 8M
 MSVC_ONLY(template class IRESEARCH_API container_utils::raw_block_vector<
@@ -348,6 +348,6 @@ struct IRESEARCH_API memory_output {
   memory_index_output stream{ file };
 }; // memory_output
 
-NS_END
+}
 
 #endif

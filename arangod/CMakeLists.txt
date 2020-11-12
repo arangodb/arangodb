@@ -57,6 +57,7 @@ add_library(arango_iresearch
   IResearch/GeoAnalyzer.cpp IResearch/GeoAnalyzer.h
   IResearch/GeoFilter.cpp IResearch/GeoFilter.h
   IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
+  IResearch/IResearchAqlAnalyzer.cpp IResearch/IResearchAqlAnalyzer.h
   IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
   IResearch/IResearchCompression.cpp IResearch/IResearchCompression.h
   IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
@@ -167,12 +168,14 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/Graph.cpp
   Graph/GraphManager.cpp
   Graph/GraphOperations.cpp
+  Graph/KPathFinder.cpp
   Graph/KShortestPathsFinder.cpp
   Graph/NeighborsEnumerator.cpp
   Graph/PathEnumerator.cpp
   Graph/ShortestPathFinder.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
+  Graph/ShortestPathType.cpp
   Graph/SingleServerEdgeCursor.cpp
   Graph/SingleServerTraverser.cpp
   Graph/Traverser.cpp
@@ -388,6 +391,8 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/VarUsageFinder.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
+  Aql/WindowNode.cpp
+  Aql/WindowExecutor.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
 )
@@ -541,7 +546,7 @@ set(LIB_ARANGO_AGENCY_SOURCES
 set(LIB_ARANGO_V8SERVER_SOURCES
   Cluster/v8-cluster.cpp
   Transaction/V8Context.cpp
-  V8Server/FoxxQueuesFeature.cpp
+  V8Server/FoxxFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp
   V8Server/v8-actions.cpp
@@ -597,7 +602,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ClusterUpgradeFeature.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
-  Cluster/CriticalThread.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/DropCollection.cpp
   Cluster/DropDatabase.cpp

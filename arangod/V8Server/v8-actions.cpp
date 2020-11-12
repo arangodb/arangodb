@@ -46,13 +46,14 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "StorageEngine/HotBackup.h"
 #include "Utils/ExecContext.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/FoxxQueuesFeature.h"
+#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbase.h"
@@ -442,12 +443,12 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
 
   auto setRequestBodyJsonOrVPack = [&]() {
     if (rest::ContentType::UNSET == request->contentType()) {
-      bool digesteable = false;
+      bool digestable = false;
       try {
         auto parsed = request->payload(true);
         if (parsed.isObject() || parsed.isArray()) {
           request->setDefaultContentType();
-          digesteable = true;
+          digestable = true;
         }
       } catch ( ... ) {}
       // ok, no json/vpack after all ;-)
@@ -459,7 +460,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
       TRI_GET_GLOBAL_STRING(RawRequestBodyKey);
       req->Set(context, RawRequestBodyKey, bufObj).FromMaybe(false);
       req->Set(context, RequestBodyKey, TRI_V8_PAIR_STRING(isolate, raw.data(), raw.size())).FromMaybe(false);
-      if (!digesteable) {
+      if (!digestable) {
         return;
       }
     }
@@ -472,7 +473,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
     } else if (rest::ContentType::VPACK == request->contentType()) {
       // the VPACK is passed as it is to to JavaScript
       // FIXME not every VPack can be converted to JSON
-      VPackSlice slice = request->payload();
+      VPackSlice slice = request->payload(true);
       std::string jsonString = slice.toJson();
 
       LOG_TOPIC("8afce", DEBUG, Logger::COMMUNICATION)
@@ -1756,6 +1757,39 @@ static void JS_RunInRestrictedContext(v8::FunctionCallbackInfo<v8::Value> const&
   TRI_V8_TRY_CATCH_END
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief creates a hotbackup
+//////////////////////////////////////////////////////////////////////////////
+
+static void JS_CreateHotbackup(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
+  if (args.Length() != 1 || !args[0]->IsObject()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("createHotbackup(obj)");
+  }
+  VPackBuilder obj;
+  try {
+    TRI_V8ToVPack(isolate, obj, args[0], false, true);
+  } catch(std::exception const& e) {
+    TRI_V8_THROW_EXCEPTION_USAGE(std::string("createHotbackup(obj): could not convert body to object: ") + e.what());
+  }
+
+  VPackBuilder result;
+#if USE_ENTERPRISE
+  TRI_GET_GLOBALS();
+  HotBackup h(v8g->_server);
+  auto r = h.execute("create", obj.slice(), result);
+  if (r.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+  }
+#else
+  result.add(obj.slice());
+#endif
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
 void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_API_DISABLED"), JS_IsFoxxApiDisabled, true);
@@ -1769,6 +1803,11 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_DEBUG_CLEAR_FAILAT"),
                                JS_DebugClearFailAt);
+
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_CREATE_HOTBACKUP"),
+                               JS_CreateHotbackup);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_AddGlobalFunctionVocbase(
@@ -1789,12 +1828,20 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
 
   // poll interval for Foxx queues
   TRI_GET_GLOBALS();
-  FoxxQueuesFeature& foxxQueuesFeature = v8g->_server.getFeature<FoxxQueuesFeature>();
+  FoxxFeature& foxxFeature = v8g->_server.getFeature<FoxxFeature>();
 
   isolate->GetCurrentContext()
       ->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
-          v8::Number::New(isolate, foxxQueuesFeature.pollInterval()), v8::ReadOnly)
+          v8::Number::New(isolate, foxxFeature.pollInterval()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result
+
+  isolate->GetCurrentContext()
+      ->Global()
+      ->DefineOwnProperty(
+          TRI_IGETC,
+          TRI_V8_ASCII_STRING(isolate, "FOXX_STARTUP_WAIT_FOR_SELF_HEAL"),
+          v8::Boolean::New(isolate, foxxFeature.startupWaitForSelfHeal()), v8::ReadOnly)
       .FromMaybe(false);  // ignore result
 }

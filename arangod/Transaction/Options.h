@@ -68,6 +68,7 @@ struct Options {
   bool skipInaccessibleCollections;
 #endif
   bool waitForSync;
+  bool isFollowerTransaction;
 };
 
 }  // namespace transaction

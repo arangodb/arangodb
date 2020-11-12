@@ -103,6 +103,10 @@ class Parser;
   return T_LIMIT;
 }
 
+(?i:WINDOW) {
+  return T_WINDOW;
+}
+
 (?i:DISTINCT) {
   return T_DISTINCT;
 }
@@ -173,6 +177,10 @@ class Parser;
 
 (?i:K_SHORTEST_PATHS) {
   return T_K_SHORTEST_PATHS;
+}
+
+(?i:K_PATHS) {
+  return T_K_PATHS;
 }
 
 (?i:OUTBOUND) {

@@ -134,6 +134,9 @@ struct LeaderInfo {
 
   explicit LeaderInfo(ReplicationApplierConfiguration const& applierConfig);
 
+  /// @brief returns major version number * 10000 + minor version number * 100
+  uint64_t version() const;
+
   /// @brief get leader state
   Result getState(Connection& connection, bool isChildSyncer, char const* context);
 

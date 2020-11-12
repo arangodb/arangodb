@@ -38,7 +38,7 @@
 #include "utils/utf8_utils.hpp"
 #include "utils/std.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -255,9 +255,9 @@ filter::prepared::ptr prepare_levenshtein_filter(
     boost, sort::MergeType::MAX);
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                   by_edit_distance implementation
@@ -337,4 +337,4 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance)
   );
 }
 
-NS_END
+}

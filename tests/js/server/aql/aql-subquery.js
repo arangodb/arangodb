@@ -501,7 +501,7 @@ function ahuacatlSubqueryTestSuite () {
         }
       } finally {
         db._useDatabase("_system");
-        db._drop(dbName);
+        db._dropDatabase(dbName);
       }
     }
   }; 

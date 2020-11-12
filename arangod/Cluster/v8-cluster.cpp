@@ -66,7 +66,7 @@ static void onlyInCluster() {
     return;
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "ArangoDB is not running in cluster mode");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "ArangoDB is not running in cluster mode");
 }
 
 static void onlyInClusterOrActiveFailover() {
@@ -655,7 +655,6 @@ static void JS_GetCollectionInfoClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
                                              "globallyUniqueId",
                                              "count",
                                              "distributeShardsLike",
-                                             "indexBuckets",
                                              "keyOptions",
                                              "numberOfShards",
                                              "path",
@@ -781,6 +780,16 @@ static void JS_GetCollectionInfoCurrentClusterInfo(v8::FunctionCallbackInfo<v8::
               TRI_V8_ASCII_STRING(isolate, "servers"), list).FromMaybe(false);
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "shorts"), shorts).FromMaybe(false);
+
+  servers = cic->failoverCandidates(shardID);
+  list = v8::Array::New(isolate, static_cast<int>(servers.size()));
+  pos = 0;
+  for (auto const& s : servers) {
+    list->Set(context, pos, TRI_V8_STD_STRING(isolate, s)).FromMaybe(false);
+    pos++;
+  }
+  result->Set(context,
+              TRI_V8_ASCII_STRING(isolate, "failoverCandidates"), list).FromMaybe(false);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -1152,19 +1161,20 @@ static void JS_getFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> cons
 static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
+  
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("setFoxxmasterQueueupdate(bool)");
+    TRI_V8_THROW_EXCEPTION_USAGE("setFoxxmasterQueueupdate(<value>)");
   }
+      
+  bool value = TRI_ObjectToBoolean(isolate, args[0]);
 
-  bool queueUpdate = TRI_ObjectToBoolean(isolate, args[0]);
-  ServerState::instance()->setFoxxmasterQueueupdate(queueUpdate);
+  ServerState::instance()->setFoxxmasterQueueupdate(value);
 
   if (AsyncAgencyCommManager::isEnabled()) {
     TRI_GET_GLOBALS();
     AgencyComm comm(v8g->_server);
     std::string key = "Current/FoxxmasterQueueupdate";
-    VPackSlice val = queueUpdate ? VPackSlice::trueSlice() : VPackSlice::falseSlice();
+    VPackSlice val = value ? VPackSlice::trueSlice() : VPackSlice::falseSlice();
     AgencyCommResult result = comm.setValue(key, val, 0.0);
     if (result.successful()) {
       result = comm.increment("Current/Version");

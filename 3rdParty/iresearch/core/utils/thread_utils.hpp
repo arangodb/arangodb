@@ -30,7 +30,7 @@
 
 #include "shared.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 inline void sleep_ms(size_t ms) {
   std::chrono::milliseconds duration(ms);
@@ -52,6 +52,6 @@ inline std::unique_lock< _Mutex > make_lock(_Mutex& mtx) {
 #define SCOPED_LOCK_NAMED(mtx, name) std::unique_lock<typename std::remove_reference<decltype(mtx)>::type> name(mtx)
 #define TRY_SCOPED_LOCK_NAMED(mtx, name) std::unique_lock<typename std::remove_reference<decltype(mtx)>::type> name(mtx, std::try_to_lock)
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_THREAD_UTILS_H

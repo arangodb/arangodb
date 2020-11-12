@@ -26,7 +26,7 @@
 #include "search/filter.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class by_prefix;
 struct filter_visitor;
@@ -75,10 +75,6 @@ struct IRESEARCH_API by_prefix_options : by_prefix_filter_options {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_prefix : public filter_base<by_prefix_options> {
  public:
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::by_prefix";
-  }
-
   DECLARE_FACTORY();
 
   static prepared::ptr prepare(
@@ -108,9 +104,9 @@ class IRESEARCH_API by_prefix : public filter_base<by_prefix_options> {
   }
 }; // by_prefix
 
-NS_END
+}
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<::iresearch::by_prefix_options> {
@@ -119,6 +115,6 @@ struct hash<::iresearch::by_prefix_options> {
   }
 };
 
-NS_END
+}
 
 #endif

@@ -51,7 +51,7 @@ class RestHandlerFactory {
                                                       GeneralRequest*, GeneralResponse*, void* data);
 
   // cppcheck-suppress *
-  RestHandlerFactory() {}
+  RestHandlerFactory() = default;
 
   // creates a new handler
   std::shared_ptr<RestHandler> createHandler(application_features::ApplicationServer&,

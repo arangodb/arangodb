@@ -1095,7 +1095,7 @@ function IResearchFeatureDDLTestSuite () {
       }
 
       // truncate collection
-      col.truncate();
+      col.truncate({ compact: false });
 
       // ensure data is synchronized
       res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();

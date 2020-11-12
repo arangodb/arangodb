@@ -29,7 +29,7 @@
 #include "search/collectors.hpp"
 #include "utils/noncopyable.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 template<typename States>
 class all_terms_collector : util::noncopyable {
@@ -103,7 +103,7 @@ class all_terms_collector : util::noncopyable {
   const decltype(term_meta::docs_count) no_docs_{0};
 };
 
-NS_END
+}
 
 #endif // IRESEARCH_ALL_TERMS_COLLECTOR_H
 
