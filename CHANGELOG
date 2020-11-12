@@ -1,6 +1,10 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Added arangobench options:
+  `--create-database` to create the test database on start
+	`--duration` to run test for a duration rather than a defined count
+
 * Fixed a deadlock between AQL write transactions and hotbackup, since in AQL
   write transactions follower transactions did not know they are follower
   transactions.
