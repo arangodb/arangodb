@@ -79,14 +79,9 @@ struct SSSPGraphFormat : public InitGraphFormat<int64_t, int64_t> {
       : InitGraphFormat<int64_t, int64_t>(server, result, 0, 1),
         _sourceDocId(source) {}
 
-  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice /*document*/,
                         int64_t& targetPtr) override {
     targetPtr = (documentId == _sourceDocId) ? 0 : INT64_MAX;
-  }
-
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b,
-                         const int64_t* targetPtr, size_t size) const override {
-    return false;
   }
 };
 

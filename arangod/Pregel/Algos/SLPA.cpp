@@ -142,19 +142,17 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
         threshold(thr),
         maxCommunities(mc) {}
 
-  size_t estimatedVertexSize() const override { return sizeof(LPValue); };
-  size_t estimatedEdgeSize() const override { return 0; };
+  size_t estimatedVertexSize() const override { return sizeof(LPValue); }
+  size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+  void copyVertexData(std::string const& /*documentId*/, arangodb::velocypack::Slice /*document*/,
                         SLPAValue& value) override {
     value.nodeId = (uint32_t)_vertexIdRange++;
   }
 
-  void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {
-  }
+  void copyEdgeData(arangodb::velocypack::Slice /*document*/, int8_t& /*targetPtr*/) override {}
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           const SLPAValue* ptr, size_t size) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder& b, SLPAValue const* ptr) const override {
     if (ptr->memory.empty()) {
       return false;
     } else {
@@ -194,11 +192,6 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
     }
     return true;
   }
-
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const int8_t* ptr,
-                         size_t size) const override {
-    return false;
-  }
 };
 
 GraphFormat<SLPAValue, int8_t>* SLPA::inputFormat() const {
@@ -207,4 +200,4 @@ GraphFormat<SLPAValue, int8_t>* SLPA::inputFormat() const {
 
 WorkerContext* SLPA::workerContext(velocypack::Slice userParams) const {
   return new SLPAWorkerContext();
-};
+}

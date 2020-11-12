@@ -116,26 +116,20 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
                          std::string const& result)
       : GraphFormat<LPValue, int8_t>(server), _resultField(result) {}
 
-  size_t estimatedVertexSize() const override { return sizeof(LPValue); };
-  size_t estimatedEdgeSize() const override { return 0; };
+  size_t estimatedVertexSize() const override { return sizeof(LPValue); }
+  size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+  void copyVertexData(std::string const& /*documentId*/, arangodb::velocypack::Slice /*document*/,
                       LPValue& value) override {
     value.currentCommunity = _vertexIdRange++;
   }
 
-  void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}
+  void copyEdgeData(arangodb::velocypack::Slice /*document*/, int8_t& /*targetPtr*/) override {}
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b, const LPValue* ptr,
-                           size_t size) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder& b, LPValue const* ptr) const override {
     b.add(_resultField, VPackValue(ptr->currentCommunity));
     // b.add("stabilizationRounds", VPackValue(ptr->stabilizationRounds));
     return true;
-  }
-
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const int8_t* ptr,
-                         size_t size) const override {
-    return false;
   }
 };
 

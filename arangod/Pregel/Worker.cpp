@@ -679,7 +679,7 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
     
     V const& data = vertexEntry->data();
     // bool store =
-    _graphStore->graphFormat()->buildVertexDocument(b, &data, sizeof(V));
+    _graphStore->graphFormat()->buildVertexDocument(b, &data);
     b.close();
   }
   b.close();

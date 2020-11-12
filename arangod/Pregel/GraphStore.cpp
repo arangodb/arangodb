@@ -595,7 +595,7 @@ void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
     builder.openObject(true);
     builder.add(StaticStrings::KeyString, VPackValuePair(key.data(), key.size(),
                                                          VPackValueType::String));
-    _graphFormat->buildVertexDocument(builder, &data, sizeof(V));
+    _graphFormat->buildVertexDocument(builder, &data);
     builder.close();
     
     ++numDocs;

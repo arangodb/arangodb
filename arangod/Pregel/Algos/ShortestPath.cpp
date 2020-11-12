@@ -90,11 +90,6 @@ struct arangodb::pregel::algos::SPGraphFormat : public InitGraphFormat<int64_t, 
                         int64_t& targetPtr) override {
     targetPtr = (documentId == _sourceDocId) ? 0 : INT64_MAX;
   }
-
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b,
-                         const int64_t* targetPtr, size_t size) const override {
-    return false;
-  }
 };
 
 ShortestPathAlgorithm::ShortestPathAlgorithm(application_features::ApplicationServer& server,

@@ -104,24 +104,18 @@ struct WCCGraphFormat final : public GraphFormat<uint64_t, uint64_t> {
   size_t estimatedVertexSize() const override { return sizeof(uint64_t); }
   size_t estimatedEdgeSize() const override { return sizeof(uint64_t); }
 
-  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+  void copyVertexData(std::string const& /*documentId*/, arangodb::velocypack::Slice /*document*/,
                       uint64_t& targetPtr) override {
     targetPtr = _vertexIdRange++;
   }
 
-  void copyEdgeData(arangodb::velocypack::Slice document, uint64_t& targetPtr) override {
+  void copyEdgeData(arangodb::velocypack::Slice /*document*/, uint64_t& targetPtr) override {
     targetPtr = std::numeric_limits<uint64_t>::max();
   }
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b, const uint64_t* ptr,
-                           size_t size) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder& b, uint64_t const* ptr) const override {
     b.add(_resultField, arangodb::velocypack::Value(*ptr));
     return true;
-  }
-
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const uint64_t* ptr,
-                         size_t size) const override {
-    return false;
   }
 };
 }
