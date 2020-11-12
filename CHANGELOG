@@ -1,6 +1,8 @@
 v3.7.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed an AQL bug that ignored PRUNE statements in OneShard setups.
+
 * Added arangobench options:
   `--create-database` to create the test database on start
 	`--duration` to run test for a duration rather than a defined count

@@ -145,20 +145,20 @@ class TraversalNode : public virtual GraphNode {
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final {
     std::vector<Variable const*> vars;
-    if (usesVertexOutVariable()) {
+    if (isVertexOutVariableUsedLater()) {
       vars.emplace_back(vertexOutVariable());
     }
-    if (usesEdgeOutVariable()) {
+    if (isEdgeOutVariableUsedLater()) {
       vars.emplace_back(edgeOutVariable());
     }
-    if (usesPathOutVariable()) {
+    if (isPathOutVariableUsedLater()) {
       vars.emplace_back(pathOutVariable());
     }
     return vars;
   }
 
   /// @brief checks if the path out variable is used by other nodes
-  bool usesPathOutVariable() const;
+  bool isPathOutVariableUsedLater() const;
 
   /// @brief checks if the path out variable is used by other nodes
   /// or accessed in a prune expression

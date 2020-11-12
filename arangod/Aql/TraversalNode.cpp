@@ -388,7 +388,7 @@ void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   }
 
   // Out variables
-  if (usesPathOutVariable()) {
+  if (isPathOutVariableUsedLater()) {
     nodes.add(VPackValue("pathOutVariable"));
     pathOutVariable()->toVelocyPack(nodes);
   }
@@ -473,7 +473,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   auto outputRegisters = RegIdSet{};
   std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> outputRegisterMapping;
 
-  if (usesVertexOutVariable()) {
+  if (isVertexOutVariableUsedLater()) {
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
@@ -481,7 +481,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::VERTEX,
                                       it->second.registerId);
   }
-  if (usesEdgeOutVariable()) {
+  if (isEdgeOutVariableUsedLater()) {
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
@@ -489,7 +489,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::EDGE,
                                       it->second.registerId);
   }
-  if (usesPathOutVariable()) {
+  if (isPathOutVariableUsedLater()) {
     auto it = varInfo.find(pathOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
@@ -848,13 +848,13 @@ void TraversalNode::getPruneVariables(std::vector<Variable const*>& res) const {
   }
 }
 
-bool TraversalNode::usesPathOutVariable() const {
+bool TraversalNode::isPathOutVariableUsedLater() const {
   return _pathOutVariable != nullptr && options()->producePaths();
 }
 
 bool TraversalNode::isPathOutVariableAccessed() const {
 	if (_pathOutVariable != nullptr) {
-		return usesPathOutVariable() || _pruneVariables.contains(_pathOutVariable);
+		return isPathOutVariableUsedLater() || _pruneVariables.contains(_pathOutVariable);
 	} else {
 		return false;
 	}
@@ -862,7 +862,7 @@ bool TraversalNode::isPathOutVariableAccessed() const {
 
 bool TraversalNode::isEdgeOutVariableAccessed() const {
 	if (_edgeOutVariable != nullptr) {
-		return usesEdgeOutVariable() || _pruneVariables.contains(_edgeOutVariable);
+		return isEdgeOutVariableUsedLater() || _pruneVariables.contains(_edgeOutVariable);
 	} else {
 		return false;
 	}
@@ -870,7 +870,7 @@ bool TraversalNode::isEdgeOutVariableAccessed() const {
 
 bool TraversalNode::isVertexOutVariableAccessed() const {
 	if (_vertexOutVariable != nullptr) {
-		return usesVertexOutVariable() || _pruneVariables.contains(_vertexOutVariable);
+		return isVertexOutVariableUsedLater() || _pruneVariables.contains(_vertexOutVariable);
 	} else {
 		return false;
 	}
