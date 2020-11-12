@@ -67,7 +67,7 @@
 
 #define ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES 1
 #if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
-// these versions *allways* generate the log string, only to discard it
+// these versions *always* generate the log string, only to discard it
 // just before logging them. This is good for ASAN or coverage.
 // DONT use in production.
 #define LOG_TOPIC(id, level, topic)                                     \
