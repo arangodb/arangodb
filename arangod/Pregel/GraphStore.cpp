@@ -536,8 +536,8 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex
 template <typename V, typename E>
 uint64_t GraphStore<V, E>::determineVertexIdRangeStart(uint64_t numVertices) {
   if (arangodb::ServerState::instance()->isRunningInCluster()) {
-    if (this->_vocbaseGuard.database().server().hasFeature<ClusterFeature>()) {
-      arangodb::ClusterInfo& ci = this->_vocbaseGuard.database().server().getFeature<ClusterFeature>().clusterInfo();
+    if (this->_vocbaseGuard.database().server().template hasFeature<ClusterFeature>()) {
+      arangodb::ClusterInfo& ci = this->_vocbaseGuard.database().server().template getFeature<ClusterFeature>().clusterInfo();
       return ci.uniqid(numVertices);
     }
   }
