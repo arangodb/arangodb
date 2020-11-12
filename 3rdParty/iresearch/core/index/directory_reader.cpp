@@ -69,6 +69,10 @@ irs::index_file_refs::ref_t load_newest_index_meta(
       }
 
       return ref;
+    } catch (const std::exception& e) {
+      IR_FRMT_ERROR(
+        "Caught exception while reading index meta with codec '%s', error '%s'",
+        codec->type().name().c_str(), e.what());
     } catch (...) {
       IR_FRMT_ERROR(
         "Caught exception while reading index meta with codec '%s'",
@@ -143,6 +147,8 @@ irs::index_file_refs::ref_t load_newest_index_meta(
     newest.reader->read(dir, meta, *(newest.ref));
 
     return newest.ref;
+  } catch (const std::exception& e) {
+    IR_FRMT_ERROR("Caught exception while loading the newest index meta, error '%s'", e.what());
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while loading the newest index meta");
   }
