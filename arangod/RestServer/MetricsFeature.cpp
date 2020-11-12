@@ -87,10 +87,8 @@ void MetricsFeature::toPrometheus(std::string& result) const {
 
   // StatisticsFeature
   auto& sf = server().getFeature<StatisticsFeature>();
-  if (sf.enabled()) {
-    sf.toPrometheus(result, std::chrono::duration<double,std::milli>(
-                      std::chrono::system_clock::now().time_since_epoch()).count());
-  }
+  sf.toPrometheus(result, std::chrono::duration<double,std::milli>(
+                    std::chrono::system_clock::now().time_since_epoch()).count());
 
   // RocksDBEngine
   auto& es = server().getFeature<EngineSelectorFeature>().engine();
