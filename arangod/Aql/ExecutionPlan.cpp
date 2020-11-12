@@ -262,6 +262,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
             // query and if the query is not a modification query.
             options->setParallelism(Ast::validatedParallelism(value));
           }
+        } else if (name == StaticStrings::GraphRefactorFlag && value->isBoolValue()) {
+          options->setRefactor(value);
         }
       }
     }
@@ -310,6 +312,8 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(Ast* ast,
               std::string(value->getStringValue(), value->getStringLength());
         } else if (name == "defaultWeight" && value->isNumericValue()) {
           options->defaultWeight = value->getDoubleValue();
+        } else if (name == StaticStrings::GraphRefactorFlag) {
+          options->refactor = value->getBoolValue();
         }
       }
     }

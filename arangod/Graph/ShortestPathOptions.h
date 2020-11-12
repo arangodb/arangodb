@@ -51,6 +51,7 @@ struct ShortestPathOptions : public BaseOptions {
   double defaultWeight;
   bool bidirectional;
   bool multiThreaded;
+  bool refactor = false;
 
   explicit ShortestPathOptions(aql::QueryContext& query);
 

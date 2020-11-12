@@ -379,6 +379,9 @@ class StaticStrings {
   static std::string const SupervisionAccumRuntimeMs;
   static std::string const SupervisionAccumRuntimeWaitForSyncMs;
   static std::string const SupervisionFailedServerCount;
+
+  // TODO: remove me after refactor is done
+  static std::string const GraphRefactorFlag;
 };
 }  // namespace arangodb
 

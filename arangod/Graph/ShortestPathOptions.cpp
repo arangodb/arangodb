@@ -48,7 +48,8 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query)
       weightAttribute(""),
       defaultWeight(1),
       bidirectional(true),
-      multiThreaded(true) {}
+      multiThreaded(true),
+      refactor(false) {}
 
 ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query, VPackSlice const& info)
     : ShortestPathOptions(query) {
@@ -64,6 +65,7 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query, VPackSlice co
       VelocyPackHelper::getStringValue(info, "weightAttribute", "");
   defaultWeight =
       VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
+  refactor = VelocyPackHelper::getBooleanValue(info, StaticStrings::GraphRefactorFlag, false);
 }
 
 ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
@@ -85,7 +87,7 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
       VelocyPackHelper::getStringValue(info, "weightAttribute", "");
   defaultWeight =
       VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
-
+  refactor = VelocyPackHelper::getBooleanValue(info, StaticStrings::GraphRefactorFlag, false);
   VPackSlice read = info.get("reverseLookupInfos");
   if (!read.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -108,6 +110,7 @@ void ShortestPathOptions::buildEngineInfo(VPackBuilder& result) const {
   result.add("type", VPackValue("shortestPath"));
   result.add("defaultWeight", VPackValue(defaultWeight));
   result.add("weightAttribute", VPackValue(weightAttribute));
+  result.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor));
   result.add(VPackValue("reverseLookupInfos"));
   result.openArray();
   for (auto const& it : _reverseLookupInfos) {
@@ -127,6 +130,7 @@ void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("weightAttribute", VPackValue(weightAttribute));
   builder.add("defaultWeight", VPackValue(defaultWeight));
   builder.add("type", VPackValue("shortestPath"));
+  builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor));
 }
 
 void ShortestPathOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
@@ -178,9 +182,8 @@ std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
                                                            : _baseLookupInfos);
 }
 
-template<typename ListType>
-void ShortestPathOptions::fetchVerticesCoordinator(
-    ListType const& vertexIds) {
+template <typename ListType>
+void ShortestPathOptions::fetchVerticesCoordinator(ListType const& vertexIds) {
   if (!arangodb::ServerState::instance()->isCoordinator()) {
     return;
   }
@@ -230,7 +233,10 @@ ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
       defaultWeight{other.defaultWeight},
       bidirectional{other.bidirectional},
       multiThreaded{other.multiThreaded},
+      refactor{other.refactor},
       _reverseLookupInfos{other._reverseLookupInfos} {}
 
-template void ShortestPathOptions::fetchVerticesCoordinator<std::deque<arangodb::velocypack::StringRef>>(std::deque<arangodb::velocypack::StringRef> const& vertexIds);
-template void ShortestPathOptions::fetchVerticesCoordinator<std::vector<arangodb::velocypack::HashedStringRef>>(std::vector<arangodb::velocypack::HashedStringRef> const& vertexIds);
+template void ShortestPathOptions::fetchVerticesCoordinator<std::deque<arangodb::velocypack::StringRef>>(
+    std::deque<arangodb::velocypack::StringRef> const& vertexIds);
+template void ShortestPathOptions::fetchVerticesCoordinator<std::vector<arangodb::velocypack::HashedStringRef>>(
+    std::vector<arangodb::velocypack::HashedStringRef> const& vertexIds);
