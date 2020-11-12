@@ -734,7 +734,7 @@ function ahuacatlModifySuite () {
       var queries = [
         "UPSERT { } INSERT { } UPDATE { } INTO @@cn RETURN DOCUMENT('foo')", 
         "UPSERT { } INSERT { } UPDATE { } INTO @@cn RETURN PASSTHRU(DOCUMENT('foo'))", 
-        "UPSERT { } INSERT { } UPDATE { } INTO @@cn RETURN COLLECTIONS()", 
+        "UPSERT { } INSERT { } UPDATE { } INTO @@cn RETURN COLLECTION_COUNT(@@cn)", 
         "UPSERT { } INSERT { } UPDATE { } INTO @@cn RETURN UNIQUE(@@cn)"
       ];
 

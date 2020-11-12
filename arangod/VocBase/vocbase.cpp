@@ -1690,7 +1690,7 @@ std::string const& TRI_vocbase_t::sharding() const {
   return _info.sharding();
 }
 
-bool TRI_vocbase_t::isShardingSingle() const {
+bool TRI_vocbase_t::isOneShard() const {
   return _info.sharding() == StaticStrings::ShardingSingle;
 }
 
