@@ -751,10 +751,10 @@ endif (ASM_OPTIMIZATIONS)
 ################################################################################
 
 option(UNCONDITIONALLY_BUILD_LOG_MESSAGES
-  "whether log strings should be generated regardles of active loglevel"
+  "whether log strings should be generated regardless of active loglevel"
   OFF
   )
-if (USE_LOG_MAINTAINER_MODE)
+if (UNCONDITIONALLY_BUILD_LOG_MESSAGES)
   add_definitions("-DARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES=1")
 endif()
 
