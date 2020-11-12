@@ -76,7 +76,7 @@
                              << ARANGO_INTERNAL_LOG_HELPER(id)
 
 #define LOG_TOPIC_IF(id, level, topic, cond)                            \
-  false && (cond)                                                       \
+  !(cond)                                                       \
   ? (void)nullptr :                                                     \
   ::arangodb::LogVoidify() & (::arangodb::LoggerStream()                \
                               << (::arangodb::LogLevel::level))         \
