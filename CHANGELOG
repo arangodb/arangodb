@@ -78,6 +78,10 @@ v3.7.4 (2020-10-16)
   - Maintenance uses local as well as agency change sets to limit
     the scope of every runtime to these change sets.
 
+
+v3.7.3 (2020-10-14)
+-------------------
+
 * Added the following metrics for synchronous replication in the cluster:
 
   - `arangodb_refused_followers_count`: Number of times a shard leader received
