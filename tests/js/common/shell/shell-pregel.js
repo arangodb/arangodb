@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue JSON */
+/*global assertEqual, assertTrue, assertNotEqual, JSON */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -900,30 +900,40 @@ function edgeCollectionRestrictionsTestSuite() {
       if (stats.state !== "running" && stats.state !== "storing") {
         assertEqual(200, stats.vertexCount, stats);
         assertEqual(90, stats.edgeCount, stats);
-        // TODO: adjust values so that this works in single server & cluster alike
-        //assertEqual(135, stats.sendCount, stats);
-        //assertEqual(135, stats.receivedCount, stats);
 
+        let fromComponents = {};
+        let toComponents = {};
         for (let i = 0; i < 10; ++i) {
           let fromName = cn + 'VertexFrom' + i;
           let fromDocs = db._query(`FOR doc IN ${fromName} SORT doc.order RETURN doc`).toArray();
           assertEqual(10, fromDocs.length);
 
           fromDocs.forEach((doc, index) => {
-            // TODO: sometimes fails. reason unknown
-            //let expected = i * 10 + index;
-            //assertEqual(expected, doc.result, { doc: doc.result, i, index, expected, fromDocs }); 
+            if (!fromComponents.hasOwnProperty(doc.result)) {
+              fromComponents[doc.result] = 0;
+            }
+            ++fromComponents[doc.result];
           });
 
           let toName = cn + 'VertexTo' + i;
           let toDocs = db._query(`FOR doc IN ${toName} SORT doc.order RETURN doc`).toArray();
           assertEqual(10, toDocs.length);
+
           toDocs.forEach((doc, index) => {
-            // TODO: figure out the correct values here
-            //let expected = 100 + i * 10 + index;
-            //assertEqual(expected, doc.result, { doc: doc.result, i, index, expected, toDocs }); 
+            if (!toComponents.hasOwnProperty(doc.result)) {
+              toComponents[doc.result] = 0;
+            }
+            ++toComponents[doc.result];
           });
         }
+        assertEqual(100, Object.keys(fromComponents).length); 
+        Object.keys(fromComponents).forEach((k) => {
+          assertEqual(1, fromComponents[k]);
+        });
+        assertEqual(100, Object.keys(toComponents).length); 
+        Object.keys(toComponents).forEach((k) => {
+          assertEqual(1, toComponents[k]);
+        });
         break;
       }
     } while (i-- >= 0);
@@ -937,7 +947,7 @@ function edgeCollectionRestrictionsTestSuite() {
     setUp: function () {
       try {
         db._dropDatabase('PregelTest');
-      } catch {}
+      } catch (err) {}
 
       db._createDatabase('PregelTest');
       db._useDatabase('PregelTest');
@@ -982,12 +992,12 @@ function edgeCollectionRestrictionsTestSuite() {
     },
 
     testWithEdgeCollectionRestrictions: function () {
-      let pid = pregel.start("connectedcomponents", graphName, { resultField: "result", store: true, shardKeyAttribute: "vertex" });
+      let pid = pregel.start("connectedcomponents", graphName, { resultField: "result", store: true, shardKeyAttribute: "vertex", parallelism: 4 });
       checkResult(pid);
     },
     
     testNoEdgeCollectionRestrictions: function () {
-      let pid = pregel.start("connectedcomponents", graphName, { resultField: "result", store: true, shardKeyAttribute: "vertex", edgeCollectionRestrictions: {} });
+      let pid = pregel.start("connectedcomponents", graphName, { resultField: "result", store: true, shardKeyAttribute: "vertex", edgeCollectionRestrictions: {}, parallelism: 4 });
       checkResult(pid);
     },
   };
