@@ -431,7 +431,7 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex
                                  ShardID const& edgeShard, std::string const& documentID,
                                  std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
                                  std::vector<std::unique_ptr<TypedBuffer<char>>>& edgeKeys,
-                                 size_t numVertices, traverser::EdgeCollectionInfo& info) {
+                                 uint64_t numVertices, traverser::EdgeCollectionInfo& info) {
   auto cursor = info.getEdges(documentID);
   
   TypedBuffer<Edge<E>>* edgeBuff = edges.empty() ? nullptr : edges.back().get();
@@ -536,9 +536,8 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex
 template <typename V, typename E>
 uint64_t GraphStore<V, E>::determineVertexIdRangeStart(uint64_t numVertices) {
   if (arangodb::ServerState::instance()->isRunningInCluster()) {
-    auto& s = _vocbaseGuard.database().server();
-    if (s.hasFeature<ClusterFeature>()) {
-      arangodb::ClusterInfo& ci = s.getFeature<ClusterFeature>().clusterInfo();
+    if (this->_vocbaseGuard.database().server().hasFeature<ClusterFeature>()) {
+      arangodb::ClusterInfo& ci = this->_vocbaseGuard.database().server().getFeature<ClusterFeature>().clusterInfo();
       return ci.uniqid(numVertices);
     }
   }
