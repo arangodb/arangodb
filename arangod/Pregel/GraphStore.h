@@ -89,14 +89,13 @@ class GraphStore final {
   void storeResults(WorkerConfig* config, std::function<void()>);
 
  private:
-  
   void loadVertices(ShardID const& vertexShard,
                     std::vector<ShardID> const& edgeShards);
-  void loadEdges(transaction::Methods& trx, Vertex<V,E>& vertexEntry,
+  void loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
                  ShardID const& edgeShard,
                  std::string const& documentID,
-                 std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>&,
-                 std::vector<std::unique_ptr<TypedBuffer<char>>>&,
+                 std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
+                 std::vector<std::unique_ptr<TypedBuffer<char>>>& edgeKeys,
                  uint64_t numVertices, traverser::EdgeCollectionInfo& info);
   
   void storeVertices(std::vector<ShardID> const& globalShards,
@@ -107,12 +106,12 @@ class GraphStore final {
   constexpr size_t vertexSegmentSize () const {
     return 64 * 1024 * 1024 / sizeof(Vertex<V,E>);
   }
+
   constexpr size_t edgeSegmentSize() const {
     return 64 * 1024 * 1024 / sizeof(Edge<E>);
   }
   
  private:
-
   DatabaseGuard _vocbaseGuard;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
   WorkerConfig* _config = nullptr;

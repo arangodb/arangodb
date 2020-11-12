@@ -22,9 +22,11 @@
 
 #include "GraphStore.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/MutexLocker.h"
+#include "Cluster/ClusterFeature.h"
 #include "Indexes/IndexIterator.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IndexHelpers.h"
@@ -42,7 +44,6 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -70,10 +71,11 @@ size_t stringChunkSize(size_t /*numberOfChunks*/, uint64_t numVerticesLeft, bool
   // we assume a conservative 64 bytes per document key
   size_t numBytes = numVerticesLeft * 64;
   if (!isVertex) {
-    // assume 16 edges per vertex
+    // assume 16 edges per vertex. this is an arbitrary estimate.
     numBytes *= 16;
   }
-  numBytes = (numBytes + chunkUnit - 1) & (-chunkUnit);
+  // round up to nearest multiple of chunkUnit (4096)
+  numBytes = ((numBytes - 1u) & ~(chunkUnit - 1u)) + chunkUnit;
   numBytes = std::max<size_t>(minStringChunkSize, numBytes);
   numBytes = std::min<size_t>(maxStringChunkSize, numBytes);
 
@@ -534,9 +536,9 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex
 template <typename V, typename E>
 uint64_t GraphStore<V, E>::determineVertexIdRangeStart(uint64_t numVertices) {
   if (arangodb::ServerState::instance()->isRunningInCluster()) {
-    auto& server = _vocbaseGuard.database().server();
-    if (server.hasFeature<ClusterFeature>()) {
-      arangodb::ClusterInfo& ci = server.getFeature<ClusterFeature>().clusterInfo();
+    auto& s = _vocbaseGuard.database().server();
+    if (s.hasFeature<ClusterFeature>()) {
+      arangodb::ClusterInfo& ci = s.getFeature<ClusterFeature>().clusterInfo();
       return ci.uniqid(numVertices);
     }
   }
