@@ -410,9 +410,8 @@ void CommitTask::operator()() {
         << "', run id '" << size_t(&runId)
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
-  --link->_numCommitTasks;
 
-  if (link->_numCommitTasks <= 1) {
+  if (--link->_numCommitTasks <= 1) {
     // having more than 1 commit per link is useless
     ++link->_numCommitTasks;
     schedule(commitIntervalMsec);
@@ -908,11 +907,9 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
     }
 
     if (CommitResult::NO_CHANGES == *code) {
-      TRI_ASSERT(_dataStore._reader.reopen() == _dataStore._reader);
-
       LOG_TOPIC("7e319", TRACE, iresearch::TOPIC)
-          << "no changes registered for arangosearch link '" << id() << "' got last operation tick '"
-          << _lastCommittedTick << "'";
+          << "no changes registered for arangosearch link '" << id()
+          << "' got last operation tick '" << _lastCommittedTick << "'";
 
       // no changes, can release the latest tick before commit
       subscription->tick(lastTickBeforeCommit);
@@ -927,12 +924,13 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
       // nothing more to do
       LOG_TOPIC("37bcf", WARN, iresearch::TOPIC)
           << "failed to update snapshot after commit, reuse "
-             "the existing snapshot for arangosearch link '" <<  id() << "'";
+             "the existing snapshot for arangosearch link '" << id() << "'";
 
       return {};
     }
 
     // update reader
+    TRI_ASSERT(_dataStore._reader != reader);
     _dataStore._reader = reader;
 
     // update last committed tick
