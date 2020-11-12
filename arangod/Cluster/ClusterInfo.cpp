@@ -1119,13 +1119,19 @@ void ClusterInfo::loadPlan() {
     // we can safely keep this iterator around because we hold the read-lock on _planProt here.
     // reusing the lookup positions helps avoiding redundant lookups into _plannedCollections
     // for the same database
-    AllCollections::const_iterator existingCollections = _plannedCollections.find(databaseName);
 
-    if (existingCollections != newCollections.end()) {
+    AllCollections::const_iterator existingCollections,
+      stillExistingCollections = newCollections.find(databaseName);
+    {
+      READ_LOCKER(guard, _planProt.lock);
+      existingCollections = _plannedCollections.find(databaseName);
+    }
+
+    if (stillExistingCollections != newCollections.end()) {
       auto const& np = newPlan.find(databaseName);
       if (np != newPlan.end()) {
         auto nps = np->second->slice()[0];
-        for (auto const& ec : *(existingCollections->second)) {
+        for (auto const& ec : *(stillExistingCollections->second)) {
           auto const& cid = ec.first;
           if (!std::isdigit(cid.front())) {
             continue;
@@ -5747,6 +5753,7 @@ futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(network::Timeout
 }
 
 
+// Debugging output no need for consistency across locks
 VPackBuilder ClusterInfo::toVelocyPack() {
   VPackBuilder dump;
   {
@@ -5812,6 +5819,24 @@ VPackBuilder ClusterInfo::toVelocyPack() {
             for (auto const& i : *i.second){
               dump.add(VPackValue(i));
             }
+          }
+        }
+      }
+      {
+        READ_LOCKER(readLocker, _DBServersProt.lock);
+        dump.add(VPackValue("DBServers"));
+        { VPackObjectBuilder d(&dump);
+          for (auto const& dbs : _DBServers) {
+            dump.add(dbs.first, VPackValue(dbs.second));
+          }
+        }
+      }
+      {
+        READ_LOCKER(readLocker, _coordinatorsProt.lock);
+        dump.add(VPackValue("coordinators"));
+        { VPackObjectBuilder c(&dump);
+          for (auto const& crdn : _coordinators) {
+            dump.add(crdn.first, VPackValue(crdn.second));
           }
         }
       }
