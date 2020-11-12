@@ -1121,7 +1121,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
   if (ucInvokeFN.find("::") == std::string::npos) {
     // built-in C++ function
     func = AqlFunctionFeature::getFunctionByName(ucInvokeFN);
-    if (func->implementation != nullptr) {
+    if (func->hasCxxImplementation()) {
       std::pair<size_t, size_t> numExpectedArguments = func->numArguments();
 
       if (invokeParams.size() < numExpectedArguments.first ||
@@ -1171,6 +1171,8 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
       args[2] = TRI_V8_ASCII_STRING(isolate, AFN);
     } else {
       // a call to a built-in V8 function
+      TRI_ASSERT(func->hasV8Implementation());
+
       jsName = "AQL_" + func->name;
       for (int i = 0; i < n; ++i) {
         args[i] = invokeParams[i].toV8(isolate, options);

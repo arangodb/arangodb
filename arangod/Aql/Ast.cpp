@@ -1531,9 +1531,8 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
                                     static_cast<int>(numExpectedArguments.second));
     }
 
-    if (!func->hasFlag(Function::Flags::CanRunOnDBServer)) {
-      // this also qualifies a query for potentially reading or modifying
-      // documents via function calls!
+    if (func->hasFlag(Function::Flags::CanReadDocuments)) {
+      // this also qualifies a query for potentially reading documents via function calls!
       _functionsMayAccessDocuments = true;
     }
   } else {
@@ -2138,9 +2137,9 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
 
-      if (ctx->hasSeenAnyWriteNode && !func->hasFlag(Function::Flags::CanRunOnDBServer)) {
-        // if canRunOnDBServer is true, then this is an indicator for a
-        // document-accessing function
+      if (ctx->hasSeenAnyWriteNode && func->hasFlag(Function::Flags::CanReadDocuments)) {
+        // we have a document-reading function _after_ a modification/write
+        // operation. this is disallowed
         std::string name("function ");
         name.append(func->name);
         THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION,

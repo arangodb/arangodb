@@ -4679,9 +4679,10 @@ void arangodb::aql::distributeFilterCalcToClusterRule(Optimizer* opt,
         case EN::FILTER: {
           if (inspectNode->getType() == EN::CALCULATION) {
             // check if the expression can be executed on a DB server safely
+            TRI_vocbase_t& vocbase = plan->getAst()->query().vocbase();
             if (!ExecutionNode::castTo<CalculationNode const*>(inspectNode)
                      ->expression()
-                     ->canRunOnDBServer()) {
+                     ->canRunOnDBServer(vocbase.isOneShard())) {
               stopSearching = true;
               break;
             }
@@ -4903,7 +4904,8 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(Optimizer* opt,
         if (node->getType() == EN::CALCULATION) {
           auto calc = ExecutionNode::castTo<CalculationNode const*>(node);
           // check if the expression can be executed on a DB server safely
-          if (!calc->expression()->canRunOnDBServer()) {
+          TRI_vocbase_t& vocbase = plan->getAst()->query().vocbase();
+          if (!calc->expression()->canRunOnDBServer(vocbase.isOneShard())) {
             canOptimize = false;
             break;
           }
@@ -5039,9 +5041,10 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
               }
 
               if (c->getType() == EN::CALCULATION) {
+                TRI_vocbase_t& vocbase = plan->getAst()->query().vocbase();
                 auto cn = ExecutionNode::castTo<CalculationNode const*>(c);
                 auto expr = cn->expression();
-                if (expr != nullptr && !expr->canRunOnDBServer()) {
+                if (expr != nullptr && !expr->canRunOnDBServer(vocbase.isOneShard())) {
                   // found something that must not run on a DB server,
                   // but that must run on a coordinator. stop optimization here!
                   toRemove.clear();
@@ -5290,12 +5293,13 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         return false;  // continue . . .
       }
       case EN::CALCULATION: {
+        TRI_vocbase_t& vocbase = _plan->getAst()->query().vocbase();
         auto calculationNode = ExecutionNode::castTo<CalculationNode*>(en);
         auto expr = calculationNode->expression();
 
         // If we find an expression that is not allowed to run on a DBServer,
         // we cannot undistribute (as then the expression *would* run on a dbserver)
-        if (!expr->canRunOnDBServer()) {
+        if (!expr->canRunOnDBServer(vocbase.isOneShard())) {
           break;
         }
         return false;  // continue . . .
@@ -7524,9 +7528,10 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt,
         continue;
       } else if (current->getType() == EN::CALCULATION) {
         // store all calculations we found
+        TRI_vocbase_t& vocbase = plan->getAst()->query().vocbase();
         auto calculationNode = ExecutionNode::castTo<CalculationNode*>(current);
         auto expr = calculationNode->expression();
-        if (!expr->isDeterministic() || !expr->canRunOnDBServer()) {
+        if (!expr->isDeterministic() || !expr->canRunOnDBServer(vocbase.isOneShard())) {
           break;
         }
 
