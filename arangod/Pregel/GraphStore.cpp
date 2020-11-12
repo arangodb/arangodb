@@ -470,7 +470,9 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex
                                     StaticStrings::KeyString, key, responsibleShard);
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC("b80ba", ERR, Logger::PREGEL)
-        << "Could not resolve target shard of edge";
+          << "Could not resolve target shard of edge '" << key 
+          << "', collection: " << collectionName
+          << ": " << TRI_errno_string(res);
         return res;
       }
     
