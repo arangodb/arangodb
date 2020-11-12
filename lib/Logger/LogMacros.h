@@ -71,17 +71,16 @@
 // just before logging them. This is good for ASAN or coverage.
 // DONT use in production.
 #define LOG_TOPIC(id, level, topic)                                     \
-  ::arangodb::LoggerStream() <<  (::arangodb::LogLevel::level)          \
+  ::arangodb::LoggerStream() << (::arangodb::LogLevel::level)           \
                              << (topic)                                 \
                              << ARANGO_INTERNAL_LOG_HELPER(id)
 
 #define LOG_TOPIC_IF(id, level, topic, cond)                            \
-  !(cond)                                                       \
-  ? (void)nullptr :                                                     \
-  ::arangodb::LogVoidify() & (::arangodb::LoggerStream()                \
-                              << (::arangodb::LogLevel::level))         \
-                              << (topic                                 \
-                              << ARANGO_INTERNAL_LOG_HELPER(id)
+  ::arangodb::LoggerStream()                                            \
+  << ::arangodb::LogLevel::TRACE                                        \
+  << (topic)                                                            \
+  << ARANGO_INTERNAL_LOG_HELPER(id)                                     \
+  << (true && cond)
 
 #else
 
