@@ -346,6 +346,9 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
   TypedBuffer<Vertex<V, E>>* vertexBuff = nullptr;
   TypedBuffer<char>* keyBuff = nullptr;
   size_t segmentSize = std::min<size_t>(numVertices, vertexSegmentSize());
+  
+  // make a copy, as we are going to decrease the original value as we load documents
+  uint64_t numVerticesOriginal = numVertices;
 
   std::string documentId; // temp buffer for _id of vertex
   auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
@@ -398,14 +401,18 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
       break;
     }
     
-    numVertices -= batchSize;
+    if (batchSize > numVertices) {
+      numVertices = 0;
+    } else {
+      numVertices -= batchSize;
+    }
     LOG_TOPIC("b9ed9", DEBUG, Logger::PREGEL) << "Shard '" << vertexShard << "', "
       << numVertices << " remaining vertices";
     segmentSize = std::min<size_t>(numVertices, vertexSegmentSize());
   }
 
   // we must not overflow the range we have been assigned to
-  TRI_ASSERT(vertexIdRange <= vertexIdRangeStart + numVertices);
+  TRI_ASSERT(vertexIdRange <= vertexIdRangeStart + numVerticesOriginal);
   
   std::lock_guard<std::mutex> guard(_bufferMutex);
   ::moveAppend(vertices, _vertices);
