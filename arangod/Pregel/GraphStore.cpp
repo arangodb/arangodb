@@ -161,8 +161,6 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
         if (!_loadedShards.emplace(vertexShard).second) {
           continue;
         }
-        Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-        TRI_ASSERT(scheduler);
         auto task =
             std::make_shared<basics::LambdaTask>(queue, [this, vertexShard, edges]() -> Result {
               if (_vocbaseGuard.database().server().isStopping()) {
