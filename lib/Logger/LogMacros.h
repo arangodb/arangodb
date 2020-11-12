@@ -65,25 +65,6 @@
   << ::arangodb::Logger::FUNCTION(__FUNCTION__)               \
   << ::arangodb::Logger::LOGID((id))
 
-#define ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES 1
-#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
-// these versions *always* generate the log string, only to discard it
-// just before logging them. This is good for ASAN or coverage.
-// DONT use in production.
-#define LOG_TOPIC(id, level, topic)                                     \
-  ::arangodb::LoggerStream() << (::arangodb::LogLevel::level)           \
-                             << (topic)                                 \
-                             << ARANGO_INTERNAL_LOG_HELPER(id)
-
-#define LOG_TOPIC_IF(id, level, topic, cond)                            \
-  ::arangodb::LoggerStream()                                            \
-  << ::arangodb::LogLevel::TRACE                                        \
-  << (topic)                                                            \
-  << ARANGO_INTERNAL_LOG_HELPER(id)                                     \
-  << (true && cond)
-
-#else
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for a topic
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,7 +87,7 @@
       << (::arangodb::LogLevel::level))                                                 \
       << (topic)                                                                        \
       << ARANGO_INTERNAL_LOG_HELPER(id)
-#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for debugging during development
 ////////////////////////////////////////////////////////////////////////////////
