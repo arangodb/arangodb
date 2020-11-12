@@ -960,21 +960,21 @@ function edgeCollectionRestrictionsTestSuite() {
 
       let vertices = [];
       for (let i = 0; i < 10; ++i) {
-        vertices.push({ vertex: i, order: i });
+        vertices.push({ vertex: "test" + i, order: i });
       }
       for (let i = 0; i < 10; ++i) {
         let fromName = cn + 'VertexFrom' + i;
         let toName = cn + 'VertexTo' + i;
-        let f = db._create(fromName, { numberOfShards, distributeShardsLike: 'proto', shardKeys: ["vertex"] });
+        let f = db._create(fromName, { numberOfShards, distributeShardsLike: 'proto', shardKeys: ["_key"] });
         let fromKeys = f.insert(vertices).map((doc) => doc._key );
-        let t = db._create(toName, { numberOfShards, distributeShardsLike: 'proto', shardKeys: ["vertex"] });
+        let t = db._create(toName, { numberOfShards, distributeShardsLike: 'proto', shardKeys: ["_key"] });
         let toKeys = t.insert(vertices).map((doc) => doc._key );
 
         let edges = [];
         for (let j = 0; j < i; ++j) {
           // requirement for connectedcomponents is that we have edges in both directions!
-          edges.push({ _from: fromName + "/" + fromKeys[j], _to: toName + "/" + toKeys[j], vertex: j });
-          edges.push({ _to: fromName + "/" + fromKeys[j], _from: toName + "/" + toKeys[j], vertex: j });
+          edges.push({ _from: fromName + "/" + fromKeys[j], _to: toName + "/" + toKeys[j], vertex: fromKeys[j] });
+          edges.push({ _to: fromName + "/" + fromKeys[j], _from: toName + "/" + toKeys[j], vertex: toKeys[j] });
         }
         let edgeName = cn + 'Edge_' + fromName + '_' + toName;
         let e = db._createEdgeCollection(edgeName, { numberOfShards, distributeShardsLike: 'proto', shardKeys: ["vertex"] });
@@ -992,12 +992,12 @@ function edgeCollectionRestrictionsTestSuite() {
     },
 
     testWithEdgeCollectionRestrictions: function () {
-      let pid = pregel.start("connectedcomponents", graphName, { resultField: "result", store: true, shardKeyAttribute: "vertex", parallelism: 4 });
+      let pid = pregel.start("connectedcomponents", graphName, { resultField: "result", store: true, parallelism: 4 });
       checkResult(pid);
     },
     
     testNoEdgeCollectionRestrictions: function () {
-      let pid = pregel.start("connectedcomponents", graphName, { resultField: "result", store: true, shardKeyAttribute: "vertex", edgeCollectionRestrictions: {}, parallelism: 4 });
+      let pid = pregel.start("connectedcomponents", graphName, { resultField: "result", store: true, edgeCollectionRestrictions: {}, parallelism: 4 });
       checkResult(pid);
     },
   };
