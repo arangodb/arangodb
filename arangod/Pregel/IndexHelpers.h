@@ -59,7 +59,7 @@ class EdgeCollectionInfo {
   std::string _collectionName;
 
   /// @brief index used for iteration
-  std::shared_ptr<arangodb::Index> _indexId;
+  std::shared_ptr<arangodb::Index> _index;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Temporary builder for index search values

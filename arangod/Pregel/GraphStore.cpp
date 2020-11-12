@@ -86,6 +86,8 @@ template <typename V, typename E>
 GraphStore<V, E>::GraphStore(TRI_vocbase_t& vb, GraphFormat<V, E>* graphFormat)
     : _vocbaseGuard(vb),
       _graphFormat(graphFormat),
+      _config(nullptr),
+      _vertexIdRangeStart(0),
       _localVertexCount(0),
       _localEdgeCount(0),
       _runningThreads(0) {}
@@ -321,7 +323,9 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
   // tell the formatter the number of docs we are about to load
   LogicalCollection* coll = cursor->collection();
   uint64_t numVertices = coll->numberDocuments(&trx, transaction::CountType::Normal);
-  _graphFormat->willLoadVertices(numVertices);
+
+  uint64_t const vertexIdRangeStart = determineVertexIdRangeStart(numVertices);
+  uint64_t vertexIdRange = vertexIdRangeStart;
   
   LOG_TOPIC("7c31f", DEBUG, Logger::PREGEL) << "Shard '" << vertexShard << "' has "
   << numVertices << " vertices";
@@ -371,7 +375,8 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
     // load vertex data
     documentId = trx.extractIdString(slice);
     if (_graphFormat->estimatedVertexSize() > 0) {
-      _graphFormat->copyVertexData(documentId, slice, ventry->data());
+      // note: ventry->_data and vertexIdRange may be modified by copyVertexData!
+      _graphFormat->copyVertexData(documentId, slice, ventry->data(), vertexIdRange);
     }
     
     // load edges
@@ -397,6 +402,9 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
       << numVertices << " remaining vertices";
     segmentSize = std::min<size_t>(numVertices, vertexSegmentSize());
   }
+
+  // we must not overflow the range we have been assigned to
+  TRI_ASSERT(vertexIdRange <= vertexIdRangeStart + numVertices);
   
   std::lock_guard<std::mutex> guard(_bufferMutex);
   ::moveAppend(vertices, _vertices);
@@ -513,6 +521,19 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex
   _localEdgeCount += addedEdges;
 }
 
+template <typename V, typename E>
+uint64_t GraphStore<V, E>::determineVertexIdRangeStart(uint64_t numVertices) {
+  if (arangodb::ServerState::instance()->isRunningInCluster()) {
+    auto& server = _vocbaseGuard.database().server();
+    if (server.hasFeature<ClusterFeature>()) {
+      arangodb::ClusterInfo& ci = server.getFeature<ClusterFeature>().clusterInfo();
+      return ci.uniqid(numVertices);
+    }
+  }
+
+  return _vertexIdRangeStart.fetch_add(numVertices, std::memory_order_relaxed);
+}
+
 /// Loops over the array starting a new transaction for different shards
 /// Should not dead-lock unless we have to wait really long for other threads
 template <typename V, typename E>
@@ -560,6 +581,13 @@ void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
       }
+    
+      if (_vocbaseGuard.database().server().isStopping()) {
+        LOG_TOPIC("73ec2", WARN, Logger::PREGEL) << "Storing data was canceled prematurely";
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+      
+      numDocs = 0;
     }
 
     builder.clear();
@@ -582,7 +610,6 @@ void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
       }
-      numDocs = 0;
     }
     
     VPackStringRef const key = it->key();
@@ -599,13 +626,6 @@ void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
     builder.close();
     
     ++numDocs;
-    if (_vocbaseGuard.database().server().isStopping()) {
-      LOG_TOPIC("73ec2", WARN, Logger::PREGEL)
-          << "Storing data was canceled prematurely";
-      trx->abort();
-      trx.reset();
-      break;
-    }
   }
  
   // commit the remainders in our buffer

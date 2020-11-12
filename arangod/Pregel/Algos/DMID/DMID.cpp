@@ -585,7 +585,7 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
         _maxCommunities(mc) {}
 
   void copyVertexData(std::string const& /*documentId*/, arangodb::velocypack::Slice document,
-                        DMIDValue& /*value*/) override {}
+                        DMIDValue& /*value*/, uint64_t& /*vertexIdRange*/) override {}
 
   void copyEdgeData(arangodb::velocypack::Slice /*document*/, float& targetPtr) override {
     targetPtr = 1.0f;

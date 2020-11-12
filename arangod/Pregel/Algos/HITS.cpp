@@ -106,12 +106,12 @@ struct HITSGraphFormat : public GraphFormat<HITSValue, int8_t> {
                            std::string const& result)
       : GraphFormat<HITSValue, int8_t>(server), _resultField(result) {}
 
-  size_t estimatedEdgeSize() const override { return 0; };
+  size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        HITSValue& targetPtr) override {}
+  void copyVertexData(std::string const& /*documentId*/, arangodb::velocypack::Slice /*document*/,
+                        HITSValue& /*targetPtr*/, uint64_t& /*vertexIdRange*/) override {}
 
-  void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}
+  void copyEdgeData(arangodb::velocypack::Slice /*document*/, int8_t& /*targetPtr*/) override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b, HITSValue const* value) const override {
     b.add(_resultField + "_auth", VPackValue(value->authorityScore));

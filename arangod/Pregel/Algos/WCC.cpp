@@ -105,8 +105,8 @@ struct WCCGraphFormat final : public GraphFormat<uint64_t, uint64_t> {
   size_t estimatedEdgeSize() const override { return sizeof(uint64_t); }
 
   void copyVertexData(std::string const& /*documentId*/, arangodb::velocypack::Slice /*document*/,
-                      uint64_t& targetPtr) override {
-    targetPtr = _vertexIdRange++;
+                      uint64_t& targetPtr, uint64_t& vertexIdRange) override {
+    targetPtr = vertexIdRange++;
   }
 
   void copyEdgeData(arangodb::velocypack::Slice /*document*/, uint64_t& targetPtr) override {

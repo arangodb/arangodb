@@ -101,6 +101,8 @@ class GraphStore final {
   
   void storeVertices(std::vector<ShardID> const& globalShards,
                      RangeIterator<Vertex<V,E>>& it);
+
+  uint64_t determineVertexIdRangeStart(uint64_t numVertices);
   
   constexpr size_t vertexSegmentSize () const {
     return 64 * 1024 * 1024 / sizeof(Vertex<V,E>);
@@ -114,6 +116,8 @@ class GraphStore final {
   DatabaseGuard _vocbaseGuard;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
   WorkerConfig* _config = nullptr;
+
+  std::atomic<uint64_t> _vertexIdRangeStart;
 
   /// Holds vertex keys, data and pointers to edges
   std::mutex _bufferMutex;

@@ -80,7 +80,7 @@ struct SSSPGraphFormat : public InitGraphFormat<int64_t, int64_t> {
         _sourceDocId(source) {}
 
   void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice /*document*/,
-                        int64_t& targetPtr) override {
+                        int64_t& targetPtr, uint64_t& /*vertexIdRange*/) override {
     targetPtr = (documentId == _sourceDocId) ? 0 : INT64_MAX;
   }
 };

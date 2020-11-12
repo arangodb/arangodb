@@ -49,12 +49,12 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
       auto const& fields = idx->fieldNames();
       if (fields.size() == 1 && fields[0].size() == 1 &&
           fields[0][0] == StaticStrings::FromString) {
-        _indexId = idx;
+        _index = idx;
         break;
       }
     }
   }
-  TRI_ASSERT(_indexId != nullptr);  // We always have an edge Index
+  TRI_ASSERT(_index != nullptr);  // We always have an edge Index
 }
 
 /// @brief Get edges for the given direction and start vertex.
@@ -62,7 +62,7 @@ std::unique_ptr<arangodb::IndexIterator> EdgeCollectionInfo::getEdges(std::strin
   _searchBuilder.setVertexId(vertexId);
   IndexIteratorOptions opts;
   opts.enableCache = false;
-  return _trx->indexScanForCondition(_indexId, _searchBuilder.getOutboundCondition(), _searchBuilder.getVariable(), opts);
+  return _trx->indexScanForCondition(_index, _searchBuilder.getOutboundCondition(), _searchBuilder.getVariable(), opts);
 }
 
 /// @brief Return name of the wrapped collection

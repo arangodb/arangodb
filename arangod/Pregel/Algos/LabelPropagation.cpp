@@ -120,8 +120,8 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   size_t estimatedEdgeSize() const override { return 0; }
 
   void copyVertexData(std::string const& /*documentId*/, arangodb::velocypack::Slice /*document*/,
-                      LPValue& value) override {
-    value.currentCommunity = _vertexIdRange++;
+                      LPValue& value, uint64_t& vertexIdRange) override {
+    value.currentCommunity = vertexIdRange++;
   }
 
   void copyEdgeData(arangodb::velocypack::Slice /*document*/, int8_t& /*targetPtr*/) override {}
